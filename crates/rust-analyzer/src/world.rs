@@ -105,11 +105,15 @@ impl WorldState {
             }));
         }
 
-        let extern_dirs: FxHashSet<_> =
+        let mut extern_dirs: FxHashSet<_> =
             additional_out_dirs.iter().map(|(_, path)| (PathBuf::from(path))).collect();
+        for ws in workspaces.iter() {
+            extern_dirs.extend(ws.out_dirs());
+        }
+
         let mut extern_source_roots = FxHashMap::default();
 
-        roots.extend(additional_out_dirs.iter().map(|(_, path)| {
+        roots.extend(extern_dirs.iter().map(|path| {
             let mut filter = RustPackageFilterBuilder::default().set_member(false);
             for glob in exclude_globs.iter() {
                 filter = filter.exclude(glob.clone());
@@ -148,17 +152,21 @@ impl WorldState {
             vfs_file.map(|f| FileId(f.0))
         };
 
-        let mut outdirs = FxHashMap::default();
-        for (name, path) in additional_out_dirs {
-            let path = PathBuf::from(&path);
-            if let Some(id) = extern_source_roots.get(&path) {
-                outdirs.insert(name, (id.clone(), path.to_string_lossy().replace("\\", "/")));
-            }
-        }
+        let additional_out_dirs: FxHashMap<String, PathBuf> = additional_out_dirs
+            .into_iter()
+            .map(|(name, path)| (name, PathBuf::from(&path)))
+            .collect();
 
         workspaces
             .iter()
-            .map(|ws| ws.to_crate_graph(&default_cfg_options, &outdirs, &mut load))
+            .map(|ws| {
+                ws.to_crate_graph(
+                    &default_cfg_options,
+                    &additional_out_dirs,
+                    &extern_source_roots,
+                    &mut load,
+                )
+            })
             .for_each(|graph| {
                 crate_graph.extend(graph);
             });

@@ -1092,6 +1092,7 @@ dependencies = [
  "cargo_metadata",
  "log",
  "ra_arena",
+ "ra_cargo_watch",
  "ra_cfg",
  "ra_db",
  "rustc-hash",

@@ -22,6 +22,7 @@ export interface CargoFeatures {
     noDefaultFeatures: boolean;
     allFeatures: boolean;
     features: string[];
+    loadOutDirsFromCheck: boolean;
 }
 
 export const enum UpdatesChannel {
@@ -204,6 +205,7 @@ export class Config {
     get featureFlags() { return this.cfg.get("featureFlags") as Record<string, boolean>; }
     get additionalOutDirs() { return this.cfg.get("additionalOutDirs") as Record<string, string>; }
     get rustfmtArgs() { return this.cfg.get("rustfmtArgs") as string[]; }
+    get loadOutDirsFromCheck() { return this.cfg.get("loadOutDirsFromCheck") as boolean; }
 
     get cargoWatchOptions(): CargoWatchOptions {
         return {
@@ -219,6 +221,7 @@ export class Config {
             noDefaultFeatures: this.cfg.get("cargoFeatures.noDefaultFeatures") as boolean,
             allFeatures: this.cfg.get("cargoFeatures.allFeatures") as boolean,
             features: this.cfg.get("cargoFeatures.features") as string[],
+            loadOutDirsFromCheck: this.cfg.get("cargoFeatures.loadOutDirsFromCheck") as boolean,
         };
     }
 

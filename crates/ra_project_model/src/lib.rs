@@ -150,6 +150,21 @@ impl ProjectWorkspace {
         }
     }
 
+    pub fn out_dirs(&self) -> Vec<PathBuf> {
+        match self {
+            ProjectWorkspace::Json { project: _project } => vec![],
+            ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => {
+                let mut out_dirs = Vec::with_capacity(cargo.packages().len());
+                for pkg in cargo.packages() {
+                    if let Some(out_dir) = pkg.out_dir(&cargo) {
+                        out_dirs.push(out_dir.to_path_buf());
+                    }
+                }
+                out_dirs
+            }
+        }
+    }
+
     pub fn n_packages(&self) -> usize {
         match self {
             ProjectWorkspace::Json { project } => project.crates.len(),
@@ -162,7 +177,8 @@ impl ProjectWorkspace {
     pub fn to_crate_graph(
         &self,
         default_cfg_options: &CfgOptions,
-        outdirs: &FxHashMap<String, (ExternSourceId, String)>,
+        additional_out_dirs: &FxHashMap<String, PathBuf>,
+        extern_source_roots: &FxHashMap<PathBuf, ExternSourceId>,
         load: &mut dyn FnMut(&Path) -> Option<FileId>,
     ) -> CrateGraph {
         let mut crate_graph = CrateGraph::default();
@@ -237,9 +253,11 @@ impl ProjectWorkspace {
 
                         let mut env = Env::default();
                         let mut extern_source = ExternSource::default();
-                        if let Some((id, path)) = outdirs.get(krate.name(&sysroot)) {
-                            env.set("OUT_DIR", path.clone());
-                            extern_source.set_extern_path(&path, *id);
+                        if let Some(path) = additional_out_dirs.get(krate.name(&sysroot)) {
+                            env.set("OUT_DIR", path.to_string_lossy().to_string());
+                            if let Some(extern_source_id) = extern_source_roots.get(path) {
+                                extern_source.set_extern_path(&path, *extern_source_id);
+                            }
                         }
 
                         let crate_id = crate_graph.add_crate_root(
@@ -292,9 +310,20 @@ impl ProjectWorkspace {
                             };
                             let mut env = Env::default();
                             let mut extern_source = ExternSource::default();
-                            if let Some((id, path)) = outdirs.get(pkg.name(&cargo)) {
-                                env.set("OUT_DIR", path.clone());
-                                extern_source.set_extern_path(&path, *id);
+                            if let Some(out_dir) = dbg!(pkg.out_dir(cargo)) {
+                                env.set("OUT_DIR", out_dir.to_string_lossy().to_string());
+                                if let Some(extern_source_id) =
+                                    dbg!(dbg!(&extern_source_roots).get(out_dir))
+                                {
+                                    extern_source.set_extern_path(&out_dir, *extern_source_id);
+                                }
+                            } else {
+                                if let Some(path) = additional_out_dirs.get(pkg.name(&cargo)) {
+                                    env.set("OUT_DIR", path.to_string_lossy().to_string());
+                                    if let Some(extern_source_id) = extern_source_roots.get(path) {
+                                        extern_source.set_extern_path(&path, *extern_source_id);
+                                    }
+                                }
                             }
                             let crate_id = crate_graph.add_crate_root(
                                 file_id,

@@ -54,12 +54,18 @@ pub(crate) fn load_cargo(
 
     // FIXME: outdirs?
     let outdirs = FxHashMap::default();
+    let extern_source_roots = FxHashMap::default();
 
-    let crate_graph = ws.to_crate_graph(&default_cfg_options, &outdirs, &mut |path: &Path| {
-        let vfs_file = vfs.load(path);
-        log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
-        vfs_file.map(vfs_file_to_id)
-    });
+    let crate_graph = ws.to_crate_graph(
+        &default_cfg_options,
+        &outdirs,
+        &extern_source_roots,
+        &mut |path: &Path| {
+            let vfs_file = vfs.load(path);
+            log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
+            vfs_file.map(vfs_file_to_id)
+        },
+    );
     log::debug!("crate graph: {:?}", crate_graph);
 
     let source_roots = roots
