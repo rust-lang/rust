@@ -92,7 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
 }
 
 // TODO: Replace with Map::is_argument(..) when it's fixed
-fn is_argument(map: &rustc::hir::map::Map<'_>, id: HirId) -> bool {
+fn is_argument(map: rustc::hir::map::Map<'_>, id: HirId) -> bool {
     match map.find(id) {
         Some(Node::Binding(_)) => (),
         _ => return false,
@@ -136,7 +136,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn mutate(&mut self, cmt: &Place<'tcx>) {
         if cmt.projections.is_empty() {
             let map = &self.cx.tcx.hir();
-            if is_argument(map, cmt.hir_id) {
+            if is_argument(*map, cmt.hir_id) {
                 // Skip closure arguments
                 let parent_id = map.get_parent_node(cmt.hir_id);
                 if let Some(Node::Expr(..)) = map.find(map.get_parent_node(parent_id)) {

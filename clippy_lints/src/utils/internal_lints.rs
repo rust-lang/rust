@@ -299,8 +299,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
             self.output.insert(path.segments[0].ident.name);
         }
     }
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::All(&self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::All(self.cx.tcx.hir())
     }
 }
 
