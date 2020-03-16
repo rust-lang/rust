@@ -116,6 +116,21 @@ page, or you can install it from source using the following command:
 $ cargo xtask install --server
 ----
 
+==== Arch Linux
+
+`rust-analyzer` binary can be installed from AUR (Arch User Repository):
+
+- https://aur.archlinux.org/packages/rust-analyzer-bin[`rust-analyzer-bin`] (binary from GitHub releases)
+- https://aur.archlinux.org/packages/rust-analyzer[`rust-analyzer`] (built from latest tagged source)
+- https://aur.archlinux.org/packages/rust-analyzer-git[`rust-analyzer-git`] (latest git version)
+
+Install it with AUR helper of your choice, for example:
+
+[source,bash]
+----
+$ yay -S rust-analyzer-bin
+----
+
 === Emacs
 
 Emacs support is maintained https://github.com/emacs-lsp/lsp-mode/blob/master/lsp-rust.el[upstream].
