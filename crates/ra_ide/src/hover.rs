@@ -106,7 +106,7 @@ fn determine_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
             .flatten()
             .join("::")
     });
-    mod_path // FIXME: replace dashes with underscores in crate display name
+    mod_path
 }
 
 fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<String> {
