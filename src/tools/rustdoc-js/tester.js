@@ -1,7 +1,6 @@
 const fs = require('fs');
+const path = require('path');
 const { spawnSync } = require('child_process');
-
-const TEST_FOLDER = 'src/test/rustdoc-js/';
 
 function getNextStep(content, pos, stop) {
     while (pos < content.length && content[pos] !== stop &&
@@ -266,10 +265,11 @@ function main(argv) {
     var errors = 0;
 
     for (var j = 3; j < argv.length; ++j) {
-        const test_name = argv[j];
+        const test_file = argv[j];
+        const test_name = path.basename(test_file, ".js");
 
         process.stdout.write('Checking "' + test_name + '" ... ');
-        if (!fs.existsSync(TEST_FOLDER + test_name + ".js")) {
+        if (!fs.existsSync(test_file)) {
             errors += 1;
             console.error("FAILED");
             console.error("==> Missing '" + test_name + ".js' file...");
@@ -279,7 +279,7 @@ function main(argv) {
         const test_out_folder = out_folder + test_name;
 
         var [loaded, index] = load_files(test_out_folder, test_name);
-        var loadedFile = loadContent(readFile(TEST_FOLDER + test_name + ".js") +
+        var loadedFile = loadContent(readFile(test_file) +
                                'exports.QUERY = QUERY;exports.EXPECTED = EXPECTED;');
         const expected = loadedFile.EXPECTED;
         const query = loadedFile.QUERY;
