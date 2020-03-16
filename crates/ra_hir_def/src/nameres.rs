@@ -181,7 +181,7 @@ impl CrateDefMap {
             db.crate_graph()[krate]
                 .display_name
                 .as_ref()
-                .map(|name| name.get_name())
+                .map(ToString::to_string)
                 .unwrap_or_default()
         });
         let def_map = {

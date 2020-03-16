@@ -14,6 +14,7 @@ use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
 
 use crate::{RelativePath, RelativePathBuf};
+use fmt::Display;
 
 /// `FileId` is an integer which uniquely identifies a file. File paths are
 /// messy and system-dependent, so most of the code should work directly with
@@ -102,9 +103,11 @@ impl CrateName {
     pub fn normalize_dashes(name: &str) -> CrateName {
         Self(SmolStr::new(name.replace('-', "_")))
     }
+}
 
-    pub fn get_name(&self) -> String {
-        self.0.to_string()
+impl Display for CrateName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

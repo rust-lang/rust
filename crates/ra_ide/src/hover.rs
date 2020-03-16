@@ -94,22 +94,17 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
 
 fn determine_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
     let mod_path = def.module(db).map(|module| {
-        once(
-            db.crate_graph()[module.krate().into()]
-                .display_name
-                .as_ref()
-                .map(|name| name.get_name()),
-        )
-        .chain(
-            module
-                .path_to_root(db)
-                .into_iter()
-                .rev()
-                .map(|it| it.name(db).map(|name| name.to_string())),
-        )
-        .chain(once(definition_owner_name(db, def)))
-        .flatten()
-        .join("::")
+        once(db.crate_graph()[module.krate().into()].display_name.as_ref().map(ToString::to_string))
+            .chain(
+                module
+                    .path_to_root(db)
+                    .into_iter()
+                    .rev()
+                    .map(|it| it.name(db).map(|name| name.to_string())),
+            )
+            .chain(once(definition_owner_name(db, def)))
+            .flatten()
+            .join("::")
     });
     mod_path // FIXME: replace dashes with underscores in crate display name
 }
