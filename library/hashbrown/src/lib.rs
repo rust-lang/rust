@@ -19,6 +19,7 @@
         test,
         core_intrinsics,
         dropck_eyepatch,
+        specialization,
     )
 )]
 #![allow(

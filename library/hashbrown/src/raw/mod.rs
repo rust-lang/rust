@@ -987,7 +987,7 @@ impl<T: Clone> Clone for RawTable<T> {
                         .unwrap_or_else(|_| hint::unreachable_unchecked()),
                 );
 
-                new_table.clone_from_impl(self, |new_table| {
+                new_table.clone_from_spec(self, |new_table| {
                     // We need to free the memory allocated for the new table.
                     new_table.free_buckets();
                 });
@@ -1013,19 +1013,55 @@ impl<T: Clone> Clone for RawTable<T> {
                 // If necessary, resize our table to match the source.
                 if self.buckets() != source.buckets() {
                     // Skip our drop by using ptr::write.
-                    self.free_buckets();
+                    if !self.is_empty_singleton() {
+                        self.free_buckets();
+                    }
                     (self as *mut Self).write(
                         Self::new_uninitialized(source.buckets(), Fallibility::Infallible)
                             .unwrap_or_else(|_| hint::unreachable_unchecked()),
                     );
                 }
 
-                self.clone_from_impl(source, |self_| {
+                self.clone_from_spec(source, |self_| {
                     // We need to leave the table in an empty state.
                     self_.clear_no_drop()
                 });
             }
         }
+    }
+}
+
+/// Specialization of `clone_from` for `Copy` types
+trait RawTableClone {
+    unsafe fn clone_from_spec(&mut self, source: &Self, on_panic: impl FnMut(&mut Self));
+}
+impl<T: Clone> RawTableClone for RawTable<T> {
+    #[cfg(feature = "nightly")]
+    #[cfg_attr(feature = "inline-more", inline)]
+    default unsafe fn clone_from_spec(&mut self, source: &Self, on_panic: impl FnMut(&mut Self)) {
+        self.clone_from_impl(source, on_panic);
+    }
+
+    #[cfg(not(feature = "nightly"))]
+    #[cfg_attr(feature = "inline-more", inline)]
+    unsafe fn clone_from_spec(&mut self, source: &Self, on_panic: impl FnMut(&mut Self)) {
+        self.clone_from_impl(source, on_panic);
+    }
+}
+#[cfg(feature = "nightly")]
+impl<T: Copy> RawTableClone for RawTable<T> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    unsafe fn clone_from_spec(&mut self, source: &Self, _on_panic: impl FnMut(&mut Self)) {
+        source
+            .ctrl(0)
+            .copy_to_nonoverlapping(self.ctrl(0), self.num_ctrl_bytes());
+        source
+            .data
+            .as_ptr()
+            .copy_to_nonoverlapping(self.data.as_ptr(), self.buckets());
+
+        self.items = source.items;
+        self.growth_left = source.growth_left;
     }
 }
 
@@ -1070,6 +1106,51 @@ impl<T: Clone> RawTable<T> {
 
         self.items = source.items;
         self.growth_left = source.growth_left;
+    }
+
+    /// Variant of `clone_from` to use when a hasher is available.
+    #[cfg(any(feature = "nightly", feature = "raw"))]
+    pub fn clone_from_with_hasher(&mut self, source: &Self, hasher: impl Fn(&T) -> u64) {
+        // If we have enough capacity in the table, just clear it and insert
+        // elements one by one. We don't do this if we have the same number of
+        // buckets as the source since we can just copy the contents directly
+        // in that case.
+        if self.buckets() != source.buckets()
+            && bucket_mask_to_capacity(self.bucket_mask) >= source.len()
+        {
+            self.clear();
+
+            let guard_self = guard(&mut *self, |self_| {
+                // Clear the partially copied table if a panic occurs, otherwise
+                // items and growth_left will be out of sync with the contents
+                // of the table.
+                self_.clear();
+            });
+
+            unsafe {
+                for item in source.iter() {
+                    // This may panic.
+                    let item = item.as_ref().clone();
+                    let hash = hasher(&item);
+
+                    // We can use a simpler version of insert() here since:
+                    // - there are no DELETED entries.
+                    // - we know there is enough space in the table.
+                    // - all elements are unique.
+                    let index = guard_self.find_insert_slot(hash);
+                    guard_self.set_ctrl(index, h2(hash));
+                    guard_self.bucket(index).write(item);
+                }
+            }
+
+            // Successfully cloned all items, no need to clean up.
+            mem::forget(guard_self);
+
+            self.items = source.items;
+            self.growth_left -= source.items;
+        } else {
+            self.clone_from(source);
+        }
     }
 }
 
