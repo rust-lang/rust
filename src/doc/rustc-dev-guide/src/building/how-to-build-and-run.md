@@ -148,13 +148,13 @@ probably the best "go to" command for building a local rust:
 ./x.py build -i --stage 1 src/libstd
 ```
 
-This may *look* like it only builds libstd, but that is not the case.
+This may *look* like it only builds `libstd`, but that is not the case.
 What this command does is the following:
 
 - Build `libstd` using the stage0 compiler (using incremental)
 - Build `librustc` using the stage0 compiler (using incremental)
   - This produces the stage1 compiler
-- Build libstd using the stage1 compiler (cannot use incremental)
+- Build `libstd` using the stage1 compiler (cannot use incremental)
 
 This final product (stage1 compiler + libs built using that compiler)
 is what you need to build other rust programs (unless you use `#![no_std]` or
@@ -180,8 +180,8 @@ build`) has quite a few more steps:
 
 - Build `librustc` and `rustc` with the stage1 compiler.
   - The resulting compiler here is called the "stage2" compiler.
-- Build libstd with stage2 compiler.
-- Build librustdoc and a bunch of other things with the stage2 compiler.
+- Build `libstd` with stage2 compiler.
+- Build `librustdoc` and a bunch of other things with the stage2 compiler.
 
 <a name=toolchain></a>
 
@@ -254,11 +254,11 @@ in other sections:
   - `./x.py clean` – clean up the build directory (`rm -rf build` works too,
     but then you have to rebuild LLVM)
   - `./x.py build --stage 1` – builds everything using the stage 1 compiler,
-    not just up to libstd
+    not just up to `libstd`
   - `./x.py build` – builds the stage2 compiler
 - Running tests (see the [section on running tests](../tests/running.html) for
   more details):
-  - `./x.py test --stage 1 src/libstd` – runs the `#[test]` tests from libstd
+  - `./x.py test --stage 1 src/libstd` – runs the `#[test]` tests from `libstd`
   - `./x.py test --stage 1 src/test/ui` – runs the `ui` test suite
   - `./x.py test --stage 1 src/test/ui/const-generics` - runs all the tests in
   the `const-generics/` subdirectory of the `ui` test suite
@@ -268,7 +268,7 @@ in other sections:
 ### Cleaning out build directories
 
 Sometimes you need to start fresh, but this is normally not the case.
-If you need to run this then rustbuild is most likely not acting right and
+If you need to run this then `rustbuild` is most likely not acting right and
 you should file a bug as to what is going wrong. If you do need to clean
 everything up then you only need to run one command!
 
