@@ -122,7 +122,7 @@ $ cargo xtask install --server
 
 - https://aur.archlinux.org/packages/rust-analyzer-bin[`rust-analyzer-bin`] (binary from GitHub releases)
 - https://aur.archlinux.org/packages/rust-analyzer[`rust-analyzer`] (built from latest tagged source)
-- https://aur.archlinux.org/packages/rust-analyzer-bin/[`rust-analyzer-git`] (latest git version)
+- https://aur.archlinux.org/packages/rust-analyzer-git[`rust-analyzer-git`] (latest git version)
 
 Install it with AUR helper of your choice, for example:
 
