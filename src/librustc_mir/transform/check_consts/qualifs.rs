@@ -3,7 +3,7 @@
 //! See the `Qualif` trait for more info.
 
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, AdtDef, Ty};
+use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
 
 use super::ConstCx;
@@ -53,7 +53,11 @@ pub trait Qualif {
     /// with a custom `Drop` impl is inherently `NeedsDrop`.
     ///
     /// Returning `true` for `in_adt_inherently` but `false` for `in_any_value_of_ty` is unsound.
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &AdtDef) -> bool;
+    fn in_adt_inherently(
+        cx: &ConstCx<'_, 'tcx>,
+        adt: &'tcx AdtDef,
+        substs: SubstsRef<'tcx>,
+    ) -> bool;
 }
 
 /// Constant containing interior mutability (`UnsafeCell<T>`).
@@ -74,7 +78,7 @@ impl Qualif for HasMutInterior {
         !ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP)
     }
 
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &AdtDef) -> bool {
+    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
         Some(adt.did) == cx.tcx.lang_items().unsafe_cell_type()
@@ -99,7 +103,7 @@ impl Qualif for NeedsDrop {
         ty.needs_drop(cx.tcx, cx.param_env)
     }
 
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &AdtDef) -> bool {
+    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
         adt.has_dtor(cx.tcx)
     }
 }
@@ -147,8 +151,8 @@ where
         Rvalue::Aggregate(kind, operands) => {
             // Return early if we know that the struct or enum being constructed is always
             // qualified.
-            if let AggregateKind::Adt(def, ..) = **kind {
-                if Q::in_adt_inherently(cx, def) {
+            if let AggregateKind::Adt(def, _, substs, ..) = **kind {
+                if Q::in_adt_inherently(cx, def, substs) {
                     return true;
                 }
             }
