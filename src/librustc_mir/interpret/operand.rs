@@ -208,7 +208,7 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Normalice `place.ptr` to a `Pointer` if this is a place and not a ZST.
     /// Can be helpful to avoid lots of `force_ptr` calls later, if this place is used a lot.
     #[inline]
@@ -439,7 +439,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let op = match *place {
             Place::Ptr(mplace) => Operand::Indirect(mplace),
-            Place::Local { frame, local } => *self.access_local(&self.stack[frame], local, None)?,
+            Place::Local { frame, local } => {
+                *self.access_local(&self.stack()[frame], local, None)?
+            }
         };
         Ok(OpTy { op, layout: place.layout })
     }

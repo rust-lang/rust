@@ -120,6 +120,16 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(memory_extra: &Self::MemoryExtra) -> bool;
 
+    /// Borrow the current thread's stack.
+    fn stack(
+        ecx: &'a InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>];
+
+    /// Mutably borrow the current thread's stack.
+    fn stack_mut(
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>>;
+
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
@@ -227,6 +237,20 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// This function must be idempotent.
     #[inline]
     fn canonical_alloc_id(_mem: &Memory<'mir, 'tcx, Self>, id: AllocId) -> AllocId {
+        id
+    }
+
+    /// In Rust, thread locals are just special statics. Therefore, the compiler
+    /// uses the same code for allocating both. However, in Miri we want to have
+    /// a property that each allocation has a unique id and, therefore, we
+    /// generate a fresh allocation id for each thread. This function takes a
+    /// potentially thread local allocation id and resolves the original static
+    /// allocation id that can be used to compute the value of the static.
+    #[inline]
+    fn resolve_thread_local_allocation_id(
+        _memory_extra: &Self::MemoryExtra,
+        id: AllocId,
+    ) -> AllocId {
         id
     }
 

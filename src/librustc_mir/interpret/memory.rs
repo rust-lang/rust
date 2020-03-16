@@ -429,7 +429,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
         is_write: bool,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
-        let alloc = tcx.alloc_map.lock().get(id);
+        let alloc =
+            tcx.alloc_map.lock().get(M::resolve_thread_local_allocation_id(memory_extra, id));
         let (alloc, def_id) = match alloc {
             Some(GlobalAlloc::Memory(mem)) => {
                 // Memory of a constant or promoted or anonymous memory referenced by a static.
@@ -592,7 +593,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // # Statics
         // Can't do this in the match argument, we may get cycle errors since the lock would
         // be held throughout the match.
-        let alloc = self.tcx.alloc_map.lock().get(id);
+        let alloc =
+            self.tcx.alloc_map.lock().get(M::resolve_thread_local_allocation_id(&self.extra, id));
         match alloc {
             Some(GlobalAlloc::Static(did)) => {
                 // Use size and align of the type.

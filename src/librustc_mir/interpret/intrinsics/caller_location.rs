@@ -10,11 +10,11 @@ use crate::interpret::{
     MPlaceTy, MemoryKind, Scalar,
 };
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
     /// frame which is not `#[track_caller]`.
     crate fn find_closest_untracked_caller_location(&self) -> Span {
-        self.stack
+        self.stack()
             .iter()
             .rev()
             // Find first non-`#[track_caller]` frame.
