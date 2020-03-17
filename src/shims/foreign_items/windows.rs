@@ -165,12 +165,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "TlsGetValue" => {
-                let key = this.read_scalar(args[0])?.to_u32()? as u128;
+                let key = u128::from(this.read_scalar(args[0])?.to_u32()?);
                 let ptr = this.machine.tls.load_tls(key, tcx)?;
                 this.write_scalar(ptr, dest)?;
             }
             "TlsSetValue" => {
-                let key = this.read_scalar(args[0])?.to_u32()? as u128;
+                let key = u128::from(this.read_scalar(args[0])?.to_u32()?);
                 let new_ptr = this.read_scalar(args[1])?.not_undef()?;
                 this.machine.tls.store_tls(key, this.test_null(new_ptr)?)?;
 
@@ -197,7 +197,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "SystemFunction036" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let len = this.read_scalar(args[1])?.to_u32()?;
-                this.gen_random(ptr, len as usize)?;
+                this.gen_random(ptr, len.into())?;
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
             // We don't support threading.

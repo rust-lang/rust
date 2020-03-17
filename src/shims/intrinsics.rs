@@ -1,4 +1,5 @@
 use std::iter;
+use std::convert::TryFrom;
 
 use rustc::mir;
 use rustc::mir::interpret::{InterpResult, PointerArithmetic};
@@ -48,7 +49,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
 
                 let pointee_ty = substs.type_at(0);
-                let pointee_size = this.layout_of(pointee_ty)?.size.bytes() as i64;
+                let pointee_size = i64::try_from(this.layout_of(pointee_ty)?.size.bytes()).unwrap();
                 let offset = offset.overflowing_mul(pointee_size).0;
                 let result_ptr = ptr.ptr_wrapping_signed_offset(offset, this);
                 this.write_scalar(result_ptr, dest)?;
@@ -229,7 +230,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let count = this.read_scalar(args[2])?.to_machine_usize(this)?;
                 let elem_align = elem_layout.align.abi;
 
-                let size = Size::from_bytes(count * elem_size);
+                let size = Size::from_bytes(count) * elem_size;
                 let src = this.read_scalar(args[0])?.not_undef()?;
                 let src = this.memory.check_ptr_access(src, size, elem_align)?;
                 let dest = this.read_scalar(args[1])?.not_undef()?;
@@ -419,7 +420,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let layout = this.layout_of(ty)?;
                 let align = layout.align.pref.bytes();
                 let ptr_size = this.pointer_size();
-                let align_val = Scalar::from_uint(align as u128, ptr_size);
+                let align_val = Scalar::from_uint(align, ptr_size);
                 this.write_scalar(align_val, dest)?;
             }
 
@@ -502,7 +503,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .size_and_align_of_mplace(mplace)?
                     .expect("size_of_val called on extern type");
                 let ptr_size = this.pointer_size();
-                this.write_scalar(Scalar::from_uint(size.bytes() as u128, ptr_size), dest)?;
+                this.write_scalar(Scalar::from_uint(size.bytes(), ptr_size), dest)?;
             }
 
             #[rustfmt::skip]

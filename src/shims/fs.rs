@@ -10,7 +10,7 @@ use rustc::ty::layout::{Align, LayoutOf, Size};
 
 use crate::stacked_borrows::Tag;
 use crate::*;
-use helpers::immty_from_uint_checked;
+use helpers::{immty_from_int_checked, immty_from_uint_checked};
 use shims::time::system_time_to_duration;
 
 #[derive(Debug)]
@@ -56,7 +56,7 @@ impl FileHandler {
         let new_fd = candidate_new_fd.unwrap_or_else(|| {
             // find_map ran out of BTreeMap entries before finding a free fd, use one plus the
             // maximum fd in the map
-            self.handles.last_entry().map(|entry| entry.key() + 1).unwrap_or(min_fd)
+            self.handles.last_entry().map(|entry| entry.key().checked_add(1).unwrap()).unwrap_or(min_fd)
         });
 
         self.handles.insert(new_fd, file_handle).unwrap_none();
@@ -167,11 +167,11 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
         match file_type {
             Ok(file_type) => {
                 if file_type.is_dir() {
-                    Ok(this.eval_libc("DT_DIR")?.to_u8()? as i32)
+                    Ok(this.eval_libc("DT_DIR")?.to_u8()?.into())
                 } else if file_type.is_file() {
-                    Ok(this.eval_libc("DT_REG")?.to_u8()? as i32)
+                    Ok(this.eval_libc("DT_REG")?.to_u8()?.into())
                 } else if file_type.is_symlink() {
-                    Ok(this.eval_libc("DT_LNK")?.to_u8()? as i32)
+                    Ok(this.eval_libc("DT_LNK")?.to_u8()?.into())
                 } else {
                     // Certain file types are only supported when the host is a Unix system.
                     // (i.e. devices and sockets) If it is, check those cases, if not, fall back to
@@ -181,19 +181,19 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
                     {
                         use std::os::unix::fs::FileTypeExt;
                         if file_type.is_block_device() {
-                            Ok(this.eval_libc("DT_BLK")?.to_u8()? as i32)
+                            Ok(this.eval_libc("DT_BLK")?.to_u8()?.into())
                         } else if file_type.is_char_device() {
-                            Ok(this.eval_libc("DT_CHR")?.to_u8()? as i32)
+                            Ok(this.eval_libc("DT_CHR")?.to_u8()?.into())
                         } else if file_type.is_fifo() {
-                            Ok(this.eval_libc("DT_FIFO")?.to_u8()? as i32)
+                            Ok(this.eval_libc("DT_FIFO")?.to_u8()?.into())
                         } else if file_type.is_socket() {
-                            Ok(this.eval_libc("DT_SOCK")?.to_u8()? as i32)
+                            Ok(this.eval_libc("DT_SOCK")?.to_u8()?.into())
                         } else {
-                            Ok(this.eval_libc("DT_UNKNOWN")?.to_u8()? as i32)
+                            Ok(this.eval_libc("DT_UNKNOWN")?.to_u8()?.into())
                         }
                     }
                     #[cfg(not(unix))]
-                    Ok(this.eval_libc("DT_UNKNOWN")?.to_u8()? as i32)
+                    Ok(this.eval_libc("DT_UNKNOWN")?.to_u8()?.into())
                 }
             }
             Err(e) => return match e.raw_os_error() {
@@ -507,7 +507,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let whence = this.read_scalar(whence_op)?.to_i32()?;
 
         let seek_from = if whence == this.eval_libc_i32("SEEK_SET")? {
-            SeekFrom::Start(offset as u64)
+            SeekFrom::Start(u64::try_from(offset).unwrap())
         } else if whence == this.eval_libc_i32("SEEK_CUR")? {
             SeekFrom::Current(offset)
         } else if whence == this.eval_libc_i32("SEEK_END")? {
@@ -519,7 +519,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
-            let result = file.seek(seek_from).map(|offset| offset as i64);
+            let result = file.seek(seek_from).map(|offset| i64::try_from(offset).unwrap());
             this.try_unwrap_io_result(result)
         } else {
             this.handle_not_found()
@@ -810,7 +810,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("mkdir")?;
 
         let _mode = if this.tcx.sess.target.target.target_os.as_str() == "macos" {
-            this.read_scalar(mode_op)?.not_undef()?.to_u16()? as u32
+            u32::from(this.read_scalar(mode_op)?.not_undef()?.to_u16()?)
         } else {
             this.read_scalar(mode_op)?.to_u32()?
         };
@@ -929,13 +929,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 #[cfg(not(unix))]
                 let ino = 0u64;
 
-                let file_type = this.file_type_to_d_type(dir_entry.file_type())? as u128;
+                let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
 
                 let imms = [
                     immty_from_uint_checked(ino, ino64_t_layout)?, // d_ino
                     immty_from_uint_checked(0u128, off64_t_layout)?, // d_off
                     immty_from_uint_checked(0u128, c_ushort_layout)?, // d_reclen
-                    immty_from_uint_checked(file_type, c_uchar_layout)?, // d_type
+                    immty_from_int_checked(file_type, c_uchar_layout)?, // d_type
                 ];
                 this.write_packed_immediates(entry_place, &imms)?;
 
@@ -1017,14 +1017,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 #[cfg(not(unix))]
                 let ino = 0u64;
 
-                let file_type = this.file_type_to_d_type(dir_entry.file_type())? as u128;
+                let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
 
                 let imms = [
                     immty_from_uint_checked(ino, ino_t_layout)?, // d_ino
                     immty_from_uint_checked(0u128, off_t_layout)?, // d_seekoff
                     immty_from_uint_checked(0u128, c_ushort_layout)?, // d_reclen
                     immty_from_uint_checked(file_name_len, c_ushort_layout)?, // d_namlen
-                    immty_from_uint_checked(file_type, c_uchar_layout)?, // d_type
+                    immty_from_int_checked(file_type, c_uchar_layout)?, // d_type
                 ];
                 this.write_packed_immediates(entry_place, &imms)?;
 

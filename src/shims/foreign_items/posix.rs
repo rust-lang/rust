@@ -1,6 +1,8 @@
 mod linux;
 mod macos;
 
+use std::convert::TryFrom;
+
 use crate::*;
 use rustc::mir;
 use rustc::ty::layout::{Align, LayoutOf, Size};
@@ -84,7 +86,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         io::stderr().write(buf_cont)
                     };
                     match res {
-                        Ok(n) => n as i64,
+                        Ok(n) => i64::try_from(n).unwrap(),
                         Err(_) => -1,
                     }
                 } else {

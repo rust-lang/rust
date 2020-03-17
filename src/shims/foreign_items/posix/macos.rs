@@ -97,7 +97,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "SecRandomCopyBytes" => {
                 let len = this.read_scalar(args[1])?.to_machine_usize(this)?;
                 let ptr = this.read_scalar(args[2])?.not_undef()?;
-                this.gen_random(ptr, len as usize)?;
+                this.gen_random(ptr, len)?;
                 this.write_null(dest)?;
             }
 

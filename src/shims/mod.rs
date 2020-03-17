@@ -7,8 +7,11 @@ pub mod panic;
 pub mod time;
 pub mod tls;
 
-use crate::*;
+use std::convert::TryFrom;
+
 use rustc::{mir, ty};
+
+use crate::*;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -54,8 +57,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let (dest, ret) = ret.unwrap();
 
         let req_align = this
-            .force_bits(this.read_scalar(align_op)?.not_undef()?, this.pointer_size())?
-            as usize;
+            .force_bits(this.read_scalar(align_op)?.not_undef()?, this.pointer_size())?;
 
         // Stop if the alignment is not a power of two.
         if !req_align.is_power_of_two() {
@@ -69,12 +71,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Ok(ptr) = this.force_ptr(ptr_scalar) {
             // Only do anything if we can identify the allocation this goes to.
             let cur_align =
-                this.memory.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)?.1.bytes()
-                    as usize;
-            if cur_align >= req_align {
+                this.memory.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)?.1.bytes();
+            if u128::from(cur_align) >= req_align {
                 // If the allocation alignment is at least the required alignment we use the
-                // libcore implementation
-                result = (this.force_bits(ptr_scalar, this.pointer_size())? as *const i8).align_offset(req_align) as u128;
+                // libcore implementation.
+                // FIXME: is this correct in case of truncation?
+                result = u128::try_from(
+                    (this.force_bits(ptr_scalar, this.pointer_size())? as *const i8)
+                        .align_offset(usize::try_from(req_align).unwrap())
+                ).unwrap();
             }
         }
 
