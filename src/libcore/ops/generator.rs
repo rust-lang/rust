@@ -67,7 +67,7 @@ pub enum GeneratorState<Y, R> {
 #[lang = "generator"]
 #[unstable(feature = "generator_trait", issue = "43122")]
 #[fundamental]
-pub trait Generator<#[cfg(not(bootstrap))] R = ()> {
+pub trait Generator<R = ()> {
     /// The type of value this generator yields.
     ///
     /// This associated type corresponds to the `yield` expression and the
@@ -110,35 +110,9 @@ pub trait Generator<#[cfg(not(bootstrap))] R = ()> {
     /// been returned previously. While generator literals in the language are
     /// guaranteed to panic on resuming after `Complete`, this is not guaranteed
     /// for all implementations of the `Generator` trait.
-    fn resume(
-        self: Pin<&mut Self>,
-        #[cfg(not(bootstrap))] arg: R,
-    ) -> GeneratorState<Self::Yield, Self::Return>;
+    fn resume(self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return>;
 }
 
-#[cfg(bootstrap)]
-#[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator> Generator for Pin<&mut G> {
-    type Yield = G::Yield;
-    type Return = G::Return;
-
-    fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
-        G::resume((*self).as_mut())
-    }
-}
-
-#[cfg(bootstrap)]
-#[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator + Unpin> Generator for &mut G {
-    type Yield = G::Yield;
-    type Return = G::Return;
-
-    fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
-        G::resume(Pin::new(&mut *self))
-    }
-}
-
-#[cfg(not(bootstrap))]
 #[unstable(feature = "generator_trait", issue = "43122")]
 impl<G: ?Sized + Generator<R>, R> Generator<R> for Pin<&mut G> {
     type Yield = G::Yield;
@@ -149,7 +123,6 @@ impl<G: ?Sized + Generator<R>, R> Generator<R> for Pin<&mut G> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "generator_trait", issue = "43122")]
 impl<G: ?Sized + Generator<R> + Unpin, R> Generator<R> for &mut G {
     type Yield = G::Yield;
