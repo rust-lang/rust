@@ -4,14 +4,15 @@ use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
 
-use rustc_ast::ast::{self, Async, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
-use rustc_ast::ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind};
-use rustc_ast::ast::{BindingMode, Block, FnDecl, FnSig, MacArgs, MacCall, MacDelimiter, Param};
-use rustc_ast::ast::{Const, Defaultness, IsAuto, PathSegment, Unsafe, UseTree, UseTreeKind};
+use rustc_ast::ast::{self, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
+use rustc_ast::ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind, Mod};
+use rustc_ast::ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
+use rustc_ast::ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
 use rustc_ast::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
-use rustc_ast::ast::{FnHeader, ForeignItem, Mutability, SelfKind, Visibility, VisibilityKind};
+use rustc_ast::ast::{FnHeader, ForeignItem, PathSegment, Visibility, VisibilityKind};
+use rustc_ast::ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast::ptr::P;
-use rustc_ast::token;
+use rustc_ast::token::{self, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
@@ -22,6 +23,61 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use log::debug;
 use std::convert::TryFrom;
 use std::mem;
+
+impl<'a> Parser<'a> {
+    /// Parses a source module as a crate. This is the main entry point for the parser.
+    pub fn parse_crate_mod(&mut self) -> PResult<'a, ast::Crate> {
+        let lo = self.token.span;
+        let (module, attrs) = self.parse_mod(&token::Eof)?;
+        let span = lo.to(self.token.span);
+        let proc_macros = Vec::new(); // Filled in by `proc_macro_harness::inject()`.
+        Ok(ast::Crate { attrs, module, span, proc_macros })
+    }
+
+    /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
+    fn parse_item_mod(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
+        let id = self.parse_ident()?;
+        let (module, mut inner_attrs) = if self.eat(&token::Semi) {
+            Default::default()
+        } else {
+            self.expect(&token::OpenDelim(token::Brace))?;
+            self.parse_mod(&token::CloseDelim(token::Brace))?
+        };
+        attrs.append(&mut inner_attrs);
+        Ok((id, ItemKind::Mod(module)))
+    }
+
+    /// Parses the contents of a module (inner attributes followed by module items).
+    pub fn parse_mod(&mut self, term: &TokenKind) -> PResult<'a, (Mod, Vec<Attribute>)> {
+        let lo = self.token.span;
+        let attrs = self.parse_inner_attributes()?;
+        let module = self.parse_mod_items(term, lo)?;
+        Ok((module, attrs))
+    }
+
+    /// Given a termination token, parses all of the items in a module.
+    fn parse_mod_items(&mut self, term: &TokenKind, inner_lo: Span) -> PResult<'a, Mod> {
+        let mut items = vec![];
+        while let Some(item) = self.parse_item()? {
+            items.push(item);
+            self.maybe_consume_incorrect_semicolon(&items);
+        }
+
+        if !self.eat(term) {
+            let token_str = super::token_descr(&self.token);
+            if !self.maybe_consume_incorrect_semicolon(&items) {
+                let msg = &format!("expected item, found {}", token_str);
+                let mut err = self.struct_span_err(self.token.span, msg);
+                err.span_label(self.token.span, "expected item");
+                return Err(err);
+            }
+        }
+
+        let hi = if self.token.span.is_dummy() { inner_lo } else { self.prev_token.span };
+
+        Ok(Mod { inner: inner_lo.to(hi), items, inline: true })
+    }
+}
 
 pub(super) type ItemInfo = (Ident, ItemKind);
 
