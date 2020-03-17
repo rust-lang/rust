@@ -112,7 +112,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::kw;
-use rustc_span::{symbol::Ident, MultiSpan, Span};
+use rustc_span::{symbol::MacroRulesNormalizedIdent, MultiSpan, Span};
 
 use smallvec::SmallVec;
 
@@ -179,7 +179,7 @@ struct BinderInfo {
 }
 
 /// An environment of meta-variables to their binder information.
-type Binders = FxHashMap<Ident, BinderInfo>;
+type Binders = FxHashMap<MacroRulesNormalizedIdent, BinderInfo>;
 
 /// The state at which we entered a macro definition in the RHS of another macro definition.
 struct MacroState<'a> {
@@ -245,6 +245,7 @@ fn check_binders(
             if macros.is_empty() {
                 sess.span_diagnostic.span_bug(span, "unexpected MetaVar in lhs");
             }
+            let name = MacroRulesNormalizedIdent::new(name);
             // There are 3 possibilities:
             if let Some(prev_info) = binders.get(&name) {
                 // 1. The meta-variable is already bound in the current LHS: This is an error.
@@ -264,6 +265,7 @@ fn check_binders(
             if !macros.is_empty() {
                 sess.span_diagnostic.span_bug(span, "unexpected MetaVarDecl in nested lhs");
             }
+            let name = MacroRulesNormalizedIdent::new(name);
             if let Some(prev_info) = get_binder_info(macros, binders, name) {
                 // Duplicate binders at the top-level macro definition are errors. The lint is only
                 // for nested macro definitions.
@@ -300,7 +302,7 @@ fn check_binders(
 fn get_binder_info<'a>(
     mut macros: &'a Stack<'a, MacroState<'a>>,
     binders: &'a Binders,
-    name: Ident,
+    name: MacroRulesNormalizedIdent,
 ) -> Option<&'a BinderInfo> {
     binders.get(&name).or_else(|| macros.find_map(|state| state.binders.get(&name)))
 }
@@ -331,6 +333,7 @@ fn check_occurrences(
             sess.span_diagnostic.span_bug(span, "unexpected MetaVarDecl in rhs")
         }
         TokenTree::MetaVar(span, name) => {
+            let name = MacroRulesNormalizedIdent::new(name);
             check_ops_is_prefix(sess, node_id, macros, binders, ops, span, name);
         }
         TokenTree::Delimited(_, ref del) => {
@@ -552,7 +555,7 @@ fn check_ops_is_prefix(
     binders: &Binders,
     ops: &Stack<'_, KleeneToken>,
     span: Span,
-    name: Ident,
+    name: MacroRulesNormalizedIdent,
 ) {
     let macros = macros.push(MacroState { binders, ops: ops.into() });
     // Accumulates the stacks the operators of each state until (and including when) the
@@ -598,7 +601,7 @@ fn ops_is_prefix(
     sess: &ParseSess,
     node_id: NodeId,
     span: Span,
-    name: Ident,
+    name: MacroRulesNormalizedIdent,
     binder_ops: &[KleeneToken],
     occurrence_ops: &[KleeneToken],
 ) {
