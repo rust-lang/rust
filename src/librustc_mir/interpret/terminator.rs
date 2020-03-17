@@ -15,6 +15,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         terminator: &mir::Terminator<'tcx>,
     ) -> InterpResult<'tcx> {
+        info!("{:?}", terminator.kind);
+        self.tcx.span = terminator.source_info.span;
+        self.memory.tcx.span = terminator.source_info.span;
+
+        let old_stack = self.cur_frame();
+        let old_bb = self.frame().block;
+
         use rustc::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
@@ -127,6 +134,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
+        if !self.stack.is_empty() {
+            // This should change *something*
+            assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
+            if let Some(block) = self.frame().block {
+                info!("// executing {:?}", block);
+            }
+        }
         Ok(())
     }
 

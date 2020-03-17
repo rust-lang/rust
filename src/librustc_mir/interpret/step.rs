@@ -64,7 +64,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         if let Some(stmt) = basic_block.statements.get(stmt_id) {
             assert_eq!(old_frames, self.cur_frame());
-            self.eval_stmt(stmt)?;
+            self.eval_statement(stmt)?;
             return Ok(true);
         }
 
@@ -72,11 +72,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let terminator = basic_block.terminator();
         assert_eq!(old_frames, self.cur_frame());
-        self.handle_terminator(terminator)?;
+        self.eval_terminator(terminator)?;
         Ok(true)
     }
 
-    fn eval_stmt(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
+    fn eval_statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
 
         // Some statements (e.g., box) push new stack frames.
@@ -272,25 +272,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         self.dump_place(*dest);
 
-        Ok(())
-    }
-
-    fn handle_terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
-        info!("{:?}", terminator.kind);
-        self.tcx.span = terminator.source_info.span;
-        self.memory.tcx.span = terminator.source_info.span;
-
-        let old_stack = self.cur_frame();
-        let old_bb = self.frame().block;
-
-        self.eval_terminator(terminator)?;
-        if !self.stack.is_empty() {
-            // This should change *something*
-            assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
-            if let Some(block) = self.frame().block {
-                info!("// executing {:?}", block);
-            }
-        }
         Ok(())
     }
 }
