@@ -39,6 +39,10 @@ pub enum InstanceDef<'tcx> {
 
     /// `<fn() as FnTrait>::call_*`
     /// `DefId` is `FnTrait::call_*`.
+    ///
+    /// NB: the (`fn` pointer) type must currently be monomorphic to avoid double substitution
+    /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
+    // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     FnPtrShim(DefId, Ty<'tcx>),
 
     /// `<dyn Trait as Trait>::fn`, "direct calls" of which are implicitly
@@ -57,9 +61,17 @@ pub enum InstanceDef<'tcx> {
     /// The `DefId` is for `core::ptr::drop_in_place`.
     /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop
     /// glue.
+    ///
+    /// NB: the type must currently be monomorphic to avoid double substitution
+    /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
+    // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
     ///`<T as Clone>::clone` shim.
+    ///
+    /// NB: the type must currently be monomorphic to avoid double substitution
+    /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
+    // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     CloneShim(DefId, Ty<'tcx>),
 }
 

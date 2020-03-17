@@ -2,13 +2,13 @@ use rustc::mir::*;
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 
 use rustc_index::vec::{Idx, IndexVec};
 
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 use std::fmt;
@@ -39,6 +39,11 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
             None,
         ),
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
+            // FIXME(eddyb) support generating shims for a "shallow type",
+            // e.g. `Foo<_>` or `[_]` instead of requiring a fully monomorphic
+            // `Foo<Bar>` or `[String]` etc.
+            assert!(!ty.needs_subst());
+
             let trait_ = tcx.trait_of_item(def_id).unwrap();
             let adjustment = match tcx.fn_trait_kind_from_lang_item(trait_) {
                 Some(ty::ClosureKind::FnOnce) => Adjustment::Identity,
@@ -81,17 +86,21 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
                 None,
             )
         }
-        ty::InstanceDef::DropGlue(def_id, ty) => build_drop_shim(tcx, def_id, ty),
+        ty::InstanceDef::DropGlue(def_id, ty) => {
+            // FIXME(eddyb) support generating shims for a "shallow type",
+            // e.g. `Foo<_>` or `[_]` instead of requiring a fully monomorphic
+            // `Foo<Bar>` or `[String]` etc.
+            assert!(!ty.needs_subst());
+
+            build_drop_shim(tcx, def_id, ty)
+        }
         ty::InstanceDef::CloneShim(def_id, ty) => {
-            let name = tcx.item_name(def_id);
-            if name == sym::clone {
-                build_clone_shim(tcx, def_id, ty)
-            } else if name == sym::clone_from {
-                debug!("make_shim({:?}: using default trait implementation", instance);
-                return tcx.optimized_mir(def_id);
-            } else {
-                bug!("builtin clone shim {:?} not supported", instance)
-            }
+            // FIXME(eddyb) support generating shims for a "shallow type",
+            // e.g. `Foo<_>` or `[_]` instead of requiring a fully monomorphic
+            // `Foo<Bar>` or `[String]` etc.
+            assert!(!ty.needs_subst());
+
+            build_clone_shim(tcx, def_id, ty)
         }
         ty::InstanceDef::Virtual(..) => {
             bug!("InstanceDef::Virtual ({:?}) is for direct calls only", instance)
