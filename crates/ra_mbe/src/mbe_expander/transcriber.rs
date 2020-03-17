@@ -3,6 +3,7 @@
 
 use ra_syntax::SmolStr;
 
+use super::ExpandResult;
 use crate::{
     mbe_expander::{Binding, Bindings, Fragment},
     parser::{parse_template, Op, RepeatKind, Separator},
@@ -49,10 +50,7 @@ impl Bindings {
     }
 }
 
-pub(super) fn transcribe(
-    template: &tt::Subtree,
-    bindings: &Bindings,
-) -> Result<tt::Subtree, ExpandError> {
+pub(super) fn transcribe(template: &tt::Subtree, bindings: &Bindings) -> ExpandResult<tt::Subtree> {
     assert!(template.delimiter == None);
     let mut ctx = ExpandCtx { bindings: &bindings, nesting: Vec::new() };
     expand_subtree(&mut ctx, template)
@@ -75,35 +73,46 @@ struct ExpandCtx<'a> {
     nesting: Vec<NestingState>,
 }
 
-fn expand_subtree(ctx: &mut ExpandCtx, template: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
+fn expand_subtree(ctx: &mut ExpandCtx, template: &tt::Subtree) -> ExpandResult<tt::Subtree> {
     let mut buf: Vec<tt::TokenTree> = Vec::new();
+    let mut err = None;
     for op in parse_template(template) {
-        match op? {
+        let op = match op {
+            Ok(op) => op,
+            Err(e) => {
+                err = Some(e);
+                break;
+            }
+        };
+        match op {
             Op::TokenTree(tt @ tt::TokenTree::Leaf(..)) => buf.push(tt.clone()),
             Op::TokenTree(tt::TokenTree::Subtree(tt)) => {
-                let tt = expand_subtree(ctx, tt)?;
+                let ExpandResult(tt, e) = expand_subtree(ctx, tt);
+                err = err.or(e);
                 buf.push(tt.into());
             }
             Op::Var { name, kind: _ } => {
-                let fragment = expand_var(ctx, name)?;
+                let ExpandResult(fragment, e) = expand_var(ctx, name);
+                err = err.or(e);
                 push_fragment(&mut buf, fragment);
             }
             Op::Repeat { subtree, kind, separator } => {
-                let fragment = expand_repeat(ctx, subtree, kind, separator)?;
+                let ExpandResult(fragment, e) = expand_repeat(ctx, subtree, kind, separator);
+                err = err.or(e);
                 push_fragment(&mut buf, fragment)
             }
         }
     }
-    Ok(tt::Subtree { delimiter: template.delimiter, token_trees: buf })
+    ExpandResult(tt::Subtree { delimiter: template.delimiter, token_trees: buf }, err)
 }
 
-fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> Result<Fragment, ExpandError> {
-    let res = if v == "crate" {
+fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> ExpandResult<Fragment> {
+    if v == "crate" {
         // We simply produce identifier `$crate` here. And it will be resolved when lowering ast to Path.
         let tt =
             tt::Leaf::from(tt::Ident { text: "$crate".into(), id: tt::TokenId::unspecified() })
                 .into();
-        Fragment::Tokens(tt)
+        ExpandResult::ok(Fragment::Tokens(tt))
     } else if !ctx.bindings.contains(v) {
         // Note that it is possible to have a `$var` inside a macro which is not bound.
         // For example:
@@ -132,11 +141,13 @@ fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> Result<Fragment, ExpandError>
             ],
         }
         .into();
-        Fragment::Tokens(tt)
+        ExpandResult::ok(Fragment::Tokens(tt))
     } else {
-        ctx.bindings.get(&v, &mut ctx.nesting)?.clone()
-    };
-    Ok(res)
+        ctx.bindings.get(&v, &mut ctx.nesting).map_or_else(
+            |e| ExpandResult(Fragment::Tokens(tt::TokenTree::empty()), Some(e)),
+            |b| ExpandResult::ok(b.clone()),
+        )
+    }
 }
 
 fn expand_repeat(
@@ -144,17 +155,17 @@ fn expand_repeat(
     template: &tt::Subtree,
     kind: RepeatKind,
     separator: Option<Separator>,
-) -> Result<Fragment, ExpandError> {
+) -> ExpandResult<Fragment> {
     let mut buf: Vec<tt::TokenTree> = Vec::new();
     ctx.nesting.push(NestingState { idx: 0, at_end: false, hit: false });
     // Dirty hack to make macro-expansion terminate.
-    // This should be replaced by a propper macro-by-example implementation
+    // This should be replaced by a proper macro-by-example implementation
     let limit = 65536;
     let mut has_seps = 0;
     let mut counter = 0;
 
     loop {
-        let res = expand_subtree(ctx, template);
+        let ExpandResult(mut t, e) = expand_subtree(ctx, template);
         let nesting_state = ctx.nesting.last_mut().unwrap();
         if nesting_state.at_end || !nesting_state.hit {
             break;
@@ -172,10 +183,10 @@ fn expand_repeat(
             break;
         }
 
-        let mut t = match res {
-            Ok(t) => t,
-            Err(_) => continue,
-        };
+        if e.is_some() {
+            continue;
+        }
+
         t.delimiter = None;
         push_subtree(&mut buf, t);
 
@@ -209,14 +220,14 @@ fn expand_repeat(
         buf.pop();
     }
 
-    if RepeatKind::OneOrMore == kind && counter == 0 {
-        return Err(ExpandError::UnexpectedToken);
-    }
-
     // Check if it is a single token subtree without any delimiter
     // e.g {Delimiter:None> ['>'] /Delimiter:None>}
     let tt = tt::Subtree { delimiter: None, token_trees: buf }.into();
-    Ok(Fragment::Tokens(tt))
+
+    if RepeatKind::OneOrMore == kind && counter == 0 {
+        return ExpandResult(Fragment::Tokens(tt), Some(ExpandError::UnexpectedToken));
+    }
+    ExpandResult::ok(Fragment::Tokens(tt))
 }
 
 fn push_fragment(buf: &mut Vec<tt::TokenTree>, fragment: Fragment) {

@@ -1430,7 +1430,7 @@ impl MacroFixture {
         let (invocation_tt, _) =
             ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
 
-        self.rules.expand(&invocation_tt)
+        self.rules.expand(&invocation_tt).result()
     }
 
     fn assert_expand_err(&self, invocation: &str, err: &ExpandError) {
@@ -1662,5 +1662,5 @@ fn test_expand_bad_literal() {
         macro_rules! foo { ($i:literal) => {}; }
     "#,
     )
-    .assert_expand_err(r#"foo!(&k");"#, &ExpandError::NoMatchingRule);
+    .assert_expand_err(r#"foo!(&k");"#, &ExpandError::BindingError("".to_string()));
 }

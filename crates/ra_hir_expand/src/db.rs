@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use mbe::MacroRules;
+use mbe::{ExpandResult, MacroRules};
 use ra_db::{salsa, SourceDatabase};
 use ra_parser::FragmentKind;
 use ra_prof::profile;
@@ -27,11 +27,12 @@ impl TokenExpander {
         db: &dyn AstDatabase,
         id: LazyMacroId,
         tt: &tt::Subtree,
-    ) -> Result<tt::Subtree, mbe::ExpandError> {
+    ) -> mbe::ExpandResult<tt::Subtree> {
         match self {
             TokenExpander::MacroRules(it) => it.expand(tt),
-            TokenExpander::Builtin(it) => it.expand(db, id, tt),
-            TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt),
+            // FIXME switch these to ExpandResult as well
+            TokenExpander::Builtin(it) => it.expand(db, id, tt).into(),
+            TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt).into(),
         }
     }
 
@@ -66,7 +67,7 @@ pub trait AstDatabase: SourceDatabase {
     fn macro_def(&self, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>>;
     fn parse_macro(&self, macro_file: MacroFile)
         -> Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>;
-    fn macro_expand(&self, macro_call: MacroCallId) -> Result<Arc<tt::Subtree>, String>;
+    fn macro_expand(&self, macro_call: MacroCallId) -> (Option<Arc<tt::Subtree>>, Option<String>);
 
     #[salsa::interned]
     fn intern_eager_expansion(&self, eager: EagerCallLoc) -> EagerMacroId;
@@ -153,7 +154,7 @@ pub(crate) fn macro_arg(
 pub(crate) fn macro_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
-) -> Result<Arc<tt::Subtree>, String> {
+) -> (Option<Arc<tt::Subtree>>, Option<String>) {
     macro_expand_with_arg(db, id, None)
 }
 
@@ -174,31 +175,38 @@ fn macro_expand_with_arg(
     db: &dyn AstDatabase,
     id: MacroCallId,
     arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
-) -> Result<Arc<tt::Subtree>, String> {
+) -> (Option<Arc<tt::Subtree>>, Option<String>) {
     let lazy_id = match id {
         MacroCallId::LazyMacro(id) => id,
         MacroCallId::EagerMacro(id) => {
             if arg.is_some() {
-                return Err(
-                    "hypothetical macro expansion not implemented for eager macro".to_owned()
+                return (
+                    None,
+                    Some("hypothetical macro expansion not implemented for eager macro".to_owned()),
                 );
             } else {
-                return Ok(db.lookup_intern_eager_expansion(id).subtree);
+                return (Some(db.lookup_intern_eager_expansion(id).subtree), None);
             }
         }
     };
 
     let loc = db.lookup_intern_macro(lazy_id);
-    let macro_arg = arg.or_else(|| db.macro_arg(id)).ok_or("Fail to args in to tt::TokenTree")?;
+    let macro_arg = match arg.or_else(|| db.macro_arg(id)) {
+        Some(it) => it,
+        None => return (None, Some("Fail to args in to tt::TokenTree".into())),
+    };
 
-    let macro_rules = db.macro_def(loc.def).ok_or("Fail to find macro definition")?;
-    let tt = macro_rules.0.expand(db, lazy_id, &macro_arg.0).map_err(|err| format!("{:?}", err))?;
+    let macro_rules = match db.macro_def(loc.def) {
+        Some(it) => it,
+        None => return (None, Some("Fail to find macro definition".into())),
+    };
+    let ExpandResult(tt, err) = macro_rules.0.expand(db, lazy_id, &macro_arg.0);
     // Set a hard limit for the expanded tt
     let count = tt.count();
     if count > 65536 {
-        return Err(format!("Total tokens count exceed limit : count = {}", count));
+        return (None, Some(format!("Total tokens count exceed limit : count = {}", count)));
     }
-    Ok(Arc::new(tt))
+    (Some(Arc::new(tt)), err.map(|e| format!("{:?}", e)))
 }
 
 pub(crate) fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
@@ -225,42 +233,41 @@ pub fn parse_macro_with_arg(
     let _p = profile("parse_macro_query");
 
     let macro_call_id = macro_file.macro_call_id;
-    let expansion = if let Some(arg) = arg {
+    let (tt, err) = if let Some(arg) = arg {
         macro_expand_with_arg(db, macro_call_id, Some(arg))
     } else {
         db.macro_expand(macro_call_id)
     };
-    let tt = expansion
-        .map_err(|err| {
-            // Note:
-            // The final goal we would like to make all parse_macro success,
-            // such that the following log will not call anyway.
-            match macro_call_id {
-                MacroCallId::LazyMacro(id) => {
-                    let loc: MacroCallLoc = db.lookup_intern_macro(id);
-                    let node = loc.kind.node(db);
+    if let Some(err) = err {
+        // Note:
+        // The final goal we would like to make all parse_macro success,
+        // such that the following log will not call anyway.
+        match macro_call_id {
+            MacroCallId::LazyMacro(id) => {
+                let loc: MacroCallLoc = db.lookup_intern_macro(id);
+                let node = loc.kind.node(db);
 
-                    // collect parent information for warning log
-                    let parents = std::iter::successors(loc.kind.file_id().call_node(db), |it| {
-                        it.file_id.call_node(db)
-                    })
-                    .map(|n| format!("{:#}", n.value))
-                    .collect::<Vec<_>>()
-                    .join("\n");
+                // collect parent information for warning log
+                let parents = std::iter::successors(loc.kind.file_id().call_node(db), |it| {
+                    it.file_id.call_node(db)
+                })
+                .map(|n| format!("{:#}", n.value))
+                .collect::<Vec<_>>()
+                .join("\n");
 
-                    log::warn!(
-                        "fail on macro_parse: (reason: {} macro_call: {:#}) parents: {}",
-                        err,
-                        node.value,
-                        parents
-                    );
-                }
-                _ => {
-                    log::warn!("fail on macro_parse: (reason: {})", err);
-                }
+                log::warn!(
+                    "fail on macro_parse: (reason: {} macro_call: {:#}) parents: {}",
+                    err,
+                    node.value,
+                    parents
+                );
             }
-        })
-        .ok()?;
+            _ => {
+                log::warn!("fail on macro_parse: (reason: {})", err);
+            }
+        }
+    };
+    let tt = tt?;
 
     let fragment_kind = to_fragment_kind(db, macro_call_id);
 

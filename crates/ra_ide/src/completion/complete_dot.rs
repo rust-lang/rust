@@ -720,7 +720,18 @@ mod tests {
                 }
                 ",
             ),
-            @r###"[]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [156; 156),
+                delete: [156; 156),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###
         );
     }
 
@@ -742,6 +753,43 @@ mod tests {
                 label: "the_field",
                 source_range: [162; 163),
                 delete: [162; 163),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn macro_expansion_resilient() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+                macro_rules! dbg {
+                    () => {};
+                    ($val:expr) => {
+                        match $val { tmp => { tmp } }
+                    };
+                    // Trailing comma with single argument is ignored
+                    ($val:expr,) => { $crate::dbg!($val) };
+                    ($($val:expr),+ $(,)?) => {
+                        ($($crate::dbg!($val)),+,)
+                    };
+                }
+                struct A { the_field: u32 }
+                fn foo(a: A) {
+                    dbg!(a.<|>)
+                }
+                ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [552; 552),
+                delete: [552; 552),
                 insert: "the_field",
                 kind: Field,
                 detail: "u32",

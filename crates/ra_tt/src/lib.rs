@@ -40,6 +40,12 @@ pub enum TokenTree {
 }
 impl_froms!(TokenTree: Leaf, Subtree);
 
+impl TokenTree {
+    pub fn empty() -> Self {
+        TokenTree::Subtree(Subtree::default())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Leaf {
     Literal(Literal),

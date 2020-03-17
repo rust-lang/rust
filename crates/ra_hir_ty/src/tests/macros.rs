@@ -462,7 +462,7 @@ fn main() {
 fn infer_builtin_macros_include() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs 
+//- /main.rs
 #[rustc_builtin_macro]
 macro_rules! include {() => {}}
 
@@ -483,7 +483,7 @@ fn bar() -> u32 {0}
 fn infer_builtin_macros_include_concat() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs 
+//- /main.rs
 #[rustc_builtin_macro]
 macro_rules! include {() => {}}
 
@@ -507,7 +507,7 @@ fn bar() -> u32 {0}
 fn infer_builtin_macros_include_concat_with_bad_env_should_failed() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs 
+//- /main.rs
 #[rustc_builtin_macro]
 macro_rules! include {() => {}}
 
@@ -534,7 +534,7 @@ fn bar() -> u32 {0}
 fn infer_builtin_macros_include_itself_should_failed() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs 
+//- /main.rs
 #[rustc_builtin_macro]
 macro_rules! include {() => {}}
 

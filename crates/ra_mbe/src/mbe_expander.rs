@@ -8,19 +8,51 @@ mod transcriber;
 use ra_syntax::SmolStr;
 use rustc_hash::FxHashMap;
 
-use crate::ExpandError;
+use crate::{ExpandError, ExpandResult};
 
-pub(crate) fn expand(
-    rules: &crate::MacroRules,
-    input: &tt::Subtree,
-) -> Result<tt::Subtree, ExpandError> {
-    rules.rules.iter().find_map(|it| expand_rule(it, input).ok()).ok_or(ExpandError::NoMatchingRule)
+pub(crate) fn expand(rules: &crate::MacroRules, input: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+    expand_rules(&rules.rules, input)
 }
 
-fn expand_rule(rule: &crate::Rule, input: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
-    let bindings = matcher::match_(&rule.lhs, input)?;
-    let res = transcriber::transcribe(&rule.rhs, &bindings)?;
-    Ok(res)
+fn expand_rules(rules: &[crate::Rule], input: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+    let mut match_: Option<(matcher::Match, &crate::Rule)> = None;
+    for rule in rules {
+        let new_match = match matcher::match_(&rule.lhs, input) {
+            Ok(m) => m,
+            Err(_e) => {
+                // error in pattern parsing
+                continue;
+            }
+        };
+        if new_match.err.is_none() {
+            // If we find a rule that applies without errors, we're done.
+            // Unconditionally returning the transcription here makes the
+            // `test_repeat_bad_var` test fail.
+            let ExpandResult(res, transcribe_err) =
+                transcriber::transcribe(&rule.rhs, &new_match.bindings);
+            if transcribe_err.is_none() {
+                return ExpandResult::ok(res);
+            }
+        }
+        // Use the rule if we matched more tokens, or had fewer errors
+        if let Some((prev_match, _)) = &match_ {
+            if (new_match.unmatched_tts, new_match.err_count)
+                < (prev_match.unmatched_tts, prev_match.err_count)
+            {
+                match_ = Some((new_match, rule));
+            }
+        } else {
+            match_ = Some((new_match, rule));
+        }
+    }
+    if let Some((match_, rule)) = match_ {
+        // if we got here, there was no match without errors
+        let ExpandResult(result, transcribe_err) =
+            transcriber::transcribe(&rule.rhs, &match_.bindings);
+        ExpandResult(result, match_.err.or(transcribe_err))
+    } else {
+        ExpandResult(tt::Subtree::default(), Some(ExpandError::NoMatchingRule))
+    }
 }
 
 /// The actual algorithm for expansion is not too hard, but is pretty tricky.
@@ -111,7 +143,7 @@ mod tests {
     }
 
     fn assert_err(macro_body: &str, invocation: &str, err: ExpandError) {
-        assert_eq!(expand_first(&create_rules(&format_macro(macro_body)), invocation), Err(err));
+        assert_eq!(expand_first(&create_rules(&format_macro(macro_body)), invocation).1, Some(err));
     }
 
     fn format_macro(macro_body: &str) -> String {
@@ -135,10 +167,7 @@ mod tests {
         crate::MacroRules::parse(&definition_tt).unwrap()
     }
 
-    fn expand_first(
-        rules: &crate::MacroRules,
-        invocation: &str,
-    ) -> Result<tt::Subtree, ExpandError> {
+    fn expand_first(rules: &crate::MacroRules, invocation: &str) -> ExpandResult<tt::Subtree> {
         let source_file = ast::SourceFile::parse(invocation).ok().unwrap();
         let macro_invocation =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
@@ -146,6 +175,6 @@ mod tests {
         let (invocation_tt, _) =
             ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
 
-        expand_rule(&rules.rules[0], &invocation_tt)
+        expand_rules(&rules.rules, &invocation_tt)
     }
 }
