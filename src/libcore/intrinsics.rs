@@ -1027,46 +1027,8 @@ extern "rust-intrinsic" {
     #[rustc_const_unstable(feature = "const_caller_location", issue = "47809")]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
 
-    /// Creates a value initialized to zero.
-    ///
-    /// `init` is unsafe because it returns a zeroed-out datum,
-    /// which is unsafe unless `T` is `Copy`. Also, even if T is
-    /// `Copy`, an all-zero value may not correspond to any legitimate
-    /// state for the type in question.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`std::mem::zeroed`](../../std/mem/fn.zeroed.html).
-    #[unstable(
-        feature = "core_intrinsics",
-        reason = "intrinsics are unlikely to ever be stabilized, instead \
-                         they should be used through stabilized interfaces \
-                         in the rest of the standard library",
-        issue = "none"
-    )]
-    #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned", since = "1.38.0")]
-    pub fn init<T>() -> T;
-
-    /// Creates an uninitialized value.
-    ///
-    /// `uninit` is unsafe because there is no guarantee of what its
-    /// contents are. In particular its drop-flag may be set to any
-    /// state, which means it may claim either dropped or
-    /// undropped. In the general case one must use `ptr::write` to
-    /// initialize memory previous set to the result of `uninit`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`std::mem::MaybeUninit`](../../std/mem/union.MaybeUninit.html).
-    #[unstable(
-        feature = "core_intrinsics",
-        reason = "intrinsics are unlikely to ever be stabilized, instead \
-                         they should be used through stabilized interfaces \
-                         in the rest of the standard library",
-        issue = "none"
-    )]
-    #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned", since = "1.38.0")]
-    pub fn uninit<T>() -> T;
-
     /// Moves a value out of scope without running drop glue.
+    /// This exists solely for `mem::forget_unsized`; normal `forget` uses `ManuallyDrop` instead.
     pub fn forget<T: ?Sized>(_: T);
 
     /// Reinterprets the bits of a value of one type as another type.

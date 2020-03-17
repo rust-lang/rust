@@ -150,8 +150,6 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             "assert_inhabited" | "assert_zero_valid" | "assert_uninit_valid" => {
                 (1, Vec::new(), tcx.mk_unit())
             }
-            "init" => (1, Vec::new(), param(0)),
-            "uninit" => (1, Vec::new(), param(0)),
             "forget" => (1, vec![param(0)], tcx.mk_unit()),
             "transmute" => (2, vec![param(0)], param(1)),
             "move_val_init" => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)], tcx.mk_unit()),
