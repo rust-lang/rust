@@ -13,7 +13,7 @@ use rustc::traits::specialization_graph;
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::{self, SymbolName, Ty, TyCtxt};
-use rustc_ast::ast;
+use rustc_ast::ast::{self, Ident};
 use rustc_ast::attr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -29,7 +29,7 @@ use rustc_index::vec::Idx;
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
 use rustc_session::config::{self, CrateType};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span};
 use std::hash::Hash;
 use std::num::NonZeroUsize;
@@ -216,13 +216,6 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
         Ok(())
 
         // Don't encode the expansion context.
-    }
-}
-
-impl SpecializedEncoder<Ident> for EncodeContext<'tcx> {
-    fn specialized_encode(&mut self, ident: &Ident) -> Result<(), Self::Error> {
-        // FIXME(jseyfried): intercrate hygiene
-        ident.name.encode(self)
     }
 }
 
@@ -631,6 +624,7 @@ impl EncodeContext<'tcx> {
             assert!(f.did.is_local());
             f.did.index
         }));
+        self.encode_ident_span(def_id, variant.ident);
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
@@ -733,6 +727,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.visibility[def_id] <- field.vis);
         record!(self.per_def.span[def_id] <- self.tcx.def_span(def_id));
         record!(self.per_def.attributes[def_id] <- variant_data.fields()[field_index].attrs);
+        self.encode_ident_span(def_id, field.ident);
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
@@ -867,6 +862,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.visibility[def_id] <- trait_item.vis);
         record!(self.per_def.span[def_id] <- ast_item.span);
         record!(self.per_def.attributes[def_id] <- ast_item.attrs);
+        self.encode_ident_span(def_id, ast_item.ident);
         self.encode_stability(def_id);
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
@@ -948,6 +944,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.visibility[def_id] <- impl_item.vis);
         record!(self.per_def.span[def_id] <- ast_item.span);
         record!(self.per_def.attributes[def_id] <- ast_item.attrs);
+        self.encode_ident_span(def_id, impl_item.ident);
         self.encode_stability(def_id);
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
@@ -1050,6 +1047,8 @@ impl EncodeContext<'tcx> {
         let tcx = self.tcx;
 
         debug!("EncodeContext::encode_info_for_item({:?})", def_id);
+
+        self.encode_ident_span(def_id, item.ident);
 
         record!(self.per_def.kind[def_id] <- match item.kind {
             hir::ItemKind::Static(_, hir::Mutability::Mut, _) => EntryKind::MutStatic,
@@ -1275,6 +1274,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.visibility[def_id] <- ty::Visibility::Public);
         record!(self.per_def.span[def_id] <- macro_def.span);
         record!(self.per_def.attributes[def_id] <- macro_def.attrs);
+        self.encode_ident_span(def_id, macro_def.ident);
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
     }
@@ -1519,6 +1519,7 @@ impl EncodeContext<'tcx> {
             ty::Visibility::from_hir(&nitem.vis, nitem.hir_id, self.tcx));
         record!(self.per_def.span[def_id] <- nitem.span);
         record!(self.per_def.attributes[def_id] <- nitem.attrs);
+        self.encode_ident_span(def_id, nitem.ident);
         self.encode_stability(def_id);
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
@@ -1611,6 +1612,10 @@ impl EncodeContext<'tcx> {
             }
             _ => {}
         }
+    }
+
+    fn encode_ident_span(&mut self, def_id: DefId, ident: Ident) {
+        record!(self.per_def.ident_span[def_id] <- ident.span);
     }
 
     /// In some cases, along with the item itself, we also

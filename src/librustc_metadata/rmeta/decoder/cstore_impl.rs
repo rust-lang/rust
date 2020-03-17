@@ -110,7 +110,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
           |child| result.push(child.res.def_id()), tcx.sess);
         tcx.arena.alloc_slice(&result)
     }
-    associated_item => { cdata.get_associated_item(def_id.index) }
+    associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
     impl_polarity => { cdata.get_impl_polarity(def_id.index) }
     coerce_unsized_info => {
@@ -442,8 +442,8 @@ impl CStore {
         )
     }
 
-    pub fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssocItem {
-        self.get_crate_data(def.krate).get_associated_item(def.index)
+    pub fn associated_item_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::AssocItem {
+        self.get_crate_data(def.krate).get_associated_item(def.index, sess)
     }
 
     pub fn crate_source_untracked(&self, cnum: CrateNum) -> CrateSource {

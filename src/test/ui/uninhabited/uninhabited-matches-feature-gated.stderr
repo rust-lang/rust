@@ -3,6 +3,11 @@ error[E0004]: non-exhaustive patterns: `Err(_)` not covered
    |
 LL |     let _ = match x {
    |                   ^ pattern `Err(_)` not covered
+   | 
+  ::: $SRC_DIR/libcore/result.rs:LL:COL
+   |
+LL |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+   |     --- not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
@@ -46,6 +51,11 @@ error[E0004]: non-exhaustive patterns: `Err(_)` not covered
    |
 LL |     let _ = match x {
    |                   ^ pattern `Err(_)` not covered
+   | 
+  ::: $SRC_DIR/libcore/result.rs:LL:COL
+   |
+LL |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+   |     --- not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
@@ -54,6 +64,11 @@ error[E0005]: refutable pattern in local binding: `Err(_)` not covered
    |
 LL |     let Ok(x) = x;
    |         ^^^^^ pattern `Err(_)` not covered
+   | 
+  ::: $SRC_DIR/libcore/result.rs:LL:COL
+   |
+LL |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+   |     --- not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
