@@ -22,7 +22,7 @@ use rustc_parse::Directory;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::Span;
 
 use log::debug;
@@ -411,7 +411,7 @@ pub fn compile_declarative_macro(
     let mut valid = true;
 
     // Extract the arguments:
-    let lhses = match argument_map[&lhs_nm] {
+    let lhses = match argument_map[&MacroRulesNormalizedIdent::new(lhs_nm)] {
         MatchedSeq(ref s) => s
             .iter()
             .map(|m| {
@@ -428,7 +428,7 @@ pub fn compile_declarative_macro(
         _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs"),
     };
 
-    let rhses = match argument_map[&rhs_nm] {
+    let rhses = match argument_map[&MacroRulesNormalizedIdent::new(rhs_nm)] {
         MatchedSeq(ref s) => s
             .iter()
             .map(|m| {

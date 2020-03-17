@@ -76,13 +76,13 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::mbe::{self, TokenTree};
 
-use rustc_ast::ast::{Ident, Name};
+use rustc_ast::ast::Name;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DocComment, Nonterminal, Token};
 use rustc_ast_pretty::pprust;
 use rustc_parse::parser::{FollowedByType, Parser, PathStyle};
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent, Symbol};
 
 use rustc_errors::{FatalError, PResult};
 use rustc_span::Span;
@@ -273,9 +273,10 @@ crate enum ParseResult<T> {
     Error(rustc_span::Span, String),
 }
 
-/// A `ParseResult` where the `Success` variant contains a mapping of `Ident`s to `NamedMatch`es.
-/// This represents the mapping of metavars to the token trees they bind to.
-crate type NamedParseResult = ParseResult<FxHashMap<Ident, NamedMatch>>;
+/// A `ParseResult` where the `Success` variant contains a mapping of
+/// `MacroRulesNormalizedIdent`s to `NamedMatch`es. This represents the mapping
+/// of metavars to the token trees they bind to.
+crate type NamedParseResult = ParseResult<FxHashMap<MacroRulesNormalizedIdent, NamedMatch>>;
 
 /// Count how many metavars are named in the given matcher `ms`.
 pub(super) fn count_names(ms: &[TokenTree]) -> usize {
@@ -368,7 +369,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
         sess: &ParseSess,
         m: &TokenTree,
         res: &mut I,
-        ret_val: &mut FxHashMap<Ident, NamedMatch>,
+        ret_val: &mut FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     ) -> Result<(), (rustc_span::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => {
@@ -386,7 +387,9 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                     return Err((span, "missing fragment specifier".to_string()));
                 }
             }
-            TokenTree::MetaVarDecl(sp, bind_name, _) => match ret_val.entry(bind_name) {
+            TokenTree::MetaVarDecl(sp, bind_name, _) => match ret_val
+                .entry(MacroRulesNormalizedIdent::new(bind_name))
+            {
                 Vacant(spot) => {
                     spot.insert(res.next().unwrap());
                 }
