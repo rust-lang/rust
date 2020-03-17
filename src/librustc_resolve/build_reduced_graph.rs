@@ -904,7 +904,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.insert_field_names(def_id, field_names);
             }
             Res::Def(DefKind::AssocFn, def_id) => {
-                if cstore.associated_item_cloned_untracked(def_id).method_has_self_argument {
+                if cstore
+                    .associated_item_cloned_untracked(def_id, self.r.session)
+                    .method_has_self_argument
+                {
                     self.r.has_self.insert(def_id);
                 }
             }
