@@ -249,7 +249,7 @@ enum CheckEvent {
 pub fn run_cargo(
     args: &[String],
     current_dir: Option<&Path>,
-    mut on_message: impl FnMut(cargo_metadata::Message) -> bool,
+    on_message: &mut dyn FnMut(cargo_metadata::Message) -> bool,
 ) -> Child {
     let mut command = Command::new("cargo");
     if let Some(current_dir) = current_dir {
@@ -325,7 +325,7 @@ impl WatchThread {
                 // which will break out of the loop, and continue the shutdown
                 let _ = message_send.send(CheckEvent::Begin);
 
-                let mut child = run_cargo(&args, Some(&workspace_root), |message| {
+                let mut child = run_cargo(&args, Some(&workspace_root), &mut |message| {
                     // Skip certain kinds of messages to only spend time on what's useful
                     match &message {
                         Message::CompilerArtifact(artifact) if artifact.fresh => return true,

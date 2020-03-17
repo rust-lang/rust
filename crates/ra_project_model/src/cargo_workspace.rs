@@ -297,7 +297,7 @@ pub fn load_out_dirs(
     }
 
     let mut res = FxHashMap::default();
-    let mut child = run_cargo(&args, cargo_toml.parent(), |message| {
+    let mut child = run_cargo(&args, cargo_toml.parent(), &mut |message| {
         match message {
             Message::BuildScriptExecuted(message) => {
                 let package_id = message.package_id;
