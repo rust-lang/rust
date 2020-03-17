@@ -1480,7 +1480,11 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.iter.next_back().or_else(|| self.peeked.take().and_then(|x| x))
+        match self.peeked.as_mut() {
+            Some(v @ Some(_)) => self.iter.next_back().or_else(|| v.take()),
+            Some(None) => None,
+            None => self.iter.next_back(),
+        }
     }
 
     #[inline]
