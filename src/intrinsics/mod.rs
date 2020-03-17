@@ -991,7 +991,7 @@ pub fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, val);
         };
 
-        try, (v f, v data, v _local_ptr) {
+        try, (v f, v data, v _catch_fn) {
             // FIXME once unwinding is supported, change this to actually catch panics
             let f_sig = fx.bcx.func.import_signature(Signature {
                 call_conv: CallConv::triple_default(fx.triple()),
