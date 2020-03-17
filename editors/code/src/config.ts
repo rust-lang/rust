@@ -1,9 +1,5 @@
-import * as os from "os";
 import * as vscode from 'vscode';
-import { ArtifactSource } from "./installation/interfaces";
-import { log, vscodeReloadWindow } from "./util";
-
-const RA_LSP_DEBUG = process.env.__RA_LSP_SERVER_DEBUG;
+import { log } from "./util";
 
 export interface InlayHintOptions {
     typeHints: boolean;
@@ -25,10 +21,7 @@ export interface CargoFeatures {
     loadOutDirsFromCheck: boolean;
 }
 
-export const enum UpdatesChannel {
-    Stable = "stable",
-    Nightly = "nightly"
-}
+export type UpdatesChannel = "stable" | "nightly";
 
 export const NIGHTLY_TAG = "nightly";
 export class Config {
@@ -41,6 +34,7 @@ export class Config {
         "cargo-watch",
         "highlighting.semanticTokens",
         "inlayHints",
+        "updates.channel",
     ]
         .map(opt => `${this.rootSection}.${opt}`);
 
@@ -94,100 +88,17 @@ export class Config {
         );
 
         if (userResponse === "Reload now") {
-            await vscodeReloadWindow();
+            await vscode.commands.executeCommand("workbench.action.reloadWindow");
         }
     }
 
-    private static replaceTildeWithHomeDir(path: string) {
-        if (path.startsWith("~/")) {
-            return os.homedir() + path.slice("~".length);
-        }
-        return path;
-    }
-
-    /**
-     * Name of the binary artifact for `rust-analyzer` that is published for
-     * `platform` on GitHub releases. (It is also stored under the same name when
-     * downloaded by the extension).
-     */
-    get prebuiltServerFileName(): null | string {
-        // See possible `arch` values here:
-        // https://nodejs.org/api/process.html#process_process_arch
-
-        switch (process.platform) {
-
-            case "linux": {
-                switch (process.arch) {
-                    case "arm":
-                    case "arm64": return null;
-
-                    default: return "rust-analyzer-linux";
-                }
-            }
-
-            case "darwin": return "rust-analyzer-mac";
-            case "win32": return "rust-analyzer-windows.exe";
-
-            // Users on these platforms yet need to manually build from sources
-            case "aix":
-            case "android":
-            case "freebsd":
-            case "openbsd":
-            case "sunos":
-            case "cygwin":
-            case "netbsd": return null;
-            // The list of platforms is exhaustive (see `NodeJS.Platform` type definition)
-        }
-    }
-
-    get installedExtensionUpdateChannel(): UpdatesChannel {
-        return this.extensionReleaseTag === NIGHTLY_TAG
-            ? UpdatesChannel.Nightly
-            : UpdatesChannel.Stable;
-    }
-
-    get serverSource(): null | ArtifactSource {
-        const serverPath = RA_LSP_DEBUG ?? this.serverPath;
-
-        if (serverPath) {
-            return {
-                type: ArtifactSource.Type.ExplicitPath,
-                path: Config.replaceTildeWithHomeDir(serverPath)
-            };
-        }
-
-        const prebuiltBinaryName = this.prebuiltServerFileName;
-
-        if (!prebuiltBinaryName) return null;
-
-        return this.createGithubReleaseSource(
-            prebuiltBinaryName,
-            this.extensionReleaseTag
-        );
-    }
-
-    private createGithubReleaseSource(file: string, tag: string): ArtifactSource.GithubRelease {
-        return {
-            type: ArtifactSource.Type.GithubRelease,
-            file,
-            tag,
-            dir: this.ctx.globalStoragePath,
-            repo: {
-                name: "rust-analyzer",
-                owner: "rust-analyzer",
-            }
-        };
-    }
-
-    get nightlyVsixSource(): ArtifactSource.GithubRelease {
-        return this.createGithubReleaseSource("rust-analyzer.vsix", NIGHTLY_TAG);
-    }
+    get globalStoragePath(): string { return this.ctx.globalStoragePath; }
 
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
     // https://stackoverflow.com/questions/60135780/what-is-the-best-way-to-type-check-the-configuration-for-vscode-extension
 
-    private get serverPath() { return this.cfg.get("serverPath") as null | string; }
-    get updatesChannel() { return this.cfg.get("updates.channel") as UpdatesChannel; }
+    get serverPath() { return this.cfg.get("serverPath") as null | string; }
+    get channel() { return this.cfg.get<"stable" | "nightly">("updates.channel")!; }
     get askBeforeDownload() { return this.cfg.get("updates.askBeforeDownload") as boolean; }
     get highlightingSemanticTokens() { return this.cfg.get("highlighting.semanticTokens") as boolean; }
     get highlightingOn() { return this.cfg.get("highlightingOn") as boolean; }
