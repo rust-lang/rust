@@ -4,7 +4,7 @@ mod line_info;
 use crate::prelude::*;
 
 use cranelift_codegen::ir::{StackSlots, ValueLabel, ValueLoc};
-use cranelift_codegen::isa::RegUnit;
+use cranelift_codegen::isa::{RegUnit, TargetIsa};
 use cranelift_codegen::ValueLocRange;
 
 use gimli::write::{
@@ -253,7 +253,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
     pub fn define(
         &mut self,
         context: &Context,
-        isa: &dyn cranelift_codegen::isa::TargetIsa,
+        isa: &dyn TargetIsa,
         source_info_set: &indexmap::IndexSet<SourceInfo>,
         local_map: HashMap<mir::Local, CPlace<'tcx>>,
     ) {
@@ -279,6 +279,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
 
                 let location = place_location(
                     self,
+                    isa,
                     context,
                     &local_map,
                     &value_labels_ranges,
@@ -299,6 +300,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
 
 fn place_location<'a, 'tcx>(
     func_debug_ctx: &mut FunctionDebugContext<'a, 'tcx>,
+    isa: &dyn TargetIsa,
     context: &Context,
     local_map: &HashMap<mir::Local, CPlace<'tcx>>,
     value_labels_ranges: &HashMap<ValueLabel, Vec<ValueLocRange>>,
@@ -323,7 +325,7 @@ fn place_location<'a, 'tcx>(
                                 addend: i64::from(value_loc_range.end),
                             },
                             data: Expression(
-                                translate_loc(value_loc_range.loc, &context.func.stack_slots).unwrap(),
+                                translate_loc(isa, value_loc_range.loc, &context.func.stack_slots).unwrap(),
                             ),
                         })
                         .collect(),
@@ -353,62 +355,67 @@ fn place_location<'a, 'tcx>(
 
 
 
-// Adapted from https://github.com/CraneStation/wasmtime/blob/5a1845b4caf7a5dba8eda1fef05213a532ed4259/crates/debug/src/transform/expression.rs#L59-L137
-
-fn map_reg(reg: RegUnit) -> Register {
-    static mut REG_X86_MAP: Option<HashMap<RegUnit, Register>> = None;
-    // FIXME lazy initialization?
-    unsafe {
-        if REG_X86_MAP.is_none() {
-            REG_X86_MAP = Some(HashMap::new());
+// Adapted from https://github.com/bytecodealliance/wasmtime/blob/50496efb6bac32aaf469c6d9186b322de83549bf/crates/debug/src/transform/map_reg.rs
+pub(crate) fn map_reg(isa: &dyn TargetIsa, reg: RegUnit) -> Register {
+    // TODO avoid duplication with fde.rs
+    assert!(isa.name() == "x86" && isa.pointer_bits() == 64);
+    // Mapping from https://github.com/bytecodealliance/cranelift/pull/902 by @iximeow
+    const X86_GP_REG_MAP: [Register; 16] = [
+        X86_64::RAX,
+        X86_64::RCX,
+        X86_64::RDX,
+        X86_64::RBX,
+        X86_64::RSP,
+        X86_64::RBP,
+        X86_64::RSI,
+        X86_64::RDI,
+        X86_64::R8,
+        X86_64::R9,
+        X86_64::R10,
+        X86_64::R11,
+        X86_64::R12,
+        X86_64::R13,
+        X86_64::R14,
+        X86_64::R15,
+    ];
+    const X86_XMM_REG_MAP: [Register; 16] = [
+        X86_64::XMM0,
+        X86_64::XMM1,
+        X86_64::XMM2,
+        X86_64::XMM3,
+        X86_64::XMM4,
+        X86_64::XMM5,
+        X86_64::XMM6,
+        X86_64::XMM7,
+        X86_64::XMM8,
+        X86_64::XMM9,
+        X86_64::XMM10,
+        X86_64::XMM11,
+        X86_64::XMM12,
+        X86_64::XMM13,
+        X86_64::XMM14,
+        X86_64::XMM15,
+    ];
+    let reg_info = isa.register_info();
+    let bank = reg_info.bank_containing_regunit(reg).unwrap();
+    match bank.name {
+        "IntRegs" => {
+            // x86 GP registers have a weird mapping to DWARF registers, so we use a
+            // lookup table.
+            X86_GP_REG_MAP[(reg - bank.first_unit) as usize]
         }
-        if let Some(val) = REG_X86_MAP.as_mut().unwrap().get(&reg) {
-            return *val;
+        "FloatRegs" => X86_XMM_REG_MAP[(reg - bank.first_unit) as usize],
+        bank_name => {
+            panic!("unsupported register bank: {}", bank_name);
         }
-        let result = match reg {
-            0 => X86_64::RAX,
-            1 => X86_64::RCX,
-            2 => X86_64::RDX,
-            3 => X86_64::RBX,
-            4 => X86_64::RSP,
-            5 => X86_64::RBP,
-            6 => X86_64::RSI,
-            7 => X86_64::RDI,
-            8 => X86_64::R8,
-            9 => X86_64::R9,
-            10 => X86_64::R10,
-            11 => X86_64::R11,
-            12 => X86_64::R12,
-            13 => X86_64::R13,
-            14 => X86_64::R14,
-            15 => X86_64::R15,
-            16 => X86_64::XMM0,
-            17 => X86_64::XMM1,
-            18 => X86_64::XMM2,
-            19 => X86_64::XMM3,
-            20 => X86_64::XMM4,
-            21 => X86_64::XMM5,
-            22 => X86_64::XMM6,
-            23 => X86_64::XMM7,
-            24 => X86_64::XMM8,
-            25 => X86_64::XMM9,
-            26 => X86_64::XMM10,
-            27 => X86_64::XMM11,
-            28 => X86_64::XMM12,
-            29 => X86_64::XMM13,
-            30 => X86_64::XMM14,
-            31 => X86_64::XMM15,
-            _ => panic!("unknown x86_64 register {}", reg),
-        };
-        REG_X86_MAP.as_mut().unwrap().insert(reg, result);
-        result
     }
 }
 
-fn translate_loc(loc: ValueLoc, stack_slots: &StackSlots) -> Option<Vec<u8>> {
+// Adapted from https://github.com/CraneStation/wasmtime/blob/5a1845b4caf7a5dba8eda1fef05213a532ed4259/crates/debug/src/transform/expression.rs#L59-L137
+fn translate_loc(isa: &dyn TargetIsa, loc: ValueLoc, stack_slots: &StackSlots) -> Option<Vec<u8>> {
     match loc {
         ValueLoc::Reg(reg) => {
-            let machine_reg = map_reg(reg).0 as u8;
+            let machine_reg = map_reg(isa, reg).0 as u8;
             assert!(machine_reg <= 32); // FIXME
             Some(vec![gimli::constants::DW_OP_reg0.0 + machine_reg])
         }
