@@ -6,7 +6,11 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, ops, str::FromStr};
+use std::{
+    fmt, ops,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use ra_cfg::CfgOptions;
 use ra_syntax::SmolStr;
@@ -144,7 +148,7 @@ pub struct Env {
 // crate. We store a map to allow remap it to ExternSourceId
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct ExternSource {
-    extern_paths: FxHashMap<String, ExternSourceId>,
+    extern_paths: FxHashMap<PathBuf, ExternSourceId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -294,13 +298,10 @@ impl Env {
 }
 
 impl ExternSource {
-    pub fn extern_path(&self, path: &str) -> Option<(ExternSourceId, RelativePathBuf)> {
+    pub fn extern_path(&self, path: impl AsRef<Path>) -> Option<(ExternSourceId, RelativePathBuf)> {
+        let path = path.as_ref();
         self.extern_paths.iter().find_map(|(root_path, id)| {
-            if path.starts_with(root_path) {
-                let mut rel_path = &path[root_path.len()..];
-                if rel_path.starts_with("/") {
-                    rel_path = &rel_path[1..];
-                }
+            if let Ok(rel_path) = path.strip_prefix(root_path) {
                 let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
                 Some((id.clone(), rel_path))
             } else {
@@ -309,8 +310,8 @@ impl ExternSource {
         })
     }
 
-    pub fn set_extern_path(&mut self, root_path: &str, root: ExternSourceId) {
-        self.extern_paths.insert(root_path.to_owned(), root);
+    pub fn set_extern_path(&mut self, root_path: &Path, root: ExternSourceId) {
+        self.extern_paths.insert(root_path.to_path_buf(), root);
     }
 }
 

@@ -28,10 +28,12 @@ pub(crate) enum Command {
         only: Option<String>,
         with_deps: bool,
         path: PathBuf,
+        load_output_dirs: bool,
     },
     Bench {
         path: PathBuf,
         what: BenchWhat,
+        load_output_dirs: bool,
     },
     RunServer,
     Version,
@@ -136,8 +138,9 @@ USAGE:
     rust-analyzer analysis-stats [FLAGS] [OPTIONS] [PATH]
 
 FLAGS:
-    -h, --help            Prints help information
+    -h, --help              Prints help information
         --memory-usage
+        --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
     -v, --verbose
     -q, --quiet
 
@@ -154,6 +157,7 @@ ARGS:
                 let memory_usage = matches.contains("--memory-usage");
                 let only: Option<String> = matches.opt_value_from_str(["-o", "--only"])?;
                 let with_deps: bool = matches.contains("--with-deps");
+                let load_output_dirs = matches.contains("--load-output-dirs");
                 let path = {
                     let mut trailing = matches.free()?;
                     if trailing.len() != 1 {
@@ -162,7 +166,7 @@ ARGS:
                     trailing.pop().unwrap().into()
                 };
 
-                Command::Stats { randomize, memory_usage, only, with_deps, path }
+                Command::Stats { randomize, memory_usage, only, with_deps, path, load_output_dirs }
             }
             "analysis-bench" => {
                 if matches.contains(["-h", "--help"]) {
@@ -174,7 +178,8 @@ USAGE:
     rust-analyzer analysis-bench [FLAGS] [OPTIONS]
 
 FLAGS:
-    -h, --help        Prints help information
+    -h, --help          Prints help information
+    --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
     -v, --verbose
 
 OPTIONS:
@@ -201,7 +206,8 @@ ARGS:
                         "exactly one of  `--highlight`, `--complete` or `--goto-def` must be set"
                     ),
                 };
-                Command::Bench { path, what }
+                let load_output_dirs = matches.contains("--load-output-dirs");
+                Command::Bench { path, what, load_output_dirs }
             }
             _ => {
                 eprintln!(

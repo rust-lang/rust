@@ -150,6 +150,29 @@ impl ProjectWorkspace {
         }
     }
 
+    pub fn out_dirs(&self) -> Vec<PathBuf> {
+        match self {
+            ProjectWorkspace::Json { project } => {
+                let mut out_dirs = Vec::with_capacity(project.crates.len());
+                for krate in &project.crates {
+                    if let Some(out_dir) = &krate.out_dir {
+                        out_dirs.push(out_dir.to_path_buf());
+                    }
+                }
+                out_dirs
+            }
+            ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => {
+                let mut out_dirs = Vec::with_capacity(cargo.packages().len());
+                for pkg in cargo.packages() {
+                    if let Some(out_dir) = pkg.out_dir(&cargo) {
+                        out_dirs.push(out_dir.to_path_buf());
+                    }
+                }
+                out_dirs
+            }
+        }
+    }
+
     pub fn n_packages(&self) -> usize {
         match self {
             ProjectWorkspace::Json { project } => project.crates.len(),
@@ -162,7 +185,7 @@ impl ProjectWorkspace {
     pub fn to_crate_graph(
         &self,
         default_cfg_options: &CfgOptions,
-        outdirs: &FxHashMap<String, (ExternSourceId, String)>,
+        extern_source_roots: &FxHashMap<PathBuf, ExternSourceId>,
         load: &mut dyn FnMut(&Path) -> Option<FileId>,
     ) -> CrateGraph {
         let mut crate_graph = CrateGraph::default();
@@ -187,6 +210,16 @@ impl ProjectWorkspace {
                             opts
                         };
 
+                        let mut env = Env::default();
+                        let mut extern_source = ExternSource::default();
+                        if let Some(out_dir) = &krate.out_dir {
+                            // FIXME: We probably mangle non UTF-8 paths here, figure out a better solution
+                            env.set("OUT_DIR", out_dir.to_string_lossy().to_string());
+                            if let Some(&extern_source_id) = extern_source_roots.get(out_dir) {
+                                extern_source.set_extern_path(&out_dir, extern_source_id);
+                            }
+                        }
+
                         // FIXME: No crate name in json definition such that we cannot add OUT_DIR to env
                         crates.insert(
                             crate_id,
@@ -196,8 +229,8 @@ impl ProjectWorkspace {
                                 // FIXME json definitions can store the crate name
                                 None,
                                 cfg_options,
-                                Env::default(),
-                                Default::default(),
+                                env,
+                                extern_source,
                             ),
                         );
                     }
@@ -235,13 +268,8 @@ impl ProjectWorkspace {
                             opts
                         };
 
-                        let mut env = Env::default();
-                        let mut extern_source = ExternSource::default();
-                        if let Some((id, path)) = outdirs.get(krate.name(&sysroot)) {
-                            env.set("OUT_DIR", path.clone());
-                            extern_source.set_extern_path(&path, *id);
-                        }
-
+                        let env = Env::default();
+                        let extern_source = ExternSource::default();
                         let crate_id = crate_graph.add_crate_root(
                             file_id,
                             Edition::Edition2018,
@@ -292,9 +320,12 @@ impl ProjectWorkspace {
                             };
                             let mut env = Env::default();
                             let mut extern_source = ExternSource::default();
-                            if let Some((id, path)) = outdirs.get(pkg.name(&cargo)) {
-                                env.set("OUT_DIR", path.clone());
-                                extern_source.set_extern_path(&path, *id);
+                            if let Some(out_dir) = pkg.out_dir(cargo) {
+                                // FIXME: We probably mangle non UTF-8 paths here, figure out a better solution
+                                env.set("OUT_DIR", out_dir.to_string_lossy().to_string());
+                                if let Some(&extern_source_id) = extern_source_roots.get(out_dir) {
+                                    extern_source.set_extern_path(&out_dir, extern_source_id);
+                                }
                             }
                             let crate_id = crate_graph.add_crate_root(
                                 file_id,

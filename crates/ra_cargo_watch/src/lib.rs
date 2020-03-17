@@ -9,8 +9,8 @@ use lsp_types::{
 };
 use std::{
     io::{BufRead, BufReader},
-    path::PathBuf,
-    process::{Command, Stdio},
+    path::{Path, PathBuf},
+    process::{Child, Command, Stdio},
     thread::JoinHandle,
     time::Instant,
 };
@@ -246,18 +246,71 @@ enum CheckEvent {
     End,
 }
 
+pub fn run_cargo(
+    args: &[String],
+    current_dir: Option<&Path>,
+    on_message: &mut dyn FnMut(cargo_metadata::Message) -> bool,
+) -> Child {
+    let mut command = Command::new("cargo");
+    if let Some(current_dir) = current_dir {
+        command.current_dir(current_dir);
+    }
+
+    let mut child = command
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .stdin(Stdio::null())
+        .spawn()
+        .expect("couldn't launch cargo");
+
+    // We manually read a line at a time, instead of using serde's
+    // stream deserializers, because the deserializer cannot recover
+    // from an error, resulting in it getting stuck, because we try to
+    // be resillient against failures.
+    //
+    // Because cargo only outputs one JSON object per line, we can
+    // simply skip a line if it doesn't parse, which just ignores any
+    // erroneus output.
+    let stdout = BufReader::new(child.stdout.take().unwrap());
+    for line in stdout.lines() {
+        let line = match line {
+            Ok(line) => line,
+            Err(err) => {
+                log::error!("Couldn't read line from cargo: {}", err);
+                continue;
+            }
+        };
+
+        let message = serde_json::from_str::<cargo_metadata::Message>(&line);
+        let message = match message {
+            Ok(message) => message,
+            Err(err) => {
+                log::error!("Invalid json from cargo check, ignoring ({}): {:?} ", err, line);
+                continue;
+            }
+        };
+
+        if !on_message(message) {
+            break;
+        }
+    }
+
+    child
+}
+
 impl WatchThread {
     fn dummy() -> WatchThread {
         WatchThread { handle: None, message_recv: never() }
     }
 
-    fn new(options: &CheckOptions, workspace_root: &PathBuf) -> WatchThread {
+    fn new(options: &CheckOptions, workspace_root: &Path) -> WatchThread {
         let mut args: Vec<String> = vec![
             options.command.clone(),
             "--workspace".to_string(),
             "--message-format=json".to_string(),
             "--manifest-path".to_string(),
-            format!("{}/Cargo.toml", workspace_root.to_string_lossy()),
+            format!("{}/Cargo.toml", workspace_root.display()),
         ];
         if options.all_targets {
             args.push("--all-targets".to_string());
@@ -265,83 +318,47 @@ impl WatchThread {
         args.extend(options.args.iter().cloned());
 
         let (message_send, message_recv) = unbounded();
-        let enabled = options.enable;
-        let handle = std::thread::spawn(move || {
-            if !enabled {
-                return;
-            }
+        let workspace_root = workspace_root.to_owned();
+        let handle = if options.enable {
+            Some(std::thread::spawn(move || {
+                // If we trigger an error here, we will do so in the loop instead,
+                // which will break out of the loop, and continue the shutdown
+                let _ = message_send.send(CheckEvent::Begin);
 
-            let mut command = Command::new("cargo")
-                .args(&args)
-                .stdout(Stdio::piped())
-                .stderr(Stdio::null())
-                .stdin(Stdio::null())
-                .spawn()
-                .expect("couldn't launch cargo");
-
-            // If we trigger an error here, we will do so in the loop instead,
-            // which will break out of the loop, and continue the shutdown
-            let _ = message_send.send(CheckEvent::Begin);
-
-            // We manually read a line at a time, instead of using serde's
-            // stream deserializers, because the deserializer cannot recover
-            // from an error, resulting in it getting stuck, because we try to
-            // be resillient against failures.
-            //
-            // Because cargo only outputs one JSON object per line, we can
-            // simply skip a line if it doesn't parse, which just ignores any
-            // erroneus output.
-            let stdout = BufReader::new(command.stdout.take().unwrap());
-            for line in stdout.lines() {
-                let line = match line {
-                    Ok(line) => line,
-                    Err(err) => {
-                        log::error!("Couldn't read line from cargo: {}", err);
-                        continue;
+                let mut child = run_cargo(&args, Some(&workspace_root), &mut |message| {
+                    // Skip certain kinds of messages to only spend time on what's useful
+                    match &message {
+                        Message::CompilerArtifact(artifact) if artifact.fresh => return true,
+                        Message::BuildScriptExecuted(_) => return true,
+                        Message::Unknown => return true,
+                        _ => {}
                     }
-                };
 
-                let message = serde_json::from_str::<cargo_metadata::Message>(&line);
-                let message = match message {
-                    Ok(message) => message,
-                    Err(err) => {
-                        log::error!(
-                            "Invalid json from cargo check, ignoring ({}): {:?} ",
-                            err,
-                            line
-                        );
-                        continue;
-                    }
-                };
+                    match message_send.send(CheckEvent::Msg(message)) {
+                        Ok(()) => {}
+                        Err(_err) => {
+                            // The send channel was closed, so we want to shutdown
+                            return false;
+                        }
+                    };
 
-                // Skip certain kinds of messages to only spend time on what's useful
-                match &message {
-                    Message::CompilerArtifact(artifact) if artifact.fresh => continue,
-                    Message::BuildScriptExecuted(_) => continue,
-                    Message::Unknown => continue,
-                    _ => {}
-                }
+                    true
+                });
 
-                match message_send.send(CheckEvent::Msg(message)) {
-                    Ok(()) => {}
-                    Err(_err) => {
-                        // The send channel was closed, so we want to shutdown
-                        break;
-                    }
-                }
-            }
+                // We can ignore any error here, as we are already in the progress
+                // of shutting down.
+                let _ = message_send.send(CheckEvent::End);
 
-            // We can ignore any error here, as we are already in the progress
-            // of shutting down.
-            let _ = message_send.send(CheckEvent::End);
+                // It is okay to ignore the result, as it only errors if the process is already dead
+                let _ = child.kill();
 
-            // It is okay to ignore the result, as it only errors if the process is already dead
-            let _ = command.kill();
-
-            // Again, we don't care about the exit status so just ignore the result
-            let _ = command.wait();
-        });
-        WatchThread { handle: Some(handle), message_recv }
+                // Again, we don't care about the exit status so just ignore the result
+                let _ = child.wait();
+            }))
+        } else {
+            None
+        };
+        WatchThread { handle, message_recv }
     }
 }
 

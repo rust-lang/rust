@@ -3,8 +3,9 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use cargo_metadata::{CargoOpt, MetadataCommand};
+use cargo_metadata::{CargoOpt, Message, MetadataCommand, PackageId};
 use ra_arena::{impl_arena_id, Arena, RawId};
+use ra_cargo_watch::run_cargo;
 use ra_db::Edition;
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
@@ -35,11 +36,19 @@ pub struct CargoFeatures {
     /// List of features to activate.
     /// This will be ignored if `cargo_all_features` is true.
     pub features: Vec<String>,
+
+    /// Runs cargo check on launch to figure out the correct values of OUT_DIR
+    pub load_out_dirs_from_check: bool,
 }
 
 impl Default for CargoFeatures {
     fn default() -> Self {
-        CargoFeatures { no_default_features: false, all_features: true, features: Vec::new() }
+        CargoFeatures {
+            no_default_features: false,
+            all_features: true,
+            features: Vec::new(),
+            load_out_dirs_from_check: false,
+        }
     }
 }
 
@@ -60,6 +69,7 @@ struct PackageData {
     dependencies: Vec<PackageDependency>,
     edition: Edition,
     features: Vec<String>,
+    out_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -131,6 +141,9 @@ impl Package {
     ) -> impl Iterator<Item = &'a PackageDependency> + 'a {
         ws.packages[self].dependencies.iter()
     }
+    pub fn out_dir(self, ws: &CargoWorkspace) -> Option<&Path> {
+        ws.packages[self].out_dir.as_ref().map(PathBuf::as_path)
+    }
 }
 
 impl Target {
@@ -173,6 +186,12 @@ impl CargoWorkspace {
         let meta = meta.exec().with_context(|| {
             format!("Failed to run `cargo metadata --manifest-path {}`", cargo_toml.display())
         })?;
+
+        let mut out_dir_by_id = FxHashMap::default();
+        if cargo_features.load_out_dirs_from_check {
+            out_dir_by_id = load_out_dirs(cargo_toml, cargo_features);
+        }
+
         let mut pkg_by_id = FxHashMap::default();
         let mut packages = Arena::default();
         let mut targets = Arena::default();
@@ -193,6 +212,7 @@ impl CargoWorkspace {
                 edition,
                 dependencies: Vec::new(),
                 features: Vec::new(),
+                out_dir: out_dir_by_id.get(&id).cloned(),
             });
             let pkg_data = &mut packages[pkg];
             pkg_by_id.insert(id, pkg);
@@ -251,4 +271,47 @@ impl CargoWorkspace {
     pub fn workspace_root(&self) -> &Path {
         &self.workspace_root
     }
+}
+
+pub fn load_out_dirs(
+    cargo_toml: &Path,
+    cargo_features: &CargoFeatures,
+) -> FxHashMap<PackageId, PathBuf> {
+    let mut args: Vec<String> = vec![
+        "check".to_string(),
+        "--message-format=json".to_string(),
+        "--manifest-path".to_string(),
+        format!("{}", cargo_toml.display()),
+    ];
+
+    if cargo_features.all_features {
+        args.push("--all-features".to_string());
+    } else if cargo_features.no_default_features {
+        // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
+        // https://github.com/oli-obk/cargo_metadata/issues/79
+        args.push("--no-default-features".to_string());
+    } else if !cargo_features.features.is_empty() {
+        for feature in &cargo_features.features {
+            args.push(feature.clone());
+        }
+    }
+
+    let mut res = FxHashMap::default();
+    let mut child = run_cargo(&args, cargo_toml.parent(), &mut |message| {
+        match message {
+            Message::BuildScriptExecuted(message) => {
+                let package_id = message.package_id;
+                let out_dir = message.out_dir;
+                res.insert(package_id, out_dir);
+            }
+
+            Message::CompilerArtifact(_) => (),
+            Message::CompilerMessage(_) => (),
+            Message::Unknown => (),
+        }
+        true
+    });
+
+    let _ = child.wait();
+    res
 }

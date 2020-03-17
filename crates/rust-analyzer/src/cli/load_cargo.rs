@@ -1,13 +1,13 @@
 //! Loads a Cargo project into a static instance of analysis, without support
 //! for incorporating changes.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use crossbeam_channel::{unbounded, Receiver};
-use ra_db::{CrateGraph, FileId, SourceRootId};
+use ra_db::{ExternSourceId, FileId, SourceRootId};
 use ra_ide::{AnalysisChange, AnalysisHost};
-use ra_project_model::{get_rustc_cfg_options, PackageRoot, ProjectWorkspace};
+use ra_project_model::{get_rustc_cfg_options, CargoFeatures, PackageRoot, ProjectWorkspace};
 use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask, Watch};
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -22,10 +22,21 @@ fn vfs_root_to_id(r: ra_vfs::VfsRoot) -> SourceRootId {
 
 pub(crate) fn load_cargo(
     root: &Path,
+    load_out_dirs_from_check: bool,
 ) -> Result<(AnalysisHost, FxHashMap<SourceRootId, PackageRoot>)> {
     let root = std::env::current_dir()?.join(root);
-    let ws = ProjectWorkspace::discover(root.as_ref(), &Default::default())?;
-    let project_roots = ws.to_roots();
+    let ws = ProjectWorkspace::discover(
+        root.as_ref(),
+        &CargoFeatures { load_out_dirs_from_check, ..Default::default() },
+    )?;
+
+    let mut extern_dirs = FxHashSet::default();
+    extern_dirs.extend(ws.out_dirs());
+
+    let mut project_roots = ws.to_roots();
+    project_roots
+        .extend(extern_dirs.iter().map(|path| PackageRoot::new(path.to_path_buf(), false)));
+
     let (sender, receiver) = unbounded();
     let sender = Box::new(move |t| sender.send(t).unwrap());
     let (mut vfs, roots) = Vfs::new(
@@ -44,24 +55,6 @@ pub(crate) fn load_cargo(
         Watch(false),
     );
 
-    // FIXME: cfg options?
-    let default_cfg_options = {
-        let mut opts = get_rustc_cfg_options();
-        opts.insert_atom("test".into());
-        opts.insert_atom("debug_assertion".into());
-        opts
-    };
-
-    // FIXME: outdirs?
-    let outdirs = FxHashMap::default();
-
-    let crate_graph = ws.to_crate_graph(&default_cfg_options, &outdirs, &mut |path: &Path| {
-        let vfs_file = vfs.load(path);
-        log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
-        vfs_file.map(vfs_file_to_id)
-    });
-    log::debug!("crate graph: {:?}", crate_graph);
-
     let source_roots = roots
         .iter()
         .map(|&vfs_root| {
@@ -74,23 +67,24 @@ pub(crate) fn load_cargo(
             (source_root_id, project_root)
         })
         .collect::<FxHashMap<_, _>>();
-    let host = load(&source_roots, crate_graph, &mut vfs, receiver);
+    let host = load(&source_roots, ws, &mut vfs, receiver, extern_dirs);
     Ok((host, source_roots))
 }
 
 pub(crate) fn load(
     source_roots: &FxHashMap<SourceRootId, PackageRoot>,
-    crate_graph: CrateGraph,
+    ws: ProjectWorkspace,
     vfs: &mut Vfs,
     receiver: Receiver<VfsTask>,
+    extern_dirs: FxHashSet<PathBuf>,
 ) -> AnalysisHost {
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
     let mut host = AnalysisHost::new(lru_cap);
     let mut analysis_change = AnalysisChange::new();
-    analysis_change.set_crate_graph(crate_graph);
 
     // wait until Vfs has loaded all roots
     let mut roots_loaded = FxHashSet::default();
+    let mut extern_source_roots = FxHashMap::default();
     for task in receiver {
         vfs.handle_task(task);
         let mut done = false;
@@ -109,6 +103,11 @@ pub(crate) fn load(
                         source_root_id,
                         source_roots[&source_root_id].path().display().to_string(),
                     );
+
+                    let vfs_root_path = vfs.root2path(root);
+                    if extern_dirs.contains(&vfs_root_path) {
+                        extern_source_roots.insert(vfs_root_path, ExternSourceId(root.0));
+                    }
 
                     let mut file_map = FxHashMap::default();
                     for (vfs_file, path, text) in files {
@@ -136,6 +135,23 @@ pub(crate) fn load(
         }
     }
 
+    // FIXME: cfg options?
+    let default_cfg_options = {
+        let mut opts = get_rustc_cfg_options();
+        opts.insert_atom("test".into());
+        opts.insert_atom("debug_assertion".into());
+        opts
+    };
+
+    let crate_graph =
+        ws.to_crate_graph(&default_cfg_options, &extern_source_roots, &mut |path: &Path| {
+            let vfs_file = vfs.load(path);
+            log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
+            vfs_file.map(vfs_file_to_id)
+        });
+    log::debug!("crate graph: {:?}", crate_graph);
+    analysis_change.set_crate_graph(crate_graph);
+
     host.apply_change(analysis_change);
     host
 }
@@ -149,7 +165,7 @@ mod tests {
     #[test]
     fn test_loading_rust_analyzer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
-        let (host, _roots) = load_cargo(path).unwrap();
+        let (host, _roots) = load_cargo(path, false).unwrap();
         let n_crates = Crate::all(host.raw_database()).len();
         // RA has quite a few crates, but the exact count doesn't matter
         assert!(n_crates > 20);
