@@ -1,13 +1,15 @@
 use rustc::mir::ConstraintCategory;
+use rustc::traits::query::OutlivesBound;
 use rustc::ty::free_region_map::FreeRegionRelations;
 use rustc::ty::{self, RegionVid, Ty, TyCtxt};
+use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_infer::infer::outlives;
 use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::InferCtxt;
-use rustc_infer::traits::query::outlives_bounds::{self, OutlivesBound};
-use rustc_infer::traits::query::type_op::{self, TypeOp};
 use rustc_span::DUMMY_SP;
+use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use std::rc::Rc;
 
 use crate::borrow_check::{
@@ -52,7 +54,7 @@ type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
 type NormalizedInputsAndOutput<'tcx> = Vec<Ty<'tcx>>;
 
 crate struct CreateResult<'tcx> {
-    crate universal_region_relations: Rc<UniversalRegionRelations<'tcx>>,
+    pub(in crate::borrow_check) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     crate region_bound_pairs: RegionBoundPairs<'tcx>,
     crate normalized_inputs_and_output: NormalizedInputsAndOutput<'tcx>,
 }
@@ -266,7 +268,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
 
         // Insert the facts we know from the predicates. Why? Why not.
         let param_env = self.param_env;
-        self.add_outlives_bounds(outlives_bounds::explicit_outlives_bounds(param_env));
+        self.add_outlives_bounds(outlives::explicit_outlives_bounds(param_env));
 
         // Finally:
         // - outlives is reflexive, so `'r: 'r` for every region `'r`
@@ -297,7 +299,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
         }
 
         CreateResult {
-            universal_region_relations: Rc::new(self.relations),
+            universal_region_relations: Frozen::freeze(self.relations),
             region_bound_pairs: self.region_bound_pairs,
             normalized_inputs_and_output,
         }

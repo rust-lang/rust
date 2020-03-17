@@ -1,13 +1,12 @@
-//! This crates defines the trait resolution method and the type inference engine.
+//! This crates defines the type inference engine.
 //!
-//! - **Traits.** Trait resolution is implemented in the `traits` module.
 //! - **Type inference.** The type inference code can be found in the `infer` module;
 //!   this code handles low-level equality and subtyping operations. The
 //!   type check pass in the compiler is found in the `librustc_typeck` crate.
 //!
-//! For more information about how rustc works, see the [rustc guide].
+//! For more information about how rustc works, see the [rustc dev guide].
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/
 //!
 //! # Note
 //!
@@ -17,12 +16,11 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(drain_filter)]
 #![feature(never_type)]
 #![feature(range_is_empty)]
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
-#![recursion_limit = "512"]
+#![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]
 extern crate rustc_macros;

@@ -3,6 +3,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_span::Span;
+use rustc_trait_selection::opaque_types::InferCtxtExt;
 
 use super::RegionInferenceContext;
 

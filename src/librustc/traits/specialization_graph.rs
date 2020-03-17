@@ -4,6 +4,7 @@ use crate::ty::{self, TyCtxt};
 use rustc_ast::ast::Ident;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_errors::ErrorReported;
 use rustc_hir::def_id::{DefId, DefIdMap};
 
 /// A per-trait graph of impls in specialization order. At the moment, this
@@ -23,17 +24,20 @@ use rustc_hir::def_id::{DefId, DefIdMap};
 ///   has at most one parent.
 #[derive(RustcEncodable, RustcDecodable, HashStable)]
 pub struct Graph {
-    // All impls have a parent; the "root" impls have as their parent the `def_id`
-    // of the trait.
+    /// All impls have a parent; the "root" impls have as their parent the `def_id`
+    /// of the trait.
     pub parent: DefIdMap<DefId>,
 
-    // The "root" impls are found by looking up the trait's def_id.
+    /// The "root" impls are found by looking up the trait's def_id.
     pub children: DefIdMap<Children>,
+
+    /// Whether an error was emitted while constructing the graph.
+    pub has_errored: bool,
 }
 
 impl Graph {
     pub fn new() -> Graph {
-        Graph { parent: Default::default(), children: Default::default() }
+        Graph { parent: Default::default(), children: Default::default(), has_errored: false }
     }
 
     /// The parent of a given impl, which is the `DefId` of the trait when the
@@ -179,17 +183,22 @@ impl<'tcx> Ancestors<'tcx> {
 }
 
 /// Walk up the specialization ancestors of a given impl, starting with that
-/// impl itself.
+/// impl itself. Returns `None` if an error was reported while building the
+/// specialization graph.
 pub fn ancestors(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     start_from_impl: DefId,
-) -> Ancestors<'tcx> {
+) -> Result<Ancestors<'tcx>, ErrorReported> {
     let specialization_graph = tcx.specialization_graph_of(trait_def_id);
-    Ancestors {
-        trait_def_id,
-        specialization_graph,
-        current_source: Some(Node::Impl(start_from_impl)),
+    if specialization_graph.has_errored {
+        Err(ErrorReported)
+    } else {
+        Ok(Ancestors {
+            trait_def_id,
+            specialization_graph,
+            current_source: Some(Node::Impl(start_from_impl)),
+        })
     }
 }
 

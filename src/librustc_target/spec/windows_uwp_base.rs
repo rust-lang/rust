@@ -54,7 +54,6 @@ pub fn opts() -> TargetOptions {
         pre_link_objects_dll: vec!["rsbegin.o".to_string()],
         late_link_args,
         post_link_objects: vec!["rsend.o".to_string()],
-        custom_unwind_resume: true,
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
         requires_uwtable: true,

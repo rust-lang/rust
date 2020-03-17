@@ -112,7 +112,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::kw;
-use rustc_span::{symbol::Ident, MultiSpan, Span};
+use rustc_span::{symbol::MacroRulesNormalizedIdent, MultiSpan, Span};
 
 use smallvec::SmallVec;
 
@@ -179,7 +179,7 @@ struct BinderInfo {
 }
 
 /// An environment of meta-variables to their binder information.
-type Binders = FxHashMap<Ident, BinderInfo>;
+type Binders = FxHashMap<MacroRulesNormalizedIdent, BinderInfo>;
 
 /// The state at which we entered a macro definition in the RHS of another macro definition.
 struct MacroState<'a> {
@@ -245,6 +245,7 @@ fn check_binders(
             if macros.is_empty() {
                 sess.span_diagnostic.span_bug(span, "unexpected MetaVar in lhs");
             }
+            let name = MacroRulesNormalizedIdent::new(name);
             // There are 3 possibilities:
             if let Some(prev_info) = binders.get(&name) {
                 // 1. The meta-variable is already bound in the current LHS: This is an error.
@@ -264,6 +265,7 @@ fn check_binders(
             if !macros.is_empty() {
                 sess.span_diagnostic.span_bug(span, "unexpected MetaVarDecl in nested lhs");
             }
+            let name = MacroRulesNormalizedIdent::new(name);
             if let Some(prev_info) = get_binder_info(macros, binders, name) {
                 // Duplicate binders at the top-level macro definition are errors. The lint is only
                 // for nested macro definitions.
@@ -300,7 +302,7 @@ fn check_binders(
 fn get_binder_info<'a>(
     mut macros: &'a Stack<'a, MacroState<'a>>,
     binders: &'a Binders,
-    name: Ident,
+    name: MacroRulesNormalizedIdent,
 ) -> Option<&'a BinderInfo> {
     binders.get(&name).or_else(|| macros.find_map(|state| state.binders.get(&name)))
 }
@@ -331,6 +333,7 @@ fn check_occurrences(
             sess.span_diagnostic.span_bug(span, "unexpected MetaVarDecl in rhs")
         }
         TokenTree::MetaVar(span, name) => {
+            let name = MacroRulesNormalizedIdent::new(name);
             check_ops_is_prefix(sess, node_id, macros, binders, ops, span, name);
         }
         TokenTree::Delimited(_, ref del) => {
@@ -419,10 +422,10 @@ fn check_nested_occurrences(
             | (NestedMacroState::MacroName, &TokenTree::Delimited(_, ref del))
                 if del.delim == DelimToken::Brace =>
             {
-                let legacy = state == NestedMacroState::MacroRulesNotName;
+                let macro_rules = state == NestedMacroState::MacroRulesNotName;
                 state = NestedMacroState::Empty;
                 let rest =
-                    check_nested_macro(sess, node_id, legacy, &del.tts, &nested_macros, valid);
+                    check_nested_macro(sess, node_id, macro_rules, &del.tts, &nested_macros, valid);
                 // If we did not check the whole macro definition, then check the rest as if outside
                 // the macro definition.
                 check_nested_occurrences(
@@ -493,21 +496,21 @@ fn check_nested_occurrences(
 /// Arguments:
 /// - `sess` is used to emit diagnostics and lints
 /// - `node_id` is used to emit lints
-/// - `legacy` specifies whether the macro is legacy
+/// - `macro_rules` specifies whether the macro is `macro_rules`
 /// - `tts` is checked as a list of (LHS) => {RHS}
 /// - `macros` is the stack of outer macros
 /// - `valid` is set in case of errors
 fn check_nested_macro(
     sess: &ParseSess,
     node_id: NodeId,
-    legacy: bool,
+    macro_rules: bool,
     tts: &[TokenTree],
     macros: &Stack<'_, MacroState<'_>>,
     valid: &mut bool,
 ) -> usize {
     let n = tts.len();
     let mut i = 0;
-    let separator = if legacy { TokenKind::Semi } else { TokenKind::Comma };
+    let separator = if macro_rules { TokenKind::Semi } else { TokenKind::Comma };
     loop {
         // We expect 3 token trees: `(LHS) => {RHS}`. The separator is checked after.
         if i + 2 >= n
@@ -522,7 +525,7 @@ fn check_nested_macro(
         let mut binders = Binders::default();
         check_binders(sess, node_id, lhs, macros, &mut binders, &Stack::Empty, valid);
         check_occurrences(sess, node_id, rhs, macros, &binders, &Stack::Empty, valid);
-        // Since the last semicolon is optional for legacy macros and decl_macro are not terminated,
+        // Since the last semicolon is optional for `macro_rules` macros and decl_macro are not terminated,
         // we increment our checked position by how many token trees we already checked (the 3
         // above) before checking for the separator.
         i += 3;
@@ -552,7 +555,7 @@ fn check_ops_is_prefix(
     binders: &Binders,
     ops: &Stack<'_, KleeneToken>,
     span: Span,
-    name: Ident,
+    name: MacroRulesNormalizedIdent,
 ) {
     let macros = macros.push(MacroState { binders, ops: ops.into() });
     // Accumulates the stacks the operators of each state until (and including when) the
@@ -598,7 +601,7 @@ fn ops_is_prefix(
     sess: &ParseSess,
     node_id: NodeId,
     span: Span,
-    name: Ident,
+    name: MacroRulesNormalizedIdent,
     binder_ops: &[KleeneToken],
     occurrence_ops: &[KleeneToken],
 ) {

@@ -95,7 +95,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
 
     type Map = Map<'v>;
 
-    fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<Self::Map> {
         panic!("visit_nested_xxx must be manually implemented in this visitor")
     }
 
@@ -336,8 +336,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_lifetime(self, lifetime)
     }
 
-    fn visit_mac(&mut self, mac: &'v ast::Mac) {
-        self.record("Mac", Id::None, mac);
+    fn visit_mac(&mut self, mac: &'v ast::MacCall) {
+        self.record("MacCall", Id::None, mac);
     }
 
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v ast::PathSegment) {

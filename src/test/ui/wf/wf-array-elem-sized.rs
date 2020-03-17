@@ -1,4 +1,4 @@
-// Check that array elemen types must be Sized. Issue #25692.
+// Check that array element types must be Sized. Issue #25692.
 
 
 #![allow(dead_code)]

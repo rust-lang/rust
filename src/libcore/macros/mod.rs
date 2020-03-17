@@ -1,3 +1,4 @@
+#[cfg(bootstrap)]
 #[doc(include = "panic.md")]
 #[macro_export]
 #[allow_internal_unstable(core_panic, track_caller)]
@@ -17,6 +18,26 @@ macro_rules! panic {
             $crate::format_args!($fmt, $($arg)+),
             $crate::panic::Location::caller(),
         )
+    );
+}
+
+#[cfg(not(bootstrap))]
+#[doc(include = "panic.md")]
+#[macro_export]
+#[allow_internal_unstable(core_panic, track_caller)]
+#[stable(feature = "core", since = "1.6.0")]
+macro_rules! panic {
+    () => (
+        $crate::panic!("explicit panic")
+    );
+    ($msg:expr) => (
+        $crate::panicking::panic($msg)
+    );
+    ($msg:expr,) => (
+        $crate::panic!($msg)
+    );
+    ($fmt:expr, $($arg:tt)+) => (
+        $crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+))
     );
 }
 
@@ -1380,6 +1401,18 @@ pub(crate) mod builtin {
     #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]
     pub macro global_allocator($item:item) {
+        /* compiler built-in */
+    }
+
+    /// Keeps the item it's applied to if the passed path is accessible, and removes it otherwise.
+    #[cfg(not(bootstrap))]
+    #[unstable(
+        feature = "cfg_accessible",
+        issue = "64797",
+        reason = "`cfg_accessible` is not fully implemented"
+    )]
+    #[rustc_builtin_macro]
+    pub macro cfg_accessible($item:item) {
         /* compiler built-in */
     }
 

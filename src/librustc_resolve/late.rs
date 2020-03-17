@@ -266,7 +266,7 @@ impl<'a> PathSource<'a> {
                 | Res::Def(DefKind::Static, _)
                 | Res::Local(..)
                 | Res::Def(DefKind::Fn, _)
-                | Res::Def(DefKind::Method, _)
+                | Res::Def(DefKind::AssocFn, _)
                 | Res::Def(DefKind::AssocConst, _)
                 | Res::SelfCtor(..)
                 | Res::Def(DefKind::ConstParam, _) => true,
@@ -293,7 +293,7 @@ impl<'a> PathSource<'a> {
                 _ => false,
             },
             PathSource::TraitItem(ns) => match res {
-                Res::Def(DefKind::AssocConst, _) | Res::Def(DefKind::Method, _)
+                Res::Def(DefKind::AssocConst, _) | Res::Def(DefKind::AssocFn, _)
                     if ns == ValueNS =>
                 {
                     true
@@ -449,7 +449,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     visit::walk_foreign_item(this, foreign_item);
                 });
             }
-            ForeignItemKind::Macro(..) => {
+            ForeignItemKind::MacCall(..) => {
                 visit::walk_foreign_item(self, foreign_item);
             }
         }
@@ -553,7 +553,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         let prev = replace(&mut self.diagnostic_metadata.currently_processing_generics, true);
         match arg {
             GenericArg::Type(ref ty) => {
-                // We parse const arguments as path types as we cannot distiguish them during
+                // We parse const arguments as path types as we cannot distinguish them during
                 // parsing. We try to resolve that ambiguity by attempting resolution the type
                 // namespace first, and if that fails we try again in the value namespace. If
                 // resolution in the value namespace succeeds, we have an generic const argument on
@@ -852,7 +852,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                     AssocItemKind::TyAlias(_, generics, _, _) => {
                                         walk_assoc_item(this, generics, item);
                                     }
-                                    AssocItemKind::Macro(_) => {
+                                    AssocItemKind::MacCall(_) => {
                                         panic!("unexpanded macro in resolve!")
                                     }
                                 };
@@ -897,7 +897,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // do nothing, these are just around to be encoded
             }
 
-            ItemKind::Mac(_) => panic!("unexpanded macro in resolve!"),
+            ItemKind::MacCall(_) => panic!("unexpanded macro in resolve!"),
         }
     }
 
@@ -935,7 +935,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 _ => unreachable!(),
             };
 
-            let ident = param.ident.modern();
+            let ident = param.ident.normalize_to_macros_2_0();
             debug!("with_generic_param_rib: {}", param.id);
 
             if seen_bindings.contains_key(&ident) {
@@ -1174,7 +1174,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 },
                                             );
                                         }
-                                        AssocItemKind::Macro(_) => {
+                                        AssocItemKind::MacCall(_) => {
                                             panic!("unexpanded macro in resolve!")
                                         }
                                     }
@@ -1464,7 +1464,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // Add the binding to the local ribs, if it doesn't already exist in the bindings map.
         // (We must not add it if it's in the bindings map because that breaks the assumptions
         // later passes make about or-patterns.)
-        let ident = ident.modern_and_legacy();
+        let ident = ident.normalize_to_macro_rules();
 
         let mut bound_iter = bindings.iter().filter(|(_, set)| set.contains(&ident));
         // Already bound in a product pattern? e.g. `(a, a)` which is not allowed.
@@ -1517,9 +1517,17 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ident: Ident,
         has_sub: bool,
     ) -> Option<Res> {
-        let binding =
-            self.resolve_ident_in_lexical_scope(ident, ValueNS, None, pat.span)?.item()?;
-        let res = binding.res();
+        let ls_binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, pat.span)?;
+        let (res, binding) = match ls_binding {
+            LexicalScopeBinding::Item(binding) if binding.is_ambiguity() => {
+                // For ambiguous bindings we don't know all their definitions and cannot check
+                // whether they can be shadowed by fresh bindings or not, so force an error.
+                self.r.record_use(ident, ValueNS, binding, false);
+                return None;
+            }
+            LexicalScopeBinding::Item(binding) => (binding.res(), Some(binding)),
+            LexicalScopeBinding::Res(res) => (res, None),
+        };
 
         // An immutable (no `mut`) by-value (no `ref`) binding pattern without
         // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
@@ -1527,11 +1535,15 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
 
         match res {
-            Res::Def(DefKind::Ctor(_, CtorKind::Const), _) | Res::Def(DefKind::Const, _)
+            Res::Def(DefKind::Ctor(_, CtorKind::Const), _)
+            | Res::Def(DefKind::Const, _)
+            | Res::Def(DefKind::ConstParam, _)
                 if is_syntactic_ambiguity =>
             {
                 // Disambiguate in favor of a unit struct/variant or constant pattern.
-                self.r.record_use(ident, ValueNS, binding, false);
+                if let Some(binding) = binding {
+                    self.r.record_use(ident, ValueNS, binding, false);
+                }
                 Some(res)
             }
             Res::Def(DefKind::Ctor(..), _)
@@ -1547,23 +1559,20 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     ResolutionError::BindingShadowsSomethingUnacceptable(
                         pat_src.descr(),
                         ident.name,
-                        binding,
+                        binding.expect("no binding for a ctor or static"),
                     ),
                 );
                 None
             }
-            Res::Def(DefKind::Fn, _) | Res::Err => {
+            Res::Def(DefKind::Fn, _) | Res::Local(..) | Res::Err => {
                 // These entities are explicitly allowed to be shadowed by fresh bindings.
                 None
             }
-            res => {
-                span_bug!(
-                    ident.span,
-                    "unexpected resolution for an \
-                                        identifier in pattern: {:?}",
-                    res
-                );
-            }
+            _ => span_bug!(
+                ident.span,
+                "unexpected resolution for an identifier in pattern: {:?}",
+                res
+            ),
         }
     }
 
@@ -1864,7 +1873,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.diagnostic_metadata.unused_labels.insert(id, label.ident.span);
             }
             self.with_label_rib(NormalRibKind, |this| {
-                let ident = label.ident.modern_and_legacy();
+                let ident = label.ident.normalize_to_macro_rules();
                 this.label_ribs.last_mut().unwrap().bindings.insert(ident, id);
                 f(this);
             });
@@ -1940,7 +1949,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
                 let node_id = self.search_label(label.ident, |rib, ident| {
-                    rib.bindings.get(&ident.modern_and_legacy()).cloned()
+                    rib.bindings.get(&ident.normalize_to_macro_rules()).cloned()
                 });
                 match node_id {
                     None => {
@@ -2106,7 +2115,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
         }
 
-        ident.span = ident.span.modern();
+        ident.span = ident.span.normalize_to_macros_2_0();
         let mut search_module = self.parent_scope.module;
         loop {
             self.get_traits_in_module_containing_item(ident, ns, search_module, &mut found_traits);
@@ -2189,10 +2198,10 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         trait_name: Ident,
     ) -> SmallVec<[NodeId; 1]> {
         let mut import_ids = smallvec![];
-        while let NameBindingKind::Import { directive, binding, .. } = kind {
-            self.r.maybe_unused_trait_imports.insert(directive.id);
-            self.r.add_to_glob_map(&directive, trait_name);
-            import_ids.push(directive.id);
+        while let NameBindingKind::Import { import, binding, .. } = kind {
+            self.r.maybe_unused_trait_imports.insert(import.id);
+            self.r.add_to_glob_map(&import, trait_name);
+            import_ids.push(import.id);
             kind = &binding.kind;
         }
         import_ids

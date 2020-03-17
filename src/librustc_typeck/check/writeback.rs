@@ -16,6 +16,7 @@ use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::InferCtxt;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::opaque_types::InferCtxtExt;
 
 use std::mem;
 
@@ -245,7 +246,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 

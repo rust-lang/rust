@@ -59,6 +59,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::PatKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_span::Span;
+use rustc_trait_selection::infer::InferCtxtExt;
 
 #[derive(Clone, Debug)]
 pub enum PlaceBase {
@@ -425,7 +426,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | Res::Def(DefKind::ConstParam, _)
             | Res::Def(DefKind::AssocConst, _)
             | Res::Def(DefKind::Fn, _)
-            | Res::Def(DefKind::Method, _)
+            | Res::Def(DefKind::AssocFn, _)
             | Res::SelfCtor(..) => Ok(self.cat_rvalue(hir_id, span, expr_ty)),
 
             Res::Def(DefKind::Static, _) => Ok(Place {

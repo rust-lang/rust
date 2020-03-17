@@ -11,9 +11,9 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
-use rustc_infer::traits;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_trait_selection::traits;
 
 use super::ItemCtxt;
 use super::{bad_placeholder_type, is_suggestable_infer_ty};
@@ -27,7 +27,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
     match tcx.hir().get(hir_id) {
         Node::TraitItem(item) => match item.kind {
-            TraitItemKind::Method(..) => {
+            TraitItemKind::Fn(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
             }
@@ -47,7 +47,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         },
 
         Node::ImplItem(item) => match item.kind {
-            ImplItemKind::Method(..) => {
+            ImplItemKind::Fn(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
             }
@@ -529,8 +529,8 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     impl<'tcx> intravisit::Visitor<'tcx> for ConstraintLocator<'tcx> {
         type Map = Map<'tcx>;
 
-        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
-            intravisit::NestedVisitorMap::All(&self.tcx.hir())
+        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+            intravisit::NestedVisitorMap::All(self.tcx.hir())
         }
         fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
             if let hir::ExprKind::Closure(..) = ex.kind {

@@ -230,7 +230,7 @@ impl AssocItem {
     pub fn def_kind(&self) -> DefKind {
         match self.kind {
             AssocKind::Const => DefKind::AssocConst,
-            AssocKind::Method => DefKind::Method,
+            AssocKind::Method => DefKind::AssocFn,
             AssocKind::Type => DefKind::AssocTy,
             AssocKind::OpaqueTy => DefKind::AssocOpaqueTy,
         }
@@ -554,24 +554,26 @@ bitflags! {
         /// Does this have [ConstKind::Placeholder]?
         const HAS_CT_PLACEHOLDER        = 1 << 8;
 
+        /// `true` if there are "names" of regions and so forth
+        /// that are local to a particular fn/inferctxt
+        const HAS_FREE_LOCAL_REGIONS    = 1 << 9;
+
         /// `true` if there are "names" of types and regions and so forth
         /// that are local to a particular fn
         const HAS_FREE_LOCAL_NAMES      = TypeFlags::HAS_TY_PARAM.bits
-                                        | TypeFlags::HAS_RE_PARAM.bits
                                         | TypeFlags::HAS_CT_PARAM.bits
                                         | TypeFlags::HAS_TY_INFER.bits
-                                        | TypeFlags::HAS_RE_INFER.bits
                                         | TypeFlags::HAS_CT_INFER.bits
                                         | TypeFlags::HAS_TY_PLACEHOLDER.bits
-                                        | TypeFlags::HAS_RE_PLACEHOLDER.bits
-                                        | TypeFlags::HAS_CT_PLACEHOLDER.bits;
+                                        | TypeFlags::HAS_CT_PLACEHOLDER.bits
+                                        | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits;
 
         /// Does this have [Projection] or [UnnormalizedProjection]?
-        const HAS_TY_PROJECTION         = 1 << 9;
+        const HAS_TY_PROJECTION         = 1 << 10;
         /// Does this have [Opaque]?
-        const HAS_TY_OPAQUE             = 1 << 10;
+        const HAS_TY_OPAQUE             = 1 << 11;
         /// Does this have [ConstKind::Unevaluated]?
-        const HAS_CT_PROJECTION         = 1 << 11;
+        const HAS_CT_PROJECTION         = 1 << 12;
 
         /// Could this type be normalized further?
         const HAS_PROJECTION            = TypeFlags::HAS_TY_PROJECTION.bits
@@ -580,21 +582,21 @@ bitflags! {
 
         /// Present if the type belongs in a local type context.
         /// Set for placeholders and inference variables that are not "Fresh".
-        const KEEP_IN_LOCAL_TCX         = 1 << 12;
+        const KEEP_IN_LOCAL_TCX         = 1 << 13;
 
         /// Is an error type reachable?
-        const HAS_TY_ERR                = 1 << 13;
+        const HAS_TY_ERR                = 1 << 14;
 
         /// Does this have any region that "appears free" in the type?
         /// Basically anything but [ReLateBound] and [ReErased].
-        const HAS_FREE_REGIONS          = 1 << 14;
+        const HAS_FREE_REGIONS          = 1 << 15;
 
         /// Does this have any [ReLateBound] regions? Used to check
         /// if a global bound is safe to evaluate.
-        const HAS_RE_LATE_BOUND         = 1 << 15;
+        const HAS_RE_LATE_BOUND         = 1 << 16;
 
         /// Does this have any [ReErased] regions?
-        const HAS_RE_ERASED             = 1 << 16;
+        const HAS_RE_ERASED             = 1 << 17;
 
         /// Flags representing the nominal content of a type,
         /// computed by FlagsComputation. If you add a new nominal
@@ -608,6 +610,7 @@ bitflags! {
                                         | TypeFlags::HAS_TY_PLACEHOLDER.bits
                                         | TypeFlags::HAS_RE_PLACEHOLDER.bits
                                         | TypeFlags::HAS_CT_PLACEHOLDER.bits
+                                        | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits
                                         | TypeFlags::HAS_TY_PROJECTION.bits
                                         | TypeFlags::HAS_TY_OPAQUE.bits
                                         | TypeFlags::HAS_CT_PROJECTION.bits
@@ -2872,7 +2875,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         } else {
             match self.def_kind(def_id).expect("no def for `DefId`") {
-                DefKind::AssocConst | DefKind::Method | DefKind::AssocTy => true,
+                DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => true,
                 _ => false,
             }
         };
@@ -3051,7 +3054,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// `DefId` of the impl that the method belongs to; otherwise, returns `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
         let item = if def_id.krate != LOCAL_CRATE {
-            if let Some(DefKind::Method) = self.def_kind(def_id) {
+            if let Some(DefKind::AssocFn) = self.def_kind(def_id) {
                 Some(self.associated_item(def_id))
             } else {
                 None
@@ -3083,7 +3086,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn hygienic_eq(self, use_name: Ident, def_name: Ident, def_parent_def_id: DefId) -> bool {
         // We could use `Ident::eq` here, but we deliberately don't. The name
         // comparison fails frequently, and we want to avoid the expensive
-        // `modern()` calls required for the span comparison whenever possible.
+        // `normalize_to_macros_2_0()` calls required for the span comparison whenever possible.
         use_name.name == def_name.name
             && use_name
                 .span
@@ -3099,7 +3102,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId) -> Ident {
-        ident.span.modernize_and_adjust(self.expansion_that_defined(scope));
+        ident.span.normalize_to_macros_2_0_and_adjust(self.expansion_that_defined(scope));
         ident
     }
 
@@ -3109,12 +3112,14 @@ impl<'tcx> TyCtxt<'tcx> {
         scope: DefId,
         block: hir::HirId,
     ) -> (Ident, DefId) {
-        let scope = match ident.span.modernize_and_adjust(self.expansion_that_defined(scope)) {
-            Some(actual_expansion) => {
-                self.hir().definitions().parent_module_of_macro_def(actual_expansion)
-            }
-            None => self.parent_module(block),
-        };
+        let scope =
+            match ident.span.normalize_to_macros_2_0_and_adjust(self.expansion_that_defined(scope))
+            {
+                Some(actual_expansion) => {
+                    self.hir().definitions().parent_module_of_macro_def(actual_expansion)
+                }
+                None => self.parent_module(block),
+            };
         (ident, scope)
     }
 
@@ -3142,8 +3147,11 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     context::provide(providers);
     erase_regions::provide(providers);
     layout::provide(providers);
-    *providers =
-        ty::query::Providers { trait_impls_of: trait_def::trait_impls_of_provider, ..*providers };
+    *providers = ty::query::Providers {
+        trait_impls_of: trait_def::trait_impls_of_provider,
+        all_local_trait_impls: trait_def::all_local_trait_impls,
+        ..*providers
+    };
 }
 
 /// A map for the local crate mapping each type to a vector of its

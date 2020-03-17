@@ -283,7 +283,7 @@ fn is_nightly() -> bool {
     bootstrap || !disable_unstable_features
 }
 
-// Gets the CLI options assotiated with `report-time` feature.
+// Gets the CLI options associated with `report-time` feature.
 fn get_time_options(
     matches: &getopts::Matches,
     allow_unstable: bool,

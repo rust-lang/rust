@@ -651,7 +651,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 if gen_move.is_some() { " of generator" } else { " of closure" },
             ),
             hir::Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::Method(method_sig, _),
+                kind: hir::ImplItemKind::Fn(method_sig, _),
                 ..
             }) => (method_sig.decl.output.span(), ""),
             _ => (self.body.span, ""),

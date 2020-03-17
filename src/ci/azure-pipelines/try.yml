@@ -20,7 +20,7 @@ jobs:
 
 # The macOS and Windows builds here are currently disabled due to them not being
 # overly necessary on `try` builds. We also don't actually have anything that
-# consumes the artifacts currently. Perhaps one day we can reenable, but for now
+# consumes the artifacts currently. Perhaps one day we can re-enable, but for now
 # it helps free up capacity on Azure.
 # - job: macOS
 #   timeoutInMinutes: 600

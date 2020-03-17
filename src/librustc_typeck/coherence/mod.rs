@@ -9,8 +9,8 @@ use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_infer::traits;
 use rustc_span::Span;
+use rustc_trait_selection::traits;
 
 mod builtin;
 mod inherent_impls;
@@ -74,6 +74,22 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt<'_>, impl_def_id: DefId, tra
     if tcx.features().unboxed_closures {
         // the feature gate allows all Fn traits
         return;
+    }
+
+    if let ty::trait_def::TraitSpecializationKind::AlwaysApplicable =
+        tcx.trait_def(trait_def_id).specialization_kind
+    {
+        if !tcx.features().specialization && !tcx.features().min_specialization {
+            let span = impl_header_span(tcx, impl_def_id);
+            tcx.sess
+                .struct_span_err(
+                    span,
+                    "implementing `rustc_specialization_trait` traits is unstable",
+                )
+                .help("add `#![feature(min_specialization)]` to the crate attributes to enable")
+                .emit();
+            return;
+        }
     }
 
     let trait_name = if did == li.fn_trait() {

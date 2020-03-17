@@ -29,7 +29,7 @@ fn main() {
 // START rustc.main.ConstProp.after.mir
 //  bb0: {
 //      ...
-//      _3 = const Scalar(<ZST>) : ();
+//      _3 = const ();
 //      _2 = (move _3, const 0u8, const 0u8);
 //      ...
 //      _1 = const encode(move _2) -> bb1;

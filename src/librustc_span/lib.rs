@@ -83,8 +83,6 @@ scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 )]
 pub enum FileName {
     Real(PathBuf),
-    /// A macro. This includes the full name of the macro, so that there are no clashes.
-    Macros(String),
     /// Call to `quote!`.
     QuoteExpansion(u64),
     /// Command line.
@@ -107,7 +105,6 @@ impl std::fmt::Display for FileName {
         use FileName::*;
         match *self {
             Real(ref path) => write!(fmt, "{}", path.display()),
-            Macros(ref name) => write!(fmt, "<{} macros>", name),
             QuoteExpansion(_) => write!(fmt, "<quote expansion>"),
             MacroExpansion(_) => write!(fmt, "<macro expansion>"),
             Anon(_) => write!(fmt, "<anon>"),
@@ -132,8 +129,7 @@ impl FileName {
         use FileName::*;
         match *self {
             Real(_) => true,
-            Macros(_)
-            | Anon(_)
+            Anon(_)
             | MacroExpansion(_)
             | ProcMacroSourceCode(_)
             | CfgSpec(_)
@@ -141,22 +137,6 @@ impl FileName {
             | Custom(_)
             | QuoteExpansion(_)
             | DocTest(_, _) => false,
-        }
-    }
-
-    pub fn is_macros(&self) -> bool {
-        use FileName::*;
-        match *self {
-            Real(_)
-            | Anon(_)
-            | MacroExpansion(_)
-            | ProcMacroSourceCode(_)
-            | CfgSpec(_)
-            | CliCrateAttr(_)
-            | Custom(_)
-            | QuoteExpansion(_)
-            | DocTest(_, _) => false,
-            Macros(_) => true,
         }
     }
 
@@ -568,9 +548,9 @@ impl Span {
     }
 
     #[inline]
-    pub fn modernize_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
+    pub fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         let mut span = self.data();
-        let mark = span.ctxt.modernize_and_adjust(expn_id);
+        let mark = span.ctxt.normalize_to_macros_2_0_and_adjust(expn_id);
         *self = Span::new(span.lo, span.hi, span.ctxt);
         mark
     }
@@ -596,15 +576,15 @@ impl Span {
     }
 
     #[inline]
-    pub fn modern(self) -> Span {
+    pub fn normalize_to_macros_2_0(self) -> Span {
         let span = self.data();
-        span.with_ctxt(span.ctxt.modern())
+        span.with_ctxt(span.ctxt.normalize_to_macros_2_0())
     }
 
     #[inline]
-    pub fn modern_and_legacy(self) -> Span {
+    pub fn normalize_to_macro_rules(self) -> Span {
         let span = self.data();
-        span.with_ctxt(span.ctxt.modern_and_legacy())
+        span.with_ctxt(span.ctxt.normalize_to_macro_rules())
     }
 }
 
@@ -1167,11 +1147,7 @@ impl SourceFile {
         }
 
         let begin = {
-            let line = if let Some(line) = self.lines.get(line_number) {
-                line
-            } else {
-                return None;
-            };
+            let line = self.lines.get(line_number)?;
             let begin: BytePos = *line - self.start_pos;
             begin.to_usize()
         };

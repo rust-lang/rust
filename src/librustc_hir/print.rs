@@ -102,7 +102,7 @@ impl<'a> State<'a> {
             Node::Ctor(..) => panic!("cannot print isolated Ctor"),
             Node::Local(a) => self.print_local_decl(&a),
             Node::MacroDef(_) => panic!("cannot print MacroDef"),
-            Node::Crate => panic!("cannot print Crate"),
+            Node::Crate(..) => panic!("cannot print Crate"),
         }
     }
 }
@@ -151,7 +151,7 @@ pub fn print_crate<'a>(
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
 
-    s.print_mod(&krate.module, &krate.attrs);
+    s.print_mod(&krate.item.module, &krate.item.attrs);
     s.print_remaining_comments();
     s.s.eof()
 }
@@ -652,7 +652,7 @@ impl<'a> State<'a> {
                     self.word_nbsp("const");
                 }
 
-                if let hir::ImplPolarity::Negative = polarity {
+                if let hir::ImplPolarity::Negative(_) = polarity {
                     self.s.word("!");
                 }
 
@@ -886,13 +886,13 @@ impl<'a> State<'a> {
                     Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Inherited };
                 self.print_associated_const(ti.ident, &ty, default, &vis);
             }
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref arg_names)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(ref arg_names)) => {
                 let vis =
                     Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Inherited };
                 self.print_method_sig(ti.ident, sig, &ti.generics, &vis, arg_names, None);
                 self.s.word(";");
             }
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let vis =
                     Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Inherited };
                 self.head("");
@@ -925,7 +925,7 @@ impl<'a> State<'a> {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 self.print_associated_const(ii.ident, &ty, Some(expr), &ii.vis);
             }
-            hir::ImplItemKind::Method(ref sig, body) => {
+            hir::ImplItemKind::Fn(ref sig, body) => {
                 self.head("");
                 self.print_method_sig(ii.ident, sig, &ii.generics, &ii.vis, &[], Some(body));
                 self.nbsp();

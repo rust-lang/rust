@@ -141,6 +141,7 @@ impl Clean<ExternalCrate> for CrateNum {
             cx.tcx
                 .hir()
                 .krate()
+                .item
                 .module
                 .item_ids
                 .iter()
@@ -194,6 +195,7 @@ impl Clean<ExternalCrate> for CrateNum {
             cx.tcx
                 .hir()
                 .krate()
+                .item
                 .module
                 .item_ids
                 .iter()
@@ -1013,7 +1015,6 @@ impl Clean<FnRetTy> for hir::FnRetTy<'_> {
 impl Clean<Item> for doctree::Trait<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let attrs = self.attrs.clean(cx);
-        let is_spotlight = attrs.has_doc_flag(sym::spotlight);
         Item {
             name: Some(self.name.clean(cx)),
             attrs,
@@ -1028,7 +1029,6 @@ impl Clean<Item> for doctree::Trait<'_> {
                 items: self.items.iter().map(|ti| ti.clean(cx)).collect(),
                 generics: self.generics.clean(cx),
                 bounds: self.bounds.clean(cx),
-                is_spotlight,
                 is_auto: self.is_auto.clean(cx),
             }),
         }
@@ -1084,10 +1084,10 @@ impl Clean<Item> for hir::TraitItem<'_> {
             hir::TraitItemKind::Const(ref ty, default) => {
                 AssocConstItem(ty.clean(cx), default.map(|e| print_const_expr(cx, e)))
             }
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 MethodItem((sig, &self.generics, body, None).clean(cx))
             }
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref names)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(ref names)) => {
                 let (generics, decl) = enter_impl_trait(cx, || {
                     (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                 });
@@ -1118,7 +1118,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 AssocConstItem(ty.clean(cx), Some(print_const_expr(cx, expr)))
             }
-            hir::ImplItemKind::Method(ref sig, body) => {
+            hir::ImplItemKind::Fn(ref sig, body) => {
                 MethodItem((sig, &self.generics, body, Some(self.defaultness)).clean(cx))
             }
             hir::ImplItemKind::TyAlias(ref ty) => {

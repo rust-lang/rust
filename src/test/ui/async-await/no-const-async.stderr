@@ -1,8 +1,8 @@
 error: functions cannot be both `const` and `async`
-  --> $DIR/no-const-async.rs:4:1
+  --> $DIR/no-const-async.rs:4:5
    |
 LL | pub const async fn x() {}
-   | ^^^^-----^-----^^^^^^^^^^
+   | ----^^^^^-^^^^^----------
    |     |     |
    |     |     `async` because of this
    |     `const` because of this

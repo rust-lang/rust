@@ -841,10 +841,10 @@ impl<T> LinkedList<T> {
     /// d.push_front(2);
     /// d.push_front(3);
     ///
-    /// let mut splitted = d.split_off(2);
+    /// let mut split = d.split_off(2);
     ///
-    /// assert_eq!(splitted.pop_front(), Some(1));
-    /// assert_eq!(splitted.pop_front(), None);
+    /// assert_eq!(split.pop_front(), Some(1));
+    /// assert_eq!(split.pop_front(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split_off(&mut self, at: usize) -> LinkedList<T> {
@@ -1427,7 +1427,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// `CursorMut`, which means it cannot outlive the `CursorMut` and that the
     /// `CursorMut` is frozen for the lifetime of the `Cursor`.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn as_cursor<'cm>(&'cm self) -> Cursor<'cm, T> {
+    pub fn as_cursor(&self) -> Cursor<'_, T> {
         Cursor { list: self.list, current: self.current, index: self.index }
     }
 }

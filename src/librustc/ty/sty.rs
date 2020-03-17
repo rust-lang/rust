@@ -1396,11 +1396,11 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// the inference variable is supposed to satisfy the relation
 /// *for every value of the placeholder region*. To ensure that doesn't
 /// happen, you can use `leak_check`. This is more clearly explained
-/// by the [rustc guide].
+/// by the [rustc dev guide].
 ///
 /// [1]: http://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2]: http://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
-/// [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/hrtb.html
+/// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
 #[derive(Clone, PartialEq, Eq, Hash, Copy, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
 pub enum RegionKind {
     /// Region bound in a type or fn declaration which will be
@@ -1743,41 +1743,41 @@ impl RegionKind {
         }
     }
 
-    pub fn keep_in_local_tcx(&self) -> bool {
-        if let ty::ReVar(..) = self { true } else { false }
-    }
-
     pub fn type_flags(&self) -> TypeFlags {
         let mut flags = TypeFlags::empty();
-
-        if self.keep_in_local_tcx() {
-            flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
-        }
 
         match *self {
             ty::ReVar(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_INFER;
+                flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
             }
             ty::RePlaceholder(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_PLACEHOLDER;
+            }
+            ty::ReEarlyBound(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
+                flags = flags | TypeFlags::HAS_RE_PARAM;
+            }
+            ty::ReFree { .. } | ty::ReScope { .. } => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
+            }
+            ty::ReEmpty(_) | ty::ReStatic => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+            }
+            ty::ReClosureBound(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
             ty::ReLateBound(..) => {
                 flags = flags | TypeFlags::HAS_RE_LATE_BOUND;
             }
-            ty::ReEarlyBound(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_PARAM;
-            }
-            ty::ReEmpty(_) | ty::ReStatic | ty::ReFree { .. } | ty::ReScope { .. } => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-            }
             ty::ReErased => {
                 flags = flags | TypeFlags::HAS_RE_ERASED;
-            }
-            ty::ReClosureBound(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
         }
 

@@ -212,7 +212,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -391,7 +391,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     let trait_item = self.krate.trait_item(trait_item_ref.id);
                     match trait_item.kind {
                         hir::TraitItemKind::Const(_, Some(_))
-                        | hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => {
+                        | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => {
                             if has_allow_dead_code_or_lang_attr(
                                 self.tcx,
                                 trait_item.hir_id,
@@ -568,8 +568,8 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     /// on inner functions when the outer function is already getting
     /// an error. We could do this also by checking the parents, but
     /// this is how the code is setup and it seems harmless enough.
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::All(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::All(self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
@@ -661,7 +661,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 }
                 self.visit_nested_body(body_id)
             }
-            hir::ImplItemKind::Method(_, body_id) => {
+            hir::ImplItemKind::Fn(_, body_id) => {
                 if !self.symbol_is_live(impl_item.hir_id) {
                     let span = self.tcx.sess.source_map().def_span(impl_item.span);
                     self.warn_dead_code(
@@ -682,11 +682,11 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         match trait_item.kind {
             hir::TraitItemKind::Const(_, Some(body_id))
-            | hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(body_id)) => {
+            | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)) => {
                 self.visit_nested_body(body_id)
             }
             hir::TraitItemKind::Const(_, None)
-            | hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_))
+            | hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
             | hir::TraitItemKind::Type(..) => {}
         }
     }

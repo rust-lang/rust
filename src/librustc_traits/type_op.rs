@@ -8,14 +8,18 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::query::type_op::ascribe_user_type::AscribeUserType;
-use rustc_infer::traits::query::type_op::eq::Eq;
-use rustc_infer::traits::query::type_op::normalize::Normalize;
-use rustc_infer::traits::query::type_op::prove_predicate::ProvePredicate;
-use rustc_infer::traits::query::type_op::subtype::Subtype;
-use rustc_infer::traits::query::{Fallible, NoSolution};
-use rustc_infer::traits::{Normalized, Obligation, ObligationCause, TraitEngine, TraitEngineExt};
+use rustc_infer::traits::TraitEngineExt as _;
 use rustc_span::DUMMY_SP;
+use rustc_trait_selection::infer::InferCtxtBuilderExt;
+use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::query::normalize::AtExt;
+use rustc_trait_selection::traits::query::type_op::ascribe_user_type::AscribeUserType;
+use rustc_trait_selection::traits::query::type_op::eq::Eq;
+use rustc_trait_selection::traits::query::type_op::normalize::Normalize;
+use rustc_trait_selection::traits::query::type_op::prove_predicate::ProvePredicate;
+use rustc_trait_selection::traits::query::type_op::subtype::Subtype;
+use rustc_trait_selection::traits::query::{Fallible, NoSolution};
+use rustc_trait_selection::traits::{Normalized, Obligation, ObligationCause, TraitEngine};
 use std::fmt;
 
 crate fn provide(p: &mut Providers<'_>) {

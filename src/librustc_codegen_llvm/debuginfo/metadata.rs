@@ -5,7 +5,7 @@ use self::RecursiveTypeDescription::*;
 use super::namespace::mangled_name_of_instance;
 use super::type_names::compute_debuginfo_type_name;
 use super::utils::{
-    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, span_start, DIB,
+    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, DIB,
 };
 use super::CrateDebugContext;
 
@@ -37,7 +37,6 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::CtorKind;
@@ -49,7 +48,6 @@ use rustc_target::abi::HasDataLayout;
 
 use libc::{c_longlong, c_uint};
 use std::collections::hash_map::Entry;
-use std::ffi::CString;
 use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::iter;
@@ -227,11 +225,11 @@ impl TypeMap<'ll, 'tcx> {
     /// Gets the unique type ID string for an enum variant part.
     /// Variant parts are not types and shouldn't really have their own ID,
     /// but it makes `set_members_of_composite_type()` simpler.
-    fn get_unique_type_id_str_of_enum_variant_part(&mut self, enum_type_id: UniqueTypeId) -> &str {
-        let variant_part_type_id =
-            format!("{}_variant_part", self.get_unique_type_id_as_string(enum_type_id));
-        let interner_key = self.unique_id_interner.intern(&variant_part_type_id);
-        self.unique_id_interner.get(interner_key)
+    fn get_unique_type_id_str_of_enum_variant_part(
+        &mut self,
+        enum_type_id: UniqueTypeId,
+    ) -> String {
+        format!("{}_variant_part", self.get_unique_type_id_as_string(enum_type_id))
     }
 }
 
@@ -637,12 +635,14 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
                 unsafe {
                     // The choice of type here is pretty arbitrary -
                     // anything reading the debuginfo for a recursive
-                    // type is going to see *somthing* weird - the only
+                    // type is going to see *something* weird - the only
                     // question is what exactly it will see.
                     let (size, align) = cx.size_and_align_of(t);
+                    let name = "<recur_type>";
                     llvm::LLVMRustDIBuilderCreateBasicType(
                         DIB(cx),
-                        SmallCStr::new("<recur_type>").as_ptr(),
+                        name.as_ptr().cast(),
+                        name.len(),
                         size.bits(),
                         align.bits() as u32,
                         DW_ATE_unsigned,
@@ -786,16 +786,17 @@ fn file_metadata_raw(
             let (file_name, directory) = v.key();
             debug!("file_metadata: file_name: {:?}, directory: {:?}", file_name, directory);
 
-            let file_name = SmallCStr::new(if let Some(file_name) = file_name {
-                &file_name
-            } else {
-                "<unknown>"
-            });
-            let directory =
-                SmallCStr::new(if let Some(directory) = directory { &directory } else { "" });
+            let file_name = file_name.as_deref().unwrap_or("<unknown>");
+            let directory = directory.as_deref().unwrap_or("");
 
             let file_metadata = unsafe {
-                llvm::LLVMRustDIBuilderCreateFile(DIB(cx), file_name.as_ptr(), directory.as_ptr())
+                llvm::LLVMRustDIBuilderCreateFile(
+                    DIB(cx),
+                    file_name.as_ptr().cast(),
+                    file_name.len(),
+                    directory.as_ptr().cast(),
+                    directory.len(),
+                )
             };
 
             v.insert(file_metadata);
@@ -819,11 +820,11 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
     };
 
     let (size, align) = cx.size_and_align_of(t);
-    let name = SmallCStr::new(name);
     let ty_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateBasicType(
             DIB(cx),
-            name.as_ptr(),
+            name.as_ptr().cast(),
+            name.len(),
             size.bits(),
             align.bits() as u32,
             encoding,
@@ -851,14 +852,15 @@ fn pointer_type_metadata(
 ) -> &'ll DIType {
     let (pointer_size, pointer_align) = cx.size_and_align_of(pointer_type);
     let name = compute_debuginfo_type_name(cx.tcx, pointer_type, false);
-    let name = SmallCStr::new(&name);
     unsafe {
         llvm::LLVMRustDIBuilderCreatePointerType(
             DIB(cx),
             pointee_type_metadata,
             pointer_size.bits(),
             pointer_align.bits() as u32,
-            name.as_ptr(),
+            0, // Ignore DWARF address space.
+            name.as_ptr().cast(),
+            name.len(),
         )
     }
 }
@@ -889,11 +891,9 @@ pub fn compile_unit_metadata(
     let producer = format!("clang LLVM ({})", rustc_producer);
 
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
-    let name_in_debuginfo = SmallCStr::new(&name_in_debuginfo);
-    let work_dir = SmallCStr::new(&tcx.sess.working_dir.0.to_string_lossy());
-    let producer = CString::new(producer).unwrap();
+    let work_dir = tcx.sess.working_dir.0.to_string_lossy();
     let flags = "\0";
-    let split_name = "\0";
+    let split_name = "";
 
     // FIXME(#60020):
     //
@@ -916,19 +916,23 @@ pub fn compile_unit_metadata(
     unsafe {
         let file_metadata = llvm::LLVMRustDIBuilderCreateFile(
             debug_context.builder,
-            name_in_debuginfo.as_ptr(),
-            work_dir.as_ptr(),
+            name_in_debuginfo.as_ptr().cast(),
+            name_in_debuginfo.len(),
+            work_dir.as_ptr().cast(),
+            work_dir.len(),
         );
 
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder,
             DW_LANG_RUST,
             file_metadata,
-            producer.as_ptr(),
+            producer.as_ptr().cast(),
+            producer.len(),
             tcx.sess.opts.optimize != config::OptLevel::No,
             flags.as_ptr().cast(),
             0,
             split_name.as_ptr().cast(),
+            split_name.len(),
             kind,
         );
 
@@ -1021,12 +1025,12 @@ impl<'ll> MemberDescription<'ll> {
         cx: &CodegenCx<'ll, '_>,
         composite_type_metadata: &'ll DIScope,
     ) -> &'ll DIType {
-        let member_name = CString::new(self.name).unwrap();
         unsafe {
             llvm::LLVMRustDIBuilderCreateVariantMemberType(
                 DIB(cx),
                 composite_type_metadata,
-                member_name.as_ptr(),
+                self.name.as_ptr().cast(),
+                self.name.len(),
                 unknown_file_metadata(cx),
                 UNKNOWN_LINE_NUMBER,
                 self.size.bits(),
@@ -1779,13 +1783,20 @@ fn prepare_enum_metadata(
                 .discriminants(cx.tcx)
                 .zip(&def.variants)
                 .map(|((_, discr), v)| {
-                    let name = SmallCStr::new(&v.ident.as_str());
+                    let name = v.ident.as_str();
+                    let is_unsigned = match discr.ty.kind {
+                        ty::Int(_) => false,
+                        ty::Uint(_) => true,
+                        _ => bug!("non integer discriminant"),
+                    };
                     unsafe {
                         Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                             DIB(cx),
-                            name.as_ptr(),
+                            name.as_ptr().cast(),
+                            name.len(),
                             // FIXME: what if enumeration has i128 discriminant?
-                            discr.val as u64,
+                            discr.val as i64,
+                            is_unsigned,
                         ))
                     }
                 })
@@ -1794,13 +1805,15 @@ fn prepare_enum_metadata(
                 .as_generator()
                 .variant_range(enum_def_id, cx.tcx)
                 .map(|variant_index| {
-                    let name = SmallCStr::new(&substs.as_generator().variant_name(variant_index));
+                    let name = substs.as_generator().variant_name(variant_index);
                     unsafe {
                         Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                             DIB(cx),
-                            name.as_ptr(),
-                            // FIXME: what if enumeration has i128 discriminant?
-                            variant_index.as_usize() as u64,
+                            name.as_ptr().cast(),
+                            name.len(),
+                            // Generators use u32 as discriminant type.
+                            variant_index.as_u32().into(),
+                            true, // IsUnsigned
                         ))
                     }
                 })
@@ -1818,9 +1831,13 @@ fn prepare_enum_metadata(
                 let discriminant_base_type_metadata =
                     type_metadata(cx, discr.to_ty(cx.tcx), rustc_span::DUMMY_SP);
 
+                let item_name;
                 let discriminant_name = match enum_type.kind {
-                    ty::Adt(..) => SmallCStr::new(&cx.tcx.item_name(enum_def_id).as_str()),
-                    ty::Generator(..) => SmallCStr::new(&enum_name),
+                    ty::Adt(..) => {
+                        item_name = cx.tcx.item_name(enum_def_id).as_str();
+                        &*item_name
+                    }
+                    ty::Generator(..) => enum_name.as_str(),
                     _ => bug!(),
                 };
 
@@ -1828,7 +1845,8 @@ fn prepare_enum_metadata(
                     llvm::LLVMRustDIBuilderCreateEnumerationType(
                         DIB(cx),
                         containing_scope,
-                        discriminant_name.as_ptr(),
+                        discriminant_name.as_ptr().cast(),
+                        discriminant_name.len(),
                         file_metadata,
                         UNKNOWN_LINE_NUMBER,
                         discriminant_size.bits(),
@@ -1863,11 +1881,6 @@ fn prepare_enum_metadata(
         _ => {}
     }
 
-    let enum_name = SmallCStr::new(&enum_name);
-    let unique_type_id_str = SmallCStr::new(
-        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id),
-    );
-
     if use_enum_fallback(cx) {
         let discriminant_type_metadata = match layout.variants {
             layout::Variants::Single { .. }
@@ -1882,20 +1895,27 @@ fn prepare_enum_metadata(
             } => Some(discriminant_type_metadata(discr.value)),
         };
 
-        let enum_metadata = unsafe {
-            llvm::LLVMRustDIBuilderCreateUnionType(
-                DIB(cx),
-                containing_scope,
-                enum_name.as_ptr(),
-                file_metadata,
-                UNKNOWN_LINE_NUMBER,
-                layout.size.bits(),
-                layout.align.abi.bits() as u32,
-                DIFlags::FlagZero,
-                None,
-                0, // RuntimeLang
-                unique_type_id_str.as_ptr(),
-            )
+        let enum_metadata = {
+            let type_map = debug_context(cx).type_map.borrow();
+            let unique_type_id_str = type_map.get_unique_type_id_as_string(unique_type_id);
+
+            unsafe {
+                llvm::LLVMRustDIBuilderCreateUnionType(
+                    DIB(cx),
+                    containing_scope,
+                    enum_name.as_ptr().cast(),
+                    enum_name.len(),
+                    file_metadata,
+                    UNKNOWN_LINE_NUMBER,
+                    layout.size.bits(),
+                    layout.align.abi.bits() as u32,
+                    DIFlags::FlagZero,
+                    None,
+                    0, // RuntimeLang
+                    unique_type_id_str.as_ptr().cast(),
+                    unique_type_id_str.len(),
+                )
+            }
         };
 
         return create_and_register_recursive_type_forward_declaration(
@@ -1915,10 +1935,9 @@ fn prepare_enum_metadata(
     }
 
     let discriminator_name = match &enum_type.kind {
-        ty::Generator(..) => Some(SmallCStr::new(&"__state")),
-        _ => None,
+        ty::Generator(..) => "__state",
+        _ => "",
     };
-    let discriminator_name = discriminator_name.map(|n| n.as_ptr()).unwrap_or(ptr::null_mut());
     let discriminator_metadata = match layout.variants {
         // A single-variant enum has no discriminant.
         layout::Variants::Single { .. } => None,
@@ -1946,7 +1965,8 @@ fn prepare_enum_metadata(
                 Some(llvm::LLVMRustDIBuilderCreateMemberType(
                     DIB(cx),
                     containing_scope,
-                    discriminator_name,
+                    discriminator_name.as_ptr().cast(),
+                    discriminator_name.len(),
                     file_metadata,
                     UNKNOWN_LINE_NUMBER,
                     size.bits(),
@@ -1972,7 +1992,8 @@ fn prepare_enum_metadata(
                 Some(llvm::LLVMRustDIBuilderCreateMemberType(
                     DIB(cx),
                     containing_scope,
-                    discriminator_name,
+                    discriminator_name.as_ptr().cast(),
+                    discriminator_name.len(),
                     file_metadata,
                     UNKNOWN_LINE_NUMBER,
                     size.bits(),
@@ -2001,18 +2022,18 @@ fn prepare_enum_metadata(
         }
     };
 
-    let variant_part_unique_type_id_str = SmallCStr::new(
-        debug_context(cx)
-            .type_map
-            .borrow_mut()
-            .get_unique_type_id_str_of_enum_variant_part(unique_type_id),
-    );
+    let variant_part_unique_type_id_str = debug_context(cx)
+        .type_map
+        .borrow_mut()
+        .get_unique_type_id_str_of_enum_variant_part(unique_type_id);
     let empty_array = create_DIArray(DIB(cx), &[]);
+    let name = "";
     let variant_part = unsafe {
         llvm::LLVMRustDIBuilderCreateVariantPart(
             DIB(cx),
             containing_scope,
-            ptr::null_mut(),
+            name.as_ptr().cast(),
+            name.len(),
             file_metadata,
             UNKNOWN_LINE_NUMBER,
             layout.size.bits(),
@@ -2020,29 +2041,38 @@ fn prepare_enum_metadata(
             DIFlags::FlagZero,
             discriminator_metadata,
             empty_array,
-            variant_part_unique_type_id_str.as_ptr(),
+            variant_part_unique_type_id_str.as_ptr().cast(),
+            variant_part_unique_type_id_str.len(),
         )
     };
     outer_fields.push(Some(variant_part));
 
-    // The variant part must be wrapped in a struct according to DWARF.
-    let type_array = create_DIArray(DIB(cx), &outer_fields);
-    let struct_wrapper = unsafe {
-        llvm::LLVMRustDIBuilderCreateStructType(
-            DIB(cx),
-            Some(containing_scope),
-            enum_name.as_ptr(),
-            file_metadata,
-            UNKNOWN_LINE_NUMBER,
-            layout.size.bits(),
-            layout.align.abi.bits() as u32,
-            DIFlags::FlagZero,
-            None,
-            type_array,
-            0,
-            None,
-            unique_type_id_str.as_ptr(),
-        )
+    let struct_wrapper = {
+        // The variant part must be wrapped in a struct according to DWARF.
+        let type_array = create_DIArray(DIB(cx), &outer_fields);
+
+        let type_map = debug_context(cx).type_map.borrow();
+        let unique_type_id_str = type_map.get_unique_type_id_as_string(unique_type_id);
+
+        unsafe {
+            llvm::LLVMRustDIBuilderCreateStructType(
+                DIB(cx),
+                Some(containing_scope),
+                enum_name.as_ptr().cast(),
+                enum_name.len(),
+                file_metadata,
+                UNKNOWN_LINE_NUMBER,
+                layout.size.bits(),
+                layout.align.abi.bits() as u32,
+                DIFlags::FlagZero,
+                None,
+                type_array,
+                0,
+                None,
+                unique_type_id_str.as_ptr().cast(),
+                unique_type_id_str.len(),
+            )
+        }
     };
 
     return create_and_register_recursive_type_forward_declaration(
@@ -2147,12 +2177,13 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'
                             cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                         let actual_type_metadata =
                             type_metadata(cx, actual_type, rustc_span::DUMMY_SP);
-                        let name = SmallCStr::new(&name.as_str());
+                        let name = &name.as_str();
                         Some(unsafe {
                             Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                                 DIB(cx),
                                 None,
-                                name.as_ptr(),
+                                name.as_ptr().cast(),
+                                name.len(),
                                 actual_type_metadata,
                                 unknown_file_metadata(cx),
                                 0,
@@ -2191,10 +2222,9 @@ fn create_struct_stub(
 ) -> &'ll DICompositeType {
     let (struct_size, struct_align) = cx.size_and_align_of(struct_type);
 
-    let name = SmallCStr::new(struct_type_name);
-    let unique_type_id = SmallCStr::new(
-        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id),
-    );
+    let type_map = debug_context(cx).type_map.borrow();
+    let unique_type_id = type_map.get_unique_type_id_as_string(unique_type_id);
+
     let metadata_stub = unsafe {
         // `LLVMRustDIBuilderCreateStructType()` wants an empty array. A null
         // pointer will lead to hard to trace and debug LLVM assertions
@@ -2204,7 +2234,8 @@ fn create_struct_stub(
         llvm::LLVMRustDIBuilderCreateStructType(
             DIB(cx),
             containing_scope,
-            name.as_ptr(),
+            struct_type_name.as_ptr().cast(),
+            struct_type_name.len(),
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             struct_size.bits(),
@@ -2214,7 +2245,8 @@ fn create_struct_stub(
             empty_array,
             0,
             None,
-            unique_type_id.as_ptr(),
+            unique_type_id.as_ptr().cast(),
+            unique_type_id.len(),
         )
     };
 
@@ -2230,10 +2262,9 @@ fn create_union_stub(
 ) -> &'ll DICompositeType {
     let (union_size, union_align) = cx.size_and_align_of(union_type);
 
-    let name = SmallCStr::new(union_type_name);
-    let unique_type_id = SmallCStr::new(
-        debug_context(cx).type_map.borrow().get_unique_type_id_as_string(unique_type_id),
-    );
+    let type_map = debug_context(cx).type_map.borrow();
+    let unique_type_id = type_map.get_unique_type_id_as_string(unique_type_id);
+
     let metadata_stub = unsafe {
         // `LLVMRustDIBuilderCreateUnionType()` wants an empty array. A null
         // pointer will lead to hard to trace and debug LLVM assertions
@@ -2243,7 +2274,8 @@ fn create_union_stub(
         llvm::LLVMRustDIBuilderCreateUnionType(
             DIB(cx),
             containing_scope,
-            name.as_ptr(),
+            union_type_name.as_ptr().cast(),
+            union_type_name.len(),
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             union_size.bits(),
@@ -2251,7 +2283,8 @@ fn create_union_stub(
             DIFlags::FlagZero,
             Some(empty_array),
             0, // RuntimeLang
-            unique_type_id.as_ptr(),
+            unique_type_id.as_ptr().cast(),
+            unique_type_id.len(),
         )
     };
 
@@ -2269,10 +2302,6 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
     let tcx = cx.tcx;
     let attrs = tcx.codegen_fn_attrs(def_id);
 
-    if attrs.flags.contains(CodegenFnAttrFlags::NO_DEBUG) {
-        return;
-    }
-
     let no_mangle = attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE);
     // We may want to remove the namespace scope if we're in an extern block (see
     // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952).
@@ -2280,22 +2309,24 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
     let span = tcx.def_span(def_id);
 
     let (file_metadata, line_number) = if !span.is_dummy() {
-        let loc = span_start(cx, span);
-        (file_metadata(cx, &loc.file.name, LOCAL_CRATE), loc.line as c_uint)
+        let loc = cx.lookup_debug_loc(span.lo());
+        (file_metadata(cx, &loc.file.name, LOCAL_CRATE), loc.line)
     } else {
-        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+        (unknown_file_metadata(cx), None)
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
     let variable_type = Instance::mono(cx.tcx, def_id).monomorphic_ty(cx.tcx);
     let type_metadata = type_metadata(cx, variable_type, span);
-    let var_name = SmallCStr::new(&tcx.item_name(def_id).as_str());
+    let var_name = tcx.item_name(def_id).as_str();
     let linkage_name = if no_mangle {
         None
     } else {
-        let linkage_name = mangled_name_of_instance(cx, Instance::mono(tcx, def_id));
-        Some(SmallCStr::new(&linkage_name.name.as_str()))
+        Some(mangled_name_of_instance(cx, Instance::mono(tcx, def_id)).name.as_str())
     };
+    // When empty, linkage_name field is omitted,
+    // which is what we want for no_mangle statics
+    let linkage_name = linkage_name.as_deref().unwrap_or("");
 
     let global_align = cx.align_of(variable_type);
 
@@ -2303,12 +2334,12 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
         llvm::LLVMRustDIBuilderCreateStaticVariable(
             DIB(cx),
             Some(var_scope),
-            var_name.as_ptr(),
-            // If null, linkage_name field is omitted,
-            // which is what we want for no_mangle statics
-            linkage_name.as_ref().map_or(ptr::null(), |name| name.as_ptr()),
+            var_name.as_ptr().cast(),
+            var_name.len(),
+            linkage_name.as_ptr().cast(),
+            linkage_name.len(),
             file_metadata,
-            line_number,
+            line_number.unwrap_or(UNKNOWN_LINE_NUMBER),
             type_metadata,
             is_local_to_unit,
             global,
@@ -2334,8 +2365,7 @@ pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &
         // pointer will lead to hard to trace and debug LLVM assertions
         // later on in `llvm/lib/IR/Value.cpp`.
         let empty_array = create_DIArray(DIB(cx), &[]);
-
-        let name = const_cstr!("vtable");
+        let name = "vtable";
 
         // Create a new one each time. We don't want metadata caching
         // here, because each vtable will refer to a unique containing
@@ -2343,7 +2373,8 @@ pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &
         let vtable_type = llvm::LLVMRustDIBuilderCreateStructType(
             DIB(cx),
             NO_SCOPE_METADATA,
-            name.as_ptr(),
+            name.as_ptr().cast(),
+            name.len(),
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             Size::ZERO.bits(),
@@ -2353,14 +2384,18 @@ pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &
             empty_array,
             0,
             Some(type_metadata),
-            name.as_ptr(),
+            name.as_ptr().cast(),
+            name.len(),
         );
 
+        let linkage_name = "";
         llvm::LLVMRustDIBuilderCreateStaticVariable(
             DIB(cx),
             NO_SCOPE_METADATA,
-            name.as_ptr(),
-            ptr::null(),
+            name.as_ptr().cast(),
+            name.len(),
+            linkage_name.as_ptr().cast(),
+            linkage_name.len(),
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             vtable_type,

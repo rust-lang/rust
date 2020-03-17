@@ -292,12 +292,6 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	border-color: transparent black transparent transparent;
 }
 
-.important-traits .tooltip .tooltiptext {
-	background-color: white;
-	color: black;
-	border-color: black;
-}
-
 #titles > div:not(.selected) {
 	background-color: #e6e6e6;
 	border-top-color: #e6e6e6;
@@ -309,33 +303,6 @@ pre.ignore:hover, .information:hover + pre.ignore {
 
 #titles > div > div.count {
 	color: #888;
-}
-
-.modal {
-	background-color: rgba(0,0,0,0.3);
-}
-
-.modal-content {
-	background-color: #eee;
-	border-color: #999;
-}
-
-.modal-content > .close {
-	background-color: #eee;
-	border-color: #999;
-}
-
-.modal-content > .close:hover {
-	background-color: #ff1f1f;
-	color: white;
-}
-
-.modal-content > .whiter {
-	background-color: #eee;
-}
-
-.modal-content > .close:hover + .whiter {
-	background-color: #ff1f1f;
 }
 
 @media (max-width: 700px) {

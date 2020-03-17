@@ -191,6 +191,20 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         return_place: &mir::Place<'tcx>,
     );
 
+    /// Updates the current dataflow state with the effect of resuming from a `Yield` terminator.
+    ///
+    /// This is similar to `apply_call_return_effect` in that it only takes place after the
+    /// generator is resumed, not when it is dropped.
+    ///
+    /// By default, no effects happen.
+    fn apply_yield_resume_effect(
+        &self,
+        _state: &mut BitSet<Self::Idx>,
+        _resume_block: BasicBlock,
+        _resume_place: &mir::Place<'tcx>,
+    ) {
+    }
+
     /// Updates the current dataflow state with the effect of taking a particular branch in a
     /// `SwitchInt` terminator.
     ///
@@ -284,6 +298,15 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
         return_place: &mir::Place<'tcx>,
     );
 
+    /// See `Analysis::apply_yield_resume_effect`.
+    fn yield_resume_effect(
+        &self,
+        _trans: &mut BitSet<Self::Idx>,
+        _resume_block: BasicBlock,
+        _resume_place: &mir::Place<'tcx>,
+    ) {
+    }
+
     /// See `Analysis::apply_discriminant_switch_effect`.
     fn discriminant_switch_effect(
         &self,
@@ -345,6 +368,15 @@ where
         return_place: &mir::Place<'tcx>,
     ) {
         self.call_return_effect(state, block, func, args, return_place);
+    }
+
+    fn apply_yield_resume_effect(
+        &self,
+        state: &mut BitSet<Self::Idx>,
+        resume_block: BasicBlock,
+        resume_place: &mir::Place<'tcx>,
+    ) {
+        self.yield_resume_effect(state, resume_block, resume_place);
     }
 
     fn apply_discriminant_switch_effect(

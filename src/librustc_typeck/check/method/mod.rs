@@ -1,6 +1,6 @@
-//! Method lookup: the secret sauce of Rust. See the [rustc guide] for more information.
+//! Method lookup: the secret sauce of Rust. See the [rustc dev guide] for more information.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/method-lookup.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/method-lookup.html
 
 mod confirm;
 pub mod probe;
@@ -22,8 +22,9 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
-use rustc_infer::traits;
 use rustc_span::Span;
+use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 use self::probe::{IsSuggestion, ProbeScope};
 
@@ -459,12 +460,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ProbeScope::TraitsInScope,
         )?;
         debug!("resolve_ufcs: pick={:?}", pick);
-        for import_id in pick.import_ids {
-            let import_def_id = tcx.hir().local_def_id(import_id);
-            debug!("resolve_ufcs: used_trait_import: {:?}", import_def_id);
-            Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
-                .unwrap()
-                .insert(import_def_id);
+        {
+            let mut tables = self.tables.borrow_mut();
+            let used_trait_imports = Lrc::get_mut(&mut tables.used_trait_imports).unwrap();
+            for import_id in pick.import_ids {
+                let import_def_id = tcx.hir().local_def_id(import_id);
+                debug!("resolve_ufcs: used_trait_import: {:?}", import_def_id);
+                used_trait_imports.insert(import_def_id);
+            }
         }
 
         let def_kind = pick.item.def_kind();

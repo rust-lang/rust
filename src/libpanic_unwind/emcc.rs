@@ -48,15 +48,11 @@ static EXCEPTION_TYPE_INFO: TypeInfo = TypeInfo {
     name: b"rust_panic\0".as_ptr(),
 };
 
-pub fn payload() -> *mut u8 {
-    ptr::null_mut()
-}
-
 struct Exception {
     // This needs to be an Option because the object's lifetime follows C++
     // semantics: when catch_unwind moves the Box out of the exception it must
     // still leave the exception object in a valid state because its destructor
-    // is still going to be called by __cxa_end_catch..
+    // is still going to be called by __cxa_end_catch.
     data: Option<Box<dyn Any + Send>>,
 }
 
@@ -98,7 +94,6 @@ extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> DestructorRet {
 }
 
 #[lang = "eh_personality"]
-#[no_mangle]
 unsafe extern "C" fn rust_eh_personality(
     version: c_int,
     actions: uw::_Unwind_Action,

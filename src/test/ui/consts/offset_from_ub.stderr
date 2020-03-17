@@ -43,7 +43,7 @@ error: any use of this value will cause an error
 LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
-   |           exact_div: 1 cannot be divided by 2 without remainder
+   |           exact_div: 1isize cannot be divided by 2isize without remainder
    |           inside call to `std::ptr::const_ptr::<impl *const u16>::offset_from` at $DIR/offset_from_ub.rs:36:14
    | 
   ::: $DIR/offset_from_ub.rs:31:1

@@ -480,7 +480,11 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this expands it.
     crate fn push(&mut self, row: PatStack<'p, 'tcx>) {
         if let Some(rows) = row.expand_or_pat() {
-            self.0.extend(rows);
+            for row in rows {
+                // We recursively expand the or-patterns of the new rows.
+                // This is necessary as we might have `0 | (1 | 2)` or e.g., `x @ 0 | x @ (1 | 2)`.
+                self.push(row)
+            }
         } else {
             self.0.push(row);
         }
@@ -594,7 +598,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
     fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         if self.tcx.features().exhaustive_patterns {
-            self.tcx.is_ty_uninhabited_from(self.module, ty)
+            self.tcx.is_ty_uninhabited_from(self.module, ty, self.param_env)
         } else {
             false
         }
@@ -837,7 +841,7 @@ impl<'tcx> Constructor<'tcx> {
                             // eliminate it straight away.
                             remaining_ranges = vec![];
                         } else {
-                            // Otherwise explicitely compute the remaining ranges.
+                            // Otherwise explicitly compute the remaining ranges.
                             remaining_ranges = other_range.subtract_from(remaining_ranges);
                         }
 
@@ -1263,7 +1267,7 @@ fn all_constructors<'a, 'tcx>(
                 def.variants
                     .iter()
                     .filter(|v| {
-                        !v.uninhabited_from(cx.tcx, substs, def.adt_kind())
+                        !v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
                             .contains(cx.tcx, cx.module)
                     })
                     .map(|v| Variant(v.def_id))

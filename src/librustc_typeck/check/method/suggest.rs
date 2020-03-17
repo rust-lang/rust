@@ -17,9 +17,10 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::traits::Obligation;
 use rustc_span::symbol::kw;
 use rustc_span::{source_map, FileName, Span};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::Obligation;
 
 use std::cmp::Ordering;
 
@@ -933,15 +934,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if let ty::AssocKind::Method = item.kind {
                                 let id = self.tcx.hir().as_local_hir_id(item.def_id);
                                 if let Some(hir::Node::TraitItem(hir::TraitItem {
-                                    kind: hir::TraitItemKind::Method(fn_sig, method),
+                                    kind: hir::TraitItemKind::Fn(fn_sig, method),
                                     ..
                                 })) = id.map(|id| self.tcx.hir().get(id))
                                 {
                                     let self_first_arg = match method {
-                                        hir::TraitMethod::Required([ident, ..]) => {
+                                        hir::TraitFn::Required([ident, ..]) => {
                                             ident.name == kw::SelfLower
                                         }
-                                        hir::TraitMethod::Provided(body_id) => {
+                                        hir::TraitFn::Provided(body_id) => {
                                             match &self.tcx.hir().body(*body_id).params[..] {
                                                 [hir::Param {
                                                     pat:
@@ -1348,7 +1349,7 @@ impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
 
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
         intravisit::NestedVisitorMap::None
     }
 }

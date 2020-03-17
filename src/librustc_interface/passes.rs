@@ -5,7 +5,7 @@ use crate::util;
 use log::{info, log_enabled, warn};
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
-use rustc::hir::map;
+use rustc::hir::map::Definitions;
 use rustc::lint;
 use rustc::middle;
 use rustc::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
@@ -27,7 +27,6 @@ use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::Crate;
-use rustc_infer::traits;
 use rustc_lint::LintStore;
 use rustc_mir as mir;
 use rustc_mir_build as mir_build;
@@ -37,6 +36,7 @@ use rustc_plugin_impl as plugin;
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
+use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 
 use rustc_serialize::json;
@@ -713,10 +713,7 @@ pub fn create_global_ctxt<'tcx>(
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
-    let defs = mem::take(&mut resolver_outputs.definitions);
-
-    // Construct the HIR map.
-    let hir_map = map::map_crate(sess, &*resolver_outputs.cstore, krate, dep_graph, defs);
+    let defs: &'tcx Definitions = arena.alloc(mem::take(&mut resolver_outputs.definitions));
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
@@ -742,7 +739,9 @@ pub fn create_global_ctxt<'tcx>(
                 extern_providers,
                 arena,
                 resolver_outputs,
-                hir_map,
+                krate,
+                defs,
+                dep_graph,
                 query_result_on_disk_cache,
                 &crate_name,
                 &outputs,
@@ -762,6 +761,8 @@ pub fn create_global_ctxt<'tcx>(
 /// miscellaneous analysis passes on the crate.
 fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     assert_eq!(cnum, LOCAL_CRATE);
+
+    rustc::hir::map::check_crate(tcx);
 
     let sess = tcx.sess;
     let mut entry_point = None;

@@ -17,7 +17,7 @@ pub enum EscapeError {
 
     /// Escaped '\' character without continuation.
     LoneSlash,
-    /// Invalid escape characted (e.g. '\z').
+    /// Invalid escape character (e.g. '\z').
     InvalidEscape,
     /// Raw '\r' encountered.
     BareCarriageReturn,
@@ -43,7 +43,7 @@ pub enum EscapeError {
     UnclosedUnicodeEscape,
     /// '\u{_12}'
     LeadingUnderscoreUnicodeEscape,
-    /// More than 6 charactes in '\u{..}', e.g. '\u{10FFFF_FF}'
+    /// More than 6 characters in '\u{..}', e.g. '\u{10FFFF_FF}'
     OverlongUnicodeEscape,
     /// Invalid in-bound unicode character code, e.g. '\u{DFFF}'.
     LoneSurrogateUnicodeEscape,

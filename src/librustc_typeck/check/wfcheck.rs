@@ -4,6 +4,7 @@ use crate::constrained_generic_params::{identify_constrained_generic_params, Par
 use rustc::middle::lang_items;
 use rustc::session::parse::feature_err;
 use rustc::ty::subst::{InternalSubsts, Subst};
+use rustc::ty::trait_def::TraitSpecializationKind;
 use rustc::ty::{
     self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
@@ -12,10 +13,11 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;
-use rustc_infer::infer::opaque_types::may_define_opaque_type;
-use rustc_infer::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::opaque_types::may_define_opaque_type;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ParItemLikeVisitor;
@@ -173,7 +175,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
     let trait_item = tcx.hir().expect_trait_item(hir_id);
 
     let method_sig = match trait_item.kind {
-        hir::TraitItemKind::Method(ref sig, _) => Some(sig),
+        hir::TraitItemKind::Fn(ref sig, _) => Some(sig),
         _ => None,
     };
     check_object_unsafe_self_trait_by_name(tcx, &trait_item);
@@ -207,7 +209,7 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
         {
             trait_should_be_self.push(ty.span)
         }
-        hir::TraitItemKind::Method(sig, _) => {
+        hir::TraitItemKind::Fn(sig, _) => {
             for ty in sig.decl.inputs {
                 if could_be_self(trait_def_id, ty) {
                     trait_should_be_self.push(ty.span);
@@ -247,7 +249,7 @@ pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {
     let impl_item = tcx.hir().expect_impl_item(hir_id);
 
     let method_sig = match impl_item.kind {
-        hir::ImplItemKind::Method(ref sig, _) => Some(sig),
+        hir::ImplItemKind::Fn(ref sig, _) => Some(sig),
         _ => None,
     };
 
@@ -411,7 +413,9 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     let trait_def_id = tcx.hir().local_def_id(item.hir_id);
 
     let trait_def = tcx.trait_def(trait_def_id);
-    if trait_def.is_marker {
+    if trait_def.is_marker
+        || matches!(trait_def.specialization_kind, TraitSpecializationKind::Marker)
+    {
         for associated_def_id in &*tcx.associated_item_def_ids(trait_def_id) {
             struct_span_err!(
                 tcx.sess,

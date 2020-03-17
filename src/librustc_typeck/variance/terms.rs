@@ -77,8 +77,8 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
 
     // See the following for a discussion on dep-graph management.
     //
-    // - https://rust-lang.github.io/rustc-guide/query.html
-    // - https://rust-lang.github.io/rustc-guide/variance.html
+    // - https://rustc-dev-guide.rust-lang.org/query.html
+    // - https://rustc-dev-guide.rust-lang.org/variance.html
     tcx.hir().krate().visit_all_item_likes(&mut terms_cx);
 
     terms_cx
@@ -164,13 +164,13 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
-        if let hir::TraitItemKind::Method(..) = trait_item.kind {
+        if let hir::TraitItemKind::Fn(..) = trait_item.kind {
             self.add_inferreds_for_item(trait_item.hir_id);
         }
     }
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
-        if let hir::ImplItemKind::Method(..) = impl_item.kind {
+        if let hir::ImplItemKind::Fn(..) = impl_item.kind {
             self.add_inferreds_for_item(impl_item.hir_id);
         }
     }

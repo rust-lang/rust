@@ -45,7 +45,7 @@ struct MatchVisitor<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -86,6 +86,9 @@ impl PatCtxt<'_, '_> {
                 }
                 PatternError::AssocConstInPattern(span) => {
                     self.span_e0158(span, "associated consts cannot be referenced in patterns")
+                }
+                PatternError::ConstParamInPattern(span) => {
+                    self.span_e0158(span, "const parameters cannot be referenced in patterns")
                 }
                 PatternError::FloatBug => {
                     // FIXME(#31407) this is only necessary because float parsing is buggy
@@ -752,7 +755,7 @@ fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pa
     impl<'v> Visitor<'v> for AtBindingPatternVisitor<'_, '_, '_> {
         type Map = Map<'v>;
 
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
         }
 

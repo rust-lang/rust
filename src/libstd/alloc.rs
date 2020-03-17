@@ -133,24 +133,41 @@ pub use alloc_crate::alloc::*;
 #[derive(Debug, Default, Copy, Clone)]
 pub struct System;
 
-// The AllocRef impl just forwards to the GlobalAlloc impl, which is in `std::sys::*::alloc`.
+// The AllocRef impl checks the layout size to be non-zero and forwards to the GlobalAlloc impl,
+// which is in `std::sys::*::alloc`.
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for System {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        NonNull::new(GlobalAlloc::alloc(self, layout)).ok_or(AllocErr).map(|p| (p, layout.size()))
+    fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+        if layout.size() == 0 {
+            Ok((layout.dangling(), 0))
+        } else {
+            unsafe {
+                NonNull::new(GlobalAlloc::alloc(self, layout))
+                    .ok_or(AllocErr)
+                    .map(|p| (p, layout.size()))
+            }
+        }
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        NonNull::new(GlobalAlloc::alloc_zeroed(self, layout))
-            .ok_or(AllocErr)
-            .map(|p| (p, layout.size()))
+    fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+        if layout.size() == 0 {
+            Ok((layout.dangling(), 0))
+        } else {
+            unsafe {
+                NonNull::new(GlobalAlloc::alloc_zeroed(self, layout))
+                    .ok_or(AllocErr)
+                    .map(|p| (p, layout.size()))
+            }
+        }
     }
 
     #[inline]
     unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-        GlobalAlloc::dealloc(self, ptr.as_ptr(), layout)
+        if layout.size() != 0 {
+            GlobalAlloc::dealloc(self, ptr.as_ptr(), layout)
+        }
     }
 
     #[inline]
@@ -160,9 +177,17 @@ unsafe impl AllocRef for System {
         layout: Layout,
         new_size: usize,
     ) -> Result<(NonNull<u8>, usize), AllocErr> {
-        NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size))
-            .ok_or(AllocErr)
-            .map(|p| (p, new_size))
+        match (layout.size(), new_size) {
+            (0, 0) => Ok((layout.dangling(), 0)),
+            (0, _) => self.alloc(Layout::from_size_align_unchecked(new_size, layout.align())),
+            (_, 0) => {
+                self.dealloc(ptr, layout);
+                Ok((layout.dangling(), 0))
+            }
+            (_, _) => NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size))
+                .ok_or(AllocErr)
+                .map(|p| (p, new_size)),
+        }
     }
 }
 

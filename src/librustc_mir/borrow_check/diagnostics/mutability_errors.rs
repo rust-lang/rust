@@ -23,7 +23,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &mut self,
         access_place: &Place<'tcx>,
         span: Span,
-        the_place_err: PlaceRef<'cx, 'tcx>,
+        the_place_err: PlaceRef<'tcx>,
         error_access: AccessKind,
         location: Location,
     ) {
@@ -329,40 +329,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if self.body.local_decls[local].is_user_variable() =>
             {
                 let local_decl = &self.body.local_decls[local];
-                let suggestion = match local_decl.local_info {
-                    LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf(_))) => {
-                        Some(suggest_ampmut_self(self.infcx.tcx, local_decl))
-                    }
-
-                    LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
-                        mir::VarBindingForm {
-                            binding_mode: ty::BindingMode::BindByValue(_),
-                            opt_ty_info,
-                            ..
-                        },
-                    ))) => Some(suggest_ampmut(
-                        self.infcx.tcx,
-                        self.body,
-                        local,
-                        local_decl,
-                        opt_ty_info,
-                    )),
-
-                    LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
-                        mir::VarBindingForm {
-                            binding_mode: ty::BindingMode::BindByReference(_),
-                            ..
-                        },
-                    ))) => {
-                        let pattern_span = local_decl.source_info.span;
-                        suggest_ref_mut(self.infcx.tcx, pattern_span)
-                            .map(|replacement| (pattern_span, replacement))
-                    }
-
-                    LocalInfo::User(ClearCrossCrate::Clear) => bug!("saw cleared local state"),
-
-                    _ => unreachable!(),
-                };
 
                 let (pointer_sigil, pointer_desc) = if local_decl.ty.is_region_ptr() {
                     ("&", "reference")
@@ -370,17 +336,53 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ("*const", "pointer")
                 };
 
-                if let Some((err_help_span, suggested_code)) = suggestion {
-                    err.span_suggestion(
-                        err_help_span,
-                        &format!("consider changing this to be a mutable {}", pointer_desc),
-                        suggested_code,
-                        Applicability::MachineApplicable,
-                    );
-                }
-
                 match self.local_names[local] {
                     Some(name) if !local_decl.from_compiler_desugaring() => {
+                        let suggestion = match local_decl.local_info {
+                            LocalInfo::User(ClearCrossCrate::Set(
+                                mir::BindingForm::ImplicitSelf(_),
+                            )) => Some(suggest_ampmut_self(self.infcx.tcx, local_decl)),
+
+                            LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
+                                mir::VarBindingForm {
+                                    binding_mode: ty::BindingMode::BindByValue(_),
+                                    opt_ty_info,
+                                    ..
+                                },
+                            ))) => Some(suggest_ampmut(
+                                self.infcx.tcx,
+                                self.body,
+                                local,
+                                local_decl,
+                                opt_ty_info,
+                            )),
+
+                            LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
+                                mir::VarBindingForm {
+                                    binding_mode: ty::BindingMode::BindByReference(_),
+                                    ..
+                                },
+                            ))) => {
+                                let pattern_span = local_decl.source_info.span;
+                                suggest_ref_mut(self.infcx.tcx, pattern_span)
+                                    .map(|replacement| (pattern_span, replacement))
+                            }
+
+                            LocalInfo::User(ClearCrossCrate::Clear) => {
+                                bug!("saw cleared local state")
+                            }
+
+                            _ => unreachable!(),
+                        };
+
+                        if let Some((err_help_span, suggested_code)) = suggestion {
+                            err.span_suggestion(
+                                err_help_span,
+                                &format!("consider changing this to be a mutable {}", pointer_desc),
+                                suggested_code,
+                                Applicability::MachineApplicable,
+                            );
+                        }
                         err.span_label(
                             span,
                             format!(
@@ -445,7 +447,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         err.buffer(&mut self.errors_buffer);
     }
 
-    /// Targetted error when encountering an `FnMut` closure where an `Fn` closure was expected.
+    /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
     fn expected_fn_found_fn_mut_call(&self, err: &mut DiagnosticBuilder<'_>, sp: Span, act: &str) {
         err.span_label(sp, format!("cannot {}", act));
 
@@ -478,12 +480,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         }))
                         | Some(hir::Node::TraitItem(hir::TraitItem {
                             ident,
-                            kind: hir::TraitItemKind::Method(sig, _),
+                            kind: hir::TraitItemKind::Fn(sig, _),
                             ..
                         }))
                         | Some(hir::Node::ImplItem(hir::ImplItem {
                             ident,
-                            kind: hir::ImplItemKind::Method(sig, _),
+                            kind: hir::ImplItemKind::Fn(sig, _),
                             ..
                         })) => Some(
                             arg_pos
@@ -520,12 +522,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(sig, ..), .. })
                 | hir::Node::TraitItem(hir::TraitItem {
                     ident,
-                    kind: hir::TraitItemKind::Method(sig, _),
+                    kind: hir::TraitItemKind::Fn(sig, _),
                     ..
                 })
                 | hir::Node::ImplItem(hir::ImplItem {
                     ident,
-                    kind: hir::ImplItemKind::Method(sig, _),
+                    kind: hir::ImplItemKind::Fn(sig, _),
                     ..
                 }) => {
                     err.span_label(ident.span, "");

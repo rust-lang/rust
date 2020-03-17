@@ -84,14 +84,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let substs = instance.substs;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
 
-        // We currently do not handle any intrinsics that are *allowed* to diverge,
-        // but `transmute` could lack a return place in case of UB.
+        // First handle intrinsics without return place.
         let (dest, ret) = match ret {
-            Some(p) => p,
             None => match intrinsic_name {
-                sym::transmute => throw_ub!(Unreachable),
+                sym::transmute => throw_ub_format!("transmuting to uninhabited type"),
+                sym::abort => M::abort(self)?,
+                // Unsupported diverging intrinsic.
                 _ => return Ok(false),
             },
+            Some(p) => p,
         };
 
         // Keep the patterns in this match ordered the same as the list in
@@ -215,6 +216,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     val
                 };
                 self.write_scalar(val, dest)?;
+            }
+            sym::discriminant_value => {
+                let place = self.deref_operand(args[0])?;
+                let discr_val = self.read_discriminant(place.into())?.0;
+                self.write_scalar(Scalar::from_uint(discr_val, dest.layout.size), dest)?;
             }
             sym::unchecked_shl
             | sym::unchecked_shr

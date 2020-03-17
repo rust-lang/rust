@@ -408,7 +408,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_place(
         &mut self,
         bx: &mut Bx,
-        place_ref: mir::PlaceRef<'_, 'tcx>,
+        place_ref: mir::PlaceRef<'tcx>,
     ) -> PlaceRef<'tcx, Bx::Value> {
         debug!("codegen_place(place_ref={:?})", place_ref);
         let cx = self.cx;
@@ -497,7 +497,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         result
     }
 
-    pub fn monomorphized_place_ty(&self, place_ref: mir::PlaceRef<'_, 'tcx>) -> Ty<'tcx> {
+    pub fn monomorphized_place_ty(&self, place_ref: mir::PlaceRef<'tcx>) -> Ty<'tcx> {
         let tcx = self.cx.tcx();
         let place_ty = mir::Place::ty_from(place_ref.local, place_ref.projection, *self.mir, tcx);
         self.monomorphize(&place_ty.ty)

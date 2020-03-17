@@ -19,6 +19,7 @@ use rustc_hir::Node;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_trait_selection::infer::InferCtxtExt;
 
 #[derive(Clone)]
 crate struct Cx<'a, 'tcx> {

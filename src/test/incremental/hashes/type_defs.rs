@@ -24,7 +24,7 @@
 type ChangePrimitiveType = i32;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type ChangePrimitiveType = i64;
 
@@ -35,7 +35,7 @@ type ChangePrimitiveType = i64;
 type ChangeMutability = &'static i32;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type ChangeMutability = &'static mut i32;
 
@@ -46,7 +46,7 @@ type ChangeMutability = &'static mut i32;
 type ChangeLifetime<'a> = (&'static i32, &'a i32);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type ChangeLifetime<'a> = (&'a i32, &'a i32);
 
@@ -60,7 +60,7 @@ struct Struct2;
 type ChangeTypeStruct = Struct1;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type ChangeTypeStruct = Struct2;
 
@@ -71,7 +71,7 @@ type ChangeTypeStruct = Struct2;
 type ChangeTypeTuple = (u32, u64);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type ChangeTypeTuple = (u32, i64);
 
@@ -91,7 +91,7 @@ enum Enum2 {
 type ChangeTypeEnum = Enum1;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type ChangeTypeEnum = Enum2;
 
@@ -102,7 +102,7 @@ type ChangeTypeEnum = Enum2;
 type AddTupleField = (i32, i64);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type AddTupleField = (i32, i64, i16);
 
@@ -113,7 +113,7 @@ type AddTupleField = (i32, i64, i16);
 type ChangeNestedTupleField = (i32, (i64, i16));
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type ChangeNestedTupleField = (i32, (i64, i8));
 
@@ -124,7 +124,7 @@ type ChangeNestedTupleField = (i32, (i64, i8));
 type AddTypeParam<T1> = (T1, T1);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type AddTypeParam<T1, T2> = (T1, T2);
 
@@ -135,7 +135,7 @@ type AddTypeParam<T1, T2> = (T1, T2);
 type AddTypeParamBound<T1> = (T1, u32);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type AddTypeParamBound<T1: Clone> = (T1, u32);
 
@@ -146,7 +146,7 @@ type AddTypeParamBound<T1: Clone> = (T1, u32);
 type AddTypeParamBoundWhereClause<T1> where T1: Clone = (T1, u32);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type AddTypeParamBoundWhereClause<T1> where T1: Clone+Copy = (T1, u32);
 
@@ -157,7 +157,7 @@ type AddTypeParamBoundWhereClause<T1> where T1: Clone+Copy = (T1, u32);
 type AddLifetimeParam<'a> = (&'a u32, &'a u32);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type AddLifetimeParam<'a, 'b> = (&'a u32, &'b u32);
 
@@ -168,7 +168,7 @@ type AddLifetimeParam<'a, 'b> = (&'a u32, &'b u32);
 type AddLifetimeParamBound<'a, 'b> = (&'a u32, &'b u32);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type AddLifetimeParamBound<'a, 'b: 'a> = (&'a u32, &'b u32);
 
@@ -181,7 +181,7 @@ where 'b: 'a
     = (&'a u32, &'b u32, &'c u32);
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
 #[rustc_clean(cfg="cfail3")]
 type AddLifetimeParamBoundWhereClause<'a, 'b, 'c>
 where 'b: 'a,
@@ -200,7 +200,7 @@ mod change_trait_bound_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
     #[rustc_clean(cfg="cfail3")]
     type ChangeTraitBoundIndirectly<T: Trait> = (T, u32);
 }
@@ -214,7 +214,7 @@ mod change_trait_bound_indirectly_in_where_clause {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
+    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
     #[rustc_clean(cfg="cfail3")]
     type ChangeTraitBoundIndirectly<T> where T : Trait = (T, u32);
 }

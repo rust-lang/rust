@@ -1,0 +1,53 @@
+error: expected `{`, found keyword `let`
+  --> $DIR/block-no-opening-brace.rs:9:9
+   |
+LL |         let x = 0;
+   |         ^^^-------
+   |         |
+   |         expected `{`
+   |         help: try placing this code inside a block: `{ let x = 0; }`
+
+error: expected `{`, found keyword `let`
+  --> $DIR/block-no-opening-brace.rs:15:9
+   |
+LL |         let x = 0;
+   |         ^^^-------
+   |         |
+   |         expected `{`
+   |         help: try placing this code inside a block: `{ let x = 0; }`
+
+error: expected `{`, found keyword `let`
+  --> $DIR/block-no-opening-brace.rs:20:9
+   |
+LL |         let x = 0;
+   |         ^^^-------
+   |         |
+   |         expected `{`
+   |         help: try placing this code inside a block: `{ let x = 0; }`
+
+error: expected expression, found reserved keyword `try`
+  --> $DIR/block-no-opening-brace.rs:24:5
+   |
+LL |     try
+   |     ^^^ expected expression
+
+error: expected one of `move`, `|`, or `||`, found keyword `let`
+  --> $DIR/block-no-opening-brace.rs:30:9
+   |
+LL |     async
+   |          - expected one of `move`, `|`, or `||`
+LL |         let x = 0;
+   |         ^^^ unexpected token
+
+error[E0658]: async closures are unstable
+  --> $DIR/block-no-opening-brace.rs:29:5
+   |
+LL |     async
+   |     ^^^^^
+   |
+   = note: see issue #62290 <https://github.com/rust-lang/rust/issues/62290> for more information
+   = help: add `#![feature(async_closure)]` to the crate attributes to enable
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

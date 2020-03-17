@@ -4,16 +4,12 @@ use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
 
-use rustc_ast::ast::{self, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
+use rustc_ast::ast::{self, Async, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
 use rustc_ast::ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind};
-use rustc_ast::ast::{
-    Async, Const, Defaultness, IsAuto, PathSegment, Unsafe, UseTree, UseTreeKind,
-};
-use rustc_ast::ast::{
-    BindingMode, Block, FnDecl, FnSig, Mac, MacArgs, MacDelimiter, Param, SelfKind,
-};
+use rustc_ast::ast::{BindingMode, Block, FnDecl, FnSig, MacArgs, MacCall, MacDelimiter, Param};
+use rustc_ast::ast::{Const, Defaultness, IsAuto, PathSegment, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
-use rustc_ast::ast::{FnHeader, ForeignItem, Mutability, Visibility, VisibilityKind};
+use rustc_ast::ast::{FnHeader, ForeignItem, Mutability, SelfKind, Visibility, VisibilityKind};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
@@ -218,9 +214,9 @@ impl<'a> Parser<'a> {
         } else if vis.node.is_pub() && self.isnt_macro_invocation() {
             self.recover_missing_kw_before_item()?;
             return Ok(None);
-        } else if macros_allowed && self.token.is_path_start() {
+        } else if macros_allowed && self.check_path() {
             // MACRO INVOCATION ITEM
-            (Ident::invalid(), ItemKind::Mac(self.parse_item_macro(vis)?))
+            (Ident::invalid(), ItemKind::MacCall(self.parse_item_macro(vis)?))
         } else {
             return Ok(None);
         };
@@ -339,21 +335,20 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an item macro, e.g., `item!();`.
-    fn parse_item_macro(&mut self, vis: &Visibility) -> PResult<'a, Mac> {
+    fn parse_item_macro(&mut self, vis: &Visibility) -> PResult<'a, MacCall> {
         let path = self.parse_path(PathStyle::Mod)?; // `foo::bar`
         self.expect(&token::Not)?; // `!`
         let args = self.parse_mac_args()?; // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
         self.eat_semi_for_macro_if_needed(&args);
         self.complain_if_pub_macro(vis, false);
-        Ok(Mac { path, args, prior_type_ascription: self.last_type_ascription })
+        Ok(MacCall { path, args, prior_type_ascription: self.last_type_ascription })
     }
 
     /// Recover if we parsed attributes and expected an item but there was none.
     fn recover_attrs_no_item(&mut self, attrs: &[Attribute]) -> PResult<'a, ()> {
         let (start, end) = match attrs {
             [] => return Ok(()),
-            [x0] => (x0, x0),
-            [x0, .., xn] => (x0, xn),
+            [x0 @ xn] | [x0, .., xn] => (x0, xn),
         };
         let msg = if end.is_doc_comment() {
             "expected item after doc comment"
@@ -372,6 +367,16 @@ impl<'a> Parser<'a> {
 
     fn is_async_fn(&self) -> bool {
         self.token.is_keyword(kw::Async) && self.is_keyword_ahead(1, &[kw::Fn])
+    }
+
+    fn parse_polarity(&mut self) -> ast::ImplPolarity {
+        // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
+        if self.check(&token::Not) && self.look_ahead(1, |t| t.can_begin_type()) {
+            self.bump(); // `!`
+            ast::ImplPolarity::Negative(self.prev_token.span)
+        } else {
+            ast::ImplPolarity::Positive
+        }
     }
 
     /// Parses an implementation item.
@@ -412,13 +417,7 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.gate(sym::const_trait_impl, span);
         }
 
-        // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
-        let polarity = if self.check(&token::Not) && self.look_ahead(1, |t| t.can_begin_type()) {
-            self.bump(); // `!`
-            ast::ImplPolarity::Negative
-        } else {
-            ast::ImplPolarity::Positive
-        };
+        let polarity = self.parse_polarity();
 
         // Parse both types and traits as a type, then reinterpret if necessary.
         let err_path = |span| ast::Path::from_ident(Ident::new(kw::Invalid, span));
@@ -574,7 +573,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| t.is_non_raw_ident_where(|i| i.name != kw::As))
         {
             self.bump(); // `default`
-            Defaultness::Default(self.normalized_prev_token.span)
+            Defaultness::Default(self.prev_token.uninterpolated_span())
         } else {
             Defaultness::Final
         }
@@ -750,10 +749,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, ast::Ident> {
-        match self.normalized_token.kind {
-            token::Ident(name @ kw::Underscore, false) => {
+        match self.token.ident() {
+            Some((ident @ Ident { name: kw::Underscore, .. }, false)) => {
                 self.bump();
-                Ok(Ident::new(name, self.normalized_prev_token.span))
+                Ok(ident)
             }
             _ => self.parse_ident(),
         }
@@ -1261,7 +1260,7 @@ impl<'a> Parser<'a> {
         };
 
         self.sess.gated_spans.gate(sym::decl_macro, lo.to(self.prev_token.span));
-        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, legacy: false })))
+        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, macro_rules: false })))
     }
 
     /// Is this unambiguously the start of a `macro_rules! foo` item defnition?
@@ -1271,7 +1270,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(2, |t| t.is_ident())
     }
 
-    /// Parses a legacy `macro_rules! foo { ... }` declarative macro.
+    /// Parses a `macro_rules! foo { ... }` declarative macro.
     fn parse_item_macro_rules(&mut self, vis: &Visibility) -> PResult<'a, ItemInfo> {
         self.expect_keyword(kw::MacroRules)?; // `macro_rules`
         self.expect(&token::Not)?; // `!`
@@ -1281,7 +1280,7 @@ impl<'a> Parser<'a> {
         self.eat_semi_for_macro_if_needed(&body);
         self.complain_if_pub_macro(vis, true);
 
-        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, legacy: true })))
+        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, macro_rules: true })))
     }
 
     /// Item macro invocations or `macro_rules!` definitions need inherited visibility.
@@ -1411,23 +1410,28 @@ impl<'a> Parser<'a> {
     /// This can either be `;` when there's no body,
     /// or e.g. a block when the function is a provided one.
     fn parse_fn_body(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, Option<P<Block>>> {
-        let (inner_attrs, body) = match self.token.kind {
-            token::Semi => {
-                self.bump();
-                (Vec::new(), None)
-            }
-            token::OpenDelim(token::Brace) => {
-                let (attrs, body) = self.parse_inner_attrs_and_block()?;
-                (attrs, Some(body))
-            }
-            token::Interpolated(ref nt) => match **nt {
-                token::NtBlock(..) => {
-                    let (attrs, body) = self.parse_inner_attrs_and_block()?;
-                    (attrs, Some(body))
-                }
-                _ => return self.expected_semi_or_open_brace(),
-            },
-            _ => return self.expected_semi_or_open_brace(),
+        let (inner_attrs, body) = if self.check(&token::Semi) {
+            self.bump(); // `;`
+            (Vec::new(), None)
+        } else if self.check(&token::OpenDelim(token::Brace)) || self.token.is_whole_block() {
+            self.parse_inner_attrs_and_block().map(|(attrs, body)| (attrs, Some(body)))?
+        } else if self.token.kind == token::Eq {
+            // Recover `fn foo() = $expr;`.
+            self.bump(); // `=`
+            let eq_sp = self.prev_token.span;
+            let _ = self.parse_expr()?;
+            self.expect_semi()?; // `;`
+            let span = eq_sp.to(self.prev_token.span);
+            self.struct_span_err(span, "function body cannot be `= expression;`")
+                .multipart_suggestion(
+                    "surround the expression with `{` and `}` instead of `=` and `;`",
+                    vec![(eq_sp, "{".to_string()), (self.prev_token.span, " }".to_string())],
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+            (Vec::new(), Some(self.mk_block_err(span)))
+        } else {
+            return self.expected_semi_or_open_brace();
         };
         attrs.extend(inner_attrs);
         Ok(body)
@@ -1544,7 +1548,7 @@ impl<'a> Parser<'a> {
 
         let is_name_required = match self.token.kind {
             token::DotDotDot => false,
-            _ => req_name(self.normalized_token.span.edition()),
+            _ => req_name(self.token.span.edition()),
         };
         let (pat, ty) = if is_name_required || self.is_named_param() {
             debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
@@ -1609,15 +1613,12 @@ impl<'a> Parser<'a> {
     /// Returns the parsed optional self parameter and whether a self shortcut was used.
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
         // Extract an identifier *after* having confirmed that the token is one.
-        let expect_self_ident = |this: &mut Self| {
-            match this.normalized_token.kind {
-                // Preserve hygienic context.
-                token::Ident(name, _) => {
-                    this.bump();
-                    Ident::new(name, this.normalized_prev_token.span)
-                }
-                _ => unreachable!(),
+        let expect_self_ident = |this: &mut Self| match this.token.ident() {
+            Some((ident, false)) => {
+                this.bump();
+                ident
             }
+            _ => unreachable!(),
         };
         // Is `self` `n` tokens ahead?
         let is_isolated_self = |this: &Self, n| {
@@ -1651,7 +1652,7 @@ impl<'a> Parser<'a> {
         // Only a limited set of initial token sequences is considered `self` parameters; anything
         // else is parsed as a normal function parameter list, so some lookahead is required.
         let eself_lo = self.token.span;
-        let (eself, eself_ident, eself_hi) = match self.normalized_token.kind {
+        let (eself, eself_ident, eself_hi) = match self.token.uninterpolate().kind {
             token::BinOp(token::And) => {
                 let eself = if is_isolated_self(self, 1) {
                     // `&self`

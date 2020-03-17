@@ -23,7 +23,7 @@ pub fn target() -> TargetResult {
             // The linker can be installed from `crates.io`.
             linker: Some("rust-ptx-linker".to_string()),
 
-            // With `ptx-linker` approach, it can be later overriden via link flags.
+            // With `ptx-linker` approach, it can be later overridden via link flags.
             cpu: "sm_30".to_string(),
 
             // FIXME: create tests for the atomics.
@@ -43,7 +43,7 @@ pub fn target() -> TargetResult {
             // Let the `ptx-linker` to handle LLVM lowering into MC / assembly.
             obj_is_bitcode: true,
 
-            // Convinient and predicable naming scheme.
+            // Convenient and predicable naming scheme.
             dll_prefix: "".to_string(),
             dll_suffix: ".ptx".to_string(),
             exe_suffix: ".ptx".to_string(),

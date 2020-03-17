@@ -33,7 +33,7 @@ pub struct Flags {
     pub rustc_error_format: Option<String>,
     pub dry_run: bool,
 
-    // This overrides the deny-warnings configuation option,
+    // This overrides the deny-warnings configuration option,
     // which passes -Dwarnings to the compiler invocations.
     //
     // true => deny, false => warn
@@ -359,7 +359,7 @@ Arguments:
                 subcommand_help.push_str(
                     "\n
 Arguments:
-    This subcommand accepts a number of paths to directories to tests that
+    This subcommand accepts a number of paths to test directories that
     should be compiled and run. For example:
 
         ./x.py test src/test/ui
@@ -371,6 +371,10 @@ Arguments:
     Note that `test src/test/* --stage N` does NOT depend on `build src/rustc --stage N`;
     just like `build src/libstd --stage N` it tests the compiler produced by the previous
     stage.
+
+    Execute tool tests with a tool name argument:
+
+        ./x.py test tidy
 
     If no arguments are passed then the complete artifacts for that stage are
     compiled and tested.

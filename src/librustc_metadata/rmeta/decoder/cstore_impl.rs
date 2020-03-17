@@ -14,26 +14,19 @@ use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::query::Providers;
 use rustc::ty::query::QueryConfig;
 use rustc::ty::{self, TyCtxt};
+use rustc_ast::ast;
+use rustc_ast::attr;
+use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_parse::parser::emit_unclosed_delims;
-use rustc_parse::source_file_to_stream;
+use rustc_span::source_map::{self, Span, Spanned};
+use rustc_span::symbol::Symbol;
 
 use rustc_data_structures::sync::Lrc;
 use smallvec::SmallVec;
 use std::any::Any;
 use std::sync::Arc;
-
-use rustc_ast::ast;
-use rustc_ast::attr;
-use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_ast::ptr::P;
-use rustc_ast::tokenstream::DelimSpan;
-use rustc_span::source_map;
-use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
-use rustc_span::{FileName, Span};
 
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
@@ -147,7 +140,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }
     item_attrs => { cdata.get_item_attrs(def_id.index, tcx.sess) }
-    // FIXME(#38501) We've skipped a `read` on the `HirBody` of
+    // FIXME(#38501) We've skipped a `read` on the `hir_owner_items` of
     // a `fn` when encoding, so the dep-tracking wouldn't work.
     // This is only used by rustdoc anyway, which shouldn't have
     // incremental recompilation ever enabled.
@@ -419,15 +412,7 @@ impl CStore {
             return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, sess));
         }
 
-        let def = data.get_macro(id.index);
-        let macro_full_name = data.def_path(id.index).to_string_friendly(|_| data.root.name);
-        let source_name = FileName::Macros(macro_full_name);
-
-        let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
-        let local_span = Span::with_root_ctxt(source_file.start_pos, source_file.end_pos);
-        let dspan = DelimSpan::from_single(local_span);
-        let (body, mut errors) = source_file_to_stream(&sess.parse_sess, source_file, None);
-        emit_unclosed_delims(&mut errors, &sess.parse_sess);
+        let span = data.get_span(id.index, sess);
 
         // Mark the attrs as used
         let attrs = data.get_item_attrs(id.index, sess);
@@ -435,28 +420,22 @@ impl CStore {
             attr::mark_used(attr);
         }
 
-        let name = data
+        let ident = data
             .def_key(id.index)
             .disambiguated_data
             .data
             .get_opt_name()
+            .map(ast::Ident::with_dummy_span) // FIXME: cross-crate hygiene
             .expect("no name in load_macro");
-        sess.imported_macro_spans
-            .borrow_mut()
-            .insert(local_span, (name.to_string(), data.get_span(id.index, sess)));
 
         LoadedMacro::MacroDef(
             ast::Item {
-                // FIXME: cross-crate hygiene
-                ident: ast::Ident::with_dummy_span(name),
+                ident,
                 id: ast::DUMMY_NODE_ID,
-                span: local_span,
+                span,
                 attrs: attrs.iter().cloned().collect(),
-                kind: ast::ItemKind::MacroDef(ast::MacroDef {
-                    body: P(ast::MacArgs::Delimited(dspan, ast::MacDelimiter::Brace, body)),
-                    legacy: def.legacy,
-                }),
-                vis: source_map::respan(local_span.shrink_to_lo(), ast::VisibilityKind::Inherited),
+                kind: ast::ItemKind::MacroDef(data.get_macro(id.index, sess)),
+                vis: source_map::respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 tokens: None,
             },
             data.root.edition,
@@ -517,7 +496,7 @@ impl CrateStore for CStore {
     }
 
     fn def_path_table(&self, cnum: CrateNum) -> &DefPathTable {
-        &self.get_crate_data(cnum).def_path_table
+        &self.get_crate_data(cnum).cdata.def_path_table
     }
 
     fn crates_untracked(&self) -> Vec<CrateNum> {

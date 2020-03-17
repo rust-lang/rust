@@ -44,9 +44,9 @@ use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc_ast::ast;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_infer::traits;
-use rustc_infer::traits::error_reporting::report_object_safety_error;
 use rustc_span::Span;
+use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.

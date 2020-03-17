@@ -21,7 +21,7 @@ use rustc_span::source_map::{self, Span, DUMMY_SP};
 
 use super::{
     Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
-    ScalarMaybeUndef, StackPopInfo,
+    ScalarMaybeUndef, StackPopJump,
 };
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
@@ -98,10 +98,10 @@ pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return). Also store layout of return place so
     /// we can validate it at that layout.
-    /// `ret` stores the block we jump to on a normal return, while 'unwind'
-    /// stores the block used for cleanup during unwinding
+    /// `ret` stores the block we jump to on a normal return, while `unwind`
+    /// stores the block used for cleanup during unwinding.
     Goto { ret: Option<mir::BasicBlock>, unwind: Option<mir::BasicBlock> },
-    /// Just do nohing: Used by Main and for the box_alloc hook in miri.
+    /// Just do nothing: Used by Main and for the `box_alloc` hook in miri.
     /// `cleanup` says whether locals are deallocated. Static computation
     /// wants them leaked to intern what they need (and just throw away
     /// the entire `ecx` when it is done).
@@ -457,10 +457,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Check if this brought us over the size limit.
                 if size.bytes() >= self.tcx.data_layout().obj_size_bound() {
-                    throw_ub_format!(
-                        "wide pointer metadata contains invalid information: \
-                        total size is bigger than largest supported object"
-                    );
+                    throw_ub!(InvalidMeta("total size is bigger than largest supported object"));
                 }
                 Ok(Some((size, align)))
             }
@@ -476,10 +473,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Make sure the slice is not too big.
                 let size = elem.size.checked_mul(len, &*self.tcx).ok_or_else(|| {
-                    err_ub_format!(
-                        "invalid slice: \
-                        total size is bigger than largest supported object"
-                    )
+                    err_ub!(InvalidMeta("slice is bigger than largest supported object"))
                 })?;
                 Ok(Some((size, elem.align.abi)))
             }
@@ -629,23 +623,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
-        let stack_pop_info = M::stack_pop(self, frame.extra, unwinding)?;
-        if let (false, StackPopInfo::StopUnwinding) = (unwinding, stack_pop_info) {
-            bug!("Attempted to stop unwinding while there is no unwinding!");
-        }
 
         // Now where do we jump next?
-
-        // Determine if we leave this function normally or via unwinding.
-        let cur_unwinding =
-            if let StackPopInfo::StopUnwinding = stack_pop_info { false } else { unwinding };
 
         // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
         // In that case, we return early. We also avoid validation in that case,
         // because this is CTFE and the final value will be thoroughly validated anyway.
         let (cleanup, next_block) = match frame.return_to_block {
             StackPopCleanup::Goto { ret, unwind } => {
-                (true, Some(if cur_unwinding { unwind } else { ret }))
+                (true, Some(if unwinding { unwind } else { ret }))
             }
             StackPopCleanup::None { cleanup, .. } => (cleanup, None),
         };
@@ -653,7 +639,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if !cleanup {
             assert!(self.stack.is_empty(), "only the topmost frame should ever be leaked");
             assert!(next_block.is_none(), "tried to skip cleanup when we have a next block!");
-            // Leak the locals, skip validation.
+            assert!(!unwinding, "tried to skip cleanup during unwinding");
+            // Leak the locals, skip validation, skip machine hook.
             return Ok(());
         }
 
@@ -662,15 +649,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.deallocate_local(local.value)?;
         }
 
-        trace!(
-            "StackPopCleanup: {:?} StackPopInfo: {:?} cur_unwinding = {:?}",
-            frame.return_to_block,
-            stack_pop_info,
-            cur_unwinding
-        );
-        if cur_unwinding {
+        if M::stack_pop(self, frame.extra, unwinding)? == StackPopJump::NoJump {
+            // The hook already did everything.
+            // We want to skip the `info!` below, hence early return.
+            return Ok(());
+        }
+        // Normal return.
+        if unwinding {
             // Follow the unwind edge.
-            let unwind = next_block.expect("Encounted StackPopCleanup::None when unwinding!");
+            let unwind = next_block.expect("Encountered StackPopCleanup::None when unwinding!");
             self.unwind_to_block(unwind);
         } else {
             // Follow the normal return edge.
@@ -685,7 +672,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // invariant -- that is, unless a function somehow has a ptr to
                     // its return place... but the way MIR is currently generated, the
                     // return place is always a local and then this cannot happen.
-                    self.validate_operand(self.place_to_op(return_place)?, vec![], None)?;
+                    self.validate_operand(self.place_to_op(return_place)?)?;
                 }
             } else {
                 // Uh, that shouldn't happen... the function did not intend to return
@@ -703,7 +690,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 "CONTINUING({}) {} (unwinding = {})",
                 self.cur_frame(),
                 self.frame().instance,
-                cur_unwinding
+                unwinding
             );
         }
 

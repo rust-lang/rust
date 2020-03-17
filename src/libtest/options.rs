@@ -41,7 +41,7 @@ pub enum OutputFormat {
     Json,
 }
 
-/// Whether ignored test should be runned or not
+/// Whether ignored test should be run or not
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RunIgnored {
     Yes,

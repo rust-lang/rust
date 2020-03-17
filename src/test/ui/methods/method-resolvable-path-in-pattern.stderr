@@ -1,4 +1,4 @@
-error[E0532]: expected unit struct, unit variant or constant, found method `MyTrait::trait_bar`
+error[E0532]: expected unit struct, unit variant or constant, found associated function `MyTrait::trait_bar`
   --> $DIR/method-resolvable-path-in-pattern.rs:11:9
    |
 LL |         <Foo as MyTrait>::trait_bar => {}

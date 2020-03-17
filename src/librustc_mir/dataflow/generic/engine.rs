@@ -218,15 +218,18 @@ where
 
             Goto { target }
             | Assert { target, cleanup: None, .. }
-            | Yield { resume: target, drop: None, .. }
             | Drop { target, location: _, unwind: None }
             | DropAndReplace { target, value: _, location: _, unwind: None } => {
                 self.propagate_bits_into_entry_set_for(in_out, target, dirty_list)
             }
 
-            Yield { resume: target, drop: Some(drop), .. } => {
+            Yield { resume: target, drop, resume_arg, .. } => {
+                if let Some(drop) = drop {
+                    self.propagate_bits_into_entry_set_for(in_out, drop, dirty_list);
+                }
+
+                self.analysis.apply_yield_resume_effect(in_out, target, &resume_arg);
                 self.propagate_bits_into_entry_set_for(in_out, target, dirty_list);
-                self.propagate_bits_into_entry_set_for(in_out, drop, dirty_list);
             }
 
             Assert { target, cleanup: Some(unwind), .. }

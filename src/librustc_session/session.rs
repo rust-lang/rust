@@ -49,6 +49,18 @@ pub struct OptimizationFuel {
     out_of_fuel: bool,
 }
 
+/// The behavior of the CTFE engine when an error occurs with regards to backtraces.
+#[derive(Clone, Copy)]
+pub enum CtfeBacktrace {
+    /// Do nothing special, return the error as usual without a backtrace.
+    Disabled,
+    /// Capture a backtrace at the point the error is created and return it in the error
+    /// (to be printed later if/when the error ever actually gets shown to the user).
+    Capture,
+    /// Capture a backtrace at the point the error is created and immediately print it out.
+    Immediate,
+}
+
 /// Represents the data associated with a compilation
 /// session for a single crate.
 pub struct Session {
@@ -90,11 +102,6 @@ pub struct Session {
 
     /// The maximum blocks a const expression can evaluate.
     pub const_eval_limit: Once<usize>,
-
-    /// Map from imported macro spans (which consist of
-    /// the localized span for the macro body) to the
-    /// macro name and definition span in the source crate.
-    pub imported_macro_spans: OneThread<RefCell<FxHashMap<Span, (String, Span)>>>,
 
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
     /// Used for incremental compilation tests. Will only be populated if
@@ -139,6 +146,11 @@ pub struct Session {
     /// Path for libraries that will take preference over libraries shipped by Rust.
     /// Used by windows-gnu targets to priortize system mingw-w64 libraries.
     pub system_library_path: OneThread<RefCell<Option<Option<PathBuf>>>>,
+
+    /// Tracks the current behavior of the CTFE engine when an error occurs.
+    /// Options range from returning the error without a backtrace to returning an error
+    /// and immediately printing the backtrace to stderr.
+    pub ctfe_backtrace: Lock<CtfeBacktrace>,
 }
 
 pub struct PerfStats {
@@ -1040,6 +1052,12 @@ fn build_session_(
         sopts.debugging_opts.time_passes,
     );
 
+    let ctfe_backtrace = Lock::new(match env::var("RUSTC_CTFE_BACKTRACE") {
+        Ok(ref val) if val == "immediate" => CtfeBacktrace::Immediate,
+        Ok(ref val) if val != "0" => CtfeBacktrace::Capture,
+        _ => CtfeBacktrace::Disabled,
+    });
+
     let sess = Session {
         target: target_cfg,
         host,
@@ -1057,7 +1075,6 @@ fn build_session_(
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
         const_eval_limit: Once::new(),
-        imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
         prof,
@@ -1078,6 +1095,7 @@ fn build_session_(
         trait_methods_not_found: Lock::new(Default::default()),
         confused_type_with_std_module: Lock::new(Default::default()),
         system_library_path: OneThread::new(RefCell::new(Default::default())),
+        ctfe_backtrace,
     };
 
     validate_commandline_args_with_session_available(&sess);

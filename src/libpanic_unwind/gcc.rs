@@ -35,20 +35,11 @@
 //!
 //! Once stack has been unwound down to the handler frame level, unwinding stops
 //! and the last personality routine transfers control to the catch block.
-//!
-//! ## `eh_personality` and `eh_unwind_resume`
-//!
-//! These language items are used by the compiler when generating unwind info.
-//! The first one is the personality routine described above. The second one
-//! allows compilation target to customize the process of resuming unwind at the
-//! end of the landing pads. `eh_unwind_resume` is used only if
-//! `custom_unwind_resume` flag in the target options is set.
 
 #![allow(private_no_mangle_fns)]
 
 use alloc::boxed::Box;
 use core::any::Any;
-use core::ptr;
 
 use crate::dwarf::eh::{self, EHAction, EHContext};
 use libc::{c_int, uintptr_t};
@@ -81,10 +72,6 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
             super::__rust_drop_panic();
         }
     }
-}
-
-pub fn payload() -> *mut u8 {
-    ptr::null_mut()
 }
 
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
@@ -143,7 +130,6 @@ cfg_if::cfg_if! {
         //
         // iOS uses the default routine instead since it uses SjLj unwinding.
         #[lang = "eh_personality"]
-        #[no_mangle]
         unsafe extern "C" fn rust_eh_personality(state: uw::_Unwind_State,
                                                  exception_object: *mut uw::_Unwind_Exception,
                                                  context: *mut uw::_Unwind_Context)
@@ -277,7 +263,6 @@ cfg_if::cfg_if! {
                 // On x86_64 MinGW targets, the unwinding mechanism is SEH however the unwind
                 // handler data (aka LSDA) uses GCC-compatible encoding.
                 #[lang = "eh_personality"]
-                #[no_mangle]
                 #[allow(nonstandard_style)]
                 unsafe extern "C" fn rust_eh_personality(exceptionRecord: *mut uw::EXCEPTION_RECORD,
                         establisherFrame: uw::LPVOID,
@@ -293,7 +278,6 @@ cfg_if::cfg_if! {
             } else {
                 // The personality routine for most of our targets.
                 #[lang = "eh_personality"]
-                #[no_mangle]
                 unsafe extern "C" fn rust_eh_personality(version: c_int,
                         actions: uw::_Unwind_Action,
                         exception_class: uw::_Unwind_Exception_Class,
@@ -329,8 +313,8 @@ unsafe fn find_eh_action(
     eh::find_eh_action(lsda, &eh_context, foreign_exception)
 }
 
-// See docs in the `unwind` module.
 #[cfg(all(
+    bootstrap,
     target_os = "windows",
     any(target_arch = "x86", target_arch = "x86_64"),
     target_env = "gnu"
@@ -364,12 +348,12 @@ pub mod eh_frame_registry {
         fn __deregister_frame_info(eh_frame_begin: *const u8, object: *mut u8);
     }
 
-    #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern "C" fn rust_eh_register_frames(eh_frame_begin: *const u8, object: *mut u8) {
         __register_frame_info(eh_frame_begin, object);
     }
 
-    #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern "C" fn rust_eh_unregister_frames(eh_frame_begin: *const u8, object: *mut u8) {
         __deregister_frame_info(eh_frame_begin, object);
     }

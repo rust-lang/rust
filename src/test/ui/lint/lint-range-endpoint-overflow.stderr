@@ -15,18 +15,24 @@ error: literal out of range for `u8`
    |
 LL |     let range_c = 0..=256;
    |                       ^^^
+   |
+   = note: the literal `256` does not fit into the type `u8` whose range is `0..=255`
 
 error: literal out of range for `u8`
   --> $DIR/lint-range-endpoint-overflow.rs:7:19
    |
 LL |     let range_d = 256..5;
    |                   ^^^
+   |
+   = note: the literal `256` does not fit into the type `u8` whose range is `0..=255`
 
 error: literal out of range for `u8`
   --> $DIR/lint-range-endpoint-overflow.rs:8:22
    |
 LL |     let range_e = 0..257;
    |                      ^^^
+   |
+   = note: the literal `257` does not fit into the type `u8` whose range is `0..=255`
 
 error: range endpoint is out of range for `u8`
   --> $DIR/lint-range-endpoint-overflow.rs:9:20

@@ -6,7 +6,7 @@ LL |     fn ref_Struct(self: &mut Struct, f: &u32) -> &u32 {
    |                         |
    |                         let's call the lifetime of this reference `'2`
 LL |         f
-   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct.rs:15:9
@@ -16,7 +16,7 @@ LL |     fn box_ref_Struct(self: Box<&mut Struct>, f: &u32) -> &u32 {
    |                                 |
    |                                 let's call the lifetime of this reference `'2`
 LL |         f
-   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct.rs:19:9
@@ -26,7 +26,7 @@ LL |     fn pin_ref_Struct(self: Pin<&mut Struct>, f: &u32) -> &u32 {
    |                                 |
    |                                 let's call the lifetime of this reference `'2`
 LL |         f
-   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct.rs:23:9
@@ -36,7 +36,7 @@ LL |     fn box_box_ref_Struct(self: Box<Box<&mut Struct>>, f: &u32) -> &u32 {
    |                                         |
    |                                         let's call the lifetime of this reference `'2`
 LL |         f
-   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct.rs:27:9
@@ -46,7 +46,7 @@ LL |     fn box_pin_ref_Struct(self: Box<Pin<&mut Struct>>, f: &u32) -> &u32 {
    |                                         |
    |                                         let's call the lifetime of this reference `'2`
 LL |         f
-   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: aborting due to 5 previous errors
 

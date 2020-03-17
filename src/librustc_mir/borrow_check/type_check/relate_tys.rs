@@ -3,8 +3,8 @@ use rustc::ty::relate::TypeRelation;
 use rustc::ty::{self, Ty};
 use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
 use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin};
-use rustc_infer::traits::query::Fallible;
-use rustc_infer::traits::DomainGoal;
+use rustc_trait_selection::traits::query::Fallible;
+use rustc_trait_selection::traits::DomainGoal;
 
 use crate::borrow_check::constraints::OutlivesConstraint;
 use crate::borrow_check::type_check::{BorrowCheckContext, Locations};

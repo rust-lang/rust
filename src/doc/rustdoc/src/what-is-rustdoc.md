@@ -78,8 +78,8 @@ $ cargo doc
 Internally, this calls out to `rustdoc` like this:
 
 ```bash
-$ rustdoc --crate-name docs srclib.rs -o <path>\docs\target\doc -L
-dependency=<path>docs\target\debug\deps
+$ rustdoc --crate-name docs src/lib.rs -o <path>/docs/target/doc -L
+dependency=<path>/docs/target/debug/deps
 ```
 
 You can see this with `cargo doc --verbose`.

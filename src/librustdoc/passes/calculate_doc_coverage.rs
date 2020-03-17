@@ -1,4 +1,5 @@
 use crate::clean;
+use crate::config::OutputFormat;
 use crate::core::DocContext;
 use crate::fold::{self, DocFolder};
 use crate::passes::Pass;
@@ -6,6 +7,8 @@ use crate::passes::Pass;
 use rustc_ast::attr;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
+use serde::Serialize;
+use serde_json;
 
 use std::collections::BTreeMap;
 use std::ops;
@@ -16,16 +19,16 @@ pub const CALCULATE_DOC_COVERAGE: Pass = Pass {
     description: "counts the number of items with and without documentation",
 };
 
-fn calculate_doc_coverage(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
-    let mut calc = CoverageCalculator::default();
+fn calculate_doc_coverage(krate: clean::Crate, ctx: &DocContext<'_>) -> clean::Crate {
+    let mut calc = CoverageCalculator::new();
     let krate = calc.fold_crate(krate);
 
-    calc.print_results();
+    calc.print_results(ctx.renderinfo.borrow().output_format);
 
     krate
 }
 
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Copy, Clone, Serialize)]
 struct ItemCount {
     total: u64,
     with_docs: u64,
@@ -64,13 +67,41 @@ impl ops::AddAssign for ItemCount {
     }
 }
 
-#[derive(Default)]
 struct CoverageCalculator {
     items: BTreeMap<FileName, ItemCount>,
 }
 
+fn limit_filename_len(filename: String) -> String {
+    let nb_chars = filename.chars().count();
+    if nb_chars > 35 {
+        "...".to_string()
+            + &filename[filename.char_indices().nth(nb_chars - 32).map(|x| x.0).unwrap_or(0)..]
+    } else {
+        filename
+    }
+}
+
 impl CoverageCalculator {
-    fn print_results(&self) {
+    fn new() -> CoverageCalculator {
+        CoverageCalculator { items: Default::default() }
+    }
+
+    fn to_json(&self) -> String {
+        serde_json::to_string(
+            &self
+                .items
+                .iter()
+                .map(|(k, v)| (k.to_string(), v))
+                .collect::<BTreeMap<String, &ItemCount>>(),
+        )
+        .expect("failed to convert JSON data to string")
+    }
+
+    fn print_results(&self, output_format: Option<OutputFormat>) {
+        if output_format.map(|o| o.is_json()).unwrap_or_else(|| false) {
+            println!("{}", self.to_json());
+            return;
+        }
         let mut total = ItemCount::default();
 
         fn print_table_line() {
@@ -93,15 +124,7 @@ impl CoverageCalculator {
 
         for (file, &count) in &self.items {
             if let Some(percentage) = count.percentage() {
-                let mut name = file.to_string();
-                // if a filename is too long, shorten it so we don't blow out the table
-                // FIXME(misdreavus): this needs to count graphemes, and probably also track
-                // double-wide characters...
-                if name.len() > 35 {
-                    name = "...".to_string() + &name[name.len() - 32..];
-                }
-
-                print_table_record(&name, count, percentage);
+                print_table_record(&limit_filename_len(file.to_string()), count, percentage);
 
                 total += count;
             }

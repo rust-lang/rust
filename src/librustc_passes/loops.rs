@@ -24,15 +24,14 @@ enum Context {
 #[derive(Copy, Clone)]
 struct CheckLoopVisitor<'a, 'hir> {
     sess: &'a Session,
-    hir_map: &'a Map<'hir>,
+    hir_map: Map<'hir>,
     cx: Context,
 }
 
 fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
-        &mut CheckLoopVisitor { sess: &tcx.sess, hir_map: &tcx.hir(), cx: Normal }
-            .as_deep_visitor(),
+        &mut CheckLoopVisitor { sess: &tcx.sess, hir_map: tcx.hir(), cx: Normal }.as_deep_visitor(),
     );
 }
 
@@ -43,8 +42,8 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
 impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
     type Map = Map<'hir>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::OnlyBodies(&self.hir_map)
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.hir_map)
     }
 
     fn visit_anon_const(&mut self, c: &'hir hir::AnonConst) {

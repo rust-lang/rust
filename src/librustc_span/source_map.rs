@@ -517,6 +517,13 @@ impl SourceMap {
         Ok((lo, hi))
     }
 
+    pub fn is_line_before_span_empty(&self, sp: Span) -> bool {
+        match self.span_to_prev_source(sp) {
+            Ok(s) => s.split('\n').last().map(|l| l.trim_start().is_empty()).unwrap_or(false),
+            Err(_) => false,
+        }
+    }
+
     pub fn span_to_lines(&self, sp: Span) -> FileLinesResult {
         debug!("span_to_lines(sp={:?})", sp);
         let (lo, hi) = self.is_valid_span(sp)?;
@@ -974,6 +981,12 @@ impl SourceMap {
             FileName::Real(ref name) => self.file_loader.read_file(name).ok(),
             _ => None,
         })
+    }
+
+    pub fn is_imported(&self, sp: Span) -> bool {
+        let source_file_index = self.lookup_source_file_idx(sp.lo());
+        let source_file = &self.files()[source_file_index];
+        source_file.is_imported()
     }
 }
 

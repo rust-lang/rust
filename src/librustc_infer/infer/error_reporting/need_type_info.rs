@@ -16,7 +16,7 @@ use std::borrow::Cow;
 struct FindLocalByTypeVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     target_ty: Ty<'tcx>,
-    hir_map: &'a Map<'tcx>,
+    hir_map: Map<'tcx>,
     found_local_pattern: Option<&'tcx Pat<'tcx>>,
     found_arg_pattern: Option<&'tcx Pat<'tcx>>,
     found_ty: Option<Ty<'tcx>>,
@@ -25,7 +25,7 @@ struct FindLocalByTypeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
-    fn new(infcx: &'a InferCtxt<'a, 'tcx>, target_ty: Ty<'tcx>, hir_map: &'a Map<'tcx>) -> Self {
+    fn new(infcx: &'a InferCtxt<'a, 'tcx>, target_ty: Ty<'tcx>, hir_map: Map<'tcx>) -> Self {
         Self {
             infcx,
             target_ty,
@@ -69,8 +69,8 @@ impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
-        NestedVisitorMap::OnlyBodies(&self.hir_map)
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.hir_map)
     }
 
     fn visit_local(&mut self, local: &'tcx Local<'tcx>) {
@@ -223,7 +223,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
         let (name, name_sp, descr, parent_name, parent_descr) = self.extract_type_name(&ty, None);
 
-        let mut local_visitor = FindLocalByTypeVisitor::new(&self, ty, &self.tcx.hir());
+        let mut local_visitor = FindLocalByTypeVisitor::new(&self, ty, self.tcx.hir());
         let ty_to_string = |ty: Ty<'tcx>| -> String {
             let mut s = String::new();
             let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
@@ -391,7 +391,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             err.span_label(pattern.span, msg);
         } else if let Some(e) = local_visitor.found_method_call {
             if let ExprKind::MethodCall(segment, ..) = &e.kind {
-                // Suggest specifiying type params or point out the return type of the call:
+                // Suggest specifying type params or point out the return type of the call:
                 //
                 // error[E0282]: type annotations needed
                 //   --> $DIR/type-annotations-needed-expr.rs:2:39
@@ -468,7 +468,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             &segment.args,
         ) {
             let borrow = tables.borrow();
-            if let Some((DefKind::Method, did)) = borrow.type_dependent_def(e.hir_id) {
+            if let Some((DefKind::AssocFn, did)) = borrow.type_dependent_def(e.hir_id) {
                 let generics = self.tcx.generics_of(did);
                 if !generics.params.is_empty() {
                     err.span_suggestion(

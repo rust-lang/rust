@@ -1,9 +1,9 @@
 use crate::infer::InferCtxt;
 use crate::traits::Obligation;
-use rustc::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc::ty::{self, ToPredicate, Ty, WithConstness};
 use rustc_hir::def_id::DefId;
 
-use super::{FulfillmentContext, FulfillmentError};
+use super::FulfillmentError;
 use super::{ObligationCause, PredicateObligation};
 
 pub trait TraitEngine<'tcx>: 'tcx {
@@ -74,11 +74,5 @@ impl<T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
         for obligation in obligations {
             self.register_predicate_obligation(infcx, obligation);
         }
-    }
-}
-
-impl dyn TraitEngine<'tcx> {
-    pub fn new(_tcx: TyCtxt<'tcx>) -> Box<Self> {
-        Box::new(FulfillmentContext::new())
     }
 }

@@ -211,7 +211,7 @@ pub fn resolve_interior<'a, 'tcx>(
 impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -237,7 +237,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                         // ZST in a temporary, so skip its type, just in case it
                         // can significantly complicate the generator type.
                         Res::Def(DefKind::Fn, _)
-                        | Res::Def(DefKind::Method, _)
+                        | Res::Def(DefKind::AssocFn, _)
                         | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
                             // NOTE(eddyb) this assumes a path expression has
                             // no nested expressions to keep track of.

@@ -1,18 +1,18 @@
 error: inherent impls cannot be `const`
-  --> $DIR/inherent-impl.rs:9:1
+  --> $DIR/inherent-impl.rs:9:12
    |
 LL | impl const S {}
-   | ^^^^^-----^^^^^
+   |      ----- ^ inherent impl for this type
    |      |
    |      `const` because of this
    |
    = note: only trait implementations may be annotated with `const`
 
 error: inherent impls cannot be `const`
-  --> $DIR/inherent-impl.rs:12:1
+  --> $DIR/inherent-impl.rs:12:12
    |
 LL | impl const T {}
-   | ^^^^^-----^^^^^
+   |      ----- ^ inherent impl for this type
    |      |
    |      `const` because of this
    |

@@ -96,7 +96,7 @@ trait PrinterSupport: pprust::PpAnn {
     ///
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust::PpAnn;
+    fn pp_ann(&self) -> &dyn pprust::PpAnn;
 }
 
 trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
@@ -106,13 +106,13 @@ trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
 
     /// Provides a uniform interface for re-extracting a reference to an
     /// `hir_map::Map` from a value that now owns it.
-    fn hir_map<'a>(&'a self) -> Option<&'a hir_map::Map<'hir>>;
+    fn hir_map(&self) -> Option<hir_map::Map<'hir>>;
 
     /// Produces the pretty-print annotation object.
     ///
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn;
+    fn pp_ann(&self) -> &dyn pprust_hir::PpAnn;
 
     /// Computes an user-readable representation of a path, if possible.
     fn node_path(&self, id: hir::HirId) -> Option<String> {
@@ -132,7 +132,7 @@ impl<'hir> PrinterSupport for NoAnn<'hir> {
         self.sess
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust::PpAnn {
         self
     }
 }
@@ -142,11 +142,11 @@ impl<'hir> HirPrinterSupport<'hir> for NoAnn<'hir> {
         self.sess
     }
 
-    fn hir_map<'a>(&'a self) -> Option<&'a hir_map::Map<'hir>> {
-        self.tcx.map(|tcx| *tcx.hir())
+    fn hir_map(&self) -> Option<hir_map::Map<'hir>> {
+        self.tcx.map(|tcx| tcx.hir())
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
         self
     }
 }
@@ -155,7 +155,7 @@ impl<'hir> pprust::PpAnn for NoAnn<'hir> {}
 impl<'hir> pprust_hir::PpAnn for NoAnn<'hir> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
         if let Some(tcx) = self.tcx {
-            pprust_hir::PpAnn::nested(*tcx.hir(), state, nested)
+            pprust_hir::PpAnn::nested(&tcx.hir(), state, nested)
         }
     }
 }
@@ -170,7 +170,7 @@ impl<'hir> PrinterSupport for IdentifiedAnnotation<'hir> {
         self.sess
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust::PpAnn {
         self
     }
 }
@@ -216,11 +216,11 @@ impl<'hir> HirPrinterSupport<'hir> for IdentifiedAnnotation<'hir> {
         self.sess
     }
 
-    fn hir_map<'a>(&'a self) -> Option<&'a hir_map::Map<'hir>> {
-        self.tcx.map(|tcx| *tcx.hir())
+    fn hir_map(&self) -> Option<hir_map::Map<'hir>> {
+        self.tcx.map(|tcx| tcx.hir())
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
         self
     }
 }
@@ -228,7 +228,7 @@ impl<'hir> HirPrinterSupport<'hir> for IdentifiedAnnotation<'hir> {
 impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
         if let Some(ref tcx) = self.tcx {
-            pprust_hir::PpAnn::nested(*tcx.hir(), state, nested)
+            pprust_hir::PpAnn::nested(&tcx.hir(), state, nested)
         }
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
@@ -315,11 +315,11 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
         &self.tcx.sess
     }
 
-    fn hir_map<'a>(&'a self) -> Option<&'a hir_map::Map<'tcx>> {
-        Some(&self.tcx.hir())
+    fn hir_map(&self) -> Option<hir_map::Map<'tcx>> {
+        Some(self.tcx.hir())
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
         self
     }
 
@@ -334,7 +334,7 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
         if let pprust_hir::Nested::Body(id) = nested {
             self.tables.set(self.tcx.body_tables(id));
         }
-        pprust_hir::PpAnn::nested(*self.tcx.hir(), state, nested);
+        pprust_hir::PpAnn::nested(&self.tcx.hir(), state, nested);
         self.tables.set(old_tables);
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {

@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |     let _ = (vec![1,2,3]).into_iter().sum() as f64;
    |                                       ^^^
    |                                       |
-   |                                       cannot infer type for type parameter `S` declared on the method `sum`
+   |                                       cannot infer type for type parameter `S` declared on the associated function `sum`
    |                                       help: consider specifying the type argument in the method call: `sum::<S>`
    |
    = note: type must be known at this point

@@ -36,7 +36,7 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
 LL | use method::B;
    |
 
-error[E0624]: method `a` is private
+error[E0624]: associated function `a` is private
   --> $DIR/trait-item-privacy.rs:72:7
    |
 LL |     c.a();
@@ -73,7 +73,7 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
 LL | use method::B;
    |
 
-error[E0624]: method `a` is private
+error[E0624]: associated function `a` is private
   --> $DIR/trait-item-privacy.rs:84:5
    |
 LL |     C::a(&S);

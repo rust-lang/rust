@@ -394,6 +394,11 @@ impl DiagnosticSpanLine {
         je.sm
             .span_to_lines(span)
             .map(|lines| {
+                // We can't get any lines if the source is unavailable.
+                if !je.sm.ensure_source_file_source_present(lines.file.clone()) {
+                    return vec![];
+                }
+
                 let sf = &*lines.file;
                 lines
                     .lines

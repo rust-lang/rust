@@ -87,6 +87,8 @@ use rustc_hir::PatKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, RegionObligation, SuppressRegionErrors};
 use rustc_span::Span;
+use rustc_trait_selection::infer::OutlivesEnvironmentExt;
+use rustc_trait_selection::opaque_types::InferCtxtExt;
 use std::mem;
 use std::ops::Deref;
 
@@ -417,7 +419,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
 
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 

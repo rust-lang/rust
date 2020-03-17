@@ -35,10 +35,10 @@ error[E0576]: cannot find method or associated constant `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:22:17
    |
 LL |     fn Y() {}
-   |     --------- similarly named method `Y` defined here
+   |     --------- similarly named associated function `Y` defined here
 ...
 LL |     <u8 as Tr>::N;
-   |                 ^ help: a method with a similar name exists: `Y`
+   |                 ^ help: an associated function with a similar name exists: `Y`
 
 error[E0576]: cannot find method or associated constant `N` in enum `E`
   --> $DIR/ufcs-partially-resolved.rs:23:16
@@ -166,7 +166,7 @@ error[E0576]: cannot find method or associated constant `NN` in `Tr::Y`
 LL |     <u8 as Tr::Y>::NN;
    |                    ^^ not found in `Tr::Y`
 
-error[E0575]: expected associated type, found method `Dr::Z`
+error[E0575]: expected associated type, found associated function `Dr::Z`
   --> $DIR/ufcs-partially-resolved.rs:52:12
    |
 LL |     type X = u16;
@@ -181,16 +181,16 @@ error[E0575]: expected method or associated constant, found associated type `Dr:
   --> $DIR/ufcs-partially-resolved.rs:53:5
    |
 LL |     fn Z() {}
-   |     --------- similarly named method `Z` defined here
+   |     --------- similarly named associated function `Z` defined here
 ...
 LL |     <u8 as Dr>::X;
    |     ^^^^^^^^^^^^-
    |                 |
-   |                 help: a method with a similar name exists: `Z`
+   |                 help: an associated function with a similar name exists: `Z`
    |
    = note: can't use a type alias as a constructor
 
-error[E0575]: expected associated type, found method `Dr::Z`
+error[E0575]: expected associated type, found associated function `Dr::Z`
   --> $DIR/ufcs-partially-resolved.rs:54:12
    |
 LL |     type X = u16;

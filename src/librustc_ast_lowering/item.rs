@@ -6,6 +6,7 @@ use rustc::bug;
 use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -114,7 +115,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             _ => &[],
         };
         let lt_def_names = parent_generics.iter().filter_map(|param| match param.kind {
-            hir::GenericParamKind::Lifetime { .. } => Some(param.name.modern()),
+            hir::GenericParamKind::Lifetime { .. } => Some(param.name.normalize_to_macros_2_0()),
             _ => None,
         });
         self.in_scope_lifetimes.extend(lt_def_names);
@@ -219,18 +220,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut vis = self.lower_visibility(&i.vis, None);
         let attrs = self.lower_attrs(&i.attrs);
 
-        if let ItemKind::MacroDef(ref def) = i.kind {
-            if !def.legacy || attr::contains_name(&i.attrs, sym::macro_export) {
-                let body = self.lower_token_stream(def.body.inner_tokens());
+        if let ItemKind::MacroDef(MacroDef { ref body, macro_rules }) = i.kind {
+            if !macro_rules || attr::contains_name(&i.attrs, sym::macro_export) {
                 let hir_id = self.lower_node_id(i.id);
+                let body = P(self.lower_mac_args(body));
                 self.exported_macros.push(hir::MacroDef {
-                    name: ident.name,
+                    ident,
                     vis,
                     attrs,
                     hir_id,
                     span: i.span,
-                    body,
-                    legacy: def.legacy,
+                    ast: MacroDef { body, macro_rules },
                 });
             } else {
                 self.non_exported_macro_attrs.extend(attrs.iter().cloned());
@@ -426,7 +426,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_generics(generics, ImplTraitContext::disallowed()),
                 self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
             ),
-            ItemKind::MacroDef(..) | ItemKind::Mac(..) => {
+            ItemKind::MacroDef(..) | ItemKind::MacCall(..) => {
                 bug!("`TyMac` should have been expanded by now")
             }
         }
@@ -676,7 +676,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ForeignItemKind::Static(ty, m)
                 }
                 ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
-                ForeignItemKind::Macro(_) => panic!("macro shouldn't exist here"),
+                ForeignItemKind::MacCall(_) => panic!("macro shouldn't exist here"),
             },
             vis: self.lower_visibility(&i.vis, None),
             span: i.span,
@@ -761,13 +761,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let names = self.lower_fn_params_to_names(&sig.decl);
                 let (generics, sig) =
                     self.lower_method_sig(generics, sig, trait_item_def_id, false, None);
-                (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))
+                (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)))
             }
             AssocItemKind::Fn(_, ref sig, ref generics, Some(ref body)) => {
                 let body_id = self.lower_fn_body_block(i.span, &sig.decl, Some(body));
                 let (generics, sig) =
                     self.lower_method_sig(generics, sig, trait_item_def_id, false, None);
-                (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Provided(body_id)))
+                (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)))
             }
             AssocItemKind::TyAlias(_, ref generics, ref bounds, ref default) => {
                 let ty = default.as_ref().map(|x| self.lower_ty(x, ImplTraitContext::disallowed()));
@@ -779,7 +779,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (generics, kind)
             }
-            AssocItemKind::Macro(..) => bug!("macro item shouldn't exist at this point"),
+            AssocItemKind::MacCall(..) => bug!("macro item shouldn't exist at this point"),
         };
 
         hir::TraitItem {
@@ -801,7 +801,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Fn(_, sig, _, default) => {
                 (hir::AssocItemKind::Method { has_self: sig.decl.has_self() }, default.is_some())
             }
-            AssocItemKind::Macro(..) => unimplemented!(),
+            AssocItemKind::MacCall(..) => unimplemented!(),
         };
         let id = hir::TraitItemId { hir_id: self.lower_node_id(i.id) };
         let defaultness = hir::Defaultness::Default { has_value: has_default };
@@ -838,7 +838,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     asyncness.opt_return_id(),
                 );
 
-                (generics, hir::ImplItemKind::Method(sig, body_id))
+                (generics, hir::ImplItemKind::Fn(sig, body_id))
             }
             AssocItemKind::TyAlias(_, generics, _, ty) => {
                 let generics = self.lower_generics(generics, ImplTraitContext::disallowed());
@@ -860,7 +860,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 };
                 (generics, kind)
             }
-            AssocItemKind::Macro(..) => bug!("`TyMac` should have been expanded by now"),
+            AssocItemKind::MacCall(..) => bug!("`TyMac` should have been expanded by now"),
         };
 
         hir::ImplItem {
@@ -895,7 +895,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 AssocItemKind::Fn(_, sig, ..) => {
                     hir::AssocItemKind::Method { has_self: sig.decl.has_self() }
                 }
-                AssocItemKind::Macro(..) => unimplemented!(),
+                AssocItemKind::MacCall(..) => unimplemented!(),
             },
         }
 

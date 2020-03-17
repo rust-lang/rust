@@ -651,7 +651,7 @@ impl Ipv4Addr {
 
     /// Returns [`true`] if this address is reserved by IANA for future use. [IETF RFC 1112]
     /// defines the block of reserved addresses as `240.0.0.0/4`. This range normally includes the
-    /// broadcast address `255.255.255.255`, but this implementation explicitely excludes it, since
+    /// broadcast address `255.255.255.255`, but this implementation explicitly excludes it, since
     /// it is obviously not reserved for future use.
     ///
     /// [IETF RFC 1112]: https://tools.ietf.org/html/rfc1112

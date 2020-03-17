@@ -2,9 +2,9 @@
 //! the parent links in the region hierarchy.
 //!
 //! For more information about how MIR-based region-checking works,
-//! see the [rustc guide].
+//! see the [rustc dev guide].
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/borrow_check.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
 use rustc::hir::map::Map;
 use rustc::middle::region::*;
@@ -285,7 +285,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
     // Ordinarily, we can rely on the visit order of HIR intravisit
     // to correspond to the actual execution order of statements.
-    // However, there's a weird corner case with compund assignment
+    // However, there's a weird corner case with compound assignment
     // operators (e.g. `a += b`). The evaluation order depends on whether
     // or not the operator is overloaded (e.g. whether or not a trait
     // like AddAssign is implemented).
@@ -698,7 +698,7 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
 impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 

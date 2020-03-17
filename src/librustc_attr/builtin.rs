@@ -1024,7 +1024,7 @@ pub enum TransparencyError {
 
 pub fn find_transparency(
     attrs: &[Attribute],
-    is_legacy: bool,
+    macro_rules: bool,
 ) -> (Transparency, Option<TransparencyError>) {
     let mut transparency = None;
     let mut error = None;
@@ -1049,7 +1049,7 @@ pub fn find_transparency(
             }
         }
     }
-    let fallback = if is_legacy { Transparency::SemiTransparent } else { Transparency::Opaque };
+    let fallback = if macro_rules { Transparency::SemiTransparent } else { Transparency::Opaque };
     (transparency.map_or(fallback, |t| t.0), error)
 }
 

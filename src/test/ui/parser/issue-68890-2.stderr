@@ -1,0 +1,22 @@
+error: `?` may only modify trait bounds, not lifetime bounds
+  --> $DIR/issue-68890-2.rs:3:15
+   |
+LL | type X<'a> = (?'a) +;
+   |               ^
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/issue-68890-2.rs:3:14
+   |
+LL | type X<'a> = (?'a) +;
+   |              ^^^^^^^ help: use `dyn`: `dyn (?'a) +`
+   |
+   = note: `#[warn(bare_trait_objects)]` on by default
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/issue-68890-2.rs:3:14
+   |
+LL | type X<'a> = (?'a) +;
+   |              ^^^^^^^
+
+error: aborting due to 2 previous errors
+

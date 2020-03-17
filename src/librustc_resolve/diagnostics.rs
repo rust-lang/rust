@@ -1,4 +1,5 @@
 use std::cmp::Reverse;
+use std::ptr;
 
 use log::debug;
 use rustc::bug;
@@ -18,10 +19,12 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span};
 
-use crate::imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
+use crate::imports::{Import, ImportKind, ImportResolver};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
-use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
+use crate::{
+    BindingError, CrateLint, HasGenericParams, MacroRulesScope, Module, ModuleOrUniformRoot,
+};
 use crate::{NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
 use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
@@ -249,8 +252,7 @@ impl<'a> Resolver<'a> {
                     self.session,
                     span,
                     E0409,
-                    "variable `{}` is bound in inconsistent \
-                                ways within the same match arm",
+                    "variable `{}` is bound inconsistently across alternatives separated by `|`",
                     variable_name
                 );
                 err.span_label(span, "bound in different ways");
@@ -499,12 +501,12 @@ impl<'a> Resolver<'a> {
                         }
                     }
                 }
-                Scope::MacroRules(legacy_scope) => {
-                    if let LegacyScope::Binding(legacy_binding) = legacy_scope {
-                        let res = legacy_binding.binding.res();
+                Scope::MacroRules(macro_rules_scope) => {
+                    if let MacroRulesScope::Binding(macro_rules_binding) = macro_rules_scope {
+                        let res = macro_rules_binding.binding.res();
                         if filter_fn(res) {
                             suggestions
-                                .push(TypoSuggestion::from_res(legacy_binding.ident.name, res))
+                                .push(TypoSuggestion::from_res(macro_rules_binding.ident.name, res))
                         }
                     }
                 }
@@ -757,7 +759,7 @@ impl<'a> Resolver<'a> {
             let msg = format!("unsafe traits like `{}` should be implemented explicitly", ident);
             err.span_note(ident.span, &msg);
         }
-        if self.macro_names.contains(&ident.modern()) {
+        if self.macro_names.contains(&ident.normalize_to_macros_2_0()) {
             err.help("have you added the `#[macro_use]` on the module/import?");
         }
     }
@@ -917,50 +919,81 @@ impl<'a> Resolver<'a> {
         err.emit();
     }
 
-    crate fn report_privacy_error(&self, privacy_error: &PrivacyError<'_>) {
-        let PrivacyError { ident, binding, .. } = *privacy_error;
-        let session = &self.session;
-        let mk_struct_span_error = |is_constructor| {
-            let mut descr = binding.res().descr().to_string();
-            if is_constructor {
-                descr += " constructor";
-            }
-            if binding.is_import() {
-                descr += " import";
-            }
-
-            let mut err =
-                struct_span_err!(session, ident.span, E0603, "{} `{}` is private", descr, ident);
-
-            err.span_label(ident.span, &format!("this {} is private", descr));
-            err.span_note(
-                session.source_map().def_span(binding.span),
-                &format!("the {} `{}` is defined here", descr, ident),
-            );
-
-            err
-        };
-
-        let mut err = if let NameBindingKind::Res(
+    /// If the binding refers to a tuple struct constructor with fields,
+    /// returns the span of its fields.
+    fn ctor_fields_span(&self, binding: &NameBinding<'_>) -> Option<Span> {
+        if let NameBindingKind::Res(
             Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id),
             _,
         ) = binding.kind
         {
             let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
             if let Some(fields) = self.field_names.get(&def_id) {
-                let mut err = mk_struct_span_error(true);
                 let first_field = fields.first().expect("empty field list in the map");
-                err.span_label(
-                    fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)),
-                    "a constructor is private if any of the fields is private",
-                );
-                err
-            } else {
-                mk_struct_span_error(false)
+                return Some(fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)));
             }
-        } else {
-            mk_struct_span_error(false)
-        };
+        }
+        None
+    }
+
+    crate fn report_privacy_error(&self, privacy_error: &PrivacyError<'_>) {
+        let PrivacyError { ident, binding, .. } = *privacy_error;
+
+        let res = binding.res();
+        let ctor_fields_span = self.ctor_fields_span(binding);
+        let plain_descr = res.descr().to_string();
+        let nonimport_descr =
+            if ctor_fields_span.is_some() { plain_descr + " constructor" } else { plain_descr };
+        let import_descr = nonimport_descr.clone() + " import";
+        let get_descr =
+            |b: &NameBinding<'_>| if b.is_import() { &import_descr } else { &nonimport_descr };
+
+        // Print the primary message.
+        let descr = get_descr(binding);
+        let mut err =
+            struct_span_err!(self.session, ident.span, E0603, "{} `{}` is private", descr, ident);
+        err.span_label(ident.span, &format!("this {} is private", descr));
+        if let Some(span) = ctor_fields_span {
+            err.span_label(span, "a constructor is private if any of the fields is private");
+        }
+
+        // Print the whole import chain to make it easier to see what happens.
+        let first_binding = binding;
+        let mut next_binding = Some(binding);
+        let mut next_ident = ident;
+        while let Some(binding) = next_binding {
+            let name = next_ident;
+            next_binding = match binding.kind {
+                _ if res == Res::Err => None,
+                NameBindingKind::Import { binding, import, .. } => match import.kind {
+                    _ if binding.span.is_dummy() => None,
+                    ImportKind::Single { source, .. } => {
+                        next_ident = source;
+                        Some(binding)
+                    }
+                    ImportKind::Glob { .. } | ImportKind::MacroUse => Some(binding),
+                    ImportKind::ExternCrate { .. } => None,
+                },
+                _ => None,
+            };
+
+            let first = ptr::eq(binding, first_binding);
+            let descr = get_descr(binding);
+            let msg = format!(
+                "{and_refers_to}the {item} `{name}`{which} is defined here{dots}",
+                and_refers_to = if first { "" } else { "...and refers to " },
+                item = descr,
+                name = name,
+                which = if first { "" } else { " which" },
+                dots = if next_binding.is_some() { "..." } else { "" },
+            );
+            let def_span = self.session.source_map().def_span(binding.span);
+            let mut note_span = MultiSpan::from_span(def_span);
+            if !first && binding.vis == ty::Visibility::Public {
+                note_span.push_span_label(def_span, "consider importing it directly".into());
+            }
+            err.span_note(note_span, &msg);
+        }
 
         err.emit();
     }
@@ -1090,7 +1123,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         }
 
         // Sort extern crate names in reverse order to get
-        // 1) some consistent ordering for emitted dignostics, and
+        // 1) some consistent ordering for emitted diagnostics, and
         // 2) `std` suggestions before `core` suggestions.
         let mut extern_crate_names =
             self.r.extern_prelude.iter().map(|(ident, _)| ident.name).collect::<Vec<_>>();
@@ -1126,7 +1159,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// ```
     pub(crate) fn check_for_module_export_macro(
         &mut self,
-        directive: &'b ImportDirective<'b>,
+        import: &'b Import<'b>,
         module: ModuleOrUniformRoot<'b>,
         ident: Ident,
     ) -> Option<(Option<Suggestion>, Vec<String>)> {
@@ -1151,28 +1184,26 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         let binding = resolution.borrow().binding()?;
         if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() {
             let module_name = crate_module.kind.name().unwrap();
-            let import = match directive.subclass {
-                ImportDirectiveSubclass::SingleImport { source, target, .. }
-                    if source != target =>
-                {
+            let import_snippet = match import.kind {
+                ImportKind::Single { source, target, .. } if source != target => {
                     format!("{} as {}", source, target)
                 }
                 _ => format!("{}", ident),
             };
 
             let mut corrections: Vec<(Span, String)> = Vec::new();
-            if !directive.is_nested() {
+            if !import.is_nested() {
                 // Assume this is the easy case of `use issue_59764::foo::makro;` and just remove
                 // intermediate segments.
-                corrections.push((directive.span, format!("{}::{}", module_name, import)));
+                corrections.push((import.span, format!("{}::{}", module_name, import_snippet)));
             } else {
                 // Find the binding span (and any trailing commas and spaces).
                 //   ie. `use a::b::{c, d, e};`
                 //                      ^^^
                 let (found_closing_brace, binding_span) = find_span_of_binding_until_next_binding(
                     self.r.session,
-                    directive.span,
-                    directive.use_span,
+                    import.span,
+                    import.use_span,
                 );
                 debug!(
                     "check_for_module_export_macro: found_closing_brace={:?} binding_span={:?}",
@@ -1209,7 +1240,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 let (has_nested, after_crate_name) = find_span_immediately_after_crate_name(
                     self.r.session,
                     module_name,
-                    directive.use_span,
+                    import.use_span,
                 );
                 debug!(
                     "check_for_module_export_macro: has_nested={:?} after_crate_name={:?}",
@@ -1225,11 +1256,11 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         start_point,
                         if has_nested {
                             // In this case, `start_snippet` must equal '{'.
-                            format!("{}{}, ", start_snippet, import)
+                            format!("{}{}, ", start_snippet, import_snippet)
                         } else {
                             // In this case, add a `{`, then the moved import, then whatever
                             // was there before.
-                            format!("{{{}, {}", import, start_snippet)
+                            format!("{{{}, {}", import_snippet, start_snippet)
                         },
                     ));
                 }

@@ -271,7 +271,7 @@ pub struct Invocation {
 
 pub enum InvocationKind {
     Bang {
-        mac: ast::Mac,
+        mac: ast::MacCall,
         span: Span,
     },
     Attr {
@@ -408,7 +408,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mut undetermined_invocations = Vec::new();
         let (mut progress, mut force) = (false, !self.monotonic);
         loop {
-            let invoc = if let Some(invoc) = invocations.pop() {
+            let (invoc, res) = if let Some(invoc) = invocations.pop() {
                 invoc
             } else {
                 self.resolve_imports();
@@ -420,30 +420,51 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 continue;
             };
 
-            let eager_expansion_root =
-                if self.monotonic { invoc.expansion_data.id } else { orig_expansion_data.id };
-            let res = match self.cx.resolver.resolve_macro_invocation(
-                &invoc,
-                eager_expansion_root,
-                force,
-            ) {
-                Ok(res) => res,
-                Err(Indeterminate) => {
-                    undetermined_invocations.push(invoc);
-                    continue;
+            let res = match res {
+                Some(res) => res,
+                None => {
+                    let eager_expansion_root = if self.monotonic {
+                        invoc.expansion_data.id
+                    } else {
+                        orig_expansion_data.id
+                    };
+                    match self.cx.resolver.resolve_macro_invocation(
+                        &invoc,
+                        eager_expansion_root,
+                        force,
+                    ) {
+                        Ok(res) => res,
+                        Err(Indeterminate) => {
+                            // Cannot resolve, will retry this invocation later.
+                            undetermined_invocations.push((invoc, None));
+                            continue;
+                        }
+                    }
                 }
             };
 
-            progress = true;
             let ExpansionData { depth, id: expn_id, .. } = invoc.expansion_data;
             self.cx.current_expansion = invoc.expansion_data.clone();
 
             // FIXME(jseyfried): Refactor out the following logic
             let (expanded_fragment, new_invocations) = match res {
-                InvocationRes::Single(ext) => {
-                    let fragment = self.expand_invoc(invoc, &ext.kind);
-                    self.collect_invocations(fragment, &[])
-                }
+                InvocationRes::Single(ext) => match self.expand_invoc(invoc, &ext.kind) {
+                    ExpandResult::Ready(fragment) => self.collect_invocations(fragment, &[]),
+                    ExpandResult::Retry(invoc, explanation) => {
+                        if force {
+                            // We are stuck, stop retrying and produce a dummy fragment.
+                            let span = invoc.span();
+                            self.cx.span_err(span, &explanation);
+                            let fragment = invoc.fragment_kind.dummy(span);
+                            self.collect_invocations(fragment, &[])
+                        } else {
+                            // Cannot expand, will retry this invocation later.
+                            undetermined_invocations
+                                .push((invoc, Some(InvocationRes::Single(ext))));
+                            continue;
+                        }
+                    }
+                },
                 InvocationRes::DeriveContainer(_exts) => {
                     // FIXME: Consider using the derive resolutions (`_exts`) immediately,
                     // instead of enqueuing the derives to be resolved again later.
@@ -463,14 +484,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     for path in derives {
                         let expn_id = ExpnId::fresh(None);
                         derive_placeholders.push(NodeId::placeholder_from_expn_id(expn_id));
-                        invocations.push(Invocation {
-                            kind: InvocationKind::Derive { path, item: item.clone() },
-                            fragment_kind: invoc.fragment_kind,
-                            expansion_data: ExpansionData {
-                                id: expn_id,
-                                ..invoc.expansion_data.clone()
+                        invocations.push((
+                            Invocation {
+                                kind: InvocationKind::Derive { path, item: item.clone() },
+                                fragment_kind: invoc.fragment_kind,
+                                expansion_data: ExpansionData {
+                                    id: expn_id,
+                                    ..invoc.expansion_data.clone()
+                                },
                             },
-                        });
+                            None,
+                        ));
                     }
                     let fragment =
                         invoc.fragment_kind.expect_from_annotatables(::std::iter::once(item));
@@ -478,6 +502,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
             };
 
+            progress = true;
             if expanded_fragments.len() < depth {
                 expanded_fragments.push(Vec::new());
             }
@@ -535,7 +560,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         &mut self,
         mut fragment: AstFragment,
         extra_placeholders: &[NodeId],
-    ) -> (AstFragment, Vec<Invocation>) {
+    ) -> (AstFragment, Vec<(Invocation, Option<InvocationRes>)>) {
         // Resolve `$crate`s in the fragment for pretty-printing.
         self.cx.resolver.resolve_dollar_crates();
 
@@ -625,7 +650,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     /// A macro's expansion does not fit in this fragment kind.
     /// For example, a non-type macro in a type position.
-    fn error_wrong_fragment_kind(&mut self, kind: AstFragmentKind, mac: &ast::Mac, span: Span) {
+    fn error_wrong_fragment_kind(&mut self, kind: AstFragmentKind, mac: &ast::MacCall, span: Span) {
         let msg = format!(
             "non-{kind} macro in {kind} position: {path}",
             kind = kind.name(),
@@ -635,13 +660,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.trace_macros_diag();
     }
 
-    fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtensionKind) -> AstFragment {
+    fn expand_invoc(
+        &mut self,
+        invoc: Invocation,
+        ext: &SyntaxExtensionKind,
+    ) -> ExpandResult<AstFragment, Invocation> {
         if self.cx.current_expansion.depth > self.cx.ecfg.recursion_limit {
             self.error_recursion_limit_reached();
         }
 
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
-        match invoc.kind {
+        ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
                     self.gate_proc_macro_expansion_kind(span, fragment_kind);
@@ -663,7 +692,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::Attr { attr, mut item, .. } => match ext {
+            InvocationKind::Attr { attr, mut item, derives, after_derive } => match ext {
                 SyntaxExtensionKind::Attr(expander) => {
                     self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
@@ -679,8 +708,25 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::LegacyAttr(expander) => {
                     match validate_attr::parse_meta(self.cx.parse_sess, &attr) {
                         Ok(meta) => {
-                            let item = expander.expand(self.cx, span, &meta, item);
-                            fragment_kind.expect_from_annotatables(item)
+                            let items = match expander.expand(self.cx, span, &meta, item) {
+                                ExpandResult::Ready(items) => items,
+                                ExpandResult::Retry(item, explanation) => {
+                                    // Reassemble the original invocation for retrying.
+                                    return ExpandResult::Retry(
+                                        Invocation {
+                                            kind: InvocationKind::Attr {
+                                                attr,
+                                                item,
+                                                derives,
+                                                after_derive,
+                                            },
+                                            ..invoc
+                                        },
+                                        explanation,
+                                    );
+                                }
+                            };
+                            fragment_kind.expect_from_annotatables(items)
                         }
                         Err(mut err) => {
                             err.emit();
@@ -702,19 +748,31 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::Derive(expander)
                 | SyntaxExtensionKind::LegacyDerive(expander) => {
                     if !item.derive_allowed() {
-                        return fragment_kind.dummy(span);
+                        return ExpandResult::Ready(fragment_kind.dummy(span));
                     }
                     if let SyntaxExtensionKind::Derive(..) = ext {
                         self.gate_proc_macro_input(&item);
                     }
                     let meta = ast::MetaItem { kind: ast::MetaItemKind::Word, span, path };
-                    let items = expander.expand(self.cx, span, &meta, item);
+                    let items = match expander.expand(self.cx, span, &meta, item) {
+                        ExpandResult::Ready(items) => items,
+                        ExpandResult::Retry(item, explanation) => {
+                            // Reassemble the original invocation for retrying.
+                            return ExpandResult::Retry(
+                                Invocation {
+                                    kind: InvocationKind::Derive { path: meta.path, item },
+                                    ..invoc
+                                },
+                                explanation,
+                            );
+                        }
+                    };
                     fragment_kind.expect_from_annotatables(items)
                 }
                 _ => unreachable!(),
             },
             InvocationKind::DeriveContainer { .. } => unreachable!(),
-        }
+        })
     }
 
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
@@ -768,7 +826,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 visit::walk_item(self, item);
             }
 
-            fn visit_mac(&mut self, _: &'ast ast::Mac) {}
+            fn visit_mac(&mut self, _: &'ast ast::MacCall) {}
         }
 
         if !self.cx.ecfg.proc_macro_hygiene() {
@@ -933,7 +991,7 @@ pub fn ensure_complete_parse<'a>(
 struct InvocationCollector<'a, 'b> {
     cx: &'a mut ExtCtxt<'b>,
     cfg: StripUnconfigured<'a>,
-    invocations: Vec<Invocation>,
+    invocations: Vec<(Invocation, Option<InvocationRes>)>,
     monotonic: bool,
 }
 
@@ -955,19 +1013,27 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         };
         let expn_id = ExpnId::fresh(expn_data);
         let vis = kind.placeholder_visibility();
-        self.invocations.push(Invocation {
-            kind,
-            fragment_kind,
-            expansion_data: ExpansionData {
-                id: expn_id,
-                depth: self.cx.current_expansion.depth + 1,
-                ..self.cx.current_expansion.clone()
+        self.invocations.push((
+            Invocation {
+                kind,
+                fragment_kind,
+                expansion_data: ExpansionData {
+                    id: expn_id,
+                    depth: self.cx.current_expansion.depth + 1,
+                    ..self.cx.current_expansion.clone()
+                },
             },
-        });
+            None,
+        ));
         placeholder(fragment_kind, NodeId::placeholder_from_expn_id(expn_id), vis)
     }
 
-    fn collect_bang(&mut self, mac: ast::Mac, span: Span, kind: AstFragmentKind) -> AstFragment {
+    fn collect_bang(
+        &mut self,
+        mac: ast::MacCall,
+        span: Span,
+        kind: AstFragmentKind,
+    ) -> AstFragment {
         self.collect(kind, InvocationKind::Bang { mac, span })
     }
 
@@ -1110,7 +1176,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     .into_inner();
             }
 
-            if let ast::ExprKind::Mac(mac) = expr.kind {
+            if let ast::ExprKind::MacCall(mac) = expr.kind {
                 self.check_attributes(&expr.attrs);
                 self.collect_bang(mac, expr.span, AstFragmentKind::Expr).make_expr().into_inner()
             } else {
@@ -1257,7 +1323,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     .map(|expr| expr.into_inner());
             }
 
-            if let ast::ExprKind::Mac(mac) = expr.kind {
+            if let ast::ExprKind::MacCall(mac) = expr.kind {
                 self.check_attributes(&expr.attrs);
                 self.collect_bang(mac, expr.span, AstFragmentKind::OptExpr)
                     .make_opt_expr()
@@ -1274,12 +1340,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn visit_pat(&mut self, pat: &mut P<ast::Pat>) {
         self.cfg.configure_pat(pat);
         match pat.kind {
-            PatKind::Mac(_) => {}
+            PatKind::MacCall(_) => {}
             _ => return noop_visit_pat(pat, self),
         }
 
         visit_clobber(pat, |mut pat| match mem::replace(&mut pat.kind, PatKind::Wild) {
-            PatKind::Mac(mac) => self.collect_bang(mac, pat.span, AstFragmentKind::Pat).make_pat(),
+            PatKind::MacCall(mac) => {
+                self.collect_bang(mac, pat.span, AstFragmentKind::Pat).make_pat()
+            }
             _ => unreachable!(),
         });
     }
@@ -1311,7 +1379,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             }
         }
 
-        if let StmtKind::Mac(mac) = stmt.kind {
+        if let StmtKind::MacCall(mac) = stmt.kind {
             let (mac, style, attrs) = mac.into_inner();
             self.check_attributes(&attrs);
             let mut placeholder =
@@ -1360,10 +1428,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         match item.kind {
-            ast::ItemKind::Mac(..) => {
+            ast::ItemKind::MacCall(..) => {
                 self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.kind {
-                    ItemKind::Mac(mac) => self
+                    ItemKind::MacCall(mac) => self
                         .collect(
                             AstFragmentKind::Items,
                             InvocationKind::Bang { mac, span: item.span },
@@ -1432,10 +1500,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         match item.kind {
-            ast::AssocItemKind::Macro(..) => {
+            ast::AssocItemKind::MacCall(..) => {
                 self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.kind {
-                    ast::AssocItemKind::Macro(mac) => self
+                    ast::AssocItemKind::MacCall(mac) => self
                         .collect_bang(mac, item.span, AstFragmentKind::TraitItems)
                         .make_trait_items(),
                     _ => unreachable!(),
@@ -1462,10 +1530,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         match item.kind {
-            ast::AssocItemKind::Macro(..) => {
+            ast::AssocItemKind::MacCall(..) => {
                 self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.kind {
-                    ast::AssocItemKind::Macro(mac) => self
+                    ast::AssocItemKind::MacCall(mac) => self
                         .collect_bang(mac, item.span, AstFragmentKind::ImplItems)
                         .make_impl_items(),
                     _ => unreachable!(),
@@ -1477,12 +1545,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
     fn visit_ty(&mut self, ty: &mut P<ast::Ty>) {
         match ty.kind {
-            ast::TyKind::Mac(_) => {}
+            ast::TyKind::MacCall(_) => {}
             _ => return noop_visit_ty(ty, self),
         };
 
         visit_clobber(ty, |mut ty| match mem::replace(&mut ty.kind, ast::TyKind::Err) {
-            ast::TyKind::Mac(mac) => self.collect_bang(mac, ty.span, AstFragmentKind::Ty).make_ty(),
+            ast::TyKind::MacCall(mac) => {
+                self.collect_bang(mac, ty.span, AstFragmentKind::Ty).make_ty()
+            }
             _ => unreachable!(),
         });
     }
@@ -1511,10 +1581,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         match foreign_item.kind {
-            ast::ForeignItemKind::Macro(..) => {
+            ast::ForeignItemKind::MacCall(..) => {
                 self.check_attributes(&foreign_item.attrs);
                 foreign_item.and_then(|item| match item.kind {
-                    ast::ForeignItemKind::Macro(mac) => self
+                    ast::ForeignItemKind::MacCall(mac) => self
                         .collect_bang(mac, item.span, AstFragmentKind::ForeignItems)
                         .make_foreign_items(),
                     _ => unreachable!(),

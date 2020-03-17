@@ -1,6 +1,8 @@
 use crate::check::FnCtxt;
 use rustc_infer::infer::InferOk;
-use rustc_infer::traits::{self, ObligationCause};
+use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_trait_selection::traits::{self, ObligationCause};
 
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::{self, AssocItem, Ty};
@@ -373,7 +375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<(Span, &'static str, String)> {
         let sm = self.sess().source_map();
         let sp = expr.span;
-        if !sm.span_to_filename(sp).is_real() {
+        if sm.is_imported(sp) {
             // Ignore if span is from within a macro #41858, #58298. We previously used the macro
             // call span, but that breaks down when the type error comes from multiple calls down.
             return None;
@@ -523,7 +525,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 // We have `&T`, check if what was expected was `T`. If so,
                 // we may want to suggest removing a `&`.
-                if !sm.span_to_filename(expr.span).is_real() {
+                if sm.is_imported(expr.span) {
                     if let Ok(code) = sm.span_to_snippet(sp) {
                         if code.starts_with('&') {
                             return Some((
@@ -601,7 +603,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // FIXME(estebank): modify once we decide to suggest `as` casts
             return false;
         }
-        if !self.tcx.sess.source_map().span_to_filename(expr.span).is_real() {
+        if self.tcx.sess.source_map().is_imported(expr.span) {
             // Ignore if span is from within a macro.
             return false;
         }

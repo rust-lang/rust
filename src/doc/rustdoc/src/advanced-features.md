@@ -4,7 +4,7 @@ The features listed on this page fall outside the rest of the main categories.
 
 ## `#[cfg(doc)]`: Documenting platform-/feature-specific information
 
-For conditional compilation, Rustdoc treats your crate the same way the compiler does: Only things
+For conditional compilation, Rustdoc treats your crate the same way the compiler does. Only things
 from the host target are available (or from the given `--target` if present), and everything else is
 "filtered out" from the crate. This can cause problems if your crate is providing different things
 on different targets and you want your documentation to reflect all the available items you

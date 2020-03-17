@@ -3,73 +3,30 @@
 //! encode them therein.
 //!
 //! For an overview of what canonicaliation is and how it fits into
-//! rustc, check out the [chapter in the rustc guide][c].
+//! rustc, check out the [chapter in the rustc dev guide][c].
 //!
-//! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
+//! [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html
 
 use crate::infer::canonical::substitute::{substitute_value, CanonicalExt};
 use crate::infer::canonical::{
     Canonical, CanonicalVarValues, CanonicalizedQueryResponse, Certainty, OriginalQueryValues,
     QueryOutlivesConstraint, QueryRegionConstraints, QueryResponse,
 };
+use crate::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::InferCtxtBuilder;
-use crate::infer::{InferCtxt, InferOk, InferResult};
+use crate::infer::{InferCtxt, InferOk, InferResult, NLLRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
-use crate::traits::TraitEngine;
+use crate::traits::{DomainGoal, TraitEngine};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc::arena::ArenaAllocatable;
 use rustc::ty::fold::TypeFoldable;
+use rustc::ty::relate::TypeRelation;
 use rustc::ty::subst::{GenericArg, GenericArgKind};
 use rustc::ty::{self, BoundVar, Ty, TyCtxt};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
-use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
-
-impl<'tcx> InferCtxtBuilder<'tcx> {
-    /// The "main method" for a canonicalized trait query. Given the
-    /// canonical key `canonical_key`, this method will create a new
-    /// inference context, instantiate the key, and run your operation
-    /// `op`. The operation should yield up a result (of type `R`) as
-    /// well as a set of trait obligations that must be fully
-    /// satisfied. These obligations will be processed and the
-    /// canonical result created.
-    ///
-    /// Returns `NoSolution` in the event of any error.
-    ///
-    /// (It might be mildly nicer to implement this on `TyCtxt`, and
-    /// not `InferCtxtBuilder`, but that is a bit tricky right now.
-    /// In part because we would need a `for<'tcx>` sort of
-    /// bound for the closure and in part because it is convenient to
-    /// have `'tcx` be free on this function so that we can talk about
-    /// `K: TypeFoldable<'tcx>`.)
-    pub fn enter_canonical_trait_query<K, R>(
-        &mut self,
-        canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&InferCtxt<'_, 'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
-    ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
-    where
-        K: TypeFoldable<'tcx>,
-        R: Debug + TypeFoldable<'tcx>,
-        Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable,
-    {
-        self.enter_with_canonical(
-            DUMMY_SP,
-            canonical_key,
-            |ref infcx, key, canonical_inference_vars| {
-                let mut fulfill_cx = TraitEngine::new(infcx.tcx);
-                let value = operation(infcx, &mut *fulfill_cx, key)?;
-                infcx.make_canonicalized_query_response(
-                    canonical_inference_vars,
-                    value,
-                    &mut *fulfill_cx,
-                )
-            },
-        )
-    }
-}
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
@@ -195,9 +152,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// the query before applying this function.)
     ///
     /// To get a good understanding of what is happening here, check
-    /// out the [chapter in the rustc guide][c].
+    /// out the [chapter in the rustc dev guide][c].
     ///
-    /// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html#processing-the-canonicalized-query-result
+    /// [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html#processing-the-canonicalized-query-result
     pub fn instantiate_query_response_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -304,13 +261,31 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 }
 
                 (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
-                    let ok = self.at(cause, param_env).eq(v1, v2)?;
-                    obligations.extend(ok.into_obligations());
+                    TypeRelating::new(
+                        self,
+                        QueryTypeRelatingDelegate {
+                            infcx: self,
+                            param_env,
+                            cause,
+                            obligations: &mut obligations,
+                        },
+                        ty::Variance::Invariant,
+                    )
+                    .relate(&v1, &v2)?;
                 }
 
                 (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
-                    let ok = self.at(cause, param_env).eq(v1, v2)?;
-                    obligations.extend(ok.into_obligations());
+                    TypeRelating::new(
+                        self,
+                        QueryTypeRelatingDelegate {
+                            infcx: self,
+                            param_env,
+                            cause,
+                            obligations: &mut obligations,
+                        },
+                        ty::Variance::Invariant,
+                    )
+                    .relate(&v1, &v2)?;
                 }
 
                 _ => {
@@ -655,4 +630,56 @@ pub fn make_query_region_constraints<'tcx>(
         .collect();
 
     QueryRegionConstraints { outlives, member_constraints: member_constraints.clone() }
+}
+
+struct QueryTypeRelatingDelegate<'a, 'tcx> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
+    obligations: &'a mut Vec<PredicateObligation<'tcx>>,
+    param_env: ty::ParamEnv<'tcx>,
+    cause: &'a ObligationCause<'tcx>,
+}
+
+impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
+    fn create_next_universe(&mut self) -> ty::UniverseIndex {
+        self.infcx.create_next_universe()
+    }
+
+    fn next_existential_region_var(&mut self, from_forall: bool) -> ty::Region<'tcx> {
+        let origin = NLLRegionVariableOrigin::Existential { from_forall };
+        self.infcx.next_nll_region_var(origin)
+    }
+
+    fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx> {
+        self.infcx.tcx.mk_region(ty::RePlaceholder(placeholder))
+    }
+
+    fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
+        self.infcx.next_nll_region_var_in_universe(
+            NLLRegionVariableOrigin::Existential { from_forall: false },
+            universe,
+        )
+    }
+
+    fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>) {
+        self.obligations.push(Obligation {
+            cause: self.cause.clone(),
+            param_env: self.param_env,
+            predicate: ty::Predicate::RegionOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
+                sup, sub,
+            ))),
+            recursion_depth: 0,
+        });
+    }
+
+    fn push_domain_goal(&mut self, _: DomainGoal<'tcx>) {
+        bug!("should never be invoked with eager normalization")
+    }
+
+    fn normalization() -> NormalizationStrategy {
+        NormalizationStrategy::Eager
+    }
+
+    fn forbid_inference_vars() -> bool {
+        true
+    }
 }

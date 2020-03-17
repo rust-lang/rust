@@ -107,7 +107,7 @@ crate struct PlaceholderHirTyCollector(crate Vec<Span>);
 impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
     type Map = Map<'v>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
     fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
@@ -201,8 +201,8 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
 impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
@@ -715,7 +715,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
     tcx.generics_of(def_id);
 
     match trait_item.kind {
-        hir::TraitItemKind::Method(..) => {
+        hir::TraitItemKind::Fn(..) => {
             tcx.type_of(def_id);
             tcx.fn_sig(def_id);
         }
@@ -745,7 +745,7 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::HirId) {
     tcx.predicates_of(def_id);
     let impl_item = tcx.hir().expect_impl_item(impl_item_id);
     match impl_item.kind {
-        hir::ImplItemKind::Method(..) => {
+        hir::ImplItemKind::Fn(..) => {
             tcx.fn_sig(def_id);
         }
         hir::ImplItemKind::TyAlias(_) | hir::ImplItemKind::OpaqueTy(_) => {
@@ -828,7 +828,7 @@ fn convert_variant(
         .iter()
         .map(|f| {
             let fid = tcx.hir().local_def_id(f.hir_id);
-            let dup_span = seen_fields.get(&f.ident.modern()).cloned();
+            let dup_span = seen_fields.get(&f.ident.normalize_to_macros_2_0()).cloned();
             if let Some(prev_span) = dup_span {
                 struct_span_err!(
                     tcx.sess,
@@ -841,7 +841,7 @@ fn convert_variant(
                 .span_label(prev_span, format!("`{}` first declared here", f.ident))
                 .emit();
             } else {
-                seen_fields.insert(f.ident.modern(), f.span);
+                seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
             }
 
             ty::FieldDef {
@@ -1032,8 +1032,23 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TraitDef {
     }
 
     let is_marker = tcx.has_attr(def_id, sym::marker);
+    let spec_kind = if tcx.has_attr(def_id, sym::rustc_unsafe_specialization_marker) {
+        ty::trait_def::TraitSpecializationKind::Marker
+    } else if tcx.has_attr(def_id, sym::rustc_specialization_trait) {
+        ty::trait_def::TraitSpecializationKind::AlwaysApplicable
+    } else {
+        ty::trait_def::TraitSpecializationKind::None
+    };
     let def_path_hash = tcx.def_path_hash(def_id);
-    let def = ty::TraitDef::new(def_id, unsafety, paren_sugar, is_auto, is_marker, def_path_hash);
+    let def = ty::TraitDef::new(
+        def_id,
+        unsafety,
+        paren_sugar,
+        is_auto,
+        is_marker,
+        spec_kind,
+        def_path_hash,
+    );
     tcx.arena.alloc(def)
 }
 
@@ -1047,7 +1062,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
     impl Visitor<'tcx> for LateBoundRegionsDetector<'tcx> {
         type Map = Map<'tcx>;
 
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
         }
 
@@ -1121,13 +1136,13 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
     match node {
         Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Method(ref sig, _) => {
+            hir::TraitItemKind::Fn(ref sig, _) => {
                 has_late_bound_regions(tcx, &item.generics, &sig.decl)
             }
             _ => None,
         },
         Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Method(ref sig, _) => {
+            hir::ImplItemKind::Fn(ref sig, _) => {
                 has_late_bound_regions(tcx, &item.generics, &sig.decl)
             }
             _ => None,
@@ -1395,7 +1410,7 @@ fn are_suggestable_generic_args(generic_args: &[hir::GenericArg<'_>]) -> bool {
         .any(is_suggestable_infer_ty)
 }
 
-/// Whether `ty` is a type with `_` placeholders that can be infered. Used in diagnostics only to
+/// Whether `ty` is a type with `_` placeholders that can be inferred. Used in diagnostics only to
 /// use inference to provide suggestions for the appropriate type if possible.
 fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
     use hir::TyKind::*;
@@ -1437,12 +1452,12 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
     match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Method(sig, TraitMethod::Provided(_)),
+            kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)),
             ident,
             generics,
             ..
         })
-        | ImplItem(hir::ImplItem { kind: ImplItemKind::Method(sig, _), ident, generics, .. })
+        | ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), ident, generics, .. })
         | Item(hir::Item { kind: ItemKind::Fn(sig, generics, _), ident, .. }) => {
             match get_infer_ret_ty(&sig.decl.output) {
                 Some(ty) => {
@@ -1474,7 +1489,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         }
 
         TraitItem(hir::TraitItem {
-            kind: TraitItemKind::Method(FnSig { header, decl }, _),
+            kind: TraitItemKind::Fn(FnSig { header, decl }, _),
             ident,
             generics,
             ..
@@ -1548,7 +1563,7 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
     let item = tcx.hir().expect_item(hir_id);
     match &item.kind {
-        hir::ItemKind::Impl { polarity: hir::ImplPolarity::Negative, .. } => {
+        hir::ItemKind::Impl { polarity: hir::ImplPolarity::Negative(_), .. } => {
             if is_rustc_reservation {
                 tcx.sess.span_err(item.span, "reservation impls can't be negative");
             }
@@ -2341,8 +2356,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
         } else if attr.check_name(sym::rustc_std_internal_symbol) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
-        } else if attr.check_name(sym::no_debug) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_DEBUG;
         } else if attr.check_name(sym::used) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
         } else if attr.check_name(sym::thread_local) {

@@ -92,6 +92,7 @@
 // a backtrace or actually symbolizing it.
 
 use crate::env;
+use crate::ffi::c_void;
 use crate::fmt;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use crate::sync::Mutex;
@@ -144,8 +145,14 @@ fn _assert_send_sync() {
 }
 
 struct BacktraceFrame {
-    frame: backtrace::Frame,
+    frame: RawFrame,
     symbols: Vec<BacktraceSymbol>,
+}
+
+enum RawFrame {
+    Actual(backtrace::Frame),
+    #[cfg(test)]
+    Fake,
 }
 
 struct BacktraceSymbol {
@@ -162,8 +169,8 @@ enum BytesOrWide {
 impl fmt::Debug for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut capture = match &self.inner {
-            Inner::Unsupported => return fmt.write_str("unsupported backtrace"),
-            Inner::Disabled => return fmt.write_str("disabled backtrace"),
+            Inner::Unsupported => return fmt.write_str("<unsupported>"),
+            Inner::Disabled => return fmt.write_str("<disabled>"),
             Inner::Captured(c) => c.lock().unwrap(),
         };
         capture.resolve();
@@ -193,11 +200,11 @@ impl fmt::Debug for BacktraceSymbol {
         if let Some(fn_name) = self.name.as_ref().map(|b| backtrace::SymbolName::new(b)) {
             write!(fmt, "fn: \"{:#}\"", fn_name)?;
         } else {
-            write!(fmt, "fn: \"<unknown>\"")?;
+            write!(fmt, "fn: <unknown>")?;
         }
 
         if let Some(fname) = self.filename.as_ref() {
-            write!(fmt, ", file: {:?}", fname)?;
+            write!(fmt, ", file: \"{:?}\"", fname)?;
         }
 
         if let Some(line) = self.lineno.as_ref() {
@@ -293,7 +300,10 @@ impl Backtrace {
         let mut actual_start = None;
         unsafe {
             backtrace::trace_unsynchronized(|frame| {
-                frames.push(BacktraceFrame { frame: frame.clone(), symbols: Vec::new() });
+                frames.push(BacktraceFrame {
+                    frame: RawFrame::Actual(frame.clone()),
+                    symbols: Vec::new(),
+                });
                 if frame.symbol_address() as usize == ip && actual_start.is_none() {
                     actual_start = Some(frames.len());
                 }
@@ -393,8 +403,13 @@ impl Capture {
         let _lock = lock();
         for frame in self.frames.iter_mut() {
             let symbols = &mut frame.symbols;
+            let frame = match &frame.frame {
+                RawFrame::Actual(frame) => frame,
+                #[cfg(test)]
+                RawFrame::Fake => unimplemented!(),
+            };
             unsafe {
-                backtrace::resolve_frame_unsynchronized(&frame.frame, |symbol| {
+                backtrace::resolve_frame_unsynchronized(frame, |symbol| {
                     symbols.push(BacktraceSymbol {
                         name: symbol.name().map(|m| m.as_bytes().to_vec()),
                         filename: symbol.filename_raw().map(|b| match b {
@@ -407,4 +422,66 @@ impl Capture {
             }
         }
     }
+}
+
+impl RawFrame {
+    fn ip(&self) -> *mut c_void {
+        match self {
+            RawFrame::Actual(frame) => frame.ip(),
+            #[cfg(test)]
+            RawFrame::Fake => 1 as *mut c_void,
+        }
+    }
+}
+
+#[test]
+fn test_debug() {
+    let backtrace = Backtrace {
+        inner: Inner::Captured(Mutex::new(Capture {
+            actual_start: 1,
+            resolved: true,
+            frames: vec![
+                BacktraceFrame {
+                    frame: RawFrame::Fake,
+                    symbols: vec![BacktraceSymbol {
+                        name: Some(b"std::backtrace::Backtrace::create".to_vec()),
+                        filename: Some(BytesOrWide::Bytes(b"rust/backtrace.rs".to_vec())),
+                        lineno: Some(100),
+                    }],
+                },
+                BacktraceFrame {
+                    frame: RawFrame::Fake,
+                    symbols: vec![BacktraceSymbol {
+                        name: Some(b"__rust_maybe_catch_panic".to_vec()),
+                        filename: None,
+                        lineno: None,
+                    }],
+                },
+                BacktraceFrame {
+                    frame: RawFrame::Fake,
+                    symbols: vec![
+                        BacktraceSymbol {
+                            name: Some(b"std::rt::lang_start_internal".to_vec()),
+                            filename: Some(BytesOrWide::Bytes(b"rust/rt.rs".to_vec())),
+                            lineno: Some(300),
+                        },
+                        BacktraceSymbol {
+                            name: Some(b"std::rt::lang_start".to_vec()),
+                            filename: Some(BytesOrWide::Bytes(b"rust/rt.rs".to_vec())),
+                            lineno: Some(400),
+                        },
+                    ],
+                },
+            ],
+        })),
+    };
+
+    #[rustfmt::skip]
+    let expected = "Backtrace [\
+    \n    { fn: \"__rust_maybe_catch_panic\" },\
+    \n    { fn: \"std::rt::lang_start_internal\", file: \"rust/rt.rs\", line: 300 },\
+    \n    { fn: \"std::rt::lang_start\", file: \"rust/rt.rs\", line: 400 },\
+    \n]";
+
+    assert_eq!(format!("{:#?}", backtrace), expected);
 }

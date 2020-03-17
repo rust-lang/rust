@@ -1,6 +1,5 @@
 const fs = require('fs');
-
-const TEST_FOLDER = 'src/test/rustdoc-js-std/';
+const path = require('path');
 
 function getNextStep(content, pos, stop) {
     while (pos < content.length && content[pos] !== stop &&
@@ -246,17 +245,16 @@ function readFileMatching(dir, name, extension) {
 }
 
 function main(argv) {
-    if (argv.length !== 3) {
-        console.error("Expected toolchain to check as argument (for example \
-                       'x86_64-apple-darwin')");
+    if (argv.length !== 4) {
+        console.error("USAGE: node tester.js STD_DOCS TEST_FOLDER");
         return 1;
     }
-    var toolchain = argv[2];
+    var std_docs = argv[2];
+    var test_folder = argv[3];
 
-    var mainJs = readFileMatching("build/" + toolchain + "/doc/", "main", ".js");
-    var ALIASES = readFileMatching("build/" + toolchain + "/doc/", "aliases", ".js");
-    var searchIndex = readFileMatching("build/" + toolchain + "/doc/",
-                                       "search-index", ".js").split("\n");
+    var mainJs = readFileMatching(std_docs, "main", ".js");
+    var ALIASES = readFileMatching(std_docs, "aliases", ".js");
+    var searchIndex = readFileMatching(std_docs, "search-index", ".js").split("\n");
     if (searchIndex[searchIndex.length - 1].length === 0) {
         searchIndex.pop();
     }
@@ -287,8 +285,8 @@ function main(argv) {
 
     var errors = 0;
 
-    fs.readdirSync(TEST_FOLDER).forEach(function(file) {
-        var loadedFile = loadContent(readFile(TEST_FOLDER + file) +
+    fs.readdirSync(test_folder).forEach(function(file) {
+        var loadedFile = loadContent(readFile(path.join(test_folder, file)) +
                                'exports.QUERY = QUERY;exports.EXPECTED = EXPECTED;');
         const expected = loadedFile.EXPECTED;
         const query = loadedFile.QUERY;

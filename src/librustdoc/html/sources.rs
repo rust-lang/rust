@@ -35,7 +35,7 @@ impl<'a> DocFolder for SourceCollector<'a> {
         // If we're including source files, and we haven't seen this file yet,
         // then we need to render it out to the filesystem.
         if self.scx.include_sources
-            // skip all invalid or macro spans
+            // skip all synthetic "files"
             && item.source.filename.is_real()
             // skip non-local items
             && item.def_id.is_local()

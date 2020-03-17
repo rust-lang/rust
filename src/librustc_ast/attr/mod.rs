@@ -286,6 +286,10 @@ impl MetaItem {
 }
 
 impl AttrItem {
+    pub fn span(&self) -> Span {
+        self.args.span().map_or(self.path.span, |args_span| self.path.span.to(args_span))
+    }
+
     pub fn meta(&self, span: Span) -> Option<MetaItem> {
         Some(MetaItem {
             path: self.path.clone(),
@@ -437,7 +441,7 @@ impl MetaItem {
         I: Iterator<Item = TokenTree>,
     {
         // FIXME: Share code with `parse_path`.
-        let path = match tokens.next() {
+        let path = match tokens.next().map(TokenTree::uninterpolate) {
             Some(TokenTree::Token(Token { kind: kind @ token::Ident(..), span }))
             | Some(TokenTree::Token(Token { kind: kind @ token::ModSep, span })) => 'arm: {
                 let mut segments = if let token::Ident(name, _) = kind {
@@ -453,7 +457,7 @@ impl MetaItem {
                 };
                 loop {
                     if let Some(TokenTree::Token(Token { kind: token::Ident(name, _), span })) =
-                        tokens.next()
+                        tokens.next().map(TokenTree::uninterpolate)
                     {
                         segments.push(PathSegment::from_ident(Ident::new(name, span)));
                     } else {
@@ -470,7 +474,6 @@ impl MetaItem {
                 Path { span, segments }
             }
             Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. })) => match *nt {
-                token::Nonterminal::NtIdent(ident, _) => Path::from_ident(ident),
                 token::Nonterminal::NtMeta(ref item) => return item.meta(item.path.span),
                 token::Nonterminal::NtPath(ref path) => path.clone(),
                 _ => return None,
@@ -676,7 +679,7 @@ impl HasAttrs for StmtKind {
             StmtKind::Local(ref local) => local.attrs(),
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.attrs(),
             StmtKind::Empty | StmtKind::Item(..) => &[],
-            StmtKind::Mac(ref mac) => {
+            StmtKind::MacCall(ref mac) => {
                 let (_, _, ref attrs) = **mac;
                 attrs.attrs()
             }
@@ -688,7 +691,7 @@ impl HasAttrs for StmtKind {
             StmtKind::Local(local) => local.visit_attrs(f),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.visit_attrs(f),
             StmtKind::Empty | StmtKind::Item(..) => {}
-            StmtKind::Mac(mac) => {
+            StmtKind::MacCall(mac) => {
                 let (_mac, _style, attrs) = mac.deref_mut();
                 attrs.visit_attrs(f);
             }

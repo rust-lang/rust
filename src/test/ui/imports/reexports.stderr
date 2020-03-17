@@ -16,11 +16,16 @@ error[E0603]: module import `foo` is private
 LL |     use b::a::foo::S;
    |               ^^^ this module import is private
    |
-note: the module import `foo` is defined here
+note: the module import `foo` is defined here...
   --> $DIR/reexports.rs:21:17
    |
 LL |         pub use super::foo; // This is OK since the value `foo` is visible enough.
    |                 ^^^^^^^^^^
+note: ...and refers to the module `foo` which is defined here
+  --> $DIR/reexports.rs:16:5
+   |
+LL |     mod foo {
+   |     ^^^^^^^
 
 error[E0603]: module import `foo` is private
   --> $DIR/reexports.rs:34:15
@@ -28,11 +33,16 @@ error[E0603]: module import `foo` is private
 LL |     use b::b::foo::S as T;
    |               ^^^ this module import is private
    |
-note: the module import `foo` is defined here
+note: the module import `foo` is defined here...
   --> $DIR/reexports.rs:26:17
    |
 LL |         pub use super::*; // This is also OK since the value `foo` is visible enough.
    |                 ^^^^^^^^
+note: ...and refers to the module `foo` which is defined here
+  --> $DIR/reexports.rs:16:5
+   |
+LL |     mod foo {
+   |     ^^^^^^^
 
 warning: glob import doesn't reexport anything because no candidate is public enough
   --> $DIR/reexports.rs:9:17

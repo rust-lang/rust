@@ -16,7 +16,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   pkg-config \
   zlib1g-dev \
-  xz-utils
+  xz-utils \
+  nodejs
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -28,7 +29,7 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-llvm-link-shared \
       --set rust.thin-lto-import-instr-limit=10
 
-ENV SCRIPT python2.7 ../x.py test src/tools/tidy && python2.7 ../x.py test
+ENV SCRIPT python2.7 ../x.py test --exclude src/tools/tidy && python2.7 ../x.py test src/tools/tidy
 
 # The purpose of this container isn't to test with debug assertions and
 # this is run on all PRs, so let's get speedier builds by disabling these extra

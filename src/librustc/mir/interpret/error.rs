@@ -5,15 +5,18 @@ use crate::mir;
 use crate::mir::interpret::ConstValue;
 use crate::ty::layout::{Align, LayoutError, Size};
 use crate::ty::query::TyCtxtAt;
+use crate::ty::tls;
 use crate::ty::{self, layout, Ty};
 
 use backtrace::Backtrace;
+use rustc_data_structures::sync::Lock;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_macros::HashStable;
+use rustc_session::CtfeBacktrace;
 use rustc_span::{Pos, Span};
 use rustc_target::spec::abi::Abi;
-use std::{any::Any, env, fmt};
+use std::{any::Any, fmt};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
@@ -245,7 +248,7 @@ fn print_backtrace(backtrace: &mut Backtrace) {
     eprintln!("\n\nAn error occurred in miri:\n{:?}", backtrace);
 }
 
-impl From<ErrorHandled> for InterpErrorInfo<'tcx> {
+impl From<ErrorHandled> for InterpErrorInfo<'_> {
     fn from(err: ErrorHandled) -> Self {
         match err {
             ErrorHandled::Reported => err_inval!(ReferencedConstant),
@@ -257,21 +260,25 @@ impl From<ErrorHandled> for InterpErrorInfo<'tcx> {
 
 impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
     fn from(kind: InterpError<'tcx>) -> Self {
-        let backtrace = match env::var("RUSTC_CTFE_BACKTRACE") {
-            // Matching `RUST_BACKTRACE` -- we treat "0" the same as "not present".
-            Ok(ref val) if val != "0" => {
-                let mut backtrace = Backtrace::new_unresolved();
-
-                if val == "immediate" {
-                    // Print it now.
-                    print_backtrace(&mut backtrace);
-                    None
-                } else {
-                    Some(Box::new(backtrace))
-                }
+        let capture_backtrace = tls::with_context_opt(|ctxt| {
+            if let Some(ctxt) = ctxt {
+                *Lock::borrow(&ctxt.tcx.sess.ctfe_backtrace)
+            } else {
+                CtfeBacktrace::Disabled
             }
-            _ => None,
+        });
+
+        let backtrace = match capture_backtrace {
+            CtfeBacktrace::Disabled => None,
+            CtfeBacktrace::Capture => Some(Box::new(Backtrace::new_unresolved())),
+            CtfeBacktrace::Immediate => {
+                // Print it now.
+                let mut backtrace = Backtrace::new_unresolved();
+                print_backtrace(&mut backtrace);
+                None
+            }
         };
+
         InterpErrorInfo { kind, backtrace }
     }
 }
@@ -291,7 +298,7 @@ pub enum InvalidProgramInfo<'tcx> {
     Layout(layout::LayoutError<'tcx>),
 }
 
-impl fmt::Debug for InvalidProgramInfo<'tcx> {
+impl fmt::Debug for InvalidProgramInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InvalidProgramInfo::*;
         match self {
@@ -321,6 +328,8 @@ pub enum UndefinedBehaviorInfo {
     RemainderByZero,
     /// Overflowing inbounds pointer arithmetic.
     PointerArithOverflow,
+    /// Invalid metadata in a wide pointer (using `str` to avoid allocations).
+    InvalidMeta(&'static str),
 }
 
 impl fmt::Debug for UndefinedBehaviorInfo {
@@ -338,6 +347,7 @@ impl fmt::Debug for UndefinedBehaviorInfo {
             DivisionByZero => write!(f, "dividing by zero"),
             RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
             PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
+            InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {}", msg),
         }
     }
 }
@@ -354,8 +364,8 @@ pub enum UnsupportedOpInfo<'tcx> {
     Unsupported(String),
 
     /// When const-prop encounters a situation it does not support, it raises this error.
-    /// This must not allocate for performance reasons.
-    ConstPropUnsupported(&'tcx str),
+    /// This must not allocate for performance reasons (hence `str`, not `String`).
+    ConstPropUnsupported(&'static str),
 
     // -- Everything below is not categorized yet --
     FunctionAbiMismatch(Abi, Abi),
@@ -609,6 +619,22 @@ impl fmt::Debug for InterpError<'_> {
             UndefinedBehavior(ref msg) => write!(f, "{:?}", msg),
             ResourceExhaustion(ref msg) => write!(f, "{:?}", msg),
             MachineStop(_) => bug!("unhandled MachineStop"),
+        }
+    }
+}
+
+impl InterpError<'_> {
+    /// Some errors allocate to be created as they contain free-form strings.
+    /// And sometimes we want to be sure that did not happen as it is a
+    /// waste of resources.
+    pub fn allocates(&self) -> bool {
+        match self {
+            InterpError::MachineStop(_)
+            | InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
+            | InterpError::Unsupported(UnsupportedOpInfo::ValidationFailure(_))
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_)) => true,
+            _ => false,
         }
     }
 }

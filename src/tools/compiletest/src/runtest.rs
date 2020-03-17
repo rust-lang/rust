@@ -1487,7 +1487,7 @@ impl<'test> TestCx<'test> {
                 // can turn it back on if needed.
                 if !self.is_rustdoc()
                     // Note that we use the local pass mode here as we don't want
-                    // to set unused to allow if we've overriden the pass mode
+                    // to set unused to allow if we've overridden the pass mode
                     // via command line flags.
                     && local_pm != Some(PassMode::Run)
                 {
@@ -2779,7 +2779,7 @@ impl<'test> TestCx<'test> {
                 Command::new(&nodejs)
                     .arg(root.join("src/tools/rustdoc-js/tester.js"))
                     .arg(out_dir.parent().expect("no parent"))
-                    .arg(&self.testpaths.file.file_stem().expect("couldn't get file stem")),
+                    .arg(self.testpaths.file.with_extension("js")),
             );
             if !res.status.success() {
                 self.fatal_proc_rec("rustdoc-js test failed!", &res);
@@ -3204,7 +3204,9 @@ impl<'test> TestCx<'test> {
         let json = cflags.contains("--error-format json")
             || cflags.contains("--error-format pretty-json")
             || cflags.contains("--error-format=json")
-            || cflags.contains("--error-format=pretty-json");
+            || cflags.contains("--error-format=pretty-json")
+            || cflags.contains("--output-format json")
+            || cflags.contains("--output-format=json");
 
         let mut normalized = output.to_string();
 

@@ -71,9 +71,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// needed (but is also permitted).
     ///
     /// For more information about how placeholders and HRTBs work, see
-    /// the [rustc guide].
+    /// the [rustc dev guide].
     ///
-    /// [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/hrtb.html
+    /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
     pub fn replace_bound_vars_with_placeholders<T>(
         &self,
         binder: &ty::Binder<T>,

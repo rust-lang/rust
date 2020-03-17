@@ -18,6 +18,7 @@ use crate::type_error_struct;
 use crate::util::common::ErrorReported;
 
 use rustc::middle::lang_items;
+use rustc::mir::interpret::ErrorHandled;
 use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::Ty;
@@ -33,10 +34,10 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::traits::{self, ObligationCauseCode};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 use std::fmt::Display;
 
@@ -1039,11 +1040,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if element_ty.references_error() {
-            tcx.types.err
-        } else if let Ok(count) = count {
-            tcx.mk_ty(ty::Array(t, count))
-        } else {
-            tcx.types.err
+            return tcx.types.err;
+        }
+        match count {
+            Ok(count) => tcx.mk_ty(ty::Array(t, count)),
+            Err(ErrorHandled::TooGeneric) => {
+                self.tcx.sess.span_err(
+                    tcx.def_span(count_def_id),
+                    "array lengths can't depend on generic parameters",
+                );
+                tcx.types.err
+            }
+            Err(ErrorHandled::Reported) => tcx.types.err,
         }
     }
 
@@ -1195,7 +1203,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .fields
             .iter()
             .enumerate()
-            .map(|(i, field)| (field.ident.modern(), (i, field)))
+            .map(|(i, field)| (field.ident.normalize_to_macros_2_0(), (i, field)))
             .collect::<FxHashMap<_, _>>();
 
         let mut seen_fields = FxHashMap::default();
@@ -1461,7 +1469,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (ident, def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, base_def.did, self.body_id);
                     let fields = &base_def.non_enum_variant().fields;
-                    if let Some(index) = fields.iter().position(|f| f.ident.modern() == ident) {
+                    if let Some(index) =
+                        fields.iter().position(|f| f.ident.normalize_to_macros_2_0() == ident)
+                    {
                         let field = &fields[index];
                         let field_ty = self.field_ty(expr.span, field, substs);
                         // Save the index of all fields regardless of their visibility in case

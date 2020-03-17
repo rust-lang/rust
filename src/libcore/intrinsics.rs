@@ -1005,52 +1005,30 @@ extern "rust-intrinsic" {
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
     /// This will statically either panic, or do nothing.
+    #[cfg(bootstrap)]
     pub fn panic_if_uninhabited<T>();
+
+    /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
+    /// This will statically either panic, or do nothing.
+    #[cfg(not(bootstrap))]
+    pub fn assert_inhabited<T>();
+
+    /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
+    /// zero-initialization: This will statically either panic, or do nothing.
+    #[cfg(not(bootstrap))]
+    pub fn assert_zero_valid<T>();
+
+    /// A guard for unsafe functions that cannot ever be executed if `T` has invalid
+    /// bit patterns: This will statically either panic, or do nothing.
+    #[cfg(not(bootstrap))]
+    pub fn assert_uninit_valid<T>();
 
     /// Gets a reference to a static `Location` indicating where it was called.
     #[rustc_const_unstable(feature = "const_caller_location", issue = "47809")]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
 
-    /// Creates a value initialized to zero.
-    ///
-    /// `init` is unsafe because it returns a zeroed-out datum,
-    /// which is unsafe unless `T` is `Copy`. Also, even if T is
-    /// `Copy`, an all-zero value may not correspond to any legitimate
-    /// state for the type in question.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`std::mem::zeroed`](../../std/mem/fn.zeroed.html).
-    #[unstable(
-        feature = "core_intrinsics",
-        reason = "intrinsics are unlikely to ever be stabilized, instead \
-                         they should be used through stabilized interfaces \
-                         in the rest of the standard library",
-        issue = "none"
-    )]
-    #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned", since = "1.38.0")]
-    pub fn init<T>() -> T;
-
-    /// Creates an uninitialized value.
-    ///
-    /// `uninit` is unsafe because there is no guarantee of what its
-    /// contents are. In particular its drop-flag may be set to any
-    /// state, which means it may claim either dropped or
-    /// undropped. In the general case one must use `ptr::write` to
-    /// initialize memory previous set to the result of `uninit`.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`std::mem::MaybeUninit`](../../std/mem/union.MaybeUninit.html).
-    #[unstable(
-        feature = "core_intrinsics",
-        reason = "intrinsics are unlikely to ever be stabilized, instead \
-                         they should be used through stabilized interfaces \
-                         in the rest of the standard library",
-        issue = "none"
-    )]
-    #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned", since = "1.38.0")]
-    pub fn uninit<T>() -> T;
-
     /// Moves a value out of scope without running drop glue.
+    /// This exists solely for `mem::forget_unsized`; normal `forget` uses `ManuallyDrop` instead.
     pub fn forget<T: ?Sized>(_: T);
 
     /// Reinterprets the bits of a value of one type as another type.
@@ -1852,16 +1830,19 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::mem::discriminant`](../../std/mem/fn.discriminant.html)
+    #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
     pub fn discriminant_value<T>(v: &T) -> u64;
 
-    /// Rust's "try catch" construct which invokes the function pointer `f` with
-    /// the data pointer `data`.
+    /// Rust's "try catch" construct which invokes the function pointer `try_fn`
+    /// with the data pointer `data`.
     ///
-    /// The third pointer is a target-specific data pointer which is filled in
-    /// with the specifics of the exception that occurred. For examples on Unix
-    /// platforms this is a `*mut *mut T` which is filled in by the compiler and
-    /// on MSVC it's `*mut [usize; 2]`. For more information see the compiler's
+    /// The third argument is a function called if a panic occurs. This function
+    /// takes the data pointer and a pointer to the target-specific exception
+    /// object that was caught. For more information see the compiler's
     /// source as well as std's catch implementation.
+    #[cfg(not(bootstrap))]
+    pub fn r#try(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
+    #[cfg(bootstrap)]
     pub fn r#try(f: fn(*mut u8), data: *mut u8, local_ptr: *mut u8) -> i32;
 
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
@@ -1873,10 +1854,12 @@ extern "rust-intrinsic" {
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
     /// Internal hook used by Miri to implement unwinding.
-    /// Compiles to a NOP during non-Miri codegen.
+    /// ICEs when encountered during non-Miri codegen.
     ///
-    /// Perma-unstable: do not use
-    pub fn miri_start_panic(data: *mut (dyn crate::any::Any + crate::marker::Send)) -> ();
+    /// The `payload` ptr here will be exactly the one `do_catch` gets passed by `try`.
+    ///
+    /// Perma-unstable: do not use.
+    pub fn miri_start_panic(payload: *mut u8) -> !;
 }
 
 // Some functions are defined here because they accidentally got made

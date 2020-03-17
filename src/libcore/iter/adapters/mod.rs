@@ -200,6 +200,18 @@ where
     {
         self.it.fold(init, copy_fold(f))
     }
+
+    fn nth(&mut self, n: usize) -> Option<T> {
+        self.it.nth(n).copied()
+    }
+
+    fn last(self) -> Option<T> {
+        self.it.last().copied()
+    }
+
+    fn count(self) -> usize {
+        self.it.count()
+    }
 }
 
 #[stable(feature = "iter_copied", since = "1.36.0")]

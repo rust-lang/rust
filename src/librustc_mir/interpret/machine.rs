@@ -17,16 +17,16 @@ use super::{
 /// Data returned by Machine::stack_pop,
 /// to provide further control over the popping of the stack frame
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
-pub enum StackPopInfo {
+pub enum StackPopJump {
     /// Indicates that no special handling should be
     /// done - we'll either return normally or unwind
     /// based on the terminator for the function
     /// we're leaving.
     Normal,
 
-    /// Indicates that we should stop unwinding,
-    /// as we've reached a catch frame
-    StopUnwinding,
+    /// Indicates that we should *not* jump to the return/unwind address, as the callback already
+    /// took care of everything.
+    NoJump,
 }
 
 /// Whether this kind of memory is allowed to leak
@@ -165,10 +165,14 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Called to evaluate `Assert` MIR terminators that trigger a panic.
     fn assert_panic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        span: Span,
         msg: &mir::AssertMessage<'tcx>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
+
+    /// Called to evaluate `Abort` MIR terminator.
+    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, !> {
+        throw_unsup_format!("aborting execution is not supported");
+    }
 
     /// Called for all binary operations where the LHS has pointer type.
     ///
@@ -227,7 +231,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// it contains (in relocations) tagged.  The way we construct allocations is
     /// to always first construct it without extra and then add the extra.
     /// This keeps uniform code paths for handling both allocations created by CTFE
-    /// for statics, and allocations ceated by Miri during evaluation.
+    /// for statics, and allocations created by Miri during evaluation.
     ///
     /// `kind` is the kind of the allocation being tagged; it can be `None` when
     /// it's a static and `STATIC_KIND` is `None`.
@@ -272,9 +276,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _extra: Self::FrameExtra,
         _unwinding: bool,
-    ) -> InterpResult<'tcx, StackPopInfo> {
+    ) -> InterpResult<'tcx, StackPopJump> {
         // By default, we do not support unwinding from panics
-        Ok(StackPopInfo::Normal)
+        Ok(StackPopJump::Normal)
     }
 
     fn int_to_ptr(

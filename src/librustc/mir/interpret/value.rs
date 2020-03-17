@@ -272,11 +272,13 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn from_bool(b: bool) -> Self {
+        // Guaranteed to be truncated and does not need sign extension.
         Scalar::Raw { data: b as u128, size: 1 }
     }
 
     #[inline]
     pub fn from_char(c: char) -> Self {
+        // Guaranteed to be truncated and does not need sign extension.
         Scalar::Raw { data: c as u128, size: 4 }
     }
 
@@ -299,21 +301,25 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn from_u8(i: u8) -> Self {
+        // Guaranteed to be truncated and does not need sign extension.
         Scalar::Raw { data: i as u128, size: 1 }
     }
 
     #[inline]
     pub fn from_u16(i: u16) -> Self {
+        // Guaranteed to be truncated and does not need sign extension.
         Scalar::Raw { data: i as u128, size: 2 }
     }
 
     #[inline]
     pub fn from_u32(i: u32) -> Self {
+        // Guaranteed to be truncated and does not need sign extension.
         Scalar::Raw { data: i as u128, size: 4 }
     }
 
     #[inline]
     pub fn from_u64(i: u64) -> Self {
+        // Guaranteed to be truncated and does not need sign extension.
         Scalar::Raw { data: i as u128, size: 8 }
     }
 
@@ -339,6 +345,26 @@ impl<'tcx, Tag> Scalar<Tag> {
         let i = i.into();
         Self::try_from_int(i, size)
             .unwrap_or_else(|| bug!("Signed value {:#x} does not fit in {} bits", i, size.bits()))
+    }
+
+    #[inline]
+    pub fn from_i8(i: i8) -> Self {
+        Self::from_int(i, Size::from_bits(8))
+    }
+
+    #[inline]
+    pub fn from_i16(i: i16) -> Self {
+        Self::from_int(i, Size::from_bits(16))
+    }
+
+    #[inline]
+    pub fn from_i32(i: i32) -> Self {
+        Self::from_int(i, Size::from_bits(32))
+    }
+
+    #[inline]
+    pub fn from_i64(i: i64) -> Self {
+        Self::from_int(i, Size::from_bits(64))
     }
 
     #[inline]
@@ -613,6 +639,11 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     }
 
     #[inline(always)]
+    pub fn to_u16(self) -> InterpResult<'tcx, u16> {
+        self.not_undef()?.to_u16()
+    }
+
+    #[inline(always)]
     pub fn to_u32(self) -> InterpResult<'tcx, u32> {
         self.not_undef()?.to_u32()
     }
@@ -630,6 +661,11 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     #[inline(always)]
     pub fn to_i8(self) -> InterpResult<'tcx, i8> {
         self.not_undef()?.to_i8()
+    }
+
+    #[inline(always)]
+    pub fn to_i16(self) -> InterpResult<'tcx, i16> {
+        self.not_undef()?.to_i16()
     }
 
     #[inline(always)]

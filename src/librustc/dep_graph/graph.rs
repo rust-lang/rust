@@ -174,7 +174,7 @@ impl DepGraph {
     /// what state they have access to. In particular, we want to
     /// prevent implicit 'leaks' of tracked state into the task (which
     /// could then be read without generating correct edges in the
-    /// dep-graph -- see the [rustc guide] for more details on
+    /// dep-graph -- see the [rustc dev guide] for more details on
     /// the dep-graph). To this end, the task function gets exactly two
     /// pieces of state: the context `cx` and an argument `arg`. Both
     /// of these bits of state must be of some type that implements
@@ -194,7 +194,7 @@ impl DepGraph {
     /// - If you need 3+ arguments, use a tuple for the
     ///   `arg` parameter.
     ///
-    /// [rustc guide]: https://rust-lang.github.io/rustc-guide/incremental-compilation.html
+    /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/incremental-compilation.html
     pub fn with_task<'a, C, A, R>(
         &self,
         key: DepNode,
@@ -222,28 +222,6 @@ impl DepGraph {
             },
             |data, key, fingerprint, task| data.complete_task(key, task.unwrap(), fingerprint),
             hash_result,
-        )
-    }
-
-    /// Creates a new dep-graph input with value `input`
-    pub fn input_task<'a, C, R>(&self, key: DepNode, cx: C, input: R) -> (R, DepNodeIndex)
-    where
-        C: DepGraphSafe + StableHashingContextProvider<'a>,
-        R: for<'b> HashStable<StableHashingContext<'b>>,
-    {
-        fn identity_fn<C, A>(_: C, arg: A) -> A {
-            arg
-        }
-
-        self.with_task_impl(
-            key,
-            cx,
-            input,
-            true,
-            identity_fn,
-            |_| None,
-            |data, key, fingerprint, _| data.alloc_node(key, SmallVec::new(), fingerprint),
-            hash_result::<R>,
         )
     }
 
@@ -676,18 +654,25 @@ impl DepGraph {
                             continue;
                         }
                     } else {
+                        // FIXME: This match is just a workaround for incremental bugs and should
+                        // be removed. https://github.com/rust-lang/rust/issues/62649 is one such
+                        // bug that must be fixed before removing this.
                         match dep_dep_node.kind {
-                            DepKind::Hir | DepKind::HirBody | DepKind::CrateMetadata => {
+                            DepKind::hir_owner
+                            | DepKind::hir_owner_items
+                            | DepKind::CrateMetadata => {
                                 if let Some(def_id) = dep_dep_node.extract_def_id(tcx) {
                                     if def_id_corresponds_to_hir_dep_node(tcx, def_id) {
-                                        // The `DefPath` has corresponding node,
-                                        // and that node should have been marked
-                                        // either red or green in `data.colors`.
-                                        bug!(
-                                            "DepNode {:?} should have been \
+                                        if dep_dep_node.kind == DepKind::CrateMetadata {
+                                            // The `DefPath` has corresponding node,
+                                            // and that node should have been marked
+                                            // either red or green in `data.colors`.
+                                            bug!(
+                                                "DepNode {:?} should have been \
                                              pre-marked as red or green but wasn't.",
-                                            dep_dep_node
-                                        );
+                                                dep_dep_node
+                                            );
+                                        }
                                     } else {
                                         // This `DefPath` does not have a
                                         // corresponding `DepNode` (e.g. a

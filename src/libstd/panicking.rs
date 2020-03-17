@@ -14,7 +14,6 @@ use crate::fmt;
 use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop};
 use crate::process;
-use crate::raw;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::stdio::panic_output;
 use crate::sys_common::backtrace::{self, RustBacktrace};
@@ -41,12 +40,7 @@ use realstd::io::set_panic;
 // hook up these functions, but it is not this day!
 #[allow(improper_ctypes)]
 extern "C" {
-    fn __rust_maybe_catch_panic(
-        f: fn(*mut u8),
-        data: *mut u8,
-        data_ptr: *mut usize,
-        vtable_ptr: *mut usize,
-    ) -> u32;
+    fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
 
     /// `payload` is actually a `*mut &mut dyn BoxMeUp` but that would cause FFI warnings.
     /// It cannot be `Box<dyn BoxMeUp>` because the other end of this call does not depend
@@ -247,60 +241,107 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     union Data<F, R> {
         f: ManuallyDrop<F>,
         r: ManuallyDrop<R>,
+        p: ManuallyDrop<Box<dyn Any + Send>>,
     }
 
     // We do some sketchy operations with ownership here for the sake of
-    // performance. We can only  pass pointers down to
-    // `__rust_maybe_catch_panic` (can't pass objects by value), so we do all
-    // the ownership tracking here manually using a union.
+    // performance. We can only pass pointers down to `do_call` (can't pass
+    // objects by value), so we do all the ownership tracking here manually
+    // using a union.
     //
     // We go through a transition where:
     //
-    // * First, we set the data to be the closure that we're going to call.
+    // * First, we set the data field `f` to be the argumentless closure that we're going to call.
     // * When we make the function call, the `do_call` function below, we take
-    //   ownership of the function pointer. At this point the `Data` union is
+    //   ownership of the function pointer. At this point the `data` union is
     //   entirely uninitialized.
     // * If the closure successfully returns, we write the return value into the
-    //   data's return slot. Note that `ptr::write` is used as it's overwriting
-    //   uninitialized data.
-    // * Finally, when we come back out of the `__rust_maybe_catch_panic` we're
+    //   data's return slot (field `r`).
+    // * If the closure panics (`do_catch` below), we write the panic payload into field `p`.
+    // * Finally, when we come back out of the `try` intrinsic we're
     //   in one of two states:
     //
     //      1. The closure didn't panic, in which case the return value was
-    //         filled in. We move it out of `data` and return it.
-    //      2. The closure panicked, in which case the return value wasn't
-    //         filled in. In this case the entire `data` union is invalid, so
-    //         there is no need to drop anything.
+    //         filled in. We move it out of `data.r` and return it.
+    //      2. The closure panicked, in which case the panic payload was
+    //         filled in. We move it out of `data.p` and return it.
     //
     // Once we stack all that together we should have the "most efficient'
     // method of calling a catch panic whilst juggling ownership.
-    let mut any_data = 0;
-    let mut any_vtable = 0;
     let mut data = Data { f: ManuallyDrop::new(f) };
 
-    let r = __rust_maybe_catch_panic(
-        do_call::<F, R>,
-        &mut data as *mut _ as *mut u8,
-        &mut any_data,
-        &mut any_vtable,
-    );
-
-    return if r == 0 {
+    let data_ptr = &mut data as *mut _ as *mut u8;
+    return if do_try(do_call::<F, R>, data_ptr, do_catch::<F, R>) == 0 {
         Ok(ManuallyDrop::into_inner(data.r))
     } else {
-        update_panic_count(-1);
-        Err(mem::transmute(raw::TraitObject {
-            data: any_data as *mut _,
-            vtable: any_vtable as *mut _,
-        }))
+        Err(ManuallyDrop::into_inner(data.p))
     };
 
+    // Compatibility wrapper around the try intrinsic for bootstrap.
+    //
+    // We also need to mark it #[inline(never)] to work around a bug on MinGW
+    // targets: the unwinding implementation was relying on UB, but this only
+    // becomes a problem in practice if inlining is involved.
+    #[cfg(not(bootstrap))]
+    use intrinsics::r#try as do_try;
+    #[cfg(bootstrap)]
+    #[inline(never)]
+    unsafe fn do_try(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32 {
+        use crate::mem::MaybeUninit;
+        #[cfg(target_env = "msvc")]
+        type TryPayload = [u64; 2];
+        #[cfg(not(target_env = "msvc"))]
+        type TryPayload = *mut u8;
+
+        let mut payload: MaybeUninit<TryPayload> = MaybeUninit::uninit();
+        let payload_ptr = payload.as_mut_ptr() as *mut u8;
+        let r = intrinsics::r#try(try_fn, data, payload_ptr);
+        if r != 0 {
+            #[cfg(target_env = "msvc")]
+            {
+                catch_fn(data, payload_ptr)
+            }
+            #[cfg(not(target_env = "msvc"))]
+            {
+                catch_fn(data, payload.assume_init())
+            }
+        }
+        r
+    }
+
+    // We consider unwinding to be rare, so mark this function as cold. However,
+    // do not mark it no-inline -- that decision is best to leave to the
+    // optimizer (in most cases this function is not inlined even as a normal,
+    // non-cold function, though, as of the writing of this comment).
+    #[cold]
+    unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send + 'static> {
+        let obj = Box::from_raw(__rust_panic_cleanup(payload));
+        update_panic_count(-1);
+        obj
+    }
+
+    // See comment on do_try above for why #[inline(never)] is needed on bootstrap.
+    #[cfg_attr(bootstrap, inline(never))]
+    #[cfg_attr(not(bootstrap), inline)]
     fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
         unsafe {
             let data = data as *mut Data<F, R>;
             let data = &mut (*data);
             let f = ManuallyDrop::take(&mut data.f);
             data.r = ManuallyDrop::new(f());
+        }
+    }
+
+    // We *do* want this part of the catch to be inlined: this allows the
+    // compiler to properly track accesses to the Data union and optimize it
+    // away most of the time.
+    #[inline]
+    fn do_catch<F: FnOnce() -> R, R>(data: *mut u8, payload: *mut u8) {
+        unsafe {
+            let data = data as *mut Data<F, R>;
+            let data = &mut (*data);
+            let obj = cleanup(payload);
+            data.p = ManuallyDrop::new(obj);
         }
     }
 }

@@ -93,7 +93,7 @@ impl<T> ManuallyDrop<T> {
     /// Instead of using [`ManuallyDrop::drop`] to manually drop the value,
     /// you can use this method to take the value and use it however desired.
     ///
-    /// Whenever possible, it is preferrable to use [`into_inner`][`ManuallyDrop::into_inner`]
+    /// Whenever possible, it is preferable to use [`into_inner`][`ManuallyDrop::into_inner`]
     /// instead, which prevents duplicating the content of the `ManuallyDrop<T>`.
     ///
     /// # Safety

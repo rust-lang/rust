@@ -13,9 +13,10 @@ use rustc_hir::ItemKind;
 use rustc_infer::infer;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{SuppressRegionErrors, TyCtxtInferExt};
-use rustc_infer::traits::misc::{can_type_implement_copy, CopyImplementationError};
-use rustc_infer::traits::predicate_for_trait_def;
-use rustc_infer::traits::{self, ObligationCause, TraitEngine};
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
+use rustc_trait_selection::traits::predicate_for_trait_def;
+use rustc_trait_selection::traits::{self, ObligationCause, TraitEngine, TraitEngineExt};
 
 pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
     let lang_items = tcx.lang_items();
@@ -322,7 +323,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
     }
 }
 
-pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedInfo {
+pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedInfo {
     debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
     let coerce_unsized_trait = tcx.lang_items().coerce_unsized_trait().unwrap();
 

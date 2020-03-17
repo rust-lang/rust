@@ -25,7 +25,7 @@ use rustc_span::Span;
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
-        hir::ImplItemKind::Method(..) => {
+        hir::ImplItemKind::Fn(..) => {
             let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id);
             let containing_item = tcx.hir().expect_item(parent_hir_id);
             let containing_impl_is_for_trait = match &containing_item.kind {
@@ -418,8 +418,8 @@ impl CheckAttrVisitor<'tcx> {
 impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {

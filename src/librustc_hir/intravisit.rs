@@ -134,7 +134,7 @@ pub trait Map<'hir> {
 ///
 /// See the comments on `ItemLikeVisitor` for more details on the overall
 /// visit strategy.
-pub enum NestedVisitorMap<'this, M> {
+pub enum NestedVisitorMap<M> {
     /// Do not visit any nested things. When you add a new
     /// "non-nested" thing, you will want to audit such uses to see if
     /// they remain valid.
@@ -151,20 +151,20 @@ pub enum NestedVisitorMap<'this, M> {
     /// to use `visit_all_item_likes()` as an outer loop,
     /// and to have the visitor that visits the contents of each item
     /// using this setting.
-    OnlyBodies(&'this M),
+    OnlyBodies(M),
 
     /// Visits all nested things, including item-likes.
     ///
     /// **This is an unusual choice.** It is used when you want to
     /// process everything within their lexical context. Typically you
     /// kick off the visit by doing `walk_krate()`.
-    All(&'this M),
+    All(M),
 }
 
-impl<'this, M> NestedVisitorMap<'this, M> {
+impl<M> NestedVisitorMap<M> {
     /// Returns the map to use for an "intra item-like" thing (if any).
     /// E.g., function body.
-    fn intra(self) -> Option<&'this M> {
+    fn intra(self) -> Option<M> {
         match self {
             NestedVisitorMap::None => None,
             NestedVisitorMap::OnlyBodies(map) => Some(map),
@@ -174,7 +174,7 @@ impl<'this, M> NestedVisitorMap<'this, M> {
 
     /// Returns the map to use for an "item-like" thing (if any).
     /// E.g., item, impl-item.
-    fn inter(self) -> Option<&'this M> {
+    fn inter(self) -> Option<M> {
         match self {
             NestedVisitorMap::None => None,
             NestedVisitorMap::OnlyBodies(_) => None,
@@ -221,7 +221,7 @@ pub trait Visitor<'v>: Sized {
     /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
     /// added in the future, we will see the panic in your code and
     /// fix it appropriately.
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map>;
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map>;
 
     /// Invoked when a nested item is encountered. By default does
     /// nothing unless you override `nested_visit_map` to return other than
@@ -284,7 +284,7 @@ pub trait Visitor<'v>: Sized {
     /// If you use this, you probably don't want to process the
     /// contents of nested item-like things, since the outer loop will
     /// visit them as well.
-    fn as_deep_visitor<'s>(&'s mut self) -> DeepVisitor<'s, Self> {
+    fn as_deep_visitor(&mut self) -> DeepVisitor<'_, Self> {
         DeepVisitor::new(self)
     }
 
@@ -438,14 +438,14 @@ pub trait Visitor<'v>: Sized {
 
 /// Walks the contents of a crate. See also `Crate::visit_all_items`.
 pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
-    visitor.visit_mod(&krate.module, krate.span, CRATE_HIR_ID);
-    walk_list!(visitor, visit_attribute, krate.attrs);
+    visitor.visit_mod(&krate.item.module, krate.item.span, CRATE_HIR_ID);
+    walk_list!(visitor, visit_attribute, krate.item.attrs);
     walk_list!(visitor, visit_macro_def, krate.exported_macros);
 }
 
 pub fn walk_macro_def<'v, V: Visitor<'v>>(visitor: &mut V, macro_def: &'v MacroDef<'v>) {
     visitor.visit_id(macro_def.hir_id);
-    visitor.visit_name(macro_def.span, macro_def.name);
+    visitor.visit_ident(macro_def.ident);
     walk_list!(visitor, visit_attribute, macro_def.attrs);
 }
 
@@ -911,14 +911,14 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_nested_body, default);
         }
-        TraitItemKind::Method(ref sig, TraitMethod::Required(param_names)) => {
+        TraitItemKind::Fn(ref sig, TraitFn::Required(param_names)) => {
             visitor.visit_id(trait_item.hir_id);
             visitor.visit_fn_decl(&sig.decl);
             for &param_name in param_names {
                 visitor.visit_ident(param_name);
             }
         }
-        TraitItemKind::Method(ref sig, TraitMethod::Provided(body_id)) => {
+        TraitItemKind::Fn(ref sig, TraitFn::Provided(body_id)) => {
             visitor.visit_fn(
                 FnKind::Method(trait_item.ident, sig, None, &trait_item.attrs),
                 &sig.decl,
@@ -968,7 +968,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_ty(ty);
             visitor.visit_nested_body(body);
         }
-        ImplItemKind::Method(ref sig, body_id) => {
+        ImplItemKind::Fn(ref sig, body_id) => {
             visitor.visit_fn(
                 FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis), &impl_item.attrs),
                 &sig.decl,

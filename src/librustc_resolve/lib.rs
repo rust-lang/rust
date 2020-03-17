@@ -56,9 +56,9 @@ use std::{cmp, fmt, iter, ptr};
 
 use diagnostics::{extend_span_to_previous_binding, find_span_of_binding_until_next_binding};
 use diagnostics::{ImportSuggestion, Suggestion};
-use imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver, NameResolution};
+use imports::{Import, ImportKind, ImportResolver, NameResolution};
 use late::{HasGenericParams, PathSource, Rib, RibKind::*};
-use macros::{LegacyBinding, LegacyScope};
+use macros::{MacroRulesBinding, MacroRulesScope};
 
 type Res = def::Res<NodeId>;
 
@@ -94,7 +94,7 @@ impl Determinacy {
 enum Scope<'a> {
     DeriveHelpers(ExpnId),
     DeriveHelpersCompat,
-    MacroRules(LegacyScope<'a>),
+    MacroRules(MacroRulesScope<'a>),
     CrateRoot,
     Module(Module<'a>),
     RegisteredAttrs,
@@ -127,7 +127,7 @@ enum ScopeSet {
 pub struct ParentScope<'a> {
     module: Module<'a>,
     expansion: ExpnId,
-    legacy: LegacyScope<'a>,
+    macro_rules: MacroRulesScope<'a>,
     derives: &'a [ast::Path],
 }
 
@@ -135,7 +135,12 @@ impl<'a> ParentScope<'a> {
     /// Creates a parent scope with the passed argument used as the module scope component,
     /// and other scope components set to default empty values.
     pub fn module(module: Module<'a>) -> ParentScope<'a> {
-        ParentScope { module, expansion: ExpnId::root(), legacy: LegacyScope::Empty, derives: &[] }
+        ParentScope {
+            module,
+            expansion: ExpnId::root(),
+            macro_rules: MacroRulesScope::Empty,
+            derives: &[],
+        }
     }
 }
 
@@ -323,13 +328,6 @@ enum LexicalScopeBinding<'a> {
 }
 
 impl<'a> LexicalScopeBinding<'a> {
-    fn item(self) -> Option<&'a NameBinding<'a>> {
-        match self {
-            LexicalScopeBinding::Item(binding) => Some(binding),
-            _ => None,
-        }
-    }
-
     fn res(self) -> Res {
         match self {
             LexicalScopeBinding::Item(binding) => binding.res(),
@@ -426,7 +424,7 @@ impl ModuleKind {
 /// program) if all but one of them come from glob imports.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 struct BindingKey {
-    /// The identifier for the binding, aways the `modern` version of the
+    /// The identifier for the binding, aways the `normalize_to_macros_2_0` version of the
     /// identifier.
     ident: Ident,
     ns: Namespace,
@@ -456,8 +454,8 @@ pub struct ModuleData<'a> {
 
     no_implicit_prelude: bool,
 
-    glob_importers: RefCell<Vec<&'a ImportDirective<'a>>>,
-    globs: RefCell<Vec<&'a ImportDirective<'a>>>,
+    glob_importers: RefCell<Vec<&'a Import<'a>>>,
+    globs: RefCell<Vec<&'a Import<'a>>>,
 
     // Used to memoize the traits in this module for faster searches through all traits in scope.
     traits: RefCell<Option<Box<[(Ident, &'a NameBinding<'a>)]>>>,
@@ -584,7 +582,7 @@ impl<'a> ToNameBinding<'a> for &'a NameBinding<'a> {
 enum NameBindingKind<'a> {
     Res(Res, /* is_macro_export */ bool),
     Module(Module<'a>),
-    Import { binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>, used: Cell<bool> },
+    Import { binding: &'a NameBinding<'a>, import: &'a Import<'a>, used: Cell<bool> },
 }
 
 impl<'a> NameBindingKind<'a> {
@@ -620,7 +618,7 @@ enum AmbiguityKind {
     Import,
     BuiltinAttr,
     DeriveHelper,
-    LegacyVsModern,
+    MacroRulesVsModularized,
     GlobVsOuter,
     GlobVsGlob,
     GlobVsExpanded,
@@ -633,7 +631,9 @@ impl AmbiguityKind {
             AmbiguityKind::Import => "name vs any other name during import resolution",
             AmbiguityKind::BuiltinAttr => "built-in attribute vs any other name",
             AmbiguityKind::DeriveHelper => "derive helper attribute vs any other name",
-            AmbiguityKind::LegacyVsModern => "`macro_rules` vs non-`macro_rules` from other module",
+            AmbiguityKind::MacroRulesVsModularized => {
+                "`macro_rules` vs non-`macro_rules` from other module"
+            }
             AmbiguityKind::GlobVsOuter => {
                 "glob import vs any other name from outer scope during import/macro resolution"
             }
@@ -713,8 +713,7 @@ impl<'a> NameBinding<'a> {
     fn is_extern_crate(&self) -> bool {
         match self.kind {
             NameBindingKind::Import {
-                directive:
-                    &ImportDirective { subclass: ImportDirectiveSubclass::ExternCrate { .. }, .. },
+                import: &Import { kind: ImportKind::ExternCrate { .. }, .. },
                 ..
             } => true,
             NameBindingKind::Module(&ModuleData {
@@ -734,7 +733,7 @@ impl<'a> NameBinding<'a> {
 
     fn is_glob_import(&self) -> bool {
         match self.kind {
-            NameBindingKind::Import { directive, .. } => directive.is_glob(),
+            NameBindingKind::Import { import, .. } => import.is_glob(),
             _ => false,
         }
     }
@@ -742,7 +741,7 @@ impl<'a> NameBinding<'a> {
     fn is_importable(&self) -> bool {
         match self.res() {
             Res::Def(DefKind::AssocConst, _)
-            | Res::Def(DefKind::Method, _)
+            | Res::Def(DefKind::AssocFn, _)
             | Res::Def(DefKind::AssocTy, _) => false,
             _ => true,
         }
@@ -839,10 +838,10 @@ pub struct Resolver<'a> {
     field_names: FxHashMap<DefId, Vec<Spanned<Name>>>,
 
     /// All imports known to succeed or fail.
-    determined_imports: Vec<&'a ImportDirective<'a>>,
+    determined_imports: Vec<&'a Import<'a>>,
 
     /// All non-determined imports.
-    indeterminate_imports: Vec<&'a ImportDirective<'a>>,
+    indeterminate_imports: Vec<&'a Import<'a>>,
 
     /// FIXME: Refactor things so that these fields are passed through arguments and not resolver.
     /// We are resolving a last import segment during import validation.
@@ -938,16 +937,16 @@ pub struct Resolver<'a> {
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.
     invocation_parent_scopes: FxHashMap<ExpnId, ParentScope<'a>>,
-    /// Legacy scopes *produced* by expanding the macro invocations,
+    /// `macro_rules` scopes *produced* by expanding the macro invocations,
     /// include all the `macro_rules` items and other invocations generated by them.
-    output_legacy_scopes: FxHashMap<ExpnId, LegacyScope<'a>>,
+    output_macro_rules_scopes: FxHashMap<ExpnId, MacroRulesScope<'a>>,
     /// Helper attributes that are in scope for the given expansion.
     helper_attrs: FxHashMap<ExpnId, Vec<Ident>>,
 
     /// Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Name, Span>,
 
-    potentially_unused_imports: Vec<&'a ImportDirective<'a>>,
+    potentially_unused_imports: Vec<&'a Import<'a>>,
 
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
@@ -971,9 +970,9 @@ pub struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleData<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
     name_bindings: arena::TypedArena<NameBinding<'a>>,
-    import_directives: arena::TypedArena<ImportDirective<'a>>,
+    imports: arena::TypedArena<Import<'a>>,
     name_resolutions: arena::TypedArena<RefCell<NameResolution<'a>>>,
-    legacy_bindings: arena::TypedArena<LegacyBinding<'a>>,
+    macro_rules_bindings: arena::TypedArena<MacroRulesBinding<'a>>,
     ast_paths: arena::TypedArena<ast::Path>,
 }
 
@@ -991,17 +990,17 @@ impl<'a> ResolverArenas<'a> {
     fn alloc_name_binding(&'a self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
         self.name_bindings.alloc(name_binding)
     }
-    fn alloc_import_directive(
-        &'a self,
-        import_directive: ImportDirective<'a>,
-    ) -> &'a ImportDirective<'_> {
-        self.import_directives.alloc(import_directive)
+    fn alloc_import(&'a self, import: Import<'a>) -> &'a Import<'_> {
+        self.imports.alloc(import)
     }
     fn alloc_name_resolution(&'a self) -> &'a RefCell<NameResolution<'a>> {
         self.name_resolutions.alloc(Default::default())
     }
-    fn alloc_legacy_binding(&'a self, binding: LegacyBinding<'a>) -> &'a LegacyBinding<'a> {
-        self.legacy_bindings.alloc(binding)
+    fn alloc_macro_rules_binding(
+        &'a self,
+        binding: MacroRulesBinding<'a>,
+    ) -> &'a MacroRulesBinding<'a> {
+        self.macro_rules_bindings.alloc(binding)
     }
     fn alloc_ast_paths(&'a self, paths: &[ast::Path]) -> &'a [ast::Path] {
         self.ast_paths.alloc_from_iter(paths.iter().cloned())
@@ -1221,7 +1220,7 @@ impl<'a> Resolver<'a> {
             dummy_ext_derive: Lrc::new(SyntaxExtension::dummy_derive(session.edition())),
             non_macro_attrs: [non_macro_attr(false), non_macro_attr(true)],
             invocation_parent_scopes,
-            output_legacy_scopes: Default::default(),
+            output_macro_rules_scopes: Default::default(),
             helper_attrs: Default::default(),
             macro_defs,
             local_macro_def_scopes: FxHashMap::default(),
@@ -1363,7 +1362,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn new_key(&mut self, ident: Ident, ns: Namespace) -> BindingKey {
-        let ident = ident.modern();
+        let ident = ident.normalize_to_macros_2_0();
         let disambiguator = if ident.name == kw::Underscore {
             self.underscore_disambiguator += 1;
             self.underscore_disambiguator
@@ -1410,11 +1409,11 @@ impl<'a> Resolver<'a> {
                 misc2: AmbiguityErrorMisc::None,
             });
         }
-        if let NameBindingKind::Import { directive, binding, ref used } = used_binding.kind {
+        if let NameBindingKind::Import { import, binding, ref used } = used_binding.kind {
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
             if is_lexical_scope {
-                if let Some(entry) = self.extern_prelude.get(&ident.modern()) {
+                if let Some(entry) = self.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
                     if let Some(crate_item) = entry.extern_crate_item {
                         if ptr::eq(used_binding, crate_item) && !entry.introduced_by_item {
                             return;
@@ -1423,17 +1422,17 @@ impl<'a> Resolver<'a> {
                 }
             }
             used.set(true);
-            directive.used.set(true);
-            self.used_imports.insert((directive.id, ns));
-            self.add_to_glob_map(&directive, ident);
+            import.used.set(true);
+            self.used_imports.insert((import.id, ns));
+            self.add_to_glob_map(&import, ident);
             self.record_use(ident, ns, binding, false);
         }
     }
 
     #[inline]
-    fn add_to_glob_map(&mut self, directive: &ImportDirective<'_>, ident: Ident) {
-        if directive.is_glob() {
-            self.glob_map.entry(directive.id).or_default().insert(ident.name);
+    fn add_to_glob_map(&mut self, import: &Import<'_>, ident: Ident) {
+        if import.is_glob() {
+            self.glob_map.entry(import.id).or_default().insert(ident.name);
         }
     }
 
@@ -1476,7 +1475,7 @@ impl<'a> Resolver<'a> {
         //    derives (you need to resolve the derive first to add helpers into scope), but they
         //    should be available before the derive is expanded for compatibility.
         //    It's mess in general, so we are being conservative for now.
-        // 1-3. `macro_rules` (open, not controlled), loop through legacy scopes. Have higher
+        // 1-3. `macro_rules` (open, not controlled), loop through `macro_rules` scopes. Have higher
         //    priority than prelude macros, but create ambiguities with macros in modules.
         // 1-3. Names in modules (both normal `mod`ules and blocks), loop through hygienic parents
         //    (open, not controlled). Have higher priority than prelude macros, but create
@@ -1501,7 +1500,7 @@ impl<'a> Resolver<'a> {
             TypeNS | ValueNS => Scope::Module(module),
             MacroNS => Scope::DeriveHelpers(parent_scope.expansion),
         };
-        let mut ident = ident.modern();
+        let mut ident = ident.normalize_to_macros_2_0();
         let mut use_prelude = !module.no_implicit_prelude;
 
         loop {
@@ -1541,16 +1540,18 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 Scope::DeriveHelpers(..) => Scope::DeriveHelpersCompat,
-                Scope::DeriveHelpersCompat => Scope::MacroRules(parent_scope.legacy),
-                Scope::MacroRules(legacy_scope) => match legacy_scope {
-                    LegacyScope::Binding(binding) => Scope::MacroRules(binding.parent_legacy_scope),
-                    LegacyScope::Invocation(invoc_id) => Scope::MacroRules(
-                        self.output_legacy_scopes
+                Scope::DeriveHelpersCompat => Scope::MacroRules(parent_scope.macro_rules),
+                Scope::MacroRules(macro_rules_scope) => match macro_rules_scope {
+                    MacroRulesScope::Binding(binding) => {
+                        Scope::MacroRules(binding.parent_macro_rules_scope)
+                    }
+                    MacroRulesScope::Invocation(invoc_id) => Scope::MacroRules(
+                        self.output_macro_rules_scopes
                             .get(&invoc_id)
                             .cloned()
-                            .unwrap_or(self.invocation_parent_scopes[&invoc_id].legacy),
+                            .unwrap_or(self.invocation_parent_scopes[&invoc_id].macro_rules),
                     ),
-                    LegacyScope::Empty => Scope::Module(module),
+                    MacroRulesScope::Empty => Scope::Module(module),
                 },
                 Scope::CrateRoot => match ns {
                     TypeNS => {
@@ -1621,18 +1622,18 @@ impl<'a> Resolver<'a> {
         if ident.name == kw::Invalid {
             return Some(LexicalScopeBinding::Res(Res::Err));
         }
-        let (general_span, modern_span) = if ident.name == kw::SelfUpper {
+        let (general_span, normalized_span) = if ident.name == kw::SelfUpper {
             // FIXME(jseyfried) improve `Self` hygiene
             let empty_span = ident.span.with_ctxt(SyntaxContext::root());
             (empty_span, empty_span)
         } else if ns == TypeNS {
-            let modern_span = ident.span.modern();
-            (modern_span, modern_span)
+            let normalized_span = ident.span.normalize_to_macros_2_0();
+            (normalized_span, normalized_span)
         } else {
-            (ident.span.modern_and_legacy(), ident.span.modern())
+            (ident.span.normalize_to_macro_rules(), ident.span.normalize_to_macros_2_0())
         };
         ident.span = general_span;
-        let modern_ident = Ident { span: modern_span, ..ident };
+        let normalized_ident = Ident { span: normalized_span, ..ident };
 
         // Walk backwards up the ribs in scope.
         let record_used = record_used_id.is_some();
@@ -1640,8 +1641,8 @@ impl<'a> Resolver<'a> {
         for i in (0..ribs.len()).rev() {
             debug!("walk rib\n{:?}", ribs[i].bindings);
             // Use the rib kind to determine whether we are resolving parameters
-            // (modern hygiene) or local variables (legacy hygiene).
-            let rib_ident = if ribs[i].kind.contains_params() { modern_ident } else { ident };
+            // (macro 2.0 hygiene) or local variables (`macro_rules` hygiene).
+            let rib_ident = if ribs[i].kind.contains_params() { normalized_ident } else { ident };
             if let Some(res) = ribs[i].bindings.get(&rib_ident).cloned() {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::Res(self.validate_res_from_ribs(
@@ -1684,7 +1685,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        ident = modern_ident;
+        ident = normalized_ident;
         let mut poisoned = None;
         loop {
             let opt_module = if let Some(node_id) = record_used_id {
@@ -1853,14 +1854,14 @@ impl<'a> Resolver<'a> {
         let mut adjusted_parent_scope = parent_scope;
         match module {
             ModuleOrUniformRoot::Module(m) => {
-                if let Some(def) = ident.span.modernize_and_adjust(m.expansion) {
+                if let Some(def) = ident.span.normalize_to_macros_2_0_and_adjust(m.expansion) {
                     tmp_parent_scope =
                         ParentScope { module: self.macro_def_scope(def), ..*parent_scope };
                     adjusted_parent_scope = &tmp_parent_scope;
                 }
             }
             ModuleOrUniformRoot::ExternPrelude => {
-                ident.span.modernize_and_adjust(ExpnId::root());
+                ident.span.normalize_to_macros_2_0_and_adjust(ExpnId::root());
             }
             ModuleOrUniformRoot::CrateRootAndExternPrelude | ModuleOrUniformRoot::CurrentScope => {
                 // No adjustments
@@ -1883,14 +1884,14 @@ impl<'a> Resolver<'a> {
         let mark = if ident.name == kw::DollarCrate {
             // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
             // we don't want to pretend that the `macro_rules!` definition is in the `macro`
-            // as described in `SyntaxContext::apply_mark`, so we ignore prepended modern marks.
+            // as described in `SyntaxContext::apply_mark`, so we ignore prepended opaque marks.
             // FIXME: This is only a guess and it doesn't work correctly for `macro_rules!`
             // definitions actually produced by `macro` and `macro` definitions produced by
             // `macro_rules!`, but at least such configurations are not stable yet.
-            ctxt = ctxt.modern_and_legacy();
+            ctxt = ctxt.normalize_to_macro_rules();
             let mut iter = ctxt.marks().into_iter().rev().peekable();
             let mut result = None;
-            // Find the last modern mark from the end if it exists.
+            // Find the last opaque mark from the end if it exists.
             while let Some(&(mark, transparency)) = iter.peek() {
                 if transparency == Transparency::Opaque {
                     result = Some(mark);
@@ -1899,7 +1900,7 @@ impl<'a> Resolver<'a> {
                     break;
                 }
             }
-            // Then find the last legacy mark from the end if it exists.
+            // Then find the last semi-transparent mark from the end if it exists.
             for (mark, transparency) in iter {
                 if transparency == Transparency::SemiTransparent {
                     result = Some(mark);
@@ -1909,7 +1910,7 @@ impl<'a> Resolver<'a> {
             }
             result
         } else {
-            ctxt = ctxt.modern();
+            ctxt = ctxt.normalize_to_macros_2_0();
             ctxt.adjust(ExpnId::root())
         };
         let module = match mark {
@@ -1921,7 +1922,7 @@ impl<'a> Resolver<'a> {
 
     fn resolve_self(&mut self, ctxt: &mut SyntaxContext, module: Module<'a>) -> Module<'a> {
         let mut module = self.get_module(module.normal_ancestor_id);
-        while module.span.ctxt().modern() != *ctxt {
+        while module.span.ctxt().normalize_to_macros_2_0() != *ctxt {
             let parent = module.parent.unwrap_or_else(|| self.macro_def_scope(ctxt.remove_mark()));
             module = self.get_module(parent.normal_ancestor_id);
         }
@@ -1989,7 +1990,7 @@ impl<'a> Resolver<'a> {
 
             if ns == TypeNS {
                 if allow_super && name == kw::Super {
-                    let mut ctxt = ident.span.ctxt().modern();
+                    let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
                     let self_module = match i {
                         0 => Some(self.resolve_self(&mut ctxt, parent_scope.module)),
                         _ => match module {
@@ -2015,7 +2016,7 @@ impl<'a> Resolver<'a> {
                 }
                 if i == 0 {
                     if name == kw::SelfLower {
-                        let mut ctxt = ident.span.ctxt().modern();
+                        let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
                         module = Some(ModuleOrUniformRoot::Module(
                             self.resolve_self(&mut ctxt, parent_scope.module),
                         ));
@@ -2187,11 +2188,8 @@ impl<'a> Resolver<'a> {
                                     Applicability::MaybeIncorrect,
                                 )),
                             )
-                        } else if !ident.is_reserved() {
-                            (format!("maybe a missing crate `{}`?", ident), None)
                         } else {
-                            // the parser will already have complained about the keyword being used
-                            return PathResult::NonModule(PartialRes::new(Res::Err));
+                            (format!("maybe a missing crate `{}`?", ident), None)
                         }
                     } else if i == 0 {
                         (format!("use of undeclared type or module `{}`", ident), None)
@@ -2258,10 +2256,9 @@ impl<'a> Resolver<'a> {
         // `ExternCrate` (also used for `crate::...`) then no need to issue a
         // warning, this looks all good!
         if let Some(binding) = second_binding {
-            if let NameBindingKind::Import { directive: d, .. } = binding.kind {
-                // Careful: we still want to rewrite paths from
-                // renamed extern crates.
-                if let ImportDirectiveSubclass::ExternCrate { source: None, .. } = d.subclass {
+            if let NameBindingKind::Import { import, .. } = binding.kind {
+                // Careful: we still want to rewrite paths from renamed extern crates.
+                if let ImportKind::ExternCrate { source: None, .. } = import.kind {
                     return;
                 }
             }
@@ -2425,21 +2422,21 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn disambiguate_legacy_vs_modern(
+    fn disambiguate_macro_rules_vs_modularized(
         &self,
-        legacy: &'a NameBinding<'a>,
-        modern: &'a NameBinding<'a>,
+        macro_rules: &'a NameBinding<'a>,
+        modularized: &'a NameBinding<'a>,
     ) -> bool {
-        // Some non-controversial subset of ambiguities "modern macro name" vs "macro_rules"
+        // Some non-controversial subset of ambiguities "modularized macro name" vs "macro_rules"
         // is disambiguated to mitigate regressions from macro modularization.
         // Scoping for `macro_rules` behaves like scoping for `let` at module level, in general.
         match (
-            self.binding_parent_modules.get(&PtrKey(legacy)),
-            self.binding_parent_modules.get(&PtrKey(modern)),
+            self.binding_parent_modules.get(&PtrKey(macro_rules)),
+            self.binding_parent_modules.get(&PtrKey(modularized)),
         ) {
-            (Some(legacy), Some(modern)) => {
-                legacy.normal_ancestor_id == modern.normal_ancestor_id
-                    && modern.is_ancestor_of(legacy)
+            (Some(macro_rules), Some(modularized)) => {
+                macro_rules.normal_ancestor_id == modularized.normal_ancestor_id
+                    && modularized.is_ancestor_of(macro_rules)
             }
             _ => false,
         }
@@ -2564,10 +2561,10 @@ impl<'a> Resolver<'a> {
 
         // See https://github.com/rust-lang/rust/issues/32354
         use NameBindingKind::Import;
-        let directive = match (&new_binding.kind, &old_binding.kind) {
+        let import = match (&new_binding.kind, &old_binding.kind) {
             // If there are two imports where one or both have attributes then prefer removing the
             // import without attributes.
-            (Import { directive: new, .. }, Import { directive: old, .. })
+            (Import { import: new, .. }, Import { import: old, .. })
                 if {
                     !new_binding.span.is_dummy()
                         && !old_binding.span.is_dummy()
@@ -2581,11 +2578,11 @@ impl<'a> Resolver<'a> {
                 }
             }
             // Otherwise prioritize the new binding.
-            (Import { directive, .. }, other) if !new_binding.span.is_dummy() => {
-                Some((directive, new_binding.span, other.is_import()))
+            (Import { import, .. }, other) if !new_binding.span.is_dummy() => {
+                Some((import, new_binding.span, other.is_import()))
             }
-            (other, Import { directive, .. }) if !old_binding.span.is_dummy() => {
-                Some((directive, old_binding.span, other.is_import()))
+            (other, Import { import, .. }) if !old_binding.span.is_dummy() => {
+                Some((import, old_binding.span, other.is_import()))
             }
             _ => None,
         };
@@ -2602,22 +2599,22 @@ impl<'a> Resolver<'a> {
             && !has_dummy_span
             && ((new_binding.is_extern_crate() || old_binding.is_extern_crate()) || from_item);
 
-        match directive {
-            Some((directive, span, true)) if should_remove_import && directive.is_nested() => {
-                self.add_suggestion_for_duplicate_nested_use(&mut err, directive, span)
+        match import {
+            Some((import, span, true)) if should_remove_import && import.is_nested() => {
+                self.add_suggestion_for_duplicate_nested_use(&mut err, import, span)
             }
-            Some((directive, _, true)) if should_remove_import && !directive.is_glob() => {
+            Some((import, _, true)) if should_remove_import && !import.is_glob() => {
                 // Simple case - remove the entire import. Due to the above match arm, this can
                 // only be a single use so just remove it entirely.
                 err.tool_only_span_suggestion(
-                    directive.use_span_with_attributes,
+                    import.use_span_with_attributes,
                     "remove unnecessary import",
                     String::new(),
                     Applicability::MaybeIncorrect,
                 );
             }
-            Some((directive, span, _)) => {
-                self.add_suggestion_for_rename_of_use(&mut err, name, directive, span)
+            Some((import, span, _)) => {
+                self.add_suggestion_for_rename_of_use(&mut err, name, import, span)
             }
             _ => {}
         }
@@ -2639,7 +2636,7 @@ impl<'a> Resolver<'a> {
         &self,
         err: &mut DiagnosticBuilder<'_>,
         name: Name,
-        directive: &ImportDirective<'_>,
+        import: &Import<'_>,
         binding_span: Span,
     ) {
         let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
@@ -2649,11 +2646,11 @@ impl<'a> Resolver<'a> {
         };
 
         let mut suggestion = None;
-        match directive.subclass {
-            ImportDirectiveSubclass::SingleImport { type_ns_only: true, .. } => {
+        match import.kind {
+            ImportKind::Single { type_ns_only: true, .. } => {
                 suggestion = Some(format!("self as {}", suggested_name))
             }
-            ImportDirectiveSubclass::SingleImport { source, .. } => {
+            ImportKind::Single { source, .. } => {
                 if let Some(pos) =
                     source.span.hi().0.checked_sub(binding_span.lo().0).map(|pos| pos as usize)
                 {
@@ -2669,7 +2666,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
             }
-            ImportDirectiveSubclass::ExternCrate { source, target, .. } => {
+            ImportKind::ExternCrate { source, target, .. } => {
                 suggestion = Some(format!(
                     "extern crate {} as {};",
                     source.unwrap_or(target.name),
@@ -2711,27 +2708,27 @@ impl<'a> Resolver<'a> {
     /// If the nested use contains only one import then the suggestion will remove the entire
     /// line.
     ///
-    /// It is expected that the directive provided is a nested import - this isn't checked by the
+    /// It is expected that the provided import is nested - this isn't checked by the
     /// function. If this invariant is not upheld, this function's behaviour will be unexpected
     /// as characters expected by span manipulations won't be present.
     fn add_suggestion_for_duplicate_nested_use(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        directive: &ImportDirective<'_>,
+        import: &Import<'_>,
         binding_span: Span,
     ) {
-        assert!(directive.is_nested());
+        assert!(import.is_nested());
         let message = "remove unnecessary import";
 
         // Two examples will be used to illustrate the span manipulations we're doing:
         //
         // - Given `use issue_52891::{d, a, e};` where `a` is a duplicate then `binding_span` is
-        //   `a` and `directive.use_span` is `issue_52891::{d, a, e};`.
+        //   `a` and `import.use_span` is `issue_52891::{d, a, e};`.
         // - Given `use issue_52891::{d, e, a};` where `a` is a duplicate then `binding_span` is
-        //   `a` and `directive.use_span` is `issue_52891::{d, e, a};`.
+        //   `a` and `import.use_span` is `issue_52891::{d, e, a};`.
 
         let (found_closing_brace, span) =
-            find_span_of_binding_until_next_binding(self.session, binding_span, directive.use_span);
+            find_span_of_binding_until_next_binding(self.session, binding_span, import.use_span);
 
         // If there was a closing brace then identify the span to remove any trailing commas from
         // previous imports.
@@ -2747,7 +2744,7 @@ impl<'a> Resolver<'a> {
                 // Remove the entire line if we cannot extend the span back, this indicates a
                 // `issue_52891::{self}` case.
                 err.span_suggestion(
-                    directive.use_span_with_attributes,
+                    import.use_span_with_attributes,
                     message,
                     String::new(),
                     Applicability::MaybeIncorrect,
@@ -2769,7 +2766,7 @@ impl<'a> Resolver<'a> {
             // Make sure `self`, `super` etc produce an error when passed to here.
             return None;
         }
-        self.extern_prelude.get(&ident.modern()).cloned().and_then(|entry| {
+        self.extern_prelude.get(&ident.normalize_to_macros_2_0()).cloned().and_then(|entry| {
             if let Some(binding) = entry.extern_crate_item {
                 if !speculative && entry.introduced_by_item {
                     self.record_use(ident, TypeNS, binding, false);
@@ -2778,12 +2775,8 @@ impl<'a> Resolver<'a> {
             } else {
                 let crate_id = if !speculative {
                     self.crate_loader.process_path_extern(ident.name, ident.span)
-                } else if let Some(crate_id) =
-                    self.crate_loader.maybe_process_path_extern(ident.name, ident.span)
-                {
-                    crate_id
                 } else {
-                    return None;
+                    self.crate_loader.maybe_process_path_extern(ident.name, ident.span)?
                 };
                 let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 Some(

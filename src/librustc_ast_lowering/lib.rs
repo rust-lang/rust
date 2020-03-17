@@ -153,7 +153,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// against this list to see if it is already in-scope, or if a definition
     /// needs to be created for it.
     ///
-    /// We always store a `modern()` version of the param-name in this
+    /// We always store a `normalize_to_macros_2_0()` version of the param-name in this
     /// vector.
     in_scope_lifetimes: Vec<ParamName>,
 
@@ -535,9 +535,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.resolver.definitions().init_node_id_to_hir_id_mapping(self.node_id_to_hir_id);
 
         hir::Crate {
-            module,
-            attrs,
-            span: c.span,
+            item: hir::CrateItem { module, attrs, span: c.span },
             exported_macros: self.arena.alloc_from_iter(self.exported_macros),
             non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
             items: self.items,
@@ -805,14 +803,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             return;
         }
 
-        if self.in_scope_lifetimes.contains(&ParamName::Plain(ident.modern())) {
+        if self.in_scope_lifetimes.contains(&ParamName::Plain(ident.normalize_to_macros_2_0())) {
             return;
         }
 
         let hir_name = ParamName::Plain(ident);
 
-        if self.lifetimes_to_define.iter().any(|(_, lt_name)| lt_name.modern() == hir_name.modern())
-        {
+        if self.lifetimes_to_define.iter().any(|(_, lt_name)| {
+            lt_name.normalize_to_macros_2_0() == hir_name.normalize_to_macros_2_0()
+        }) {
             return;
         }
 
@@ -840,7 +839,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> T {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {
-            GenericParamKind::Lifetime { .. } => Some(ParamName::Plain(param.ident.modern())),
+            GenericParamKind::Lifetime { .. } => {
+                Some(ParamName::Plain(param.ident.normalize_to_macros_2_0()))
+            }
             _ => None,
         });
         self.in_scope_lifetimes.extend(lt_def_names);
@@ -1096,7 +1097,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         match arg {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
             ast::GenericArg::Type(ty) => {
-                // We parse const arguments as path types as we cannot distiguish them durring
+                // We parse const arguments as path types as we cannot distinguish them during
                 // parsing. We try to resolve that ambiguity by attempting resolution in both the
                 // type and value namespaces. If we resolved the path in the value namespace, we
                 // transform it into a generic const argument.
@@ -1334,7 +1335,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 }
             }
-            TyKind::Mac(_) => bug!("`TyKind::Mac` should have been expanded by now"),
+            TyKind::MacCall(_) => bug!("`TyKind::MacCall` should have been expanded by now"),
             TyKind::CVarArgs => {
                 self.sess.delay_span_bug(
                     t.span,
@@ -1464,7 +1465,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         impl<'r, 'a, 'v, 'hir> intravisit::Visitor<'v> for ImplTraitLifetimeCollector<'r, 'a, 'hir> {
             type Map = Map<'v>;
 
-            fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+            fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
                 intravisit::NestedVisitorMap::None
             }
 
@@ -2282,7 +2283,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             StmtKind::Expr(ref e) => hir::StmtKind::Expr(self.lower_expr(e)),
             StmtKind::Semi(ref e) => hir::StmtKind::Semi(self.lower_expr(e)),
             StmtKind::Empty => return smallvec![],
-            StmtKind::Mac(..) => panic!("shouldn't exist here"),
+            StmtKind::MacCall(..) => panic!("shouldn't exist here"),
         };
         smallvec![hir::Stmt { hir_id: self.lower_node_id(s.id), kind, span: s.span }]
     }

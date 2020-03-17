@@ -4,7 +4,6 @@ error[E0658]: diagnostic items compiler internal support for linting
 LL | #[rustc_diagnostic_item = "foomp"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #29642 <https://github.com/rust-lang/rust/issues/29642> for more information
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error: aborting due to previous error

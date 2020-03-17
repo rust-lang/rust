@@ -844,11 +844,7 @@ pub fn plain_summary_line(md: &str) -> String {
         type Item = String;
 
         fn next(&mut self) -> Option<String> {
-            let next_event = self.inner.next();
-            if next_event.is_none() {
-                return None;
-            }
-            let next_event = next_event.unwrap();
+            let next_event = self.inner.next()?;
             let (ret, is_in) = match next_event {
                 Event::Start(Tag::Paragraph) => (None, 1),
                 Event::Start(Tag::Heading(_)) => (None, 1),
@@ -870,7 +866,7 @@ pub fn plain_summary_line(md: &str) -> String {
     }
     let mut s = String::with_capacity(md.len() * 3 / 2);
     let p = ParserWrapper { inner: Parser::new(md), is_in: 0, is_first: true };
-    p.into_iter().filter(|t| !t.is_empty()).for_each(|i| s.push_str(&i));
+    p.filter(|t| !t.is_empty()).for_each(|i| s.push_str(&i));
     s
 }
 

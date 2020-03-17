@@ -5,9 +5,9 @@ use rustc::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc_infer::traits;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_trait_selection::traits;
 
 fn sized_constraint_for_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -210,7 +210,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
     }
 }
 
-fn associated_items<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::AssociatedItems {
+fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AssociatedItems {
     let items = tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did));
     tcx.arena.alloc(ty::AssociatedItems::new(items))
 }
@@ -273,8 +273,7 @@ fn original_crate_name(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Symbol {
 }
 
 fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
-    assert_eq!(crate_num, LOCAL_CRATE);
-    tcx.hir().crate_hash
+    tcx.index_hir(crate_num).crate_hash
 }
 
 fn instance_def_size_estimate<'tcx>(

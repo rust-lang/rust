@@ -39,12 +39,12 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{GenericParamKind, PatKind};
 use rustc_hir::{HirIdSet, Node};
-use rustc_infer::traits::misc::can_type_implement_copy;
 use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
+use rustc_trait_selection::traits::misc::can_type_implement_copy;
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
@@ -399,7 +399,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &LateContext<'_, '_>, krate: &hir::Crate<'_>) {
-        self.check_missing_docs_attrs(cx, None, &krate.attrs, krate.span, "crate");
+        self.check_missing_docs_attrs(cx, None, &krate.item.attrs, krate.item.span, "crate");
 
         for macro_def in krate.exported_macros {
             let has_doc = macro_def.attrs.iter().any(|a| has_doc(a));
@@ -465,7 +465,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
         let desc = match trait_item.kind {
             hir::TraitItemKind::Const(..) => "an associated constant",
-            hir::TraitItemKind::Method(..) => "a trait method",
+            hir::TraitItemKind::Fn(..) => "a trait method",
             hir::TraitItemKind::Type(..) => "an associated type",
         };
 
@@ -486,7 +486,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
         let desc = match impl_item.kind {
             hir::ImplItemKind::Const(..) => "an associated constant",
-            hir::ImplItemKind::Method(..) => "a method",
+            hir::ImplItemKind::Fn(..) => "a method",
             hir::ImplItemKind::TyAlias(_) => "an associated type",
             hir::ImplItemKind::OpaqueTy(_) => "an associated `impl Trait` type",
         };
@@ -778,7 +778,7 @@ impl EarlyLintPass for UnusedDocComment {
             ast::StmtKind::Empty
             | ast::StmtKind::Semi(_)
             | ast::StmtKind::Expr(_)
-            | ast::StmtKind::Mac(_) => return,
+            | ast::StmtKind::MacCall(_) => return,
         };
 
         warn_if_doc(cx, stmt.span, kind, stmt.kind.attrs());
@@ -1073,7 +1073,7 @@ impl TypeAliasBounds {
         impl<'a, 'db, 'v> Visitor<'v> for WalkAssocTypes<'a, 'db> {
             type Map = Map<'v>;
 
-            fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+            fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
                 intravisit::NestedVisitorMap::None
             }
 
@@ -1478,7 +1478,7 @@ impl EarlyLintPass for KeywordIdents {
     fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef, _id: ast::NodeId) {
         self.check_tokens(cx, mac_def.body.inner_tokens());
     }
-    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
+    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
         self.check_tokens(cx, mac.args.inner_tokens());
     }
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: ast::Ident) {

@@ -249,7 +249,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         self.check_id(id);
     }
 
-    fn visit_mac(&mut self, mac: &'a ast::Mac) {
+    fn visit_mac(&mut self, mac: &'a ast::MacCall) {
         // FIXME(#54110): So, this setup isn't really right. I think
         // that (a) the librustc_ast visitor ought to be doing this as
         // part of `walk_mac`, and (b) we should be calling

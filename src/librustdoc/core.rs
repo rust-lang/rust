@@ -228,6 +228,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         mut manual_passes,
         display_warnings,
         render_options,
+        output_format,
         ..
     } = options;
 
@@ -385,6 +386,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
                 let mut renderinfo = RenderInfo::default();
                 renderinfo.access_levels = access_levels;
+                renderinfo.output_format = output_format;
 
                 let mut ctxt = DocContext {
                     tcx,

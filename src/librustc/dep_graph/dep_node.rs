@@ -35,7 +35,7 @@
 //! "infer" some properties for each kind of `DepNode`:
 //!
 //! * Whether a `DepNode` of a given kind has any parameters at all. Some
-//!   `DepNode`s, like `AllLocalTraitImpls`, represent global concepts with only one value.
+//!   `DepNode`s could represent global concepts with only one value.
 //! * Whether it is possible, in principle, to reconstruct a query key from a
 //!   given `DepNode`. Many `DepKind`s only require a single `DefId` parameter,
 //!   in which case it is possible to map the node's fingerprint back to the
@@ -111,6 +111,7 @@ macro_rules! define_dep_nodes {
     ) => (
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
                  RustcEncodable, RustcDecodable)]
+        #[allow(non_camel_case_types)]
         pub enum DepKind {
             $($variant),*
         }
@@ -173,11 +174,12 @@ macro_rules! define_dep_nodes {
 
         pub struct DepConstructor;
 
+        #[allow(non_camel_case_types)]
         impl DepConstructor {
             $(
                 #[inline(always)]
                 #[allow(unreachable_code, non_snake_case)]
-                pub fn $variant<'tcx>(_tcx: TyCtxt<'tcx>, $(arg: $tuple_arg_ty)*) -> DepNode {
+                pub fn $variant(_tcx: TyCtxt<'_>, $(arg: $tuple_arg_ty)*) -> DepNode {
                     // tuple args
                     $({
                         erase!($tuple_arg_ty);
@@ -221,8 +223,8 @@ macro_rules! define_dep_nodes {
             /// Construct a DepNode from the given DepKind and DefPathHash. This
             /// method will assert that the given DepKind actually requires a
             /// single DefId/DefPathHash parameter.
-            pub fn from_def_path_hash(kind: DepKind,
-                                      def_path_hash: DefPathHash)
+            pub fn from_def_path_hash(def_path_hash: DefPathHash,
+                                      kind: DepKind)
                                       -> DepNode {
                 debug_assert!(kind.can_reconstruct_query_key() && kind.has_params());
                 DepNode {
@@ -278,7 +280,7 @@ macro_rules! define_dep_nodes {
                 }
 
                 if kind.has_params() {
-                    Ok(def_path_hash.to_dep_node(kind))
+                    Ok(DepNode::from_def_path_hash(def_path_hash, kind))
                 } else {
                     Ok(DepNode::new_no_params(kind))
                 }
@@ -335,58 +337,19 @@ impl fmt::Debug for DepNode {
     }
 }
 
-impl DefPathHash {
-    pub fn to_dep_node(self, kind: DepKind) -> DepNode {
-        DepNode::from_def_path_hash(kind, self)
-    }
-}
-
 rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,
 
-    // Represents the body of a function or method. The def-id is that of the
-    // function/method.
-    [eval_always] HirBody(DefId),
-
-    // Represents the HIR node with the given node-id
-    [eval_always] Hir(DefId),
-
     // Represents metadata from an extern crate.
     [eval_always] CrateMetadata(CrateNum),
-
-    [eval_always] AllLocalTraitImpls,
 
     [anon] TraitSelect,
 
     [] CompileCodegenUnit(Symbol),
-
-    [eval_always] Analysis(CrateNum),
 ]);
 
-pub trait RecoverKey<'tcx>: Sized {
-    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self>;
-}
-
-impl RecoverKey<'tcx> for CrateNum {
-    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
-        dep_node.extract_def_id(tcx).map(|id| id.krate)
-    }
-}
-
-impl RecoverKey<'tcx> for DefId {
-    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
-        dep_node.extract_def_id(tcx)
-    }
-}
-
-impl RecoverKey<'tcx> for DefIndex {
-    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
-        dep_node.extract_def_id(tcx).map(|id| id.index)
-    }
-}
-
-trait DepNodeParams<'tcx>: fmt::Debug {
+pub(crate) trait DepNodeParams<'tcx>: fmt::Debug + Sized {
     const CAN_RECONSTRUCT_QUERY_KEY: bool;
 
     /// This method turns the parameters of a DepNodeConstructor into an opaque
@@ -400,6 +363,14 @@ trait DepNodeParams<'tcx>: fmt::Debug {
     fn to_debug_str(&self, _: TyCtxt<'tcx>) -> String {
         format!("{:?}", self)
     }
+
+    /// This method tries to recover the query key from the given `DepNode`,
+    /// something which is needed when forcing `DepNode`s during red-green
+    /// evaluation. The query system will only call this method if
+    /// `CAN_RECONSTRUCT_QUERY_KEY` is `true`.
+    /// It is always valid to return `None` here, in which case incremental
+    /// compilation will treat the query as having changed instead of forcing it.
+    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self>;
 }
 
 impl<'tcx, T> DepNodeParams<'tcx> for T
@@ -420,6 +391,10 @@ where
     default fn to_debug_str(&self, _: TyCtxt<'tcx>) -> String {
         format!("{:?}", *self)
     }
+
+    default fn recover(_: TyCtxt<'tcx>, _: &DepNode) -> Option<Self> {
+        None
+    }
 }
 
 impl<'tcx> DepNodeParams<'tcx> for DefId {
@@ -431,6 +406,10 @@ impl<'tcx> DepNodeParams<'tcx> for DefId {
 
     fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
         tcx.def_path_str(*self)
+    }
+
+    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
+        dep_node.extract_def_id(tcx)
     }
 }
 
@@ -444,6 +423,10 @@ impl<'tcx> DepNodeParams<'tcx> for DefIndex {
     fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
         tcx.def_path_str(DefId::local(*self))
     }
+
+    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
+        dep_node.extract_def_id(tcx).map(|id| id.index)
+    }
 }
 
 impl<'tcx> DepNodeParams<'tcx> for CrateNum {
@@ -456,6 +439,10 @@ impl<'tcx> DepNodeParams<'tcx> for CrateNum {
 
     fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
         tcx.crate_name(*self).to_string()
+    }
+
+    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
+        dep_node.extract_def_id(tcx).map(|id| id.krate)
     }
 }
 

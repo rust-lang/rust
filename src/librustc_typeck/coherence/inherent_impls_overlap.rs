@@ -3,7 +3,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_infer::traits::{self, SkipLeakCheck};
+use rustc_trait_selection::traits::{self, SkipLeakCheck};
 
 pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, crate_num: CrateNum) {
     assert_eq!(crate_num, LOCAL_CRATE);
@@ -26,7 +26,8 @@ impl InherentOverlapChecker<'tcx> {
             let collision = impl_items2.filter_by_name_unhygienic(item1.ident.name).any(|item2| {
                 // Symbols and namespace match, compare hygienically.
                 item1.kind.namespace() == item2.kind.namespace()
-                    && item1.ident.modern() == item2.ident.modern()
+                    && item1.ident.normalize_to_macros_2_0()
+                        == item2.ident.normalize_to_macros_2_0()
             });
 
             if collision {
@@ -50,11 +51,12 @@ impl InherentOverlapChecker<'tcx> {
             let collision = impl_items2.filter_by_name_unhygienic(item1.ident.name).find(|item2| {
                 // Symbols and namespace match, compare hygienically.
                 item1.kind.namespace() == item2.kind.namespace()
-                    && item1.ident.modern() == item2.ident.modern()
+                    && item1.ident.normalize_to_macros_2_0()
+                        == item2.ident.normalize_to_macros_2_0()
             });
 
             if let Some(item2) = collision {
-                let name = item1.ident.modern();
+                let name = item1.ident.normalize_to_macros_2_0();
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     self.tcx.span_of_impl(item1.def_id).unwrap(),

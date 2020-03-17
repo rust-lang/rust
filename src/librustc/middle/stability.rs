@@ -110,7 +110,7 @@ pub fn report_unstable(
     let span_key = msp.primary_span().and_then(|sp: Span| {
         if !sp.is_dummy() {
             let file = sm.lookup_char_pos(sp.lo()).file;
-            if file.name.is_macros() { None } else { Some(span) }
+            if file.is_imported() { None } else { Some(span) }
         } else {
             None
         }
@@ -250,7 +250,7 @@ pub enum EvalResult {
 fn skip_stability_check_due_to_privacy(tcx: TyCtxt<'_>, mut def_id: DefId) -> bool {
     // Check if `def_id` is a trait method.
     match tcx.def_kind(def_id) {
-        Some(DefKind::Method) | Some(DefKind::AssocTy) | Some(DefKind::AssocConst) => {
+        Some(DefKind::AssocFn) | Some(DefKind::AssocTy) | Some(DefKind::AssocConst) => {
             if let ty::TraitContainer(trait_def_id) = tcx.associated_item(def_id).container {
                 // Trait methods do not declare visibility (even
                 // for visibility info in cstore). Use containing

@@ -9,8 +9,8 @@ fn llvm_args_to_string_id(profiler: &SelfProfiler, pass_name: &str, ir_name: &st
     let mut components = vec![StringComponent::Ref(pass_name)];
     // handle that LazyCallGraph::SCC is a comma separated list within parentheses
     let parentheses: &[_] = &['(', ')'];
-    let trimed = ir_name.trim_matches(parentheses);
-    for part in trimed.split(", ") {
+    let trimmed = ir_name.trim_matches(parentheses);
+    for part in trimmed.split(", ") {
         let demangled_ir_name = rustc_demangle::demangle(part).to_string();
         let ir_name = profiler.get_or_alloc_cached_string(demangled_ir_name);
         components.push(StringComponent::Value(SEPARATOR_BYTE));

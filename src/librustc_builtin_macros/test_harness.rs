@@ -138,7 +138,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         smallvec![P(item)]
     }
 
-    fn visit_mac(&mut self, _mac: &mut ast::Mac) {
+    fn visit_mac(&mut self, _mac: &mut ast::MacCall) {
         // Do nothing.
     }
 }
@@ -184,7 +184,7 @@ impl MutVisitor for EntryPointCleaner {
         smallvec![item]
     }
 
-    fn visit_mac(&mut self, _mac: &mut ast::Mac) {
+    fn visit_mac(&mut self, _mac: &mut ast::MacCall) {
         // Do nothing.
     }
 }

@@ -44,7 +44,6 @@ use std::sync::Arc;
 
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
-use rustc_ast::ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -60,7 +59,7 @@ use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
 use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy};
-use crate::config::RenderOptions;
+use crate::config::{OutputFormat, RenderOptions};
 use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
 use crate::html::escape::Escape;
@@ -270,6 +269,7 @@ pub struct RenderInfo {
     pub deref_trait_did: Option<DefId>,
     pub deref_mut_trait_did: Option<DefId>,
     pub owned_box_did: Option<DefId>,
+    pub output_format: Option<OutputFormat>,
 }
 
 // Helper structs for rendering items/sidebars and carrying along contextual
@@ -1542,7 +1542,7 @@ impl Context {
         }
 
         if self.shared.sort_modules_alphabetically {
-            for (_, items) in &mut map {
+            for items in map.values_mut() {
                 items.sort();
             }
         }
@@ -1565,7 +1565,7 @@ impl Context {
 
         let mut path = String::new();
 
-        // We can safely ignore macros from other libraries
+        // We can safely ignore synthetic `SourceFile`s.
         let file = match item.source.filename {
             FileName::Real(ref path) => path,
             _ => return None,
@@ -2325,7 +2325,7 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
         f.generics.print()
     )
     .len();
-    write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it));
+    write!(w, "<pre class='rust fn'>");
     render_attributes(w, it, false);
     write!(
         w,
@@ -2528,13 +2528,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
         let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-        write!(
-            w,
-            "<h3 id='{id}' class='method'>{extra}<code id='{ns_id}'>",
-            extra = render_spotlight_traits(m),
-            id = id,
-            ns_id = ns_id
-        );
+        write!(w, "<h3 id='{id}' class='method'><code id='{ns_id}'>", id = id, ns_id = ns_id);
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl);
         write!(w, "</code>");
         render_stability_since(w, m, t);
@@ -3131,25 +3125,6 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
-fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
-    let path = pprust::path_to_string(&attr.path);
-
-    if attr.is_word() {
-        Some(path)
-    } else if let Some(v) = attr.value_str() {
-        Some(format!("{} = {:?}", path, v))
-    } else if let Some(values) = attr.meta_item_list() {
-        let display: Vec<_> = values
-            .iter()
-            .filter_map(|attr| attr.meta_item().and_then(|mi| render_attribute(mi)))
-            .collect();
-
-        if !display.is_empty() { Some(format!("{}({})", path, display.join(", "))) } else { None }
-    } else {
-        None
-    }
-}
-
 const ATTRIBUTE_WHITELIST: &[Symbol] = &[
     sym::export_name,
     sym::lang,
@@ -3175,9 +3150,9 @@ fn render_attributes(w: &mut Buffer, it: &clean::Item, top: bool) {
         if !ATTRIBUTE_WHITELIST.contains(&attr.name_or_empty()) {
             continue;
         }
-        if let Some(s) = render_attribute(&attr.meta().unwrap()) {
-            attrs.push_str(&format!("#[{}]\n", s));
-        }
+
+        // FIXME: this currently renders too many spaces as in: `#[repr(C, align (8))]`.
+        attrs.push_str(&pprust::attribute_to_string(&attr));
     }
     if !attrs.is_empty() {
         write!(
@@ -3401,10 +3376,8 @@ fn render_assoc_items(
         let deref_impl =
             traits.iter().find(|t| t.inner_impl().trait_.def_id() == c.deref_trait_did);
         if let Some(impl_) = deref_impl {
-            let has_deref_mut = traits
-                .iter()
-                .find(|t| t.inner_impl().trait_.def_id() == c.deref_mut_trait_did)
-                .is_some();
+            let has_deref_mut =
+                traits.iter().any(|t| t.inner_impl().trait_.def_id() == c.deref_mut_trait_did);
             render_deref_methods(w, cx, impl_, containing_item, has_deref_mut);
         }
 
@@ -3520,76 +3493,6 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool) -> bool {
     }
 }
 
-fn render_spotlight_traits(item: &clean::Item) -> String {
-    match item.inner {
-        clean::FunctionItem(clean::Function { ref decl, .. })
-        | clean::TyMethodItem(clean::TyMethod { ref decl, .. })
-        | clean::MethodItem(clean::Method { ref decl, .. })
-        | clean::ForeignFunctionItem(clean::Function { ref decl, .. }) => spotlight_decl(decl),
-        _ => String::new(),
-    }
-}
-
-fn spotlight_decl(decl: &clean::FnDecl) -> String {
-    let mut out = Buffer::html();
-    let mut trait_ = String::new();
-
-    if let Some(did) = decl.output.def_id() {
-        let c = cache();
-        if let Some(impls) = c.impls.get(&did) {
-            for i in impls {
-                let impl_ = i.inner_impl();
-                if impl_.trait_.def_id().map_or(false, |d| c.traits[&d].is_spotlight) {
-                    if out.is_empty() {
-                        out.push_str(&format!(
-                            "<h3 class=\"important\">Important traits for {}</h3>\
-                                      <code class=\"content\">",
-                            impl_.for_.print()
-                        ));
-                        trait_.push_str(&impl_.for_.print().to_string());
-                    }
-
-                    //use the "where" class here to make it small
-                    out.push_str(&format!(
-                        "<span class=\"where fmt-newline\">{}</span>",
-                        impl_.print()
-                    ));
-                    let t_did = impl_.trait_.def_id().unwrap();
-                    for it in &impl_.items {
-                        if let clean::TypedefItem(ref tydef, _) = it.inner {
-                            out.push_str("<span class=\"where fmt-newline\">    ");
-                            assoc_type(
-                                &mut out,
-                                it,
-                                &[],
-                                Some(&tydef.type_),
-                                AssocItemLink::GotoSource(t_did, &FxHashSet::default()),
-                                "",
-                            );
-                            out.push_str(";</span>");
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if !out.is_empty() {
-        out.insert_str(
-            0,
-            &format!(
-                "<div class=\"important-traits\"><div class='tooltip'>ⓘ\
-                                    <span class='tooltiptext'>Important traits for {}</span></div>\
-                                    <div class=\"content hidden\">",
-                trait_
-            ),
-        );
-        out.push_str("</code></div></div>");
-    }
-
-    out.into_inner()
-}
-
 fn render_impl(
     w: &mut Buffer,
     cx: &Context,
@@ -3601,7 +3504,7 @@ fn render_impl(
     use_absolute: Option<bool>,
     is_on_foreign_type: bool,
     show_default_items: bool,
-    // This argument is used to reference same type with different pathes to avoid duplication
+    // This argument is used to reference same type with different paths to avoid duplication
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
 ) {
@@ -3696,14 +3599,13 @@ fn render_impl(
                 (true, " hidden")
             };
         match item.inner {
-            clean::MethodItem(clean::Method { ref decl, .. })
-            | clean::TyMethodItem(clean::TyMethod { ref decl, .. }) => {
+            clean::MethodItem(clean::Method { .. })
+            | clean::TyMethodItem(clean::TyMethod { .. }) => {
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{}.{}", item_type, name));
                     let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                     write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
-                    write!(w, "{}", spotlight_decl(decl));
                     write!(w, "<code id='{}'>", ns_id);
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl);
                     write!(w, "</code>");
@@ -3816,7 +3718,7 @@ fn render_impl(
     ) {
         for trait_item in &t.items {
             let n = trait_item.name.clone();
-            if i.items.iter().find(|m| m.name == n).is_some() {
+            if i.items.iter().any(|m| m.name == n) {
                 continue;
             }
             let did = i.trait_.as_ref().unwrap().def_id().unwrap();

@@ -331,7 +331,7 @@ impl<'tcx> EncodeContext<'tcx> {
     fn encode_info_for_items(&mut self) {
         let krate = self.tcx.hir().krate();
         let vis = Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public };
-        self.encode_info_for_mod(hir::CRATE_HIR_ID, &krate.module, &krate.attrs, &vis);
+        self.encode_info_for_mod(hir::CRATE_HIR_ID, &krate.item.module, &krate.item.attrs, &vis);
         krate.visit_all_item_likes(&mut self.as_deep_visitor());
         for macro_def in krate.exported_macros {
             self.visit_macro_def(macro_def);
@@ -805,12 +805,12 @@ impl EncodeContext<'tcx> {
                 )
             }
             ty::AssocKind::Method => {
-                let fn_data = if let hir::TraitItemKind::Method(m_sig, m) = &ast_item.kind {
+                let fn_data = if let hir::TraitItemKind::Fn(m_sig, m) = &ast_item.kind {
                     let param_names = match *m {
-                        hir::TraitMethod::Required(ref names) => {
+                        hir::TraitFn::Required(ref names) => {
                             self.encode_fn_param_names(names)
                         }
-                        hir::TraitMethod::Provided(body) => {
+                        hir::TraitFn::Provided(body) => {
                             self.encode_fn_param_names_for_body(body)
                         }
                     };
@@ -822,7 +822,7 @@ impl EncodeContext<'tcx> {
                 } else {
                     bug!()
                 };
-                EntryKind::Method(self.lazy(MethodData {
+                EntryKind::AssocFn(self.lazy(AssocFnData {
                     fn_data,
                     container,
                     has_self: trait_item.method_has_self_argument,
@@ -894,7 +894,7 @@ impl EncodeContext<'tcx> {
                 }
             }
             ty::AssocKind::Method => {
-                let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.kind {
+                let fn_data = if let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind {
                     FnData {
                         asyncness: sig.header.asyncness,
                         constness: sig.header.constness,
@@ -903,7 +903,7 @@ impl EncodeContext<'tcx> {
                 } else {
                     bug!()
                 };
-                EntryKind::Method(self.lazy(MethodData {
+                EntryKind::AssocFn(self.lazy(AssocFnData {
                     fn_data,
                     container,
                     has_self: impl_item.method_has_self_argument,
@@ -928,7 +928,7 @@ impl EncodeContext<'tcx> {
         self.encode_inferred_outlives(def_id);
         let mir = match ast_item.kind {
             hir::ImplItemKind::Const(..) => true,
-            hir::ImplItemKind::Method(ref sig, _) => {
+            hir::ImplItemKind::Fn(ref sig, _) => {
                 let generics = self.tcx.generics_of(def_id);
                 let needs_inline = (generics.requires_monomorphization(self.tcx)
                     || tcx.codegen_fn_attrs(def_id).requests_inline())
@@ -1077,12 +1077,13 @@ impl EncodeContext<'tcx> {
                 let polarity = self.tcx.impl_polarity(def_id);
                 let parent = if let Some(trait_ref) = trait_ref {
                     let trait_def = self.tcx.trait_def(trait_ref.def_id);
-                    trait_def.ancestors(self.tcx, def_id).nth(1).and_then(|node| {
-                        match node {
-                            specialization_graph::Node::Impl(parent) => Some(parent),
-                            _ => None,
-                        }
-                    })
+                    trait_def.ancestors(self.tcx, def_id).ok()
+                        .and_then(|mut an| an.nth(1).and_then(|node| {
+                            match node {
+                                specialization_graph::Node::Impl(parent) => Some(parent),
+                                _ => None,
+                            }
+                        }))
                 } else {
                     None
                 };
@@ -1114,6 +1115,7 @@ impl EncodeContext<'tcx> {
                     paren_sugar: trait_def.paren_sugar,
                     has_auto_impl: self.tcx.trait_is_auto(def_id),
                     is_marker: trait_def.is_marker,
+                    specialization_kind: trait_def.specialization_kind,
                 };
 
                 EntryKind::Trait(self.lazy(data))
@@ -1235,12 +1237,8 @@ impl EncodeContext<'tcx> {
 
     /// Serialize the text of exported macros
     fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef<'_>) {
-        use rustc_ast_pretty::pprust;
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id);
-        record!(self.per_def.kind[def_id] <- EntryKind::MacroDef(self.lazy(MacroDef {
-            body: pprust::tts_to_string(macro_def.body.clone()),
-            legacy: macro_def.legacy,
-        })));
+        record!(self.per_def.kind[def_id] <- EntryKind::MacroDef(self.lazy(macro_def.ast.clone())));
         record!(self.per_def.visibility[def_id] <- ty::Visibility::Public);
         record!(self.per_def.span[def_id] <- macro_def.span);
         record!(self.per_def.attributes[def_id] <- macro_def.attrs);
@@ -1506,8 +1504,8 @@ impl EncodeContext<'tcx> {
 impl Visitor<'tcx> for EncodeContext<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         intravisit::walk_expr(self, ex);

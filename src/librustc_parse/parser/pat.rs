@@ -1,9 +1,7 @@
 use super::{Parser, PathStyle};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
-use rustc_ast::ast::{
-    self, AttrVec, Attribute, FieldPat, Mac, Pat, PatKind, RangeEnd, RangeSyntax,
-};
-use rustc_ast::ast::{BindingMode, Expr, ExprKind, Ident, Mutability, Path, QSelf};
+use rustc_ast::ast::{self, AttrVec, Attribute, FieldPat, MacCall, Pat, PatKind, RangeEnd};
+use rustc_ast::ast::{BindingMode, Expr, ExprKind, Ident, Mutability, Path, QSelf, RangeSyntax};
 use rustc_ast::mut_visit::{noop_visit_mac, noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
@@ -151,7 +149,7 @@ impl<'a> Parser<'a> {
     /// Note that there are more tokens such as `@` for which we know that the `|`
     /// is an illegal parse. However, the user's intent is less clear in that case.
     fn recover_trailing_vert(&mut self, lo: Option<Span>) -> bool {
-        let is_end_ahead = self.look_ahead(1, |token| match &token.kind {
+        let is_end_ahead = self.look_ahead(1, |token| match &token.uninterpolate().kind {
             token::FatArrow // e.g. `a | => 0,`.
             | token::Ident(kw::If, false) // e.g. `a | if expr`.
             | token::Eq // e.g. `let a | = 0`.
@@ -540,7 +538,7 @@ impl<'a> Parser<'a> {
     fn make_all_value_bindings_mutable(pat: &mut P<Pat>) -> bool {
         struct AddMut(bool);
         impl MutVisitor for AddMut {
-            fn visit_mac(&mut self, mac: &mut Mac) {
+            fn visit_mac(&mut self, mac: &mut MacCall) {
                 noop_visit_mac(mac, self);
             }
 
@@ -597,8 +595,8 @@ impl<'a> Parser<'a> {
     fn parse_pat_mac_invoc(&mut self, path: Path) -> PResult<'a, PatKind> {
         self.bump();
         let args = self.parse_mac_args()?;
-        let mac = Mac { path, args, prior_type_ascription: self.last_type_ascription };
-        Ok(PatKind::Mac(mac))
+        let mac = MacCall { path, args, prior_type_ascription: self.last_type_ascription };
+        Ok(PatKind::MacCall(mac))
     }
 
     fn fatal_unexpected_non_pat(
@@ -704,7 +702,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_pat_range_end(&mut self) -> PResult<'a, P<Expr>> {
-        if self.token.is_path_start() {
+        if self.check_path() {
             let lo = self.token.span;
             let (qself, path) = if self.eat_lt() {
                 // Parse a qualified path

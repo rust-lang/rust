@@ -174,7 +174,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             }
             // FIXME(plietar): needs a new DefKind in rls-data
             ast::ForeignItemKind::TyAlias(..) => None,
-            ast::ForeignItemKind::Macro(..) => None,
+            ast::ForeignItemKind::MacCall(..) => None,
         }
     }
 
@@ -532,13 +532,16 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 match self.tables.expr_ty_adjusted(&hir_node).kind {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let variant = &def.non_enum_variant();
-                        let index = self.tcx.find_field_index(ident, variant).unwrap();
                         filter!(self.span_utils, ident.span);
                         let span = self.span_from_span(ident.span);
                         return Some(Data::RefData(Ref {
                             kind: RefKind::Variable,
                             span,
-                            ref_id: id_from_def_id(variant.fields[index].did),
+                            ref_id: self
+                                .tcx
+                                .find_field_index(ident, variant)
+                                .map(|index| id_from_def_id(variant.fields[index].did))
+                                .unwrap_or_else(|| null_id()),
                         }));
                     }
                     ty::Tuple(..) => None,
@@ -715,7 +718,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             | Res::Def(HirDefKind::Ctor(..), _) => {
                 Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(res.def_id()) })
             }
-            Res::Def(HirDefKind::Method, decl_id) => {
+            Res::Def(HirDefKind::AssocFn, decl_id) => {
                 let def_id = if decl_id.is_local() {
                     let ti = self.tcx.associated_item(decl_id);
 
@@ -790,19 +793,6 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             // FIXME(eddyb) maybe there is a way to handle them usefully?
             ExpnKind::Root | ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => return None,
         };
-
-        // If the callee is an imported macro from an external crate, need to get
-        // the source span and name from the session, as their spans are localized
-        // when read in, and no longer correspond to the source.
-        if let Some(mac) = self.tcx.sess.imported_macro_spans.borrow().get(&callee.def_site) {
-            let &(ref mac_name, mac_span) = mac;
-            let mac_span = self.span_from_span(mac_span);
-            return Some(MacroRef {
-                span: callsite_span,
-                qualname: mac_name.clone(), // FIXME: generate the real qualname
-                callee_span: mac_span,
-            });
-        }
 
         let callee_span = self.span_from_span(callee.def_site);
         Some(MacroRef {

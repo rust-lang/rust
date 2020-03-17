@@ -725,7 +725,7 @@ impl<'a> Builder<'a> {
             self.clear_if_dirty(&my_out, &rustdoc);
         }
 
-        cargo.env("CARGO_TARGET_DIR", &out_dir).arg(cmd).arg("-Zconfig-profile");
+        cargo.env("CARGO_TARGET_DIR", &out_dir).arg(cmd);
 
         let profile_var = |name: &str| {
             let profile = if self.config.rust_optimize { "RELEASE" } else { "DEV" };
@@ -847,13 +847,7 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zforce-unstable-if-unmarked");
         }
 
-        // cfg(bootstrap): the flag was renamed from `-Zexternal-macro-backtrace`
-        // to `-Zmacro-backtrace`, keep only the latter after beta promotion.
-        if stage == 0 {
-            rustflags.arg("-Zexternal-macro-backtrace");
-        } else {
-            rustflags.arg("-Zmacro-backtrace");
-        }
+        rustflags.arg("-Zmacro-backtrace");
 
         let want_rustdoc = self.doc_tests != DocTests::No;
 

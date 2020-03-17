@@ -4,7 +4,8 @@ use rustc::mir::ConstraintCategory;
 use rustc::ty::{self, RegionVid, Ty};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_infer::infer::{
-    error_reporting::nice_region_error::NiceRegionError, opaque_types, NLLRegionVariableOrigin,
+    error_reporting::nice_region_error::NiceRegionError,
+    error_reporting::unexpected_hidden_region_diagnostic, NLLRegionVariableOrigin,
 };
 use rustc_span::symbol::kw;
 use rustc_span::Span;
@@ -197,7 +198,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let region_scope_tree = &self.infcx.tcx.region_scope_tree(self.mir_def_id);
                     let named_ty = self.regioncx.name_regions(self.infcx.tcx, hidden_ty);
                     let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
-                    opaque_types::unexpected_hidden_region_diagnostic(
+                    unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
                         Some(region_scope_tree),
                         span,

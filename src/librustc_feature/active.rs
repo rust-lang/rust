@@ -99,6 +99,9 @@ declare_features! (
 
     // no-tracking-issue-start
 
+    /// Allows using `rustc_*` attributes (RFC 572).
+    (active, rustc_attrs, "1.0.0", None, None),
+
     /// Allows using compiler's own crates.
     (active, rustc_private, "1.0.0", Some(27812), None),
 
@@ -127,9 +130,6 @@ declare_features! (
 
     /// Allows using `#[link_name="llvm.*"]`.
     (active, link_llvm_intrinsics, "1.0.0", Some(29602), None),
-
-    /// Allows using `rustc_*` attributes (RFC 572).
-    (active, rustc_attrs, "1.0.0", Some(29642), None),
 
     /// Allows using the `box $expr` syntax.
     (active, box_syntax, "1.0.0", Some(49733), None),
@@ -289,9 +289,6 @@ declare_features! (
     /// Permits specifying whether a function should permit unwinding or abort on unwind.
     (active, unwind_attributes, "1.4.0", Some(58760), None),
 
-    /// Allows `#[no_debug]`.
-    (active, no_debug, "1.5.0", Some(29721), None),
-
     /// Allows attributes on expressions and non-item statements.
     (active, stmt_expr_attributes, "1.6.0", Some(15701), None),
 
@@ -303,6 +300,11 @@ declare_features! (
 
     /// Allows specialization of implementations (RFC 1210).
     (active, specialization, "1.7.0", Some(31844), None),
+
+    /// A minimal, sound subset of specialization intended to be used by the
+    /// standard library until the soundness issues with specialization
+    /// are fixed.
+    (active, min_specialization, "1.7.0", Some(31844), None),
 
     /// Allows using `#[naked]` on functions.
     (active, naked_functions, "1.9.0", Some(32408), None),
@@ -363,9 +365,6 @@ declare_features! (
     /// Allows `#[doc(masked)]`.
     (active, doc_masked, "1.21.0", Some(44027), None),
 
-    /// Allows `#[doc(spotlight)]`.
-    (active, doc_spotlight, "1.22.0", Some(45040), None),
-
     /// Allows `#[doc(include = "some-file")]`.
     (active, external_doc, "1.22.0", Some(44732), None),
 
@@ -387,7 +386,7 @@ declare_features! (
     /// Allows defining `trait X = A + B;` alias items.
     (active, trait_alias, "1.24.0", Some(41517), None),
 
-    /// Allows infering `'static` outlives requirements (RFC 2093).
+    /// Allows inferring `'static` outlives requirements (RFC 2093).
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
 
     /// Allows accessing fields of unions inside `const` functions.

@@ -124,7 +124,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                             .unwrap_or(false)
                     }
                     Res::Def(DefKind::Ctor(..), _)
-                    | Res::Def(DefKind::Method, _)
+                    | Res::Def(DefKind::AssocFn, _)
                     | Res::Def(DefKind::Const, _)
                     | Res::Def(DefKind::AssocConst, _)
                     | Res::SelfCtor(_)
@@ -1107,11 +1107,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 }
             };
 
-            match (
-                lifetime_names.len(),
-                lifetime_names.iter().next(),
-                snippet.as_ref().map(|s| s.as_str()),
-            ) {
+            match (lifetime_names.len(), lifetime_names.iter().next(), snippet.as_deref()) {
                 (1, Some(name), Some("&")) => {
                     suggest_existing(err, format!("&{} ", name));
                 }

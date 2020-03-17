@@ -13,7 +13,6 @@ use rustc_ast::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyl
 pub use rustc_ast::ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use rustc_ast::ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::node_id::NodeMap;
-use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
@@ -80,9 +79,9 @@ impl ParamName {
         }
     }
 
-    pub fn modern(&self) -> ParamName {
+    pub fn normalize_to_macros_2_0(&self) -> ParamName {
         match *self {
-            ParamName::Plain(ident) => ParamName::Plain(ident.modern()),
+            ParamName::Plain(ident) => ParamName::Plain(ident.normalize_to_macros_2_0()),
             param_name => param_name,
         }
     }
@@ -152,9 +151,11 @@ impl LifetimeName {
         self == &LifetimeName::Static
     }
 
-    pub fn modern(&self) -> LifetimeName {
+    pub fn normalize_to_macros_2_0(&self) -> LifetimeName {
         match *self {
-            LifetimeName::Param(param_name) => LifetimeName::Param(param_name.modern()),
+            LifetimeName::Param(param_name) => {
+                LifetimeName::Param(param_name.normalize_to_macros_2_0())
+            }
             lifetime_name => lifetime_name,
         }
     }
@@ -597,7 +598,7 @@ pub struct WhereEqPredicate<'hir> {
     pub rhs_ty: &'hir Ty<'hir>,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug)]
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct ModuleItems {
     // Use BTreeSets here so items are in the same order as in the
     // list of all items in Crate
@@ -606,17 +607,23 @@ pub struct ModuleItems {
     pub impl_items: BTreeSet<ImplItemId>,
 }
 
-/// The top-level data structure that stores the entire contents of
-/// the crate currently being compiled.
-///
-/// For more details, see the [rustc guide].
-///
-/// [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
-#[derive(RustcEncodable, RustcDecodable, Debug)]
-pub struct Crate<'hir> {
+/// A type representing only the top-level module.
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+pub struct CrateItem<'hir> {
     pub module: Mod<'hir>,
     pub attrs: &'hir [Attribute],
     pub span: Span,
+}
+
+/// The top-level data structure that stores the entire contents of
+/// the crate currently being compiled.
+///
+/// For more details, see the [rustc dev guide].
+///
+/// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
+#[derive(RustcEncodable, RustcDecodable, Debug)]
+pub struct Crate<'hir> {
+    pub item: CrateItem<'hir>,
     pub exported_macros: &'hir [MacroDef<'hir>],
     // Attributes from non-exported macros, kept only for collecting the library feature list.
     pub non_exported_macro_attrs: &'hir [Attribute],
@@ -722,13 +729,12 @@ impl Crate<'_> {
 /// Not parsed directly, but created on macro import or `macro_rules!` expansion.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct MacroDef<'hir> {
-    pub name: Name,
+    pub ident: Ident,
     pub vis: Visibility<'hir>,
     pub attrs: &'hir [Attribute],
     pub hir_id: HirId,
     pub span: Span,
-    pub body: TokenStream,
-    pub legacy: bool,
+    pub ast: ast::MacroDef,
 }
 
 /// A block of statements `{ .. }`, which may have a label (in this case the
@@ -1850,7 +1856,7 @@ pub struct TraitItem<'hir> {
 
 /// Represents a trait method's body (or just argument names).
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
-pub enum TraitMethod<'hir> {
+pub enum TraitFn<'hir> {
     /// No default body in the trait, just a signature.
     Required(&'hir [Ident]),
 
@@ -1863,8 +1869,8 @@ pub enum TraitMethod<'hir> {
 pub enum TraitItemKind<'hir> {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
     Const(&'hir Ty<'hir>, Option<BodyId>),
-    /// A method with an optional body.
-    Method(FnSig<'hir>, TraitMethod<'hir>),
+    /// An associated function with an optional body.
+    Fn(FnSig<'hir>, TraitFn<'hir>),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type.
     Type(GenericBounds<'hir>, Option<&'hir Ty<'hir>>),
@@ -1897,8 +1903,8 @@ pub enum ImplItemKind<'hir> {
     /// An associated constant of the given type, set to the constant result
     /// of the expression.
     Const(&'hir Ty<'hir>, BodyId),
-    /// A method implementation with the given signature and body.
-    Method(FnSig<'hir>, BodyId),
+    /// An associated function implementation with the given signature and body.
+    Fn(FnSig<'hir>, BodyId),
     /// An associated type.
     TyAlias(&'hir Ty<'hir>),
     /// An associated `type = impl Trait`.
@@ -1909,7 +1915,7 @@ impl ImplItemKind<'_> {
     pub fn namespace(&self) -> Namespace {
         match self {
             ImplItemKind::OpaqueTy(..) | ImplItemKind::TyAlias(..) => Namespace::TypeNS,
-            ImplItemKind::Const(..) | ImplItemKind::Method(..) => Namespace::ValueNS,
+            ImplItemKind::Const(..) | ImplItemKind::Fn(..) => Namespace::ValueNS,
         }
     }
 }
@@ -2653,7 +2659,7 @@ pub type TraitMap<ID = HirId> = NodeMap<Vec<TraitCandidate<ID>>>;
 // imported.
 pub type GlobMap = NodeMap<FxHashSet<Name>>;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum Node<'hir> {
     Param(&'hir Param<'hir>),
     Item(&'hir Item<'hir>),
@@ -2683,7 +2689,7 @@ pub enum Node<'hir> {
     GenericParam(&'hir GenericParam<'hir>),
     Visibility(&'hir Visibility<'hir>),
 
-    Crate,
+    Crate(&'hir CrateItem<'hir>),
 }
 
 impl Node<'_> {
@@ -2699,8 +2705,8 @@ impl Node<'_> {
 
     pub fn fn_decl(&self) -> Option<&FnDecl<'_>> {
         match self {
-            Node::TraitItem(TraitItem { kind: TraitItemKind::Method(fn_sig, _), .. })
-            | Node::ImplItem(ImplItem { kind: ImplItemKind::Method(fn_sig, _), .. })
+            Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
+            | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig.decl),
             Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
                 Some(fn_decl)

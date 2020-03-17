@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // https://github.com/rust-lang/rust/issues/51300
 
 #[derive(PartialEq, Eq, Clone, Copy)]

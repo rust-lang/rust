@@ -607,7 +607,6 @@ impl Step for RustdocTheme {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocJSStd {
-    pub host: Interned<String>,
     pub target: Interned<String>,
 }
 
@@ -621,13 +620,16 @@ impl Step for RustdocJSStd {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustdocJSStd { host: run.host, target: run.target });
+        run.builder.ensure(RustdocJSStd { target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
         if let Some(ref nodejs) = builder.config.nodejs {
             let mut command = Command::new(nodejs);
-            command.args(&["src/tools/rustdoc-js-std/tester.js", &*self.host]);
+            command
+                .arg(builder.src.join("src/tools/rustdoc-js-std/tester.js"))
+                .arg(builder.doc_out(self.target))
+                .arg(builder.src.join("src/test/rustdoc-js-std"));
             builder.ensure(crate::doc::Std { target: self.target, stage: builder.top_stage });
             builder.run(&mut command);
         } else {

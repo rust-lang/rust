@@ -14,13 +14,13 @@ pub struct AddRetag;
 /// after the assignment, we can be sure to obtain the same place value.
 /// (Concurrent accesses by other threads are no problem as these are anyway non-atomic
 /// copies.  Data races are UB.)
-fn is_stable(place: PlaceRef<'_, '_>) -> bool {
+fn is_stable(place: PlaceRef<'_>) -> bool {
     place.projection.iter().all(|elem| {
         match elem {
             // Which place this evaluates to can change with any memory write,
             // so cannot assume this to be stable.
             ProjectionElem::Deref => false,
-            // Array indices are intersting, but MIR building generates a *fresh*
+            // Array indices are interesting, but MIR building generates a *fresh*
             // temporary for every array access, so the index cannot be changed as
             // a side-effect.
             ProjectionElem::Index { .. } |
@@ -34,7 +34,7 @@ fn is_stable(place: PlaceRef<'_, '_>) -> bool {
 }
 
 /// Determine whether this type may be a reference (or box), and thus needs retagging.
-fn may_be_reference<'tcx>(ty: Ty<'tcx>) -> bool {
+fn may_be_reference(ty: Ty<'tcx>) -> bool {
     match ty.kind {
         // Primitive types that are not references
         ty::Bool

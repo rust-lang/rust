@@ -91,7 +91,7 @@ pub use crate::intrinsics::transmute;
 /// Using `ManuallyDrop` here has two advantages:
 ///
 /// * We do not "touch" `v` after disassembling it. For some types, operations
-///   such as passing ownership (to a funcion like `mem::forget`) requires them to actually
+///   such as passing ownership (to a function like `mem::forget`) requires them to actually
 ///   be fully owned right now; that is a promise we do not want to make here as we are
 ///   in the process of transferring ownership to the new `String` we are building.
 /// * In case of an unexpected panic, `ManuallyDrop` is not dropped, but if the panic
@@ -490,14 +490,17 @@ pub const fn needs_drop<T>() -> bool {
 ///
 /// let _x: &i32 = unsafe { mem::zeroed() }; // Undefined behavior!
 /// ```
-#[inline]
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_zeroed"]
 pub unsafe fn zeroed<T>() -> T {
+    #[cfg(not(bootstrap))]
+    intrinsics::assert_zero_valid::<T>();
+    #[cfg(bootstrap)]
     intrinsics::panic_if_uninhabited::<T>();
-    intrinsics::init()
+    MaybeUninit::zeroed().assume_init()
 }
 
 /// Bypasses Rust's normal memory-initialization checks by pretending to
@@ -522,15 +525,18 @@ pub unsafe fn zeroed<T>() -> T {
 /// [uninit]: union.MaybeUninit.html#method.uninit
 /// [assume_init]: union.MaybeUninit.html#method.assume_init
 /// [inv]: union.MaybeUninit.html#initialization-invariant
-#[inline]
+#[inline(always)]
 #[rustc_deprecated(since = "1.39.0", reason = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_uninitialized"]
 pub unsafe fn uninitialized<T>() -> T {
+    #[cfg(not(bootstrap))]
+    intrinsics::assert_uninit_valid::<T>();
+    #[cfg(bootstrap)]
     intrinsics::panic_if_uninhabited::<T>();
-    intrinsics::uninit()
+    MaybeUninit::uninit().assume_init()
 }
 
 /// Swaps the values at two mutable locations, without deinitializing either one.
@@ -864,6 +870,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// assert_ne!(mem::discriminant(&Foo::B(3)), mem::discriminant(&Foo::C(3)));
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
-pub fn discriminant<T>(v: &T) -> Discriminant<T> {
+#[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
+pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
     Discriminant(intrinsics::discriminant_value(v), PhantomData)
 }

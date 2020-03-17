@@ -11,8 +11,8 @@ use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, GenericParamDefKind, Ty};
 use rustc_hir as hir;
 use rustc_infer::infer::{self, InferOk};
-use rustc_infer::traits;
 use rustc_span::Span;
+use rustc_trait_selection::traits;
 
 use std::ops::Deref;
 

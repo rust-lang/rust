@@ -1,6 +1,6 @@
-//! MIR datatypes and passes. See the [rustc guide] for more info.
+//! MIR datatypes and passes. See the [rustc dev guide] for more info.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/index.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use crate::mir::interpret::{GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
@@ -403,7 +403,7 @@ pub enum ClearCrossCrate<T> {
 }
 
 impl<T> ClearCrossCrate<T> {
-    pub fn as_ref(&'a self) -> ClearCrossCrate<&'a T> {
+    pub fn as_ref(&self) -> ClearCrossCrate<&T> {
         match self {
             ClearCrossCrate::Clear => ClearCrossCrate::Clear,
             ClearCrossCrate::Set(v) => ClearCrossCrate::Set(v),
@@ -1827,9 +1827,9 @@ rustc_index::newtype_index! {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PlaceRef<'a, 'tcx> {
+pub struct PlaceRef<'tcx> {
     pub local: Local,
-    pub projection: &'a [PlaceElem<'tcx>],
+    pub projection: &'tcx [PlaceElem<'tcx>],
 }
 
 impl<'tcx> Place<'tcx> {
@@ -1864,7 +1864,7 @@ impl<'tcx> Place<'tcx> {
         self.as_ref().as_local()
     }
 
-    pub fn as_ref(&self) -> PlaceRef<'_, 'tcx> {
+    pub fn as_ref(&self) -> PlaceRef<'tcx> {
         PlaceRef { local: self.local, projection: &self.projection }
     }
 }
@@ -1875,7 +1875,7 @@ impl From<Local> for Place<'_> {
     }
 }
 
-impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
+impl<'tcx> PlaceRef<'tcx> {
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
     /// a single deref of a local.
     //
@@ -2503,7 +2503,7 @@ impl UserTypeProjection {
 
     pub(crate) fn variant(
         mut self,
-        adt_def: &'tcx AdtDef,
+        adt_def: &AdtDef,
         variant_index: VariantIdx,
         field: Field,
     ) -> Self {
@@ -2562,15 +2562,15 @@ impl<'tcx> Debug for Constant<'tcx> {
 
 impl<'tcx> Display for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        use crate::ty::print::PrettyPrinter;
         write!(fmt, "const ")?;
-        // FIXME make the default pretty printing of raw pointers more detailed. Here we output the
-        // debug representation of raw pointers, so that the raw pointers in the mir dump output are
-        // detailed and just not '{pointer}'.
-        if let ty::RawPtr(_) = self.literal.ty.kind {
-            write!(fmt, "{:?} : {}", self.literal.val, self.literal.ty)
-        } else {
-            write!(fmt, "{}", self.literal)
-        }
+        ty::tls::with(|tcx| {
+            let literal = tcx.lift(&self.literal).unwrap();
+            let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
+            cx.print_alloc_ids = true;
+            cx.pretty_print_const(literal, true)?;
+            Ok(())
+        })
     }
 }
 

@@ -18,6 +18,7 @@ use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 
 use log::{debug, trace};
 use std::mem;
+use std::path::PathBuf;
 
 const TURBOFISH: &str = "use `::<...>` instead of `<...>` to specify type arguments";
 
@@ -40,29 +41,15 @@ pub(super) fn dummy_arg(ident: Ident) -> Param {
 }
 
 pub enum Error {
-    FileNotFoundForModule {
-        mod_name: String,
-        default_path: String,
-        secondary_path: String,
-        dir_path: String,
-    },
-    DuplicatePaths {
-        mod_name: String,
-        default_path: String,
-        secondary_path: String,
-    },
+    FileNotFoundForModule { mod_name: String, default_path: PathBuf },
+    DuplicatePaths { mod_name: String, default_path: String, secondary_path: String },
     UselessDocComment,
 }
 
 impl Error {
     fn span_err(self, sp: impl Into<MultiSpan>, handler: &Handler) -> DiagnosticBuilder<'_> {
         match self {
-            Error::FileNotFoundForModule {
-                ref mod_name,
-                ref default_path,
-                ref secondary_path,
-                ref dir_path,
-            } => {
+            Error::FileNotFoundForModule { ref mod_name, ref default_path } => {
                 let mut err = struct_span_err!(
                     handler,
                     sp,
@@ -71,8 +58,9 @@ impl Error {
                     mod_name,
                 );
                 err.help(&format!(
-                    "name the file either {} or {} inside the directory \"{}\"",
-                    default_path, secondary_path, dir_path,
+                    "to create the module `{}`, create file \"{}\"",
+                    mod_name,
+                    default_path.display(),
                 ));
                 err
             }
@@ -192,17 +180,19 @@ impl<'a> Parser<'a> {
             TokenKind::CloseDelim(token::DelimToken::Brace),
             TokenKind::CloseDelim(token::DelimToken::Paren),
         ];
-        if let token::Ident(name, false) = self.normalized_token.kind {
-            if Ident::new(name, self.normalized_token.span).is_raw_guess()
-                && self.look_ahead(1, |t| valid_follow.contains(&t.kind))
+        match self.token.ident() {
+            Some((ident, false))
+                if ident.is_raw_guess()
+                    && self.look_ahead(1, |t| valid_follow.contains(&t.kind)) =>
             {
                 err.span_suggestion(
-                    self.normalized_token.span,
+                    ident.span,
                     "you can escape reserved keywords to use them as identifiers",
-                    format!("r#{}", name),
+                    format!("r#{}", ident.name),
                     Applicability::MaybeIncorrect,
                 );
             }
+            _ => {}
         }
         if let Some(token_descr) = super::token_descr_opt(&self.token) {
             err.span_label(self.token.span, format!("expected identifier, found {}", token_descr));
@@ -895,7 +885,7 @@ impl<'a> Parser<'a> {
         let msg = format!("expected `;`, found `{}`", super::token_descr(&self.token));
         let appl = Applicability::MachineApplicable;
         if self.token.span == DUMMY_SP || self.prev_token.span == DUMMY_SP {
-            // Likely inside a macro, can't provide meaninful suggestions.
+            // Likely inside a macro, can't provide meaningful suggestions.
             return self.expect(&token::Semi).map(drop);
         } else if !sm.is_multiline(self.prev_token.span.until(self.token.span)) {
             // The current token is in the same line as the prior token, not recoverable.

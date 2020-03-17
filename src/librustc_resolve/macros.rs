@@ -33,26 +33,26 @@ use std::{mem, ptr};
 type Res = def::Res<NodeId>;
 
 /// Binding produced by a `macro_rules` item.
-/// Not modularized, can shadow previous legacy bindings, etc.
+/// Not modularized, can shadow previous `macro_rules` bindings, etc.
 #[derive(Debug)]
-pub struct LegacyBinding<'a> {
+pub struct MacroRulesBinding<'a> {
     crate binding: &'a NameBinding<'a>,
-    /// Legacy scope into which the `macro_rules` item was planted.
-    crate parent_legacy_scope: LegacyScope<'a>,
+    /// `macro_rules` scope into which the `macro_rules` item was planted.
+    crate parent_macro_rules_scope: MacroRulesScope<'a>,
     crate ident: Ident,
 }
 
 /// The scope introduced by a `macro_rules!` macro.
 /// This starts at the macro's definition and ends at the end of the macro's parent
 /// module (named or unnamed), or even further if it escapes with `#[macro_use]`.
-/// Some macro invocations need to introduce legacy scopes too because they
+/// Some macro invocations need to introduce `macro_rules` scopes too because they
 /// can potentially expand into macro definitions.
 #[derive(Copy, Clone, Debug)]
-pub enum LegacyScope<'a> {
+pub enum MacroRulesScope<'a> {
     /// Empty "root" scope at the crate start containing no names.
     Empty,
     /// The scope introduced by a `macro_rules!` macro definition.
-    Binding(&'a LegacyBinding<'a>),
+    Binding(&'a MacroRulesBinding<'a>),
     /// The scope introduced by a macro invocation that can potentially
     /// create a `macro_rules!` macro definition.
     Invocation(ExpnId),
@@ -159,8 +159,8 @@ impl<'a> base::Resolver for Resolver<'a> {
         // Integrate the new AST fragment into all the definition and module structures.
         // We are inside the `expansion` now, but other parent scope components are still the same.
         let parent_scope = ParentScope { expansion, ..self.invocation_parent_scopes[&expansion] };
-        let output_legacy_scope = self.build_reduced_graph(fragment, parent_scope);
-        self.output_legacy_scopes.insert(expansion, output_legacy_scope);
+        let output_macro_rules_scope = self.build_reduced_graph(fragment, parent_scope);
+        self.output_macro_rules_scopes.insert(expansion, output_macro_rules_scope);
 
         parent_scope.module.unexpanded_invocations.borrow_mut().remove(&expansion);
     }
@@ -258,7 +258,13 @@ impl<'a> base::Resolver for Resolver<'a> {
                             force,
                         ) {
                             Ok((Some(ext), _)) => {
-                                let span = path.segments.last().unwrap().ident.span.modern();
+                                let span = path
+                                    .segments
+                                    .last()
+                                    .unwrap()
+                                    .ident
+                                    .span
+                                    .normalize_to_macros_2_0();
                                 helper_attrs.extend(
                                     ext.helper_attrs.iter().map(|name| Ident::new(*name, span)),
                                 );
@@ -338,6 +344,42 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn add_derive_copy(&mut self, expn_id: ExpnId) {
         self.containers_deriving_copy.insert(expn_id);
+    }
+
+    // The function that implements the resolution logic of `#[cfg_accessible(path)]`.
+    // Returns true if the path can certainly be resolved in one of three namespaces,
+    // returns false if the path certainly cannot be resolved in any of the three namespaces.
+    // Returns `Indeterminate` if we cannot give a certain answer yet.
+    fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate> {
+        let span = path.span;
+        let path = &Segment::from_path(path);
+        let parent_scope = self.invocation_parent_scopes[&expn_id];
+
+        let mut indeterminate = false;
+        for ns in [TypeNS, ValueNS, MacroNS].iter().copied() {
+            match self.resolve_path(path, Some(ns), &parent_scope, false, span, CrateLint::No) {
+                PathResult::Module(ModuleOrUniformRoot::Module(_)) => return Ok(true),
+                PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
+                    return Ok(true);
+                }
+                PathResult::Indeterminate => indeterminate = true,
+                // FIXME: `resolve_path` is not ready to report partially resolved paths
+                // correctly, so we just report an error if the path was reported as unresolved.
+                // This needs to be fixed for `cfg_accessible` to be useful.
+                PathResult::NonModule(..) | PathResult::Failed { .. } => {}
+                PathResult::Module(_) => panic!("unexpected path resolution"),
+            }
+        }
+
+        if indeterminate {
+            return Err(Indeterminate);
+        }
+
+        self.session
+            .struct_span_err(span, "not sure whether the path is accessible or not")
+            .span_note(span, "`cfg_accessible` is not fully implemented")
+            .emit();
+        Ok(false)
     }
 }
 
@@ -608,12 +650,14 @@ impl<'a> Resolver<'a> {
                         }
                         result
                     }
-                    Scope::MacroRules(legacy_scope) => match legacy_scope {
-                        LegacyScope::Binding(legacy_binding) if ident == legacy_binding.ident => {
-                            Ok((legacy_binding.binding, Flags::MACRO_RULES))
+                    Scope::MacroRules(macro_rules_scope) => match macro_rules_scope {
+                        MacroRulesScope::Binding(macro_rules_binding)
+                            if ident == macro_rules_binding.ident =>
+                        {
+                            Ok((macro_rules_binding.binding, Flags::MACRO_RULES))
                         }
-                        LegacyScope::Invocation(invoc_id)
-                            if !this.output_legacy_scopes.contains_key(&invoc_id) =>
+                        MacroRulesScope::Invocation(invoc_id)
+                            if !this.output_macro_rules_scopes.contains_key(&invoc_id) =>
                         {
                             Err(Determinacy::Undetermined)
                         }
@@ -759,16 +803,18 @@ impl<'a> Resolver<'a> {
                                     Some(AmbiguityKind::DeriveHelper)
                                 } else if innermost_flags.contains(Flags::MACRO_RULES)
                                     && flags.contains(Flags::MODULE)
-                                    && !this
-                                        .disambiguate_legacy_vs_modern(innermost_binding, binding)
+                                    && !this.disambiguate_macro_rules_vs_modularized(
+                                        innermost_binding,
+                                        binding,
+                                    )
                                     || flags.contains(Flags::MACRO_RULES)
                                         && innermost_flags.contains(Flags::MODULE)
-                                        && !this.disambiguate_legacy_vs_modern(
+                                        && !this.disambiguate_macro_rules_vs_modularized(
                                             binding,
                                             innermost_binding,
                                         )
                                 {
-                                    Some(AmbiguityKind::LegacyVsModern)
+                                    Some(AmbiguityKind::MacroRulesVsModularized)
                                 } else if innermost_binding.is_glob_import() {
                                     Some(AmbiguityKind::GlobVsOuter)
                                 } else if innermost_binding

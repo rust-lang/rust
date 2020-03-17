@@ -121,17 +121,22 @@ use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, Q
 use rustc_index::vec::Idx;
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
-use rustc_infer::infer::opaque_types::OpaqueTypeDecl;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, InferOk, InferResult, TyCtxtInferExt};
-use rustc_infer::traits::error_reporting::recursive_type_with_infinite_size_error;
-use rustc_infer::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::opaque_types::{InferCtxtExt as _, OpaqueTypeDecl};
+use rustc_trait_selection::traits::error_reporting::recursive_type_with_infinite_size_error;
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_trait_selection::traits::{
+    self, ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt,
+};
 
 use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::cmp;
@@ -457,7 +462,7 @@ pub enum Diverges {
         /// where all arms diverge), we may be
         /// able to provide a more informative
         /// message to the user.
-        /// If this is `None`, a default messsage
+        /// If this is `None`, a default message
         /// will be generated, which is suitable
         /// for most cases.
         custom_note: Option<&'static str>,
@@ -811,14 +816,14 @@ fn primary_body_of(
         },
         Node::TraitItem(item) => match item.kind {
             hir::TraitItemKind::Const(ref ty, Some(body)) => Some((body, Some(ty), None, None)),
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 Some((body, None, Some(&sig.header), Some(&sig.decl)))
             }
             _ => None,
         },
         Node::ImplItem(item) => match item.kind {
             hir::ImplItemKind::Const(ref ty, body) => Some((body, Some(ty), None, None)),
-            hir::ImplItemKind::Method(ref sig, body) => {
+            hir::ImplItemKind::Fn(ref sig, body) => {
                 Some((body, None, Some(&sig.header), Some(&sig.decl)))
             }
             _ => None,
@@ -896,7 +901,7 @@ where
                 ty::Opaque(def_id, substs) => {
                     debug!("fixup_opaque_types: found type {:?}", ty);
                     // Here, we replace any inference variables that occur within
-                    // the substs of an opaque type. By definition, any type occuring
+                    // the substs of an opaque type. By definition, any type occurring
                     // in the substs has a corresponding generic parameter, which is what
                     // we replace it with.
                     // This replacement is only run on the function signature, so any
@@ -1174,7 +1179,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -1733,7 +1738,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
 
             for item in items.iter() {
                 let item = tcx.hir().trait_item(item.id);
-                if let hir::TraitItemKind::Method(sig, _) = &item.kind {
+                if let hir::TraitItemKind::Fn(sig, _) = &item.kind {
                     let abi = sig.header.abi;
                     fn_maybe_err(tcx, item.ident.span, abi);
                 }
@@ -1891,13 +1896,16 @@ fn check_specialization_validity<'tcx>(
 ) {
     let kind = match impl_item.kind {
         hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
-        hir::ImplItemKind::Method(..) => ty::AssocKind::Method,
+        hir::ImplItemKind::Fn(..) => ty::AssocKind::Method,
         hir::ImplItemKind::OpaqueTy(..) => ty::AssocKind::OpaqueTy,
         hir::ImplItemKind::TyAlias(_) => ty::AssocKind::Type,
     };
 
-    let mut ancestor_impls = trait_def
-        .ancestors(tcx, impl_id)
+    let ancestors = match trait_def.ancestors(tcx, impl_id) {
+        Ok(ancestors) => ancestors,
+        Err(_) => return,
+    };
+    let mut ancestor_impls = ancestors
         .skip(1)
         .filter_map(|parent| {
             if parent.is_from_trait() {
@@ -1937,7 +1945,7 @@ fn check_specialization_validity<'tcx>(
         }
     });
 
-    // If `opt_result` is `None`, we have only encoutered `default impl`s that don't contain the
+    // If `opt_result` is `None`, we have only encountered `default impl`s that don't contain the
     // item. This is allowed, the item isn't actually getting specialized here.
     let result = opt_result.unwrap_or(Ok(()));
 
@@ -2014,7 +2022,7 @@ fn check_impl_items_against_trait<'tcx>(
                         err.emit()
                     }
                 }
-                hir::ImplItemKind::Method(..) => {
+                hir::ImplItemKind::Fn(..) => {
                     let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
                     if ty_trait_item.kind == ty::AssocKind::Method {
                         compare_impl_method(
@@ -2078,16 +2086,17 @@ fn check_impl_items_against_trait<'tcx>(
 
     // Check for missing items from trait
     let mut missing_items = Vec::new();
-    for trait_item in tcx.associated_items(impl_trait_ref.def_id).in_definition_order() {
-        let is_implemented = trait_def
-            .ancestors(tcx, impl_id)
-            .leaf_def(tcx, trait_item.ident, trait_item.kind)
-            .map(|node_item| !node_item.node.is_from_trait())
-            .unwrap_or(false);
+    if let Ok(ancestors) = trait_def.ancestors(tcx, impl_id) {
+        for trait_item in tcx.associated_items(impl_trait_ref.def_id).in_definition_order() {
+            let is_implemented = ancestors
+                .leaf_def(tcx, trait_item.ident, trait_item.kind)
+                .map(|node_item| !node_item.node.is_from_trait())
+                .unwrap_or(false);
 
-        if !is_implemented && !traits::impl_is_default(tcx, impl_id) {
-            if !trait_item.defaultness.has_value() {
-                missing_items.push(*trait_item);
+            if !is_implemented && !traits::impl_is_default(tcx, impl_id) {
+                if !trait_item.defaultness.has_value() {
+                    missing_items.push(*trait_item);
+                }
             }
         }
     }
@@ -2976,7 +2985,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_method_call(&self, hir_id: hir::HirId, method: MethodCallee<'tcx>) {
         debug!("write_method_call(hir_id={:?}, method={:?})", hir_id, method);
-        self.write_resolution(hir_id, Ok((DefKind::Method, method.def_id)));
+        self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
         self.write_substs(hir_id, method.substs);
 
         // When the method is confirmed, the `method.substs` includes
@@ -3452,7 +3461,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //  }
                 //  ```
                 //
-                // In the above snippet, the inference varaible created by
+                // In the above snippet, the inference variable created by
                 // instantiating `Option<Foo>` will be completely unconstrained.
                 // We treat this as a non-defining use by making the inference
                 // variable fall back to the opaque type itself.
@@ -4733,9 +4742,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let node = self.tcx.hir().get(self.tcx.hir().get_parent_item(id));
         match node {
             Node::Item(&hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })
-            | Node::ImplItem(&hir::ImplItem {
-                kind: hir::ImplItemKind::Method(_, body_id), ..
-            }) => {
+            | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body_id), .. }) => {
                 let body = self.tcx.hir().body(body_id);
                 if let ExprKind::Block(block, _) = &body.value.kind {
                     return Some(block.span);
@@ -4769,12 +4776,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Node::TraitItem(&hir::TraitItem {
                 ident,
-                kind: hir::TraitItemKind::Method(ref sig, ..),
+                kind: hir::TraitItemKind::Fn(ref sig, ..),
                 ..
             }) => Some((&sig.decl, ident, true)),
             Node::ImplItem(&hir::ImplItem {
                 ident,
-                kind: hir::ImplItemKind::Method(ref sig, ..),
+                kind: hir::ImplItemKind::Fn(ref sig, ..),
                 ..
             }) => Some((&sig.decl, ident, false)),
             _ => None,
@@ -4859,11 +4866,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match hir.get_if_local(def_id) {
                 Some(Node::Item(hir::Item { kind: ItemKind::Fn(.., body_id), .. }))
                 | Some(Node::ImplItem(hir::ImplItem {
-                    kind: hir::ImplItemKind::Method(_, body_id),
+                    kind: hir::ImplItemKind::Fn(_, body_id),
                     ..
                 }))
                 | Some(Node::TraitItem(hir::TraitItem {
-                    kind: hir::TraitItemKind::Method(.., hir::TraitMethod::Provided(body_id)),
+                    kind: hir::TraitItemKind::Fn(.., hir::TraitFn::Provided(body_id)),
                     ..
                 })) => {
                     let body = hir.body(*body_id);
@@ -4934,7 +4941,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .join(", ")
                 }
                 Some(Node::TraitItem(hir::TraitItem {
-                    kind: hir::TraitItemKind::Method(.., hir::TraitMethod::Required(idents)),
+                    kind: hir::TraitItemKind::Fn(.., hir::TraitFn::Required(idents)),
                     ..
                 })) => {
                     sugg_call = idents
@@ -5364,7 +5371,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     is_alias_variant_ctor = true;
                 }
             }
-            Res::Def(DefKind::Method, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
+            Res::Def(DefKind::AssocFn, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 let container = tcx.associated_item(def_id).container;
                 debug!("instantiate_value_path: def_id={:?} container={:?}", def_id, container);
                 match container {

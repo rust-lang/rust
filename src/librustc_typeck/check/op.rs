@@ -10,6 +10,7 @@ use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_span::Span;
+use rustc_trait_selection::infer::InferCtxtExt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
@@ -860,7 +861,7 @@ enum Op {
 }
 
 /// Dereferences a single level of immutable referencing.
-fn deref_ty_if_possible<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
+fn deref_ty_if_possible(ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.kind {
         ty::Ref(_, ty, hir::Mutability::Not) => ty,
         _ => ty,

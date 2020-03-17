@@ -1,3 +1,4 @@
+#![feature(alloc_layout_extra)]
 #![feature(bool_to_option)]
 #![feature(bound_cloned)]
 #![feature(box_syntax)]
@@ -40,6 +41,7 @@
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
 #![feature(leading_trailing_ones)]
+#![feature(const_forget)]
 
 extern crate test;
 

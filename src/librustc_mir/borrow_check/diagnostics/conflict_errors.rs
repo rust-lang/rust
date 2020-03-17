@@ -10,9 +10,9 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_index::vec::Idx;
-use rustc_infer::traits::error_reporting::suggest_constraining_type_param;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::Span;
+use rustc_trait_selection::traits::error_reporting::suggest_constraining_type_param;
 
 use crate::dataflow::drop_flag_effects;
 use crate::dataflow::indexes::{MoveOutIndex, MovePathIndex};
@@ -51,7 +51,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         desired_action: InitializationRequiringAction,
-        (moved_place, used_place, span): (PlaceRef<'cx, 'tcx>, PlaceRef<'cx, 'tcx>, Span),
+        (moved_place, used_place, span): (PlaceRef<'tcx>, PlaceRef<'tcx>, Span),
         mpi: MovePathIndex,
     ) {
         debug!(
@@ -647,7 +647,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // borrowed place and look for a access to a different field of the same union.
                 let Place { local, projection } = second_borrowed_place;
 
-                let mut cursor = projection.as_ref();
+                let mut cursor = &projection[..];
                 while let [proj_base @ .., elem] = cursor {
                     cursor = proj_base;
 
@@ -1231,7 +1231,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 GeneratorKind::Async(async_kind) => match async_kind {
                     AsyncGeneratorKind::Block => "async block",
                     AsyncGeneratorKind::Closure => "async closure",
-                    _ => bug!("async block/closure expected, but async funtion found."),
+                    _ => bug!("async block/closure expected, but async function found."),
                 },
                 GeneratorKind::Gen => "generator",
             },
@@ -1521,7 +1521,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err.buffer(&mut self.errors_buffer);
     }
 
-    fn classify_drop_access_kind(&self, place: PlaceRef<'cx, 'tcx>) -> StorageDeadOrDrop<'tcx> {
+    fn classify_drop_access_kind(&self, place: PlaceRef<'tcx>) -> StorageDeadOrDrop<'tcx> {
         let tcx = self.infcx.tcx;
         match place.projection {
             [] => StorageDeadOrDrop::LocalStorageDead,

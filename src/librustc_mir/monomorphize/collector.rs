@@ -983,7 +983,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
         match ii.kind {
-            hir::ImplItemKind::Method(hir::FnSig { .. }, _) => {
+            hir::ImplItemKind::Fn(hir::FnSig { .. }, _) => {
                 let def_id = self.tcx.hir().local_def_id(ii.hir_id);
                 self.push_if_root(def_id);
             }
@@ -1088,9 +1088,9 @@ fn create_mono_items_for_default_impls<'tcx>(
                 let param_env = ty::ParamEnv::reveal_all();
                 let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
                 let overridden_methods: FxHashSet<_> =
-                    items.iter().map(|iiref| iiref.ident.modern()).collect();
+                    items.iter().map(|iiref| iiref.ident.normalize_to_macros_2_0()).collect();
                 for method in tcx.provided_trait_methods(trait_ref.def_id) {
-                    if overridden_methods.contains(&method.ident.modern()) {
+                    if overridden_methods.contains(&method.ident.normalize_to_macros_2_0()) {
                         continue;
                     }
 

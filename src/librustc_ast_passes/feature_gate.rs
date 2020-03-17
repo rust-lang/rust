@@ -245,7 +245,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     include => external_doc
                     cfg => doc_cfg
                     masked => doc_masked
-                    spotlight => doc_spotlight
                     alias => doc_alias
                     keyword => doc_keyword
                 );
@@ -338,14 +337,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Impl { polarity, defaultness, .. } => {
-                if polarity == ast::ImplPolarity::Negative {
+            ast::ItemKind::Impl { polarity, defaultness, ref of_trait, .. } => {
+                if let ast::ImplPolarity::Negative(span) = polarity {
                     gate_feature_post!(
                         &self,
                         optin_builtin_traits,
-                        i.span,
+                        span.to(of_trait.as_ref().map(|t| t.path.span).unwrap_or(span)),
                         "negative trait bounds are not yet fully implemented; \
-                                        use marker types for now"
+                         use marker types for now"
                     );
                 }
 
@@ -367,7 +366,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, trait_alias, i.span, "trait aliases are experimental");
             }
 
-            ast::ItemKind::MacroDef(ast::MacroDef { legacy: false, .. }) => {
+            ast::ItemKind::MacroDef(ast::MacroDef { macro_rules: false, .. }) => {
                 let msg = "`macro` is experimental";
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
@@ -400,7 +399,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ForeignItemKind::TyAlias(..) => {
                 gate_feature_post!(&self, extern_types, i.span, "extern types are experimental");
             }
-            ast::ForeignItemKind::Macro(..) => {}
+            ast::ForeignItemKind::MacCall(..) => {}
         }
 
         visit::walk_foreign_item(self, i)
@@ -543,15 +542,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
-        if let ast::Defaultness::Default(_) = i.kind.defaultness() {
-            gate_feature_post!(&self, specialization, i.span, "specialization is unstable");
-        }
-
-        match i.kind {
+        let is_fn = match i.kind {
             ast::AssocItemKind::Fn(_, ref sig, _, _) => {
                 if let (ast::Const::Yes(_), AssocCtxt::Trait) = (sig.header.constness, ctxt) {
                     gate_feature_post!(&self, const_fn, i.span, "const fn is unstable");
                 }
+                true
             }
             ast::AssocItemKind::TyAlias(_, ref generics, _, ref ty) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
@@ -566,8 +562,19 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     self.check_impl_trait(ty);
                 }
                 self.check_gat(generics, i.span);
+                false
             }
-            _ => {}
+            _ => false,
+        };
+        if let ast::Defaultness::Default(_) = i.kind.defaultness() {
+            // Limit `min_specialization` to only specializing functions.
+            gate_feature_fn!(
+                &self,
+                |x: &Features| x.specialization || (is_fn && x.min_specialization),
+                i.span,
+                sym::specialization,
+                "specialization is unstable"
+            );
         }
         visit::walk_assoc_item(self, i, ctxt)
     }

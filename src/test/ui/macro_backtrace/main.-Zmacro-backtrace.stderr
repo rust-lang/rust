@@ -13,66 +13,70 @@ LL |       pong!();
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
   --> $DIR/main.rs:10:20
    |
-LL | / macro_rules! pong {
-LL | |     () => { syntax error };
-   | |                    ^^^^^ expected one of 8 possible tokens
-LL | | }
-   | |_- in this expansion of `pong!`
+LL | /  macro_rules! pong {
+LL | |      () => { syntax error };
+   | |                     ^^^^^ expected one of 8 possible tokens
+LL | |  }
+   | |__- in this expansion of `pong!`
 ...
-LL |       ping!();
-   |       -------- in this macro invocation
+LL |        ping!();
+   |        -------- in this macro invocation
    | 
-  ::: <::ping::ping macros>:1:1
+  ::: $DIR/auxiliary/ping.rs:5:1
    |
-LL |   () => { pong ! () ; }
-   |   ---------------------
-   |   |       |
-   |   |       in this macro invocation
-   |   in this expansion of `ping!`
+LL |  / macro_rules! ping {
+LL |  |     () => {
+LL |  |         pong!();
+   |  |         -------- in this macro invocation
+LL |  |     }
+LL |  | }
+   |  |_- in this expansion of `ping!`
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
   --> $DIR/main.rs:10:20
    |
-LL | / macro_rules! pong {
-LL | |     () => { syntax error };
-   | |                    ^^^^^ expected one of 8 possible tokens
-LL | | }
-   | |_- in this expansion of `pong!` (#5)
+LL | /  macro_rules! pong {
+LL | |      () => { syntax error };
+   | |                     ^^^^^ expected one of 8 possible tokens
+LL | |  }
+   | |__- in this expansion of `pong!` (#5)
 ...
-LL |       deep!();
-   |       -------- in this macro invocation (#1)
+LL |        deep!();
+   |        -------- in this macro invocation (#1)
    | 
-  ::: <::ping::deep macros>:1:1
+  ::: $DIR/auxiliary/ping.rs:5:1
    |
-LL |   () => { foo ! () ; }
-   |   --------------------
-   |   |       |
-   |   |       in this macro invocation (#2)
-   |   in this expansion of `deep!` (#1)
-   | 
-  ::: <::ping::foo macros>:1:1
-   |
-LL |   () => { bar ! () ; }
-   |   --------------------
-   |   |       |
-   |   |       in this macro invocation (#3)
-   |   in this expansion of `foo!` (#2)
-   | 
-  ::: <::ping::bar macros>:1:1
-   |
-LL |   () => { ping ! () ; }
-   |   ---------------------
-   |   |       |
-   |   |       in this macro invocation (#4)
-   |   in this expansion of `bar!` (#3)
-   | 
-  ::: <::ping::ping macros>:1:1
-   |
-LL |   () => { pong ! () ; }
-   |   ---------------------
-   |   |       |
-   |   |       in this macro invocation (#5)
-   |   in this expansion of `ping!` (#4)
+LL |  / macro_rules! ping {
+LL |  |     () => {
+LL |  |         pong!();
+   |  |         -------- in this macro invocation (#5)
+LL |  |     }
+LL |  | }
+   |  |_- in this expansion of `ping!` (#4)
+...
+LL | /  macro_rules! deep {
+LL | |      () => {
+LL | |          foo!();
+   | |          ------- in this macro invocation (#2)
+LL | |      }
+LL | |  }
+   | |__- in this expansion of `deep!` (#1)
+...
+LL | /  macro_rules! foo {
+LL | |      () => {
+LL | |          bar!();
+   | |          ------- in this macro invocation (#3)
+LL | |      }
+LL | |  }
+   | |__- in this expansion of `foo!` (#2)
+...
+LL | /  macro_rules! bar {
+LL | |      () => {
+LL | |          ping!();
+   | |          -------- in this macro invocation (#4)
+LL | |      }
+LL | |  }
+   | |__- in this expansion of `bar!` (#3)
 
 error: aborting due to 3 previous errors
 

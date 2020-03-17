@@ -1,4 +1,4 @@
-use rustc::hir::Hir;
+use rustc::hir::map::Map;
 use rustc::session::config::EntryFnType;
 use rustc::session::{config, Session};
 use rustc::ty::query::Providers;
@@ -15,7 +15,7 @@ use rustc_span::{Span, DUMMY_SP};
 struct EntryContext<'a, 'tcx> {
     session: &'a Session,
 
-    map: Hir<'tcx>,
+    map: Map<'tcx>,
 
     /// The top-level function called `main`.
     main_fn: Option<(HirId, Span)>,
@@ -59,7 +59,7 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
     }
 
     // If the user wants no main function at all, then stop here.
-    if attr::contains_name(&tcx.hir().krate().attrs, sym::no_main) {
+    if attr::contains_name(&tcx.hir().krate().item.attrs, sym::no_main) {
         return None;
     }
 
@@ -157,7 +157,7 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(De
 }
 
 fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
-    let sp = tcx.hir().krate().span;
+    let sp = tcx.hir().krate().item.span;
     if *tcx.sess.parse_sess.reached_eof.borrow() {
         // There's an unclosed brace that made the parser reach `Eof`, we shouldn't complain about
         // the missing `fn main()` then as it might have been hidden inside an unclosed block.

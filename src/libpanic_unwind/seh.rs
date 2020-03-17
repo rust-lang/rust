@@ -49,9 +49,16 @@
 
 use alloc::boxed::Box;
 use core::any::Any;
-use core::mem;
-use core::raw;
+use core::mem::{self, ManuallyDrop};
 use libc::{c_int, c_uint, c_void};
+
+struct Exception {
+    // This needs to be an Option because we catch the exception by reference
+    // and its destructor is executed by the C++ runtime. When we take the Box
+    // out of the exception, we need to leave the exception in a valid state
+    // for its destructor to run without double-dropping the Box.
+    data: Option<Box<dyn Any + Send>>,
+}
 
 // First up, a whole bunch of type definitions. There's a few platform-specific
 // oddities here, and a lot that's just blatantly copied from LLVM. The purpose
@@ -167,6 +174,9 @@ pub struct _TypeDescriptor {
 
 // Note that we intentionally ignore name mangling rules here: we don't want C++
 // to be able to catch Rust panics by simply declaring a `struct rust_panic`.
+//
+// When modifying, make sure that the type name string exactly matches
+// the one used in src/librustc_codegen_llvm/intrinsic.rs.
 const TYPE_NAME: [u8; 11] = *b"rust_panic\0";
 
 static mut THROW_INFO: _ThrowInfo = _ThrowInfo {
@@ -183,7 +193,7 @@ static mut CATCHABLE_TYPE: _CatchableType = _CatchableType {
     properties: 0,
     pType: ptr!(0),
     thisDisplacement: _PMD { mdisp: 0, pdisp: -1, vdisp: 0 },
-    sizeOrOffset: mem::size_of::<[u64; 2]>() as c_int,
+    sizeOrOffset: mem::size_of::<Exception>() as c_int,
     copyFunction: ptr!(0),
 };
 
@@ -199,12 +209,12 @@ extern "C" {
     static TYPE_INFO_VTABLE: *const u8;
 }
 
-// We use #[lang = "eh_catch_typeinfo"] here as this is the type descriptor which
-// we'll use in LLVM's `catchpad` instruction which ends up also being passed as
-// an argument to the C++ personality function.
+// This type descriptor is only used when throwing an exception. The catch part
+// is handled by the try intrinsic, which generates its own TypeDescriptor.
 //
-// Again, I'm not entirely sure what this is describing, it just seems to work.
-#[cfg_attr(not(test), lang = "eh_catch_typeinfo")]
+// This is fine since the MSVC runtime uses string comparison on the type name
+// to match TypeDescriptors rather than pointer equality.
+#[cfg_attr(bootstrap, lang = "eh_catch_typeinfo")]
 static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
     pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
     spare: core::ptr::null_mut(),
@@ -226,16 +236,16 @@ static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
 // because Box<dyn Any> isn't clonable.
 macro_rules! define_cleanup {
     ($abi:tt) => {
-        unsafe extern $abi fn exception_cleanup(e: *mut [u64; 2]) {
-            if (*e)[0] != 0 {
-                cleanup(*e);
+        unsafe extern $abi fn exception_cleanup(e: *mut Exception) {
+            if let Exception { data: Some(b) } = e.read() {
+                drop(b);
                 super::__rust_drop_panic();
             }
         }
         #[unwind(allowed)]
-        unsafe extern $abi fn exception_copy(_dest: *mut [u64; 2],
-                                             _src: *mut [u64; 2])
-                                             -> *mut [u64; 2] {
+        unsafe extern $abi fn exception_copy(_dest: *mut Exception,
+                                             _src: *mut Exception)
+                                             -> *mut Exception {
             panic!("Rust panics cannot be copied");
         }
     }
@@ -255,12 +265,11 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // need to otherwise transfer `data` to the heap. We just pass a stack
     // pointer to this function.
     //
-    // The first argument is the payload being thrown (our two pointers), and
-    // the second argument is the type information object describing the
-    // exception (constructed above).
-    let ptrs = mem::transmute::<_, raw::TraitObject>(data);
-    let mut ptrs = [ptrs.data as u64, ptrs.vtable as u64];
-    let throw_ptr = ptrs.as_mut_ptr() as *mut _;
+    // The ManuallyDrop is needed here since we don't want Exception to be
+    // dropped when unwinding. Instead it will be dropped by exception_cleanup
+    // which is invoked by the C++ runtime.
+    let mut exception = ManuallyDrop::new(Exception { data: Some(data) });
+    let throw_ptr = &mut exception as *mut _ as *mut _;
 
     // This... may seems surprising, and justifiably so. On 32-bit MSVC the
     // pointers between these structure are just that, pointers. On 64-bit MSVC,
@@ -308,12 +317,9 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     _CxxThrowException(throw_ptr, &mut THROW_INFO as *mut _ as *mut _);
 }
 
-pub fn payload() -> [u64; 2] {
-    [0; 2]
-}
-
-pub unsafe fn cleanup(payload: [u64; 2]) -> Box<dyn Any + Send> {
-    mem::transmute(raw::TraitObject { data: payload[0] as *mut _, vtable: payload[1] as *mut _ })
+pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
+    let exception = &mut *(payload as *mut Exception);
+    exception.data.take().unwrap()
 }
 
 // This is required by the compiler to exist (e.g., it's a lang item), but
