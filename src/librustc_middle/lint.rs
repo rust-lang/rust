@@ -346,6 +346,6 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
             // Dummy span for the `def_site` means it's an external macro.
             expn_data.def_site.is_dummy() || sess.source_map().is_imported(expn_data.def_site)
         }
-        ExpnKind::Macro(..) => true, // definitely a plugin
+        ExpnKind::Macro { .. } => true, // definitely a plugin
     }
 }

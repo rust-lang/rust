@@ -307,10 +307,15 @@ impl<'a> CrateLoader<'a> {
         let private_dep =
             self.sess.opts.externs.get(&name.as_str()).map(|e| e.is_private_dep).unwrap_or(false);
 
-        info!("register crate `{}` (private_dep = {})", crate_root.name(), private_dep);
-
         // Claim this crate number and cache it
         let cnum = self.cstore.alloc_new_crate_num();
+
+        info!(
+            "register crate `{}` (cnum = {}. private_dep = {})",
+            crate_root.name(),
+            cnum,
+            private_dep
+        );
 
         // Maintain a reference to the top most crate.
         // Stash paths for top-most crate locally if necessary.
@@ -339,21 +344,20 @@ impl<'a> CrateLoader<'a> {
             None
         };
 
-        self.cstore.set_crate_data(
+        let crate_metadata = CrateMetadata::new(
+            self.sess,
+            metadata,
+            crate_root,
+            raw_proc_macros,
             cnum,
-            CrateMetadata::new(
-                self.sess,
-                metadata,
-                crate_root,
-                raw_proc_macros,
-                cnum,
-                cnum_map,
-                dep_kind,
-                source,
-                private_dep,
-                host_hash,
-            ),
+            cnum_map,
+            dep_kind,
+            source,
+            private_dep,
+            host_hash,
         );
+
+        self.cstore.set_crate_data(cnum, crate_metadata);
 
         Ok(cnum)
     }
@@ -569,6 +573,8 @@ impl<'a> CrateLoader<'a> {
             let cnum = self.maybe_resolve_crate(dep.name, dep_kind, Some((root, &dep)))?;
             crate_num_map.push(cnum);
         }
+
+        debug!("resolve_crate_deps: cnum_map for {:?} is {:?}", krate, crate_num_map);
         Ok(crate_num_map)
     }
 

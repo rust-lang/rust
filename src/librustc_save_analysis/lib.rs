@@ -789,7 +789,7 @@ impl<'tcx> SaveContext<'tcx> {
         let callee = span.source_callee()?;
 
         let mac_name = match callee.kind {
-            ExpnKind::Macro(mac_kind, name) => match mac_kind {
+            ExpnKind::Macro(kind, name) => match kind {
                 MacroKind::Bang => name,
 
                 // Ignore attribute macros, their spans are usually mangled

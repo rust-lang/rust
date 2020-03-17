@@ -14,6 +14,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, CachingSourceMapView, SourceFile};
 
+use rustc_span::def_id::{CrateNum, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
 use std::cmp::Ord;
 
@@ -227,6 +228,12 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
 impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     fn hash_spans(&self) -> bool {
         self.hash_spans
+    }
+
+    #[inline]
+    fn hash_crate_num(&mut self, cnum: CrateNum, hasher: &mut StableHasher) {
+        let hcx = self;
+        hcx.def_path_hash(DefId { krate: cnum, index: CRATE_DEF_INDEX }).hash_stable(hcx, hasher);
     }
 
     #[inline]

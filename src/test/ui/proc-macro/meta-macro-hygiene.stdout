@@ -1,4 +1,4 @@
-Def site: $DIR/auxiliary/make-macro.rs:7:9: 10:10 (#3)
+Def site: $DIR/auxiliary/make-macro.rs:7:9: 10:10 (#6)
 #![feature /* 0#0 */(prelude_import)]
 #[prelude_import /* 0#1 */]
 use std /* 0#1 */::prelude /* 0#1 */::v1 /* 0#1 */::*;
@@ -21,12 +21,19 @@ Expansions:
 0: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
 1: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
 2: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "meta_macro::print_def_site")
+3: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "cfg_if")
+4: parent: ExpnId(3), call_site_ctxt: #4, def_site_ctxt: #0, kind: Macro(Bang, "$crate::cfg_if")
+5: parent: ExpnId(4), call_site_ctxt: #5, def_site_ctxt: #0, kind: Macro(Bang, "$crate::cfg_if")
+6: parent: ExpnId(5), call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "features")
 
 SyntaxContexts:
 #0: parent: #0, outer_mark: (ExpnId(0), Opaque)
 #1: parent: #0, outer_mark: (ExpnId(1), Opaque)
 #2: parent: #0, outer_mark: (ExpnId(1), Transparent)
-#3: parent: #0, outer_mark: (ExpnId(2), Opaque)
-#4: parent: #0, outer_mark: (ExpnId(2), Transparent)
-#5: parent: #0, outer_mark: (ExpnId(2), SemiTransparent)
+#3: parent: #0, outer_mark: (ExpnId(6), SemiTransparent)
+#4: parent: #0, outer_mark: (ExpnId(3), SemiTransparent)
+#5: parent: #0, outer_mark: (ExpnId(4), SemiTransparent)
+#6: parent: #0, outer_mark: (ExpnId(2), Opaque)
+#7: parent: #0, outer_mark: (ExpnId(2), Transparent)
+#8: parent: #0, outer_mark: (ExpnId(2), SemiTransparent)
 */

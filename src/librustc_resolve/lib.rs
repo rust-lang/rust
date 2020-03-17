@@ -434,7 +434,7 @@ impl ModuleKind {
 ///
 /// Multiple bindings in the same module can have the same key (in a valid
 /// program) if all but one of them come from glob imports.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 struct BindingKey {
     /// The identifier for the binding, aways the `normalize_to_macros_2_0` version of the
     /// identifier.
@@ -1988,6 +1988,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_crate_root(&mut self, ident: Ident) -> Module<'a> {
+        debug!("resolve_crate_root({:?})", ident);
         let mut ctxt = ident.span.ctxt();
         let mark = if ident.name == kw::DollarCrate {
             // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
@@ -1997,6 +1998,10 @@ impl<'a> Resolver<'a> {
             // definitions actually produced by `macro` and `macro` definitions produced by
             // `macro_rules!`, but at least such configurations are not stable yet.
             ctxt = ctxt.normalize_to_macro_rules();
+            debug!(
+                "resolve_crate_root: marks={:?}",
+                ctxt.marks().into_iter().map(|(i, t)| (i.expn_data(), t)).collect::<Vec<_>>()
+            );
             let mut iter = ctxt.marks().into_iter().rev().peekable();
             let mut result = None;
             // Find the last opaque mark from the end if it exists.
@@ -2008,6 +2013,11 @@ impl<'a> Resolver<'a> {
                     break;
                 }
             }
+            debug!(
+                "resolve_crate_root: found opaque mark {:?} {:?}",
+                result,
+                result.map(|r| r.expn_data())
+            );
             // Then find the last semi-transparent mark from the end if it exists.
             for (mark, transparency) in iter {
                 if transparency == Transparency::SemiTransparent {
@@ -2016,16 +2026,36 @@ impl<'a> Resolver<'a> {
                     break;
                 }
             }
+            debug!(
+                "resolve_crate_root: found semi-transparent mark {:?} {:?}",
+                result,
+                result.map(|r| r.expn_data())
+            );
             result
         } else {
+            debug!("resolve_crate_root: not DollarCrate");
             ctxt = ctxt.normalize_to_macros_2_0();
             ctxt.adjust(ExpnId::root())
         };
         let module = match mark {
             Some(def) => self.macro_def_scope(def),
-            None => return self.graph_root,
+            None => {
+                debug!(
+                    "resolve_crate_root({:?}): found no mark (ident.span = {:?})",
+                    ident, ident.span
+                );
+                return self.graph_root;
+            }
         };
-        self.get_module(DefId { index: CRATE_DEF_INDEX, ..module.normal_ancestor_id })
+        let module = self.get_module(DefId { index: CRATE_DEF_INDEX, ..module.normal_ancestor_id });
+        debug!(
+            "resolve_crate_root({:?}): got module {:?} ({:?}) (ident.span = {:?})",
+            ident,
+            module,
+            module.kind.name(),
+            ident.span
+        );
+        module
     }
 
     fn resolve_self(&mut self, ctxt: &mut SyntaxContext, module: Module<'a>) -> Module<'a> {

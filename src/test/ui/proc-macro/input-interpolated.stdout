@@ -8,7 +8,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: #0 bytes(402..403),
             },
         ],
-        span: #3 bytes(269..271),
+        span: #6 bytes(269..271),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): const A : u8 = 0 ;

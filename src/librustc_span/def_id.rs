@@ -247,3 +247,9 @@ impl<CTX: HashStableContext> HashStable<CTX> for DefId {
         hcx.hash_def_id(*self, hasher)
     }
 }
+
+impl<CTX: HashStableContext> HashStable<CTX> for CrateNum {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        hcx.hash_crate_num(*self, hasher)
+    }
+}

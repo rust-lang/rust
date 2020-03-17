@@ -35,7 +35,7 @@ use rustc_middle::ty;
 use rustc_span::hygiene::{ExpnId, MacroKind};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use log::debug;
 use std::cell::Cell;
@@ -130,8 +130,8 @@ impl<'a> Resolver<'a> {
             parent,
             kind,
             def_id,
-            ExpnId::root(),
-            DUMMY_SP,
+            self.cstore().module_expansion_untracked(def_id, &self.session),
+            self.cstore().get_span_untracked(def_id, &self.session),
         ));
         self.extern_module_map.insert(def_id, module);
         module
@@ -888,7 +888,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn build_reduced_graph_for_external_crate_res(&mut self, child: Export<NodeId>) {
         let parent = self.parent_scope.module;
         let Export { ident, res, vis, span } = child;
-        let expansion = ExpnId::root(); // FIXME(jseyfried) intercrate hygiene
+        let expansion = self.parent_scope.expansion;
         // Record primary definitions.
         match res {
             Res::Def(kind @ (DefKind::Mod | DefKind::Enum | DefKind::Trait), def_id) => {
