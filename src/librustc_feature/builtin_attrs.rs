@@ -85,17 +85,11 @@ impl AttributeGate {
 
 /// A template that the attribute input must match.
 /// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct AttributeTemplate {
     pub word: bool,
     pub list: Option<&'static str>,
     pub name_value_str: Option<&'static str>,
-}
-
-impl AttributeTemplate {
-    pub fn only_word() -> Self {
-        Self { word: true, list: None, name_value_str: None }
-    }
 }
 
 /// A convenience macro for constructing attribute templates.
