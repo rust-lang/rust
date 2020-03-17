@@ -64,7 +64,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         if let Some(stmt) = basic_block.statements.get(stmt_id) {
             assert_eq!(old_frames, self.cur_frame());
-            self.statement(stmt)?;
+            self.eval_stmt(stmt)?;
             return Ok(true);
         }
 
@@ -72,14 +72,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let terminator = basic_block.terminator();
         assert_eq!(old_frames, self.cur_frame());
-        self.terminator(terminator)?;
+        self.handle_terminator(terminator)?;
         Ok(true)
     }
 
-    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
+    fn eval_stmt(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
-
-        use rustc::mir::StatementKind::*;
 
         // Some statements (e.g., box) push new stack frames.
         // We have to record the stack frame number *before* executing the statement.
@@ -87,6 +85,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.tcx.span = stmt.source_info.span;
         self.memory.tcx.span = stmt.source_info.span;
 
+        use rustc::mir::StatementKind::*;
         match stmt.kind {
             Assign(box (ref place, ref rvalue)) => self.eval_rvalue_into_place(rvalue, place)?,
 
@@ -276,7 +275,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
+    fn handle_terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", terminator.kind);
         self.tcx.span = terminator.source_info.span;
         self.memory.tcx.span = terminator.source_info.span;

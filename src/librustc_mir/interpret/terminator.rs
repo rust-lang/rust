@@ -227,18 +227,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
+        use ty::InstanceDef::*;
         match instance.def {
-            ty::InstanceDef::Intrinsic(..) => {
+            Intrinsic(..) => {
                 assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
                 return M::call_intrinsic(self, span, instance, args, ret, unwind);
             }
-            ty::InstanceDef::VtableShim(..)
-            | ty::InstanceDef::ReifyShim(..)
-            | ty::InstanceDef::ClosureOnceShim { .. }
-            | ty::InstanceDef::FnPtrShim(..)
-            | ty::InstanceDef::DropGlue(..)
-            | ty::InstanceDef::CloneShim(..)
-            | ty::InstanceDef::Item(_) => {
+            VtableShim(..)
+            | ReifyShim(..)
+            | ClosureOnceShim { .. }
+            | FnPtrShim(..)
+            | DropGlue(..)
+            | CloneShim(..)
+            | Item(_) => {
                 // We need MIR for this fn
                 let body = match M::find_mir_or_eval_fn(self, span, instance, args, ret, unwind)? {
                     Some(body) => body,
@@ -366,7 +367,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
             // cannot use the shim here, because that will only result in infinite recursion
-            ty::InstanceDef::Virtual(_, idx) => {
+            Virtual(_, idx) => {
                 let mut args = args.to_vec();
                 // We have to implement all "object safe receivers".  Currently we
                 // support built-in pointers (&, &mut, Box) as well as unsized-self.  We do

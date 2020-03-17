@@ -197,11 +197,12 @@ macro_rules! make_value_visitor {
                 };
 
                 // Visit the fields of this value.
+                use layout::FieldPlacement::*;
                 match v.layout().fields {
-                    layout::FieldPlacement::Union(fields) => {
+                    Union(fields) => {
                         self.visit_union(v, fields)?;
                     },
-                    layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
+                    Arbitrary { ref offsets, .. } => {
                         // FIXME: We collect in a vec because otherwise there are lifetime
                         // errors: Projecting to a field needs access to `ecx`.
                         let fields: Vec<InterpResult<'tcx, Self::V>> =
@@ -211,7 +212,7 @@ macro_rules! make_value_visitor {
                             .collect();
                         self.visit_aggregate(v, fields.into_iter())?;
                     },
-                    layout::FieldPlacement::Array { .. } => {
+                    Array { .. } => {
                         // Let's get an mplace first.
                         let mplace = v.to_op(self.ecx())?.assert_mem_place(self.ecx());
                         // Now we can go over all the fields.
@@ -225,10 +226,11 @@ macro_rules! make_value_visitor {
                     }
                 }
 
+                use layout::Variants::*;
                 match v.layout().variants {
                     // If this is a multi-variant layout, find the right variant and proceed
                     // with *its* fields.
-                    layout::Variants::Multiple { .. } => {
+                    Multiple { .. } => {
                         let op = v.to_op(self.ecx())?;
                         let idx = self.ecx().read_discriminant(op)?.1;
                         let inner = v.project_downcast(self.ecx(), idx)?;
@@ -237,7 +239,7 @@ macro_rules! make_value_visitor {
                         self.visit_variant(v, idx, inner)
                     }
                     // For single-variant layouts, we already did anything there is to do.
-                    layout::Variants::Single { .. } => Ok(())
+                    Single { .. } => Ok(())
                 }
             }
         }
