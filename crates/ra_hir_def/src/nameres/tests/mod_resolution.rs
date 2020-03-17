@@ -4,7 +4,7 @@ use super::*;
 fn name_res_works_for_broken_modules() {
     covers!(name_res_works_for_broken_modules);
     let map = def_map(
-        "
+        r"
         //- /lib.rs
         mod foo // no `;`, no body
 
@@ -28,7 +28,7 @@ fn name_res_works_for_broken_modules() {
 #[test]
 fn nested_module_resolution() {
     let map = def_map(
-        "
+        r"
         //- /lib.rs
         mod n1;
 
@@ -55,7 +55,7 @@ fn nested_module_resolution() {
 #[test]
 fn nested_module_resolution_2() {
     let map = def_map(
-        "
+        r"
         //- /lib.rs
         mod prelude;
         mod iter;
@@ -77,23 +77,23 @@ fn nested_module_resolution_2() {
     );
 
     assert_snapshot!(map, @r###"
-    crate
-    iter: t
-    prelude: t
-    
-    crate::iter
-    Iterator: t
-    traits: t
-    
-    crate::iter::traits
-    Iterator: t
-    iterator: t
-    
-    crate::iter::traits::iterator
-    Iterator: t
-    
-    crate::prelude
-    Iterator: t
+        ⋮crate
+        ⋮iter: t
+        ⋮prelude: t
+        ⋮
+        ⋮crate::iter
+        ⋮Iterator: t
+        ⋮traits: t
+        ⋮
+        ⋮crate::iter::traits
+        ⋮Iterator: t
+        ⋮iterator: t
+        ⋮
+        ⋮crate::iter::traits::iterator
+        ⋮Iterator: t
+        ⋮
+        ⋮crate::prelude
+        ⋮Iterator: t
     "###);
 }
 
@@ -780,17 +780,17 @@ fn nested_out_of_line_module() {
     );
 
     assert_snapshot!(map, @r###"
-    crate
-    a: t
-    
-    crate::a
-    b: t
-    
-    crate::a::b
-    c: t
-    
-    crate::a::b::c
-    X: t v
+        ⋮crate
+        ⋮a: t
+        ⋮
+        ⋮crate::a
+        ⋮b: t
+        ⋮
+        ⋮crate::a::b
+        ⋮c: t
+        ⋮
+        ⋮crate::a::b::c
+        ⋮X: t v
     "###);
 }
 
@@ -812,16 +812,16 @@ fn nested_out_of_line_module_with_path() {
     );
 
     assert_snapshot!(map, @r###"
-    crate
-    a: t
-    
-    crate::a
-    b: t
-    
-    crate::a::b
-    c: t
-    
-    crate::a::b::c
-    X: t v
+        ⋮crate
+        ⋮a: t
+        ⋮
+        ⋮crate::a
+        ⋮b: t
+        ⋮
+        ⋮crate::a::b
+        ⋮c: t
+        ⋮
+        ⋮crate::a::b::c
+        ⋮X: t v
     "###);
 }

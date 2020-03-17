@@ -14,6 +14,7 @@ fn rust_files_are_tidy() {
     for path in rust_files() {
         let text = fs2::read_to_string(&path).unwrap();
         check_todo(&path, &text);
+        check_trailing_ws(&path, &text);
         tidy_docs.visit(&path, &text);
     }
     tidy_docs.finish();
@@ -33,6 +34,17 @@ fn check_todo(path: &Path, text: &str) {
     }
 }
 
+fn check_trailing_ws(path: &Path, text: &str) {
+    if is_exclude_dir(path, &["test_data"]) {
+        return;
+    }
+    for line in text.lines() {
+        if line.chars().last().map(char::is_whitespace) == Some(true) {
+            panic!("Trailing whitespace in {}", path.display())
+        }
+    }
+}
+
 #[derive(Default)]
 struct TidyDocs {
     missing_docs: Vec<String>,
@@ -41,7 +53,13 @@ struct TidyDocs {
 
 impl TidyDocs {
     fn visit(&mut self, path: &Path, text: &str) {
-        if is_exclude_dir(path) || is_exclude_file(path) {
+        // Test hopefully don't really need comments, and for assists we already
+        // have special comments which are source of doc tests and user docs.
+        if is_exclude_dir(path, &["tests", "test_data", "handlers"]) {
+            return;
+        }
+
+        if is_exclude_file(path) {
             return;
         }
 
@@ -56,21 +74,6 @@ impl TidyDocs {
             }
         } else {
             self.missing_docs.push(path.display().to_string());
-        }
-
-        fn is_exclude_dir(p: &Path) -> bool {
-            // Test hopefully don't really need comments, and for assists we already
-            // have special comments which are source of doc tests and user docs.
-            let exclude_dirs = ["tests", "test_data", "handlers"];
-            let mut cur_path = p;
-            while let Some(path) = cur_path.parent() {
-                if exclude_dirs.iter().any(|dir| path.ends_with(dir)) {
-                    return true;
-                }
-                cur_path = path;
-            }
-
-            false
         }
 
         fn is_exclude_file(d: &Path) -> bool {
@@ -126,6 +129,18 @@ impl TidyDocs {
             }
         }
     }
+}
+
+fn is_exclude_dir(p: &Path, dirs_to_exclude: &[&str]) -> bool {
+    let mut cur_path = p;
+    while let Some(path) = cur_path.parent() {
+        if dirs_to_exclude.iter().any(|dir| path.ends_with(dir)) {
+            return true;
+        }
+        cur_path = path;
+    }
+
+    false
 }
 
 fn rust_files() -> impl Iterator<Item = PathBuf> {
