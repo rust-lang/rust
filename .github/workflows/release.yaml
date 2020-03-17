@@ -11,7 +11,7 @@ jobs:
   dist:
     name: dist
     runs-on: ${{ matrix.os }}
-    if: github.repository == "rust-analyzer/rust-analzyer"
+    if: github.repository == "rust-analyzer/rust-analyzer"
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
