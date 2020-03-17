@@ -9,7 +9,7 @@ use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{DiagnosticBuilder, DiagnosticId};
+use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_parse::{self, parser, DirectoryOwnership, MACRO_ARGUMENTS};
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
@@ -295,16 +295,26 @@ where
 }
 
 pub trait ProcMacro {
-    fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt<'_>, span: Span, ts: TokenStream) -> TokenStream;
+    fn expand<'cx>(
+        &self,
+        ecx: &'cx mut ExtCtxt<'_>,
+        span: Span,
+        ts: TokenStream,
+    ) -> Result<TokenStream, ErrorReported>;
 }
 
 impl<F> ProcMacro for F
 where
     F: Fn(TokenStream) -> TokenStream,
 {
-    fn expand<'cx>(&self, _ecx: &'cx mut ExtCtxt<'_>, _span: Span, ts: TokenStream) -> TokenStream {
+    fn expand<'cx>(
+        &self,
+        _ecx: &'cx mut ExtCtxt<'_>,
+        _span: Span,
+        ts: TokenStream,
+    ) -> Result<TokenStream, ErrorReported> {
         // FIXME setup implicit context in TLS before calling self.
-        (*self)(ts)
+        Ok((*self)(ts))
     }
 }
 
