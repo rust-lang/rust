@@ -1,17 +1,14 @@
 //! FIXME: write short doc here
 
-use std::{collections::LinkedList, iter};
+use std::iter;
 
 use hir::{Adt, HasSource, Semantics};
 use ra_ide_db::RootDatabase;
 
 use crate::{Assist, AssistCtx, AssistId};
-use ra_syntax::{
-    ast::{self, edit::IndentLevel, make, AstNode, NameOwner},
-    SyntaxKind, SyntaxNode,
-};
+use ra_syntax::ast::{self, edit::IndentLevel, make, AstNode, NameOwner};
 
-use ast::{MatchArm, MatchGuard, Pat};
+use ast::{MatchArm, Pat};
 
 // Assist: fill_match_arms
 //
@@ -57,48 +54,20 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
         }
     }
 
-    let mut has_partial_match = false;
     let db = ctx.db;
     let missing_arms: Vec<MatchArm> = variants
         .into_iter()
         .filter_map(|variant| build_pat(db, module, variant))
-        .filter(|variant_pat| {
-            !arms.iter().filter_map(|arm| arm.pat().map(|_| arm)).any(|arm| {
-                let pat = arm.pat().unwrap();
-
-                // Special casee OrPat as separate top-level pats
-                let pats: Vec<Pat> = match Pat::from(pat.clone()) {
-                    Pat::OrPat(pats) => pats.pats().collect::<Vec<_>>(),
-                    _ => vec![pat],
-                };
-
-                pats.iter().any(|pat| {
-                    match does_arm_pat_match_variant(pat, arm.guard(), variant_pat) {
-                        ArmMatch::Yes => true,
-                        ArmMatch::No => false,
-                        ArmMatch::Partial => {
-                            has_partial_match = true;
-                            true
-                        }
-                    }
-                })
-            })
-        })
+        .filter(|variant_pat| is_variant_missing(&mut arms, variant_pat))
         .map(|pat| make::match_arm(iter::once(pat), make::expr_unit()))
         .collect();
 
-    if missing_arms.is_empty() && !has_partial_match {
+    if missing_arms.is_empty() {
         return None;
     }
 
     ctx.add_assist(AssistId("fill_match_arms"), "Fill match arms", |edit| {
         arms.extend(missing_arms);
-        if has_partial_match {
-            arms.push(make::match_arm(
-                iter::once(make::placeholder_pat().into()),
-                make::expr_unit(),
-            ));
-        }
 
         let indent_level = IndentLevel::from_node(match_arm_list.syntax());
         let new_arm_list = indent_level.increase_indent(make::match_arm_list(arms));
@@ -109,59 +78,23 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
     })
 }
 
-enum ArmMatch {
-    Yes,
-    No,
-    Partial,
+fn is_variant_missing(existing_arms: &mut Vec<MatchArm>, var: &Pat) -> bool {
+    existing_arms.iter().filter_map(|arm| arm.pat()).all(|pat| {
+        // Special casee OrPat as separate top-level pats
+        let top_level_pats: Vec<Pat> = match pat {
+            Pat::OrPat(pats) => pats.pats().collect::<Vec<_>>(),
+            _ => vec![pat],
+        };
+
+        !top_level_pats.iter().any(|pat| does_pat_match_variant(pat, var))
+    })
 }
 
-fn does_arm_pat_match_variant(arm: &Pat, arm_guard: Option<MatchGuard>, var: &Pat) -> ArmMatch {
-    let arm = flatten_pats(arm.clone());
-    let var = flatten_pats(var.clone());
-    let mut arm = arm.iter();
-    let mut var = var.iter();
+fn does_pat_match_variant(pat: &Pat, var: &Pat) -> bool {
+    let pat_head = pat.syntax().first_child().map(|node| node.text());
+    let var_head = var.syntax().first_child().map(|node| node.text());
 
-    // If the first part of the Pat don't match, there's no match
-    match (arm.next(), var.next()) {
-        (Some(arm), Some(var)) if arm.text() == var.text() => {}
-        _ => return ArmMatch::No,
-    }
-
-    // If we have a guard we automatically know we have a partial match
-    if arm_guard.is_some() {
-        return ArmMatch::Partial;
-    }
-
-    if arm.clone().count() != var.clone().count() {
-        return ArmMatch::Partial;
-    }
-
-    let direct_match = arm.zip(var).all(|(arm, var)| {
-        if arm.text() == var.text() {
-            return true;
-        }
-        match (arm.kind(), var.kind()) {
-            (SyntaxKind::PLACEHOLDER_PAT, SyntaxKind::PLACEHOLDER_PAT) => true,
-            (SyntaxKind::DOT_DOT_PAT, SyntaxKind::PLACEHOLDER_PAT) => true,
-            (SyntaxKind::BIND_PAT, SyntaxKind::PLACEHOLDER_PAT) => true,
-            _ => false,
-        }
-    });
-
-    match direct_match {
-        true => ArmMatch::Yes,
-        false => ArmMatch::Partial,
-    }
-}
-
-fn flatten_pats(pat: Pat) -> Vec<SyntaxNode> {
-    let mut pats: LinkedList<SyntaxNode> = pat.syntax().children().collect();
-    let mut out: Vec<SyntaxNode> = vec![];
-    while let Some(p) = pats.pop_front() {
-        pats.extend(p.children());
-        out.push(p);
-    }
-    out
+    pat_head == var_head
 }
 
 fn resolve_enum_def(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<hir::Enum> {
@@ -193,35 +126,25 @@ fn build_pat(db: &RootDatabase, module: hir::Module, var: hir::EnumVariant) -> O
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_target};
+    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::fill_match_arms;
 
     #[test]
-    fn partial_fill_multi() {
-        check_assist(
+    fn all_match_arms_provided() {
+        check_assist_not_applicable(
             fill_match_arms,
             r#"
             enum A {
                 As,
-                Bs(i32, Option<i32>)
+                Bs{x:i32, y:Option<i32>},
+                Cs(i32, Option<i32>),
             }
             fn main() {
                 match A::As<|> {
-                    A::Bs(_, Some(_)) => (),
-                }
-            }
-            "#,
-            r#"
-            enum A {
-                As,
-                Bs(i32, Option<i32>)
-            }
-            fn main() {
-                match <|>A::As {
-                    A::Bs(_, Some(_)) => (),
-                    A::As => (),
-                    _ => (),
+                    A::As,
+                    A::Bs{x,y:Some(_)} => (),
+                    A::Cs(_, Some(_)) => (),
                 }
             }
             "#,
@@ -229,17 +152,19 @@ mod tests {
     }
 
     #[test]
-    fn partial_fill_record() {
+    fn partial_fill_record_tuple() {
         check_assist(
             fill_match_arms,
             r#"
             enum A {
                 As,
                 Bs{x:i32, y:Option<i32>},
+                Cs(i32, Option<i32>),
             }
             fn main() {
                 match A::As<|> {
                     A::Bs{x,y:Some(_)} => (),
+                    A::Cs(_, Some(_)) => (),
                 }
             }
             "#,
@@ -247,12 +172,13 @@ mod tests {
             enum A {
                 As,
                 Bs{x:i32, y:Option<i32>},
+                Cs(i32, Option<i32>),
             }
             fn main() {
                 match <|>A::As {
                     A::Bs{x,y:Some(_)} => (),
+                    A::Cs(_, Some(_)) => (),
                     A::As => (),
-                    _ => (),
                 }
             }
             "#,
@@ -285,39 +211,6 @@ mod tests {
                 match <|>A::As {
                     A::Cs(_) | A::Bs => (),
                     A::As => (),
-                }
-            }
-            "#,
-        );
-    }
-
-    #[test]
-    fn partial_fill_or_pat2() {
-        check_assist(
-            fill_match_arms,
-            r#"
-            enum A {
-                As,
-                Bs,
-                Cs(Option<i32>),
-            }
-            fn main() {
-                match A::As<|> {
-                    A::Cs(Some(_)) | A::Bs => (),
-                }
-            }
-            "#,
-            r#"
-            enum A {
-                As,
-                Bs,
-                Cs(Option<i32>),
-            }
-            fn main() {
-                match <|>A::As {
-                    A::Cs(Some(_)) | A::Bs => (),
-                    A::As => (),
-                    _ => (),
                 }
             }
             "#,
@@ -367,7 +260,6 @@ mod tests {
                     A::Es(B::Xs) => (),
                     A::As => (),
                     A::Cs => (),
-                    _ => (),
                 }
             }
             "#,
