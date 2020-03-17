@@ -192,7 +192,7 @@ it.
 When your review approves the PR, it will go into a queue for yet another bot
 called `@bors`.  `@bors` manages the CI build/merge queue. When your PR reaches
 the head of the `@bors` queue, `@bors` will test out the merge by running all
-tests against your PR on Travis CI. This takes may take a lot of time to
+tests against your PR on Travis CI. This takes a lot of time to
 finish. If all tests pass, the PR is merged and becomes part of the next
 nightly compiler!
 
