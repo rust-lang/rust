@@ -70,7 +70,7 @@ LL | static TEST3: _ = "test";
    |               ^
    |               |
    |               not allowed in type signatures
-   |               help: replace `_` with the correct type: `&'static str`
+   |               help: replace `_` with the correct type: `&str`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:15:15
@@ -232,7 +232,7 @@ LL |     static FN_TEST3: _ = "test";
    |                      ^
    |                      |
    |                      not allowed in type signatures
-   |                      help: replace `_` with the correct type: `&'static str`
+   |                      help: replace `_` with the correct type: `&str`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:88:22
