@@ -1,8 +1,14 @@
 // edition:2018
 // aux-build:edition-kw-macro-2015.rs
 
+fn main() {}
+
 #[macro_use]
 extern crate edition_kw_macro_2015;
+
+mod module {
+    pub fn r#async() {}
+}
 
 pub fn check_async() {
     let mut async = 1; //~ ERROR expected identifier, found keyword `async`
@@ -13,7 +19,7 @@ pub fn check_async() {
     r#async = consumes_async_raw!(async); //~ ERROR no rules expected the token `async`
     r#async = consumes_async_raw!(r#async); // OK
 
-    if passes_ident!(async) == 1 {}
+    if passes_ident!(async) == 1 {} //~ ERROR async closures are unstable
     if passes_ident!(r#async) == 1 {} // OK
     module::async(); //~ ERROR expected identifier, found keyword `async`
     module::r#async(); // OK

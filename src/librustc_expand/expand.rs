@@ -204,7 +204,7 @@ ast_fragments! {
 }
 
 impl AstFragmentKind {
-    fn dummy(self, span: Span) -> AstFragment {
+    crate fn dummy(self, span: Span) -> AstFragment {
         self.make_from(DummyResult::any(span)).expect("couldn't create a dummy AST fragment")
     }
 
