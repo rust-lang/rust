@@ -15,7 +15,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, DiagnosticBuilder, FatalError};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::Features;
 use rustc_parse::parser::Parser;
 use rustc_parse::Directory;
@@ -178,6 +178,19 @@ impl TTMacroExpander for MacroRulesMacroExpander {
             &self.lhses,
             &self.rhses,
         )
+    }
+}
+
+struct MacroRulesDummyExpander;
+
+impl TTMacroExpander for MacroRulesDummyExpander {
+    fn expand<'cx>(
+        &self,
+        _: &'cx mut ExtCtxt<'_>,
+        sp: Span,
+        _: TokenStream,
+    ) -> Box<dyn MacResult + 'cx> {
+        DummyResult::any(sp)
     }
 }
 
@@ -369,6 +382,18 @@ pub fn compile_declarative_macro(
     def: &ast::Item,
     edition: Edition,
 ) -> SyntaxExtension {
+    let mk_syn_ext = |expander| {
+        SyntaxExtension::new(
+            sess,
+            SyntaxExtensionKind::LegacyBang(expander),
+            def.span,
+            Vec::new(),
+            edition,
+            def.ident.name,
+            &def.attrs,
+        )
+    };
+
     let diag = &sess.span_diagnostic;
     let lhs_nm = ast::Ident::new(sym::lhs, def.span);
     let rhs_nm = ast::Ident::new(sym::rhs, def.span);
@@ -423,13 +448,12 @@ pub fn compile_declarative_macro(
         Failure(token, msg) => {
             let s = parse_failure_msg(&token);
             let sp = token.span.substitute_dummy(def.span);
-            let mut err = sess.span_diagnostic.struct_span_fatal(sp, &s);
-            err.span_label(sp, msg);
-            err.emit();
-            FatalError.raise();
+            sess.span_diagnostic.struct_span_err(sp, &s).span_label(sp, msg).emit();
+            return mk_syn_ext(Box::new(MacroRulesDummyExpander));
         }
-        Error(sp, s) => {
-            sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s).raise();
+        Error(sp, msg) => {
+            sess.span_diagnostic.struct_span_err(sp.substitute_dummy(def.span), &msg).emit();
+            return mk_syn_ext(Box::new(MacroRulesDummyExpander));
         }
     };
 
@@ -501,15 +525,7 @@ pub fn compile_declarative_macro(
         valid,
     });
 
-    SyntaxExtension::new(
-        sess,
-        SyntaxExtensionKind::LegacyBang(expander),
-        def.span,
-        Vec::new(),
-        edition,
-        def.ident.name,
-        &def.attrs,
-    )
+    mk_syn_ext(expander)
 }
 
 fn check_lhs_nt_follows(
