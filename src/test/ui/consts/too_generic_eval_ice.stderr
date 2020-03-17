@@ -22,7 +22,7 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
    |
    = help: the trait `std::marker::Sized` is not implemented for `A`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: associated types can't be referenced in `const` contexts, like array in length
+   = note: associated types cannot be referenced in `const` contexts, like the length of an array
 
 error[E0277]: the size for values of type `B` cannot be known at compilation time
   --> $DIR/too_generic_eval_ice.rs:7:13
@@ -35,7 +35,7 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
    |
    = help: the trait `std::marker::Sized` is not implemented for `B`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: associated types can't be referenced in `const` contexts, like array in length
+   = note: associated types cannot be referenced in `const` contexts, like the length of an array
 
 error: aborting due to 3 previous errors
 

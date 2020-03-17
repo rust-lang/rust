@@ -7,7 +7,7 @@ LL |     const Y: usize;
 LL |     let _array: [u32; <A as Foo>::Y];
    |                       ^^^^^^^^^^^^^ the trait `Foo` is not implemented for `A`
    |
-   = note: associated types can't be referenced in `const` contexts, like array in length
+   = note: associated types cannot be referenced in `const` contexts, like the length of an array
 
 error: aborting due to previous error
 

@@ -160,7 +160,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         };
         if self.tcx.hir().is_const_context(body_id) {
             err.note(
-                "associated types can't be referenced in `const` contexts, like array in length",
+                "associated types cannot be referenced in `const` contexts, \
+                 like the length of an array",
             );
             return;
         }
