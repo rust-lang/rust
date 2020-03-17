@@ -10,7 +10,7 @@ use rustc::ty::{layout::Align, Const, ConstKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_mir::interpret::{
     ImmTy, InterpCx, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
-    StackPopCleanup, StackPopInfo,
+    StackPopCleanup, StackPopJump,
 };
 
 use cranelift_codegen::ir::GlobalValue;
@@ -476,8 +476,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         Ok(())
     }
 
-    fn stack_pop(_: &mut InterpCx<'mir, 'tcx, Self>, _: (), _: bool) -> InterpResult<'tcx, StackPopInfo> {
-        Ok(StackPopInfo::Normal)
+    fn stack_pop(_: &mut InterpCx<'mir, 'tcx, Self>, _: (), _: bool) -> InterpResult<'tcx, StackPopJump> {
+        Ok(StackPopJump::Normal)
     }
 
     fn assert_panic(

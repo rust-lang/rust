@@ -359,7 +359,7 @@ pub fn codegen_intrinsic_call<'tcx>(
                 "transmute" => {
                     trap_unreachable(
                         fx,
-                        "[corruption] Called intrinsic::transmute with uninhabited argument.",
+                        "[corruption] Transmuting to uninhabited type.",
                     );
                 }
                 _ => unimplemented!("unsupported instrinsic {}", intrinsic),
@@ -813,19 +813,19 @@ pub fn codegen_intrinsic_call<'tcx>(
             let res = CValue::by_val(swap(&mut fx.bcx, arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
-        panic_if_uninhabited | panic_if_zero_invalid | panic_if_any_invalid, <T> () {
+        assert_inhabited | assert_zero_valid | assert_any_valid, <T> () {
             let layout = fx.layout_of(T);
             if layout.abi.is_uninhabited() {
                 crate::trap::trap_panic(fx, &format!("attempted to instantiate uninhabited type `{}`", T));
                 return;
             }
 
-            if intrinsic == "panic_if_zero_invalid" && !layout.might_permit_raw_init(fx, /*zero:*/ true).unwrap() {
+            if intrinsic == "assert_zero_valid" && !layout.might_permit_raw_init(fx, /*zero:*/ true).unwrap() {
                 crate::trap::trap_panic(fx, &format!("attempted to zero-initialize type `{}`, which is invalid", T));
                 return;
             }
 
-            if intrinsic == "panic_if_any_invalid" && !layout.might_permit_raw_init(fx, /*zero:*/ false).unwrap() {
+            if intrinsic == "assert_any_valid" && !layout.might_permit_raw_init(fx, /*zero:*/ false).unwrap() {
                 crate::trap::trap_panic(fx, &format!("attempted to leave type `{}` uninitialized, which is invalid", T));
                 return;
             }
