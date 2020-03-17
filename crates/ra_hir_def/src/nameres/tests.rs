@@ -12,8 +12,8 @@ use test_utils::covers;
 
 use crate::{db::DefDatabase, nameres::*, test_db::TestDB};
 
-fn def_map(fixture: &str) -> String {
-    compute_crate_def_map(fixture).dump()
+fn def_map(ra_fixture: &str) -> String {
+    compute_crate_def_map(ra_fixture).dump()
 }
 
 fn compute_crate_def_map(fixture: &str) -> Arc<CrateDefMap> {

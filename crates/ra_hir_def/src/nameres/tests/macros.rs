@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn macro_rules_are_globally_visible() {
     let map = def_map(
-        "
+        r"
         //- /lib.rs
         macro_rules! structs {
             ($($i:ident),*) => {
@@ -31,7 +31,7 @@ fn macro_rules_are_globally_visible() {
 #[test]
 fn macro_rules_can_define_modules() {
     let map = def_map(
-        "
+        r"
         //- /lib.rs
         macro_rules! m {
             ($name:ident) => { mod $name;  }
@@ -51,21 +51,21 @@ fn macro_rules_can_define_modules() {
         ",
     );
     assert_snapshot!(map, @r###"
-    crate
-    m: t
-    n1: t
-    
-    crate::m
-    n3: t
-    
-    crate::m::n3
-    Y: t v
-    
-    crate::n1
-    n2: t
-    
-    crate::n1::n2
-    X: t v
+        ⋮crate
+        ⋮m: t
+        ⋮n1: t
+        ⋮
+        ⋮crate::m
+        ⋮n3: t
+        ⋮
+        ⋮crate::m::n3
+        ⋮Y: t v
+        ⋮
+        ⋮crate::n1
+        ⋮n2: t
+        ⋮
+        ⋮crate::n1::n2
+        ⋮X: t v
     "###);
 }
 

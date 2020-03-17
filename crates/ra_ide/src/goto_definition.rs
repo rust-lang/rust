@@ -100,8 +100,8 @@ mod tests {
 
     use crate::mock_analysis::analysis_and_position;
 
-    fn check_goto(fixture: &str, expected: &str, expected_range: &str) {
-        let (analysis, pos) = analysis_and_position(fixture);
+    fn check_goto(ra_fixture: &str, expected: &str, expected_range: &str) {
+        let (analysis, pos) = analysis_and_position(ra_fixture);
 
         let mut navs = analysis.goto_definition(pos).unwrap().unwrap().info;
         assert_eq!(navs.len(), 1);
@@ -790,8 +790,8 @@ mod tests {
     #[test]
     fn goto_def_in_local_macro() {
         check_goto(
-            "
-            //- /lib.rs            
+            r"
+            //- /lib.rs
             fn bar() {
                 macro_rules! foo { () => { () } }
                 <|>foo!();
