@@ -292,7 +292,7 @@ self.tcx.sess.add_lint(lint::builtin::OVERLAPPING_INHERENT_IMPLS,
 We want to convert this into an error. In some cases, there may be an
 existing error for this scenario. In others, we will need to allocate a
 fresh diagnostic code.  [Instructions for allocating a fresh diagnostic
-code can be found here.](diagnostics/diagnostic-codes.html) You may want
+code can be found here.](./diagnostics/diagnostic-codes.md) You may want
 to mention in the extended description that the compiler behavior
 changed on this point, and include a reference to the tracking issue for
 the change.
@@ -327,4 +327,3 @@ Open a PR. =)
 
 [rfc 1122]: https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md
 [breaking-change-issue]: https://gist.github.com/nikomatsakis/631ec8b4af9a18b5d062d9d9b7d3d967
-
