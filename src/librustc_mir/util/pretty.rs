@@ -561,7 +561,7 @@ fn write_mir_sig(
 
     ty::print::with_forced_impl_filename_line(|| {
         // see notes on #41697 elsewhere
-        write!(w, " {}", tcx.def_path_str(src.def_id()))
+        write!(w, "{}", tcx.def_path_str(src.def_id()))
     })?;
 
     if src.promoted.is_none() && is_function {

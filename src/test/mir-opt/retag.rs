@@ -114,7 +114,7 @@ fn main() {
 // }
 // END rustc.main-{{closure}}.EraseRegions.after.mir
 // START rustc.ptr-drop_in_place.Test.SimplifyCfg-make_shim.after.mir
-// fn  std::intrinsics::drop_in_place(_1: *mut Test) -> () {
+// fn std::intrinsics::drop_in_place(_1: *mut Test) -> () {
 //     ...
 //     bb0: {
 //         Retag([raw] _1);
