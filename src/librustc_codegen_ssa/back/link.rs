@@ -502,7 +502,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         cmd.args(args);
     }
     if let Some(args) = sess.target.target.options.pre_link_args_crt.get(&flavor) {
-        if sess.crt_static() {
+        if sess.crt_static(Some(crate_type)) {
             cmd.args(args);
         }
     }
@@ -528,7 +528,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         cmd.arg(get_file_path(sess, obj));
     }
 
-    if crate_type == config::CrateType::Executable && sess.crt_static() {
+    if crate_type == config::CrateType::Executable && sess.crt_static(Some(crate_type)) {
         for obj in &sess.target.target.options.pre_link_objects_exe_crt {
             cmd.arg(get_file_path(sess, obj));
         }
@@ -572,7 +572,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     for obj in &sess.target.target.options.post_link_objects {
         cmd.arg(get_file_path(sess, obj));
     }
-    if sess.crt_static() {
+    if sess.crt_static(Some(crate_type)) {
         for obj in &sess.target.target.options.post_link_objects_crt {
             cmd.arg(get_file_path(sess, obj));
         }
@@ -1302,7 +1302,8 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
             let more_args = &sess.opts.cg.link_arg;
             let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
 
-            if is_pic(sess) && !sess.crt_static() && !args.any(|x| *x == "-static") {
+            if is_pic(sess) && !sess.crt_static(Some(crate_type)) && !args.any(|x| *x == "-static")
+            {
                 position_independent_executable = true;
             }
         }
@@ -1387,7 +1388,7 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
     if crate_type != config::CrateType::Executable {
         cmd.build_dylib(out_filename);
     }
-    if crate_type == config::CrateType::Executable && sess.crt_static() {
+    if crate_type == config::CrateType::Executable && sess.crt_static(Some(crate_type)) {
         cmd.build_static_executable();
     }
 
