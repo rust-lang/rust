@@ -15,7 +15,7 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::vec::Idx;
-use rustc_middle::mir::interpret::{get_slice_bytes, sign_extend, ConstValue, ErrorHandled};
+use rustc_middle::mir::interpret::{get_slice_bytes, sign_extend, ConstValue};
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::mir::UserTypeProjection;
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
@@ -762,69 +762,80 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_path(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) -> Pat<'tcx> {
         let ty = self.tables.node_type(id);
         let res = self.tables.qpath_res(qpath, id);
-        let is_associated_const = match res {
-            Res::Def(DefKind::AssocConst, _) => true,
-            _ => false,
+
+        let pat_from_kind = |kind| Pat { span, ty, kind: Box::new(kind) };
+
+        let (def_id, is_associated_const) = match res {
+            Res::Def(DefKind::Const, def_id) => (def_id, false),
+            Res::Def(DefKind::AssocConst, def_id) => (def_id, true),
+
+            _ => return pat_from_kind(self.lower_variant_or_leaf(res, id, span, ty, vec![])),
         };
-        let kind = match res {
-            Res::Def(DefKind::Const | DefKind::AssocConst, def_id) => {
-                let substs = self.tables.node_substs(id);
-                // Use `Reveal::All` here because patterns are always monomorphic even if their function isn't.
-                match self.tcx.const_eval_resolve(
-                    self.param_env.with_reveal_all(),
-                    def_id,
-                    substs,
-                    None,
-                    Some(span),
-                ) {
-                    Ok(value) => {
-                        let const_ =
-                            ty::Const::from_value(self.tcx, value, self.tables.node_type(id));
 
-                        let pattern = self.const_to_pat(&const_, id, span);
-                        if !is_associated_const {
-                            return pattern;
-                        }
+        // Use `Reveal::All` here because patterns are always monomorphic even if their function
+        // isn't.
+        let param_env_reveal_all = self.param_env.with_reveal_all();
+        let substs = self.tables.node_substs(id);
+        let instance = match ty::Instance::resolve(self.tcx, param_env_reveal_all, def_id, substs) {
+            Ok(Some(i)) => i,
+            Ok(None) => {
+                self.errors.push(if is_associated_const {
+                    PatternError::AssocConstInPattern(span)
+                } else {
+                    PatternError::StaticInPattern(span)
+                });
 
-                        let user_provided_types = self.tables().user_provided_types();
-                        return if let Some(u_ty) = user_provided_types.get(id) {
-                            let user_ty = PatTyProj::from_user_type(*u_ty);
-                            Pat {
-                                span,
-                                kind: Box::new(PatKind::AscribeUserType {
-                                    subpattern: pattern,
-                                    ascription: Ascription {
-                                        /// Note that use `Contravariant` here. See the
-                                        /// `variance` field documentation for details.
-                                        variance: ty::Variance::Contravariant,
-                                        user_ty,
-                                        user_ty_span: span,
-                                    },
-                                }),
-                                ty: const_.ty,
-                            }
-                        } else {
-                            pattern
-                        };
+                return pat_from_kind(PatKind::Wild);
+            }
+
+            Err(_) => {
+                self.tcx.sess.span_err(span, "could not evaluate constant pattern");
+                return pat_from_kind(PatKind::Wild);
+            }
+        };
+
+        // `mir_const_qualif` must be called with the `DefId` of the item where the const is
+        // defined, not where it is declared. The difference is significant for associated
+        // constants.
+        let mir_structural_match_violation = self.tcx.mir_const_qualif(instance.def_id()).custom_eq;
+        debug!("mir_structural_match_violation({:?}) -> {}", qpath, mir_structural_match_violation);
+
+        match self.tcx.const_eval_instance(param_env_reveal_all, instance, Some(span)) {
+            Ok(value) => {
+                let const_ = ty::Const::from_value(self.tcx, value, self.tables.node_type(id));
+
+                let pattern = self.const_to_pat(&const_, id, span, mir_structural_match_violation);
+
+                if !is_associated_const {
+                    return pattern;
+                }
+
+                let user_provided_types = self.tables().user_provided_types();
+                if let Some(u_ty) = user_provided_types.get(id) {
+                    let user_ty = PatTyProj::from_user_type(*u_ty);
+                    Pat {
+                        span,
+                        kind: Box::new(PatKind::AscribeUserType {
+                            subpattern: pattern,
+                            ascription: Ascription {
+                                /// Note that use `Contravariant` here. See the
+                                /// `variance` field documentation for details.
+                                variance: ty::Variance::Contravariant,
+                                user_ty,
+                                user_ty_span: span,
+                            },
+                        }),
+                        ty: const_.ty,
                     }
-                    Err(ErrorHandled::TooGeneric) => {
-                        self.errors.push(if is_associated_const {
-                            PatternError::AssocConstInPattern(span)
-                        } else {
-                            PatternError::StaticInPattern(span)
-                        });
-                        PatKind::Wild
-                    }
-                    Err(_) => {
-                        self.tcx.sess.span_err(span, "could not evaluate constant pattern");
-                        PatKind::Wild
-                    }
+                } else {
+                    pattern
                 }
             }
-            _ => self.lower_variant_or_leaf(res, id, span, ty, vec![]),
-        };
-
-        Pat { span, ty, kind: Box::new(kind) }
+            Err(_) => {
+                self.tcx.sess.span_err(span, "could not evaluate constant pattern");
+                pat_from_kind(PatKind::Wild)
+            }
+        }
     }
 
     /// Converts literals, paths and negation of literals to patterns.
@@ -849,7 +860,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             let lit_input = LitToConstInput { lit: &lit.node, ty: self.tables.expr_ty(expr), neg };
             match self.tcx.at(expr.span).lit_to_const(lit_input) {
-                Ok(val) => *self.const_to_pat(val, expr.hir_id, lit.span).kind,
+                Ok(val) => *self.const_to_pat(val, expr.hir_id, lit.span, false).kind,
                 Err(LitToConstError::UnparseableFloat) => {
                     self.errors.push(PatternError::FloatBug);
                     PatKind::Wild
