@@ -95,7 +95,7 @@ pub(crate) fn find_all_refs(
     let syntax = sema.parse(position.file_id).syntax().clone();
 
     let (opt_name, search_kind) =
-        if let Some(name) = get_struct_def_name_for_struc_litetal_search(&syntax, position) {
+        if let Some(name) = get_struct_def_name_for_struct_literal_search(&syntax, position) {
             (Some(name), ReferenceKind::StructLiteral)
         } else {
             (find_node_at_offset::<ast::Name>(&syntax, position.offset), ReferenceKind::Other)
@@ -156,7 +156,7 @@ fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Optio
     None
 }
 
-fn get_struct_def_name_for_struc_litetal_search(
+fn get_struct_def_name_for_struct_literal_search(
     syntax: &SyntaxNode,
     position: FilePosition,
 ) -> Option<ast::Name> {
