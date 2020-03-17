@@ -295,7 +295,11 @@ fn generic_extension<'cx>(
                 Some((ref best_token, _)) if best_token.span.lo() >= token.span.lo() => {}
                 _ => best_failure = Some((token, msg)),
             },
-            Error(err_sp, ref msg) => cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..]),
+            Error(err_sp, ref msg) => {
+                let span = err_sp.substitute_dummy(sp);
+                cx.struct_span_err(span, &msg).emit();
+                return DummyResult::any(span);
+            }
         }
 
         // The matcher was not `Success(..)`ful.
