@@ -639,18 +639,22 @@ impl<'hir> Map<'hir> {
     /// Whether the expression pointed at by `hir_id` belongs to a `const` evaluation context.
     /// Used exclusively for diagnostics, to avoid suggestion function calls.
     pub fn is_const_context(&self, hir_id: HirId) -> bool {
-        let parent_id = self.get_parent_item(hir_id);
-        match self.find(parent_id) {
-            Some(Node::Item(&Item { kind: ItemKind::Const(..), .. }))
-            | Some(Node::TraitItem(&TraitItem { kind: TraitItemKind::Const(..), .. }))
-            | Some(Node::ImplItem(&ImplItem { kind: ImplItemKind::Const(..), .. }))
-            | Some(Node::AnonConst(_))
-            | Some(Node::Item(&Item { kind: ItemKind::Static(..), .. })) => true,
-            Some(Node::Item(&Item { kind: ItemKind::Fn(ref sig, ..), .. })) => {
-                sig.header.constness == Constness::Const
+        for (_, node) in self.parent_iter(hir_id) {
+            match node {
+                Node::Item(&Item { kind: ItemKind::Const(..), .. })
+                | Node::TraitItem(&TraitItem { kind: TraitItemKind::Const(..), .. })
+                | Node::ImplItem(&ImplItem { kind: ImplItemKind::Const(..), .. })
+                | Node::AnonConst(_)
+                | Node::Item(&Item { kind: ItemKind::Static(..), .. }) => return true,
+                Node::Item(&Item { kind: ItemKind::Fn(ref sig, ..), .. }) => {
+                    if sig.header.constness == Constness::Const {
+                        return true;
+                    }
+                }
+                _ => {}
             }
-            _ => false,
         }
+        false
     }
 
     /// Whether `hir_id` corresponds to a `mod` or a crate.
@@ -738,7 +742,6 @@ impl<'hir> Map<'hir> {
                 | Node::Item(_)
                 | Node::ForeignItem(_)
                 | Node::TraitItem(_)
-                | Node::AnonConst(_)
                 | Node::ImplItem(_) => return hir_id,
                 _ => {}
             }
