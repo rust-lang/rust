@@ -839,7 +839,13 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                             "emcc"
                         }
                     }
-                    LinkerFlavor::Gcc => "cc",
+                    LinkerFlavor::Gcc => {
+                        if cfg!(target_os = "solaris") {
+                            "gcc"
+                        } else {
+                            "cc"
+                        }
+                    }
                     LinkerFlavor::Ld => "ld",
                     LinkerFlavor::Msvc => "link.exe",
                     LinkerFlavor::Lld(_) => "lld",
