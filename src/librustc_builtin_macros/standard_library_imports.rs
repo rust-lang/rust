@@ -39,7 +39,7 @@ pub fn inject(
     let call_site = DUMMY_SP.with_call_site_ctxt(expn_id);
 
     let ecfg = ExpansionConfig::default("std_lib_injection".to_string());
-    let cx = ExtCtxt::new(sess, ecfg, resolver);
+    let cx = ExtCtxt::new(sess, ecfg, resolver, None);
 
     // .rev() to preserve ordering above in combination with insert(0, ...)
     for &name in names.iter().rev() {

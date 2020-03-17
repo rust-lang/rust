@@ -1,14 +1,5 @@
-//! Process the potential `cfg` attributes on a module.
-//! Also determine if the module should be included in this configuration.
-//!
-//! This module properly belongs in rustc_expand, but for now it's tied into
-//! parsing, so we leave it here to avoid complicated out-of-line dependencies.
-//!
-//! A principled solution to this wrong location would be to implement [#64197].
-//!
-//! [#64197]: https://github.com/rust-lang/rust/issues/64197
+//! Conditional compilation stripping.
 
-use crate::{parse_in, validate_attr};
 use rustc_ast::ast::{self, AttrItem, Attribute, MetaItem};
 use rustc_ast::attr::HasAttrs;
 use rustc_ast::mut_visit::*;
@@ -21,6 +12,7 @@ use rustc_feature::{Feature, Features, State as FeatureState};
 use rustc_feature::{
     ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES,
 };
+use rustc_parse::{parse_in, validate_attr};
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_span::edition::{Edition, ALL_EDITIONS};
 use rustc_span::symbol::{sym, Symbol};
@@ -537,13 +529,4 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
 
 fn is_cfg(attr: &Attribute) -> bool {
     attr.check_name(sym::cfg)
-}
-
-/// Process the potential `cfg` attributes on a module.
-/// Also determine if the module should be included in this configuration.
-pub fn process_configure_mod(sess: &ParseSess, cfg_mods: bool, attrs: &mut Vec<Attribute>) -> bool {
-    // Don't perform gated feature checking.
-    let mut strip_unconfigured = StripUnconfigured { sess, features: None };
-    strip_unconfigured.process_cfg_attrs(attrs);
-    !cfg_mods || strip_unconfigured.in_cfg(&attrs)
 }
