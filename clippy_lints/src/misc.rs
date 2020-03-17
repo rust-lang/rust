@@ -498,11 +498,11 @@ fn is_signum(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     false
 }
 
-fn is_float(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
-    let value = &walk_ptrs_ty(cx.tables.expr_ty(expr)).sty;
+fn is_float(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+    let value = &walk_ptrs_ty(cx.tables.expr_ty(expr)).kind;
 
     if let ty::Array(arr_ty, _) = value {
-        return matches!(arr_ty.sty, ty::Float(_));
+        return matches!(arr_ty.kind, ty::Float(_));
     };
 
     matches!(value, ty::Float(_))
