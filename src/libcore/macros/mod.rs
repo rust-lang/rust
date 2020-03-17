@@ -1404,6 +1404,18 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
+    /// Keeps the item it's applied to if the passed path is accessible, and removes it otherwise.
+    #[cfg(not(bootstrap))]
+    #[unstable(
+        feature = "cfg_accessible",
+        issue = "64797",
+        reason = "`cfg_accessible` is not fully implemented"
+    )]
+    #[rustc_builtin_macro]
+    pub macro cfg_accessible($item:item) {
+        /* compiler built-in */
+    }
+
     /// Unstable implementation detail of the `rustc` compiler, do not use.
     #[rustc_builtin_macro]
     #[stable(feature = "rust1", since = "1.0.0")]

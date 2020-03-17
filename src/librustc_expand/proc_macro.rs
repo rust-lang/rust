@@ -79,7 +79,7 @@ impl MultiItemModifier for ProcMacroDerive {
         span: Span,
         _meta_item: &ast::MetaItem,
         item: Annotatable,
-    ) -> Vec<Annotatable> {
+    ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         let item = match item {
             Annotatable::Arm(..)
             | Annotatable::Field(..)
@@ -99,7 +99,7 @@ impl MultiItemModifier for ProcMacroDerive {
                     "proc-macro derives may only be \
                                     applied to a struct, enum, or union",
                 );
-                return Vec::new();
+                return ExpandResult::Ready(Vec::new());
             }
         };
         match item.kind {
@@ -110,7 +110,7 @@ impl MultiItemModifier for ProcMacroDerive {
                     "proc-macro derives may only be \
                                     applied to a struct, enum, or union",
                 );
-                return Vec::new();
+                return ExpandResult::Ready(Vec::new());
             }
         }
 
@@ -158,7 +158,7 @@ impl MultiItemModifier for ProcMacroDerive {
             FatalError.raise();
         }
 
-        items
+        ExpandResult::Ready(items)
     }
 }
 

@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `r#break` in module `crate`
+  --> $DIR/raw-ident-in-path.rs:3:17
+   |
+LL | type A = crate::r#break;
+   |                 ^^^^^^^ not found in `crate`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

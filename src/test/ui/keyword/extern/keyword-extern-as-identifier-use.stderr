@@ -9,5 +9,12 @@ help: you can escape reserved keywords to use them as identifiers
 LL | use r#extern::foo;
    |     ^^^^^^^^
 
-error: aborting due to previous error
+error[E0432]: unresolved import `r#extern`
+  --> $DIR/keyword-extern-as-identifier-use.rs:1:5
+   |
+LL | use extern::foo;
+   |     ^^^^^^ maybe a missing crate `r#extern`?
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.
