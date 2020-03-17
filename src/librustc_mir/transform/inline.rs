@@ -25,6 +25,8 @@ const HINT_THRESHOLD: usize = 100;
 
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;
+const LANDINGPAD_PENALTY: usize = 50;
+const RESUME_PENALTY: usize = 45;
 
 const UNKNOWN_SIZE_COST: usize = 10;
 
@@ -328,6 +330,7 @@ impl Inliner<'tcx> {
                     if ty.needs_drop(tcx, param_env) {
                         cost += CALL_PENALTY;
                         if let Some(unwind) = unwind {
+                            cost += LANDINGPAD_PENALTY;
                             work_list.push(unwind);
                         }
                     } else {
@@ -343,7 +346,7 @@ impl Inliner<'tcx> {
                     threshold = 0;
                 }
 
-                TerminatorKind::Call { func: Operand::Constant(ref f), .. } => {
+                TerminatorKind::Call { func: Operand::Constant(ref f), cleanup, .. } => {
                     if let ty::FnDef(def_id, _) = f.literal.ty.kind {
                         // Don't give intrinsics the extra penalty for calls
                         let f = tcx.fn_sig(def_id);
@@ -352,9 +355,21 @@ impl Inliner<'tcx> {
                         } else {
                             cost += CALL_PENALTY;
                         }
+                    } else {
+                        cost += CALL_PENALTY;
+                    }
+                    if cleanup.is_some() {
+                        cost += LANDINGPAD_PENALTY;
                     }
                 }
-                TerminatorKind::Assert { .. } => cost += CALL_PENALTY,
+                TerminatorKind::Assert { cleanup, .. } => {
+                    cost += CALL_PENALTY;
+
+                    if cleanup.is_some() {
+                        cost += LANDINGPAD_PENALTY;
+                    }
+                }
+                TerminatorKind::Resume => cost += RESUME_PENALTY,
                 _ => cost += INSTR_COST,
             }
 
