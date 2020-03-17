@@ -343,7 +343,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let len = mplace.len(self)?;
         let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len as u64))?;
         let str = ::std::str::from_utf8(bytes)
-            .map_err(|err| err_unsup!(ValidationFailure(err.to_string())))?;
+            .map_err(|err| err_ub_format!("this string is not valid UTF-8: {}", err))?;
         Ok(str)
     }
 
@@ -457,7 +457,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         layout: Option<TyLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let base_op = match place.local {
-            mir::RETURN_PLACE => throw_unsup!(ReadFromReturnPointer),
+            mir::RETURN_PLACE => throw_ub!(ReadFromReturnPlace),
             local => {
                 // Do not use the layout passed in as argument if the base we are looking at
                 // here is not the entire place.

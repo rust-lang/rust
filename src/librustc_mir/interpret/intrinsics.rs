@@ -135,7 +135,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let bits = self.force_bits(val, layout_of.size)?;
                 let kind = match layout_of.abi {
                     ty::layout::Abi::Scalar(ref scalar) => scalar.value,
-                    _ => throw_unsup!(TypeNotPrimitive(ty)),
+                    _ => bug!("{} called on invalid type {:?}", intrinsic_name, ty),
                 };
                 let (nonzero, intrinsic_name) = match intrinsic_name {
                     sym::cttz_nonzero => (true, sym::cttz),
@@ -246,9 +246,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let layout = self.layout_of(substs.type_at(0))?;
                     let r_val = self.force_bits(r.to_scalar()?, layout.size)?;
                     if let sym::unchecked_shl | sym::unchecked_shr = intrinsic_name {
-                        throw_ub_format!("Overflowing shift by {} in `{}`", r_val, intrinsic_name);
+                        throw_ub_format!("overflowing shift by {} in `{}`", r_val, intrinsic_name);
                     } else {
-                        throw_ub_format!("Overflow executing `{}`", intrinsic_name);
+                        throw_ub_format!("overflow executing `{}`", intrinsic_name);
                     }
                 }
                 self.write_scalar(val, dest)?;
