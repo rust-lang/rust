@@ -3280,7 +3280,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn to_const(&self, ast_c: &hir::AnonConst, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
-        ty::Const::from_hir_anon_const(self.tcx, ast_c, ty)
+        let c = self.tcx.hir().local_def_id(ast_c.hir_id);
+        ty::Const::from_hir_anon_const(self.tcx, c, ty)
     }
 
     // If the type given by the user has free regions, save it for later, since

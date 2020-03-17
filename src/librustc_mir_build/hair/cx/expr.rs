@@ -406,6 +406,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
 
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
+            let count = cx.tcx.hir().local_def_id(count.hir_id);
             let count = ty::Const::from_hir_anon_const(cx.tcx, count, cx.tcx.types.usize);
 
             ExprKind::Repeat { value: v.to_ref(), count }

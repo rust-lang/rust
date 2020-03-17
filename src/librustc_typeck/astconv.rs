@@ -780,7 +780,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 }
                 (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
-                    ty::Const::from_hir_anon_const(tcx, &ct.value, tcx.type_of(param.def_id)).into()
+                    let ct = tcx.hir().local_def_id(ct.value.hir_id);
+                    ty::Const::from_hir_anon_const(tcx, ct, tcx.type_of(param.def_id)).into()
                 }
                 _ => unreachable!(),
             },
@@ -2764,6 +2765,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .unwrap_or(tcx.types.err)
             }
             hir::TyKind::Array(ref ty, ref length) => {
+                let length = tcx.hir().local_def_id(length.hir_id);
                 let length = ty::Const::from_hir_anon_const(tcx, length, tcx.types.usize);
                 let array_ty = tcx.mk_ty(ty::Array(self.ast_ty_to_ty(&ty), length));
                 self.normalize_ty(ast_ty.span, array_ty)

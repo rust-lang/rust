@@ -2404,16 +2404,14 @@ static_assert_size!(Const<'_>, 48);
 impl<'tcx> Const<'tcx> {
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
-    pub fn from_hir_anon_const(
-        tcx: TyCtxt<'tcx>,
-        ast_const: &hir::AnonConst,
-        ty: Ty<'tcx>,
-    ) -> &'tcx Self {
-        debug!("Const::from_hir_anon_const(id={:?}, ast_const={:?})", ast_const.hir_id, ast_const);
+    pub fn from_hir_anon_const(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Ty<'tcx>) -> &'tcx Self {
+        debug!("Const::from_hir_anon_const(id={:?})", def_id);
 
-        let def_id = tcx.hir().local_def_id(ast_const.hir_id);
+        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
-        let expr = &tcx.hir().body(ast_const.body).value;
+        let body_id = tcx.hir().body_owned_by(hir_id);
+
+        let expr = &tcx.hir().body(body_id).value;
 
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
