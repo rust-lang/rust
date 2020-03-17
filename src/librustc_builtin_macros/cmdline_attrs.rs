@@ -3,7 +3,6 @@
 use rustc_ast::ast::{self, AttrItem, AttrStyle};
 use rustc_ast::attr::mk_attr;
 use rustc_ast::token;
-use rustc_expand::panictry;
 use rustc_session::parse::ParseSess;
 use rustc_span::FileName;
 
@@ -16,7 +15,13 @@ pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -
         );
 
         let start_span = parser.token.span;
-        let AttrItem { path, args } = panictry!(parser.parse_attr_item());
+        let AttrItem { path, args } = match parser.parse_attr_item() {
+            Ok(ai) => ai,
+            Err(mut err) => {
+                err.emit();
+                continue;
+            }
+        };
         let end_span = parser.token.span;
         if parser.token != token::Eof {
             parse_sess.span_diagnostic.span_err(start_span.to(end_span), "invalid crate attribute");
