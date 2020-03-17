@@ -1161,6 +1161,18 @@ pub fn check_zero_tts(cx: &ExtCtxt<'_>, sp: Span, tts: TokenStream, name: &str) 
     }
 }
 
+/// Parse an expression. On error, emit it, advancing to `Eof`, and return `None`.
+fn parse_expr(p: &mut parser::Parser<'_>) -> Option<P<ast::Expr>> {
+    match p.parse_expr() {
+        Ok(e) => return Some(e),
+        Err(mut err) => err.emit(),
+    }
+    while p.token != token::Eof {
+        p.bump();
+    }
+    None
+}
+
 /// Interpreting `tts` as a comma-separated sequence of expressions,
 /// expect exactly one string literal, or emit an error and return `None`.
 pub fn get_single_str_from_tts(
@@ -1174,7 +1186,7 @@ pub fn get_single_str_from_tts(
         cx.span_err(sp, &format!("{} takes 1 argument", name));
         return None;
     }
-    let ret = panictry!(p.parse_expr());
+    let ret = parse_expr(&mut p)?;
     let _ = p.eat(&token::Comma);
 
     if p.token != token::Eof {
@@ -1183,8 +1195,8 @@ pub fn get_single_str_from_tts(
     expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| s.to_string())
 }
 
-/// Extracts comma-separated expressions from `tts`. If there is a
-/// parsing error, emit a non-fatal error and return `None`.
+/// Extracts comma-separated expressions from `tts`.
+/// On error, emit it, and return `None`.
 pub fn get_exprs_from_tts(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
@@ -1193,7 +1205,7 @@ pub fn get_exprs_from_tts(
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {
-        let expr = panictry!(p.parse_expr());
+        let expr = parse_expr(&mut p)?;
 
         // Perform eager expansion on the expression.
         // We want to be able to handle e.g., `concat!("foo", "bar")`.
