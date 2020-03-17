@@ -54,7 +54,7 @@ entry:
   %idx = zext i1 %cmp17 to i64
   %arrayidx.i.i814 = getelementptr inbounds double, double* %a3, i64 %idx
   %a4 = bitcast double* %arrayidx.i.i814 to i64*
-  %a51 = load i64, i64* %a4, align 8
+  %a51 = load i64, i64* %a4, align 8, !tbaa !10
   %a5 = bitcast double* %argres to i64*
   store i64 %a51, i64* %a5, align 8
   ret void

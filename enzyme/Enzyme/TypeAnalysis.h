@@ -1,6 +1,6 @@
 /*
  * TypeAnalysis.h - Type Analysis Detection Utilities
- * 
+ *
  * Copyright (C) 2019 William S. Moses (enzyme@wsmoses.com) - All Rights Reserved
  *
  * For commercial use of this code please contact the author(s) above.
@@ -103,18 +103,26 @@ public:
         }
     }
 
+    bool isIntegral() const {
+        return typeEnum == IntType::Integer || typeEnum == IntType::Anything;
+    }
+
     bool isKnown() const {
         return typeEnum != IntType::Unknown;
     }
-    
+
+    bool isPossiblePointer() const {
+        return !isKnown() || typeEnum == IntType::Pointer;
+    }
+
     llvm::Type* isFloat() const {
         return type;
     }
-    
+
 	bool operator==(const IntType dt) const {
         return typeEnum == dt;
     }
-	
+
 	bool operator!=(const IntType dt) const {
         return typeEnum != dt;
     }
@@ -125,7 +133,7 @@ public:
     bool operator!=(const DataType dt) const {
         return !(*this == dt);
     }
-    
+
     //returns whether changed
     bool operator=(const DataType dt) {
         bool changed = false;
@@ -135,7 +143,7 @@ public:
         type = dt.type;
         return changed;
     }
-    
+
     //returns whether changed
     bool operator|=(const DataType dt) {
         if (typeEnum == IntType::Anything) {
@@ -161,19 +169,137 @@ public:
         return false;
     }
 
-    bool pointerIntMerge(const DataType dt) {
-        //TODO consider &= pointer/int implications
-        if (dt.typeEnum == IntType::Pointer && typeEnum == IntType::Integer) {
-            typeEnum = IntType::Pointer;
-            return true;
-        }
-        if (typeEnum == IntType::Pointer && dt.typeEnum == IntType::Integer) {
-            return false;
+    bool pointerIntMerge(const DataType dt, llvm::BinaryOperator::BinaryOps op) {
+        bool changed = false;
+        using namespace llvm;
+
+        if (typeEnum == IntType::Anything && dt.typeEnum == IntType::Anything) {
+            return changed;
         }
 
-        return *this &= dt;
+        if ((typeEnum == IntType::Unknown && dt.typeEnum == IntType::Anything) ||
+            (typeEnum == IntType::Anything && dt.typeEnum == IntType::Unknown)) {
+            if (typeEnum != IntType::Unknown) {
+                typeEnum = IntType::Unknown;
+                changed = true;
+            }
+            return changed;
+        }
+
+        if ((typeEnum == IntType::Integer && dt.typeEnum == IntType::Integer) ||
+            (typeEnum == IntType::Unknown && dt.typeEnum == IntType::Integer) ||
+            (typeEnum == IntType::Integer && dt.typeEnum == IntType::Unknown) ||
+            (typeEnum == IntType::Anything && dt.typeEnum == IntType::Integer) ||
+            (typeEnum == IntType::Integer && dt.typeEnum == IntType::Anything)
+            ) {
+            switch(op) {
+                case BinaryOperator::Add:
+                case BinaryOperator::Sub:
+                case BinaryOperator::Mul:
+                case BinaryOperator::UDiv:
+                case BinaryOperator::SDiv:
+                case BinaryOperator::URem:
+                case BinaryOperator::SRem:
+                case BinaryOperator::And:
+                case BinaryOperator::Or:
+                case BinaryOperator::Xor:
+                case BinaryOperator::Shl:
+                case BinaryOperator::AShr:
+                case BinaryOperator::LShr:
+                    if (typeEnum != IntType::Integer) {
+                        typeEnum = IntType::Integer;
+                        changed = true;
+                    }
+                    break;
+                default:
+                    llvm_unreachable("unknown binary operator");
+            }
+            return changed;
+        }
+
+        if (typeEnum == IntType::Pointer && dt.typeEnum == IntType::Pointer) {
+            switch(op) {
+                case BinaryOperator::Sub:
+                    typeEnum = IntType::Integer;
+                    changed = true;
+                    break;
+                case BinaryOperator::Add:
+                case BinaryOperator::Mul:
+                case BinaryOperator::UDiv:
+                case BinaryOperator::SDiv:
+                case BinaryOperator::URem:
+                case BinaryOperator::SRem:
+                case BinaryOperator::And:
+                case BinaryOperator::Or:
+                case BinaryOperator::Xor:
+                case BinaryOperator::Shl:
+                case BinaryOperator::AShr:
+                case BinaryOperator::LShr:
+                    llvm_unreachable("illegal pointer/pointer operation");
+                    break;
+                default:
+                    llvm_unreachable("unknown binary operator");
+            }
+            return changed;
+        }
+
+        if ((typeEnum == IntType::Integer && dt.typeEnum == IntType::Pointer) ||
+            (typeEnum == IntType::Pointer && dt.typeEnum == IntType::Integer) ||
+            (typeEnum == IntType::Integer && dt.typeEnum == IntType::Pointer) ||
+            (typeEnum == IntType::Pointer && dt.typeEnum == IntType::Unknown) ||
+            (typeEnum == IntType::Unknown && dt.typeEnum == IntType::Pointer) ||
+            (typeEnum == IntType::Pointer && dt.typeEnum == IntType::Anything) ||
+            (typeEnum == IntType::Anything && dt.typeEnum == IntType::Pointer)
+            ){
+
+            switch(op) {
+                case BinaryOperator::Sub:
+                    if (typeEnum == IntType::Anything || dt.typeEnum == IntType::Anything) {
+                        if (typeEnum != IntType::Unknown) {
+                            typeEnum = IntType::Unknown;
+                            changed = true;
+                        }
+                        break;
+                    }
+                case BinaryOperator::Add:
+                case BinaryOperator::Mul:
+                    if (typeEnum != IntType::Pointer) {
+                        typeEnum = IntType::Pointer;
+                        changed = true;
+                    }
+                    break;
+                case BinaryOperator::UDiv:
+                case BinaryOperator::SDiv:
+                case BinaryOperator::URem:
+                case BinaryOperator::SRem:
+                    if (dt.typeEnum == IntType::Pointer) {
+                        llvm_unreachable("cannot divide integer by pointer");
+                    } else if (typeEnum != IntType::Unknown) {
+                        typeEnum = IntType::Unknown;
+                        changed = true;
+                    }
+                    break;
+                case BinaryOperator::And:
+                case BinaryOperator::Or:
+                case BinaryOperator::Xor:
+                case BinaryOperator::Shl:
+                case BinaryOperator::AShr:
+                case BinaryOperator::LShr:
+                    if (typeEnum != IntType::Unknown) {
+                        typeEnum = IntType::Unknown;
+                        changed = true;
+                    }
+                    break;
+                default:
+                    llvm_unreachable("unknown binary operator");
+            }
+            return changed;
+        }
+
+        llvm::errs() << "self: " << str() << " other: " << dt.str() << "\n";
+        llvm_unreachable("unknown case");
     }
-    
+
     //returns whether changed
     bool operator&=(const DataType dt) {
         if (typeEnum == IntType::Anything) {
@@ -190,7 +316,7 @@ public:
         }
 
 		if (dt.typeEnum != typeEnum) {
-			llvm::errs() << "&= typeEnum: " << to_string(typeEnum) << " dt.typeEnum.str(): " << to_string(dt.typeEnum) << "\n";
+			//llvm::errs() << "&= typeEnum: " << to_string(typeEnum) << " dt.typeEnum.str(): " << to_string(dt.typeEnum) << "\n";
             return *this = IntType::Unknown;
 		}
         assert(dt.typeEnum == typeEnum);
@@ -200,7 +326,7 @@ public:
         assert(dt.type == type);
         return false;
     }
-     
+
     bool operator<(const DataType dt) const {
         if (typeEnum == dt.typeEnum) {
             return type < dt.type;
@@ -230,7 +356,7 @@ public:
 		return res;
 	}
 };
-    
+
 static inline std::string to_string(const DataType dt) {
 	return dt.str();
 }
@@ -240,16 +366,27 @@ static inline std::string to_string(const std::vector<int> x) {
     std::string out = "[";
     for(unsigned i=0; i<x.size(); i++) {
         if (i != 0) out +=",";
-        out += std::to_string(x[i]); 
+        out += std::to_string(x[i]);
     }
     out +="]";
     return out;
 }
 
-class ValueData {
-    private:
+class ValueData;
+
+typedef std::shared_ptr<const ValueData> TypeResult;
+typedef std::map<const std::vector<int>, DataType> DataTypeMapType;
+typedef std::map<const std::vector<int>, const TypeResult> ValueDataMapType;
+
+class ValueData : public std::enable_shared_from_this<ValueData> {
+private:
         //mapping of known indices to type if one exists
-        std::map<const std::vector<int>, DataType> mapping;
+        DataTypeMapType mapping;
+
+        //mapping of known indices to type if one exists
+        //ValueDataMapType recur_mapping;
+
+        static std::map<std::pair<DataTypeMapType, ValueDataMapType>, TypeResult> cache;
 public:
 
     public:
@@ -279,7 +416,7 @@ public:
             for(auto a : v) {
                 if (a > 1000) {
                     //llvm::errs() << "not handling more than 1000B offset pointer dt:" << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
-                    return; 
+                    return;
                 }
             }
             mapping.insert(std::pair<const std::vector<int>, DataType>(v, d));
@@ -295,22 +432,7 @@ public:
                 insert({}, dat);
             }
         }
-        
-        llvm::Type* getKnownFloat(llvm::Value* val) const {
-            for(const auto &pair : mapping) {
-                auto s = pair.second;
-                if (s == IntType::Anything) continue;
-                if (s == IntType::Unknown) continue;
-                return s.isFloat();
-            }
-            if (auto inst = llvm::dyn_cast<llvm::Instruction>(val)) {
-                llvm::errs() << *inst->getParent()->getParent() << "\n";
-            }
-            llvm::errs() << " could not find known for value " << *val << " dt: " << str() << "\n";
-            assert(0 && "could not find known for value");
-            exit(1);
-        }
-        
+
         static ValueData Unknown() {
             return ValueData();
         }
@@ -321,11 +443,11 @@ public:
 				if (pair.second.typeEnum == IntType::Integer) {
 					vd.insert(pair.first, pair.second);
 				}
-			}	
+			}
 
 			return vd;
 		}
-        
+
         //TODO keep type information that is striated
         // e.g. if you have an i8* [0:Int, 8:Int] => i64* [0:Int, 1:Int]
         // After a depth len into the index tree, prune any lookups that are not {0} or {-1}
@@ -349,7 +471,7 @@ public:
 
             return dat;
         }
-        
+
         static bool lookupIndices(std::vector<int> &first, const std::vector<int> &second) {
             if (first.size() > second.size()) return false;
 
@@ -373,16 +495,16 @@ public:
 
             for(const auto &pair : mapping) {
                 std::vector<int> next = indices;
-                if (lookupIndices(next, pair.first)) 
+                if (lookupIndices(next, pair.first))
                     dat.insert(next, pair.second);
             }
 
             return dat;
         }
-        
+
         static std::vector<int> mergeIndices(int offset, const std::vector<int> &second) {
             assert(second.size() > 0);
-            
+
             std::vector<int> next(second);
             //-1 represents all elements in that range
             if (offset == -1 || next[0] == -1) {
@@ -512,21 +634,22 @@ public:
         bool operator|=(const ValueData &v) {
             //! Detect recursive merge
             //if (v.mapping.size() == mapping.size() && mapping.size() ) {
-            //    if 
+            //    if
             //}
-            
-            
+
+            //llvm::errs() << "merging @ " << str() << " with " << v.str() << "\n";
+
             bool changed = false;
 
             if (v[{-1}] != IntType::Unknown) {
                 for(auto &pair : mapping) {
                     if (pair.first.size() == 1 && pair.first[0] != -1) {
                         pair.second |= v[{-1}];
-                        //if (pair.second == ) // NOTE DELETE the non -1 
+                        //if (pair.second == ) // NOTE DELETE the non -1
                     }
                 }
             }
-            
+
             for(auto &pair : v.mapping) {
                 assert(pair.second != IntType::Unknown);
                 DataType dt = operator[](pair.first);
@@ -540,7 +663,7 @@ public:
 
         bool operator&=(const ValueData &v) {
             bool changed = false;
-            
+
             std::vector<std::vector<int>> keystodelete;
             for(auto &pair : mapping) {
                 DataType other = IntType::Unknown;
@@ -557,31 +680,40 @@ public:
             for(auto &key : keystodelete) {
                 mapping.erase(key);
             }
-            
+
             return changed;
         }
 
 
-        bool pointerIntMerge(const ValueData &v) {
+        bool pointerIntMerge(const ValueData &v, llvm::BinaryOperator::BinaryOps op) {
             bool changed = false;
-            
+
+            auto found = mapping.find({});
+            if (found != mapping.end()) {
+                changed |= ( found->second.pointerIntMerge(v[{}], op) );
+                if (found->second == IntType::Unknown) {
+                    mapping.erase(std::vector<int>({}));
+                }
+            } else if (v.mapping.find({}) != v.mapping.end()) {
+                DataType dt(IntType::Unknown);
+                dt.pointerIntMerge(v[{}], op);
+                if (dt != IntType::Unknown) {
+                    changed = true;
+                    mapping.emplace(std::vector<int>({}), dt);
+                }
+            }
+
             std::vector<std::vector<int>> keystodelete;
+
             for(auto &pair : mapping) {
-                DataType other = IntType::Unknown;
-                auto fd = v.mapping.find(pair.first);
-                if (fd != v.mapping.end()) {
-                    other = fd->second;
-                }
-                changed = (pair.second.pointerIntMerge(other));
-                if (pair.second == IntType::Unknown) {
-                    keystodelete.push_back(pair.first);
-                }
+                if (pair.first != std::vector<int>({})) keystodelete.push_back(pair.first);
             }
 
             for(auto &key : keystodelete) {
                 mapping.erase(key);
+                changed = true;
             }
-            
+
             return changed;
         }
 
@@ -595,7 +727,7 @@ public:
 			out += "[";
 			for(unsigned i=0; i<pair.first.size(); i++) {
 				if (i != 0) out +=",";
-				out += std::to_string(pair.first[i]); 
+				out += std::to_string(pair.first[i]);
 			}
 			out +="]:" + pair.second.str();
 			first = false;
@@ -605,7 +737,7 @@ public:
 	}
 };
 
-typedef std::map<llvm::Argument*, DataType> FnTypeInfo; 
+typedef std::map<llvm::Argument*, DataType> FnTypeInfo;
 
 //First is arguments, then return type
 typedef std::pair<std::map<llvm::Argument*, ValueData>, ValueData> NewFnTypeInfo;
@@ -614,12 +746,15 @@ class TypeAnalyzer;
 class TypeAnalysis;
 
 class TypeResults {
+public:
 	TypeAnalysis &analysis;
 	const NewFnTypeInfo info;
     llvm::Function* function;
 public:
 	TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn, llvm::Function* function);
-	DataType intType(llvm::Value* val);
+	DataType intType(llvm::Value* val, bool errIfNotFound=true);
+    DataType firstPointer(llvm::Value* val, bool errIfNotFound=true);
+    ValueData query(llvm::Value* val);
     NewFnTypeInfo getAnalyzedTypeInfo();
     ValueData getReturnAnalysis();
 };
@@ -634,10 +769,10 @@ public:
 
     //Calling context
     const NewFnTypeInfo fntypeinfo;
-    
+
 
 	TypeAnalysis &interprocedural;
-    
+
 	std::map<llvm::Value*, ValueData> analysis;
 
     TypeAnalyzer(llvm::Function* function, const NewFnTypeInfo& fn, TypeAnalysis& TA);
@@ -651,15 +786,17 @@ public:
     void prepareArgs();
 
     void considerTBAA();
-    
+
 	void run();
+
+    bool runUnusedChecks();
 
     void visitValue(llvm::Value& val);
 
     void visitAllocaInst(llvm::AllocaInst &I);
-    
+
     void visitLoadInst(llvm::LoadInst &I);
-    
+
 	void visitStoreInst(llvm::StoreInst &I);
 
     void visitGetElementPtrInst(llvm::GetElementPtrInst &gep);
@@ -667,23 +804,23 @@ public:
     void visitPHINode(llvm::PHINode& phi);
 
 	void visitTruncInst(llvm::TruncInst &I);
-	
+
 	void visitZExtInst(llvm::ZExtInst &I);
-	
+
 	void visitSExtInst(llvm::SExtInst &I);
 
 	void visitAddrSpaceCastInst(llvm::AddrSpaceCastInst &I);
-	
+
 	void visitFPToUIInst(llvm::FPToUIInst &I);
-	
+
 	void visitFPToSIInst(llvm::FPToSIInst &I);
-	
+
 	void visitUIToFPInst(llvm::UIToFPInst &I);
-	
+
     void visitSIToFPInst(llvm::SIToFPInst &I);
-	
+
 	void visitPtrToIntInst(llvm::PtrToIntInst &I);
-    
+
     void visitIntToPtrInst(llvm::IntToPtrInst &I);
 
     void visitBitCastInst(llvm::BitCastInst &I);
@@ -707,6 +844,8 @@ public:
     void visitCallInst(llvm::CallInst &call);
 
     ValueData getReturnAnalysis();
+
+    void dump();
 };
 
 
@@ -716,16 +855,12 @@ public:
     std::map<NewFnTypeInfo, TypeAnalyzer > analyzedFunctions;
 
     TypeResults analyzeFunction(const NewFnTypeInfo& fn, llvm::Function* function);
-    
+
 	ValueData query(llvm::Value* val, const NewFnTypeInfo& fn);
 
     DataType intType(llvm::Value* val, const NewFnTypeInfo& fn, bool errIfNotFound=true);
     DataType firstPointer(llvm::Value* val, const NewFnTypeInfo& fn, bool errIfNotFound=true);
-    
-    //err if not known; if found float anywhere return the type
-    inline llvm::Type* getKnownFloat(llvm::Value* val, const NewFnTypeInfo &fn) {
-        return query(val, fn).getKnownFloat(val);
-    }
+
     inline ValueData getReturnAnalysis(const NewFnTypeInfo &fn, llvm::Function* function) {
         analyzeFunction(fn, function);
         return analyzedFunctions.find(fn)->second.getReturnAnalysis();

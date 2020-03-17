@@ -63,7 +63,7 @@ attributes #6 = { nounwind }
 
 ; CHECK: define internal { double } @diffefoo(double %inp, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %conv = fptoui double %inp to i64
+; CHECK-NEXT:   %conv = bitcast double %inp to i64
 ; CHECK-NEXT:   %call_augmented = call { { i8* }, i64*, i64* } @augmented_substore(i64 %conv, i64 3)
 ; CHECK-NEXT:   %0 = extractvalue { { i8* }, i64*, i64* } %call_augmented, 0
 ; CHECK-NEXT:   %1 = extractvalue { { i8* }, i64*, i64* } %call_augmented, 2
@@ -71,7 +71,7 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   %2 = load double, double* %"'ipc", align 8
 ; CHECK-NEXT:   %3 = fadd fast double %2, %differeturn
 ; CHECK-NEXT:   store double %3, double* %"'ipc", align 8
-; CHECK-NEXT:   %conv_unwrap = fptoui double %inp to i64
+; CHECK-NEXT:   %conv_unwrap = bitcast double %inp to i64
 ; CHECK-NEXT:   %4 = call {} @diffesubstore(i64 %conv_unwrap, i64 3, { i8* } %0)
 ; CHECK-NEXT:   ret { double } zeroinitializer
 ; CHECK-NEXT: }

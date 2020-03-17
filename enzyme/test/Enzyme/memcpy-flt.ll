@@ -22,10 +22,10 @@ entry:
 declare void @__enzyme_autodiff.f64(...) local_unnamed_addr
 
 ; Function Attrs: noinline nounwind uwtable
-define dso_local void @submemcpy_float(double* nocapture %dst, double* nocapture readonly %src, i64 %num) local_unnamed_addr #2 {
+define dso_local void @submemcpy_float(double* nocapture %smdst, double* nocapture readonly %smsrc, i64 %num) local_unnamed_addr #2 {
 entry:
-  %0 = bitcast double* %dst to i8*
-  %1 = bitcast double* %src to i8*
+  %0 = bitcast double* %smdst to i8*
+  %1 = bitcast double* %smsrc to i8*
   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 %1, i64 %num, i1 false)
   ret void
 }
@@ -91,18 +91,18 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ {} } @augmented_submemcpy_float(double* nocapture %dst, double* %"dst'", double* nocapture readonly %src, double* %"src'", i64 %num) 
+; CHECK: define internal {{(dso_local )?}}{ {} } @augmented_submemcpy_float(double* nocapture %smdst, double* %"smdst'", double* nocapture readonly %smsrc, double* %"smsrc'", i64 %num) 
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = bitcast double* %dst to i8*
-; CHECK-NEXT:   %1 = bitcast double* %src to i8*
+; CHECK-NEXT:   %0 = bitcast double* %smdst to i8*
+; CHECK-NEXT:   %1 = bitcast double* %smsrc to i8*
 ; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 %1, i64 %num, i1 false)
 ; CHECK-NEXT:   ret { {} } undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffesubmemcpy_float(double* nocapture %dst, double* %"dst'", double* nocapture readonly %src, double* %"src'", i64 %num, {} %tapeArg)
+; CHECK: define internal {{(dso_local )?}}{} @diffesubmemcpy_float(double* nocapture %smdst, double* %"smdst'", double* nocapture readonly %smsrc, double* %"smsrc'", i64 %num, {} %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = lshr i64 %num, 3
-; CHECK-NEXT:   call void @__enzyme_memcpyadd_doubleda1sa1(double* %"dst'", double* %"src'", i64 %0)
+; CHECK-NEXT:   call void @__enzyme_memcpyadd_doubleda1sa1(double* %"smdst'", double* %"smsrc'", i64 %0)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

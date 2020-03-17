@@ -54,7 +54,7 @@
 
 using namespace llvm;
 
-enum class AugmentedStruct; 
+enum class AugmentedStruct;
 typedef struct {
   PHINode* var;
   Instruction* incvar;
@@ -75,7 +75,6 @@ static inline bool operator==(const LoopContext& lhs, const LoopContext &rhs) {
 
 class GradientUtils {
 public:
-  TypeAnalysis &TA;
   llvm::Function *newFunc;
   llvm::Function *oldFunc;
   ValueToValueMapTy invertedPointers;
@@ -100,7 +99,7 @@ public:
   SmallVector<PHINode*, 4> fictiousPHIs;
   ValueToValueMapTy originalToNewFn;
 
-  const std::map<Instruction*, bool>* can_modref_map;  
+  const std::map<Instruction*, bool>* can_modref_map;
 
 
   Value* getNewFromOriginal(Value* originst) {
@@ -269,7 +268,7 @@ public:
             unwrap_cache.erase(a);
         }
     }
-    
+
     {
         std::vector<std::pair<Value*, BasicBlock*>> lookup_cache_pairs;
         for(auto& a : lookup_cache) {
@@ -339,7 +338,7 @@ public:
     cast<CallInst>(anti)->setAttributes(call->getAttributes());
     cast<CallInst>(anti)->setCallingConv(call->getCallingConv());
     cast<CallInst>(anti)->setTailCallKind(call->getTailCallKind());
-    cast<CallInst>(anti)->setDebugLoc(call->getDebugLoc());    
+    cast<CallInst>(anti)->setDebugLoc(call->getDebugLoc());
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
     cast<CallInst>(anti)->setMetadata("enzyme_activity_inst", MDNode::get(placeholder->getContext(), MDString::get(placeholder->getContext(), "active")));
@@ -387,7 +386,7 @@ public:
                 llvm::errs() << "   idx: " << *p.first.first << ", " << p.first.second << " pos=" << p.second << "\n";
             }
             llvm::errs() << " </mapping>\n";
-        
+
             if (mapping.find(idx) == mapping.end()) {
                 llvm::errs() << "idx: " << *idx.first << ", " << idx.second << "\n";
                 assert(0 && "could not find index in mapping");
@@ -443,7 +442,7 @@ public:
         //Instruction* origret = ret;
 
         if (ret->getType()->isEmptyTy()) {
-            
+
             if (auto inst = dyn_cast_or_null<Instruction>(malloc)) {
                 if (inst->getType() != ret->getType()) {
                     llvm::errs() << "oldFunc: " <<*oldFunc << "\n";
@@ -456,7 +455,7 @@ public:
                 inst->replaceAllUsesWith(UndefValue::get(ret->getType()));
                 erase(inst);
             }
-            
+
             //return ret;
             return UndefValue::get(ret->getType());
         }
@@ -477,7 +476,7 @@ public:
             entryBuilder.setFastMathFlags(getFast());
             ret = cast<Instruction>(entryBuilder.CreateExtractValue(tape, {idx}));
 
-        
+
             //scopeMap[inst] = cache;
             Type* innerType = ret->getType();
             for(const auto unused : getSubLimits(BuilderQ.GetInsertBlock()) ) {
@@ -557,7 +556,7 @@ public:
                             assert(0 && "illegal use for out of loop scopeMap");
                         }
                     }
-                    
+
 
                     {
                     Instruction* preerase = cast<Instruction>(scopeMap[malloc]);
@@ -565,7 +564,7 @@ public:
                     erase(preerase);
                     }
                 } else {
- 
+
                     // Remove stores into
                     auto stores = scopeStores[cast<AllocaInst>(scopeMap[malloc])];
                     scopeStores.erase(cast<AllocaInst>(scopeMap[malloc]));
@@ -574,8 +573,8 @@ public:
                             erase(inst);
                         }
                     }
-                    
-                    
+
+
                     //Remove allocations for scopealloc since it is already allocated by the augmented forward pass
                     auto allocs = scopeAllocs[cast<AllocaInst>(scopeMap[malloc])];
                     scopeAllocs.erase(cast<AllocaInst>(scopeMap[malloc]));
@@ -614,7 +613,7 @@ public:
                         erase(store);
                         */
 
-                        Instruction* storedinto = cast ? (Instruction*)cast : (Instruction*)allocinst; 
+                        Instruction* storedinto = cast ? (Instruction*)cast : (Instruction*)allocinst;
                         for(auto use : storedinto->users()) {
                             //llvm::errs() << " found use of " << *storedinto << " of " << use << "\n";
                             if (auto si = dyn_cast<StoreInst>(use)) erase(si);
@@ -669,7 +668,7 @@ public:
                     //cast<Instruction>(scopeMap[malloc])->getParent()->getParent()->dump();
 
                     //llvm::errs() << "did erase for malloc: " << *malloc << " " << *scopeMap[malloc] << "\n";
-                    
+
                     Instruction* preerase = cast<Instruction>(scopeMap[malloc]);
                     scopeMap.erase(malloc);
                     erase(preerase);
@@ -689,7 +688,7 @@ public:
       //assert(!isa<PHINode>(malloc));
 
       assert(idx == addedMallocs.size());
-          
+
       if (isa<UndefValue>(malloc)) {
         addedMallocs.push_back(malloc);
         return malloc;
@@ -716,7 +715,7 @@ public:
              toadd = ci;
           }
       }
-            
+
       //llvm::errs() << " malloc: " << *malloc << "\n";
       //llvm::errs() << " toadd: " << *toadd << "\n";
       Type* innerType = toadd->getType();
@@ -724,20 +723,22 @@ public:
         innerType = cast<PointerType>(innerType)->getElementType();
       }
       assert(innerType == malloc->getType());
-      
+
       addedMallocs.push_back(toadd);
       return malloc;
     }
     llvm::errs() << "Fell through on addMalloc. This should never happen.\n";
-    assert(false); 
+    assert(false);
   }
 
   const SmallVectorImpl<Value*> & getMallocs() const {
     return addedMallocs;
   }
 protected:
-  AAResults &AA;
   TargetLibraryInfo &TLI;
+  AAResults &AA;
+public:
+  TypeAnalysis &TA;
   GradientUtils(Function* newFunc_, Function* oldFunc_, TargetLibraryInfo &TLI_, TypeAnalysis &TA_, AAResults &AA_, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &constantvalues_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy& originalToNewFn_) :
       newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(), DT(*newFunc_), OrigDT(*oldFunc_), constants(constants_.begin(), constants_.end()), nonconstant(nonconstant_.begin(), nonconstant_.end()), constant_values(constantvalues_.begin(), constantvalues_.end()), nonconstant_values(returnvals_.begin(), returnvals_.end()), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI), inversionAllocs(nullptr), TLI(TLI_), AA(AA_), TA(TA_) {
         invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
@@ -796,14 +797,14 @@ public:
     return false;
   }
 
-  bool isConstantValueInternal(Value* val, AAResults &AA) {
+  bool isConstantValueInternal(Value* val, AAResults &AA, TypeResults &TR) {
 	  cast<Value>(val);
-    return isconstantValueM(TA, val, constants, nonconstant, constant_values, nonconstant_values, AA);
+    return isconstantValueM(TR, val, constants, nonconstant, constant_values, nonconstant_values, AA);
   };
 
-  bool isConstantInstructionInternal(Instruction* val, AAResults &AA) {
+  bool isConstantInstructionInternal(Instruction* val, AAResults &AA, TypeResults &TR) {
     cast<Instruction>(val);
-    return isconstantM(TA, val, constants, nonconstant, constant_values, nonconstant_values, AA);
+    return isconstantM(TR, val, constants, nonconstant, constant_values, nonconstant_values, AA);
   }
 
   SmallPtrSet<Instruction*,4> replaceableCalls;
@@ -868,31 +869,31 @@ public:
       }
   }
 
-  void forceActiveDetection(AAResults &AA) {
+  void forceActiveDetection(AAResults &AA, TypeResults &TR) {
       for(auto a = oldFunc->arg_begin(); a != oldFunc->arg_end(); a++) {
         if (constants.find(a) == constants.end() && nonconstant.find(a) == nonconstant.end()) continue;
 
-        bool const_value = isConstantValueInternal(a, AA);
+        bool const_value = isConstantValueInternal(a, AA, TR);
         //a->addAttr(llvm::Attribute::get(a->getContext(), "enzyme_activity_value", const_value ? "const" : "active"));
         cast<Argument>(getNewFromOriginal(a))->addAttr(llvm::Attribute::get(a->getContext(), "enzyme_activity_value", const_value ? "const" : "active"));
       }
 
       for(BasicBlock& BB: *oldFunc) {
           for(Instruction &I : BB) {
-              bool const_inst = isConstantInstructionInternal(&I, AA);
-              
+              bool const_inst = isConstantInstructionInternal(&I, AA, TR);
+
               getNewFromOriginal(&I)->setMetadata("enzyme_activity_inst", MDNode::get(I.getContext(), MDString::get(I.getContext(), const_inst ? "const" : "active")));
               //I.setMetadata(const_inst ? "enzyme_constinst" : "enzyme_activeinst", MDNode::get(I.getContext(), {}));
 
               //I.addAttr(llvm::Attribute::get(I.getContext(), "enzyme_activity_inst", const_inst ? "const" : "active"));
-              bool const_value = isConstantValueInternal(&I, AA);
+              bool const_value = isConstantValueInternal(&I, AA, TR);
               //I.setMetadata(const_value ? "enzyme_constvalue" : "enzyme_activevalue", MDNode::get(I.getContext(), {}));
               getNewFromOriginal(&I)->setMetadata("enzyme_activity_value", MDNode::get(I.getContext(), MDString::get(I.getContext(), const_value ? "const" : "active")));
               //I.addAttr(llvm::Attribute::get(I.getContext(), "enzyme_activity_value", const_value ? "const" : "active"));
           }
       }
   }
-  
+
   void cleanupActiveDetection() {
       //llvm::errs() << "pre cleanup: " << *newFunc << "\n";
 
@@ -913,7 +914,7 @@ public:
   llvm::StringRef getAttribute(Argument* arg, std::string attr) {
     return arg->getParent()->getAttributes().getParamAttr(arg->getArgNo(), attr).getValueAsString();
   }
-  
+
   bool isConstantValue(Value* val) {
     if (auto inst = dyn_cast<Instruction>(val)) {
         if (originalInstructions.find(inst) == originalInstructions.end()) return true;
@@ -923,7 +924,7 @@ public:
             if (res == "active") return false;
         }
     }
-    
+
     if (auto arg = dyn_cast<Argument>(val)) {
         auto res = getAttribute(arg, "enzyme_activity_value");
         if (res == "const") return true;
@@ -953,7 +954,7 @@ public:
     //TODO allow gv/inline asm
     //if (isa<GlobalValue>(val) || isa<InlineAsm>(val)) return isConstantValueInternal(val);
     if (isa<Constant>(val) || isa<UndefValue>(val) || isa<MetadataAsValue>(val)) return true;
-    
+
     err:;
     llvm::errs() << *oldFunc << "\n";
     llvm::errs() << *newFunc << "\n";
@@ -965,13 +966,13 @@ public:
 
   bool isConstantInstruction(Instruction* inst) {
     if (originalInstructions.find(inst) == originalInstructions.end()) return true;
-    
+
     if (MDNode* md = inst->getMetadata("enzyme_activity_inst")) {
         auto res = cast<MDString>(md->getOperand(0))->getString();
         if (res == "const") return true;
         if (res == "active") return false;
     }
-    
+
     llvm::errs() << *oldFunc << "\n";
     llvm::errs() << *newFunc << "\n";
     llvm::errs() << *inst << "\n";
@@ -992,14 +993,14 @@ public:
           Instruction* inst = &*I;
           assert(inst);
           I++;
-          
+
           if (originalInstructions.find(inst) == originalInstructions.end()) {
               continue;
           }
           if (this->invertedPointers.find(inst) != this->invertedPointers.end()) {
               continue;
           }
-          
+
           if (inst->getType()->isEmptyTy()) continue;
 
           if (inst->getType()->isFPOrFPVectorTy()) continue; //!op->getType()->isPointerTy() && !op->getType()->isIntegerTy()) {
@@ -1072,7 +1073,7 @@ public:
             assert(available.lookup(val)->getType() == val->getType());
             return available.lookup(val);
           }
-          
+
           if (auto inst = dyn_cast<Instruction>(val)) {
             if (isOriginalBlock(*BuilderM.GetInsertBlock())) {
                 if (BuilderM.GetInsertBlock()->size() && BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end()) {
@@ -1238,7 +1239,7 @@ endCheck:
                 assert(val->getType() == toreturn->getType());
                 return toreturn;
             }
-            
+
             //llvm::errs() << "cannot unwrap following " << *val << "\n";
 
           if (auto inst = dyn_cast<Instruction>(val)) {
@@ -1286,18 +1287,18 @@ endCheck:
             } else {
                 allocationPreheaders[i] = allocationPreheaders[i+1];
             }
-              
+
             if (contexts[i].dynamic) {
                 limits[i] = ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 1);
             } else {
                 ValueToValueMapTy emptyMap;
                 IRBuilder <> allocationBuilder(&allocationPreheaders[i]->back());
                 Value* limitMinus1 = nullptr;
-                
+
                 if (shouldRecompute(contexts[i].limit, emptyMap)) {
                     limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
                 }
-                
+
                 // We have a loop with static bounds, but whose limit is not available to be computed at the current loop preheader (such as the innermost loop of triangular iteration domain)
                 // Handle this case like a dynamic loop
                 if (limitMinus1 == nullptr) {
@@ -1314,7 +1315,7 @@ endCheck:
                 limits[i] = limitCache[cidx];
             }
         }
-        
+
         std::vector<std::pair<Value*, std::vector<std::pair<LoopContext,Value*>>>> sublimits;
 
         Value* size = nullptr;
@@ -1347,7 +1348,7 @@ endCheck:
         }
         return sublimits;
     }
-   
+
     //! Caching mechanism: creates a cache of type T in a scope given by ctx (where if ctx is in a loop there will be a corresponding number of slots)
     AllocaInst* createCacheForScope(BasicBlock* ctx, Type* T, StringRef name, bool shouldFree, bool allocateInternal=true) {
         assert(ctx);
@@ -1372,7 +1373,7 @@ endCheck:
                 alloc->setAlignment(bsize);
             }
         }
-                
+
         Type *BPTy = Type::getInt8PtrTy(ctx->getContext());
         auto realloc = newFunc->getParent()->getOrInsertFunction("realloc", BPTy, BPTy, Type::getInt64Ty(ctx->getContext()));
 
@@ -1383,13 +1384,13 @@ endCheck:
 
             Value* size = sublimits[i].first;
             Type* myType = types[i];
-            
+
             ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(ctx->getContext()), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(myType)/8);
 
             if (allocateInternal) {
 
                 IRBuilder <> allocationBuilder(&containedloops.back().first.preheader->back());
-                
+
                 StoreInst* storealloc = nullptr;
                 if (!sublimits[i].second.back().first.dynamic) {
                     auto firstallocation = CallInst::CreateMalloc(
@@ -1402,10 +1403,10 @@ endCheck:
                     }
                     malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
                     malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
-                    
+
                     storealloc = allocationBuilder.CreateStore(firstallocation, storeInto);
                     //storealloc->setMetadata("enzyme_cache_static_store", MDNode::get(storealloc->getContext(), {}));
-                    
+
                     scopeAllocs[alloc].push_back(malloccall);
 
                     //allocationBuilder.GetInsertBlock()->getInstList().push_back(cast<Instruction>(allocation));
@@ -1449,7 +1450,7 @@ endCheck:
                     storealloc = build.CreateStore(allocation, storeInto);
                     //storealloc->setMetadata("enzyme_cache_dynamic_store", mdpair);
                 }
-                
+
                 if (invariantGroups.find(std::make_pair((Value*)alloc, i)) == invariantGroups.end()) {
                     MDNode* invgroup = MDNode::getDistinct(alloc->getContext(), {});
                     invariantGroups[std::make_pair((Value*)alloc, i)] = invgroup;
@@ -1498,7 +1499,7 @@ endCheck:
                 }
                 scopeFrees[alloc].insert(ci);
             }
-        
+
             if (i != 0) {
                 IRBuilder <>v(&sublimits[i-1].second.back().first.preheader->back());
                 //TODO
@@ -1515,11 +1516,11 @@ endCheck:
     Value* getCachePointer(IRBuilder <>& BuilderM, BasicBlock* ctx, Value* cache, bool storeInStoresMap=false) {
         assert(ctx);
         assert(cache);
-        
+
         auto sublimits = getSubLimits(ctx);
-			
+
         ValueToValueMapTy available;
-        
+
         Value* next = cache;
         assert(next->getType()->isPointerTy());
         for(int i=sublimits.size()-1; i>=0; i--) {
@@ -1539,7 +1540,7 @@ endCheck:
                 invariantGroups[std::make_pair(cache, i)] = invgroup;
             }
             cast<LoadInst>(next)->setMetadata(LLVMContext::MD_invariant_group, invariantGroups[std::make_pair(cache, i)]);
-            ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(cache->getContext()), 
+            ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(cache->getContext()),
                             ctx->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(next->getType())/8);
             cast<LoadInst>(next)->setMetadata(LLVMContext::MD_dereferenceable, MDNode::get(cache->getContext(), {ConstantAsMetadata::get(byteSizeOfType)}));
             unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
@@ -1547,7 +1548,7 @@ endCheck:
                 cast<LoadInst>(next)->setAlignment(bsize);
             }
 
-            const auto& containedloops = sublimits[i].second; 
+            const auto& containedloops = sublimits[i].second;
 
             SmallVector<Value*,3> indices;
             SmallVector<Value*,3> limits;
@@ -1582,20 +1583,20 @@ endCheck:
                 next = BuilderM.CreateGEP(next, {idx});
                 if (storeInStoresMap && isa<AllocaInst>(cache)) scopeStores[cast<AllocaInst>(cache)].push_back(next);
             }
-            assert(next->getType()->isPointerTy());    
+            assert(next->getType()->isPointerTy());
         }
         return next;
     }
-     
+
     LoadInst* lookupValueFromCache(IRBuilder<>& BuilderM, BasicBlock* ctx, Value* cache) {
         auto result = BuilderM.CreateLoad(getCachePointer(BuilderM, ctx, cache));
-        
+
         if (valueInvariantGroups.find(cache) == valueInvariantGroups.end()) {
             MDNode* invgroup = MDNode::getDistinct(cache->getContext(), {});
             valueInvariantGroups[cache] = invgroup;
         }
         result->setMetadata(LLVMContext::MD_invariant_group, valueInvariantGroups[cache]);
-        ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(cache->getContext()), 
+        ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(cache->getContext()),
                         ctx->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(result->getType())/8);
         //result->setMetadata(LLVMContext::MD_dereferenceable, MDNode::get(cache->getContext(), {ConstantAsMetadata::get(byteSizeOfType)}));
         unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
@@ -1633,7 +1634,7 @@ endCheck:
             valueInvariantGroups[cache] = invgroup;
         }
         storeinst->setMetadata(LLVMContext::MD_invariant_group, valueInvariantGroups[cache]);
-        ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(cache->getContext()), 
+        ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(cache->getContext()),
                         ctx->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(val->getType())/8);
         unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
         if ((bsize & (bsize - 1)) == 0) {
@@ -1646,7 +1647,7 @@ endCheck:
         assert(ctx);
         assert(inst);
         assert(cache);
-        
+
         IRBuilder <> v(inst->getParent());
 
         if (&*inst->getParent()->rbegin() != inst) {
@@ -1713,7 +1714,7 @@ endCheck:
     Value* lookupM(Value* val, IRBuilder<>& BuilderM);
 
     Value* invertPointerM(Value* val, IRBuilder<>& BuilderM);
-  
+
     void branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& BuilderM, const std::map<BasicBlock*, std::vector<std::pair</*pred*/BasicBlock*,/*successor*/BasicBlock*>>> &targetToPreds, const std::map<BasicBlock*,PHINode*>* replacePHIs = nullptr);
 
 };
@@ -1820,7 +1821,7 @@ public:
       assert(val->getType() == old->getType());
       Value* res = nullptr;
       if (val->getType()->isIntOrIntVectorTy()) {
-        
+
         Value* bcold = BuilderM.CreateBitCast(old, IntToFloatTy(old->getType()));
         Value* bcdif = BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType()));
         res = faddForSelect(bcold, bcdif);
@@ -1909,7 +1910,7 @@ public:
         report_fatal_error("cannot handle type");
       }
 
-        
+
       SelectInst* addedSelect = nullptr;
 
         //! optimize fadd of select to select of fadd

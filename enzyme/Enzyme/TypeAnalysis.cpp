@@ -1,6 +1,6 @@
 /*
  * TypeAnalysis.cpp - Type Analysis Detection Utilities
- * 
+ *
  * Copyright (C) 2019 William S. Moses (enzyme@wsmoses.com) - All Rights Reserved
  *
  * For commercial use of this code please contact the author(s) above.
@@ -52,7 +52,7 @@
             for(auto &pair : mapping) {
 
                 ValueData vd2;
-                
+
                 //llvm::errs() << " considering casting from " << *from << " to " << *to << " fromidx: " << to_string(pair.first) << " dt:" << pair.second.str() << " fromsize: " << fromsize << " tosize: " << tosize << "\n";
 
                 if (pair.first.size() == 0) {
@@ -82,7 +82,7 @@
                     goto add;
                 } else {
                     //pair.first[0] == -1
-                
+
                     if (fromsize < tosize) {
                         if (tosize % fromsize == 0) {
                             //TODO should really be at each offset do a -1
@@ -161,7 +161,7 @@ TypeAnalyzer::TypeAnalyzer(Function* function, const NewFnTypeInfo& fn, TypeAnal
 ValueData TypeAnalyzer::getAnalysis(Value* val) {
 	if (val->getType()->isIntegerTy() && cast<IntegerType>(val->getType())->getBitWidth() == 1) return ValueData(DataType(IntType::Integer));
     if (isa<ConstantData>(val)) {
-		if (auto ci = dyn_cast<ConstantInt>(val)) {	
+		if (auto ci = dyn_cast<ConstantInt>(val)) {
 			if (ci->getLimitedValue() >=1 && ci->getLimitedValue() <= 4096) {
 				return ValueData(DataType(IntType::Integer));
 			}
@@ -263,7 +263,7 @@ void TypeAnalyzer::prepareArgs() {
     	//Get type and other information about argument
         updateAnalysis(&arg, getAnalysis(&arg), &arg);
     }
-    
+
     //Propagate return value type information
     for(auto &BB: *function) {
         for(auto &inst : BB) {
@@ -314,6 +314,144 @@ void TypeAnalyzer::considerTBAA() {
 }
 
 
+bool couldBeZero(Value* val, std::map<Value*, bool>& intseen) {
+    if (intseen.find(val) != intseen.end()) return intseen[val];
+    //todo what to insert to intseen
+
+    intseen[val] = false;
+
+    if (auto ci = dyn_cast<ConstantInt>(val)) {
+        return intseen[val] = (ci->getLimitedValue() == 0);
+    }
+
+    if (auto ci = dyn_cast<CastInst>(val)) {
+        return intseen[val] = couldBeZero(ci->getOperand(0), intseen);
+    }
+
+    if (auto pn = dyn_cast<PHINode>(val)) {
+        for(auto &a : pn->incoming_values()) {
+            if (couldBeZero(a, intseen)) {
+                return intseen[val] = true;
+            }
+            // if we are an iteration variable, suppose that it could be zero in that range
+            // TODO: could actually check the range intercepts 0
+            if (auto bo = dyn_cast<BinaryOperator>(a)) {
+                if (bo->getOperand(0) == pn || bo->getOperand(1) == pn) {
+                    if (bo->getOpcode() == BinaryOperator::Add || bo->getOpcode() == BinaryOperator::Sub) {
+                        return intseen[val] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    return intseen[val];
+}
+
+bool hasNonIntegralUse(TypeAnalyzer& TAZ, Value* val, std::map<Value*, bool>& intseen) {
+    if (intseen.find(val) != intseen.end()) return intseen[val];
+    //todo what to insert to intseen
+
+    bool unknownUse = false;
+    intseen[val] = false;
+
+    for(User* use: val->users()) {
+        if (auto ci = dyn_cast<CastInst>(use)) {
+
+            if (isa<SIToFPInst>(use) || isa<UIToFPInst>(use)) {
+                continue;
+            }
+
+            if (isa<FPToSIInst>(use) || isa<FPToUIInst>(use)) {
+                continue;
+            }
+
+            if (ci->getDestTy()->isPointerTy()) {
+                unknownUse = true;
+                break;
+            }
+
+            unknownUse |= hasNonIntegralUse(TAZ, ci, intseen);
+            continue;
+        }
+
+        if (auto bi = dyn_cast<BinaryOperator>(use)) {
+
+            unknownUse |= hasNonIntegralUse(TAZ, bi, intseen);
+            continue;
+        }
+
+        if (auto pn = dyn_cast<PHINode>(use)) {
+            unknownUse |= hasNonIntegralUse(TAZ, pn, intseen);
+            continue;
+        }
+
+        if (auto seli = dyn_cast<SelectInst>(use)) {
+            unknownUse |= hasNonIntegralUse(TAZ, seli, intseen);
+            continue;
+        }
+
+        if (auto gep = dyn_cast<GetElementPtrInst>(use)) {
+            if (gep->getPointerOperand() == val) {
+                unknownUse = true;
+                break;
+            }
+
+            //this assumes that the original value doesnt propagate out through the pointer
+            continue;
+        }
+
+        if (auto call = dyn_cast<CallInst>(use)) {
+            if (Function* ci = call->getCalledFunction()) {
+                //These function calls are known uses that do not potentially have an inactive use
+                if (ci->getName() == "__cxa_guard_acquire" || ci->getName() == "__cxa_guard_release" || ci->getName() == "__cxa_guard_abort" || ci->getName() == "printf" || ci->getName() == "fprintf") {
+                    continue;
+                }
+                //TODO recursive fns
+            }
+        }
+
+        if (isa<AllocaInst>(use)) {
+            continue;
+        }
+
+        if (isa<CmpInst>(use)) continue;
+        if (isa<SwitchInst>(use)) continue;
+
+        //if (sawReturn && isa<ReturnInst>(use)) {
+        //    *sawReturn = true;
+        //    continue;
+        //}
+
+        unknownUse = true;
+        //llvm::errs() << "unknown use : " << *use << " of v: " << *v << "\n";
+        continue;
+    }
+
+    return intseen[val] = unknownUse;
+}
+
+bool TypeAnalyzer::runUnusedChecks() {
+    //NOTE explicitly NOT doing arguments here
+    //  this is done to prevent information being propagated up via IPO that is incorrect (since there may be other uses in the caller)
+    bool changed = false;
+    std::vector<Value*> todo;
+
+    for(auto &BB: *function) {
+        for(auto &inst : BB) {
+            if (!inst.getType()->isIntOrIntVectorTy()) continue;
+            auto analysis = getAnalysis(&inst);
+            if (analysis[{}] != IntType::Unknown) continue;
+            std::map<Value*, bool> intseen;
+            if(!hasNonIntegralUse(*this, &inst, intseen)) {
+                updateAnalysis(&inst, IntType::Integer, &inst);
+                changed = true;
+            }
+        }
+    }
+
+    return changed;
+}
 
 void TypeAnalyzer::run() {
 	std::deque<CallInst*> pendingCalls;
@@ -338,6 +476,29 @@ void TypeAnalyzer::run() {
     } else break;
 
 	}while(1);
+
+    runUnusedChecks();
+
+    do {
+
+    while (workList.size()) {
+        auto todo = workList.front();
+        workList.pop_front();
+        if (auto ci = dyn_cast<CallInst>(todo)) {
+            pendingCalls.push_back(ci);
+            continue;
+        }
+        visitValue(*todo);
+    }
+
+    if (pendingCalls.size() > 0) {
+        auto todo = pendingCalls.front();
+        pendingCalls.pop_front();
+        visitValue(*todo);
+        continue;
+    } else break;
+
+    }while(1);
 }
 
 void TypeAnalyzer::visitValue(Value& val) {
@@ -391,19 +552,22 @@ void TypeAnalyzer::visitStoreInst(StoreInst &I) {
 
 //TODO gep
 void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
-    
+
     //for(auto& ind : gep.indices()) {
     //    updateAnalysis(ind, IntType::Integer, &gep);
     //}
-    
+
     llvm::Type *Int32Ty = llvm::Type::getInt32Ty(gep.getContext());
     std::vector<Value*> idnext;
 
+    std::map<Value*, bool> intseen;
     for(auto& a : gep.indices()) {
         if (auto ci = dyn_cast<ConstantInt>(a)) {
             idnext.push_back(ci);//(int)ci->getLimitedValue());
-        } else {
+        } else if (couldBeZero(a, intseen)){
             idnext.push_back(ConstantInt::get(Int32Ty, 0));
+        } else {
+            return;
         }
     }
 
@@ -429,12 +593,25 @@ void TypeAnalyzer::visitPHINode(PHINode& phi) {
     }
 
     assert(phi.getNumIncomingValues() > 0);
-	//TODO phi needs reconsidering here 
-    ValueData vd = getAnalysis(phi.getIncomingValue(0));
+	//TODO phi needs reconsidering here
+    ValueData vd;
+    bool set = false;
+
+    auto consider = [&](ValueData&& newData) {
+        if (set) {
+            vd &= newData;
+        } else {
+            set = true;
+            vd = newData;
+        }
+    };
+
     //llvm::errs() << "phi: " << phi << "\n";
+
+    //TODO generalize this (and for recursive, etc)
     for(auto& op : phi.incoming_values()) {
         //llvm::errs() << " + " << vd.str() << " ga: " << getAnalysis(op).str() << "\n";
-        vd &= getAnalysis(op);
+        consider(getAnalysis(op));
     }
 
     updateAnalysis(&phi, vd, &phi);
@@ -494,7 +671,11 @@ void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
   if (I.getType()->isPointerTy() && I.getOperand(0)->getType()->isPointerTy()) {
     Type* et1 = cast<PointerType>(I.getType())->getElementType();
     Type* et2 = cast<PointerType>(I.getOperand(0)->getType())->getElementType();
-    
+
+    //I.getParent()->getParent()->dump();
+    //dump();
+    //llvm::errs() << "I: " << I << "\n";
+    //llvm::errs() << " + keep for cast: " << getAnalysis(I.getOperand(0)).KeepForCast(function->getParent()->getDataLayout(), et2, et1).str() << "\n";
 	updateAnalysis(&I, getAnalysis(I.getOperand(0)).KeepForCast(function->getParent()->getDataLayout(), et2, et1), &I);
 	updateAnalysis(I.getOperand(0), getAnalysis(&I).KeepForCast(function->getParent()->getDataLayout(), et1, et2), &I);
   }
@@ -526,12 +707,12 @@ void TypeAnalyzer::visitExtractElementInst(ExtractElementInst &I) {
 
 void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
 	updateAnalysis(I.getOperand(2), IntType::Integer, &I);
-    
+
 	//int idx = -1;
 	//if (auto ci = dyn_cast<ConstantInt>(I.getOperand(2))) {
     //	idx = (int)ci->getLimitedValue();
 	//}
-	
+
     //if we are inserting into undef/etc the anything should not be propagated
 	auto res = getAnalysis(I.getOperand(0)).PurgeAnything();
 
@@ -545,7 +726,7 @@ void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
 	//updateAnalysis(I.getOperand(1), res.Lookup({idx}), Direction::Both);
 }
 
-void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) { 
+void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
     updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
     updateAnalysis(I.getOperand(1), getAnalysis(&I), &I);
 
@@ -556,17 +737,19 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
 }
 
 void TypeAnalyzer::visitExtractValueInst(ExtractValueInst &I) {
-	//for(auto &a : I.indices()) {
-	//	updateAnalysis(a, IntType::Integer, &I);
-	//}
 	//TODO aggregate flow
 }
 
 void TypeAnalyzer::visitInsertValueInst(InsertValueInst &I) {
-	//for(auto &a : I.indices()) {
-	//	updateAnalysis(a, IntType::Integer, &I);
-	//}
 	//TODO aggregate flow
+}
+
+void TypeAnalyzer::dump() {
+    llvm::errs() << "<analysis>\n";
+    for(auto& pair : analysis) {
+        llvm::errs() << *pair.first << ": " << pair.second.str() << "\n";
+    }
+    llvm::errs() << "</analysis>\n";
 }
 
 void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
@@ -579,31 +762,64 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
         updateAnalysis(I.getOperand(0), dt, &I);
         updateAnalysis(I.getOperand(1), dt, &I);
         updateAnalysis(&I, dt, &I);
-    } else if (I.getOpcode() != BinaryOperator::And && I.getOpcode() != BinaryOperator::Or) {
+    } else {
 
-		updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
-		updateAnalysis(I.getOperand(1), getAnalysis(&I), &I);
+        auto analysis = getAnalysis(&I);
+        switch(I.getOpcode()) {
+            case BinaryOperator::Sub:
+                //TODO propagate this info
+                // ptr - ptr => int and int - int => int; thus int = a - b says only that these are equal
+                // ptr - int => ptr and int - ptr => ptr; thus
+                analysis = DataType(IntType::Unknown);
+                break;
+
+            case BinaryOperator::Add:
+            case BinaryOperator::Mul:
+                // if a + b or a * b == int, then a and b must be ints
+                analysis = analysis.JustInt();
+                break;
+
+            case BinaryOperator::UDiv:
+            case BinaryOperator::SDiv:
+            case BinaryOperator::URem:
+            case BinaryOperator::SRem:
+            case BinaryOperator::And:
+            case BinaryOperator::Or:
+            case BinaryOperator::Xor:
+            case BinaryOperator::Shl:
+            case BinaryOperator::AShr:
+            case BinaryOperator::LShr:
+                analysis = DataType(IntType::Unknown);
+                break;
+            default:
+                llvm_unreachable("unknown binary operator");
+        }
+		updateAnalysis(I.getOperand(0), analysis, &I);
+		updateAnalysis(I.getOperand(1), analysis, &I);
 
 		ValueData vd = getAnalysis(I.getOperand(0));
-		vd.pointerIntMerge(getAnalysis(I.getOperand(1)));
+		vd.pointerIntMerge(getAnalysis(I.getOperand(1)), I.getOpcode());
 
-		updateAnalysis(&I, vd, &I);
-	} else {
-		ValueData vd = getAnalysis(I.getOperand(0)).JustInt();
-		vd &= getAnalysis(I.getOperand(1)).JustInt();
+        //llvm::errs() << "vd: " << vd.str() << "\n";
+        //llvm::errs() << "op(0): " << getAnalysis(I.getOperand(0)).str() << "\n";
+        //llvm::errs() << "op(1): " << getAnalysis(I.getOperand(1)).str() << "\n";
 
         if (I.getOpcode() == BinaryOperator::And) {
             for(int i=0; i<2; i++)
             if (auto ci = dyn_cast<ConstantInt>(I.getOperand(i))) {
                 if (ci->getLimitedValue() <= 16 && ci->getLimitedValue() >= 0) {
+
+                    //I.getParent()->getParent()->dump();
+                    //dump();
+                    //llvm::errs() << "I: " << I << "\n";
+
                     vd |= ValueData(IntType::Integer);
                 }
             }
         }
 
 		updateAnalysis(&I, vd, &I);
-	}
-	//TODO also can final assume integral if one is a small constant [i.e. & with 1, etc]
+    }
 }
 
 void TypeAnalyzer::visitCallInst(CallInst &call) {
@@ -634,6 +850,10 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 
 			updateAnalysis(call.getArgOperand(0), res, &call);
 			updateAnalysis(call.getArgOperand(1), res, &call);
+
+            //call.getParent()->getParent()->dump();
+            //dump();
+            //llvm::errs() << "call: " << call << "\n";
 
 			for(unsigned i=2; i<call.getNumArgOperands(); i++) {
 				updateAnalysis(call.getArgOperand(i), IntType::Integer, &call);
@@ -680,14 +900,14 @@ void TypeAnalyzer::visitIPOCall(CallInst& call, Function& fn) {
 
     typeInfo.second = getAnalysis(&call);
 
-                        
+
 	auto a = fn.arg_begin();
 	for(size_t i=0; i<call.getNumArgOperands(); i++) {
 		auto dt = interprocedural.query(a, typeInfo);
 		updateAnalysis(call.getArgOperand(i), dt, &call);
 		a++;
 	}
-    
+
 	ValueData vd = interprocedural.getReturnAnalysis(typeInfo, &fn);
 	updateAnalysis(&call, vd, &call);
 }
@@ -715,9 +935,9 @@ TypeResults TypeAnalysis::analyzeFunction(const NewFnTypeInfo& fn, Function* fun
 ValueData TypeAnalysis::query(Value* val, const NewFnTypeInfo& fn) {
     assert(val);
     assert(val->getType());
-	
+
 	if (isa<Constant>(val)) {
-		if (auto ci = dyn_cast<ConstantInt>(val)) {	
+		if (auto ci = dyn_cast<ConstantInt>(val)) {
 			if (ci->getLimitedValue() >=1 && ci->getLimitedValue() <= 4096) {
 				return ValueData(DataType(IntType::Integer));
 			}
@@ -789,10 +1009,18 @@ NewFnTypeInfo TypeResults::getAnalyzedTypeInfo() {
 	return res;
 }
 
-DataType TypeResults::intType(Value* val) {
-	return analysis.intType(val, info);
+ValueData TypeResults::query(Value* val) {
+    return analysis.query(val, info);
 }
-    
+
+DataType TypeResults::intType(Value* val, bool errIfNotFound) {
+	return analysis.intType(val, info, errIfNotFound);
+}
+
+DataType TypeResults::firstPointer(Value* val, bool errIfNotFound) {
+    return analysis.firstPointer(val, info, errIfNotFound);
+}
+
 ValueData TypeResults::getReturnAnalysis() {
     return analysis.getReturnAnalysis(info, function);
 }

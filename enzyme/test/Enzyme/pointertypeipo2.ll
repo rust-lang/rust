@@ -68,7 +68,12 @@ attributes #4 = { nounwind }
 
 ; CHECK: define internal {} @diffemv(i64* %m_dims, i64* %"m_dims'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call {} @diffesub(i64* %m_dims, i64* %"m_dims'")
+; CHECK-NEXT:   %call4_augmented = call { { i64, i64 }, i64, i64 } @augmented_sub(i64* %m_dims, i64* %"m_dims'") #2
+; CHECK-NEXT:   %0 = extractvalue { { i64, i64 }, i64, i64 } %call4_augmented, 0
+; CHECK-NEXT:   %1 = extractvalue { { i64, i64 }, i64, i64 } %call4_augmented, 1
+; CHECK-NEXT:   store i64 %1, i64* %out, align 4
+; CHECK-NEXT:   store i64 0, i64* %"out'", align 4
+; CHECK-NEXT:   %2 = call {} @diffesub(i64* %m_dims, i64* %"m_dims'", { i64, i64 } %0) #2
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
