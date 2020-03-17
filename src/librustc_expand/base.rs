@@ -1011,22 +1011,6 @@ impl<'a> ExtCtxt<'a> {
         self.parse_sess.span_diagnostic.struct_span_err(sp, msg)
     }
 
-    /// Emit `msg` attached to `sp`, and stop compilation immediately.
-    ///
-    /// `span_err` should be strongly preferred where-ever possible:
-    /// this should *only* be used when:
-    ///
-    /// - continuing has a high risk of flow-on errors (e.g., errors in
-    ///   declaring a macro would cause all uses of that macro to
-    ///   complain about "undefined macro"), or
-    /// - there is literally nothing else that can be done (however,
-    ///   in most cases one can construct a dummy expression/item to
-    ///   substitute; we never hit resolve/type-checking so the dummy
-    ///   value doesn't have to match anything)
-    pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.parse_sess.span_diagnostic.span_fatal(sp, msg).raise();
-    }
-
     /// Emit `msg` attached to `sp`, without immediately stopping
     /// compilation.
     ///
