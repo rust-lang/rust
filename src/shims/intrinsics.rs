@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 use rustc::mir;
 use rustc::mir::interpret::{InterpResult, PointerArithmetic};
 use rustc::ty;
-use rustc::ty::layout::{self, Align, LayoutOf, Size};
+use rustc::ty::layout::{Align, LayoutOf, Size};
 use rustc_apfloat::Float;
 use rustc_span::source_map::Span;
 
@@ -384,37 +384,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_immediate(*b, dest)?;
             }
 
-            "init" => {
-                // Check fast path: we don't want to force an allocation in case the destination is a simple value,
-                // but we also do not want to create a new allocation with 0s and then copy that over.
-                // FIXME: We do not properly validate in case of ZSTs and when doing it in memory!
-                // However, this only affects direct calls of the intrinsic; calls to the stable
-                // functions wrapping them do get their validation.
-                // FIXME: should we check that the destination pointer is aligned even for ZSTs?
-                if !dest.layout.is_zst() {
-                    match dest.layout.abi {
-                        layout::Abi::Scalar(ref s) => {
-                            let x = Scalar::from_int(0, s.value.size(this));
-                            this.write_scalar(x, dest)?;
-                        }
-                        layout::Abi::ScalarPair(ref s1, ref s2) => {
-                            let x = Scalar::from_int(0, s1.value.size(this));
-                            let y = Scalar::from_int(0, s2.value.size(this));
-                            this.write_immediate(Immediate::ScalarPair(x.into(), y.into()), dest)?;
-                        }
-                        _ => {
-                            // Do it in memory
-                            let mplace = this.force_allocation(dest)?;
-                            assert!(!mplace.layout.is_unsized());
-                            this.memory.write_bytes(
-                                mplace.ptr,
-                                iter::repeat(0u8).take(dest.layout.size.bytes() as usize),
-                            )?;
-                        }
-                    }
-                }
-            }
-
             "pref_align_of" => {
                 let ty = substs.type_at(0);
                 let layout = this.layout_of(ty)?;
@@ -516,39 +485,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .expect("size_of_val called on extern type");
                 let ptr_size = this.pointer_size();
                 this.write_scalar(Scalar::from_uint(align.bytes(), ptr_size), dest)?;
-            }
-
-            "uninit" => {
-                // Check fast path: we don't want to force an allocation in case the destination is a simple value,
-                // but we also do not want to create a new allocation with 0s and then copy that over.
-                // FIXME: We do not properly validate in case of ZSTs and when doing it in memory!
-                // However, this only affects direct calls of the intrinsic; calls to the stable
-                // functions wrapping them do get their validation.
-                // FIXME: should we check alignment for ZSTs?
-                if !dest.layout.is_zst() {
-                    match dest.layout.abi {
-                        layout::Abi::Scalar(..) => {
-                            let x = ScalarMaybeUndef::Undef;
-                            this.write_immediate(Immediate::Scalar(x), dest)?;
-                        }
-                        layout::Abi::ScalarPair(..) => {
-                            let x = ScalarMaybeUndef::Undef;
-                            this.write_immediate(Immediate::ScalarPair(x, x), dest)?;
-                        }
-                        _ => {
-                            // Do it in memory
-                            let mplace = this.force_allocation(dest)?;
-                            assert!(!mplace.layout.is_unsized());
-                            let ptr = mplace.ptr.assert_ptr();
-                            // We know the return place is in-bounds
-                            this.memory.get_raw_mut(ptr.alloc_id)?.mark_definedness(
-                                ptr,
-                                dest.layout.size,
-                                false,
-                            );
-                        }
-                    }
-                }
             }
 
             "write_bytes" => {
