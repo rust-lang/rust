@@ -4,7 +4,9 @@
     clippy::shadow_reuse,
     clippy::shadow_unrelated,
     clippy::no_effect,
-    clippy::unnecessary_operation
+    clippy::unnecessary_operation,
+    clippy::op_ref,
+    clippy::trivially_copy_pass_by_ref
 )]
 
 #[rustfmt::skip]
@@ -90,4 +92,55 @@ fn main() {
             1 + 1
         };
     }
+
+
+}
+
+// warn on references as well! (#5328)
+pub fn int_arith_ref() {
+    3 + &1;
+    &3 + 1;
+    &3 + &1;
+}
+
+pub fn foo(x: &i32) -> i32 {
+    let a = 5;
+    a + x
+}
+
+pub fn bar(x: &i32, y: &i32) -> i32 {
+    x + y
+}
+
+pub fn baz(x: i32, y: &i32) -> i32 {
+    x + y
+}
+
+pub fn qux(x: i32, y: i32) -> i32 {
+    (&x + &y)
+}
+
+// also warn about floating point arith with references involved
+
+pub fn float_arith_ref() {
+    3.1_f32 + &1.2_f32;
+    &3.4_f32 + 1.5_f32;
+    &3.5_f32 + &1.3_f32;
+}
+
+pub fn float_foo(f: &f32) -> f32 {
+    let a = 5.1;
+    a + f
+}
+
+pub fn float_bar(f1: &f32, f2: &f32) -> f32 {
+    f1 + f2
+}
+
+pub fn float_baz(f1: f32, f2: &f32) -> f32 {
+    f1 + f2
+}
+
+pub fn float_qux(f1: f32, f2: f32) -> f32 {
+    (&f1 + &f2)
 }
