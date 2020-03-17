@@ -598,7 +598,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
     fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         if self.tcx.features().exhaustive_patterns {
-            self.tcx.is_ty_uninhabited_from(self.module, ty)
+            self.tcx.is_ty_uninhabited_from(self.module, ty, self.param_env)
         } else {
             false
         }
@@ -1267,7 +1267,7 @@ fn all_constructors<'a, 'tcx>(
                 def.variants
                     .iter()
                     .filter(|v| {
-                        !v.uninhabited_from(cx.tcx, substs, def.adt_kind())
+                        !v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
                             .contains(cx.tcx, cx.module)
                     })
                     .map(|v| Variant(v.def_id))
