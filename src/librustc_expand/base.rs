@@ -10,7 +10,7 @@ use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorReported};
+use rustc_errors::{DiagnosticBuilder, ErrorReported};
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
@@ -1025,9 +1025,6 @@ impl<'a> ExtCtxt<'a> {
     /// the macro expansion phase).
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.parse_sess.span_diagnostic.span_err(sp, msg);
-    }
-    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
-        self.parse_sess.span_diagnostic.span_err_with_code(sp, msg, code);
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.parse_sess.span_diagnostic.span_warn(sp, msg);
