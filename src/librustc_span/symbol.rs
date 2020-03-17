@@ -983,6 +983,31 @@ impl fmt::Display for IdentPrinter {
     }
 }
 
+/// An newtype around `Ident` that calls [Ident::normalize_to_macro_rules] on
+/// construction.
+// FIXME(matthewj, petrochenkov) Use this more often, add a similar
+// `ModernIdent` struct and use that as well.
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub struct MacroRulesNormalizedIdent(Ident);
+
+impl MacroRulesNormalizedIdent {
+    pub fn new(ident: Ident) -> Self {
+        Self(ident.normalize_to_macro_rules())
+    }
+}
+
+impl fmt::Debug for MacroRulesNormalizedIdent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, f)
+    }
+}
+
+impl fmt::Display for MacroRulesNormalizedIdent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
 /// An interned string.
 ///
 /// Internally, a `Symbol` is implemented as an index, and all operations

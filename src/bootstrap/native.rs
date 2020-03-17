@@ -11,6 +11,7 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -54,7 +55,6 @@ impl Step for Llvm {
             }
         }
 
-        let llvm_info = &builder.in_tree_llvm_info;
         let root = "src/llvm-project/llvm";
         let out_dir = builder.llvm_out(target);
         let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
@@ -65,40 +65,35 @@ impl Step for Llvm {
 
         let build_llvm_config =
             llvm_config_ret_dir.join(exe("llvm-config", &*builder.config.build));
-        let done_stamp = out_dir.join("llvm-finished-building");
 
-        if done_stamp.exists() {
-            if builder.config.llvm_skip_rebuild {
-                builder.info(
-                    "Warning: \
-                    Using a potentially stale build of LLVM; \
-                    This may not behave well.",
-                );
-                return build_llvm_config;
-            }
+        let stamp = out_dir.join("llvm-finished-building");
+        let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
 
-            if let Some(llvm_commit) = llvm_info.sha() {
-                let done_contents = t!(fs::read(&done_stamp));
+        if builder.config.llvm_skip_rebuild && stamp.path.exists() {
+            builder.info(
+                "Warning: \
+                Using a potentially stale build of LLVM; \
+                This may not behave well.",
+            );
+            return build_llvm_config;
+        }
 
-                // If LLVM was already built previously and the submodule's commit didn't change
-                // from the previous build, then no action is required.
-                if done_contents == llvm_commit.as_bytes() {
-                    return build_llvm_config;
-                }
-            } else {
+        if stamp.is_done() {
+            if stamp.hash.is_none() {
                 builder.info(
                     "Could not determine the LLVM submodule commit hash. \
                      Assuming that an LLVM rebuild is not necessary.",
                 );
                 builder.info(&format!(
                     "To force LLVM to rebuild, remove the file `{}`",
-                    done_stamp.display()
+                    stamp.path.display()
                 ));
-                return build_llvm_config;
             }
+            return build_llvm_config;
         }
 
         builder.info(&format!("Building LLVM for {}", target));
+        t!(stamp.remove());
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
@@ -271,7 +266,7 @@ impl Step for Llvm {
 
         cfg.build();
 
-        t!(fs::write(&done_stamp, llvm_info.sha().unwrap_or("")));
+        t!(stamp.write());
 
         build_llvm_config
     }
@@ -584,17 +579,21 @@ impl Step for Sanitizers {
             return runtimes;
         }
 
-        let done_stamp = out_dir.join("sanitizers-finished-building");
-        if done_stamp.exists() {
-            builder.info(&format!(
-                "Assuming that sanitizers rebuild is not necessary. \
-                To force a rebuild, remove the file `{}`",
-                done_stamp.display()
-            ));
+        let stamp = out_dir.join("sanitizers-finished-building");
+        let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
+
+        if stamp.is_done() {
+            if stamp.hash.is_none() {
+                builder.info(&format!(
+                    "Rebuild sanitizers by removing the file `{}`",
+                    stamp.path.display()
+                ));
+            }
             return runtimes;
         }
 
         builder.info(&format!("Building sanitizers for {}", self.target));
+        t!(stamp.remove());
         let _time = util::timeit(&builder);
 
         let mut cfg = cmake::Config::new(&compiler_rt_dir);
@@ -623,8 +622,7 @@ impl Step for Sanitizers {
             cfg.build_target(&runtime.cmake_target);
             cfg.build();
         }
-
-        t!(fs::write(&done_stamp, b""));
+        t!(stamp.write());
 
         runtimes
     }
@@ -688,4 +686,42 @@ fn supported_sanitizers(
         _ => {}
     }
     result
+}
+
+struct HashStamp {
+    path: PathBuf,
+    hash: Option<Vec<u8>>,
+}
+
+impl HashStamp {
+    fn new(path: PathBuf, hash: Option<&str>) -> Self {
+        HashStamp { path, hash: hash.map(|s| s.as_bytes().to_owned()) }
+    }
+
+    fn is_done(&self) -> bool {
+        match fs::read(&self.path) {
+            Ok(h) => self.hash.as_deref().unwrap_or(b"") == h.as_slice(),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => false,
+            Err(e) => {
+                panic!("failed to read stamp file `{}`: {}", self.path.display(), e);
+            }
+        }
+    }
+
+    fn remove(&self) -> io::Result<()> {
+        match fs::remove_file(&self.path) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                if e.kind() == io::ErrorKind::NotFound {
+                    Ok(())
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    fn write(&self) -> io::Result<()> {
+        fs::write(&self.path, self.hash.as_deref().unwrap_or(b""))
+    }
 }

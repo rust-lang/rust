@@ -1,3 +1,4 @@
+// compile-flags: -O
 // run-pass
 
 #![allow(unused_must_use)]
@@ -10,17 +11,13 @@
 
 #![feature(intrinsics)]
 
-use std::thread;
-
-extern "rust-intrinsic" {
-    pub fn init<T>() -> T;
-}
+use std::{mem, thread};
 
 const SIZE: usize = 1024 * 1024;
 
 fn main() {
     // do the test in a new thread to avoid (spurious?) stack overflows
     thread::spawn(|| {
-        let _memory: [u8; SIZE] = unsafe { init() };
+        let _memory: [u8; SIZE] = unsafe { mem::zeroed() };
     }).join();
 }
