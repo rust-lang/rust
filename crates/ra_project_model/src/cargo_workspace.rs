@@ -142,7 +142,7 @@ impl Package {
         ws.packages[self].dependencies.iter()
     }
     pub fn out_dir(self, ws: &CargoWorkspace) -> Option<&Path> {
-        ws.packages[self].out_dir.as_ref().map(|od| od.as_path())
+        ws.packages[self].out_dir.as_ref().map(PathBuf::as_path)
     }
 }
 
