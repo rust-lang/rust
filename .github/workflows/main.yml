@@ -55,8 +55,8 @@ jobs:
     - name: Compile
       uses: actions-rs/cargo@v1.0.1
       with:
-        command: build
-        args: --release
+        command: rustc
+        args: --release -- -Zrun_dsymutil=no
 
     - name: Test
       run: |
