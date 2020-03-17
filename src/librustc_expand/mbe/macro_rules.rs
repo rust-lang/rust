@@ -4,7 +4,7 @@ use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstF
 use crate::mbe;
 use crate::mbe::macro_check;
 use crate::mbe::macro_parser::parse_tt;
-use crate::mbe::macro_parser::{Error, Failure, Success};
+use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success};
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq};
 use crate::mbe::transcribe::transcribe;
 
@@ -317,6 +317,7 @@ fn generic_extension<'cx>(
                 cx.struct_span_err(span, &msg).emit();
                 return DummyResult::any(span);
             }
+            ErrorReported => return DummyResult::any(sp),
         }
 
         // The matcher was not `Success(..)`ful.
@@ -446,6 +447,9 @@ pub fn compile_declarative_macro(
         }
         Error(sp, msg) => {
             sess.span_diagnostic.struct_span_err(sp.substitute_dummy(def.span), &msg).emit();
+            return mk_syn_ext(Box::new(MacroRulesDummyExpander));
+        }
+        ErrorReported => {
             return mk_syn_ext(Box::new(MacroRulesDummyExpander));
         }
     };
