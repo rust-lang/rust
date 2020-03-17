@@ -84,41 +84,56 @@ fn suggest_slice_pat(e: &mut DiagnosticBuilder<'_>, site_span: Span, parser: &Pa
     );
 }
 
+fn emit_frag_parse_err(
+    mut e: DiagnosticBuilder<'_>,
+    parser: &Parser<'_>,
+    site_span: Span,
+    macro_ident: ast::Ident,
+    arm_span: Span,
+    kind: AstFragmentKind,
+) {
+    if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
+        if !e.span.is_dummy() {
+            // early end of macro arm (#52866)
+            e.replace_span_with(parser.sess.source_map().next_point(parser.token.span));
+        }
+        let msg = &e.message[0];
+        e.message[0] = (
+            format!(
+                "macro expansion ends with an incomplete expression: {}",
+                msg.0.replace(", found `<eof>`", ""),
+            ),
+            msg.1,
+        );
+    }
+    if e.span.is_dummy() {
+        // Get around lack of span in error (#30128)
+        e.replace_span_with(site_span);
+        if !parser.sess.source_map().is_imported(arm_span) {
+            e.span_label(arm_span, "in this macro arm");
+        }
+    } else if parser.sess.source_map().is_imported(parser.token.span) {
+        e.span_label(site_span, "in this macro invocation");
+    }
+    match kind {
+        AstFragmentKind::Pat if macro_ident.name == sym::vec => {
+            suggest_slice_pat(&mut e, site_span, parser);
+        }
+        _ => annotate_err_with_kind(&mut e, kind, site_span),
+    };
+    e.emit();
+}
+
 impl<'a> ParserAnyMacro<'a> {
     crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
-        let fragment = panictry!(parse_ast_fragment(parser, kind).map_err(|mut e| {
-            if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
-                if !e.span.is_dummy() {
-                    // early end of macro arm (#52866)
-                    e.replace_span_with(parser.sess.source_map().next_point(parser.token.span));
-                }
-                let msg = &e.message[0];
-                e.message[0] = (
-                    format!(
-                        "macro expansion ends with an incomplete expression: {}",
-                        msg.0.replace(", found `<eof>`", ""),
-                    ),
-                    msg.1,
-                );
+        let fragment = match parse_ast_fragment(parser, kind) {
+            Ok(f) => f,
+            Err(err) => {
+                emit_frag_parse_err(err, parser, site_span, macro_ident, arm_span, kind);
+                return kind.dummy(site_span);
             }
-            if e.span.is_dummy() {
-                // Get around lack of span in error (#30128)
-                e.replace_span_with(site_span);
-                if !parser.sess.source_map().is_imported(arm_span) {
-                    e.span_label(arm_span, "in this macro arm");
-                }
-            } else if parser.sess.source_map().is_imported(parser.token.span) {
-                e.span_label(site_span, "in this macro invocation");
-            }
-            match kind {
-                AstFragmentKind::Pat if macro_ident.name == sym::vec => {
-                    suggest_slice_pat(&mut e, site_span, parser);
-                }
-                _ => annotate_err_with_kind(&mut e, kind, site_span),
-            };
-            e
-        }));
+        };
 
         // We allow semicolons at the end of expressions -- e.g., the semicolon in
         // `macro_rules! m { () => { panic!(); } }` isn't parsed by `.parse_expr()`,
