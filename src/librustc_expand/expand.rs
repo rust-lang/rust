@@ -704,8 +704,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     if let MacArgs::Eq(..) = attr_item.args {
                         self.cx.span_err(span, "key-value macro attributes are not supported");
                     }
-                    let tok_result =
-                        expander.expand(self.cx, span, attr_item.args.inner_tokens(), tokens);
+                    let inner_tokens = attr_item.args.inner_tokens();
+                    let tok_result = match expander.expand(self.cx, span, inner_tokens, tokens) {
+                        Err(_) => return ExpandResult::Ready(fragment_kind.dummy(span)),
+                        Ok(ts) => ts,
+                    };
                     self.parse_ast_fragment(tok_result, fragment_kind, &attr_item.path, span)
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {
