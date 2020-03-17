@@ -326,7 +326,7 @@ pub trait AttrProcMacro {
         span: Span,
         annotation: TokenStream,
         annotated: TokenStream,
-    ) -> TokenStream;
+    ) -> Result<TokenStream, ErrorReported>;
 }
 
 impl<F> AttrProcMacro for F
@@ -339,9 +339,9 @@ where
         _span: Span,
         annotation: TokenStream,
         annotated: TokenStream,
-    ) -> TokenStream {
+    ) -> Result<TokenStream, ErrorReported> {
         // FIXME setup implicit context in TLS before calling self.
-        (*self)(annotation, annotated)
+        Ok((*self)(annotation, annotated))
     }
 }
 

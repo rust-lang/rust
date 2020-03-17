@@ -45,21 +45,16 @@ impl base::AttrProcMacro for AttrProcMacro {
         span: Span,
         annotation: TokenStream,
         annotated: TokenStream,
-    ) -> TokenStream {
+    ) -> Result<TokenStream, ErrorReported> {
         let server = proc_macro_server::Rustc::new(ecx);
-        match self.client.run(&EXEC_STRATEGY, server, annotation, annotated) {
-            Ok(stream) => stream,
-            Err(e) => {
-                let msg = "custom attribute panicked";
-                let mut err = ecx.struct_span_fatal(span, msg);
-                if let Some(s) = e.as_str() {
-                    err.help(&format!("message: {}", s));
-                }
-
-                err.emit();
-                FatalError.raise();
+        self.client.run(&EXEC_STRATEGY, server, annotation, annotated).map_err(|e| {
+            let mut err = ecx.struct_span_err(span, "custom attribute panicked");
+            if let Some(s) = e.as_str() {
+                err.help(&format!("message: {}", s));
             }
-        }
+            err.emit();
+            ErrorReported
+        })
     }
 }
 
