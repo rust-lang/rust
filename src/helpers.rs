@@ -1,5 +1,6 @@
 use std::ffi::OsStr;
 use std::{iter, mem};
+use std::convert::TryFrom;
 
 use rustc::mir;
 use rustc::ty::{
@@ -81,7 +82,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Generate some random bytes, and write them to `dest`.
-    fn gen_random(&mut self, ptr: Scalar<Tag>, len: usize) -> InterpResult<'tcx> {
+    fn gen_random(&mut self, ptr: Scalar<Tag>, len: u64) -> InterpResult<'tcx> {
         // Some programs pass in a null pointer and a length of 0
         // to their platform's random-generation function (e.g. getrandom())
         // on Linux. For compatibility with these programs, we don't perform
@@ -92,7 +93,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         let this = self.eval_context_mut();
 
-        let mut data = vec![0; len];
+        let mut data = vec![0; usize::try_from(len).unwrap()];
 
         if this.machine.communicate {
             // Fill the buffer using the host's rng.
@@ -499,7 +500,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let bytes = os_str_to_bytes(os_str)?;
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an out-of-bounds access.
-        let string_length = bytes.len() as u64;
+        let string_length = u64::try_from(bytes.len()).unwrap();
         if size <= string_length {
             return Ok((false, string_length));
         }
@@ -514,7 +515,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         os_str: &OsStr,
         memkind: MemoryKind<MiriMemoryKind>,
     ) -> Pointer<Tag> {
-        let size = os_str.len() as u64 + 1; // Make space for `0` terminator.
+        let size = u64::try_from(os_str.len()).unwrap().checked_add(1).unwrap(); // Make space for `0` terminator.
         let this = self.eval_context_mut();
 
         let arg_type = this.tcx.mk_array(this.tcx.types.u8, size);

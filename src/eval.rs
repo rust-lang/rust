@@ -1,6 +1,7 @@
 //! Main evaluator loop and setting up the initial stack frame.
 
 use std::ffi::OsStr;
+use std::convert::TryFrom;
 
 use rand::rngs::StdRng;
 use rand::SeedableRng;
@@ -101,14 +102,14 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // First argument: pointer to `main()`.
     let main_ptr = ecx.memory.create_fn_alloc(FnVal::Instance(main_instance));
     // Second argument (argc): length of `config.args`.
-    let argc = Scalar::from_uint(config.args.len() as u128, ecx.pointer_size());
+    let argc = Scalar::from_uint(u64::try_from(config.args.len()).unwrap(), ecx.pointer_size());
     // Third argument (`argv`): created from `config.args`.
     let argv = {
         // Put each argument in memory, collect pointers.
         let mut argvs = Vec::<Scalar<Tag>>::new();
         for arg in config.args.iter() {
             // Make space for `0` terminator.
-            let size = arg.len() as u64 + 1;
+            let size = u64::try_from(arg.len()).unwrap().checked_add(1).unwrap();
             let arg_type = tcx.mk_array(tcx.types.u8, size);
             let arg_place = ecx.allocate(ecx.layout_of(arg_type)?, MiriMemoryKind::Machine.into());
             ecx.write_os_str_to_c_str(OsStr::new(arg), arg_place.ptr, size)?;
@@ -116,10 +117,10 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         }
         // Make an array with all these pointers, in the Miri memory.
         let argvs_layout =
-            ecx.layout_of(tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), argvs.len() as u64))?;
+            ecx.layout_of(tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), u64::try_from(argvs.len()).unwrap()))?;
         let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Machine.into());
         for (idx, arg) in argvs.into_iter().enumerate() {
-            let place = ecx.mplace_field(argvs_place, idx as u64)?;
+            let place = ecx.mplace_field(argvs_place, u64::try_from(idx).unwrap())?;
             ecx.write_scalar(arg, place.into())?;
         }
         ecx.memory.mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
@@ -153,13 +154,13 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             cmd.push(std::char::from_u32(0).unwrap());
 
             let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
-            let cmd_type = tcx.mk_array(tcx.types.u16, cmd_utf16.len() as u64);
+            let cmd_type = tcx.mk_array(tcx.types.u16, u64::try_from(cmd_utf16.len()).unwrap());
             let cmd_place = ecx.allocate(ecx.layout_of(cmd_type)?, MiriMemoryKind::Machine.into());
             ecx.machine.cmd_line = Some(cmd_place.ptr);
             // Store the UTF-16 string. We just allocated so we know the bounds are fine.
             let char_size = Size::from_bytes(2);
             for (idx, &c) in cmd_utf16.iter().enumerate() {
-                let place = ecx.mplace_field(cmd_place, idx as u64)?;
+                let place = ecx.mplace_field(cmd_place, u64::try_from(idx).unwrap())?;
                 ecx.write_scalar(Scalar::from_uint(c, char_size), place.into())?;
             }
         }

@@ -1,5 +1,6 @@
 use std::ffi::{OsString, OsStr};
 use std::env;
+use std::convert::TryFrom;
 
 use crate::stacked_borrows::Tag;
 use crate::rustc_target::abi::LayoutOf;
@@ -58,7 +59,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(match this.machine.env_vars.map.get(name) {
             // The offset is used to strip the "{name}=" part of the string.
             Some(var_ptr) => {
-                Scalar::from(var_ptr.offset(Size::from_bytes(name.len() as u64 + 1), this)?)
+                Scalar::from(var_ptr.offset(Size::from_bytes(u64::try_from(name.len()).unwrap().checked_add(1).unwrap()), this)?)
             }
             None => Scalar::ptr_null(&*this.tcx),
         })
@@ -181,10 +182,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Make an array with all these pointers inside Miri.
         let tcx = this.tcx;
         let vars_layout =
-            this.layout_of(tcx.mk_array(tcx.types.usize, vars.len() as u64))?;
+            this.layout_of(tcx.mk_array(tcx.types.usize, u64::try_from(vars.len()).unwrap()))?;
         let vars_place = this.allocate(vars_layout, MiriMemoryKind::Machine.into());
         for (idx, var) in vars.into_iter().enumerate() {
-            let place = this.mplace_field(vars_place, idx as u64)?;
+            let place = this.mplace_field(vars_place, u64::try_from(idx).unwrap())?;
             this.write_scalar(var, place.into())?;
         }
         this.write_scalar(

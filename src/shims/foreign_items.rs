@@ -1,7 +1,7 @@
 mod windows;
 mod posix;
 
-use std::{convert::TryInto, iter};
+use std::{convert::{TryInto, TryFrom}, iter};
 
 use rustc_hir::def_id::DefId;
 use rustc::mir;
@@ -250,7 +250,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     MiriMemoryKind::Rust.into(),
                 );
                 // We just allocated this, the access is definitely in-bounds.
-                this.memory.write_bytes(ptr.into(), iter::repeat(0u8).take(size as usize)).unwrap();
+                this.memory.write_bytes(ptr.into(), iter::repeat(0u8).take(usize::try_from(size).unwrap())).unwrap();
                 this.write_scalar(ptr, dest)?;
             }
             "__rust_dealloc" => {
@@ -350,7 +350,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "strlen" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let n = this.memory.read_c_str(ptr)?.len();
-                this.write_scalar(Scalar::from_uint(n as u64, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_uint(u64::try_from(n).unwrap(), dest.layout.size), dest)?;
             }
 
             // math functions
@@ -440,9 +440,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 // Saturating cast to i16. Even those are outside the valid exponent range to
                 // `scalbn` below will do its over/underflow handling.
-                let exp = if exp > i16::MAX as i32 {
+                let exp = if exp > i32::from(i16::MAX) {
                     i16::MAX
-                } else if exp < i16::MIN as i32 {
+                } else if exp < i32::from(i16::MIN) {
                     i16::MIN
                 } else {
                     exp.try_into().unwrap()

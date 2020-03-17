@@ -114,7 +114,7 @@ fn getrandom<'tcx>(
     // neither of which have any effect on our current PRNG.
     let _flags = this.read_scalar(args[2])?.to_i32()?;
 
-    this.gen_random(ptr, len as usize)?;
+    this.gen_random(ptr, len)?;
     this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
     Ok(())
 }

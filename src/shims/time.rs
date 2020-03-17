@@ -37,8 +37,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let tp = this.deref_operand(tp_op)?;
 
         let duration = get_time()?;
-        let tv_sec = duration.as_secs() as i128;
-        let tv_nsec = duration.subsec_nanos() as i128;
+        let tv_sec = duration.as_secs();
+        let tv_nsec = duration.subsec_nanos();
 
         let imms = [
             immty_from_int_checked(tv_sec, this.libc_ty_layout("time_t")?)?,
@@ -69,8 +69,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let tv = this.deref_operand(tv_op)?;
 
         let duration = get_time()?;
-        let tv_sec = duration.as_secs() as i128;
-        let tv_usec = duration.subsec_micros() as i128;
+        let tv_sec = duration.as_secs();
+        let tv_usec = duration.subsec_micros();
 
         let imms = [
             immty_from_int_checked(tv_sec, this.libc_ty_layout("time_t")?)?,
