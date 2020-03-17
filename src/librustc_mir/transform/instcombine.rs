@@ -14,11 +14,6 @@ pub struct InstCombine;
 
 impl<'tcx> MirPass<'tcx> for InstCombine {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        // We only run when optimizing MIR (at any level).
-        if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
-            return;
-        }
-
         // First, find optimization opportunities. This is done in a pre-pass to keep the MIR
         // read-only so that we can do global analyses on the MIR in the process (e.g.
         // `Place::ty()`).
