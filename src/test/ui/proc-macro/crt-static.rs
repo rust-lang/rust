@@ -2,6 +2,7 @@
 // on musl target
 // override -Ctarget-feature=-crt-static from compiletest
 // compile-flags: -Ctarget-feature=
+// ignore-wasm32
 // build-pass
 #![crate_type = "proc-macro"]
 
