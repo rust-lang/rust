@@ -49,5 +49,16 @@ LL |     my_recursive_macro!();
    = note: expanding `my_recursive_macro! {  }`
    = note: to `my_recursive_macro ! () ;`
 
-error: aborting due to 2 previous errors
+error: expected expression, found `A { a: a, b: 0, c: _, .. }`
+  --> $DIR/trace_faulty_macros.rs:16:9
+   |
+LL |         $a
+   |         ^^ expected expression
+...
+LL |     let a = pat_macro!();
+   |             ------------ in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
 
