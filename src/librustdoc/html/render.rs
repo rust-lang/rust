@@ -58,7 +58,7 @@ use rustc_span::symbol::{sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy};
+use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, TypeKind};
 use crate::config::{OutputFormat, RenderOptions};
 use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
@@ -302,19 +302,25 @@ impl Serialize for IndexItem {
 
 /// A type used for the search index.
 #[derive(Debug)]
-struct Type {
+struct RenderType {
+    ty: Option<DefId>,
+    idx: Option<usize>,
     name: Option<String>,
-    generics: Option<Vec<String>>,
+    generics: Option<Vec<Generic>>,
 }
 
-impl Serialize for Type {
+impl Serialize for RenderType {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         if let Some(name) = &self.name {
             let mut seq = serializer.serialize_seq(None)?;
-            seq.serialize_element(&name)?;
+            if let Some(id) = self.idx {
+                seq.serialize_element(&id)?;
+            } else {
+                seq.serialize_element(&name)?;
+            }
             if let Some(generics) = &self.generics {
                 seq.serialize_element(&generics)?;
             }
@@ -325,11 +331,32 @@ impl Serialize for Type {
     }
 }
 
+/// A type used for the search index.
+#[derive(Debug)]
+struct Generic {
+    name: String,
+    defid: Option<DefId>,
+    idx: Option<usize>,
+}
+
+impl Serialize for Generic {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(id) = self.idx {
+            serializer.serialize_some(&id)
+        } else {
+            serializer.serialize_some(&self.name)
+        }
+    }
+}
+
 /// Full type of functions/methods in the search index.
 #[derive(Debug)]
 struct IndexItemFunctionType {
-    inputs: Vec<Type>,
-    output: Option<Vec<Type>>,
+    inputs: Vec<TypeWithKind>,
+    output: Option<Vec<TypeWithKind>>,
 }
 
 impl Serialize for IndexItemFunctionType {
@@ -340,8 +367,8 @@ impl Serialize for IndexItemFunctionType {
         // If we couldn't figure out a type, just write `null`.
         let mut iter = self.inputs.iter();
         if match self.output {
-            Some(ref output) => iter.chain(output.iter()).any(|ref i| i.name.is_none()),
-            None => iter.any(|ref i| i.name.is_none()),
+            Some(ref output) => iter.chain(output.iter()).any(|ref i| i.ty.name.is_none()),
+            None => iter.any(|ref i| i.ty.name.is_none()),
         } {
             serializer.serialize_none()
         } else {
@@ -356,6 +383,31 @@ impl Serialize for IndexItemFunctionType {
             }
             seq.end()
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct TypeWithKind {
+    ty: RenderType,
+    kind: TypeKind,
+}
+
+impl From<(RenderType, TypeKind)> for TypeWithKind {
+    fn from(x: (RenderType, TypeKind)) -> TypeWithKind {
+        TypeWithKind { ty: x.0, kind: x.1 }
+    }
+}
+
+impl Serialize for TypeWithKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(None)?;
+        seq.serialize_element(&self.ty.name)?;
+        let x: ItemType = self.kind.into();
+        seq.serialize_element(&x)?;
+        seq.end()
     }
 }
 
