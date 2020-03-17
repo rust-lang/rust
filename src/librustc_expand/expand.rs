@@ -1137,6 +1137,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             // macros are expanded before any lint passes so this warning has to be hardcoded
             if attr.has_name(sym::derive) {
                 self.cx
+                    .parse_sess()
+                    .span_diagnostic
                     .struct_span_warn(attr.span, "`#[derive]` does nothing on macro invocations")
                     .note("this may become a hard error in a future release")
                     .emit();

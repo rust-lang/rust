@@ -1007,9 +1007,6 @@ impl<'a> ExtCtxt<'a> {
         self.current_expansion.id.expansion_cause()
     }
 
-    pub fn struct_span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'a> {
-        self.parse_sess.span_diagnostic.struct_span_warn(sp, msg)
-    }
     pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'a> {
         self.parse_sess.span_diagnostic.struct_span_err(sp, msg)
     }
