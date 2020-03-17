@@ -255,7 +255,13 @@ fn generic_extension<'cx>(
 
                 let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
                 // rhs has holes ( `$id` and `$(...)` that need filled)
-                let mut tts = transcribe(cx, &named_matches, rhs, transparency);
+                let mut tts = match transcribe(cx, &named_matches, rhs, transparency) {
+                    Ok(tts) => tts,
+                    Err(mut err) => {
+                        err.emit();
+                        return DummyResult::any(arm_span);
+                    }
+                };
 
                 // Replace all the tokens for the corresponding positions in the macro, to maintain
                 // proper positions in error reporting, while maintaining the macro_backtrace.
