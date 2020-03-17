@@ -284,8 +284,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         debug!("report_region_error: category={:?} {:?}", category, span);
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
-            let tables = self.infcx.tcx.typeck_tables_of(self.mir_def_id);
-            let nice = NiceRegionError::new_from_span(self.infcx, span, o, f, Some(tables));
+            let nice = NiceRegionError::new_from_span(self.infcx, span, o, f);
             if let Some(diag) = nice.try_report_from_nll() {
                 diag.buffer(&mut self.errors_buffer);
                 return;

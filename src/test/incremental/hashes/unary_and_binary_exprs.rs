@@ -81,7 +81,7 @@ pub fn var_deref(x: &i32, y: &i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(except="hir_owner_items,optimized_mir,mir_built,typeck_tables_of", cfg="cfail2")]
+#[rustc_clean(except="hir_owner_items,optimized_mir,mir_built", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 pub fn var_deref(x: &i32, y: &i32) -> i32 {
     *y

@@ -7,6 +7,7 @@ use crate::infer::region_constraints::RegionConstraintData;
 use crate::infer::region_constraints::VarInfos;
 use crate::infer::region_constraints::VerifyBound;
 use crate::infer::RegionVariableOrigin;
+use crate::infer::RegionckMode;
 use crate::infer::SubregionOrigin;
 use rustc::middle::free_region::RegionRelations;
 use rustc::ty::fold::TypeFoldable;
@@ -33,12 +34,29 @@ pub fn resolve<'tcx>(
     region_rels: &RegionRelations<'_, 'tcx>,
     var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,
+    mode: RegionckMode,
 ) -> (LexicalRegionResolutions<'tcx>, Vec<RegionResolutionError<'tcx>>) {
     debug!("RegionConstraintData: resolve_regions()");
     let mut errors = vec![];
     let mut resolver = LexicalResolver { region_rels, var_infos, data };
-    let values = resolver.infer_variable_values(&mut errors);
-    (values, errors)
+    match mode {
+        RegionckMode::Solve => {
+            let values = resolver.infer_variable_values(&mut errors);
+            (values, errors)
+        }
+        RegionckMode::Erase { suppress_errors: false } => {
+            // Do real inference to get errors, then erase the results.
+            let mut values = resolver.infer_variable_values(&mut errors);
+            let re_erased = region_rels.tcx.lifetimes.re_erased;
+
+            values.values.iter_mut().for_each(|v| *v = VarValue::Value(re_erased));
+            (values, errors)
+        }
+        RegionckMode::Erase { suppress_errors: true } => {
+            // Skip region inference entirely.
+            (resolver.erased_data(region_rels.tcx), Vec::new())
+        }
+    }
 }
 
 /// Contains the result of lexical region resolution. Offers methods
@@ -158,6 +176,19 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     let re_empty = tcx.mk_region(ty::ReEmpty(vid_universe));
                     VarValue::Value(re_empty)
                 },
+                self.num_vars(),
+            ),
+        }
+    }
+
+    /// An erased version of the lexical region resolutions. Used when we're
+    /// erasing regions and suppressing errors: in item bodies with
+    /// `-Zborrowck=mir`.
+    fn erased_data(&self, tcx: TyCtxt<'tcx>) -> LexicalRegionResolutions<'tcx> {
+        LexicalRegionResolutions {
+            error_region: tcx.lifetimes.re_static,
+            values: IndexVec::from_elem_n(
+                VarValue::Value(tcx.lifetimes.re_erased),
                 self.num_vars(),
             ),
         }

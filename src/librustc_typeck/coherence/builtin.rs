@@ -12,7 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;
 use rustc_infer::infer;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{SuppressRegionErrors, TyCtxtInferExt};
+use rustc_infer::infer::{RegionckMode, TyCtxtInferExt};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
 use rustc_trait_selection::traits::predicate_for_trait_def;
@@ -307,7 +307,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
                             impl_did,
                             &region_scope_tree,
                             &outlives_env,
-                            SuppressRegionErrors::default(),
+                            RegionckMode::default(),
                         );
                     }
                 }
@@ -568,7 +568,7 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
             impl_did,
             &region_scope_tree,
             &outlives_env,
-            SuppressRegionErrors::default(),
+            RegionckMode::default(),
         );
 
         CoerceUnsizedInfo { custom_kind: kind }
