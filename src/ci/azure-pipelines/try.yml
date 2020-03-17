@@ -168,51 +168,51 @@ jobs:
 #        INITIAL_RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
 #        SCRIPT: make ci-mingw-subset-2
 #        CUSTOM_MINGW: 1
-      x86_64-mingw-1:
-        SCRIPT: make ci-mingw-subset-1
-        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-        CUSTOM_MINGW: 1
+#      x86_64-mingw-1:
+#        SCRIPT: make ci-mingw-subset-1
+#        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+#        CUSTOM_MINGW: 1
         # FIXME(#59637)
-        NO_DEBUG_ASSERTIONS: 1
-        NO_LLVM_ASSERTIONS: 1
-      x86_64-mingw-2:
-        SCRIPT: make ci-mingw-subset-2
-        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-        CUSTOM_MINGW: 1
+#        NO_DEBUG_ASSERTIONS: 1
+#        NO_LLVM_ASSERTIONS: 1
+#      x86_64-mingw-2:
+#        SCRIPT: make ci-mingw-subset-2
+#        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+#        CUSTOM_MINGW: 1
 
       # 32/64 bit MSVC and GNU deployment
-      dist-x86_64-msvc:
-        INITIAL_RUST_CONFIGURE_ARGS: >-
-          --build=x86_64-pc-windows-msvc
-          --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
-          --enable-full-tools
-          --enable-profiler
-        SCRIPT: python x.py dist
-        DIST_REQUIRE_ALL_TOOLS: 1
-      dist-i686-msvc:
-        INITIAL_RUST_CONFIGURE_ARGS: >-
-          --build=i686-pc-windows-msvc
-          --target=i586-pc-windows-msvc
-          --enable-full-tools
-          --enable-profiler
-        SCRIPT: python x.py dist
-        DIST_REQUIRE_ALL_TOOLS: 1
-      dist-i686-mingw:
-        INITIAL_RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools --enable-profiler
-        SCRIPT: python x.py dist
-        CUSTOM_MINGW: 1
-        DIST_REQUIRE_ALL_TOOLS: 1
-#      dist-x86_64-mingw:
+#      dist-x86_64-msvc:
+#        INITIAL_RUST_CONFIGURE_ARGS: >-
+#          --build=x86_64-pc-windows-msvc
+#          --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
+#          --enable-full-tools
+#          --enable-profiler
 #        SCRIPT: python x.py dist
-#        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler
+#        DIST_REQUIRE_ALL_TOOLS: 1
+#      dist-i686-msvc:
+#        INITIAL_RUST_CONFIGURE_ARGS: >-
+#          --build=i686-pc-windows-msvc
+#          --target=i586-pc-windows-msvc
+#          --enable-full-tools
+#          --enable-profiler
+#        SCRIPT: python x.py dist
+#        DIST_REQUIRE_ALL_TOOLS: 1
+#      dist-i686-mingw:
+#        INITIAL_RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools --enable-profiler
+#        SCRIPT: python x.py dist
 #        CUSTOM_MINGW: 1
 #        DIST_REQUIRE_ALL_TOOLS: 1
+      dist-x86_64-mingw:
+        SCRIPT: python x.py dist
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler
+        CUSTOM_MINGW: 1
+        DIST_REQUIRE_ALL_TOOLS: 1
 
       # "alternate" deployment, see .travis.yml for more info
-#      dist-x86_64-msvc-alt:
-#        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
-#        SCRIPT: python x.py dist
-#
+      dist-x86_64-msvc-alt:
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
+        SCRIPT: python x.py dist
+
 # The macOS and Windows builds here are currently disabled due to them not being
 # overly necessary on `try` builds. We also don't actually have anything that
 # consumes the artifacts currently. Perhaps one day we can re-enable, but for now
