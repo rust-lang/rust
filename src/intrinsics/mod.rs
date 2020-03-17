@@ -425,7 +425,7 @@ pub fn codegen_intrinsic_call<'tcx>(
     intrinsic_match! {
         fx, intrinsic, substs, args,
         _ => {
-            unimpl!("unsupported intrinsic {}", intrinsic)
+            unimpl_fatal!(fx.tcx, span, "unsupported intrinsic {}", intrinsic);
         };
 
         assume, (c _a) {};

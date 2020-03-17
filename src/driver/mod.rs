@@ -52,10 +52,8 @@ fn codegen_mono_items<'tcx>(
     });
 
     for (mono_item, (linkage, visibility)) in mono_items {
-        crate::unimpl::try_unimpl(tcx, || {
-            let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
-            trans_mono_item(&mut cx, mono_item, linkage);
-        });
+        let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
+        trans_mono_item(&mut cx, mono_item, linkage);
     }
 
     tcx.sess.time("finalize CodegenCx", || cx.finalize());

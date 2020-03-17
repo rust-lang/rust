@@ -57,7 +57,6 @@ mod pointer;
 mod pretty_clif;
 mod target_features_whitelist;
 mod trap;
-mod unimpl;
 mod unsize;
 mod value_and_place;
 mod vtable;
@@ -115,7 +114,6 @@ mod prelude {
     pub use crate::debuginfo::{DebugContext, FunctionDebugContext};
     pub use crate::pointer::Pointer;
     pub use crate::trap::*;
-    pub use crate::unimpl::unimpl;
     pub use crate::value_and_place::{CPlace, CPlaceInner, CValue};
     pub use crate::CodegenCx;
 
@@ -126,6 +124,10 @@ mod prelude {
                 println!("{}", (self.0)());
             }
         }
+    }
+
+    pub macro unimpl_fatal($tcx:expr, $span:expr, $($tt:tt)*) {
+        $tcx.sess.span_fatal($span, &format!($($tt)*));
     }
 }
 

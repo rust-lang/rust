@@ -700,7 +700,7 @@ fn trans_stmt<'tcx>(
 
                     crate::trap::trap_unimplemented(fx, "_xgetbv arch intrinsic is not supported");
                 }
-                _ => unimpl!("Inline assembly is not supported"),
+                _ => unimpl_fatal!(fx.tcx, stmt.source_info.span, "Inline assembly is not supported"),
             }
         }
     }

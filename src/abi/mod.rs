@@ -173,7 +173,7 @@ pub fn get_function_name_and_sig<'tcx>(
     let fn_sig =
         tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_sig_for_fn_abi(tcx, inst));
     if fn_sig.c_variadic && !support_vararg {
-        unimpl!("Variadic function definitions are not yet supported");
+        unimpl_fatal!(tcx, tcx.def_span(inst.def_id()), "Variadic function definitions are not yet supported");
     }
     let sig = clif_sig_from_fn_sig(tcx, triple, fn_sig, false, inst.def.requires_caller_location(tcx));
     (tcx.symbol_name(inst).name.as_str().to_string(), sig)
@@ -622,7 +622,7 @@ fn codegen_call_inner<'tcx>(
     // FIXME find a cleaner way to support varargs
     if fn_sig.c_variadic {
         if fn_sig.abi != Abi::C {
-            unimpl!("Variadic call for non-C abi {:?}", fn_sig.abi);
+            unimpl_fatal!(fx.tcx, span, "Variadic call for non-C abi {:?}", fn_sig.abi);
         }
         let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
         let abi_params = call_args
@@ -631,7 +631,7 @@ fn codegen_call_inner<'tcx>(
                 let ty = fx.bcx.func.dfg.value_type(arg);
                 if !ty.is_int() {
                     // FIXME set %al to upperbound on float args once floats are supported
-                    unimpl!("Non int ty {:?} for variadic call", ty);
+                    unimpl_fatal!(fx.tcx, span, "Non int ty {:?} for variadic call", ty);
                 }
                 AbiParam::new(ty)
             })
