@@ -5,7 +5,7 @@ use rustc_ast::ast::{self, ItemKind, MetaItemKind, NestedMetaItem};
 use rustc_ast::token;
 use rustc_ast::tokenstream::{self, TokenStream};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, FatalError};
+use rustc_errors::{Applicability, ErrorReported, FatalError};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -21,21 +21,16 @@ impl base::ProcMacro for BangProcMacro {
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
-    ) -> TokenStream {
+    ) -> Result<TokenStream, ErrorReported> {
         let server = proc_macro_server::Rustc::new(ecx);
-        match self.client.run(&EXEC_STRATEGY, server, input) {
-            Ok(stream) => stream,
-            Err(e) => {
-                let msg = "proc macro panicked";
-                let mut err = ecx.struct_span_fatal(span, msg);
-                if let Some(s) = e.as_str() {
-                    err.help(&format!("message: {}", s));
-                }
-
-                err.emit();
-                FatalError.raise();
+        self.client.run(&EXEC_STRATEGY, server, input).map_err(|e| {
+            let mut err = ecx.struct_span_err(span, "proc macro panicked");
+            if let Some(s) = e.as_str() {
+                err.help(&format!("message: {}", s));
             }
-        }
+            err.emit();
+            ErrorReported
+        })
     }
 }
 
