@@ -13,6 +13,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutexattr_init(&mut self, attr_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following write at an offset to the attr pointer is within bounds
         assert_ptr_target_min_size(this, attr_op, 4)?;
 
         let attr = this.read_scalar(attr_op)?.not_undef()?;
@@ -36,6 +37,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following write at an offset to the attr pointer is within bounds
         assert_ptr_target_min_size(this, attr_op, 4)?;
 
         let attr = this.read_scalar(attr_op)?.not_undef()?;
@@ -62,6 +64,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutexattr_destroy(&mut self, attr_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following write at an offset to the attr pointer is within bounds
         assert_ptr_target_min_size(this, attr_op, 4)?;
 
         let attr = this.read_scalar(attr_op)?.not_undef()?;
@@ -92,7 +95,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following writes at offsets to the mutex pointer are within bounds
         assert_ptr_target_min_size(this, mutex_op, 16)?;
+        // Ensure that the following read at an offset to the attr pointer is within bounds
         assert_ptr_target_min_size(this, attr_op, 4)?;
 
         let mutex = this.read_scalar(mutex_op)?.not_undef()?;
@@ -125,6 +130,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_lock(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following reads and writes at offsets to the mutex pointer are within bounds
         assert_ptr_target_min_size(this, mutex_op, 16)?;
 
         let mutex = this.read_scalar(mutex_op)?.not_undef()?;
@@ -166,6 +172,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_trylock(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following reads and writes at offsets to the mutex pointer are within bounds
         assert_ptr_target_min_size(this, mutex_op, 16)?;
 
         let mutex = this.read_scalar(mutex_op)?.not_undef()?;
@@ -201,6 +208,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_unlock(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following reads and writes at offsets to the mutex pointer are within bounds
         assert_ptr_target_min_size(this, mutex_op, 16)?;
 
         let mutex = this.read_scalar(mutex_op)?.not_undef()?;
@@ -246,6 +254,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_destroy(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following read and writes at offsets to the mutex pointer are within bounds
         assert_ptr_target_min_size(this, mutex_op, 16)?;
 
         let mutex = this.read_scalar(mutex_op)?.not_undef()?;
@@ -277,6 +286,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_rdlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following reads and write at offsets to the rwlock pointer are within bounds
         assert_ptr_target_min_size(this, rwlock_op, 12)?;
 
         let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
@@ -301,6 +311,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_tryrdlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following reads and write at offsets to the rwlock pointer are within bounds
         assert_ptr_target_min_size(this, rwlock_op, 12)?;
 
         let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
@@ -325,6 +336,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_wrlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following reads and write at offsets to the rwlock pointer are within bounds
         assert_ptr_target_min_size(this, rwlock_op, 12)?;
 
         let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
@@ -351,6 +363,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_trywrlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following reads and write at offsets to the rwlock pointer are within bounds
         assert_ptr_target_min_size(this, rwlock_op, 12)?;
 
         let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
@@ -375,6 +388,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_unlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following reads and writes at offsets to the rwlock pointer are within bounds
         assert_ptr_target_min_size(this, rwlock_op, 12)?;
 
         let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
@@ -402,6 +416,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_destroy(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Ensure that the following reads and writes at offsets to the rwlock pointer are within bounds
         assert_ptr_target_min_size(this, rwlock_op, 12)?;
 
         let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
