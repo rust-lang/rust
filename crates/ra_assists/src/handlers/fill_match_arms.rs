@@ -50,45 +50,49 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    let db = ctx.db;
-    ctx.add_assist(AssistId("fill_match_arms"), "Fill match arms", |edit| {
-        let mut arms: Vec<MatchArm> = match_arm_list.arms().collect();
-        if arms.len() == 1 {
-            if let Some(Pat::PlaceholderPat(..)) = arms[0].pat() {
-                arms.clear();
-            }
+    let mut arms: Vec<MatchArm> = match_arm_list.arms().collect();
+    if arms.len() == 1 {
+        if let Some(Pat::PlaceholderPat(..)) = arms[0].pat() {
+            arms.clear();
         }
+    }
 
-        let mut has_partial_match = false;
-        let variants: Vec<MatchArm> = variants
-            .into_iter()
-            .filter_map(|variant| build_pat(db, module, variant))
-            .filter(|variant_pat| {
-                !arms.iter().filter_map(|arm| arm.pat().map(|_| arm)).any(|arm| {
-                    let pat = arm.pat().unwrap();
+    let mut has_partial_match = false;
+    let db = ctx.db;
+    let missing_arms: Vec<MatchArm> = variants
+        .into_iter()
+        .filter_map(|variant| build_pat(db, module, variant))
+        .filter(|variant_pat| {
+            !arms.iter().filter_map(|arm| arm.pat().map(|_| arm)).any(|arm| {
+                let pat = arm.pat().unwrap();
 
-                    // Special casee OrPat as separate top-level pats
-                    let pats: Vec<Pat> = match Pat::from(pat.clone()) {
-                        Pat::OrPat(pats) => pats.pats().collect::<Vec<_>>(),
-                        _ => vec![pat],
-                    };
+                // Special casee OrPat as separate top-level pats
+                let pats: Vec<Pat> = match Pat::from(pat.clone()) {
+                    Pat::OrPat(pats) => pats.pats().collect::<Vec<_>>(),
+                    _ => vec![pat],
+                };
 
-                    pats.iter().any(|pat| {
-                        match does_arm_pat_match_variant(pat, arm.guard(), variant_pat) {
-                            ArmMatch::Yes => true,
-                            ArmMatch::No => false,
-                            ArmMatch::Partial => {
-                                has_partial_match = true;
-                                true
-                            }
+                pats.iter().any(|pat| {
+                    match does_arm_pat_match_variant(pat, arm.guard(), variant_pat) {
+                        ArmMatch::Yes => true,
+                        ArmMatch::No => false,
+                        ArmMatch::Partial => {
+                            has_partial_match = true;
+                            true
                         }
-                    })
+                    }
                 })
             })
-            .map(|pat| make::match_arm(iter::once(pat), make::expr_unit()))
-            .collect();
+        })
+        .map(|pat| make::match_arm(iter::once(pat), make::expr_unit()))
+        .collect();
 
-        arms.extend(variants);
+    if missing_arms.is_empty() && !has_partial_match {
+        return None;
+    }
+
+    ctx.add_assist(AssistId("fill_match_arms"), "Fill match arms", |edit| {
+        arms.extend(missing_arms);
         if has_partial_match {
             arms.push(make::match_arm(
                 iter::once(make::placeholder_pat().into()),
