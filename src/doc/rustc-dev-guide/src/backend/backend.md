@@ -38,7 +38,7 @@ The code for codegen is actually a bit complex due to a few factors:
 - Codegen happens asynchronously in another thread for performance.
 - The actual codegen is done by a third-party library (either LLVM or Cranelift).
 
-Generally, the [`rustc_codegen_ssa`][ssa] crate contains backend-agnastic code
+Generally, the [`rustc_codegen_ssa`][ssa] crate contains backend-agnostic code
 (i.e. independent of LLVM or Cranelift), while the [`rustc_codegen_llvm`][llvm]
 crate contains code specific to LLVM codegen.
 
