@@ -813,7 +813,7 @@ pub fn codegen_intrinsic_call<'tcx>(
             let res = CValue::by_val(swap(&mut fx.bcx, arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
-        assert_inhabited | assert_zero_valid | assert_any_valid, <T> () {
+        assert_inhabited | assert_zero_valid | assert_uninit_valid, <T> () {
             let layout = fx.layout_of(T);
             if layout.abi.is_uninhabited() {
                 crate::trap::trap_panic(fx, &format!("attempted to instantiate uninhabited type `{}`", T));
@@ -825,7 +825,7 @@ pub fn codegen_intrinsic_call<'tcx>(
                 return;
             }
 
-            if intrinsic == "assert_any_valid" && !layout.might_permit_raw_init(fx, /*zero:*/ false).unwrap() {
+            if intrinsic == "assert_uninit_valid" && !layout.might_permit_raw_init(fx, /*zero:*/ false).unwrap() {
                 crate::trap::trap_panic(fx, &format!("attempted to leave type `{}` uninitialized, which is invalid", T));
                 return;
             }
