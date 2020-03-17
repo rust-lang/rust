@@ -25,4 +25,5 @@ ENV RUN_CHECK_WITH_PARALLEL_QUERIES 1
 ENV SCRIPT python2.7 ../x.py check --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu && \
            python2.7 ../x.py build --stage 0 src/tools/build-manifest && \
            python2.7 ../x.py test --stage 0 src/tools/compiletest && \
+           python2.7 ../x.py test src/tools/tidy && \
            /scripts/validate-toolstate.sh
