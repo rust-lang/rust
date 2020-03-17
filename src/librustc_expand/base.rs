@@ -1020,9 +1020,6 @@ impl<'a> ExtCtxt<'a> {
     pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'a> {
         self.parse_sess.span_diagnostic.struct_span_err(sp, msg)
     }
-    pub fn struct_span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'a> {
-        self.parse_sess.span_diagnostic.struct_span_fatal(sp, msg)
-    }
 
     /// Emit `msg` attached to `sp`, and stop compilation immediately.
     ///
