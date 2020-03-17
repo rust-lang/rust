@@ -23,7 +23,6 @@ export interface CargoFeatures {
     allFeatures: boolean;
     features: string[];
     loadOutDirsFromCheck: boolean;
-    outDirOverrides: Record<string, string>;
 }
 
 export const enum UpdatesChannel {
@@ -222,7 +221,6 @@ export class Config {
             allFeatures: this.cfg.get("cargoFeatures.allFeatures") as boolean,
             features: this.cfg.get("cargoFeatures.features") as string[],
             loadOutDirsFromCheck: this.cfg.get("cargoFeatures.loadOutDirsFromCheck") as boolean,
-            outDirOverrides: this.cfg.get("cargoFeatures.outDirOverrides") as Record<string, string>,
         };
     }
 
