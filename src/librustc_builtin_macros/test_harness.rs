@@ -345,14 +345,14 @@ fn is_test_case(i: &ast::Item) -> bool {
 
 fn get_test_runner(sd: &rustc_errors::Handler, krate: &ast::Crate) -> Option<ast::Path> {
     let test_attr = attr::find_by_name(&krate.attrs, sym::test_runner)?;
-    test_attr.meta_item_list().map(|meta_list| {
-        if meta_list.len() != 1 {
-            sd.span_fatal(test_attr.span, "`#![test_runner(..)]` accepts exactly 1 argument")
-                .raise()
-        }
-        match meta_list[0].meta_item() {
-            Some(meta_item) if meta_item.is_word() => meta_item.path.clone(),
-            _ => sd.span_fatal(test_attr.span, "`test_runner` argument must be a path").raise(),
-        }
-    })
+    let meta_list = test_attr.meta_item_list()?;
+    let span = test_attr.span;
+    match &*meta_list {
+        [single] => match single.meta_item() {
+            Some(meta_item) if meta_item.is_word() => return Some(meta_item.path.clone()),
+            _ => sd.struct_span_err(span, "`test_runner` argument must be a path").emit(),
+        },
+        _ => sd.struct_span_err(span, "`#![test_runner(..)]` accepts exactly 1 argument").emit(),
+    }
+    None
 }
