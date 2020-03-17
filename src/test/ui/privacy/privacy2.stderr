@@ -10,11 +10,16 @@ error[E0603]: function import `foo` is private
 LL |     use bar::glob::foo;
    |                    ^^^ this function import is private
    |
-note: the function import `foo` is defined here
+note: the function import `foo` is defined here...
   --> $DIR/privacy2.rs:10:13
    |
 LL |         use foo;
    |             ^^^
+note: ...and refers to the function `foo` which is defined here
+  --> $DIR/privacy2.rs:14:1
+   |
+LL | pub fn foo() {}
+   | ^^^^^^^^^^^^ consider importing it directly
 
 error: requires `sized` lang_item
 
