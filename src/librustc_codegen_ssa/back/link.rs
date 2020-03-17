@@ -841,6 +841,12 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     }
                     LinkerFlavor::Gcc => {
                         if cfg!(target_os = "solaris") {
+                            // On historical Solaris systems, "cc" may have
+                            // been Sun Studio, which is not flag-compatible
+                            // with "gcc".  This history casts a long shadow,
+                            // and many modern illumos distributions today
+                            // ship GCC as "gcc" without also making it
+                            // available as "cc".
                             "gcc"
                         } else {
                             "cc"
