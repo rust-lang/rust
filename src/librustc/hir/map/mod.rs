@@ -640,13 +640,13 @@ impl<'hir> Map<'hir> {
     /// Used exclusively for diagnostics, to avoid suggestion function calls.
     pub fn is_const_context(&self, hir_id: HirId) -> bool {
         let parent_id = self.get_parent_item(hir_id);
-        match self.get(parent_id) {
-            Node::Item(&Item { kind: ItemKind::Const(..), .. })
-            | Node::TraitItem(&TraitItem { kind: TraitItemKind::Const(..), .. })
-            | Node::ImplItem(&ImplItem { kind: ImplItemKind::Const(..), .. })
-            | Node::AnonConst(_)
-            | Node::Item(&Item { kind: ItemKind::Static(..), .. }) => true,
-            Node::Item(&Item { kind: ItemKind::Fn(ref sig, ..), .. }) => {
+        match self.find(parent_id) {
+            Some(Node::Item(&Item { kind: ItemKind::Const(..), .. }))
+            | Some(Node::TraitItem(&TraitItem { kind: TraitItemKind::Const(..), .. }))
+            | Some(Node::ImplItem(&ImplItem { kind: ImplItemKind::Const(..), .. }))
+            | Some(Node::AnonConst(_))
+            | Some(Node::Item(&Item { kind: ItemKind::Static(..), .. })) => true,
+            Some(Node::Item(&Item { kind: ItemKind::Fn(ref sig, ..), .. })) => {
                 sig.header.constness == Constness::Const
             }
             _ => false,
@@ -738,6 +738,7 @@ impl<'hir> Map<'hir> {
                 | Node::Item(_)
                 | Node::ForeignItem(_)
                 | Node::TraitItem(_)
+                | Node::AnonConst(_)
                 | Node::ImplItem(_) => return hir_id,
                 _ => {}
             }

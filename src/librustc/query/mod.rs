@@ -438,18 +438,6 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
 
-        query const_typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
-            desc { |tcx| "type-checking `{}`", tcx.def_path_str(key) }
-            cache_on_disk_if { key.is_local() }
-            load_cached(tcx, id) {
-                let typeck_tables: Option<ty::TypeckTables<'tcx>> = tcx
-                    .queries.on_disk_cache
-                    .try_load_query_result(tcx, id);
-
-                typeck_tables.map(|tables| &*tcx.arena.alloc(tables))
-            }
-        }
-
         query diagnostic_only_typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
             cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
@@ -470,8 +458,6 @@ rustc_queries! {
 
     TypeChecking {
         query has_typeck_tables(_: DefId) -> bool {}
-
-        query const_has_typeck_tables(_: DefId) -> bool {}
 
         query coherent_trait(def_id: DefId) -> () {
             desc { |tcx| "coherence checking all impls of trait `{}`", tcx.def_path_str(def_id) }

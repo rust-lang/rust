@@ -753,12 +753,7 @@ fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: DefId) {
 fn typeck_item_bodies(tcx: TyCtxt<'_>, crate_num: CrateNum) {
     debug_assert!(crate_num == LOCAL_CRATE);
     tcx.par_body_owners(|body_owner_def_id| {
-        if let Some(hir::Node::AnonConst(_)) = tcx.hir().get_if_local(body_owner_def_id) {
-            // We don't want to incorrectly suggest constraining type parameters for array lengths.
-            tcx.ensure().const_typeck_tables_of(body_owner_def_id);
-        } else {
-            tcx.ensure().typeck_tables_of(body_owner_def_id);
-        }
+        tcx.ensure().typeck_tables_of(body_owner_def_id);
     });
 }
 
@@ -779,10 +774,8 @@ pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
         typeck_item_bodies,
         typeck_tables_of,
-        const_typeck_tables_of,
         diagnostic_only_typeck_tables_of,
         has_typeck_tables,
-        const_has_typeck_tables,
         adt_destructor,
         used_trait_imports,
         check_item_well_formed,
@@ -841,23 +834,11 @@ fn primary_body_of(
 }
 
 fn has_typeck_tables(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    has_typeck_tables_inner(tcx, def_id, false)
-}
-
-fn const_has_typeck_tables(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    has_typeck_tables_inner(tcx, def_id, true)
-}
-
-fn has_typeck_tables_inner(tcx: TyCtxt<'_>, def_id: DefId, in_const_context: bool) -> bool {
     // Closures' tables come from their outermost function,
     // as they are part of the same "inference environment".
     let outer_def_id = tcx.closure_base_def_id(def_id);
     if outer_def_id != def_id {
-        if in_const_context {
-            return tcx.const_has_typeck_tables(outer_def_id);
-        } else {
-            return tcx.has_typeck_tables(outer_def_id);
-        }
+        return tcx.has_typeck_tables(outer_def_id);
     }
 
     if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
@@ -868,13 +849,7 @@ fn has_typeck_tables_inner(tcx: TyCtxt<'_>, def_id: DefId, in_const_context: boo
 }
 
 fn used_trait_imports(tcx: TyCtxt<'_>, def_id: DefId) -> &DefIdSet {
-    &*if let Some(hir::Node::AnonConst(_)) = tcx.hir().get_if_local(def_id) {
-        // We don't want to incorrectly suggest constraining type parameters for array lengths.
-        tcx.const_typeck_tables_of(def_id)
-    } else {
-        tcx.typeck_tables_of(def_id)
-    }
-    .used_trait_imports
+    &*tcx.typeck_tables_of(def_id).used_trait_imports
 }
 
 /// Inspects the substs of opaque types, replacing any inference variables
@@ -990,14 +965,7 @@ where
 
 fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &ty::TypeckTables<'tcx> {
     let fallback = move || tcx.type_of(def_id);
-    typeck_tables_of_with_fallback(tcx, def_id, fallback, false)
-}
-
-/// Used only to improve diagnostics when trying to access associated item in a const context.
-/// The most common case is trying to use an associated item to set the length of an array.
-fn const_typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &ty::TypeckTables<'tcx> {
-    let fallback = move || tcx.type_of(def_id);
-    typeck_tables_of_with_fallback(tcx, def_id, fallback, true)
+    typeck_tables_of_with_fallback(tcx, def_id, fallback)
 }
 
 /// Used only to get `TypeckTables` for type inference during error recovery.
@@ -1012,24 +980,19 @@ fn diagnostic_only_typeck_tables_of<'tcx>(
         tcx.sess.delay_span_bug(span, "diagnostic only typeck table used");
         tcx.types.err
     };
-    typeck_tables_of_with_fallback(tcx, def_id, fallback, false)
+    typeck_tables_of_with_fallback(tcx, def_id, fallback)
 }
 
 fn typeck_tables_of_with_fallback<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     fallback: impl Fn() -> Ty<'tcx> + 'tcx,
-    in_const_context: bool,
 ) -> &'tcx ty::TypeckTables<'tcx> {
     // Closures' tables come from their outermost function,
     // as they are part of the same "inference environment".
     let outer_def_id = tcx.closure_base_def_id(def_id);
     if outer_def_id != def_id {
-        if in_const_context {
-            return tcx.const_typeck_tables_of(outer_def_id);
-        } else {
-            return tcx.typeck_tables_of(outer_def_id);
-        }
+        return tcx.typeck_tables_of(outer_def_id);
     }
 
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
@@ -1042,8 +1005,6 @@ fn typeck_tables_of_with_fallback<'tcx>(
     let body = tcx.hir().body(body_id);
 
     let tables = Inherited::build(tcx, def_id).enter(|inh| {
-        let in_const = inh.in_const_context.get();
-        inh.in_const_context.set(in_const_context);
         let param_env = tcx.param_env(def_id);
         let fcx = if let (Some(header), Some(decl)) = (fn_header, fn_decl) {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
@@ -1163,7 +1124,6 @@ fn typeck_tables_of_with_fallback<'tcx>(
             fcx.regionck_expr(body);
         }
 
-        inh.in_const_context.set(in_const);
         fcx.resolve_type_vars_in_body(body)
     });
 

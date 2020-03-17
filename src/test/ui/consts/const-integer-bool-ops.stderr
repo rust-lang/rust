@@ -16,265 +16,157 @@ error[E0308]: mismatched types
 LL | const X: usize = 42 && 39;
    |                  ^^^^^^^^ expected `usize`, found `bool`
 
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:1:18
-   |
-LL | const X: usize = 42 && 39;
-   |                  ^^ expected `bool`, found integer
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:1:24
-   |
-LL | const X: usize = 42 && 39;
-   |                        ^^ expected `bool`, found integer
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:1:18
-   |
-LL | const X: usize = 42 && 39;
-   |                  ^^^^^^^^ expected `usize`, found `bool`
-
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-integer-bool-ops.rs:11:18
+  --> $DIR/const-integer-bool-ops.rs:5:18
    |
 LL | const ARR: [i32; X] = [99; 34];
    |                  ^ referenced constant has errors
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:14:19
+  --> $DIR/const-integer-bool-ops.rs:8:19
    |
 LL | const X1: usize = 42 || 39;
    |                   ^^ expected `bool`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:14:25
+  --> $DIR/const-integer-bool-ops.rs:8:25
    |
 LL | const X1: usize = 42 || 39;
    |                         ^^ expected `bool`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:14:19
-   |
-LL | const X1: usize = 42 || 39;
-   |                   ^^^^^^^^ expected `usize`, found `bool`
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:14:19
-   |
-LL | const X1: usize = 42 || 39;
-   |                   ^^ expected `bool`, found integer
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:14:25
-   |
-LL | const X1: usize = 42 || 39;
-   |                         ^^ expected `bool`, found integer
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:14:19
+  --> $DIR/const-integer-bool-ops.rs:8:19
    |
 LL | const X1: usize = 42 || 39;
    |                   ^^^^^^^^ expected `usize`, found `bool`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-integer-bool-ops.rs:24:19
+  --> $DIR/const-integer-bool-ops.rs:12:19
    |
 LL | const ARR1: [i32; X1] = [99; 47];
    |                   ^^ referenced constant has errors
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:27:19
+  --> $DIR/const-integer-bool-ops.rs:15:19
    |
 LL | const X2: usize = -42 || -39;
    |                   ^^^ expected `bool`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:27:26
+  --> $DIR/const-integer-bool-ops.rs:15:26
    |
 LL | const X2: usize = -42 || -39;
    |                          ^^^ expected `bool`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:27:19
-   |
-LL | const X2: usize = -42 || -39;
-   |                   ^^^^^^^^^^ expected `usize`, found `bool`
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:27:19
-   |
-LL | const X2: usize = -42 || -39;
-   |                   ^^^ expected `bool`, found integer
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:27:26
-   |
-LL | const X2: usize = -42 || -39;
-   |                          ^^^ expected `bool`, found integer
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:27:19
+  --> $DIR/const-integer-bool-ops.rs:15:19
    |
 LL | const X2: usize = -42 || -39;
    |                   ^^^^^^^^^^ expected `usize`, found `bool`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-integer-bool-ops.rs:37:19
+  --> $DIR/const-integer-bool-ops.rs:19:19
    |
 LL | const ARR2: [i32; X2] = [99; 18446744073709551607];
    |                   ^^ referenced constant has errors
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:40:19
+  --> $DIR/const-integer-bool-ops.rs:22:19
    |
 LL | const X3: usize = -42 && -39;
    |                   ^^^ expected `bool`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:40:26
+  --> $DIR/const-integer-bool-ops.rs:22:26
    |
 LL | const X3: usize = -42 && -39;
    |                          ^^^ expected `bool`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:40:19
-   |
-LL | const X3: usize = -42 && -39;
-   |                   ^^^^^^^^^^ expected `usize`, found `bool`
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:40:19
-   |
-LL | const X3: usize = -42 && -39;
-   |                   ^^^ expected `bool`, found integer
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:40:26
-   |
-LL | const X3: usize = -42 && -39;
-   |                          ^^^ expected `bool`, found integer
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:40:19
+  --> $DIR/const-integer-bool-ops.rs:22:19
    |
 LL | const X3: usize = -42 && -39;
    |                   ^^^^^^^^^^ expected `usize`, found `bool`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-integer-bool-ops.rs:47:19
+  --> $DIR/const-integer-bool-ops.rs:26:19
    |
 LL | const ARR3: [i32; X3] = [99; 6];
    |                   ^^ referenced constant has errors
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:50:18
-   |
-LL | const Y: usize = 42.0 == 42.0;
-   |                  ^^^^^^^^^^^^ expected `usize`, found `bool`
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:50:18
+  --> $DIR/const-integer-bool-ops.rs:29:18
    |
 LL | const Y: usize = 42.0 == 42.0;
    |                  ^^^^^^^^^^^^ expected `usize`, found `bool`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-integer-bool-ops.rs:53:19
+  --> $DIR/const-integer-bool-ops.rs:31:19
    |
 LL | const ARRR: [i32; Y] = [99; 1];
    |                   ^ referenced constant has errors
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:56:19
-   |
-LL | const Y1: usize = 42.0 >= 42.0;
-   |                   ^^^^^^^^^^^^ expected `usize`, found `bool`
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:56:19
+  --> $DIR/const-integer-bool-ops.rs:34:19
    |
 LL | const Y1: usize = 42.0 >= 42.0;
    |                   ^^^^^^^^^^^^ expected `usize`, found `bool`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-integer-bool-ops.rs:59:20
+  --> $DIR/const-integer-bool-ops.rs:36:20
    |
 LL | const ARRR1: [i32; Y1] = [99; 1];
    |                    ^^ referenced constant has errors
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:62:19
-   |
-LL | const Y2: usize = 42.0 <= 42.0;
-   |                   ^^^^^^^^^^^^ expected `usize`, found `bool`
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:62:19
+  --> $DIR/const-integer-bool-ops.rs:39:19
    |
 LL | const Y2: usize = 42.0 <= 42.0;
    |                   ^^^^^^^^^^^^ expected `usize`, found `bool`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-integer-bool-ops.rs:65:20
+  --> $DIR/const-integer-bool-ops.rs:41:20
    |
 LL | const ARRR2: [i32; Y2] = [99; 1];
    |                    ^^ referenced constant has errors
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:68:19
-   |
-LL | const Y3: usize = 42.0 > 42.0;
-   |                   ^^^^^^^^^^^ expected `usize`, found `bool`
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:68:19
+  --> $DIR/const-integer-bool-ops.rs:44:19
    |
 LL | const Y3: usize = 42.0 > 42.0;
    |                   ^^^^^^^^^^^ expected `usize`, found `bool`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-integer-bool-ops.rs:71:20
+  --> $DIR/const-integer-bool-ops.rs:46:20
    |
 LL | const ARRR3: [i32; Y3] = [99; 0];
    |                    ^^ referenced constant has errors
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:74:19
-   |
-LL | const Y4: usize = 42.0 < 42.0;
-   |                   ^^^^^^^^^^^ expected `usize`, found `bool`
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:74:19
+  --> $DIR/const-integer-bool-ops.rs:49:19
    |
 LL | const Y4: usize = 42.0 < 42.0;
    |                   ^^^^^^^^^^^ expected `usize`, found `bool`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-integer-bool-ops.rs:77:20
+  --> $DIR/const-integer-bool-ops.rs:51:20
    |
 LL | const ARRR4: [i32; Y4] = [99; 0];
    |                    ^^ referenced constant has errors
 
 error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:80:19
-   |
-LL | const Y5: usize = 42.0 != 42.0;
-   |                   ^^^^^^^^^^^^ expected `usize`, found `bool`
-
-error[E0308]: mismatched types
-  --> $DIR/const-integer-bool-ops.rs:80:19
+  --> $DIR/const-integer-bool-ops.rs:54:19
    |
 LL | const Y5: usize = 42.0 != 42.0;
    |                   ^^^^^^^^^^^^ expected `usize`, found `bool`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-integer-bool-ops.rs:83:20
+  --> $DIR/const-integer-bool-ops.rs:56:20
    |
 LL | const ARRR5: [i32; Y5] = [99; 0];
    |                    ^^ referenced constant has errors
 
-error: aborting due to 46 previous errors
+error: aborting due to 28 previous errors
 
 Some errors have detailed explanations: E0080, E0308.
 For more information about an error, try `rustc --explain E0080`.

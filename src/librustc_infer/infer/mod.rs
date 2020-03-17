@@ -250,10 +250,6 @@ pub struct InferCtxt<'a, 'tcx> {
     /// This flag is true while there is an active snapshot.
     in_snapshot: Cell<bool>,
 
-    /// This flag is `true` if the current scope is in a `const` context,
-    /// like in an array length. Used exclusively to improve diagnostics.
-    pub in_const_context: Cell<bool>,
-
     /// What is the innermost universe we have created? Starts out as
     /// `UniverseIndex::root()` but grows from there as we enter
     /// universal quantifiers.
@@ -588,7 +584,6 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
                 tainted_by_errors_flag: Cell::new(false),
                 err_count_on_creation: tcx.sess.err_count(),
                 in_snapshot: Cell::new(false),
-                in_const_context: Cell::new(false),
                 skip_leak_check: Cell::new(false),
                 universe: Cell::new(ty::UniverseIndex::ROOT),
             })

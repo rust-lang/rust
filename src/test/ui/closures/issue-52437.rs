@@ -3,5 +3,4 @@ fn main() {
     //~^ ERROR: invalid label name `'static`
     //~| ERROR: `loop` is not allowed in a `const`
     //~| ERROR: type annotations needed
-    //~| ERROR: type annotations needed
 }

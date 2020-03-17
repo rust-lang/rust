@@ -11,10 +11,6 @@ LL | | }
    | |_- in this macro invocation
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you can convert an `i32` to `isize` and panic if the converted value wouldn't fit
-   |
-LL |             $( $v = $s::V.try_into().unwrap(), )*
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/enum-discr-type-err.rs:18:21
@@ -29,10 +25,6 @@ LL | | }
    | |_- in this macro invocation
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you can convert an `i32` to `isize` and panic if the converted value wouldn't fit
-   |
-LL |             $( $v = $s::V.try_into().unwrap(), )*
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -290,8 +290,8 @@ pub fn const_eval_raw_provider<'tcx>(
     let def_id = cid.instance.def.def_id();
 
     if def_id.is_local()
-        && tcx.const_has_typeck_tables(def_id)
-        && tcx.const_typeck_tables_of(def_id).tainted_by_errors
+        && tcx.has_typeck_tables(def_id)
+        && tcx.typeck_tables_of(def_id).tainted_by_errors
     {
         return Err(ErrorHandled::Reported);
     }
