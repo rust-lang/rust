@@ -46,7 +46,7 @@ impl LateLintPass<'_, '_> for IfLetMutex {
             arm_lock: false,
             cx,
         };
-        let mut op_visit = IfLetMutexVisitor {
+        let mut op_visit = OppVisitor {
             op_mutex: false,
             op_lock: false,
             cx,
@@ -80,13 +80,13 @@ impl LateLintPass<'_, '_> for IfLetMutex {
 }
 
 /// Checks if `Mutex::lock` is called in the `if let _ = expr.
-pub struct IfLetMutexVisitor<'tcx, 'l> {
+pub struct OppVisitor<'tcx, 'l> {
     pub op_mutex: bool,
     pub op_lock: bool,
     pub cx: &'tcx LateContext<'tcx, 'l>,
 }
 
-impl<'tcx, 'l> Visitor<'tcx> for IfLetMutexVisitor<'tcx, 'l> {
+impl<'tcx, 'l> Visitor<'tcx> for OppVisitor<'tcx, 'l> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
