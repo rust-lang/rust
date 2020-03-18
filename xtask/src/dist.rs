@@ -23,27 +23,26 @@ fn dist_client(nightly: bool) -> Result<()> {
     let _d = pushd("./editors/code");
 
     let package_json_path = PathBuf::from("./package.json");
-    let original_package_json = fs2::read_to_string(&package_json_path)?;
-    let _restore =
-        Restore { path: package_json_path.clone(), contents: original_package_json.clone() };
+    let mut patch = Patch::new(package_json_path.clone())?;
 
     let date = run!("date --utc +%Y%m%d")?;
     let version_suffix = if nightly { "-nightly" } else { "" };
 
-    let mut package_json = original_package_json.replace(
+    patch.replace(
         r#""version": "0.2.20200309-nightly""#,
         &format!(r#""version": "0.1.{}{}""#, date, version_suffix),
     );
 
     if nightly {
-        package_json = package_json.replace(
+        patch.replace(
             r#""displayName": "rust-analyzer""#,
-            r#""displayName": "rust-analyzer nightly""#,
+            r#""displayName": "rust-analyzer (nightly)""#,
         );
-    } else {
-        package_json = package_json.replace(r#""enableProposedApi": true,"#, r#""#);
     }
-    fs2::write(package_json_path, package_json)?;
+    if !nightly {
+        patch.replace(r#""enableProposedApi": true,"#, r#""#);
+    }
+    patch.commit()?;
 
     run!("npm ci")?;
     run!("npx vsce package -o ../../dist/rust-analyzer.vsix")?;
@@ -80,13 +79,31 @@ fn dist_server() -> Result<()> {
     Ok(())
 }
 
-struct Restore {
+struct Patch {
     path: PathBuf,
+    original_contents: String,
     contents: String,
 }
 
-impl Drop for Restore {
+impl Patch {
+    fn new(path: PathBuf) -> Result<Patch> {
+        let contents = fs2::read_to_string(&path)?;
+        Ok(Patch { path, original_contents: contents.clone(), contents })
+    }
+
+    fn replace(&mut self, from: &str, to: &str) -> &mut Patch {
+        assert!(self.contents.contains(from));
+        self.contents = self.contents.replace(from, to);
+        self
+    }
+
+    fn commit(&self) -> Result<()> {
+        fs2::write(&self.path, &self.contents)
+    }
+}
+
+impl Drop for Patch {
     fn drop(&mut self) {
-        fs2::write(&self.path, &self.contents).unwrap();
+        fs2::write(&self.path, &self.original_contents).unwrap();
     }
 }
