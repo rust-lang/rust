@@ -598,11 +598,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        if self.tcx.hir().is_const_context(expr.hir_id) {
-            // Shouldn't suggest `.into()` on `const`s.
-            // FIXME(estebank): modify once we decide to suggest `as` casts
-            return false;
-        }
+        // Shouldn't suggest `.into()` on `const`s.
+        // FIXME(estebank): modify once we decide to suggest `as` casts
+        let is_const_context = self.tcx.hir().is_const_context(expr.hir_id);
         if self.tcx.sess.source_map().is_imported(expr.span) {
             // Ignore if span is from within a macro.
             return false;
@@ -728,24 +726,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let suggest_to_change_suffix_or_into =
                 |err: &mut DiagnosticBuilder<'_>, is_fallible: bool| {
                     let into_sugg = into_suggestion.clone();
-                    err.span_suggestion(
-                        expr.span,
-                        if literal_is_ty_suffixed(expr) {
-                            &lit_msg
-                        } else if is_fallible {
-                            &try_msg
-                        } else {
-                            &msg
-                        },
-                        if literal_is_ty_suffixed(expr) {
-                            suffix_suggestion.clone()
-                        } else if is_fallible {
-                            try_into_suggestion
-                        } else {
-                            into_sugg
-                        },
-                        Applicability::MachineApplicable,
-                    );
+                    if !is_const_context || literal_is_ty_suffixed(expr) {
+                        err.span_suggestion(
+                            expr.span,
+                            if literal_is_ty_suffixed(expr) {
+                                &lit_msg
+                            } else if is_fallible {
+                                &try_msg
+                            } else {
+                                &msg
+                            },
+                            if literal_is_ty_suffixed(expr) {
+                                suffix_suggestion.clone()
+                            } else if is_fallible {
+                                try_into_suggestion
+                            } else {
+                                into_sugg
+                            },
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 };
 
             match (&expected_ty.kind, &checked_ty.kind) {
