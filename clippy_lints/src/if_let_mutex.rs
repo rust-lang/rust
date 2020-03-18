@@ -64,14 +64,10 @@ impl LateLintPass<'_, '_> for IfLetMutex {
 }
 
 fn matching_arm(arm: &Arm<'_>, op: &Expr<'_>, ex: &Expr<'_>, cx: &LateContext<'_, '_>) -> bool {
-    if_chain! {
-        if let ExprKind::Block(ref block, _l) = arm.body.kind;
-        if block.stmts.iter().any(|stmt| matching_stmt(stmt, op, ex, cx));
-        then {
-            true
-        } else {
-            false
-        }
+    if let ExprKind::Block(ref block, _l) = arm.body.kind {
+        block.stmts.iter().any(|stmt| matching_stmt(stmt, op, ex, cx))
+    } else {
+        false
     }
 }
 

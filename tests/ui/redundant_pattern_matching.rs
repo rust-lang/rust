@@ -85,7 +85,6 @@ fn main() {
 
     let _ = does_something();
     let _ = returns_unit();
-    let _ = issue_5271();
 
     let opt = Some(false);
     let x = if let Some(_) = opt { true } else { false };
