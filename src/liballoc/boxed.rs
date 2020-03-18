@@ -147,8 +147,10 @@ use core::slice;
 use core::task::{Context, Poll};
 
 use crate::alloc::{self, AllocRef, Global};
+use crate::borrow::Cow;
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
+use crate::string::String;
 use crate::vec::Vec;
 
 /// A pointer type for heap allocation.
@@ -1042,6 +1044,41 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T> {}
 impl<A> FromIterator<A> for Box<[A]> {
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self {
         iter.into_iter().collect::<Vec<_>>().into_boxed_slice()
+    }
+}
+
+#[stable(feature = "boxed_str_from_iter", since = "1.44.0")]
+impl<'a> FromIterator<&'a char> for Box<str> {
+    fn from_iter<T: IntoIterator<Item = &'a char>>(iter: T) -> Self {
+        iter.into_iter().collect::<String>().into_boxed_str()
+    }
+}
+
+#[stable(feature = "boxed_str_from_iter", since = "1.44.0")]
+impl<'a> FromIterator<&'a str> for Box<str> {
+    fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
+        iter.into_iter().collect::<String>().into_boxed_str()
+    }
+}
+
+#[stable(feature = "boxed_str_from_iter", since = "1.44.0")]
+impl<'a> FromIterator<Cow<'a, str>> for Box<str> {
+    fn from_iter<T: IntoIterator<Item = Cow<'a, str>>>(iter: T) -> Self {
+        iter.into_iter().collect::<String>().into_boxed_str()
+    }
+}
+
+#[stable(feature = "boxed_str_from_iter", since = "1.44.0")]
+impl FromIterator<String> for Box<str> {
+    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
+        iter.into_iter().collect::<String>().into_boxed_str()
+    }
+}
+
+#[stable(feature = "boxed_str_from_iter", since = "1.44.0")]
+impl FromIterator<char> for Box<str> {
+    fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
+        iter.into_iter().collect::<String>().into_boxed_str()
     }
 }
 

@@ -8,7 +8,9 @@ use core::i64;
 use core::ops::Deref;
 use core::result::Result::{Err, Ok};
 
+use std::borrow::Cow;
 use std::boxed::Box;
+use std::string::String;
 
 #[test]
 fn test_owned_clone() {
@@ -138,6 +140,22 @@ fn boxed_slice_from_iter() {
     let boxed: Box<[u32]> = iter.collect();
     assert_eq!(boxed.len(), 100);
     assert_eq!(boxed[7], 7);
+}
+
+#[test]
+fn boxed_str_from_iter() {
+    let s = "Hello, world!";
+    let chars: Box<[char]> = s.chars().collect();
+    let boxed: Box<str> = chars.iter().collect();
+    assert_eq!(&*boxed, s);
+    let boxed: Box<str> = [s].iter().cloned().collect();
+    assert_eq!(&*boxed, s);
+    let boxed: Box<str> = [Cow::from(s)].iter().cloned().collect();
+    assert_eq!(&*boxed, s);
+    let boxed: Box<str> = [String::from(s)].iter().cloned().collect();
+    assert_eq!(&*boxed, s);
+    let boxed: Box<str> = s.chars().collect();
+    assert_eq!(&*boxed, s);
 }
 
 #[test]
