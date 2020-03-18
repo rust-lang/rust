@@ -23,11 +23,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// // Bad
     /// let x = 3.14;
     /// let y = 1_f64 / x;
-    ///
-    /// // Good
+    /// ```
+    /// Use predefined constants instead:
+    /// ```rust
     /// let x = std::f32::consts::PI;
     /// let y = std::f64::consts::FRAC_1_PI;
     /// ```
