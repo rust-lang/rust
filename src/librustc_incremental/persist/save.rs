@@ -1,10 +1,10 @@
 use rustc::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
-use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::join;
 use rustc_serialize::opaque::Encoder;
 use rustc_serialize::Encodable as RustcEncodable;
+use rustc_session::Session;
 use std::fs;
 use std::path::PathBuf;
 

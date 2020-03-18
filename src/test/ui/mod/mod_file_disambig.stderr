@@ -1,11 +1,18 @@
 error[E0584]: file for module `mod_file_disambig_aux` found at both mod_file_disambig_aux.rs and mod_file_disambig_aux/mod.rs
-  --> $DIR/mod_file_disambig.rs:1:5
+  --> $DIR/mod_file_disambig.rs:1:1
    |
 LL | mod mod_file_disambig_aux;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: delete or rename one of them to remove the ambiguity
 
-error: aborting due to previous error
+error[E0433]: failed to resolve: use of undeclared type or module `mod_file_aux`
+  --> $DIR/mod_file_disambig.rs:4:16
+   |
+LL |     assert_eq!(mod_file_aux::bar(), 10);
+   |                ^^^^^^^^^^^^ use of undeclared type or module `mod_file_aux`
 
-For more information about this error, try `rustc --explain E0584`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0433, E0584.
+For more information about an error, try `rustc --explain E0433`.

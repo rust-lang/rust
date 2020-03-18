@@ -1,4 +1,5 @@
 use crate::expand::{self, AstFragment, Invocation};
+use crate::module::DirectoryOwnership;
 
 use rustc_ast::ast::{self, Attribute, Name, NodeId, PatKind};
 use rustc_ast::mut_visit::{self, MutVisitor};
@@ -10,7 +11,7 @@ use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
-use rustc_parse::{self, parser, DirectoryOwnership, MACRO_ARGUMENTS};
+use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
@@ -925,6 +926,8 @@ pub struct ExtCtxt<'a> {
     pub resolver: &'a mut dyn Resolver,
     pub current_expansion: ExpansionData,
     pub expansions: FxHashMap<Span, Vec<String>>,
+    /// Called directly after having parsed an external `mod foo;` in expansion.
+    pub(super) extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -932,12 +935,14 @@ impl<'a> ExtCtxt<'a> {
         parse_sess: &'a ParseSess,
         ecfg: expand::ExpansionConfig<'a>,
         resolver: &'a mut dyn Resolver,
+        extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
     ) -> ExtCtxt<'a> {
         ExtCtxt {
             parse_sess,
             ecfg,
-            root_path: PathBuf::new(),
             resolver,
+            extern_mod_loaded,
+            root_path: PathBuf::new(),
             current_expansion: ExpansionData {
                 id: ExpnId::root(),
                 depth: 0,

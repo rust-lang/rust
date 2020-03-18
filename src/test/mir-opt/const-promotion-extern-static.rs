@@ -4,9 +4,9 @@ extern "C" {
 
 static Y: i32 = 42;
 
-static mut BAR: *const &'static i32 = [&Y].as_ptr();
+static mut BAR: *const &i32 = [&Y].as_ptr();
 
-static mut FOO: *const &'static i32 = [unsafe { &X }].as_ptr();
+static mut FOO: *const &i32 = [unsafe { &X }].as_ptr();
 
 fn main() {}
 
@@ -18,8 +18,8 @@ fn main() {}
 //     _4 = &(*_5);
 //     _3 = [move _4];
 //     _2 = &_3;
-//     _1 = move _2 as &[&'static i32] (Pointer(Unsize));
-//     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
+//     _1 = move _2 as &[&i32] (Pointer(Unsize));
+//     _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
 // }
 // ...
 // bb2: {
@@ -35,8 +35,8 @@ fn main() {}
 //     _4 = &(*_5);
 //     _3 = [move _4];
 //     _2 = &_3;
-//     _1 = move _2 as &[&'static i32] (Pointer(Unsize));
-//     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
+//     _1 = move _2 as &[&i32] (Pointer(Unsize));
+//     _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
 // }
 // ...
 // bb2: {
@@ -50,8 +50,8 @@ fn main() {}
 // ...
 //     _6 = const BAR::promoted[0];
 //     _2 = &(*_6);
-//     _1 = move _2 as &[&'static i32] (Pointer(Unsize));
-//     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
+//     _1 = move _2 as &[&i32] (Pointer(Unsize));
+//     _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
 // }
 // ...
 // bb2: {
@@ -63,8 +63,8 @@ fn main() {}
 // ...
 //     _6 = const FOO::promoted[0];
 //     _2 = &(*_6);
-//     _1 = move _2 as &[&'static i32] (Pointer(Unsize));
-//     _0 = const core::slice::<impl [&'static i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
+//     _1 = move _2 as &[&i32] (Pointer(Unsize));
+//     _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1];
 // }
 // ...
 // bb2: {

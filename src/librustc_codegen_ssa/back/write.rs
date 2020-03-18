@@ -14,10 +14,6 @@ use jobserver::{Acquired, Client};
 use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::exported_symbols::SymbolExportLevel;
-use rustc::session::config::{
-    self, Lto, OutputFilenames, OutputType, Passes, Sanitizer, SwitchWithOptPath,
-};
-use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
@@ -34,6 +30,10 @@ use rustc_incremental::{
     copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
+use rustc_session::config::{
+    self, Lto, OutputFilenames, OutputType, Passes, Sanitizer, SwitchWithOptPath,
+};
+use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{sym, Symbol};

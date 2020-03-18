@@ -1,7 +1,5 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
-use rustc::lint::builtin::MUTABLE_BORROW_RESERVATION_CONFLICT;
-use rustc::lint::builtin::UNUSED_MUT;
 use rustc::mir::{
     read_only, traversal, Body, BodyAndCache, ClearCrossCrate, Local, Location, Mutability,
     Operand, Place, PlaceElem, PlaceRef, ReadOnlyBodyAndCache,
@@ -11,7 +9,7 @@ use rustc::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKi
 use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, RegionVid, TyCtxt};
-
+use rustc_ast::ast::Name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
@@ -20,6 +18,8 @@ use rustc_hir::{def_id::DefId, HirId, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_session::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT, UNUSED_MUT};
+use rustc_span::{Span, DUMMY_SP};
 
 use either::Either;
 use smallvec::SmallVec;
@@ -27,9 +27,6 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::mem;
 use std::rc::Rc;
-
-use rustc_ast::ast::Name;
-use rustc_span::{Span, DUMMY_SP};
 
 use crate::dataflow;
 use crate::dataflow::generic::{Analysis, BorrowckFlowState as Flows, BorrowckResults};

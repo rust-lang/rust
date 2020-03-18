@@ -1,15 +1,15 @@
 use rustc::middle::cstore::{EncodedMetadata, LibSource, NativeLibrary, NativeLibraryKind};
 use rustc::middle::dependency_format::Linkage;
-use rustc::session::config::{
-    self, CFGuard, DebugInfo, OutputFilenames, OutputType, PrintRequest, Sanitizer,
-};
-use rustc::session::search_paths::PathKind;
-/// For all the linkers we support, and information they might
-/// need out of the shared crate context before we get rid of it.
-use rustc::session::{filesearch, Session};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
+use rustc_session::config::{
+    self, CFGuard, DebugInfo, OutputFilenames, OutputType, PrintRequest, Sanitizer,
+};
+use rustc_session::search_paths::PathKind;
+/// For all the linkers we support, and information they might
+/// need out of the shared crate context before we get rid of it.
+use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
 

@@ -2,11 +2,8 @@
 //! propagating default levels lexically from parent to children ast nodes.
 
 use rustc::hir::map::Map;
-use rustc::lint;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability::{DeprecationEntry, Index};
-use rustc::session::parse::feature_err;
-use rustc::session::Session;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_ast::ast::Attribute;
@@ -18,6 +15,9 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Generics, HirId, Item, StructField, Variant};
+use rustc_session::lint;
+use rustc_session::parse::feature_err;
+use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_trait_selection::traits::misc::can_type_implement_copy;

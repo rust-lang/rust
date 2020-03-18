@@ -4,7 +4,6 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 
-use rustc::lint;
 use rustc::mir::interpret::{InterpResult, Scalar};
 use rustc::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
@@ -25,6 +24,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
+use rustc_session::lint;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 

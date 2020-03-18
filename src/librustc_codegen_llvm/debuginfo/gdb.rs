@@ -6,8 +6,8 @@ use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::value::Value;
 use rustc::bug;
-use rustc::session::config::DebugInfo;
 use rustc_codegen_ssa::traits::*;
+use rustc_session::config::DebugInfo;
 
 use rustc_ast::attr;
 use rustc_span::symbol::sym;

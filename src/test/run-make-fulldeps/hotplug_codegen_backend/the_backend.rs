@@ -7,14 +7,12 @@ extern crate rustc_data_structures;
 extern crate rustc_hir;
 extern crate rustc_target;
 extern crate rustc_driver;
+extern crate rustc_session;
 extern crate rustc_span;
 
 use std::any::Any;
 use std::sync::Arc;
 use std::path::Path;
-use rustc_span::symbol::Symbol;
-use rustc::session::Session;
-use rustc::session::config::OutputFilenames;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoader, MetadataLoaderDyn};
@@ -23,6 +21,9 @@ use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_data_structures::owning_ref::OwningRef;
+use rustc_session::Session;
+use rustc_session::config::OutputFilenames;
+use rustc_span::symbol::Symbol;
 use rustc_target::spec::Target;
 
 pub struct NoLlvmMetadataLoader;
@@ -89,7 +90,7 @@ impl CodegenBackend for TheBackend {
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
         use std::io::Write;
-        use rustc::session::config::CrateType;
+        use rustc_session::config::CrateType;
         use rustc_codegen_utils::link::out_filename;
         let crate_name = codegen_results.downcast::<Symbol>()
             .expect("in link: codegen_results is not a Symbol");

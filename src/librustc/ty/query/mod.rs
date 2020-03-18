@@ -19,8 +19,6 @@ use crate::mir::interpret::GlobalId;
 use crate::mir::interpret::{ConstEvalRawResult, ConstEvalResult, ConstValue};
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
-use crate::session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
-use crate::session::CrateDisambiguator;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
@@ -49,6 +47,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, DefIndex};
 use rustc_hir::{Crate, HirIdSet, ItemLocalId, TraitCandidate};
 use rustc_index::vec::IndexVec;
+use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
+use rustc_session::CrateDisambiguator;
 use rustc_target::spec::PanicStrategy;
 
 use rustc_ast::ast;

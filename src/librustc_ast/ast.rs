@@ -2153,7 +2153,7 @@ impl FnRetTy {
 /// Module declaration.
 ///
 /// E.g., `mod foo;` or `mod foo { .. }`.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default)]
 pub struct Mod {
     /// A span from the first token past `{` to the last token until `}`.
     /// For `mod foo;`, the inner span ranges from the first token

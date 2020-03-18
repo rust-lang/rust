@@ -26,6 +26,9 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(const_if_match)]
+#![feature(const_fn)]
+#![feature(const_panic)]
 #![feature(const_transmute)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
@@ -80,7 +83,6 @@ pub mod infer;
 pub mod lint;
 pub mod middle;
 pub mod mir;
-pub use rustc_session as session;
 pub mod traits;
 pub mod ty;
 

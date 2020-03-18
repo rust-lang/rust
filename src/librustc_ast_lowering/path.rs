@@ -1,7 +1,6 @@
 use super::{AnonymousLifetimeMode, ImplTraitContext, LoweringContext, ParamMode};
 use super::{GenericArgsCtor, ParenthesizedGenericArgs};
 
-use rustc::lint::builtin::ELIDED_LIFETIMES_IN_PATHS;
 use rustc::span_bug;
 use rustc_ast::ast::{self, *};
 use rustc_errors::{struct_span_err, Applicability};
@@ -9,6 +8,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
+use rustc_session::lint::builtin::ELIDED_LIFETIMES_IN_PATHS;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::Span;
 

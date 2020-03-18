@@ -213,20 +213,4 @@ impl<'tcx, Tag> Pointer<Tag> {
     pub fn erase_tag(self) -> Pointer {
         Pointer { alloc_id: self.alloc_id, offset: self.offset, tag: () }
     }
-
-    /// Test if the pointer is "inbounds" of an allocation of the given size.
-    /// A pointer is "inbounds" even if its offset is equal to the size; this is
-    /// a "one-past-the-end" pointer.
-    #[inline(always)]
-    pub fn check_inbounds_alloc(
-        self,
-        allocation_size: Size,
-        msg: CheckInAllocMsg,
-    ) -> InterpResult<'tcx, ()> {
-        if self.offset > allocation_size {
-            throw_unsup!(PointerOutOfBounds { ptr: self.erase_tag(), msg, allocation_size })
-        } else {
-            Ok(())
-        }
-    }
 }

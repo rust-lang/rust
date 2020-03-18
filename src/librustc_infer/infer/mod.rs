@@ -5,7 +5,6 @@ pub use self::LateBoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
-pub use rustc::ty::IntVarValue;
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 
@@ -16,15 +15,14 @@ use rustc::middle::free_region::RegionRelations;
 use rustc::middle::region;
 use rustc::mir;
 use rustc::mir::interpret::ConstEvalResult;
-use rustc::session::config::BorrowckMode;
 use rustc::traits::select;
 use rustc::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::relate::RelateResult;
 use rustc::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
+pub use rustc::ty::IntVarValue;
 use rustc::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc::ty::{ConstVid, FloatVid, IntVid, TyVid};
-
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
@@ -32,8 +30,10 @@ use rustc_data_structures::unify as ut;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_session::config::BorrowckMode;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::BTreeMap;
 use std::fmt;
@@ -79,31 +79,50 @@ pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type FixupResult<'tcx, T> = Result<T, FixupError<'tcx>>; // "fixup result"
 
-/// A flag that is used to suppress region errors. This is normally
-/// false, but sometimes -- when we are doing region checks that the
-/// NLL borrow checker will also do -- it might be set to true.
-#[derive(Copy, Clone, Default, Debug)]
-pub struct SuppressRegionErrors {
-    suppressed: bool,
+/// How we should handle region solving.
+///
+/// This is used so that the region values inferred by HIR region solving are
+/// not exposed, and so that we can avoid doing work in HIR typeck that MIR
+/// typeck will also do.
+#[derive(Copy, Clone, Debug)]
+pub enum RegionckMode {
+    /// The default mode: report region errors, don't erase regions.
+    Solve,
+    /// Erase the results of region after solving.
+    Erase {
+        /// A flag that is used to suppress region errors, when we are doing
+        /// region checks that the NLL borrow checker will also do -- it might
+        /// be set to true.
+        suppress_errors: bool,
+    },
 }
 
-impl SuppressRegionErrors {
+impl Default for RegionckMode {
+    fn default() -> Self {
+        RegionckMode::Solve
+    }
+}
+
+impl RegionckMode {
     pub fn suppressed(self) -> bool {
-        self.suppressed
+        match self {
+            Self::Solve => false,
+            Self::Erase { suppress_errors } => suppress_errors,
+        }
     }
 
     /// Indicates that the MIR borrowck will repeat these region
     /// checks, so we should ignore errors if NLL is (unconditionally)
     /// enabled.
-    pub fn when_nll_is_enabled(tcx: TyCtxt<'_>) -> Self {
+    pub fn for_item_body(tcx: TyCtxt<'_>) -> Self {
         // FIXME(Centril): Once we actually remove `::Migrate` also make
         // this always `true` and then proceed to eliminate the dead code.
         match tcx.borrowck_mode() {
             // If we're on Migrate mode, report AST region errors
-            BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
+            BorrowckMode::Migrate => RegionckMode::Erase { suppress_errors: false },
 
             // If we're on MIR, don't report AST region errors as they should be reported by NLL
-            BorrowckMode::Mir => SuppressRegionErrors { suppressed: true },
+            BorrowckMode::Mir => RegionckMode::Erase { suppress_errors: true },
         }
     }
 }
@@ -1207,19 +1226,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         region_context: DefId,
         region_map: &region::ScopeTree,
         outlives_env: &OutlivesEnvironment<'tcx>,
-        suppress: SuppressRegionErrors,
+        mode: RegionckMode,
     ) {
         assert!(
             self.is_tainted_by_errors() || self.inner.borrow().region_obligations.is_empty(),
             "region_obligations not empty: {:#?}",
             self.inner.borrow().region_obligations
-        );
-
-        let region_rels = &RegionRelations::new(
-            self.tcx,
-            region_context,
-            region_map,
-            outlives_env.free_region_map(),
         );
         let (var_infos, data) = self
             .inner
@@ -1228,8 +1240,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .take()
             .expect("regions already resolved")
             .into_infos_and_data();
+
+        let region_rels = &RegionRelations::new(
+            self.tcx,
+            region_context,
+            region_map,
+            outlives_env.free_region_map(),
+        );
+
         let (lexical_region_resolutions, errors) =
-            lexical_region_resolve::resolve(region_rels, var_infos, data);
+            lexical_region_resolve::resolve(region_rels, var_infos, data, mode);
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());
@@ -1240,7 +1260,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // this infcx was in use.  This is totally hokey but
             // otherwise we have a hard time separating legit region
             // errors from silly ones.
-            self.report_region_errors(region_map, &errors, suppress);
+            self.report_region_errors(region_map, &errors);
         }
     }
 

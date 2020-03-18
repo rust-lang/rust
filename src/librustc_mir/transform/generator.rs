@@ -107,15 +107,15 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor<'tcx> {
     }
 
     fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
-        assert_ne!(*local, self_arg());
+        assert_ne!(*local, SELF_ARG);
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
-        if place.local == self_arg() {
+        if place.local == SELF_ARG {
             replace_base(
                 place,
                 Place {
-                    local: self_arg(),
+                    local: SELF_ARG,
                     projection: self.tcx().intern_place_elems(&[ProjectionElem::Deref]),
                 },
                 self.tcx,
@@ -125,7 +125,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor<'tcx> {
 
             for elem in place.projection.iter() {
                 if let PlaceElem::Index(local) = elem {
-                    assert_ne!(*local, self_arg());
+                    assert_ne!(*local, SELF_ARG);
                 }
             }
         }
@@ -143,15 +143,15 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
     }
 
     fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
-        assert_ne!(*local, self_arg());
+        assert_ne!(*local, SELF_ARG);
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
-        if place.local == self_arg() {
+        if place.local == SELF_ARG {
             replace_base(
                 place,
                 Place {
-                    local: self_arg(),
+                    local: SELF_ARG,
                     projection: self.tcx().intern_place_elems(&[ProjectionElem::Field(
                         Field::new(0),
                         self.ref_gen_ty,
@@ -164,7 +164,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
 
             for elem in place.projection.iter() {
                 if let PlaceElem::Index(local) = elem {
-                    assert_ne!(*local, self_arg());
+                    assert_ne!(*local, SELF_ARG);
                 }
             }
         }
@@ -180,9 +180,7 @@ fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtx
     place.projection = tcx.intern_place_elems(&new_projection);
 }
 
-fn self_arg() -> Local {
-    Local::new(1)
-}
+const SELF_ARG: Local = Local::from_u32(1);
 
 /// Generator has not been resumed yet.
 const UNRESUMED: usize = GeneratorSubsts::UNRESUMED;
@@ -237,7 +235,7 @@ impl TransformVisitor<'tcx> {
 
     // Create a Place referencing a generator struct field
     fn make_field(&self, variant_index: VariantIdx, idx: usize, ty: Ty<'tcx>) -> Place<'tcx> {
-        let self_place = Place::from(self_arg());
+        let self_place = Place::from(SELF_ARG);
         let base = self.tcx.mk_place_downcast_unnamed(self_place, variant_index);
         let mut projection = base.projection.to_vec();
         projection.push(ProjectionElem::Field(Field::new(idx), ty));
@@ -247,7 +245,7 @@ impl TransformVisitor<'tcx> {
 
     // Create a statement which changes the discriminant
     fn set_discr(&self, state_disc: VariantIdx, source_info: SourceInfo) -> Statement<'tcx> {
-        let self_place = Place::from(self_arg());
+        let self_place = Place::from(SELF_ARG);
         Statement {
             source_info,
             kind: StatementKind::SetDiscriminant {
@@ -263,7 +261,7 @@ impl TransformVisitor<'tcx> {
         let local_decls_len = body.local_decls.push(temp_decl);
         let temp = Place::from(local_decls_len);
 
-        let self_place = Place::from(self_arg());
+        let self_place = Place::from(SELF_ARG);
         let assign = Statement {
             source_info: source_info(body),
             kind: StatementKind::Assign(box (temp, Rvalue::Discriminant(self_place))),
@@ -540,7 +538,7 @@ fn locals_live_across_suspend_points(
             live_locals_here.intersect(&liveness.outs[block]);
 
             // The generator argument is ignored.
-            live_locals_here.remove(self_arg());
+            live_locals_here.remove(SELF_ARG);
 
             debug!("loc = {:?}, live_locals_here = {:?}", loc, live_locals_here);
 
@@ -837,7 +835,6 @@ fn elaborate_generator_drops<'tcx>(
     // generator's resume function.
 
     let param_env = tcx.param_env(def_id);
-    let gen = self_arg();
 
     let mut elaborator = DropShimElaborator { body, patch: MirPatch::new(body), tcx, param_env };
 
@@ -845,7 +842,7 @@ fn elaborate_generator_drops<'tcx>(
         let (target, unwind, source_info) = match block_data.terminator() {
             Terminator { source_info, kind: TerminatorKind::Drop { location, target, unwind } } => {
                 if let Some(local) = location.as_local() {
-                    if local == gen {
+                    if local == SELF_ARG {
                         (target, unwind, source_info)
                     } else {
                         continue;
@@ -864,7 +861,7 @@ fn elaborate_generator_drops<'tcx>(
         elaborate_drop(
             &mut elaborator,
             *source_info,
-            &Place::from(gen),
+            &Place::from(SELF_ARG),
             (),
             *target,
             unwind,
@@ -918,7 +915,7 @@ fn create_generator_drop_shim<'tcx>(
     make_generator_state_argument_indirect(tcx, def_id, &mut body);
 
     // Change the generator argument from &mut to *mut
-    body.local_decls[self_arg()] = LocalDecl {
+    body.local_decls[SELF_ARG] = LocalDecl {
         mutability: Mutability::Mut,
         ty: tcx.mk_ptr(ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
         user_ty: UserTypeProjections::none(),
@@ -933,7 +930,7 @@ fn create_generator_drop_shim<'tcx>(
             0,
             Statement {
                 source_info,
-                kind: StatementKind::Retag(RetagKind::Raw, box Place::from(self_arg())),
+                kind: StatementKind::Retag(RetagKind::Raw, box Place::from(SELF_ARG)),
             },
         )
     }
@@ -1042,7 +1039,7 @@ fn insert_clean_drop(body: &mut BodyAndCache<'_>) -> BasicBlock {
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
     let drop_clean = BasicBlock::new(body.basic_blocks().len());
     let term = TerminatorKind::Drop {
-        location: Place::from(self_arg()),
+        location: Place::from(SELF_ARG),
         target: return_block,
         unwind: None,
     };

@@ -286,8 +286,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
         int: u64,
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
         Err((if int == 0 {
-            err_unsup!(InvalidNullPointerUsage)
+            // This is UB, seriously.
+            err_ub!(InvalidIntPointerUsage(0))
         } else {
+            // This is just something we cannot support during const-eval.
             err_unsup!(ReadBytesAsPointer)
         })
         .into())

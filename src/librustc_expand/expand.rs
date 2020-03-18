@@ -1,7 +1,9 @@
 use crate::base::*;
 use crate::config::StripUnconfigured;
+use crate::configure;
 use crate::hygiene::{ExpnData, ExpnId, ExpnKind, SyntaxContext};
 use crate::mbe::macro_rules::annotate_err_with_kind;
+use crate::module::{parse_external_mod, push_directory, Directory, DirectoryOwnership};
 use crate::placeholders::{placeholder, PlaceholderExpander};
 use crate::proc_macro::collect_derives;
 
@@ -17,10 +19,8 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::Features;
-use rustc_parse::configure;
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
-use rustc_parse::DirectoryOwnership;
 use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
@@ -1427,59 +1427,83 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 .make_items();
         }
 
+        let mut attrs = mem::take(&mut item.attrs); // We do this to please borrowck.
+        let ident = item.ident;
+        let span = item.span;
+
         match item.kind {
             ast::ItemKind::MacCall(..) => {
+                item.attrs = attrs;
                 self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.kind {
                     ItemKind::MacCall(mac) => self
-                        .collect(
-                            AstFragmentKind::Items,
-                            InvocationKind::Bang { mac, span: item.span },
-                        )
+                        .collect(AstFragmentKind::Items, InvocationKind::Bang { mac, span })
                         .make_items(),
                     _ => unreachable!(),
                 })
             }
-            ast::ItemKind::Mod(ast::Mod { inner, inline, .. })
-                if item.ident != Ident::invalid() =>
-            {
-                let orig_directory_ownership = self.cx.current_expansion.directory_ownership;
+            ast::ItemKind::Mod(ref mut old_mod @ ast::Mod { .. }) if ident != Ident::invalid() => {
+                let sess = self.cx.parse_sess;
+                let orig_ownership = self.cx.current_expansion.directory_ownership;
                 let mut module = (*self.cx.current_expansion.module).clone();
-                module.mod_path.push(item.ident);
 
-                if inline {
-                    if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, sym::path) {
-                        self.cx.current_expansion.directory_ownership =
-                            DirectoryOwnership::Owned { relative: None };
-                        module.directory.push(&*path.as_str());
-                    } else {
-                        module.directory.push(&*item.ident.as_str());
-                    }
+                let pushed = &mut false; // Record `parse_external_mod` pushing so we can pop.
+                let dir = Directory { ownership: orig_ownership, path: module.directory };
+                let Directory { ownership, path } = if old_mod.inline {
+                    // Inline `mod foo { ... }`, but we still need to push directories.
+                    item.attrs = attrs;
+                    push_directory(ident, &item.attrs, dir)
                 } else {
-                    let path = self.cx.parse_sess.source_map().span_to_unmapped_path(inner);
-                    let mut path = match path {
-                        FileName::Real(path) => path,
-                        other => PathBuf::from(other.to_string()),
-                    };
-                    let directory_ownership = match path.file_name().unwrap().to_str() {
-                        Some("mod.rs") => DirectoryOwnership::Owned { relative: None },
-                        Some(_) => DirectoryOwnership::Owned { relative: Some(item.ident) },
-                        None => DirectoryOwnership::UnownedViaMod,
-                    };
-                    path.pop();
-                    module.directory = path;
-                    self.cx.current_expansion.directory_ownership = directory_ownership;
-                }
+                    // We have an outline `mod foo;` so we need to parse the file.
+                    let (new_mod, dir) =
+                        parse_external_mod(sess, ident, span, dir, &mut attrs, pushed);
 
+                    let krate = ast::Crate {
+                        span: new_mod.inner,
+                        module: new_mod,
+                        attrs,
+                        proc_macros: vec![],
+                    };
+                    if let Some(extern_mod_loaded) = self.cx.extern_mod_loaded {
+                        extern_mod_loaded(&krate);
+                    }
+
+                    *old_mod = krate.module;
+                    item.attrs = krate.attrs;
+                    // File can have inline attributes, e.g., `#![cfg(...)]` & co. => Reconfigure.
+                    item = match self.configure(item) {
+                        Some(node) => node,
+                        None => {
+                            if *pushed {
+                                sess.included_mod_stack.borrow_mut().pop();
+                            }
+                            return Default::default();
+                        }
+                    };
+                    dir
+                };
+
+                // Set the module info before we flat map.
+                self.cx.current_expansion.directory_ownership = ownership;
+                module.directory = path;
+                module.mod_path.push(ident);
                 let orig_module =
                     mem::replace(&mut self.cx.current_expansion.module, Rc::new(module));
+
                 let result = noop_flat_map_item(item, self);
+
+                // Restore the module info.
                 self.cx.current_expansion.module = orig_module;
-                self.cx.current_expansion.directory_ownership = orig_directory_ownership;
+                self.cx.current_expansion.directory_ownership = orig_ownership;
+                if *pushed {
+                    sess.included_mod_stack.borrow_mut().pop();
+                }
                 result
             }
-
-            _ => noop_flat_map_item(item, self),
+            _ => {
+                item.attrs = attrs;
+                noop_flat_map_item(item, self)
+            }
         }
     }
 

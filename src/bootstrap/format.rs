@@ -37,6 +37,9 @@ struct RustfmtConfig {
 }
 
 pub fn format(build: &Build, check: bool) {
+    if build.config.dry_run {
+        return;
+    }
     let mut builder = ignore::types::TypesBuilder::new();
     builder.add_defaults();
     builder.select("rust");

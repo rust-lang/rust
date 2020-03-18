@@ -26,7 +26,7 @@ error: any use of this value will cause an error
 LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
-   |           a memory access tried to interpret some bytes as a pointer
+   |           unable to turn bytes into a pointer
    |           inside call to `std::ptr::const_ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:28:14
    | 
   ::: $DIR/offset_from_ub.rs:26:1
@@ -81,7 +81,7 @@ error: any use of this value will cause an error
 LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
-   |           a memory access tried to interpret some bytes as a pointer
+   |           unable to turn bytes into a pointer
    |           inside call to `std::ptr::const_ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:49:14
    | 
   ::: $DIR/offset_from_ub.rs:45:1

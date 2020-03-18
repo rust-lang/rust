@@ -1,4 +1,4 @@
-use crate::base::{DummyResult, ExpansionData, ExtCtxt, MacResult, TTMacroExpander};
+use crate::base::{DummyResult, ExtCtxt, MacResult, TTMacroExpander};
 use crate::base::{SyntaxExtension, SyntaxExtensionKind};
 use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
 use crate::mbe;
@@ -18,7 +18,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder, FatalError};
 use rustc_feature::Features;
 use rustc_parse::parser::Parser;
-use rustc_parse::Directory;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
@@ -182,6 +181,8 @@ fn generic_extension<'cx>(
     lhses: &[mbe::TokenTree],
     rhses: &[mbe::TokenTree],
 ) -> Box<dyn MacResult + 'cx> {
+    let sess = cx.parse_sess;
+
     if cx.trace_macros() {
         let msg = format!("expanding `{}! {{ {} }}`", name, pprust::tts_to_string(arg.clone()));
         trace_macros_note(&mut cx.expansions, sp, msg);
@@ -209,7 +210,7 @@ fn generic_extension<'cx>(
     // hacky, but speeds up the `html5ever` benchmark significantly. (Issue
     // 68836 suggests a more comprehensive but more complex change to deal with
     // this situation.)
-    let parser = parser_from_cx(&cx.current_expansion, &cx.parse_sess, arg.clone());
+    let parser = parser_from_cx(sess, arg.clone());
 
     for (i, lhs) in lhses.iter().enumerate() {
         // try each arm's matchers
@@ -222,14 +223,13 @@ fn generic_extension<'cx>(
         // This is used so that if a matcher is not `Success(..)`ful,
         // then the spans which became gated when parsing the unsuccessful matcher
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
-        let mut gated_spans_snapshot =
-            mem::take(&mut *cx.parse_sess.gated_spans.spans.borrow_mut());
+        let mut gated_spans_snapshot = mem::take(&mut *sess.gated_spans.spans.borrow_mut());
 
         match parse_tt(&mut Cow::Borrowed(&parser), lhs_tt) {
             Success(named_matches) => {
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
-                cx.parse_sess.gated_spans.merge(gated_spans_snapshot);
+                sess.gated_spans.merge(gated_spans_snapshot);
 
                 let rhs = match rhses[i] {
                     // ignore delimiters
@@ -258,11 +258,7 @@ fn generic_extension<'cx>(
                     trace_macros_note(&mut cx.expansions, sp, msg);
                 }
 
-                let directory = Directory {
-                    path: cx.current_expansion.module.directory.clone(),
-                    ownership: cx.current_expansion.directory_ownership,
-                };
-                let mut p = Parser::new(cx.parse_sess(), tts, Some(directory), true, false, None);
+                let mut p = Parser::new(sess, tts, false, None);
                 p.root_module_name =
                     cx.current_expansion.module.mod_path.last().map(|id| id.to_string());
                 p.last_type_ascription = cx.current_expansion.prior_type_ascription;
@@ -289,7 +285,7 @@ fn generic_extension<'cx>(
 
         // The matcher was not `Success(..)`ful.
         // Restore to the state before snapshotting and maybe try again.
-        mem::swap(&mut gated_spans_snapshot, &mut cx.parse_sess.gated_spans.spans.borrow_mut());
+        mem::swap(&mut gated_spans_snapshot, &mut sess.gated_spans.spans.borrow_mut());
     }
     drop(parser);
 
@@ -309,8 +305,7 @@ fn generic_extension<'cx>(
                 mbe::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
                 _ => continue,
             };
-            let parser = parser_from_cx(&cx.current_expansion, &cx.parse_sess, arg.clone());
-            match parse_tt(&mut Cow::Borrowed(&parser), lhs_tt) {
+            match parse_tt(&mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())), lhs_tt) {
                 Success(_) => {
                     if comma_span.is_dummy() {
                         err.note("you might be missing a comma");
@@ -392,7 +387,7 @@ pub fn compile_declarative_macro(
         ),
     ];
 
-    let parser = Parser::new(sess, body, None, true, true, rustc_parse::MACRO_ARGUMENTS);
+    let parser = Parser::new(sess, body, true, rustc_parse::MACRO_ARGUMENTS);
     let argument_map = match parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
         Success(m) => m,
         Failure(token, msg) => {
@@ -1209,16 +1204,8 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     }
 }
 
-fn parser_from_cx<'cx>(
-    current_expansion: &'cx ExpansionData,
-    sess: &'cx ParseSess,
-    tts: TokenStream,
-) -> Parser<'cx> {
-    let directory = Directory {
-        path: current_expansion.module.directory.clone(),
-        ownership: current_expansion.directory_ownership,
-    };
-    Parser::new(sess, tts, Some(directory), true, true, rustc_parse::MACRO_ARGUMENTS)
+fn parser_from_cx(sess: &ParseSess, tts: TokenStream) -> Parser<'_> {
+    Parser::new(sess, tts, true, rustc_parse::MACRO_ARGUMENTS)
 }
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For

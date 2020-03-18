@@ -51,52 +51,44 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         };
 
         let hir = &self.tcx().hir();
-        if let Some(hir_id) = hir.as_local_hir_id(id) {
-            if let Some(body_id) = hir.maybe_body_owned_by(hir_id) {
-                let body = hir.body(body_id);
-                let owner_id = hir.body_owner(body_id);
-                let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
-                if let Some(tables) = self.tables {
-                    body.params
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(index, param)| {
-                            // May return None; sometimes the tables are not yet populated.
-                            let ty_hir_id = fn_decl.inputs[index].hir_id;
-                            let param_ty_span = hir.span(ty_hir_id);
-                            let ty = tables.node_type_opt(param.hir_id)?;
-                            let mut found_anon_region = false;
-                            let new_param_ty = self.tcx().fold_regions(&ty, &mut false, |r, _| {
-                                if *r == *anon_region {
-                                    found_anon_region = true;
-                                    replace_region
-                                } else {
-                                    r
-                                }
-                            });
-                            if found_anon_region {
-                                let is_first = index == 0;
-                                Some(AnonymousParamInfo {
-                                    param,
-                                    param_ty: new_param_ty,
-                                    param_ty_span,
-                                    bound_region,
-                                    is_first,
-                                })
-                            } else {
-                                None
-                            }
-                        })
-                        .next()
+        let hir_id = hir.as_local_hir_id(id)?;
+        let body_id = hir.maybe_body_owned_by(hir_id)?;
+        let body = hir.body(body_id);
+        let owner_id = hir.body_owner(body_id);
+        let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
+        let poly_fn_sig = self.tcx().fn_sig(id);
+        let fn_sig = self.tcx().liberate_late_bound_regions(id, &poly_fn_sig);
+        body.params
+            .iter()
+            .enumerate()
+            .filter_map(|(index, param)| {
+                // May return None; sometimes the tables are not yet populated.
+                let ty = fn_sig.inputs()[index];
+                let mut found_anon_region = false;
+                let new_param_ty = self.tcx().fold_regions(&ty, &mut false, |r, _| {
+                    if *r == *anon_region {
+                        found_anon_region = true;
+                        replace_region
+                    } else {
+                        r
+                    }
+                });
+                if found_anon_region {
+                    let ty_hir_id = fn_decl.inputs[index].hir_id;
+                    let param_ty_span = hir.span(ty_hir_id);
+                    let is_first = index == 0;
+                    Some(AnonymousParamInfo {
+                        param,
+                        param_ty: new_param_ty,
+                        param_ty_span,
+                        bound_region,
+                        is_first,
+                    })
                 } else {
                     None
                 }
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+            })
+            .next()
     }
 
     // Here, we check for the case where the anonymous region

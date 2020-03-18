@@ -7,7 +7,6 @@
 
 use crate::late::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
 use rustc::hir::map::Map;
-use rustc::lint;
 use rustc::middle::resolve_lifetime::*;
 use rustc::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use rustc::{bug, span_bug};
@@ -22,6 +21,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{GenericArg, GenericParam, LifetimeName, Node, ParamName, QPath};
 use rustc_hir::{GenericParamKind, HirIdMap, HirIdSet, LifetimeParamKind};
+use rustc_session::lint;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -1123,7 +1123,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
     gather.visit_body(body);
 
     impl<'v, 'a, 'tcx> Visitor<'v> for GatherLabels<'a, 'tcx> {
-        type Map = Map<'v>;
+        type Map = intravisit::ErasedMap<'v>;
 
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
@@ -2173,7 +2173,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             impl<'a> Visitor<'a> for SelfVisitor<'a> {
-                type Map = Map<'a>;
+                type Map = intravisit::ErasedMap<'a>;
 
                 fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
                     NestedVisitorMap::None
@@ -2264,7 +2264,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
 
         impl<'v, 'a> Visitor<'v> for GatherLifetimes<'a> {
-            type Map = Map<'v>;
+            type Map = intravisit::ErasedMap<'v>;
 
             fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
                 NestedVisitorMap::None
@@ -2855,7 +2855,7 @@ fn insert_late_bound_lifetimes(
     }
 
     impl<'v> Visitor<'v> for ConstrainedCollector {
-        type Map = Map<'v>;
+        type Map = intravisit::ErasedMap<'v>;
 
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
@@ -2898,7 +2898,7 @@ fn insert_late_bound_lifetimes(
     }
 
     impl<'v> Visitor<'v> for AllCollector {
-        type Map = Map<'v>;
+        type Map = intravisit::ErasedMap<'v>;
 
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None

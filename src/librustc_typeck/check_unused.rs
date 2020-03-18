@@ -1,4 +1,3 @@
-use crate::lint;
 use rustc::ty::TyCtxt;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashMap;
@@ -7,6 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::print::visibility_qualified;
+use rustc_session::lint;
 use rustc_span::Span;
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
