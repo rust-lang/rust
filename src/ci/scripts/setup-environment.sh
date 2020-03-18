@@ -14,8 +14,9 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 #if [[ -v INITIAL_RUST_CONFIGURE_ARGS ]]; then
 
 #if [[ -z "$INITIAL_RUST_CONFIGURE_ARGS" ]]; then
-if [[ -z "${INITIAL_RUST_CONFIGURE_ARGS+x}" ]]; then
-    ciCommandSetEnv RUST_CONFIGURE_ARGS "${INITIAL_RUST_CONFIGURE_ARGS}"
+INITIAL_RUST_CONFIG=${INITIAL_RUST_CONFIGURE_ARGS}
+if [ -z ${INITIAL_RUST_CONFIG}]; then
+    ciCommandSetEnv RUST_CONFIGURE_ARGS "${INITIAL_RUST_CONFIG}"
 else
     echo "No initial Rust Configure Args set"
 fi
