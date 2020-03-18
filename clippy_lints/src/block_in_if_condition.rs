@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust,ignore
     /// if { let x = somefunc(); x } {}
     /// // or
     /// if somefunc(|x| { x == 47 }) {}

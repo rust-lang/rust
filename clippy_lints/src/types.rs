@@ -1642,7 +1642,7 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// let vec: Vec<isize> = vec![];
+    /// let vec: Vec<isize> = Vec::new();
     /// if vec.len() <= 0 {}
     /// if 100 > std::i32::MAX {}
     /// ```

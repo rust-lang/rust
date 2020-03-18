@@ -11,16 +11,14 @@ declare_clippy_lint! {
     /// **What it does:** Checks for `assert!(true)` and `assert!(false)` calls.
     ///
     /// **Why is this bad?** Will be optimized out by the compiler or should probably be replaced by a
-    /// panic!() or unreachable!()
+    /// `panic!()` or `unreachable!()`
     ///
     /// **Known problems:** None
     ///
     /// **Example:**
     /// ```rust,ignore
     /// assert!(false)
-    /// // or
     /// assert!(true)
-    /// // or
     /// const B: bool = false;
     /// assert!(B)
     /// ```

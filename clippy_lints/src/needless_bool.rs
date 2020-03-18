@@ -51,7 +51,13 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust,ignore
-    /// if x == true {} // could be `if x { }`
+    /// if x == true {}
+    /// if y == false {}
+    /// ```
+    /// use `x` directly:
+    /// ```rust,ignore
+    /// if x {}
+    /// if !y {}
     /// ```
     pub BOOL_COMPARISON,
     complexity,

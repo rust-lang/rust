@@ -54,7 +54,7 @@ declare_clippy_lint! {
     /// a = b;
     /// b = a;
     /// ```
-    /// Could be written as:
+    /// If swapping is intended, use `swap()` instead:
     /// ```rust
     /// # let mut a = 1;
     /// # let mut b = 2;
