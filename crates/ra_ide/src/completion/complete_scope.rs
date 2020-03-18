@@ -1,13 +1,17 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
 use crate::completion::{CompletionContext, Completions};
+use hir::ScopeDef;
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_trivial_path && !ctx.is_pat_binding_and_path {
         return;
     }
 
-    ctx.scope().process_all_names(&mut |name, res| acc.add_resolution(ctx, name.to_string(), &res));
+    ctx.scope().process_all_names(&mut |name, res| match (ctx.is_pat_binding_and_path, &res) {
+        (true, ScopeDef::Local(..)) => {}
+        _ => acc.add_resolution(ctx, name.to_string(), &res),
+    });
 }
 
 #[cfg(test)]
@@ -21,53 +25,23 @@ mod tests {
     }
 
     #[test]
-    fn nested_bind_pat_and_path() {
+    fn bind_pat_and_path_ignore_ref() {
         assert_debug_snapshot!(
             do_reference_completion(
                 r"
-                enum First {
+                enum Enum {
                     A,
                     B,
                 }
-                enum Second {
-                    A(First),
-                    B(First),
-                }
-                fn quux(x: Option<Option<Second>>>) {
+                fn quux(x: Option<Enum>) {
                     match x {
                         None => (),
-                        Some(Some(Second(Fi<|>))) => (),
+                        Some(ref en<|>) => (),
                     }
                 }
                 "
             ),
-            @r###"
-            [
-                CompletionItem {
-                    label: "First",
-                    source_range: [363; 365),
-                    delete: [363; 365),
-                    insert: "First",
-                    kind: Enum,
-                },
-                CompletionItem {
-                    label: "Second",
-                    source_range: [363; 365),
-                    delete: [363; 365),
-                    insert: "Second",
-                    kind: Enum,
-                },
-                CompletionItem {
-                    label: "quux(…)",
-                    source_range: [363; 365),
-                    delete: [363; 365),
-                    insert: "quux(${1:x})$0",
-                    kind: Function,
-                    lookup: "quux",
-                    detail: "fn quux(x: Option<Option<Second>>)",
-                },
-            ]
-            "###
+            @r###"[]"###
         );
     }
 
@@ -83,7 +57,7 @@ mod tests {
                 fn quux(x: Option<Enum>) {
                     match x {
                         None => (),
-                        Some(en<|>) => (),
+                        Some(En<|>) => (),
                     }
                 }
                 "
@@ -98,13 +72,6 @@ mod tests {
                     kind: Enum,
                 },
                 CompletionItem {
-                    label: "None",
-                    source_range: [231; 233),
-                    delete: [231; 233),
-                    insert: "None",
-                    kind: Binding,
-                },
-                CompletionItem {
                     label: "quux(…)",
                     source_range: [231; 233),
                     delete: [231; 233),
@@ -112,13 +79,7 @@ mod tests {
                     kind: Function,
                     lookup: "quux",
                     detail: "fn quux(x: Option<Enum>)",
-                },
-                CompletionItem {
-                    label: "x",
-                    source_range: [231; 233),
-                    delete: [231; 233),
-                    insert: "x",
-                    kind: Binding,
+                    trigger_call_info: true,
                 },
             ]
             "###

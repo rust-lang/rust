@@ -190,19 +190,16 @@ impl<'a> CompletionContext<'a> {
         // suggest declaration names, see `CompletionKind::Magic`.
         if let Some(name) = find_node_at_offset::<ast::Name>(&file_with_fake_ident, offset) {
             if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
-                let mut parent = bind_pat.syntax().parent();
+                let parent = bind_pat.syntax().parent();
                 if parent.clone().and_then(ast::MatchArm::cast).is_some()
                     || parent.clone().and_then(ast::Condition::cast).is_some()
                 {
                     self.is_pat_binding = true;
                 }
 
-                while let Some(_) = parent.clone().and_then(ast::TupleStructPat::cast) {
-                    parent = parent.and_then(|p| p.parent());
-                    if parent.clone().and_then(ast::MatchArm::cast).is_some() {
-                        self.is_pat_binding_and_path = true;
-                        break;
-                    }
+                let bind_pat_string = bind_pat.syntax().to_string();
+                if !bind_pat_string.contains("ref ") && !bind_pat_string.contains(" @ ") {
+                    self.is_pat_binding_and_path = true;
                 }
             }
             if is_node::<ast::Param>(name.syntax()) {
