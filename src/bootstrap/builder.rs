@@ -23,7 +23,7 @@ use crate::install;
 use crate::native;
 use crate::test;
 use crate::tool;
-use crate::util::{self, add_lib_path, exe, libdir};
+use crate::util::{self, add_dylib_path, exe, libdir};
 use crate::{Build, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
@@ -660,7 +660,7 @@ impl<'a> Builder<'a> {
             return;
         }
 
-        add_lib_path(vec![self.rustc_libdir(compiler)], &mut cmd.command);
+        add_dylib_path(vec![self.rustc_libdir(compiler)], &mut cmd.command);
     }
 
     /// Gets a path to the compiler specified.

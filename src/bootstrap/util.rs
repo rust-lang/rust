@@ -40,7 +40,7 @@ pub fn libdir(target: &str) -> &'static str {
 }
 
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.
-pub fn add_lib_path(path: Vec<PathBuf>, cmd: &mut Command) {
+pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut Command) {
     let mut list = dylib_path();
     for path in path {
         list.insert(0, path);

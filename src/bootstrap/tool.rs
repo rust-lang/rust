@@ -12,7 +12,7 @@ use crate::channel;
 use crate::channel::GitInfo;
 use crate::compile;
 use crate::toolstate::ToolState;
-use crate::util::{add_lib_path, exe, CiEnv};
+use crate::util::{add_dylib_path, exe, CiEnv};
 use crate::Compiler;
 use crate::Mode;
 
@@ -388,7 +388,7 @@ pub struct ErrorIndex {
 impl ErrorIndex {
     pub fn command(builder: &Builder<'_>, compiler: Compiler) -> Command {
         let mut cmd = Command::new(builder.ensure(ErrorIndex { compiler }));
-        add_lib_path(
+        add_dylib_path(
             vec![PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host))],
             &mut cmd,
         );
@@ -689,7 +689,7 @@ impl<'a> Builder<'a> {
             }
         }
 
-        add_lib_path(lib_paths, &mut cmd);
+        add_dylib_path(lib_paths, &mut cmd);
         cmd
     }
 }
