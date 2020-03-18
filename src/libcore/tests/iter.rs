@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 use core::cell::Cell;
 use core::convert::TryFrom;
 use core::iter::*;
@@ -2939,4 +2941,74 @@ fn test_partition() {
     check(xs, |&x| x % 5 == 0, 2); // multiple of 5
     check(xs, |&x| x < 3, 3); // small
     check(xs, |&x| x > 6, 3); // large
+}
+
+/// An iterator that panics whenever `next` or next_back` is called
+/// after `None` has already been returned. This does not violate
+/// `Iterator`'s contract. Used to test that iterator adaptors don't
+/// poll their inner iterators after exhausting them.
+struct NonFused<I> {
+    iter: I,
+    done: bool,
+}
+
+impl<I> NonFused<I> {
+    fn new(iter: I) -> Self {
+        Self { iter, done: false }
+    }
+}
+
+impl<I> Iterator for NonFused<I>
+where
+    I: Iterator,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        assert!(!self.done, "this iterator has already returned None");
+        self.iter.next().or_else(|| {
+            self.done = true;
+            None
+        })
+    }
+}
+
+impl<I> DoubleEndedIterator for NonFused<I>
+where
+    I: DoubleEndedIterator,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        assert!(!self.done, "this iterator has already returned None");
+        self.iter.next_back().or_else(|| {
+            self.done = true;
+            None
+        })
+    }
+}
+
+#[test]
+fn test_peekable_non_fused() {
+    let mut iter = NonFused::new(empty::<i32>()).peekable();
+
+    assert_eq!(iter.peek(), None);
+    assert_eq!(iter.next_back(), None);
+}
+
+#[test]
+fn test_flatten_non_fused_outer() {
+    let mut iter = NonFused::new(once(0..2)).flatten();
+
+    assert_eq!(iter.next_back(), Some(1));
+    assert_eq!(iter.next(), Some(0));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn test_flatten_non_fused_inner() {
+    let mut iter = once(0..1).chain(once(1..3)).flat_map(NonFused::new);
+
+    assert_eq!(iter.next_back(), Some(2));
+    assert_eq!(iter.next(), Some(0));
+    assert_eq!(iter.next(), Some(1));
+    assert_eq!(iter.next(), None);
 }
