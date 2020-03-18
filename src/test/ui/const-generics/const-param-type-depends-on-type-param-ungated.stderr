@@ -1,19 +1,17 @@
-error[E0658]: const generics are unstable
-  --> $DIR/const-param-type-depends-on-type-param-ungated.rs:3:19
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/const-param-type-depends-on-type-param-ungated.rs:1:12
    |
-LL | struct B<T, const N: T>(PhantomData<[T; N]>);
-   |                   ^
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: `#[warn(incomplete_features)]` on by default
 
 error[E0741]: the types of const generic parameters must derive `PartialEq` and `Eq`
-  --> $DIR/const-param-type-depends-on-type-param-ungated.rs:3:22
+  --> $DIR/const-param-type-depends-on-type-param-ungated.rs:6:22
    |
 LL | struct B<T, const N: T>(PhantomData<[T; N]>);
    |                      ^ `T` doesn't derive both `PartialEq` and `Eq`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0658, E0741.
-For more information about an error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0741`.

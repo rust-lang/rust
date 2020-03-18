@@ -1,23 +1,13 @@
-error[E0658]: const generics are unstable
-  --> $DIR/feature-gate-const_generics-ptr.rs:1:22
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/feature-gate-const_generics-ptr.rs:1:12
    |
-LL | struct ConstFn<const F: fn()>;
-   |                      ^
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
    |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
-
-error[E0658]: const generics are unstable
-  --> $DIR/feature-gate-const_generics-ptr.rs:5:23
-   |
-LL | struct ConstPtr<const P: *const u32>;
-   |                       ^
-   |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+   = note: `#[warn(incomplete_features)]` on by default
 
 error[E0658]: using function pointers as const generic parameters is unstable
-  --> $DIR/feature-gate-const_generics-ptr.rs:1:25
+  --> $DIR/feature-gate-const_generics-ptr.rs:4:25
    |
 LL | struct ConstFn<const F: fn()>;
    |                         ^^^^
@@ -26,7 +16,7 @@ LL | struct ConstFn<const F: fn()>;
    = help: add `#![feature(const_compare_raw_pointers)]` to the crate attributes to enable
 
 error[E0658]: using raw pointers as const generic parameters is unstable
-  --> $DIR/feature-gate-const_generics-ptr.rs:5:26
+  --> $DIR/feature-gate-const_generics-ptr.rs:7:26
    |
 LL | struct ConstPtr<const P: *const u32>;
    |                          ^^^^^^^^^^
@@ -34,6 +24,6 @@ LL | struct ConstPtr<const P: *const u32>;
    = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
    = help: add `#![feature(const_compare_raw_pointers)]` to the crate attributes to enable
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
