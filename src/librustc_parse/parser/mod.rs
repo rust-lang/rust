@@ -145,6 +145,7 @@ struct TokenCursorFrame {
     tree_cursor: tokenstream::Cursor,
     close_delim: bool,
     last_token: LastToken,
+    original_tree: Option<TokenTree>,
 }
 
 /// This is used in `TokenCursorFrame` above to track tokens that are consumed
@@ -171,7 +172,12 @@ enum LastToken {
 }
 
 impl TokenCursorFrame {
-    fn new(span: DelimSpan, delim: DelimToken, tts: &TokenStream) -> Self {
+    fn new(
+        span: DelimSpan,
+        delim: DelimToken,
+        tts: &TokenStream,
+        original_tree: Option<TokenTree>,
+    ) -> Self {
         TokenCursorFrame {
             delim,
             span,
@@ -179,6 +185,7 @@ impl TokenCursorFrame {
             tree_cursor: tts.clone().into_trees(),
             close_delim: delim == token::NoDelim,
             last_token: LastToken::Was(None),
+            original_tree,
         }
     }
 }
@@ -206,10 +213,10 @@ impl TokenCursor {
                 LastToken::Was(ref mut t) => *t = Some(tree.clone().into()),
             }
 
-            match tree {
+            match tree.clone() {
                 TokenTree::Token(token) => return token,
                 TokenTree::Delimited(sp, delim, tts) => {
-                    let frame = TokenCursorFrame::new(sp, delim, &tts);
+                    let frame = TokenCursorFrame::new(sp, delim, &tts, Some(tree));
                     self.stack.push(mem::replace(&mut self.frame, frame));
                 }
             }
@@ -270,6 +277,7 @@ impl TokenCursor {
                         .cloned()
                         .collect::<TokenStream>()
                 },
+                None,
             ),
         ));
 
@@ -373,7 +381,7 @@ impl<'a> Parser<'a> {
             root_module_name: None,
             expected_tokens: Vec::new(),
             token_cursor: TokenCursor {
-                frame: TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, &tokens),
+                frame: TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, &tokens, None),
                 stack: Vec::new(),
             },
             desugar_doc_comments,
@@ -1147,6 +1155,13 @@ impl<'a> Parser<'a> {
         &mut self,
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
     ) -> PResult<'a, (R, TokenStream)> {
+        if matches!(self.token.kind, TokenKind::OpenDelim(_)) {
+            let tokens = vec![
+                self.token_cursor.frame.original_tree.clone().expect("Missing token tree!").into(),
+            ];
+            let ret = f(self);
+            return Ok((ret?, TokenStream::new(tokens)));
+        }
         // Record all tokens we parse when parsing this item.
         let mut tokens = Vec::new();
         let prev_collecting = match self.token_cursor.frame.last_token {
