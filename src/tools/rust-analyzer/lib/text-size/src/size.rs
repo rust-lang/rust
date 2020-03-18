@@ -59,12 +59,6 @@ impl TextSize {
     pub const fn zero() -> TextSize {
         TextSize(0)
     }
-
-    /// A size of one.
-    #[inline]
-    pub const fn one() -> TextSize {
-        TextSize(1)
-    }
 }
 
 /// Methods to act like a primitive integer type, where reasonably applicable.
@@ -75,7 +69,7 @@ impl TextSize {
     /// The largest representable text size. (`u32::MAX`)
     pub const MAX: TextSize = TextSize(u32::MAX);
     /// The text size of a single ASCII character.
-    pub const ONE: TextSize = TextSize(1);
+    pub const ASCII: TextSize = TextSize(1);
 
     /// Checked addition. Returns `None` if overflow occurred.
     #[inline]
