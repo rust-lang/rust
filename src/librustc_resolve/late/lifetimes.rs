@@ -302,15 +302,15 @@ fn resolve_lifetimes(tcx: TyCtxt<'_>, for_krate: CrateNum) -> &ResolveLifetimes 
     let mut rl = ResolveLifetimes::default();
 
     for (hir_id, v) in named_region_map.defs {
-        let map = rl.defs.entry(hir_id.owner_local_def_id()).or_default();
+        let map = rl.defs.entry(hir_id.owner).or_default();
         map.insert(hir_id.local_id, v);
     }
     for hir_id in named_region_map.late_bound {
-        let map = rl.late_bound.entry(hir_id.owner_local_def_id()).or_default();
+        let map = rl.late_bound.entry(hir_id.owner).or_default();
         map.insert(hir_id.local_id);
     }
     for (hir_id, v) in named_region_map.object_lifetime_defaults {
-        let map = rl.object_lifetime_defaults.entry(hir_id.owner_local_def_id()).or_default();
+        let map = rl.object_lifetime_defaults.entry(hir_id.owner).or_default();
         map.insert(hir_id.local_id, v);
     }
 

@@ -9,7 +9,6 @@
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::ty::{self, DefIdTree, TyCtxt};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -594,7 +593,7 @@ impl<'tcx> ScopeTree {
                               region scope tree for {:?} / {:?}",
                             param_owner,
                             self.root_parent.map(|id| tcx.hir().local_def_id(id)),
-                            self.root_body.map(|hir_id| DefId::local(hir_id.owner))
+                            self.root_body.map(|hir_id| hir_id.owner)
                         ),
                     );
                 }

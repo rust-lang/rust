@@ -21,7 +21,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
             NodeIdHashingMode::HashDefPath => {
                 let hir::HirId { owner, local_id } = hir_id;
 
-                hcx.local_def_path_hash(owner).hash_stable(hcx, hasher);
+                hcx.local_def_path_hash(owner.local_def_index).hash_stable(hcx, hasher);
                 local_id.hash_stable(hcx, hasher);
             }
         }
@@ -231,7 +231,7 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::TraitCandidate {
 
         let import_keys = import_ids
             .iter()
-            .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner), hir_id.local_id))
+            .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner.local_def_index), hir_id.local_id))
             .collect();
         (hcx.def_path_hash(*def_id), import_keys)
     }

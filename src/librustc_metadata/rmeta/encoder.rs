@@ -1350,7 +1350,7 @@ impl EncodeContext<'tcx> {
         let is_proc_macro = self.tcx.sess.crate_types.borrow().contains(&CrateType::ProcMacro);
         if is_proc_macro {
             let tcx = self.tcx;
-            Some(self.lazy(tcx.hir().krate().proc_macros.iter().map(|p| p.owner)))
+            Some(self.lazy(tcx.hir().krate().proc_macros.iter().map(|p| p.owner.local_def_index)))
         } else {
             None
         }

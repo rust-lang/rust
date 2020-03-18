@@ -10,7 +10,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::CRATE_DEF_INDEX;
-use rustc_hir::def_id::{DefIndex, LOCAL_CRATE};
+use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};
@@ -30,12 +30,12 @@ pub(super) struct NodeCollector<'a, 'hir> {
     /// Source map
     source_map: &'a SourceMap,
 
-    map: IndexVec<DefIndex, HirOwnerData<'hir>>,
+    map: IndexVec<LocalDefId, HirOwnerData<'hir>>,
 
     /// The parent of this node
     parent_node: hir::HirId,
 
-    current_dep_node_owner: DefIndex,
+    current_dep_node_owner: LocalDefId,
 
     definitions: &'a definitions::Definitions,
 
@@ -126,7 +126,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             krate,
             source_map: sess.source_map(),
             parent_node: hir::CRATE_HIR_ID,
-            current_dep_node_owner: CRATE_DEF_INDEX,
+            current_dep_node_owner: LocalDefId { local_def_index: CRATE_DEF_INDEX },
             definitions,
             hcx,
             hir_body_nodes,
@@ -148,7 +148,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         crate_disambiguator: CrateDisambiguator,
         cstore: &dyn CrateStore,
         commandline_args_hash: u64,
-    ) -> (IndexVec<DefIndex, HirOwnerData<'hir>>, Svh) {
+    ) -> (IndexVec<LocalDefId, HirOwnerData<'hir>>, Svh) {
         // Insert bodies into the map
         for (id, body) in self.krate.bodies.iter() {
             let bodies = &mut self.map[id.hir_id.owner].with_bodies.as_mut().unwrap().bodies;
@@ -261,9 +261,11 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?}){}",
                     self.source_map.span_to_string(span),
                     node_str,
-                    self.definitions.def_path(self.current_dep_node_owner).to_string_no_crate(),
+                    self.definitions
+                        .def_path(self.current_dep_node_owner.local_def_index)
+                        .to_string_no_crate(),
                     self.current_dep_node_owner,
-                    self.definitions.def_path(hir_id.owner).to_string_no_crate(),
+                    self.definitions.def_path(hir_id.owner.local_def_index).to_string_no_crate(),
                     hir_id.owner,
                     forgot_str,
                 )
@@ -285,13 +287,13 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         F: FnOnce(&mut Self, Fingerprint),
     >(
         &mut self,
-        dep_node_owner: DefIndex,
+        dep_node_owner: LocalDefId,
         item_like: &T,
         f: F,
     ) {
         let prev_owner = self.current_dep_node_owner;
 
-        let def_path_hash = self.definitions.def_path_hash(dep_node_owner);
+        let def_path_hash = self.definitions.def_path_hash(dep_node_owner.local_def_index);
 
         let hash = hash_body(&mut self.hcx, def_path_hash, item_like, &mut self.hir_body_nodes);
 
@@ -340,7 +342,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_item(&mut self, i: &'hir Item<'hir>) {
         debug!("visit_item: {:?}", i);
         debug_assert_eq!(
-            i.hir_id.owner,
+            i.hir_id.owner.local_def_index,
             self.definitions.opt_def_index(self.definitions.hir_to_node_id(i.hir_id)).unwrap()
         );
         self.with_dep_node_owner(i.hir_id.owner, i, |this, hash| {
@@ -372,7 +374,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_trait_item(&mut self, ti: &'hir TraitItem<'hir>) {
         debug_assert_eq!(
-            ti.hir_id.owner,
+            ti.hir_id.owner.local_def_index,
             self.definitions.opt_def_index(self.definitions.hir_to_node_id(ti.hir_id)).unwrap()
         );
         self.with_dep_node_owner(ti.hir_id.owner, ti, |this, hash| {
@@ -386,7 +388,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_impl_item(&mut self, ii: &'hir ImplItem<'hir>) {
         debug_assert_eq!(
-            ii.hir_id.owner,
+            ii.hir_id.owner.local_def_index,
             self.definitions.opt_def_index(self.definitions.hir_to_node_id(ii.hir_id)).unwrap()
         );
         self.with_dep_node_owner(ii.hir_id.owner, ii, |this, hash| {
@@ -506,10 +508,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_macro_def(&mut self, macro_def: &'hir MacroDef<'hir>) {
-        let node_id = self.definitions.hir_to_node_id(macro_def.hir_id);
-        let def_index = self.definitions.opt_def_index(node_id).unwrap();
-
-        self.with_dep_node_owner(def_index, macro_def, |this, hash| {
+        self.with_dep_node_owner(macro_def.hir_id.owner, macro_def, |this, hash| {
             this.insert_with_hash(
                 macro_def.span,
                 macro_def.hir_id,

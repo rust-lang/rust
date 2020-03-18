@@ -205,13 +205,13 @@ fn validate_hir_id_for_typeck_tables(
     mut_access: bool,
 ) {
     if let Some(local_id_root) = local_id_root {
-        if hir_id.owner != local_id_root.index {
+        if hir_id.owner.to_def_id() != local_id_root {
             ty::tls::with(|tcx| {
                 bug!(
                     "node {} with HirId::owner {:?} cannot be placed in \
                      TypeckTables with local_id_root {:?}",
                     tcx.hir().node_to_string(hir_id),
-                    DefId::local(hir_id.owner),
+                    hir_id.owner,
                     local_id_root
                 )
             });
@@ -732,8 +732,10 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
 
                 let local_id_root = local_id_root.expect("trying to hash invalid TypeckTables");
 
-                let var_owner_def_id =
-                    DefId { krate: local_id_root.krate, index: var_path.hir_id.owner };
+                let var_owner_def_id = DefId {
+                    krate: local_id_root.krate,
+                    index: var_path.hir_id.owner.local_def_index,
+                };
                 let closure_def_id =
                     DefId { krate: local_id_root.krate, index: closure_expr_id.local_def_index };
                 (
@@ -1153,7 +1155,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
         for (k, v) in resolutions.trait_map {
             let hir_id = definitions.node_to_hir_id(k);
-            let map = trait_map.entry(hir_id.owner_local_def_id()).or_default();
+            let map = trait_map.entry(hir_id.owner).or_default();
             let v = v
                 .into_iter()
                 .map(|tc| tc.map_import_ids(|id| definitions.node_to_hir_id(id)))
@@ -2635,22 +2637,19 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx StableVec<TraitCandidate>> {
-        self.in_scope_traits_map(id.owner_local_def_id()).and_then(|map| map.get(&id.local_id))
+        self.in_scope_traits_map(id.owner).and_then(|map| map.get(&id.local_id))
     }
 
     pub fn named_region(self, id: HirId) -> Option<resolve_lifetime::Region> {
-        self.named_region_map(id.owner_local_def_id())
-            .and_then(|map| map.get(&id.local_id).cloned())
+        self.named_region_map(id.owner).and_then(|map| map.get(&id.local_id).cloned())
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
-        self.is_late_bound_map(id.owner_local_def_id())
-            .map(|set| set.contains(&id.local_id))
-            .unwrap_or(false)
+        self.is_late_bound_map(id.owner).map(|set| set.contains(&id.local_id)).unwrap_or(false)
     }
 
     pub fn object_lifetime_defaults(self, id: HirId) -> Option<&'tcx [ObjectLifetimeDefault]> {
-        self.object_lifetime_defaults_map(id.owner_local_def_id())
+        self.object_lifetime_defaults_map(id.owner)
             .and_then(|map| map.get(&id.local_id).map(|v| &**v))
     }
 }

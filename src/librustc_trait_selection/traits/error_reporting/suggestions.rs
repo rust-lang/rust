@@ -1287,7 +1287,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             let parent = hir.get_parent_node(expr_id);
             if let Some(hir::Node::Expr(e)) = hir.find(parent) {
                 let parent_span = hir.span(parent);
-                let parent_did = parent.owner_def_id();
+                let parent_did = parent.owner.to_def_id();
                 // ```rust
                 // impl T {
                 //     fn foo(&self) -> i32 {}

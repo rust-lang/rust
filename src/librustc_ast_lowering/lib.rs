@@ -425,10 +425,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     UseTreeKind::Nested(ref trees) => {
                         for &(ref use_tree, id) in trees {
                             let hir_id = self.lctx.allocate_hir_id_counter(id);
-                            self.allocate_use_tree_hir_id_counters(
-                                use_tree,
-                                hir_id.owner_local_def_id(),
-                            );
+                            self.allocate_use_tree_hir_id_counters(use_tree, hir_id.owner);
                         }
                     }
                 }
@@ -479,10 +476,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         self.lctx.type_def_lifetime_params.insert(def_id.to_def_id(), count);
                     }
                     ItemKind::Use(ref use_tree) => {
-                        self.allocate_use_tree_hir_id_counters(
-                            use_tree,
-                            hir_id.owner_local_def_id(),
-                        );
+                        self.allocate_use_tree_hir_id_counters(use_tree, hir_id.owner);
                     }
                     _ => {}
                 }
@@ -626,14 +620,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// properly. Calling the method twice with the same `NodeId` is fine though.
     fn lower_node_id(&mut self, ast_node_id: NodeId) -> hir::HirId {
         self.lower_node_id_generic(ast_node_id, |this| {
-            let &mut (def_id, ref mut local_id_counter) =
+            let &mut (owner, ref mut local_id_counter) =
                 this.current_hir_id_owner.last_mut().unwrap();
             let local_id = *local_id_counter;
             *local_id_counter += 1;
-            hir::HirId {
-                owner: def_id.local_def_index,
-                local_id: hir::ItemLocalId::from_u32(local_id),
-            }
+            hir::HirId { owner, local_id: hir::ItemLocalId::from_u32(local_id) }
         })
     }
 
@@ -651,12 +642,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug_assert!(local_id != HIR_ID_COUNTER_LOCKED);
 
             *local_id_counter += 1;
-            let def_index = this.resolver.definitions().opt_def_index(owner).expect(
-                "you forgot to call `create_def_with_parent` or are lowering node-IDs \
-                         that do not belong to the current owner",
-            );
+            let owner = this
+                .resolver
+                .definitions()
+                .opt_local_def_id(owner)
+                .expect(
+                    "you forgot to call `create_def_with_parent` or are lowering node-IDs \
+                     that do not belong to the current owner",
+                )
+                .expect_local();
 
-            hir::HirId { owner: def_index, local_id: hir::ItemLocalId::from_u32(local_id) }
+            hir::HirId { owner, local_id: hir::ItemLocalId::from_u32(local_id) }
         })
     }
 

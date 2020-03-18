@@ -66,24 +66,27 @@ rustc_queries! {
         // The items in a module.
         // This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
         // Avoid calling this query directly.
-        query hir_module_items(key: DefId) -> &'tcx hir::ModuleItems {
+        query hir_module_items(key: LocalDefId) -> &'tcx hir::ModuleItems {
             eval_always
+            desc { |tcx| "HIR module items in `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
-        // An HIR item with a `DefId` that can own other HIR items which do not themselves have
-        // a `DefId`.
+        // An HIR item with a `LocalDefId` that can own other HIR items which do
+        // not themselves have a `LocalDefId`.
         // This can be conveniently accessed by methods on `tcx.hir()`.
         // Avoid calling this query directly.
-        query hir_owner(key: DefId) -> &'tcx HirOwner<'tcx> {
+        query hir_owner(key: LocalDefId) -> &'tcx HirOwner<'tcx> {
             eval_always
+            desc { |tcx| "HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
-        // The HIR items which do not themselves have a `DefId` and are owned by another HIR item
-        // with a `DefId`.
+        // The HIR items which do not themselves have a `LocalDefId` and are
+        // owned by another HIR item with a `LocalDefId`.
         // This can be conveniently accessed by methods on `tcx.hir()`.
         // Avoid calling this query directly.
-        query hir_owner_items(key: DefId) -> &'tcx HirOwnerItems<'tcx> {
+        query hir_owner_items(key: LocalDefId) -> &'tcx HirOwnerItems<'tcx> {
             eval_always
+            desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
         /// Records the type of every item.
@@ -135,8 +138,9 @@ rustc_queries! {
             desc { "computing the lint levels for items in this crate" }
         }
 
-        query parent_module_from_def_id(_: DefId) -> DefId {
+        query parent_module_from_def_id(key: LocalDefId) -> LocalDefId {
             eval_always
+            desc { |tcx| "parent module of `{}`", tcx.def_path_str(key.to_def_id()) }
         }
     }
 

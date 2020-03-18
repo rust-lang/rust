@@ -29,7 +29,7 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &HirCtx) -> (DefPathHash, ItemLocalId) {
-        let def_path_hash = hcx.local_def_path_hash(self.owner);
+        let def_path_hash = hcx.local_def_path_hash(self.owner.local_def_index);
         (def_path_hash, self.local_id)
     }
 }

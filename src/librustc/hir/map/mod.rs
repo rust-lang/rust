@@ -138,7 +138,7 @@ pub struct IndexedHir<'hir> {
     /// The SVH of the local crate.
     pub crate_hash: Svh,
 
-    pub(super) map: IndexVec<DefIndex, HirOwnerData<'hir>>,
+    pub(super) map: IndexVec<LocalDefId, HirOwnerData<'hir>>,
 }
 
 #[derive(Copy, Clone)]
@@ -345,10 +345,10 @@ impl<'hir> Map<'hir> {
 
     fn get_entry(&self, id: HirId) -> Entry<'hir> {
         if id.local_id == ItemLocalId::from_u32(0) {
-            let owner = self.tcx.hir_owner(id.owner_def_id());
+            let owner = self.tcx.hir_owner(id.owner);
             Entry { parent: owner.parent, node: owner.node }
         } else {
-            let owner = self.tcx.hir_owner_items(id.owner_def_id());
+            let owner = self.tcx.hir_owner_items(id.owner);
             let item = owner.items[id.local_id].as_ref().unwrap();
             Entry { parent: HirId { owner: id.owner, local_id: item.parent }, node: item.node }
         }
@@ -376,11 +376,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
-        self.tcx
-            .hir_owner_items(DefId::local(id.hir_id.owner))
-            .bodies
-            .get(&id.hir_id.local_id)
-            .unwrap()
+        self.tcx.hir_owner_items(id.hir_id.owner).bodies.get(&id.hir_id.local_id).unwrap()
     }
 
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
@@ -494,7 +490,7 @@ impl<'hir> Map<'hir> {
     where
         V: ItemLikeVisitor<'hir>,
     {
-        let module = self.tcx.hir_module_items(module);
+        let module = self.tcx.hir_module_items(module.expect_local());
 
         for id in &module.items {
             visitor.visit_item(self.expect_item(*id));

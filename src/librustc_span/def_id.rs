@@ -215,9 +215,20 @@ rustc_data_structures::define_id_collections!(DefIdMap, DefIdSet, DefId);
 /// few cases where we know that only DefIds from the local crate are expected
 /// and a DefId from a different crate would signify a bug somewhere. This
 /// is when LocalDefId comes in handy.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LocalDefId {
     pub local_def_index: DefIndex,
+}
+
+impl Idx for LocalDefId {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        LocalDefId { local_def_index: Idx::new(idx) }
+    }
+    #[inline]
+    fn index(self) -> usize {
+        self.local_def_index.index()
+    }
 }
 
 impl LocalDefId {
