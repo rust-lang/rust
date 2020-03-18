@@ -1550,28 +1550,28 @@ extern "rust-intrinsic" {
 
     /// Float addition that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    pub fn fadd_fast<T>(a: T, b: T) -> T;
+    pub fn fadd_fast<T: Copy>(a: T, b: T) -> T;
 
     /// Float subtraction that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    pub fn fsub_fast<T>(a: T, b: T) -> T;
+    pub fn fsub_fast<T: Copy>(a: T, b: T) -> T;
 
     /// Float multiplication that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    pub fn fmul_fast<T>(a: T, b: T) -> T;
+    pub fn fmul_fast<T: Copy>(a: T, b: T) -> T;
 
     /// Float division that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    pub fn fdiv_fast<T>(a: T, b: T) -> T;
+    pub fn fdiv_fast<T: Copy>(a: T, b: T) -> T;
 
     /// Float remainder that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    pub fn frem_fast<T>(a: T, b: T) -> T;
+    pub fn frem_fast<T: Copy>(a: T, b: T) -> T;
 
     /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
     /// (<https://github.com/rust-lang/rust/issues/10184>)
     /// This is under stabilization at <https://github.com/rust-lang/rust/issues/67058>
-    pub fn float_to_int_approx_unchecked<Float, Int>(value: Float) -> Int;
+    pub fn float_to_int_approx_unchecked<Float: Copy, Int: Copy>(value: Float) -> Int;
 
     /// Returns the number of bits set in an integer type `T`
     ///
@@ -1579,7 +1579,7 @@ extern "rust-intrinsic" {
     /// primitives via the `count_ones` method. For example,
     /// [`std::u32::count_ones`](../../std/primitive.u32.html#method.count_ones)
     #[rustc_const_stable(feature = "const_ctpop", since = "1.40.0")]
-    pub fn ctpop<T>(x: T) -> T;
+    pub fn ctpop<T: Copy>(x: T) -> T;
 
     /// Returns the number of leading unset bits (zeroes) in an integer type `T`.
     ///
@@ -1611,7 +1611,7 @@ extern "rust-intrinsic" {
     /// assert_eq!(num_leading, 16);
     /// ```
     #[rustc_const_stable(feature = "const_ctlz", since = "1.40.0")]
-    pub fn ctlz<T>(x: T) -> T;
+    pub fn ctlz<T: Copy>(x: T) -> T;
 
     /// Like `ctlz`, but extra-unsafe as it returns `undef` when
     /// given an `x` with value `0`.
@@ -1628,7 +1628,7 @@ extern "rust-intrinsic" {
     /// assert_eq!(num_leading, 3);
     /// ```
     #[rustc_const_unstable(feature = "constctlz", issue = "none")]
-    pub fn ctlz_nonzero<T>(x: T) -> T;
+    pub fn ctlz_nonzero<T: Copy>(x: T) -> T;
 
     /// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
     ///
@@ -1660,7 +1660,7 @@ extern "rust-intrinsic" {
     /// assert_eq!(num_trailing, 16);
     /// ```
     #[rustc_const_stable(feature = "const_cttz", since = "1.40.0")]
-    pub fn cttz<T>(x: T) -> T;
+    pub fn cttz<T: Copy>(x: T) -> T;
 
     /// Like `cttz`, but extra-unsafe as it returns `undef` when
     /// given an `x` with value `0`.
@@ -1677,7 +1677,7 @@ extern "rust-intrinsic" {
     /// assert_eq!(num_trailing, 3);
     /// ```
     #[rustc_const_unstable(feature = "const_cttz", issue = "none")]
-    pub fn cttz_nonzero<T>(x: T) -> T;
+    pub fn cttz_nonzero<T: Copy>(x: T) -> T;
 
     /// Reverses the bytes in an integer type `T`.
     ///
@@ -1685,7 +1685,7 @@ extern "rust-intrinsic" {
     /// primitives via the `swap_bytes` method. For example,
     /// [`std::u32::swap_bytes`](../../std/primitive.u32.html#method.swap_bytes)
     #[rustc_const_stable(feature = "const_bswap", since = "1.40.0")]
-    pub fn bswap<T>(x: T) -> T;
+    pub fn bswap<T: Copy>(x: T) -> T;
 
     /// Reverses the bits in an integer type `T`.
     ///
@@ -1693,7 +1693,7 @@ extern "rust-intrinsic" {
     /// primitives via the `reverse_bits` method. For example,
     /// [`std::u32::reverse_bits`](../../std/primitive.u32.html#method.reverse_bits)
     #[rustc_const_stable(feature = "const_bitreverse", since = "1.40.0")]
-    pub fn bitreverse<T>(x: T) -> T;
+    pub fn bitreverse<T: Copy>(x: T) -> T;
 
     /// Performs checked integer addition.
     ///
@@ -1701,7 +1701,7 @@ extern "rust-intrinsic" {
     /// primitives via the `overflowing_add` method. For example,
     /// [`std::u32::overflowing_add`](../../std/primitive.u32.html#method.overflowing_add)
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
-    pub fn add_with_overflow<T>(x: T, y: T) -> (T, bool);
+    pub fn add_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer subtraction
     ///
@@ -1709,7 +1709,7 @@ extern "rust-intrinsic" {
     /// primitives via the `overflowing_sub` method. For example,
     /// [`std::u32::overflowing_sub`](../../std/primitive.u32.html#method.overflowing_sub)
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
-    pub fn sub_with_overflow<T>(x: T, y: T) -> (T, bool);
+    pub fn sub_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer multiplication
     ///
@@ -1717,11 +1717,11 @@ extern "rust-intrinsic" {
     /// primitives via the `overflowing_mul` method. For example,
     /// [`std::u32::overflowing_mul`](../../std/primitive.u32.html#method.overflowing_mul)
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
-    pub fn mul_with_overflow<T>(x: T, y: T) -> (T, bool);
+    pub fn mul_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
     /// Performs an exact division, resulting in undefined behavior where
     /// `x % y != 0` or `y == 0` or `x == T::min_value() && y == -1`
-    pub fn exact_div<T>(x: T, y: T) -> T;
+    pub fn exact_div<T: Copy>(x: T, y: T) -> T;
 
     /// Performs an unchecked division, resulting in undefined behavior
     /// where y = 0 or x = `T::min_value()` and y = -1
@@ -1730,7 +1730,7 @@ extern "rust-intrinsic" {
     /// primitives via the `checked_div` method. For example,
     /// [`std::u32::checked_div`](../../std/primitive.u32.html#method.checked_div)
     #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
-    pub fn unchecked_div<T>(x: T, y: T) -> T;
+    pub fn unchecked_div<T: Copy>(x: T, y: T) -> T;
     /// Returns the remainder of an unchecked division, resulting in
     /// undefined behavior where y = 0 or x = `T::min_value()` and y = -1
     ///
@@ -1738,7 +1738,7 @@ extern "rust-intrinsic" {
     /// primitives via the `checked_rem` method. For example,
     /// [`std::u32::checked_rem`](../../std/primitive.u32.html#method.checked_rem)
     #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
-    pub fn unchecked_rem<T>(x: T, y: T) -> T;
+    pub fn unchecked_rem<T: Copy>(x: T, y: T) -> T;
 
     /// Performs an unchecked left shift, resulting in undefined behavior when
     /// y < 0 or y >= N, where N is the width of T in bits.
@@ -1747,7 +1747,7 @@ extern "rust-intrinsic" {
     /// primitives via the `checked_shl` method. For example,
     /// [`std::u32::checked_shl`](../../std/primitive.u32.html#method.checked_shl)
     #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
-    pub fn unchecked_shl<T>(x: T, y: T) -> T;
+    pub fn unchecked_shl<T: Copy>(x: T, y: T) -> T;
     /// Performs an unchecked right shift, resulting in undefined behavior when
     /// y < 0 or y >= N, where N is the width of T in bits.
     ///
@@ -1755,22 +1755,22 @@ extern "rust-intrinsic" {
     /// primitives via the `checked_shr` method. For example,
     /// [`std::u32::checked_shr`](../../std/primitive.u32.html#method.checked_shr)
     #[rustc_const_stable(feature = "const_int_unchecked", since = "1.40.0")]
-    pub fn unchecked_shr<T>(x: T, y: T) -> T;
+    pub fn unchecked_shr<T: Copy>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked addition, resulting in
     /// undefined behavior when `x + y > T::max_value()` or `x + y < T::min_value()`.
     #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
-    pub fn unchecked_add<T>(x: T, y: T) -> T;
+    pub fn unchecked_add<T: Copy>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked subtraction, resulting in
     /// undefined behavior when `x - y > T::max_value()` or `x - y < T::min_value()`.
     #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
-    pub fn unchecked_sub<T>(x: T, y: T) -> T;
+    pub fn unchecked_sub<T: Copy>(x: T, y: T) -> T;
 
     /// Returns the result of an unchecked multiplication, resulting in
     /// undefined behavior when `x * y > T::max_value()` or `x * y < T::min_value()`.
     #[rustc_const_unstable(feature = "const_int_unchecked_arith", issue = "none")]
-    pub fn unchecked_mul<T>(x: T, y: T) -> T;
+    pub fn unchecked_mul<T: Copy>(x: T, y: T) -> T;
 
     /// Performs rotate left.
     ///
@@ -1778,7 +1778,7 @@ extern "rust-intrinsic" {
     /// primitives via the `rotate_left` method. For example,
     /// [`std::u32::rotate_left`](../../std/primitive.u32.html#method.rotate_left)
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
-    pub fn rotate_left<T>(x: T, y: T) -> T;
+    pub fn rotate_left<T: Copy>(x: T, y: T) -> T;
 
     /// Performs rotate right.
     ///
@@ -1786,7 +1786,7 @@ extern "rust-intrinsic" {
     /// primitives via the `rotate_right` method. For example,
     /// [`std::u32::rotate_right`](../../std/primitive.u32.html#method.rotate_right)
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
-    pub fn rotate_right<T>(x: T, y: T) -> T;
+    pub fn rotate_right<T: Copy>(x: T, y: T) -> T;
 
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
@@ -1794,21 +1794,21 @@ extern "rust-intrinsic" {
     /// primitives via the `checked_add` method. For example,
     /// [`std::u32::checked_add`](../../std/primitive.u32.html#method.checked_add)
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
-    pub fn wrapping_add<T>(a: T, b: T) -> T;
+    pub fn wrapping_add<T: Copy>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `checked_sub` method. For example,
     /// [`std::u32::checked_sub`](../../std/primitive.u32.html#method.checked_sub)
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
-    pub fn wrapping_sub<T>(a: T, b: T) -> T;
+    pub fn wrapping_sub<T: Copy>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `checked_mul` method. For example,
     /// [`std::u32::checked_mul`](../../std/primitive.u32.html#method.checked_mul)
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
-    pub fn wrapping_mul<T>(a: T, b: T) -> T;
+    pub fn wrapping_mul<T: Copy>(a: T, b: T) -> T;
 
     /// Computes `a + b`, while saturating at numeric bounds.
     ///
@@ -1816,14 +1816,14 @@ extern "rust-intrinsic" {
     /// primitives via the `saturating_add` method. For example,
     /// [`std::u32::saturating_add`](../../std/primitive.u32.html#method.saturating_add)
     #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
-    pub fn saturating_add<T>(a: T, b: T) -> T;
+    pub fn saturating_add<T: Copy>(a: T, b: T) -> T;
     /// Computes `a - b`, while saturating at numeric bounds.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `saturating_sub` method. For example,
     /// [`std::u32::saturating_sub`](../../std/primitive.u32.html#method.saturating_sub)
     #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
-    pub fn saturating_sub<T>(a: T, b: T) -> T;
+    pub fn saturating_sub<T: Copy>(a: T, b: T) -> T;
 
     /// Returns the value of the discriminant for the variant in 'v',
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
