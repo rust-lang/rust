@@ -1,7 +1,5 @@
 //! The `DepGraphSafe` trait
 
-use crate::ty::TyCtxt;
-
 use rustc_ast::ast::NodeId;
 use rustc_hir::def_id::DefId;
 use rustc_hir::BodyId;
@@ -27,10 +25,6 @@ impl DepGraphSafe for NodeId {}
 /// You must fetch the state from the various maps or generate
 /// on-demand queries, all of which create reads.
 impl DepGraphSafe for DefId {}
-
-/// The type context itself can be used to access all kinds of tracked
-/// state, but those accesses should always generate read events.
-impl<'tcx> DepGraphSafe for TyCtxt<'tcx> {}
 
 /// Tuples make it easy to build up state.
 impl<A, B> DepGraphSafe for (A, B)

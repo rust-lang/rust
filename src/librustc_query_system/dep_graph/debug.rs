@@ -1,6 +1,6 @@
 //! Code for debugging the dep-graph.
 
-use super::dep_node::DepNode;
+use super::{DepKind, DepNode};
 use std::error::Error;
 
 /// A dep-node filter goes from a user-defined string to a query over
@@ -26,7 +26,7 @@ impl DepNodeFilter {
     }
 
     /// Tests whether `node` meets the filter, returning true if so.
-    pub fn test(&self, node: &DepNode) -> bool {
+    pub fn test<K: DepKind>(&self, node: &DepNode<K>) -> bool {
         let debug_str = format!("{:?}", node);
         self.text.split('&').map(|s| s.trim()).all(|f| debug_str.contains(f))
     }
@@ -52,7 +52,7 @@ impl EdgeFilter {
         }
     }
 
-    pub fn test(&self, source: &DepNode, target: &DepNode) -> bool {
+    pub fn test<K: DepKind>(&self, source: &DepNode<K>, target: &DepNode<K>) -> bool {
         self.source.test(source) && self.target.test(target)
     }
 }

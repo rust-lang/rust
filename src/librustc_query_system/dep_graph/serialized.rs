@@ -1,7 +1,7 @@
 //! The data that we will serialize and deserialize.
 
-use crate::dep_graph::DepNode;
-use crate::ich::Fingerprint;
+use super::{DepKind, DepNode};
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_index::vec::IndexVec;
 
 rustc_index::newtype_index! {
@@ -9,10 +9,10 @@ rustc_index::newtype_index! {
 }
 
 /// Data for use when recompiling the **current crate**.
-#[derive(Debug, RustcEncodable, RustcDecodable, Default)]
-pub struct SerializedDepGraph {
+#[derive(Debug, RustcEncodable, RustcDecodable)]
+pub struct SerializedDepGraph<K: DepKind> {
     /// The set of all DepNodes in the graph
-    pub nodes: IndexVec<SerializedDepNodeIndex, DepNode>,
+    pub nodes: IndexVec<SerializedDepNodeIndex, DepNode<K>>,
     /// The set of all Fingerprints in the graph. Each Fingerprint corresponds to
     /// the DepNode at the same index in the nodes vector.
     pub fingerprints: IndexVec<SerializedDepNodeIndex, Fingerprint>,
@@ -25,7 +25,18 @@ pub struct SerializedDepGraph {
     pub edge_list_data: Vec<SerializedDepNodeIndex>,
 }
 
-impl SerializedDepGraph {
+impl<K: DepKind> Default for SerializedDepGraph<K> {
+    fn default() -> Self {
+        SerializedDepGraph {
+            nodes: Default::default(),
+            fingerprints: Default::default(),
+            edge_list_indices: Default::default(),
+            edge_list_data: Default::default(),
+        }
+    }
+}
+
+impl<K: DepKind> SerializedDepGraph<K> {
     #[inline]
     pub fn edge_targets_from(&self, source: SerializedDepNodeIndex) -> &[SerializedDepNodeIndex] {
         let targets = self.edge_list_indices[source];
