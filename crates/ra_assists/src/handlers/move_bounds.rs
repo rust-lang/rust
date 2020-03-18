@@ -1,6 +1,6 @@
 use ra_syntax::{
     ast::{self, edit::AstNodeEdit, make, AstNode, NameOwner, TypeBoundsOwner},
-    SyntaxElement,
+    match_ast,
     SyntaxKind::*,
 };
 
@@ -34,15 +34,18 @@ pub(crate) fn move_bounds_to_where_clause(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    let anchor: SyntaxElement = match parent.kind() {
-        FN_DEF => ast::FnDef::cast(parent)?.body()?.syntax().clone().into(),
-        TRAIT_DEF => ast::TraitDef::cast(parent)?.item_list()?.syntax().clone().into(),
-        IMPL_DEF => ast::ImplDef::cast(parent)?.item_list()?.syntax().clone().into(),
-        ENUM_DEF => ast::EnumDef::cast(parent)?.variant_list()?.syntax().clone().into(),
-        STRUCT_DEF => parent
-            .children_with_tokens()
-            .find(|it| it.kind() == RECORD_FIELD_DEF_LIST || it.kind() == SEMI)?,
-        _ => return None,
+    let anchor = match_ast! {
+        match parent {
+            ast::FnDef(it) => it.body()?.syntax().clone().into(),
+            ast::TraitDef(it) => it.item_list()?.syntax().clone().into(),
+            ast::ImplDef(it) => it.item_list()?.syntax().clone().into(),
+            ast::EnumDef(it) => it.variant_list()?.syntax().clone().into(),
+            ast::StructDef(it) => {
+                it.syntax().children_with_tokens()
+                    .find(|it| it.kind() == RECORD_FIELD_DEF_LIST || it.kind() == SEMI)?
+            },
+            _ => return None
+        }
     };
 
     ctx.add_assist(AssistId("move_bounds_to_where_clause"), "Move to where clause", |edit| {
