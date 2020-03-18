@@ -170,13 +170,13 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
                 }
                 Internal(internal) => {
                     let mut out_tree = clone_subtree(internal.first_edge().descend());
-
-                    // Cannot call ensure_root_is_owned() because lacking K: Ord
-                    if out_tree.root.is_none() {
-                        out_tree.root = Some(node::Root::new_leaf());
-                    }
+                    out_tree.ensure_root_is_owned();
 
                     {
+                        // Ideally we'd use the return of ensure_root_is_owned
+                        // instead of re-unwrapping here but unfortunately that
+                        // borrows all of out_tree and we need access to the
+                        // length below.
                         let mut out_node = out_tree.root.as_mut().unwrap().push_level();
                         let mut in_edge = internal.first_edge();
                         while let Ok(kv) = in_edge.right_kv() {
@@ -1207,9 +1207,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let total_num = self.len();
 
         let mut right = Self::new();
-        right.root = Some(node::Root::new_leaf());
+        let right_root = right.ensure_root_is_owned();
         for _ in 0..(self.root.as_ref().unwrap().as_ref().height()) {
-            right.root.as_mut().unwrap().push_level();
+            right_root.push_level();
         }
 
         {
@@ -1347,14 +1347,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
 
         self.fix_top();
-    }
-
-    /// If the root node is the empty (non-allocated) root node, allocate our
-    /// own node.
-    fn ensure_root_is_owned(&mut self) {
-        if self.root.is_none() {
-            self.root = Some(node::Root::new_leaf());
-        }
     }
 }
 
@@ -2150,6 +2142,12 @@ impl<K, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// If the root node is the empty (non-allocated) root node, allocate our
+    /// own node.
+    fn ensure_root_is_owned(&mut self) -> &mut node::Root<K, V> {
+        self.root.get_or_insert_with(|| node::Root::new_leaf())
     }
 }
 
