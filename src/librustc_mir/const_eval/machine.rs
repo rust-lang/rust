@@ -240,7 +240,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         Ok(Some(match ecx.load_mir(instance.def, None) {
             Ok(body) => *body,
             Err(err) => {
-                if let err_unsup!(NoMirFor(ref path)) = err.kind {
+                if let err_unsup!(NoMirFor(did)) = err.kind {
+                    let path = ecx.tcx.def_path_str(did);
                     return Err(ConstEvalErrKind::NeedsRfc(format!(
                         "calling extern function `{}`",
                         path

@@ -11,7 +11,7 @@ LL | / const MUTATING_BEHIND_RAW: () = {
 LL | |     // Test that `MUTABLE_BEHIND_RAW` is actually immutable, by doing this at const time.
 LL | |     unsafe {
 LL | |         *MUTABLE_BEHIND_RAW = 99
-   | |         ^^^^^^^^^^^^^^^^^^^^^^^^ tried to modify constant memory
+   | |         ^^^^^^^^^^^^^^^^^^^^^^^^ writing to alloc1 which is read-only
 LL | |     }
 LL | | };
    | |__-

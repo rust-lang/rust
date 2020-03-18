@@ -172,13 +172,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             trace!("Skipping callee ZST");
             return Ok(());
         }
-        let caller_arg = caller_arg.next().ok_or_else(|| err_unsup!(FunctionArgCountMismatch))?;
+        let caller_arg = caller_arg.next().ok_or_else(|| {
+            err_ub_format!("calling a function with fewer arguments than it requires")
+        })?;
         if rust_abi {
             assert!(!caller_arg.layout.is_zst(), "ZSTs must have been already filtered out");
         }
         // Now, check
         if !Self::check_argument_compat(rust_abi, caller_arg.layout, callee_arg.layout) {
-            throw_unsup!(FunctionArgMismatch(caller_arg.layout.ty, callee_arg.layout.ty))
+            throw_ub_format!(
+                "calling a function with argument of type {:?} passing data of type {:?}",
+                callee_arg.layout.ty,
+                caller_arg.layout.ty
+            )
         }
         // We allow some transmutes here
         self.copy_op_transmute(caller_arg, callee_arg)
@@ -223,7 +229,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 abi => abi,
             };
             if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
-                throw_unsup!(FunctionAbiMismatch(caller_abi, callee_abi))
+                throw_ub_format!(
+                    "calling a function with ABI {:?} using caller ABI {:?}",
+                    callee_abi,
+                    caller_abi
+                )
             }
         }
 
@@ -253,110 +263,108 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     StackPopCleanup::Goto { ret: ret.map(|p| p.1), unwind },
                 )?;
 
-                // We want to pop this frame again in case there was an error, to put
-                // the blame in the right location.  Until the 2018 edition is used in
-                // the compiler, we have to do this with an immediately invoked function.
-                let res =
-                    (|| {
-                        trace!(
-                            "caller ABI: {:?}, args: {:#?}",
-                            caller_abi,
-                            args.iter()
-                                .map(|arg| (arg.layout.ty, format!("{:?}", **arg)))
-                                .collect::<Vec<_>>()
-                        );
-                        trace!(
-                            "spread_arg: {:?}, locals: {:#?}",
-                            body.spread_arg,
-                            body.args_iter()
-                                .map(|local| (
-                                    local,
-                                    self.layout_of_local(self.frame(), local, None).unwrap().ty
-                                ))
-                                .collect::<Vec<_>>()
-                        );
+                // If an error is raised here, pop the frame again to get an accurate backtrace.
+                // To this end, we wrap it all in a `try` block.
+                let res: InterpResult<'tcx> = try {
+                    trace!(
+                        "caller ABI: {:?}, args: {:#?}",
+                        caller_abi,
+                        args.iter()
+                            .map(|arg| (arg.layout.ty, format!("{:?}", **arg)))
+                            .collect::<Vec<_>>()
+                    );
+                    trace!(
+                        "spread_arg: {:?}, locals: {:#?}",
+                        body.spread_arg,
+                        body.args_iter()
+                            .map(|local| (
+                                local,
+                                self.layout_of_local(self.frame(), local, None).unwrap().ty
+                            ))
+                            .collect::<Vec<_>>()
+                    );
 
-                        // Figure out how to pass which arguments.
-                        // The Rust ABI is special: ZST get skipped.
-                        let rust_abi = match caller_abi {
-                            Abi::Rust | Abi::RustCall => true,
-                            _ => false,
+                    // Figure out how to pass which arguments.
+                    // The Rust ABI is special: ZST get skipped.
+                    let rust_abi = match caller_abi {
+                        Abi::Rust | Abi::RustCall => true,
+                        _ => false,
+                    };
+                    // We have two iterators: Where the arguments come from,
+                    // and where they go to.
+
+                    // For where they come from: If the ABI is RustCall, we untuple the
+                    // last incoming argument.  These two iterators do not have the same type,
+                    // so to keep the code paths uniform we accept an allocation
+                    // (for RustCall ABI only).
+                    let caller_args: Cow<'_, [OpTy<'tcx, M::PointerTag>]> =
+                        if caller_abi == Abi::RustCall && !args.is_empty() {
+                            // Untuple
+                            let (&untuple_arg, args) = args.split_last().unwrap();
+                            trace!("eval_fn_call: Will pass last argument by untupling");
+                            Cow::from(
+                                args.iter()
+                                    .map(|&a| Ok(a))
+                                    .chain(
+                                        (0..untuple_arg.layout.fields.count())
+                                            .map(|i| self.operand_field(untuple_arg, i as u64)),
+                                    )
+                                    .collect::<InterpResult<'_, Vec<OpTy<'tcx, M::PointerTag>>>>(
+                                    )?,
+                            )
+                        } else {
+                            // Plain arg passing
+                            Cow::from(args)
                         };
-                        // We have two iterators: Where the arguments come from,
-                        // and where they go to.
+                    // Skip ZSTs
+                    let mut caller_iter =
+                        caller_args.iter().filter(|op| !rust_abi || !op.layout.is_zst()).copied();
 
-                        // For where they come from: If the ABI is RustCall, we untuple the
-                        // last incoming argument.  These two iterators do not have the same type,
-                        // so to keep the code paths uniform we accept an allocation
-                        // (for RustCall ABI only).
-                        let caller_args: Cow<'_, [OpTy<'tcx, M::PointerTag>]> =
-                            if caller_abi == Abi::RustCall && !args.is_empty() {
-                                // Untuple
-                                let (&untuple_arg, args) = args.split_last().unwrap();
-                                trace!("eval_fn_call: Will pass last argument by untupling");
-                                Cow::from(args.iter().map(|&a| Ok(a))
-                                .chain((0..untuple_arg.layout.fields.count())
-                                    .map(|i| self.operand_field(untuple_arg, i as u64))
-                                )
-                                .collect::<InterpResult<'_, Vec<OpTy<'tcx, M::PointerTag>>>>()?)
-                            } else {
-                                // Plain arg passing
-                                Cow::from(args)
-                            };
-                        // Skip ZSTs
-                        let mut caller_iter = caller_args
-                            .iter()
-                            .filter(|op| !rust_abi || !op.layout.is_zst())
-                            .copied();
-
-                        // Now we have to spread them out across the callee's locals,
-                        // taking into account the `spread_arg`.  If we could write
-                        // this is a single iterator (that handles `spread_arg`), then
-                        // `pass_argument` would be the loop body. It takes care to
-                        // not advance `caller_iter` for ZSTs
-                        for local in body.args_iter() {
-                            let dest = self.eval_place(&mir::Place::from(local))?;
-                            if Some(local) == body.spread_arg {
-                                // Must be a tuple
-                                for i in 0..dest.layout.fields.count() {
-                                    let dest = self.place_field(dest, i as u64)?;
-                                    self.pass_argument(rust_abi, &mut caller_iter, dest)?;
-                                }
-                            } else {
-                                // Normal argument
+                    // Now we have to spread them out across the callee's locals,
+                    // taking into account the `spread_arg`.  If we could write
+                    // this is a single iterator (that handles `spread_arg`), then
+                    // `pass_argument` would be the loop body. It takes care to
+                    // not advance `caller_iter` for ZSTs.
+                    for local in body.args_iter() {
+                        let dest = self.eval_place(&mir::Place::from(local))?;
+                        if Some(local) == body.spread_arg {
+                            // Must be a tuple
+                            for i in 0..dest.layout.fields.count() {
+                                let dest = self.place_field(dest, i as u64)?;
                                 self.pass_argument(rust_abi, &mut caller_iter, dest)?;
                             }
-                        }
-                        // Now we should have no more caller args
-                        if caller_iter.next().is_some() {
-                            trace!("Caller has passed too many args");
-                            throw_unsup!(FunctionArgCountMismatch)
-                        }
-                        // Don't forget to check the return type!
-                        if let Some((caller_ret, _)) = ret {
-                            let callee_ret = self.eval_place(&mir::Place::return_place())?;
-                            if !Self::check_argument_compat(
-                                rust_abi,
-                                caller_ret.layout,
-                                callee_ret.layout,
-                            ) {
-                                throw_unsup!(FunctionRetMismatch(
-                                    caller_ret.layout.ty,
-                                    callee_ret.layout.ty
-                                ))
-                            }
                         } else {
-                            let local = mir::RETURN_PLACE;
-                            let callee_layout = self.layout_of_local(self.frame(), local, None)?;
-                            if !callee_layout.abi.is_uninhabited() {
-                                throw_unsup!(FunctionRetMismatch(
-                                    self.tcx.types.never,
-                                    callee_layout.ty
-                                ))
-                            }
+                            // Normal argument
+                            self.pass_argument(rust_abi, &mut caller_iter, dest)?;
                         }
-                        Ok(())
-                    })();
+                    }
+                    // Now we should have no more caller args
+                    if caller_iter.next().is_some() {
+                        throw_ub_format!("calling a function with more arguments than it expected")
+                    }
+                    // Don't forget to check the return type!
+                    if let Some((caller_ret, _)) = ret {
+                        let callee_ret = self.eval_place(&mir::Place::return_place())?;
+                        if !Self::check_argument_compat(
+                            rust_abi,
+                            caller_ret.layout,
+                            callee_ret.layout,
+                        ) {
+                            throw_ub_format!(
+                                "calling a function with return type {:?} passing \
+                                     return place of type {:?}",
+                                callee_ret.layout.ty,
+                                caller_ret.layout.ty
+                            )
+                        }
+                    } else {
+                        let local = mir::RETURN_PLACE;
+                        let callee_layout = self.layout_of_local(self.frame(), local, None)?;
+                        if !callee_layout.abi.is_uninhabited() {
+                            throw_ub_format!("calling a returning function without a return place")
+                        }
+                    }
+                };
                 match res {
                     Err(err) => {
                         self.stack.pop();

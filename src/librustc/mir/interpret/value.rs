@@ -455,10 +455,11 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     pub fn to_bool(self) -> InterpResult<'tcx, bool> {
-        match self {
-            Scalar::Raw { data: 0, size: 1 } => Ok(false),
-            Scalar::Raw { data: 1, size: 1 } => Ok(true),
-            _ => throw_unsup!(InvalidBool),
+        let val = self.to_u8()?;
+        match val {
+            0 => Ok(false),
+            1 => Ok(true),
+            _ => throw_ub!(InvalidBool(val)),
         }
     }
 
@@ -466,7 +467,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         let val = self.to_u32()?;
         match ::std::char::from_u32(val) {
             Some(c) => Ok(c),
-            None => throw_unsup!(InvalidChar(val as u128)),
+            None => throw_ub!(InvalidChar(val)),
         }
     }
 
@@ -609,7 +610,7 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     pub fn not_undef(self) -> InterpResult<'static, Scalar<Tag>> {
         match self {
             ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
-            ScalarMaybeUndef::Undef => throw_unsup!(ReadUndefBytes(Size::ZERO)),
+            ScalarMaybeUndef::Undef => throw_ub!(InvalidUndefBytes(None)),
         }
     }
 

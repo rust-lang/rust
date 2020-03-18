@@ -30,7 +30,7 @@ error: any use of this value will cause an error
 LL | const Z2: i32 = unsafe { *(42 as *const i32) };
    | -------------------------^^^^^^^^^^^^^^^^^^^---
    |                          |
-   |                          a memory access tried to interpret some bytes as a pointer
+   |                          unable to turn bytes into a pointer
 
 error: any use of this value will cause an error
   --> $DIR/const_raw_ptr_ops.rs:17:26
@@ -38,7 +38,7 @@ error: any use of this value will cause an error
 LL | const Z3: i32 = unsafe { *(44 as *const i32) };
    | -------------------------^^^^^^^^^^^^^^^^^^^---
    |                          |
-   |                          a memory access tried to interpret some bytes as a pointer
+   |                          unable to turn bytes into a pointer
 
 error: aborting due to 5 previous errors
 
