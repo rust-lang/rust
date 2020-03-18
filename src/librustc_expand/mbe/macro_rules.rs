@@ -181,17 +181,12 @@ impl TTMacroExpander for MacroRulesMacroExpander {
     }
 }
 
-struct MacroRulesDummyExpander;
-
-impl TTMacroExpander for MacroRulesDummyExpander {
-    fn expand<'cx>(
-        &self,
-        _: &'cx mut ExtCtxt<'_>,
-        sp: Span,
-        _: TokenStream,
-    ) -> Box<dyn MacResult + 'cx> {
-        DummyResult::any(sp)
-    }
+fn macro_rules_dummy_expander<'cx>(
+    _: &'cx mut ExtCtxt<'_>,
+    span: Span,
+    _: TokenStream,
+) -> Box<dyn MacResult + 'cx> {
+    DummyResult::any(span)
 }
 
 fn trace_macros_note(cx_expansions: &mut FxHashMap<Span, Vec<String>>, sp: Span, message: String) {
@@ -450,14 +445,14 @@ pub fn compile_declarative_macro(
             let s = parse_failure_msg(&token);
             let sp = token.span.substitute_dummy(def.span);
             sess.span_diagnostic.struct_span_err(sp, &s).span_label(sp, msg).emit();
-            return mk_syn_ext(Box::new(MacroRulesDummyExpander));
+            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
         }
         Error(sp, msg) => {
             sess.span_diagnostic.struct_span_err(sp.substitute_dummy(def.span), &msg).emit();
-            return mk_syn_ext(Box::new(MacroRulesDummyExpander));
+            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
         }
         ErrorReported => {
-            return mk_syn_ext(Box::new(MacroRulesDummyExpander));
+            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
         }
     };
 
@@ -520,16 +515,14 @@ pub fn compile_declarative_macro(
         None => {}
     }
 
-    let expander: Box<_> = Box::new(MacroRulesMacroExpander {
+    mk_syn_ext(Box::new(MacroRulesMacroExpander {
         name: def.ident,
         span: def.span,
         transparency,
         lhses,
         rhses,
         valid,
-    });
-
-    mk_syn_ext(expander)
+    }))
 }
 
 fn check_lhs_nt_follows(
