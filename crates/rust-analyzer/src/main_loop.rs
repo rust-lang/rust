@@ -641,9 +641,15 @@ fn on_notification(
     };
     let not = match notification_cast::<req::DidChangeConfiguration>(not) {
         Ok(_params) => {
+            dbg!(_params);
+            // let request = request_new::<req::WorkspaceConfiguration>(
+            //     loop_state.next_request_id(),
+            //     ConfigurationParams::default(),
+            // );
+            // let zz = connection.sender.send(request.into()).unwrap();
             return Ok(());
         }
-        Err(not) => not,
+        Err(not) => dbg!(not),
     };
     let not = match notification_cast::<req::DidChangeWatchedFiles>(not) {
         Ok(params) => {

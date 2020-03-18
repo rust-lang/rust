@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 pub use lsp_types::{
     notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CodeLens,
-    CodeLensParams, CompletionParams, CompletionResponse, DiagnosticTag,
+    CodeLensParams, CompletionParams, CompletionResponse, ConfigurationParams, DiagnosticTag,
     DidChangeConfigurationParams, DidChangeWatchedFilesParams,
     DidChangeWatchedFilesRegistrationOptions, DocumentOnTypeFormattingParams, DocumentSymbolParams,
     DocumentSymbolResponse, FileSystemWatcher, Hover, InitializeResult, MessageType,
