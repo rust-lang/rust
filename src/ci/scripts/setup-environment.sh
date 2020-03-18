@@ -11,7 +11,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 # Since matrix variables are readonly in Azure Pipelines, we take
 # INITIAL_RUST_CONFIGURE_ARGS and establish RUST_CONFIGURE_ARGS
 # which downstream steps can alter
-# MacOS ships with Bash 3.16, which means we cannot use 
+# MacOS ships with Bash 3.16, which means we cannot use
 # if [[ -v FOO ]], as that was introduced in Bash 4.2
 if [[ -z "${INITIAL_RUST_CONFIGURE_ARGS+x}" ]]; then
     INITIAL_RUST_CONFIG=""
