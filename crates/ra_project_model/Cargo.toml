@@ -17,6 +17,7 @@ ra_arena = { path = "../ra_arena" }
 ra_db = { path = "../ra_db" }
 ra_cfg = { path = "../ra_cfg" }
 ra_cargo_watch = { path = "../ra_cargo_watch" }
+ra_proc_macro =  { path = "../ra_proc_macro" }
 
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = "1.0.48"

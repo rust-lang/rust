@@ -15,4 +15,5 @@ rustc-hash = "1.1.0"
 ra_syntax = { path = "../ra_syntax" }
 ra_cfg = { path = "../ra_cfg" }
 ra_prof = { path = "../ra_prof" }
+ra_proc_macro = { path = "../ra_proc_macro" }
 test_utils = { path = "../test_utils" }

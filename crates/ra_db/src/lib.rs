@@ -12,9 +12,10 @@ pub use crate::{
     cancellation::Canceled,
     input::{
         CrateGraph, CrateId, CrateName, Dependency, Edition, Env, ExternSource, ExternSourceId,
-        FileId, SourceRoot, SourceRootId,
+        FileId, ProcMacroId, SourceRoot, SourceRootId,
     },
 };
+pub use ra_proc_macro::ProcMacro;
 pub use relative_path::{RelativePath, RelativePathBuf};
 pub use salsa;
 

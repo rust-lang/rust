@@ -1,33 +1,31 @@
 //! Proc Macro Expander stub
 
-use crate::{db::AstDatabase, LazyMacroId, MacroCallKind, MacroCallLoc};
-use ra_db::CrateId;
+use crate::{db::AstDatabase, LazyMacroId};
+use ra_db::{CrateId, ProcMacroId};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct ProcMacroExpander {
     krate: CrateId,
+    proc_macro_id: ProcMacroId,
 }
 
 impl ProcMacroExpander {
-    pub fn new(krate: CrateId) -> ProcMacroExpander {
-        ProcMacroExpander { krate }
+    pub fn new(krate: CrateId, proc_macro_id: ProcMacroId) -> ProcMacroExpander {
+        ProcMacroExpander { krate, proc_macro_id }
     }
 
     pub fn expand(
         &self,
         db: &dyn AstDatabase,
-        id: LazyMacroId,
-        _tt: &tt::Subtree,
+        _id: LazyMacroId,
+        tt: &tt::Subtree,
     ) -> Result<tt::Subtree, mbe::ExpandError> {
-        let loc: MacroCallLoc = db.lookup_intern_macro(id);
-        let name = match loc.kind {
-            MacroCallKind::FnLike(_) => return Err(mbe::ExpandError::ConversionError),
-            MacroCallKind::Attr(_, name) => name,
-        };
-
-        log::debug!("Proc-macro-expanding name = {}", name);
-
-        // Return nothing for now
-        return Ok(tt::Subtree::default());
+        let krate_graph = db.crate_graph();
+        let proc_macro = krate_graph[self.krate]
+            .proc_macro
+            .get(self.proc_macro_id.0)
+            .clone()
+            .ok_or_else(|| mbe::ExpandError::ConversionError)?;
+        proc_macro.custom_derive(tt)
     }
 }

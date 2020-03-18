@@ -23,6 +23,7 @@ pub use crate::{
     json_project::JsonProject,
     sysroot::Sysroot,
 };
+pub use ra_proc_macro::ProcMacroClient;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct CargoTomlNotFoundError {
@@ -173,6 +174,29 @@ impl ProjectWorkspace {
         }
     }
 
+    pub fn proc_macro_dylib_paths(&self) -> Vec<PathBuf> {
+        match self {
+            ProjectWorkspace::Json { project } => {
+                let mut proc_macro_dylib_paths = Vec::with_capacity(project.crates.len());
+                for krate in &project.crates {
+                    if let Some(out_dir) = &krate.proc_macro_dylib_path {
+                        proc_macro_dylib_paths.push(out_dir.to_path_buf());
+                    }
+                }
+                proc_macro_dylib_paths
+            }
+            ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => {
+                let mut proc_macro_dylib_paths = Vec::with_capacity(cargo.packages().len());
+                for pkg in cargo.packages() {
+                    if let Some(dylib_path) = &cargo[pkg].proc_macro_dylib_path {
+                        proc_macro_dylib_paths.push(dylib_path.to_path_buf());
+                    }
+                }
+                proc_macro_dylib_paths
+            }
+        }
+    }
+
     pub fn n_packages(&self) -> usize {
         match self {
             ProjectWorkspace::Json { project } => project.crates.len(),
@@ -186,6 +210,7 @@ impl ProjectWorkspace {
         &self,
         default_cfg_options: &CfgOptions,
         extern_source_roots: &FxHashMap<PathBuf, ExternSourceId>,
+        proc_macro_client: &ProcMacroClient,
         load: &mut dyn FnMut(&Path) -> Option<FileId>,
     ) -> CrateGraph {
         let mut crate_graph = CrateGraph::default();
@@ -219,7 +244,10 @@ impl ProjectWorkspace {
                                 extern_source.set_extern_path(&out_dir, extern_source_id);
                             }
                         }
-
+                        let proc_macro = krate
+                            .proc_macro_dylib_path
+                            .clone()
+                            .map(|it| proc_macro_client.by_dylib_path(&it));
                         // FIXME: No crate name in json definition such that we cannot add OUT_DIR to env
                         crates.insert(
                             crate_id,
@@ -231,6 +259,7 @@ impl ProjectWorkspace {
                                 cfg_options,
                                 env,
                                 extern_source,
+                                proc_macro.unwrap_or_default(),
                             ),
                         );
                     }
@@ -270,6 +299,8 @@ impl ProjectWorkspace {
 
                         let env = Env::default();
                         let extern_source = ExternSource::default();
+                        let proc_macro = vec![];
+
                         let crate_id = crate_graph.add_crate_root(
                             file_id,
                             Edition::Edition2018,
@@ -280,6 +311,7 @@ impl ProjectWorkspace {
                             cfg_options,
                             env,
                             extern_source,
+                            proc_macro,
                         );
                         sysroot_crates.insert(krate, crate_id);
                     }
@@ -327,6 +359,12 @@ impl ProjectWorkspace {
                                     extern_source.set_extern_path(&out_dir, extern_source_id);
                                 }
                             }
+                            let proc_macro = cargo[pkg]
+                                .proc_macro_dylib_path
+                                .as_ref()
+                                .map(|it| proc_macro_client.by_dylib_path(&it))
+                                .unwrap_or_default();
+
                             let crate_id = crate_graph.add_crate_root(
                                 file_id,
                                 edition,
@@ -334,6 +372,7 @@ impl ProjectWorkspace {
                                 cfg_options,
                                 env,
                                 extern_source,
+                                proc_macro.clone(),
                             );
                             if cargo[tgt].kind == TargetKind::Lib {
                                 lib_tgt = Some((crate_id, cargo[tgt].name.clone()));

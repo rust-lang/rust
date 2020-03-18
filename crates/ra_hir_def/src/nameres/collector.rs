@@ -11,8 +11,8 @@ use hir_expand::{
     HirFileId, MacroCallId, MacroDefId, MacroDefKind,
 };
 use ra_cfg::CfgOptions;
-use ra_db::{CrateId, FileId};
-use ra_syntax::ast;
+use ra_db::{CrateId, FileId, ProcMacroId};
+use ra_syntax::{ast, SmolStr};
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
@@ -53,6 +53,16 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> Cr
     }
 
     let cfg_options = &crate_graph[def_map.krate].cfg_options;
+    let proc_macros = &crate_graph[def_map.krate].proc_macro;
+    let proc_macros = proc_macros
+        .iter()
+        .enumerate()
+        .map(|(idx, it)| {
+            // FIXME: a hacky way to create a Name from string.
+            let name = tt::Ident { text: SmolStr::new(&it.name()), id: tt::TokenId::unspecified() };
+            (name.as_name(), ProcMacroExpander::new(def_map.krate, ProcMacroId(idx)))
+        })
+        .collect();
 
     let mut collector = DefCollector {
         db,
@@ -65,9 +75,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> Cr
         unexpanded_attribute_macros: Vec::new(),
         mod_dirs: FxHashMap::default(),
         cfg_options,
-
-        // FIXME: pass proc-macro from crate-graph
-        proc_macros: Default::default(),
+        proc_macros,
     };
     collector.collect();
     collector.finish()

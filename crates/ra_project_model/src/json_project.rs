@@ -23,6 +23,7 @@ pub struct Crate {
     pub(crate) atom_cfgs: FxHashSet<String>,
     pub(crate) key_value_cfgs: FxHashMap<String, String>,
     pub(crate) out_dir: Option<PathBuf>,
+    pub(crate) proc_macro_dylib_path: Option<PathBuf>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]

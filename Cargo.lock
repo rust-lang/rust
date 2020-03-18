@@ -926,6 +926,7 @@ name = "ra_db"
 version = "0.1.0"
 dependencies = [
  "ra_cfg",
+ "ra_proc_macro",
  "ra_prof",
  "ra_syntax",
  "relative-path",
@@ -1110,6 +1111,7 @@ dependencies = [
  "ra_cargo_watch",
  "ra_cfg",
  "ra_db",
+ "ra_proc_macro",
  "rustc-hash",
  "serde",
  "serde_json",

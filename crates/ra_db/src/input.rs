@@ -19,6 +19,7 @@ use rustc_hash::FxHashSet;
 
 use crate::{RelativePath, RelativePathBuf};
 use fmt::Display;
+use ra_proc_macro::ProcMacro;
 
 /// `FileId` is an integer which uniquely identifies a file. File paths are
 /// messy and system-dependent, so most of the code should work directly with
@@ -115,6 +116,9 @@ impl Display for CrateName {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ProcMacroId(pub usize);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CrateData {
     pub root_file_id: FileId,
@@ -127,6 +131,7 @@ pub struct CrateData {
     pub env: Env,
     pub extern_source: ExternSource,
     pub dependencies: Vec<Dependency>,
+    pub proc_macro: Vec<ProcMacro>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -166,6 +171,7 @@ impl CrateGraph {
         cfg_options: CfgOptions,
         env: Env,
         extern_source: ExternSource,
+        proc_macro: Vec<ProcMacro>,
     ) -> CrateId {
         let data = CrateData {
             root_file_id: file_id,
@@ -174,6 +180,7 @@ impl CrateGraph {
             cfg_options,
             env,
             extern_source,
+            proc_macro,
             dependencies: Vec::new(),
         };
         let crate_id = CrateId(self.arena.len() as u32);
@@ -345,6 +352,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            Default::default(),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -353,6 +361,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            Default::default(),
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -360,6 +369,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
             Default::default(),
         );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
@@ -377,6 +387,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            Default::default(),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -385,6 +396,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            Default::default(),
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -392,6 +404,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
             Default::default(),
         );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
@@ -408,6 +421,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            Default::default(),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -415,6 +429,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
             Default::default(),
         );
         assert!(graph
