@@ -16,27 +16,11 @@ thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 4'
 Caught panic message (String): index out of bounds: the len is 3 but the index is 4
 thread 'main' panicked at 'attempt to divide by zero', $DIR/catch_panic.rs:67:33
 Caught panic message (String): attempt to divide by zero
-thread 'main' panicked at 'attempted to instantiate uninhabited type `!`', $LOC
-Caught panic message (String): attempted to instantiate uninhabited type `!`
-thread 'main' panicked at 'attempted to instantiate uninhabited type `!`', $LOC
-Caught panic message (String): attempted to instantiate uninhabited type `!`
-thread 'main' panicked at 'attempted to leave type `fn()` uninitialized, which is invalid', $LOC
-Caught panic message (String): attempted to leave type `fn()` uninitialized, which is invalid
-thread 'main' panicked at 'attempted to zero-initialize type `fn()`, which is invalid', $LOC
-Caught panic message (String): attempted to zero-initialize type `fn()`, which is invalid
-thread 'main' panicked at 'attempted to leave type `*const dyn std::marker::Sync` uninitialized, which is invalid', $LOC
-Caught panic message (String): attempted to leave type `*const dyn std::marker::Sync` uninitialized, which is invalid
-thread 'main' panicked at 'attempted to zero-initialize type `*mut dyn std::marker::Sync`, which is invalid', $LOC
-Caught panic message (String): attempted to zero-initialize type `*mut dyn std::marker::Sync`, which is invalid
-thread 'main' panicked at 'attempted to leave type `&u8` uninitialized, which is invalid', $LOC
-Caught panic message (String): attempted to leave type `&u8` uninitialized, which is invalid
-thread 'main' panicked at 'attempted to zero-initialize type `&u8`, which is invalid', $LOC
-Caught panic message (String): attempted to zero-initialize type `&u8`, which is invalid
 thread 'main' panicked at 'align_offset: align is not a power-of-two', $LOC
 Caught panic message (String): align_offset: align is not a power-of-two
-thread 'main' panicked at 'assertion failed: false', $DIR/catch_panic.rs:113:29
+thread 'main' panicked at 'assertion failed: false', $DIR/catch_panic.rs:76:29
 Caught panic message (&str): assertion failed: false
-thread 'main' panicked at 'assertion failed: false', $DIR/catch_panic.rs:114:29
+thread 'main' panicked at 'assertion failed: false', $DIR/catch_panic.rs:77:29
 Caught panic message (&str): assertion failed: false
 thread 'main' panicked at 'attempt to copy from unaligned or null pointer', $LOC
 Caught panic message (String): attempt to copy from unaligned or null pointer

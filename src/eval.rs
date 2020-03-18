@@ -54,7 +54,7 @@ impl Default for MiriConfig {
 /// Details of premature program termination.
 pub enum TerminationInfo {
     Exit(i64),
-    Abort,
+    Abort(Option<String>),
 }
 
 /// Returns a freshly created `InterpCx`, along with an `MPlaceTy` representing

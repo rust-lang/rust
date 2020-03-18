@@ -20,7 +20,8 @@ pub fn report_diagnostic<'tcx, 'mir>(
             let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
             match info {
                 TerminationInfo::Exit(code) => return Some(*code),
-                TerminationInfo::Abort => format!("the evaluated program aborted execution"),
+                TerminationInfo::Abort(None) => format!("the evaluated program aborted execution"),
+                TerminationInfo::Abort(Some(msg)) => format!("the evaluated program aborted execution: {}", msg),
             }
         }
         err_unsup!(NoMirFor(..)) => format!(

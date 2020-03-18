@@ -410,15 +410,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "assert_uninit_valid" => {
                 let ty = substs.type_at(0);
                 let layout = this.layout_of(ty)?;
-                // Return here because we panicked instead of returning normally from the intrinsic.
+                // Abort here because the caller might not be panic safe.
                 if layout.abi.is_uninhabited() {
-                    return this.start_panic(&format!("attempted to instantiate uninhabited type `{}`", ty), unwind);
+                    throw_machine_stop!(TerminationInfo::Abort(Some(format!("attempted to instantiate uninhabited type `{}`", ty))))
                 }
                 if intrinsic_name == "assert_zero_valid" && !layout.might_permit_raw_init(this, /*zero:*/ true).unwrap() {
-                    return this.start_panic(&format!("attempted to zero-initialize type `{}`, which is invalid", ty), unwind);
+                    throw_machine_stop!(TerminationInfo::Abort(Some(format!("attempted to zero-initialize type `{}`, which is invalid", ty))))
                 }
                 if intrinsic_name == "assert_uninit_valid" && !layout.might_permit_raw_init(this, /*zero:*/ false).unwrap() {
-                    return this.start_panic(&format!("attempted to leave type `{}` uninitialized, which is invalid", ty), unwind);
+                    throw_machine_stop!(TerminationInfo::Abort(Some(format!("attempted to leave type `{}` uninitialized, which is invalid", ty))))
                 }
             }
 
