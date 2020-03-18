@@ -191,16 +191,3 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
 
     false
 }
-
-impl DepNode {
-    /// Check whether the query invocation corresponding to the given
-    /// DepNode is eligible for on-disk-caching. If so, this is method
-    /// will execute the query corresponding to the given DepNode.
-    /// Also, as a sanity check, it expects that the corresponding query
-    /// invocation has been marked as green already.
-    pub fn try_load_from_on_disk_cache<'tcx>(&self, tcx: TyCtxt<'tcx>) {
-        use crate::dep_graph::DepKind;
-
-        rustc_dep_node_try_load_from_on_disk_cache!(self, tcx)
-    }
-}

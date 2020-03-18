@@ -13,7 +13,7 @@
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 
-use rustc::dep_graph::{label_strs, DepNode};
+use rustc::dep_graph::{label_strs, DepContext, DepNode, DepNodeExt};
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
 use rustc_ast::ast::{self, Attribute, NestedMetaItem};
@@ -382,7 +382,7 @@ impl DirtyCleanVisitor<'tcx> {
     }
 
     fn dep_node_str(&self, dep_node: &DepNode) -> String {
-        if let Some(def_id) = dep_node.extract_def_id(self.tcx) {
+        if let Some(def_id) = self.tcx.extract_def_id(dep_node) {
             format!("{:?}({})", dep_node.kind, self.tcx.def_path_str(def_id))
         } else {
             format!("{:?}({:?})", dep_node.kind, dep_node.hash)

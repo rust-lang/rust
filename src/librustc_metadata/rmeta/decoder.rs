@@ -4,7 +4,7 @@ use crate::creader::CrateMetadataRef;
 use crate::rmeta::table::{FixedSizeEncoding, Table};
 use crate::rmeta::*;
 
-use rustc::dep_graph::{self, DepNode, DepNodeIndex};
+use rustc::dep_graph::{self, DepNode, DepNodeExt, DepNodeIndex};
 use rustc::hir::exports::Export;
 use rustc::middle::cstore::{CrateSource, ExternCrate};
 use rustc::middle::cstore::{ForeignModule, LinkagePreference, NativeLibrary};
