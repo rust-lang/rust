@@ -12,7 +12,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 # INITIAL_RUST_CONFIGURE_ARGS and establish RUST_CONFIGURE_ARGS
 # which downstream steps can alter
 #if [[ -v INITIAL_RUST_CONFIGURE_ARGS ]]; then
-if [[ -z ${INITIAL_RUST_CONFIGURE_ARGS} ]]; then
+if [[ -z "${INITIAL_RUST_CONFIGURE_ARGS}" ]]; then
     ciCommandSetEnv RUST_CONFIGURE_ARGS "${INITIAL_RUST_CONFIGURE_ARGS}"
 fi
 
