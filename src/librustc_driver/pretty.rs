@@ -1,8 +1,6 @@
 //! The various pretty-printing routines.
 
 use rustc::hir::map as hir_map;
-use rustc::session::config::{Input, PpMode, PpSourceMode};
-use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc_ast::ast;
@@ -11,6 +9,8 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::print as pprust_hir;
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
+use rustc_session::config::{Input, PpMode, PpSourceMode};
+use rustc_session::Session;
 use rustc_span::FileName;
 
 use std::cell::Cell;

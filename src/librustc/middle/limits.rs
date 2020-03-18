@@ -5,13 +5,13 @@
 //! this via an attribute on the crate like `#![recursion_limit="22"]`. This pass
 //! just peeks and looks for that attribute.
 
-use crate::session::Session;
-use core::num::IntErrorKind;
 use rustc::bug;
 use rustc_ast::ast;
+use rustc_data_structures::sync::Once;
+use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 
-use rustc_data_structures::sync::Once;
+use std::num::IntErrorKind;
 
 pub fn update_limits(sess: &Session, krate: &ast::Crate) {
     update_limit(sess, krate, &sess.recursion_limit, sym::recursion_limit, 128);

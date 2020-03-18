@@ -37,7 +37,6 @@
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
 use rustc::hir::map::definitions::{DefKey, DefPathData, Definitions};
-use rustc::hir::map::Map;
 use rustc::{bug, span_bug};
 use rustc_ast::ast;
 use rustc_ast::ast::*;
@@ -1463,7 +1462,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         impl<'r, 'a, 'v, 'hir> intravisit::Visitor<'v> for ImplTraitLifetimeCollector<'r, 'a, 'hir> {
-            type Map = Map<'v>;
+            type Map = intravisit::ErasedMap<'v>;
 
             fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
                 intravisit::NestedVisitorMap::None

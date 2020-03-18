@@ -15,30 +15,29 @@
 #![recursion_limit = "256"]
 
 use back::write::{create_informational_target_machine, create_target_machine};
-use rustc_span::symbol::Symbol;
 
 pub use llvm_util::target_features;
-use rustc::dep_graph::WorkProduct;
+use rustc::dep_graph::{DepGraph, WorkProduct};
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
+use rustc::ty::{self, TyCtxt};
+use rustc::util::common::ErrorReported;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
+use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_errors::{FatalError, Handler};
+use rustc_serialize::json;
+use rustc_session::config::{self, OptLevel, OutputFilenames, PrintRequest};
+use rustc_session::Session;
+use rustc_span::symbol::Symbol;
+
 use std::any::Any;
 use std::ffi::CStr;
 use std::fs;
 use std::sync::Arc;
-
-use rustc::dep_graph::DepGraph;
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc::session::config::{self, OptLevel, OutputFilenames, PrintRequest};
-use rustc::session::Session;
-use rustc::ty::{self, TyCtxt};
-use rustc::util::common::ErrorReported;
-use rustc_codegen_ssa::ModuleCodegen;
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_serialize::json;
 
 mod back {
     pub mod archive;

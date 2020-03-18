@@ -26,12 +26,13 @@
 use crate::imports::ImportKind;
 use crate::Resolver;
 
-use rustc::{lint, ty};
+use rustc::ty;
 use rustc_ast::ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
+use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_IMPORTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 
@@ -232,7 +233,7 @@ impl Resolver<'_> {
                     if let ImportKind::MacroUse = import.kind {
                         if !import.span.is_dummy() {
                             self.lint_buffer.buffer_lint(
-                                lint::builtin::MACRO_USE_EXTERN_CRATE,
+                                MACRO_USE_EXTERN_CRATE,
                                 import.id,
                                 import.span,
                                 "deprecated `#[macro_use]` attribute used to \
@@ -247,9 +248,8 @@ impl Resolver<'_> {
                     self.maybe_unused_extern_crates.push((import.id, import.span));
                 }
                 ImportKind::MacroUse => {
-                    let lint = lint::builtin::UNUSED_IMPORTS;
                     let msg = "unused `#[macro_use]` import";
-                    self.lint_buffer.buffer_lint(lint, import.id, import.span, msg);
+                    self.lint_buffer.buffer_lint(UNUSED_IMPORTS, import.id, import.span, msg);
                 }
                 _ => {}
             }
@@ -314,7 +314,7 @@ impl Resolver<'_> {
             };
 
             visitor.r.lint_buffer.buffer_lint_with_diagnostic(
-                lint::builtin::UNUSED_IMPORTS,
+                UNUSED_IMPORTS,
                 unused.use_tree_id,
                 ms,
                 &msg,

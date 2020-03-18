@@ -1,5 +1,4 @@
 use crate::{shim, util};
-use rustc::hir::map::Map;
 use rustc::mir::{BodyAndCache, ConstQualifs, MirPhase, Promoted};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
@@ -86,7 +85,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
             }
             intravisit::walk_struct_def(self, v)
         }
-        type Map = Map<'tcx>;
+        type Map = intravisit::ErasedMap<'tcx>;
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
         }

@@ -31,8 +31,6 @@ use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::middle::lang_items;
 use rustc::middle::lang_items::StartFnLangItem;
 use rustc::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
-use rustc::session::config::{self, EntryFnType, Lto};
-use rustc::session::Session;
 use rustc::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyLayout, VariantIdx};
 use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc::ty::query::Providers;
@@ -46,6 +44,8 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::Idx;
 use rustc_session::cgu_reuse_tracker::CguReuse;
+use rustc_session::config::{self, EntryFnType, Lto};
+use rustc_session::Session;
 use rustc_span::Span;
 
 use std::cmp;

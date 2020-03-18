@@ -2,7 +2,6 @@ use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
 use rustc::middle::lang_items;
-use rustc::session::parse::feature_err;
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::trait_def::TraitSpecializationKind;
 use rustc::ty::{
@@ -11,16 +10,16 @@ use rustc::ty::{
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 use rustc_hir::ItemKind;
+use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::opaque_types::may_define_opaque_type;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
-
-use rustc_hir as hir;
-use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 
 /// Helper type of a temporary returned by `.for_item(...)`.
 /// This is necessary because we can't write the following bound:

@@ -1,29 +1,27 @@
-use crate::session::{self, DataTypeKind};
+use crate::ich::StableHashingContext;
+use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
+use crate::ty::subst::Subst;
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 
 use rustc_ast::ast::{self, Ident, IntTy, UintTy};
 use rustc_attr as attr;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir as hir;
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::{Idx, IndexVec};
+use rustc_session::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use rustc_span::DUMMY_SP;
+use rustc_target::abi::call::{
+    ArgAbi, ArgAttribute, ArgAttributes, Conv, FnAbi, PassMode, Reg, RegKind,
+};
+pub use rustc_target::abi::*;
+use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec};
 
 use std::cmp;
 use std::fmt;
 use std::iter;
 use std::mem;
 use std::ops::Bound;
-
-use crate::ich::StableHashingContext;
-use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
-use crate::ty::subst::Subst;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir as hir;
-use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{Idx, IndexVec};
-
-use rustc_target::abi::call::{
-    ArgAbi, ArgAttribute, ArgAttributes, Conv, FnAbi, PassMode, Reg, RegKind,
-};
-pub use rustc_target::abi::*;
-use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec};
 
 pub trait IntegerExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx>;
@@ -1651,7 +1649,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         if min_size < field_end {
                             min_size = field_end;
                         }
-                        session::FieldInfo {
+                        FieldInfo {
                             name: name.to_string(),
                             offset: offset.bytes(),
                             size: field_layout.size.bytes(),
@@ -1661,13 +1659,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 })
                 .collect();
 
-            session::VariantInfo {
+            VariantInfo {
                 name: n.map(|n| n.to_string()),
-                kind: if layout.is_unsized() {
-                    session::SizeKind::Min
-                } else {
-                    session::SizeKind::Exact
-                },
+                kind: if layout.is_unsized() { SizeKind::Min } else { SizeKind::Exact },
                 align: layout.align.abi.bytes(),
                 size: if min_size.bytes() == 0 { layout.size.bytes() } else { min_size.bytes() },
                 fields: field_info,

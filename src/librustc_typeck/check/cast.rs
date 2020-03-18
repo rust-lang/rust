@@ -31,11 +31,9 @@
 use super::FnCtxt;
 
 use crate::hir::def_id::DefId;
-use crate::lint;
 use crate::type_error_struct;
 use crate::util::common::ErrorReported;
 use rustc::middle::lang_items;
-use rustc::session::Session;
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::cast::{CastKind, CastTy};
 use rustc::ty::error::TypeError;
@@ -44,6 +42,8 @@ use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc_ast::ast;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
+use rustc_session::lint;
+use rustc_session::Session;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::report_object_safety_error;

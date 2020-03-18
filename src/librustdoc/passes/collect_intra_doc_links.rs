@@ -1,4 +1,3 @@
-use rustc::lint;
 use rustc::ty;
 use rustc_ast::ast::{self, Ident};
 use rustc_errors::Applicability;
@@ -12,6 +11,7 @@ use rustc_hir::def::{
 };
 use rustc_hir::def_id::DefId;
 use rustc_resolve::ParentScope;
+use rustc_session::lint;
 use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
 

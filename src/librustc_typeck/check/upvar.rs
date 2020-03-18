@@ -35,7 +35,6 @@ use super::FnCtxt;
 use crate::expr_use_visitor as euv;
 use crate::mem_categorization as mc;
 use crate::mem_categorization::PlaceBase;
-use rustc::hir::map::Map;
 use rustc::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxIndexMap;
@@ -60,7 +59,7 @@ struct InferBorrowKindVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None

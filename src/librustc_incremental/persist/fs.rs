@@ -103,11 +103,11 @@
 //! unsupported file system and emit a warning in that case. This is not yet
 //! implemented.
 
-use rustc::session::{CrateDisambiguator, Session};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::{base_n, flock};
 use rustc_fs_util::{link_or_copy, LinkOrCopy};
+use rustc_session::{CrateDisambiguator, Session};
 
 use std::fs as std_fs;
 use std::io;

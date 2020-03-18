@@ -4,7 +4,6 @@
 use crate::check::FnCtxt;
 use crate::middle::lang_items::FnOnceTraitLangItem;
 use rustc::hir::map as hir_map;
-use rustc::hir::map::Map;
 use rustc::ty::print::with_crate_prefix;
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_ast::ast;
@@ -1347,7 +1346,7 @@ impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
         }
     }
 
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
         intravisit::NestedVisitorMap::None

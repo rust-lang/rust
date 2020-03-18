@@ -10,11 +10,11 @@ use std::any::Any;
 
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc::session::config::{OutputFilenames, PrintRequest};
-use rustc::session::Session;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc::util::common::ErrorReported;
+use rustc_session::config::{OutputFilenames, PrintRequest};
+use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
 pub use rustc_data_structures::sync::MetadataRef;
