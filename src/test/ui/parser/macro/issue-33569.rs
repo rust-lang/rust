@@ -1,5 +1,3 @@
-fn main() {}
-
 macro_rules! foo {
     { $+ } => { //~ ERROR expected identifier, found `+`
                 //~^ ERROR missing fragment specifier
@@ -8,3 +6,5 @@ macro_rules! foo {
 }
 
 foo!();
+
+fn main() {}
