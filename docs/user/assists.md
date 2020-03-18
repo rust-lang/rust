@@ -402,6 +402,19 @@ fn main() {
 }
 ```
 
+## `merge_imports`
+
+Merges two imports with a common prefix.
+
+```rust
+// BEFORE
+use std::┃fmt::Formatter;
+use std::io;
+
+// AFTER
+use std::{fmt::Formatter, io};
+```
+
 ## `merge_match_arms`
 
 Merges identical match arms.

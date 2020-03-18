@@ -110,6 +110,7 @@ mod handlers {
     mod inline_local_variable;
     mod introduce_variable;
     mod invert_if;
+    mod merge_imports;
     mod merge_match_arms;
     mod move_bounds;
     mod move_guard;
@@ -140,6 +141,7 @@ mod handlers {
             inline_local_variable::inline_local_variable,
             introduce_variable::introduce_variable,
             invert_if::invert_if,
+            merge_imports::merge_imports,
             merge_match_arms::merge_match_arms,
             move_bounds::move_bounds_to_where_clause,
             move_guard::move_arm_cond_to_match_guard,

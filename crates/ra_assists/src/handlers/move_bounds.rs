@@ -1,5 +1,5 @@
 use ra_syntax::{
-    ast::{self, edit, make, AstNode, NameOwner, TypeBoundsOwner},
+    ast::{self, edit::AstNodeEdit, make, AstNode, NameOwner, TypeBoundsOwner},
     SyntaxElement,
     SyntaxKind::*,
 };
@@ -54,7 +54,7 @@ pub(crate) fn move_bounds_to_where_clause(ctx: AssistCtx) -> Option<Assist> {
                 (type_param, without_bounds)
             });
 
-        let new_type_param_list = edit::replace_descendants(&type_param_list, new_params);
+        let new_type_param_list = type_param_list.replace_descendants(new_params);
         edit.replace_ast(type_param_list.clone(), new_type_param_list);
 
         let where_clause = {

@@ -1,9 +1,6 @@
-use std::iter::{once, successors};
+use std::iter::successors;
 
-use ra_syntax::{
-    ast::{self, make},
-    AstNode, T,
-};
+use ra_syntax::{ast, AstNode, T};
 
 use crate::{Assist, AssistCtx, AssistId};
 
@@ -25,7 +22,10 @@ pub(crate) fn split_import(ctx: AssistCtx) -> Option<Assist> {
 
     let use_tree = top_path.syntax().ancestors().find_map(ast::UseTree::cast)?;
 
-    let new_tree = split_use_tree_prefix(&use_tree, &path)?;
+    let new_tree = use_tree.split_prefix(&path);
+    if new_tree == use_tree {
+        return None;
+    }
     let cursor = ctx.frange.range.start();
 
     ctx.add_assist(AssistId("split_import"), "Split import", |edit| {
@@ -33,23 +33,6 @@ pub(crate) fn split_import(ctx: AssistCtx) -> Option<Assist> {
         edit.replace_ast(use_tree, new_tree);
         edit.set_cursor(cursor);
     })
-}
-
-fn split_use_tree_prefix(use_tree: &ast::UseTree, prefix: &ast::Path) -> Option<ast::UseTree> {
-    let suffix = split_path_prefix(&prefix)?;
-    let use_tree = make::use_tree(suffix.clone(), use_tree.use_tree_list(), use_tree.alias());
-    let nested = make::use_tree_list(once(use_tree));
-    let res = make::use_tree(prefix.clone(), Some(nested), None);
-    Some(res)
-}
-
-fn split_path_prefix(prefix: &ast::Path) -> Option<ast::Path> {
-    let parent = prefix.parent_path()?;
-    let mut res = make::path_unqualified(parent.segment()?);
-    for p in successors(parent.parent_path(), |it| it.parent_path()) {
-        res = make::path_qualified(res, p.segment()?);
-    }
-    Some(res)
 }
 
 #[cfg(test)]

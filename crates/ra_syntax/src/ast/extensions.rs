@@ -167,6 +167,20 @@ impl ast::UseTreeList {
             .and_then(ast::UseTree::cast)
             .expect("UseTreeLists are always nested in UseTrees")
     }
+    pub fn l_curly(&self) -> Option<SyntaxToken> {
+        self.token(T!['{'])
+    }
+
+    pub fn r_curly(&self) -> Option<SyntaxToken> {
+        self.token(T!['}'])
+    }
+
+    fn token(&self, kind: SyntaxKind) -> Option<SyntaxToken> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == kind)
+    }
 }
 
 impl ast::ImplDef {
