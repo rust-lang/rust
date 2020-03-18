@@ -926,7 +926,7 @@ where
             // most likey we *are* running `typeck` right now. Investigate whether we can bail out
             // on `typeck_tables().has_errors` at all const eval entry points.
             debug!("Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}", src, dest);
-            throw_unsup!(TransmuteSizeDiff(src.layout.ty, dest.layout.ty));
+            throw_inval!(TransmuteSizeDiff(src.layout.ty, dest.layout.ty));
         }
         // Unsized copies rely on interpreting `src.meta` with `dest.layout`, we want
         // to avoid that here.
