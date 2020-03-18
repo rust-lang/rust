@@ -139,8 +139,7 @@ impl<'tcx, 'l> Visitor<'tcx> for ArmVisitor<'tcx, 'l> {
                             self.visit_expr(expr)
                         }
                     },
-                    StmtKind::Expr(expr) => self.visit_expr(expr),
-                    StmtKind::Semi(expr) => self.visit_expr(expr),
+                    StmtKind::Expr(expr) | StmtKind::Semi(expr) => self.visit_expr(expr),
                     // we don't care about `Item`
                     _ => {},
                 }
