@@ -72,6 +72,31 @@ pub fn dylib_path() -> Vec<PathBuf> {
     env::split_paths(&var).collect()
 }
 
+/// Adds a list of lookup paths to `cmd`'s link library lookup path.
+pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut Command) {
+    let mut list = link_lib_path();
+    for path in path {
+        list.insert(0, path);
+    }
+    cmd.env(link_lib_path_var(), t!(env::join_paths(list)));
+}
+
+/// Returns the environment variable which the link library lookup path
+/// resides in for this platform.
+fn link_lib_path_var() -> &'static str {
+    if cfg!(target_env = "msvc") { "LIB" } else { "LIBRARY_PATH" }
+}
+
+/// Parses the `link_lib_path_var()` environment variable, returning a list of
+/// paths that are members of this lookup path.
+fn link_lib_path() -> Vec<PathBuf> {
+    let var = match env::var_os(link_lib_path_var()) {
+        Some(v) => v,
+        None => return vec![],
+    };
+    env::split_paths(&var).collect()
+}
+
 /// `push` all components to `buf`. On windows, append `.exe` to the last component.
 pub fn push_exe_path(mut buf: PathBuf, components: &[&str]) -> PathBuf {
     let (&file, components) = components.split_last().expect("at least one component required");

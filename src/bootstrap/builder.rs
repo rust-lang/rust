@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use build_helper::t;
+use build_helper::{output, t};
 
 use crate::cache::{Cache, Interned, INTERNER};
 use crate::check;
@@ -23,7 +23,7 @@ use crate::install;
 use crate::native;
 use crate::test;
 use crate::tool;
-use crate::util::{self, add_dylib_path, exe, libdir};
+use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir};
 use crate::{Build, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
@@ -1032,6 +1032,20 @@ impl<'a> Builder<'a> {
             cargo
                 .env("RUSTC_SNAPSHOT", self.rustc(compiler))
                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
+        }
+
+        // Tools that use compiler libraries may inherit the `-lLLVM` link
+        // requirement, but the `-L` library path is not propagated across
+        // separate Cargo projects. We can add LLVM's library path to the
+        // platform-specific environment variable as a workaround.
+        //
+        // Note that this is disabled if LLVM itself is disabled or we're in a
+        // check build, where if we're in a check build there's no need to build
+        // all of LLVM and such.
+        if self.config.llvm_enabled() && self.kind != Kind::Check && mode == Mode::ToolRustc {
+            let llvm_config = self.ensure(native::Llvm { target });
+            let llvm_libdir = output(Command::new(&llvm_config).arg("--libdir"));
+            add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cargo);
         }
 
         if self.config.incremental {
