@@ -1,5 +1,5 @@
 error: unexpected closing delimiter: `)`
-  --> $DIR/invalid-punct-ident-4.rs:8:1
+  --> $DIR/invalid-punct-ident-4.rs:6:1
    |
 LL | lexer_failure!();
    | ^^^^^^^^^^^^^^^^^ unexpected closing delimiter
@@ -7,20 +7,19 @@ LL | lexer_failure!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: proc macro panicked
-  --> $DIR/invalid-punct-ident-4.rs:8:1
+  --> $DIR/invalid-punct-ident-4.rs:6:1
    |
 LL | lexer_failure!();
    | ^^^^^^^^^^^^^^^^^
 
-error[E0601]: `main` function not found in crate `invalid_punct_ident_4`
-  --> $DIR/invalid-punct-ident-4.rs:5:1
+error[E0308]: mismatched types
+  --> $DIR/invalid-punct-ident-4.rs:11:33
    |
-LL | / #[macro_use]
-LL | | extern crate invalid_punct_ident;
-LL | |
-LL | | lexer_failure!();
-   | |_________________^ consider adding a `main` function to `$DIR/invalid-punct-ident-4.rs`
+LL |     let _recovery_witness: () = 0;
+   |                            --   ^ expected `()`, found integer
+   |                            |
+   |                            expected due to this
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0601`.
+For more information about this error, try `rustc --explain E0308`.

@@ -1,10 +1,12 @@
 // aux-build:invalid-punct-ident.rs
 
-// We use `main` not found below as a witness for error recovery in proc macro expansion.
-
-#[macro_use] //~ ERROR `main` function not found
+#[macro_use]
 extern crate invalid_punct_ident;
 
 lexer_failure!();
 //~^ ERROR proc macro panicked
 //~| ERROR unexpected closing delimiter: `)`
+
+fn main() {
+    let _recovery_witness: () = 0; //~ ERROR mismatched types
+}
