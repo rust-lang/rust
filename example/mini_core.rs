@@ -477,7 +477,6 @@ pub mod intrinsics {
         pub fn min_align_of_val<T: ?::Sized>(val: &T) -> usize;
         pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
         pub fn transmute<T, U>(e: T) -> U;
-        pub fn init<T>() -> T;
         pub fn ctlz_nonzero<T>(x: T) -> T;
         pub fn needs_drop<T>() -> bool;
         pub fn bitreverse<T>(x: T) -> T;
