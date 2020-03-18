@@ -370,12 +370,25 @@ class RustStdBTreeSetPrinter(object):
                 ("(len: %i)" % self.__val.get_wrapped_value()['map']['length']))
 
     def children(self):
-        root = self.__val.get_wrapped_value()['map']['root']
-        node_ptr = root['node']
-        i = 0
-        for child in children_of_node(node_ptr, root['height'], False):
-            yield (str(i), child)
-            i = i + 1
+        if self.__val.get_wrapped_value()['map']['length'] > 0:
+            root = self.__val.get_wrapped_value()['map']['root']
+            # get at `Option` innards
+            root = GdbValue(root).get_child_at_index(0).get_wrapped_value()
+            # pull out the `Some` variant of the enum
+            try:
+                root = root['Some']
+            except:
+                # Do nothing, we just want to pull out Some if it exists.
+                # If it didn't, then it seems at least on some versions of gdb
+                # we don't actually need to do the above line, so just skip it.
+                pass
+            # And now the value of the Some variant
+            root = GdbValue(root).get_child_at_index(0).get_wrapped_value()
+            node_ptr = root['node']
+            i = 0
+            for child in children_of_node(node_ptr, root['height'], False):
+                yield (str(i), child)
+                i = i + 1
 
 
 class RustStdBTreeMapPrinter(object):
@@ -391,13 +404,26 @@ class RustStdBTreeMapPrinter(object):
                 ("(len: %i)" % self.__val.get_wrapped_value()['length']))
 
     def children(self):
-        root = self.__val.get_wrapped_value()['root']
-        node_ptr = root['node']
-        i = 0
-        for child in children_of_node(node_ptr, root['height'], True):
-            yield (str(i), child[0])
-            yield (str(i), child[1])
-            i = i + 1
+        if self.__val.get_wrapped_value()['length'] > 0:
+            root = self.__val.get_wrapped_value()['root']
+            # get at `Option` innards
+            root = GdbValue(root).get_child_at_index(0).get_wrapped_value()
+            # pull out the `Some` variant of the enum
+            try:
+                root = root['Some']
+            except:
+                # Do nothing, we just want to pull out Some if it exists.
+                # If it didn't, then it seems at least on some versions of gdb
+                # we don't actually need to do the above line, so just skip it.
+                pass
+            # And now the value of the Some variant
+            root = GdbValue(root).get_child_at_index(0).get_wrapped_value()
+            node_ptr = root['node']
+            i = 0
+            for child in children_of_node(node_ptr, root['height'], True):
+                yield (str(i), child[0])
+                yield (str(i), child[1])
+                i = i + 1
 
 
 class RustStdStringPrinter(object):
