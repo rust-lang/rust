@@ -321,13 +321,12 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
             Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
         }
         Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
-        _ => None
-        /*Nonterminal::NtLiteral(ref expr) | Nonterminal::NtExpr(ref expr) => expr.tokens.clone(),
+        Nonterminal::NtLiteral(ref expr) | Nonterminal::NtExpr(ref expr) => expr.tokens.clone(),
         Nonterminal::NtTy(ref ty) => ty.tokens.clone(),
         Nonterminal::NtBlock(ref block) => block.tokens.clone(),
         Nonterminal::NtPat(ref pat) => pat.tokens.clone(),
         Nonterminal::NtStmt(ref stmt) => stmt.tokens.clone(),
-        Nonterminal::NtMeta(_) | Nonterminal::NtPath(_) | Nonterminal::NtVis(_) => None,*/
+        Nonterminal::NtMeta(_) | Nonterminal::NtPath(_) | Nonterminal::NtVis(_) => None,
     };
 
     // FIXME(#43081): Avoid this pretty-print + reparse hack
@@ -367,6 +366,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
                 going with stringified version"
         );
     }
+    info!("nt_to_tokenstream: no tokens found at {:?} for {:?}", span, nt);
     return tokens_for_real;
 }
 

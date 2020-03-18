@@ -728,7 +728,7 @@ impl PartialEq<TokenKind> for Token {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtItem(P<ast::Item>),
@@ -786,7 +786,7 @@ impl PartialEq for Nonterminal {
     }
 }
 
-impl fmt::Debug for Nonterminal {
+/*impl fmt::Debug for Nonterminal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             NtItem(..) => f.pad("NtItem(..)"),
@@ -804,7 +804,7 @@ impl fmt::Debug for Nonterminal {
             NtLifetime(..) => f.pad("NtLifetime(..)"),
         }
     }
-}
+}*/
 
 impl<CTX> HashStable<CTX> for Nonterminal
 where
