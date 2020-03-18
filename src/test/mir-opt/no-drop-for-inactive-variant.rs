@@ -27,7 +27,7 @@ fn main() {
 //     }
 //     bb2: {
 //         ...
-//         const std::rt::begin_panic::<&'static str>(const "explicit panic") -> bb5;
+//         const std::rt::begin_panic::<&str>(const "explicit panic") -> bb5;
 //     }
 //     bb3: {
 //         unreachable;
