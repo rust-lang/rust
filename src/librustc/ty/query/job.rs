@@ -34,7 +34,7 @@ pub struct QueryInfo<CTX: QueryContext> {
     pub query: CTX::Query,
 }
 
-type QueryMap<'tcx> = FxHashMap<QueryJobId, QueryJobInfo<TyCtxt<'tcx>>>;
+type QueryMap<'tcx> = FxHashMap<QueryJobId<DepKind>, QueryJobInfo<TyCtxt<'tcx>>>;
 
 /// A value uniquely identifiying an active query job within a shard in the query cache.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
@@ -42,7 +42,7 @@ pub struct QueryShardJobId(pub NonZeroU32);
 
 /// A value uniquely identifiying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct QueryJobId {
+pub struct QueryJobId<K> {
     /// Which job within a shard is this
     pub job: QueryShardJobId,
 
@@ -50,10 +50,10 @@ pub struct QueryJobId {
     pub shard: u16,
 
     /// What kind of query this job is
-    pub kind: DepKind,
+    pub kind: K,
 }
 
-impl QueryJobId {
+impl QueryJobId<DepKind> {
     pub fn new(job: QueryShardJobId, shard: usize, kind: DepKind) -> Self {
         QueryJobId { job, shard: u16::try_from(shard).unwrap(), kind }
     }
@@ -68,7 +68,7 @@ impl QueryJobId {
     }
 
     #[cfg(parallel_compiler)]
-    fn parent(self, map: &QueryMap<'_>) -> Option<QueryJobId> {
+    fn parent(self, map: &QueryMap<'_>) -> Option<QueryJobId<DepKind>> {
         map.get(&self).unwrap().job.parent
     }
 
@@ -92,7 +92,7 @@ pub struct QueryJob<CTX: QueryContext> {
     pub span: Span,
 
     /// The parent query job which created this job and is implicitly waiting on it.
-    pub parent: Option<QueryJobId>,
+    pub parent: Option<QueryJobId<CTX::DepKind>>,
 
     /// The latch that is used to wait on this job.
     #[cfg(parallel_compiler)]
@@ -103,7 +103,7 @@ pub struct QueryJob<CTX: QueryContext> {
 
 impl<CTX: QueryContext> QueryJob<CTX> {
     /// Creates a new query job.
-    pub fn new(id: QueryShardJobId, span: Span, parent: Option<QueryJobId>) -> Self {
+    pub fn new(id: QueryShardJobId, span: Span, parent: Option<QueryJobId<CTX::DepKind>>) -> Self {
         QueryJob {
             id,
             span,
@@ -115,7 +115,7 @@ impl<CTX: QueryContext> QueryJob<CTX> {
     }
 
     #[cfg(parallel_compiler)]
-    pub(super) fn latch(&mut self, _id: QueryJobId) -> QueryLatch<CTX> {
+    pub(super) fn latch(&mut self, _id: QueryJobId<CTX::DepKind>) -> QueryLatch<CTX> {
         if self.latch.is_none() {
             self.latch = Some(QueryLatch::new());
         }
@@ -123,7 +123,7 @@ impl<CTX: QueryContext> QueryJob<CTX> {
     }
 
     #[cfg(not(parallel_compiler))]
-    pub(super) fn latch(&mut self, id: QueryJobId) -> QueryLatch<CTX> {
+    pub(super) fn latch(&mut self, id: QueryJobId<CTX::DepKind>) -> QueryLatch<CTX> {
         QueryLatch { id, dummy: PhantomData }
     }
 
@@ -139,8 +139,8 @@ impl<CTX: QueryContext> QueryJob<CTX> {
 
 #[cfg(not(parallel_compiler))]
 #[derive(Clone)]
-pub(super) struct QueryLatch<CTX> {
-    id: QueryJobId,
+pub(super) struct QueryLatch<CTX: QueryContext> {
+    id: QueryJobId<CTX::DepKind>,
     dummy: PhantomData<CTX>,
 }
 
@@ -187,7 +187,7 @@ impl<'tcx> QueryLatch<TyCtxt<'tcx>> {
 
 #[cfg(parallel_compiler)]
 struct QueryWaiter<CTX: QueryContext> {
-    query: Option<QueryJobId>,
+    query: Option<QueryJobId<CTX::DepKind>>,
     condvar: Condvar,
     span: Span,
     cycle: Lock<Option<CycleError<CTX>>>,
@@ -297,7 +297,7 @@ impl<CTX: QueryContext> QueryLatch<CTX> {
 
 /// A resumable waiter of a query. The usize is the index into waiters in the query's latch
 #[cfg(parallel_compiler)]
-type Waiter = (QueryJobId, usize);
+type Waiter = (QueryJobId<DepKind>, usize);
 
 /// Visits all the non-resumable and resumable waiters of a query.
 /// Only waiters in a query are visited.
@@ -311,11 +311,11 @@ type Waiter = (QueryJobId, usize);
 #[cfg(parallel_compiler)]
 fn visit_waiters<'tcx, F>(
     query_map: &QueryMap<'tcx>,
-    query: QueryJobId,
+    query: QueryJobId<DepKind>,
     mut visit: F,
 ) -> Option<Option<Waiter>>
 where
-    F: FnMut(Span, QueryJobId) -> Option<Option<Waiter>>,
+    F: FnMut(Span, QueryJobId<DepKind>) -> Option<Option<Waiter>>,
 {
     // Visit the parent query which is a non-resumable waiter since it's on the same stack
     if let Some(parent) = query.parent(query_map) {
@@ -346,10 +346,10 @@ where
 #[cfg(parallel_compiler)]
 fn cycle_check<'tcx>(
     query_map: &QueryMap<'tcx>,
-    query: QueryJobId,
+    query: QueryJobId<DepKind>,
     span: Span,
-    stack: &mut Vec<(Span, QueryJobId)>,
-    visited: &mut FxHashSet<QueryJobId>,
+    stack: &mut Vec<(Span, QueryJobId<DepKind>)>,
+    visited: &mut FxHashSet<QueryJobId<DepKind>>,
 ) -> Option<Option<Waiter>> {
     if !visited.insert(query) {
         return if let Some(p) = stack.iter().position(|q| q.1 == query) {
@@ -387,8 +387,8 @@ fn cycle_check<'tcx>(
 #[cfg(parallel_compiler)]
 fn connected_to_root<'tcx>(
     query_map: &QueryMap<'tcx>,
-    query: QueryJobId,
-    visited: &mut FxHashSet<QueryJobId>,
+    query: QueryJobId<DepKind>,
+    visited: &mut FxHashSet<QueryJobId<DepKind>>,
 ) -> bool {
     // We already visited this or we're deliberately ignoring it
     if !visited.insert(query) {
@@ -408,7 +408,7 @@ fn connected_to_root<'tcx>(
 
 // Deterministically pick an query from a list
 #[cfg(parallel_compiler)]
-fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, QueryJobId)>(
+fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, QueryJobId<DepKind>)>(
     query_map: &QueryMap<'tcx>,
     tcx: TyCtxt<'tcx>,
     queries: &'a [T],
@@ -440,7 +440,7 @@ fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, QueryJobId)>(
 #[cfg(parallel_compiler)]
 fn remove_cycle<'tcx>(
     query_map: &QueryMap<'tcx>,
-    jobs: &mut Vec<QueryJobId>,
+    jobs: &mut Vec<QueryJobId<DepKind>>,
     wakelist: &mut Vec<Lrc<QueryWaiter<TyCtxt<'tcx>>>>,
     tcx: TyCtxt<'tcx>,
 ) -> bool {
@@ -495,7 +495,7 @@ fn remove_cycle<'tcx>(
                     }
                 }
             })
-            .collect::<Vec<(Span, QueryJobId, Option<(Span, QueryJobId)>)>>();
+            .collect::<Vec<(Span, QueryJobId<DepKind>, Option<(Span, QueryJobId<DepKind>)>)>>();
 
         // Deterministically pick an entry point
         let (_, entry_point, usage) = pick_query(query_map, tcx, &entry_points, |e| (e.0, e.1));
@@ -575,7 +575,7 @@ fn deadlock(tcx: TyCtxt<'_>, registry: &rayon_core::Registry) {
 
     let mut wakelist = Vec::new();
     let query_map = tcx.queries.try_collect_active_jobs().unwrap();
-    let mut jobs: Vec<QueryJobId> = query_map.keys().cloned().collect();
+    let mut jobs: Vec<QueryJobId<DepKind>> = query_map.keys().cloned().collect();
 
     let mut found_cycle = false;
 

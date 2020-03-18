@@ -104,7 +104,7 @@ impl<CTX: QueryContext, C: QueryCache<CTX>> QueryState<CTX, C> {
         &self,
         kind: DepKind,
         make_query: fn(C::Key) -> CTX::Query,
-        jobs: &mut FxHashMap<QueryJobId, QueryJobInfo<CTX>>,
+        jobs: &mut FxHashMap<QueryJobId<CTX::DepKind>, QueryJobInfo<CTX>>,
     ) -> Option<()>
     where
         C::Key: Clone,
@@ -158,7 +158,7 @@ where
 {
     state: &'tcx QueryState<CTX, C>,
     key: C::Key,
-    id: QueryJobId,
+    id: QueryJobId<CTX::DepKind>,
 }
 
 impl<'tcx, C> JobOwner<'tcx, TyCtxt<'tcx>, C>
@@ -375,7 +375,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     fn start_query<F, R>(
         self,
-        token: QueryJobId,
+        token: QueryJobId<DepKind>,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         compute: F,
     ) -> R
@@ -1171,7 +1171,7 @@ macro_rules! define_queries_struct {
 
             pub(crate) fn try_collect_active_jobs(
                 &self
-            ) -> Option<FxHashMap<QueryJobId, QueryJobInfo<TyCtxt<'tcx>>>> {
+            ) -> Option<FxHashMap<QueryJobId<crate::dep_graph::DepKind>, QueryJobInfo<TyCtxt<'tcx>>>> {
                 let mut jobs = FxHashMap::default();
 
                 $(

@@ -1603,7 +1603,7 @@ nop_list_lift! {substs; GenericArg<'a> => GenericArg<'tcx>}
 pub mod tls {
     use super::{ptr_eq, GlobalCtxt, TyCtxt};
 
-    use crate::dep_graph::TaskDeps;
+    use crate::dep_graph::{DepKind, TaskDeps};
     use crate::ty::query;
     use rustc_data_structures::sync::{self, Lock};
     use rustc_data_structures::thin_vec::ThinVec;
@@ -1630,7 +1630,7 @@ pub mod tls {
 
         /// The current query job, if any. This is updated by `JobOwner::start` in
         /// `ty::query::plumbing` when executing a query.
-        pub query: Option<query::QueryJobId>,
+        pub query: Option<query::QueryJobId<DepKind>>,
 
         /// Where to store diagnostics for the current query job, if any.
         /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
