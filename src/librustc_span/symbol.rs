@@ -1026,7 +1026,7 @@ rustc_index::newtype_index! {
 
 impl Symbol {
     const fn new(n: u32) -> Self {
-        Symbol(SymbolIndex::from_u32_const(n))
+        Symbol(SymbolIndex::from_u32(n))
     }
 
     /// Maps a string to its interned representation.

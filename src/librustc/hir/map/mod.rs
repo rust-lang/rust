@@ -346,7 +346,7 @@ impl<'hir> Map<'hir> {
     }
 
     fn get_entry(&self, id: HirId) -> Entry<'hir> {
-        if id.local_id == ItemLocalId::from_u32_const(0) {
+        if id.local_id == ItemLocalId::from_u32(0) {
             let owner = self.tcx.hir_owner(id.owner_def_id());
             Entry { parent: owner.parent, node: owner.node }
         } else {
