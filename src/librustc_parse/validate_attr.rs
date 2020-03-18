@@ -57,7 +57,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
     })
 }
 
-crate fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter, msg: &str) {
+pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter, msg: &str) {
     if let ast::MacDelimiter::Parenthesis = delim {
         return;
     }
