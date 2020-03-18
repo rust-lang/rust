@@ -259,7 +259,7 @@ pub fn run_cargo(
     let mut child = command
         .args(args)
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .stdin(Stdio::null())
         .spawn()
         .expect("couldn't launch cargo");
@@ -352,8 +352,21 @@ impl WatchThread {
                 // It is okay to ignore the result, as it only errors if the process is already dead
                 let _ = child.kill();
 
-                // Again, we don't care about the exit status so just ignore the result
-                let _ = child.wait();
+                // Again, we are resilient to errors, so we don't try to panic here
+                match child.wait_with_output() {
+                    Ok(output) => match output.status.code() {
+                        Some(0) | None => {}
+                        Some(exit_code) => {
+                            let output =
+                                std::str::from_utf8(&output.stderr).unwrap_or("<bad utf8 output>");
+
+                            if !output.contains("could not compile") {
+                                log::error!("Cargo failed with exit code {} {}", exit_code, output);
+                            }
+                        }
+                    },
+                    Err(err) => log::error!("Cargo io error: {:?}", err),
+                }
             }))
         } else {
             None
