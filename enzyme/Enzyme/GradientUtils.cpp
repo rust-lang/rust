@@ -44,10 +44,10 @@
     assert(reverseBlocks.find(BB) != reverseBlocks.end());
     LoopContext lc;
     bool inLoop = getContext(BB, lc);
-    
+
     LoopContext branchingContext;
     bool inLoopContext = getContext(branchingBlock, branchingContext);
-    
+
     if (!inLoop) return reverseBlocks[BB];
 
     auto tup = std::make_tuple(BB, branchingBlock);
@@ -56,32 +56,32 @@
     if (inLoop && inLoopContext && branchingBlock == lc.header && lc.header == branchingContext.header) {
         BasicBlock* incB = BasicBlock::Create(BB->getContext(), "inc" + reverseBlocks[lc.header]->getName(), BB->getParent());
         incB->moveAfter(reverseBlocks[lc.header]);
-        
+
         IRBuilder<> tbuild(incB);
-		
+
         Value* av = tbuild.CreateLoad(lc.antivaralloc);
         Value* sub = tbuild.CreateSub(av, ConstantInt::get(av->getType(), 1), "", true, true);
         tbuild.CreateStore(sub, lc.antivaralloc);
         tbuild.CreateBr(reverseBlocks[BB]);
         return newBlocksForLoop_cache[tup] = incB;
     }
-    
+
     if (inLoop) {
         auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(BB), lc.exitBlocks);
 
         if (std::find(latches.begin(), latches.end(), BB) != latches.end() && std::find(lc.exitBlocks.begin(), lc.exitBlocks.end(), branchingBlock) != lc.exitBlocks.end()) {
             BasicBlock* incB = BasicBlock::Create(BB->getContext(), "merge" + reverseBlocks[lc.header]->getName()+"_" + branchingBlock->getName(), BB->getParent());
             incB->moveAfter(reverseBlocks[branchingBlock]);
-            
+
             IRBuilder<> tbuild(reverseBlocks[branchingBlock]);
-            
+
             Value* lim = nullptr;
             if (lc.dynamic) {
                 lim = lookupValueFromCache(tbuild, lc.preheader, cast<AllocaInst>(lc.limit));
             } else {
                 lim = lookupM(lc.limit, tbuild);
             }
-            
+
             tbuild.SetInsertPoint(incB);
             tbuild.CreateStore(lim, lc.antivaralloc);
             tbuild.CreateBr(reverseBlocks[BB]);
@@ -89,7 +89,7 @@
             return newBlocksForLoop_cache[tup] = incB;
         }
     }
-        
+
     return newBlocksForLoop_cache[tup] = reverseBlocks[BB];
   }
 
@@ -146,7 +146,7 @@ bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& availab
             //llvm::errs() << "not recomputable load " << *load << " as arg " << *idx << "\n";
             return false;
         }
-        
+
         if (ci->hasRetAttr(Attribute::ReadOnly) || ci->hasRetAttr(Attribute::ReadNone)) {
           //llvm::errs() << "recomputable load " << *load << " from call readonly ret " << *ci << "\n";
           return true;
@@ -209,16 +209,16 @@ GradientUtils* GradientUtils::CreateFromClone(Function *todiff, TargetLibraryInf
         assert(!todiff->getReturnType()->isVoidTy());
         returnMapping[AugmentedStruct::Return] = returnCount+1;
         returnCount++;
-    } 
-   
+    }
+
     // We don't need to differentially return something that we know is not a pointer (or somehow needed for shadow analysis)
-    if (differentialReturn && !todiff->getReturnType()->isFPOrFPVectorTy()) { 
+    if (differentialReturn && !todiff->getReturnType()->isFPOrFPVectorTy()) {
         assert(!todiff->getReturnType()->isEmptyTy());
         assert(!todiff->getReturnType()->isVoidTy());
         assert(!todiff->getReturnType()->isFPOrFPVectorTy());
         returnMapping[AugmentedStruct::DifferentialReturn] = returnCount+1;
         returnCount++;
-    } 
+    }
 
     ReturnType returnValue;
     if (returnCount == 0) returnValue = ReturnType::Tape;
@@ -354,6 +354,14 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       goto end;
     } else if (auto arg = dyn_cast<ExtractValueInst>(val)) {
       IRBuilder<> bb(arg);
+      if (tape) {
+        if(arg->getOperand(0) == tape) {
+          llvm::errs() << "oldFunc: " << *oldFunc << "\n";
+          llvm::errs() << "newFunc: " << *newFunc << "\n";
+          llvm::errs() << "arg: " << *arg << "\n";
+        }
+        assert(arg->getOperand(0) != tape);
+      }
       auto result = bb.CreateExtractValue(invertPointerM(arg->getOperand(0), bb), arg->getIndices(), arg->getName()+"'ipev");
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
@@ -436,7 +444,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
         val0 = invertPointerM(arg->getOperand(0), bb);
         val1 = invertPointerM(arg->getOperand(1), bb);
       }
-      
+
       auto li = bb.CreateBinOp(arg->getOpcode(), val0, val1, arg->getName());
       invertedPointers[arg] = li;
       return lookupM(invertedPointers[arg], BuilderM);
@@ -538,7 +546,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
          if (!hasnonconst) {
             llvm::errs() << *oldFunc << "\n";
             llvm::errs() << *newFunc << "\n";
-            llvm::errs() << *phi << "\n"; 
+            llvm::errs() << *phi << "\n";
             llvm::errs() << "WARNING: this should assert, but currently doesn't as we wait for interprocedural constant detection\n";
          }
          //This is okay to not assert as it isn't necessary (since we could return any undefined value if a value we wish to find the inverted pointer of is inactive
@@ -610,7 +618,7 @@ void removeRedundantIVs(const Loop* L, BasicBlock* Header, BasicBlock* Preheader
         IVsToRemove.push_back(PN);
     }
     }
-    
+
     for (Instruction *PN : IVsToRemove) {
       gutils.erase(PN);
     }
@@ -679,7 +687,7 @@ void removeRedundantIVs(const Loop* L, BasicBlock* Header, BasicBlock* Preheader
       std::vector<Instruction*> toerase;
       for(auto use : CanonicalIV->users()) {
         auto bo = dyn_cast<BinaryOperator>(use);
-        
+
         if (bo == nullptr) continue;
         if (bo->getOpcode() != BinaryOperator::Add) continue;
         if (use == increment) continue;
@@ -760,7 +768,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
 
     //Already canonicalized
     if (loopContexts.find(L) == loopContexts.end()) {
-        
+
         loopContexts[L].parent = L->getParentLoop();
 
         loopContexts[L].header = L->getHeader();
@@ -772,9 +780,9 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
             llvm::errs() << "L: " << *L << "\n";
         }
         assert(loopContexts[L].preheader && "loop must have preheader");
-        
+
         loopContexts[L].latchMerge = nullptr;
-    
+
         fake::SCEVExpander::getExitBlocks(L, loopContexts[L].exitBlocks);
         //if (loopContexts[L].exitBlocks.size() == 0) {
         //    llvm::errs() << "newFunc: " << *BB->getParent() << "\n";
@@ -790,7 +798,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         removeRedundantIVs(L, loopContexts[L].header, loopContexts[L].preheader, CanonicalIV, SE, gutils, pair.second, fake::SCEVExpander::getLatches(L, loopContexts[L].exitBlocks));
         loopContexts[L].antivaralloc = IRBuilder<>(gutils.inversionAllocs).CreateAlloca(CanonicalIV->getType(), nullptr, CanonicalIV->getName()+"'ac");
         loopContexts[L].antivaralloc->setAlignment(cast<IntegerType>(CanonicalIV->getType())->getBitWidth() / 8);
-      
+
         PredicatedScalarEvolution PSE(SE, *L);
         //predicate.addPredicate(SE.getWrapPredicate(SE.getSCEV(CanonicalIV), SCEVWrapPredicate::IncrementNoWrapMask));
         // Note exitcount needs the true latch (e.g. the one that branches back to header)
@@ -816,7 +824,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
             } else {
             //llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";
             llvm::errs() << "SE could not compute loop limit.\n";
-        
+
             //TODO should eventually ensure this is freed
             LimitVar = gutils.createCacheForScope(loopContexts[L].preheader, CanonicalIV->getType(), "loopLimit", /*shouldfree*/false);
 
@@ -923,7 +931,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
     if (isa<LoadInst>(inst) && originalInstructions.find(inst) != originalInstructions.end()) {
         auto found = can_modref_map->find(getOriginal(inst));
         if(found == can_modref_map->end()) {
-            llvm::errs() << "can_modref_map:\n"; 
+            llvm::errs() << "can_modref_map:\n";
             for(auto& pair : *can_modref_map) {
                 llvm::errs() << " + " << *pair.first << ": " << pair.second << " of func " << pair.first->getParent()->getParent()->getName() << "\n";
             }
@@ -983,8 +991,8 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
       }
       return;
   }
-        
-  // Map of function edges to list of targets this can branch to we have 
+
+  // Map of function edges to list of targets this can branch to we have
   std::map<std::pair</*pred*/BasicBlock*,/*successor*/BasicBlock*>,std::set<BasicBlock*>> done;
   {
         std::deque<std::tuple<std::pair</*pred*/BasicBlock*,/*successor*/BasicBlock*>,BasicBlock*>> Q; // newblock, target
@@ -1012,7 +1020,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
               for (BasicBlock *Pred : predecessors(block)) {
                 //llvm::errs() << " seeing in pred [" << Pred->getName() << "," << block->getName() << "] to target " << target->getName() << "\n";
                 // Don't go up the backedge as we can use the last value if desired via lcssa
-                if (blockLoop && blockLoop->getHeader() == block && blockLoop == LI.getLoopFor(Pred)) continue;    
+                if (blockLoop && blockLoop->getHeader() == block && blockLoop == LI.getLoopFor(Pred)) continue;
 
                 Q.push_back(std::tuple<std::pair<BasicBlock*,BasicBlock*>,BasicBlock*>(std::make_pair(Pred, block), target ));
                 //llvm::errs() << " adding to Q pred [" << Pred->getName() << "," << block->getName() << "] to target " << target->getName() << "\n";
@@ -1023,7 +1031,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
   IntegerType* T = (targetToPreds.size() == 2) ? Type::getInt1Ty(BuilderM.getContext()) : Type::getInt8Ty(BuilderM.getContext());
 
   Instruction* equivalentTerminator = nullptr;
-  
+
   std::set<BasicBlock*> blocks;
   for(auto pair : done) {
       //const auto& targets = pair.second;
@@ -1056,8 +1064,8 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
       }
       equivalentTerminator = block->getTerminator();
       goto fast;
-      
-      nextpair:; 
+
+      nextpair:;
   }
   goto nofast;
 
@@ -1193,11 +1201,11 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
       storeInstructionInCache(ctx, pbuilder, tostore, cache);
   }
   }
-  
+
   Value* which = lookupValueFromCache(BuilderM, ctx, cache);
   assert(which);
   assert(which->getType() == T);
-  
+
   if (replacePHIs == nullptr) {
       if (targetToPreds.size() == 2) {
           assert(BuilderM.GetInsertBlock()->size() == 0 || !isa<BranchInst>(BuilderM.GetInsertBlock()->back()));

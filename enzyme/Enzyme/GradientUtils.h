@@ -734,10 +734,9 @@ public:
   const SmallVectorImpl<Value*> & getMallocs() const {
     return addedMallocs;
   }
-protected:
+public:
   TargetLibraryInfo &TLI;
   AAResults &AA;
-public:
   TypeAnalysis &TA;
   GradientUtils(Function* newFunc_, Function* oldFunc_, TargetLibraryInfo &TLI_, TypeAnalysis &TA_, AAResults &AA_, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &constantvalues_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy& originalToNewFn_) :
       newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(), DT(*newFunc_), OrigDT(*oldFunc_), constants(constants_.begin(), constants_.end()), nonconstant(nonconstant_.begin(), nonconstant_.end()), constant_values(constantvalues_.begin(), constantvalues_.end()), nonconstant_values(returnvals_.begin(), returnvals_.end()), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI), inversionAllocs(nullptr), TLI(TLI_), AA(AA_), TA(TA_) {
@@ -757,6 +756,11 @@ public:
 
 public:
   static GradientUtils* CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, bool returnUsed, bool differentialReturn, std::map<AugmentedStruct, unsigned>& returnMapping);
+
+  StoreInst* setPtrDiffe(Value* ptr, Value* newval, IRBuilder<> &BuilderM) {
+      ptr = invertPointerM(ptr, BuilderM);
+      return BuilderM.CreateStore(newval, ptr);
+  }
 
   void prepareForReverse() {
     assert(reverseBlocks.size() == 0);
@@ -1971,11 +1975,6 @@ public:
       }
       StoreInst* st = BuilderM.CreateStore(res, ptr);
       st->setAlignment(align);
-  }
-
-  StoreInst* setPtrDiffe(Value* ptr, Value* newval, IRBuilder<> &BuilderM) {
-      ptr = invertPointerM(ptr, BuilderM);
-      return BuilderM.CreateStore(newval, ptr);
   }
 
 };

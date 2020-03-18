@@ -753,7 +753,7 @@ public:
 public:
 	TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn, llvm::Function* function);
 	DataType intType(llvm::Value* val, bool errIfNotFound=true);
-    DataType firstPointer(llvm::Value* val, bool errIfNotFound=true);
+    DataType firstPointer(size_t num, llvm::Value* val, bool errIfNotFound=true);
     ValueData query(llvm::Value* val);
     NewFnTypeInfo getAnalyzedTypeInfo();
     ValueData getReturnAnalysis();
@@ -859,7 +859,7 @@ public:
 	ValueData query(llvm::Value* val, const NewFnTypeInfo& fn);
 
     DataType intType(llvm::Value* val, const NewFnTypeInfo& fn, bool errIfNotFound=true);
-    DataType firstPointer(llvm::Value* val, const NewFnTypeInfo& fn, bool errIfNotFound=true);
+    DataType firstPointer(size_t num, llvm::Value* val, const NewFnTypeInfo& fn, bool errIfNotFound=true);
 
     inline ValueData getReturnAnalysis(const NewFnTypeInfo &fn, llvm::Function* function) {
         analyzeFunction(fn, function);

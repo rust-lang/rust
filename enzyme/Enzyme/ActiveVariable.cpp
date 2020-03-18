@@ -1851,7 +1851,7 @@ bool isconstantValueM(TypeResults &TR, Value* val, SmallPtrSetImpl<Value*> &cons
 
     //! This value is certainly a pointer to an integer (and only and integer, not a pointer or float). Therefore its value is constant
     //TODO use typeInfo for more aggressive activity analysis
-    if (val->getType()->isPointerTy() && cast<PointerType>(val->getType())->isIntOrIntVectorTy() && TR.firstPointer(val, /*errifnotfound*/false).isIntegral() ) {
+    if (val->getType()->isPointerTy() && cast<PointerType>(val->getType())->isIntOrIntVectorTy() && TR.firstPointer(1, val, /*errifnotfound*/false).isIntegral() ) {
 		if (printconst)
 			llvm::errs() << " Value const as integral pointer" << (int)directions << " " << *val << "\n";
         constantvals.insert(val);

@@ -207,11 +207,23 @@ void TypeAnalyzer::updateAnalysis(Value* val, IntType data, Value* origin) {
 void TypeAnalyzer::addToWorkList(Value* val) {
 	if (!isa<Instruction>(val) && !isa<Argument>(val) && !isa<ConstantExpr>(val)) return;
     if (std::find(workList.begin(), workList.end(), val) != workList.end()) return;
+
+    if (auto inst = dyn_cast<Instruction>(val)) {
+        if (function != inst->getParent()->getParent()) {
+                llvm::errs() << "function: " << *function << "\n";
+                llvm::errs() << "instf: " << *inst->getParent()->getParent() << "\n";
+                llvm::errs() << "inst: " << *inst << "\n";
+        }
+        assert(function == inst->getParent()->getParent());
+    }
+    if (auto arg = dyn_cast<Argument>(val))
+        assert(function == arg->getParent());
+
 	workList.push_back(val);
 }
 
 void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
-    if (isa<ConstantData>(val)) {
+    if (isa<ConstantData>(val) || isa<Function>(val)) {
         return;
     }
 
@@ -220,6 +232,17 @@ void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
 		if (origin) llvm::errs() << " from " << *origin;
 		llvm::errs() << "\n";
 	}
+
+    if (auto inst = dyn_cast<Instruction>(val)) {
+        if (function != inst->getParent()->getParent()) {
+                llvm::errs() << "function: " << *function << "\n";
+                llvm::errs() << "instf: " << *inst->getParent()->getParent() << "\n";
+                llvm::errs() << "inst: " << *inst << "\n";
+        }
+        assert(function == inst->getParent()->getParent());
+    }
+    if (auto arg = dyn_cast<Argument>(val))
+        assert(function == arg->getParent());
 
     if (isa<GetElementPtrInst>(val) && data[{}] == IntType::Integer) {
         llvm::errs () << "illegal gep update\n";
@@ -239,6 +262,13 @@ void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
     	//Add users and operands of the value so they can update from the new operand/use
         for (User* use : val->users()) {
             if (use != origin) {
+
+                if (auto inst = dyn_cast<Instruction>(use)) {
+                    if (function != inst->getParent()->getParent()) {
+                        continue;
+                    }
+                }
+
                 addToWorkList(use);
             }
         }
@@ -977,21 +1007,44 @@ DataType TypeAnalysis::intType(Value* val, const NewFnTypeInfo& fn, bool errIfNo
 	return dt;
 }
 
-DataType TypeAnalysis::firstPointer(Value* val, const NewFnTypeInfo& fn, bool errIfNotFound) {
+DataType TypeAnalysis::firstPointer(size_t num, Value* val, const NewFnTypeInfo& fn, bool errIfNotFound) {
     assert(val);
     assert(val->getType());
     assert(val->getType()->isPointerTy());
 	auto q = query(val, fn);
 	auto dt = q[{0}];
 	dt |= q[{-1}];
+    for(size_t i=1; i<num; i++) {
+        dt |= q[{(int)i}];
+    }
+
+    if (auto inst = dyn_cast<Instruction>(val)) {
+        assert(fn.first.begin()->first->getParent() == inst->getParent()->getParent());
+        llvm::errs() << *inst->getParent()->getParent() << "\n";
+        for(auto &pair : analyzedFunctions.find(fn)->second.analysis) {
+            if (auto in = dyn_cast<Instruction>(pair.first)) {
+                if (in->getParent()->getParent() != inst->getParent()->getParent()) {
+                    llvm::errs() << "inf: " << *in->getParent()->getParent() << "\n";
+                    llvm::errs() << "instf: " << *inst->getParent()->getParent() << "\n";
+                    llvm::errs() << "in: " << *in << "\n";
+                    llvm::errs() << "inst: " << *inst << "\n";
+                }
+                assert(in->getParent()->getParent() == inst->getParent()->getParent());
+            }
+            llvm::errs() << "val: " << *pair.first << " - " << pair.second.str() << "\n";
+        }
+    }
+
 	if (errIfNotFound && (!dt.isKnown() || dt.typeEnum == IntType::Anything) ) {
 		if (auto inst = dyn_cast<Instruction>(val)) {
 			llvm::errs() << *inst->getParent()->getParent() << "\n";
 			for(auto &pair : analyzedFunctions.find(fn)->second.analysis) {
+                if (auto in = dyn_cast<Instruction>(pair.first))
+                assert(in->getParent()->getParent() == inst->getParent()->getParent());
 				llvm::errs() << "val: " << *pair.first << " - " << pair.second.str() << "\n";
 			}
 		}
-		llvm::errs() << "could not deduce type of integer " << *val << "\n";
+		llvm::errs() << "could not deduce type of integer " << *val << " num:" << num << " q:" << q.str() << " \n";
 		assert(0 && "could not deduce type of integer");
 	}
 	return dt;
@@ -1017,8 +1070,8 @@ DataType TypeResults::intType(Value* val, bool errIfNotFound) {
 	return analysis.intType(val, info, errIfNotFound);
 }
 
-DataType TypeResults::firstPointer(Value* val, bool errIfNotFound) {
-    return analysis.firstPointer(val, info, errIfNotFound);
+DataType TypeResults::firstPointer(size_t num, Value* val, bool errIfNotFound) {
+    return analysis.firstPointer(num, val, info, errIfNotFound);
 }
 
 ValueData TypeResults::getReturnAnalysis() {
