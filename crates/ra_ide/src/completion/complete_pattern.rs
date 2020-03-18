@@ -56,6 +56,20 @@ mod tests {
         assert_debug_snapshot!(completions, @r###"
         [
             CompletionItem {
+                label: "Bar",
+                source_range: [246; 246),
+                delete: [246; 246),
+                insert: "Bar",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "E",
+                source_range: [246; 246),
+                delete: [246; 246),
+                insert: "E",
+                kind: Enum,
+            },
+            CompletionItem {
                 label: "E",
                 source_range: [246; 246),
                 delete: [246; 246),
@@ -70,11 +84,25 @@ mod tests {
                 kind: EnumVariant,
             },
             CompletionItem {
+                label: "X",
+                source_range: [246; 246),
+                delete: [246; 246),
+                insert: "X",
+                kind: EnumVariant,
+            },
+            CompletionItem {
                 label: "Z",
                 source_range: [246; 246),
                 delete: [246; 246),
                 insert: "Z",
                 kind: Const,
+            },
+            CompletionItem {
+                label: "m",
+                source_range: [246; 246),
+                delete: [246; 246),
+                insert: "m",
+                kind: Module,
             },
             CompletionItem {
                 label: "m",
