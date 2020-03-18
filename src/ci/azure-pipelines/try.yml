@@ -57,55 +57,55 @@ jobs:
 #      x86_64-gnu-distcheck: {}
 #      mingw-check: {}
 #
-#- job: macOS
-#  timeoutInMinutes: 600
-#  pool:
-#    vmImage: macos-10.15
-#  steps:
-#  - template: steps/run.yml
-#  strategy:
-#    matrix:
+- job: macOS
+  timeoutInMinutes: 600
+  pool:
+    vmImage: macos-10.15
+  steps:
+  - template: steps/run.yml
+  strategy:
+    matrix:
       # OSX builders running tests, these run the full test suite.
       # NO_DEBUG_ASSERTIONS=1 to make them go faster, but also do have some
       # runners that run `//ignore-debug` tests.
       #
       # Note that the compiler is compiled to target 10.8 here because the Xcode
       # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
-#      x86_64-apple:
-#        SCRIPT: ./x.py test
-#        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
-#        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-#        MACOSX_DEPLOYMENT_TARGET: 10.8
-#        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
-#        NO_LLVM_ASSERTIONS: 1
-#        NO_DEBUG_ASSERTIONS: 1
+      x86_64-apple:
+        SCRIPT: ./x.py test
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
 
-#      dist-x86_64-apple:
-#        SCRIPT: ./x.py dist
-#        INITIAL_RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
-#        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-#        MACOSX_DEPLOYMENT_TARGET: 10.7
-#        NO_LLVM_ASSERTIONS: 1
-#        NO_DEBUG_ASSERTIONS: 1
-#        DIST_REQUIRE_ALL_TOOLS: 1
+      dist-x86_64-apple:
+        SCRIPT: ./x.py dist
+        INITIAL_RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        DIST_REQUIRE_ALL_TOOLS: 1
 
-#      dist-x86_64-apple-alt:
-#        SCRIPT: ./x.py dist
-#        INITIAL_RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc
-#        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-#        MACOSX_DEPLOYMENT_TARGET: 10.7
-#        NO_LLVM_ASSERTIONS: 1
-#        NO_DEBUG_ASSERTIONS: 1
+      dist-x86_64-apple-alt:
+        SCRIPT: ./x.py dist
+        INITIAL_RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
 
 
-- job: Windows
-  timeoutInMinutes: 600
-  pool:
-    vmImage: 'vs2017-win2016'
-  steps:
-  - template: steps/run.yml
-  strategy:
-    matrix:
+#- job: Windows
+#  timeoutInMinutes: 600
+#  pool:
+#    vmImage: 'vs2017-win2016'
+#  steps:
+#  - template: steps/run.yml
+#  strategy:
+#    matrix:
      # 32/64 bit MSVC tests
 #      x86_64-msvc-1:
 #        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
@@ -202,16 +202,16 @@ jobs:
 #        SCRIPT: python x.py dist
 #        CUSTOM_MINGW: 1
 #        DIST_REQUIRE_ALL_TOOLS: 1
-      dist-x86_64-mingw:
-        SCRIPT: python x.py dist
-        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler
-        CUSTOM_MINGW: 1
-        DIST_REQUIRE_ALL_TOOLS: 1
+#      dist-x86_64-mingw:
+#        SCRIPT: python x.py dist
+#        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler
+#        CUSTOM_MINGW: 1
+#        DIST_REQUIRE_ALL_TOOLS: 1
 
       # "alternate" deployment, see .travis.yml for more info
-      dist-x86_64-msvc-alt:
-        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
-        SCRIPT: python x.py dist
+#      dist-x86_64-msvc-alt:
+#        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
+#        SCRIPT: python x.py dist
 
 # The macOS and Windows builds here are currently disabled due to them not being
 # overly necessary on `try` builds. We also don't actually have anything that
