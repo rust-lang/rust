@@ -6,31 +6,21 @@ document.
 
 ## Unreleased / In Rust Beta or Nightly
 
-[69f99e7...master](https://github.com/rust-lang/rust-clippy/compare/69f99e7...master)
+[329923e...master](https://github.com/rust-lang/rust-clippy/compare/329923e...master)
 
-## Rust 1.42
+## Rust 1.43
 
-Current Beta
+Current beta, release 2020-04-23
 
-[69f99e7...329923e](https://github.com/rust-lang/rust-clippy/compare/69f99e7...329923e)
+[4ee1206...329923e](https://github.com/rust-lang/rust-clippy/compare/4ee1206...329923e)
 
 ### New lints
 
-* [`filetype_is_file`] [#4543](https://github.com/rust-lang/rust-clippy/pull/4543)
-* [`let_underscore_must_use`] [#4823](https://github.com/rust-lang/rust-clippy/pull/4823)
-* [`modulo_arithmetic`] [#4867](https://github.com/rust-lang/rust-clippy/pull/4867)
-* [`mem_replace_with_default`] [#4881](https://github.com/rust-lang/rust-clippy/pull/4881)
-* [`mutable_key_type`] [#4885](https://github.com/rust-lang/rust-clippy/pull/4885)
 * [`imprecise_flops`] [#4897](https://github.com/rust-lang/rust-clippy/pull/4897)
 * [`suboptimal_flops`] [#4897](https://github.com/rust-lang/rust-clippy/pull/4897)
-* [`option_as_ref_deref`] [#4945](https://github.com/rust-lang/rust-clippy/pull/4945)
-* [`wildcard_in_or_patterns`] [#4960](https://github.com/rust-lang/rust-clippy/pull/4960)
-* [`iter_nth_zero`] [#4966](https://github.com/rust-lang/rust-clippy/pull/4966)
-* [`invalid_atomic_ordering`] [#4999](https://github.com/rust-lang/rust-clippy/pull/4999)
 * [`wildcard_imports`] [#5029](https://github.com/rust-lang/rust-clippy/pull/5029)
 * [`single_component_path_imports`] [#5058](https://github.com/rust-lang/rust-clippy/pull/5058)
 * [`match_single_binding`] [#5061](https://github.com/rust-lang/rust-clippy/pull/5061)
-* [`skip_while_next`] [#5067](https://github.com/rust-lang/rust-clippy/pull/5067)
 * [`let_underscore_lock`] [#5101](https://github.com/rust-lang/rust-clippy/pull/5101)
 * [`struct_excessive_bools`] [#5125](https://github.com/rust-lang/rust-clippy/pull/5125)
 * [`fn_params_excessive_bools`] [#5125](https://github.com/rust-lang/rust-clippy/pull/5125)
@@ -40,10 +30,66 @@ Current Beta
 
 ### Moves and Deprecations
 
+* Move [`unneeded_field_pattern`] to pedantic group [#5200](https://github.com/rust-lang/rust-clippy/pull/5200)
+
+### Enhancements
+
+* Make [`missing_errors_doc`] lint also trigger on `async` functions
+  [#5181](https://github.com/rust-lang/rust-clippy/pull/5181)
+* Add more constants to [`approx_constant`] [#5193](https://github.com/rust-lang/rust-clippy/pull/5193)
+* Extend [`question_mark`] lint [#5266](https://github.com/rust-lang/rust-clippy/pull/5266)
+
+### False Positive Fixes
+
+* [`use_debug`] [#5047](https://github.com/rust-lang/rust-clippy/pull/5047)
+* [`unnecessary_unwrap`] [#5132](https://github.com/rust-lang/rust-clippy/pull/5132)
+* [`zero_prefixed_literal`] [#5170](https://github.com/rust-lang/rust-clippy/pull/5170)
+* [`missing_const_for_fn`] [#5216](https://github.com/rust-lang/rust-clippy/pull/5216)
+
+### Suggestion Improvements
+
+* Improve suggestion when blocks of code are suggested [#5134](https://github.com/rust-lang/rust-clippy/pull/5134)
+
+### ICE Fixes
+
+* `misc_early` lints [#5129](https://github.com/rust-lang/rust-clippy/pull/5129)
+* [`missing_errors_doc`] [#5213](https://github.com/rust-lang/rust-clippy/pull/5213)
+* Fix ICE when evaluating `usize`s [#5256](https://github.com/rust-lang/rust-clippy/pull/5256)
+
+### Documentation
+
+* Improve documentation of [`iter_nth_zero`]
+* Add documentation pages for stable releases [#5171](https://github.com/rust-lang/rust-clippy/pull/5171)
+
+### Others
+
+* Clippy now completely runs on GitHub Actions [#5190](https://github.com/rust-lang/rust-clippy/pull/5190)
+
+
+## Rust 1.42
+
+Current stable, released 2020-03-12
+
+[69f99e7...4ee1206](https://github.com/rust-lang/rust-clippy/compare/69f99e7...4ee1206)
+
+### New lints
+
+* [`filetype_is_file`] [#4543](https://github.com/rust-lang/rust-clippy/pull/4543)
+* [`let_underscore_must_use`] [#4823](https://github.com/rust-lang/rust-clippy/pull/4823)
+* [`modulo_arithmetic`] [#4867](https://github.com/rust-lang/rust-clippy/pull/4867)
+* [`mem_replace_with_default`] [#4881](https://github.com/rust-lang/rust-clippy/pull/4881)
+* [`mutable_key_type`] [#4885](https://github.com/rust-lang/rust-clippy/pull/4885)
+* [`option_as_ref_deref`] [#4945](https://github.com/rust-lang/rust-clippy/pull/4945)
+* [`wildcard_in_or_patterns`] [#4960](https://github.com/rust-lang/rust-clippy/pull/4960)
+* [`iter_nth_zero`] [#4966](https://github.com/rust-lang/rust-clippy/pull/4966)
+* [`invalid_atomic_ordering`] [#4999](https://github.com/rust-lang/rust-clippy/pull/4999)
+* [`skip_while_next`] [#5067](https://github.com/rust-lang/rust-clippy/pull/5067)
+
+### Moves and Deprecations
+
 * Move [`transmute_float_to_int`] from nursery to complexity group
   [#5015](https://github.com/rust-lang/rust-clippy/pull/5015)
 * Move [`range_plus_one`] to pedantic group [#5057](https://github.com/rust-lang/rust-clippy/pull/5057)
-* Move [`unneeded_field_pattern`] to pedantic group [#5200](https://github.com/rust-lang/rust-clippy/pull/5200)
 * Move [`debug_assert_with_mut_call`] to nursery group [#5106](https://github.com/rust-lang/rust-clippy/pull/5106)
 * Deprecate [`unused_label`] [#4930](https://github.com/rust-lang/rust-clippy/pull/4930)
 
@@ -51,10 +97,6 @@ Current Beta
 
 * Lint vectored IO in [`unused_io_amount`] [#5027](https://github.com/rust-lang/rust-clippy/pull/5027)
 * Make [`vec_box`] configurable by adding a size threshold [#5081](https://github.com/rust-lang/rust-clippy/pull/5081)
-* Make [`missing_errors_doc`] lint also trigger an `async` functions
-  [#5181](https://github.com/rust-lang/rust-clippy/pull/5181)
-* Add more constants to [`approx_constant`] [#5193](https://github.com/rust-lang/rust-clippy/pull/5193)
-* Extend [`question_mark`] lint [#5266](https://github.com/rust-lang/rust-clippy/pull/5266)
 * Also lint constants in [`cmp_nan`] [#4910](https://github.com/rust-lang/rust-clippy/pull/4910)
 * Fix false negative in [`expect_fun_call`] [#4915](https://github.com/rust-lang/rust-clippy/pull/4915)
 * Fix false negative in [`redundant_clone`] [#5017](https://github.com/rust-lang/rust-clippy/pull/5017)
@@ -64,13 +106,9 @@ Current Beta
 * [`map_clone`] [#4937](https://github.com/rust-lang/rust-clippy/pull/4937)
 * [`replace_consts`] [#4977](https://github.com/rust-lang/rust-clippy/pull/4977)
 * [`let_and_return`] [#5008](https://github.com/rust-lang/rust-clippy/pull/5008)
-* [`use_debug`] [#5047](https://github.com/rust-lang/rust-clippy/pull/5047)
 * [`eq_op`] [#5079](https://github.com/rust-lang/rust-clippy/pull/5079)
 * [`possible_missing_comma`] [#5083](https://github.com/rust-lang/rust-clippy/pull/5083)
 * [`debug_assert_with_mut_call`] [#5106](https://github.com/rust-lang/rust-clippy/pull/5106)
-* [`unnecessary_unwrap`] [#5132](https://github.com/rust-lang/rust-clippy/pull/5132)
-* [`zero_prefixed_literal`] [#5170](https://github.com/rust-lang/rust-clippy/pull/5170)
-* [`missing_const_for_fn`] [#5216](https://github.com/rust-lang/rust-clippy/pull/5216)
 * Don't trigger [`let_underscore_must_use`] in external macros
   [#5082](https://github.com/rust-lang/rust-clippy/pull/5082)
 * Don't trigger [`empty_loop`] in `no_std` crates [#5086](https://github.com/rust-lang/rust-clippy/pull/5086)
@@ -85,28 +123,19 @@ Current Beta
 * [`explicit_into_iter_loop`] [#4978](https://github.com/rust-lang/rust-clippy/pull/4978)
 * [`useless_attribute`] [#5022](https://github.com/rust-lang/rust-clippy/pull/5022)
 * [`if_let_some_result`] [#5032](https://github.com/rust-lang/rust-clippy/pull/5032)
-* Improve suggestion when blocks of code are suggested [#5134](https://github.com/rust-lang/rust-clippy/pull/5134)
 
 ### ICE fixes
 
 * [`unsound_collection_transmute`] [#4975](https://github.com/rust-lang/rust-clippy/pull/4975)
-* `misc_early` lints [#5129](https://github.com/rust-lang/rust-clippy/pull/5129)
-* [`missing_errors_doc`] [#5213](https://github.com/rust-lang/rust-clippy/pull/5213)
-* Fix ICE when evaluating `usize`s [#5256](https://github.com/rust-lang/rust-clippy/pull/5256)
 
 ### Documentation
 
-* Improve documentation of `empty_enum`, `replace_consts`, `redundant_clone`, and `iterator_step_by_zero`
-* Add documentation pages for stable releases [#5171](https://github.com/rust-lang/rust-clippy/pull/5171)
-
-### Others
-
-* Clippy now completely runs on GitHub Actions [#5190](https://github.com/rust-lang/rust-clippy/pull/5190)
+* Improve documentation of [`empty_enum`], [`replace_consts`], [`redundant_clone`], and [`iterator_step_by_zero`]
 
 
 ## Rust 1.41
 
-Current stable, released 2020-01-30
+Released 2020-01-30
 
 [c8e3cfb...69f99e7](https://github.com/rust-lang/rust-clippy/compare/c8e3cfb...69f99e7)
 
