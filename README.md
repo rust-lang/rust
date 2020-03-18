@@ -193,6 +193,8 @@ Moreover, Miri recognizes some environment variables:
 * `MIRI_TEST_TARGET` (recognized by the test suite) indicates which target
   architecture to test against.  `miri` and `cargo miri` accept the `--target`
   flag for the same purpose.
+* `MIRI_TEST_FLAGS` (recognized by the test suite) defines extra flags to be
+  passed to Miri.
 
 ## Contributing and getting help
 

@@ -17,6 +17,7 @@ echo
 # Test
 function run_tests {
     ./miri test --locked
+    MIRI_TEST_FLAGS="-Z mir-opt-level=3" ./miri test
     # "miri test" has built the sysroot for us, now this should pass without
     # any interactive questions.
     test-cargo-miri/run-test.py
