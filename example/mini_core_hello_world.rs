@@ -117,6 +117,12 @@ struct Unique<T: ?Sized> {
 
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
 
+unsafe fn zeroed<T>() -> T {
+    let mut uninit = MaybeUninit { uninit: () };
+    intrinsics::write_bytes(&mut uninit.value.value as *mut T, 0, 1);
+    uninit.value.value
+}
+
 fn take_f32(_f: f32) {}
 fn take_unique(_u: Unique<()>) {}
 
@@ -192,10 +198,6 @@ fn main() {
         struct Foo {
             x: u8,
             y: !,
-        }
-
-        unsafe fn zeroed<T>() -> T {
-            intrinsics::init::<T>()
         }
 
         unsafe fn uninitialized<T>() -> T {
@@ -330,7 +332,7 @@ extern "C" fn mutate_tls(_: *mut c_void) -> *mut c_void {
 #[cfg(not(jit))]
 fn test_tls() {
     unsafe {
-        let mut attr: pthread_attr_t = intrinsics::init();
+        let mut attr: pthread_attr_t = zeroed();
         let mut thread: pthread_t = 0;
 
         assert_eq!(TLS, 42);

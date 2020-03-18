@@ -481,6 +481,7 @@ pub mod intrinsics {
         pub fn needs_drop<T>() -> bool;
         pub fn bitreverse<T>(x: T) -> T;
         pub fn bswap<T>(x: T) -> T;
+        pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
     }
 }
 
