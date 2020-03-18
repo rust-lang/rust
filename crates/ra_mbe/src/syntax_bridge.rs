@@ -33,7 +33,7 @@ impl TokenTextRange {
 }
 
 /// Maps `tt::TokenId` to the relative range of the original token.
-#[derive(Debug, PartialEq, Eq, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct TokenMap {
     /// Maps `tt::TokenId` to the *relative* source range.
     entries: Vec<(tt::TokenId, TokenTextRange)>,

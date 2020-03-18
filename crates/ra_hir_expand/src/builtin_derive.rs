@@ -229,9 +229,12 @@ fn partial_ord_expand(
 mod tests {
     use super::*;
     use crate::{test_db::TestDB, AstId, MacroCallId, MacroCallKind, MacroCallLoc};
+    use name::Name;
     use ra_db::{fixture::WithFixture, SourceDatabase};
 
-    fn expand_builtin_derive(s: &str, expander: BuiltinDeriveExpander) -> String {
+    fn expand_builtin_derive(s: &str, name: Name) -> String {
+        let def = find_builtin_derive(&name).unwrap();
+
         let (db, file_id) = TestDB::with_single_file(&s);
         let parsed = db.parse(file_id);
         let items: Vec<_> =
@@ -239,14 +242,9 @@ mod tests {
 
         let ast_id_map = db.ast_id_map(file_id.into());
 
-        // the first one should be a macro_rules
-        let def =
-            MacroDefId { krate: None, ast_id: None, kind: MacroDefKind::BuiltInDerive(expander) };
+        let attr_id = AstId::new(file_id.into(), ast_id_map.ast_id(&items[0]));
 
-        let loc = MacroCallLoc {
-            def,
-            kind: MacroCallKind::Attr(AstId::new(file_id.into(), ast_id_map.ast_id(&items[0]))),
-        };
+        let loc = MacroCallLoc { def, kind: MacroCallKind::Attr(attr_id, name.to_string()) };
 
         let id: MacroCallId = db.intern_macro(loc).into();
         let parsed = db.parse_or_expand(id.as_file()).unwrap();
@@ -263,7 +261,7 @@ mod tests {
         #[derive(Copy)]
         struct Foo;
 "#,
-            BuiltinDeriveExpander::Copy,
+            name::known::Copy,
         );
 
         assert_eq!(expanded, "impl< >std::marker::CopyforFoo< >{}");
@@ -276,7 +274,7 @@ mod tests {
         #[derive(Copy)]
         struct Foo<A, B>;
 "#,
-            BuiltinDeriveExpander::Copy,
+            name::known::Copy,
         );
 
         assert_eq!(
@@ -292,7 +290,7 @@ mod tests {
         #[derive(Copy)]
         struct Foo<A, B, 'a, 'b>;
 "#,
-            BuiltinDeriveExpander::Copy,
+            name::known::Copy,
         );
 
         // We currently just ignore lifetimes
@@ -310,7 +308,7 @@ mod tests {
         #[derive(Clone)]
         struct Foo<A, B>;
 "#,
-            BuiltinDeriveExpander::Clone,
+            name::known::Clone,
         );
 
         assert_eq!(

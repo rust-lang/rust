@@ -11,6 +11,7 @@ pub mod hygiene;
 pub mod diagnostics;
 pub mod builtin_derive;
 pub mod builtin_macro;
+pub mod proc_macro;
 pub mod quote;
 pub mod eager;
 
@@ -27,6 +28,7 @@ use ra_syntax::{
 use crate::ast_id_map::FileAstId;
 use crate::builtin_derive::BuiltinDeriveExpander;
 use crate::builtin_macro::{BuiltinFnLikeExpander, EagerExpander};
+use crate::proc_macro::ProcMacroExpander;
 
 #[cfg(test)]
 mod test_db;
@@ -217,6 +219,7 @@ pub enum MacroDefKind {
     // FIXME: maybe just Builtin and rename BuiltinFnLikeExpander to BuiltinExpander
     BuiltInDerive(BuiltinDeriveExpander),
     BuiltInEager(EagerExpander),
+    ProcMacro(ProcMacroExpander),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -228,21 +231,23 @@ pub struct MacroCallLoc {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MacroCallKind {
     FnLike(AstId<ast::MacroCall>),
-    Attr(AstId<ast::ModuleItem>),
+    Attr(AstId<ast::ModuleItem>, String),
 }
 
 impl MacroCallKind {
     pub fn file_id(&self) -> HirFileId {
         match self {
             MacroCallKind::FnLike(ast_id) => ast_id.file_id,
-            MacroCallKind::Attr(ast_id) => ast_id.file_id,
+            MacroCallKind::Attr(ast_id, _) => ast_id.file_id,
         }
     }
 
     pub fn node(&self, db: &dyn db::AstDatabase) -> InFile<SyntaxNode> {
         match self {
             MacroCallKind::FnLike(ast_id) => ast_id.with_value(ast_id.to_node(db).syntax().clone()),
-            MacroCallKind::Attr(ast_id) => ast_id.with_value(ast_id.to_node(db).syntax().clone()),
+            MacroCallKind::Attr(ast_id, _) => {
+                ast_id.with_value(ast_id.to_node(db).syntax().clone())
+            }
         }
     }
 
@@ -251,7 +256,7 @@ impl MacroCallKind {
             MacroCallKind::FnLike(ast_id) => {
                 Some(ast_id.to_node(db).token_tree()?.syntax().clone())
             }
-            MacroCallKind::Attr(ast_id) => Some(ast_id.to_node(db).syntax().clone()),
+            MacroCallKind::Attr(ast_id, _) => Some(ast_id.to_node(db).syntax().clone()),
         }
     }
 }

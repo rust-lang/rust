@@ -639,3 +639,26 @@ mod clone {
     );
     assert_eq!("(Wrapper<S>, {unknown})", type_at_pos(&db, pos));
 }
+
+#[test]
+fn infer_custom_derive_simple() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:foo
+use foo::Foo;
+
+#[derive(Foo)]
+struct S{}
+
+fn test() {
+    S{}<|>;
+}
+
+//- /lib.rs crate:foo
+#[proc_macro_derive(Foo)]
+pub fn derive_foo(_item: TokenStream) -> TokenStream {    
+}
+"#,
+    );
+    assert_eq!("S", type_at_pos(&db, pos));
+}

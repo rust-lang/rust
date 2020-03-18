@@ -11,7 +11,7 @@ use ra_syntax::{algo::diff, AstNode, Parse, SyntaxKind::*, SyntaxNode};
 use crate::{
     ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallLoc, EagerMacroId,
     HirFileId, HirFileIdRepr, LazyMacroId, MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind,
-    MacroFile,
+    MacroFile, ProcMacroExpander,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -19,6 +19,7 @@ pub enum TokenExpander {
     MacroRules(mbe::MacroRules),
     Builtin(BuiltinFnLikeExpander),
     BuiltinDerive(BuiltinDeriveExpander),
+    ProcMacro(ProcMacroExpander),
 }
 
 impl TokenExpander {
@@ -33,6 +34,7 @@ impl TokenExpander {
             // FIXME switch these to ExpandResult as well
             TokenExpander::Builtin(it) => it.expand(db, id, tt).into(),
             TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt).into(),
+            TokenExpander::ProcMacro(it) => it.expand(db, id, tt).into(),
         }
     }
 
@@ -41,6 +43,7 @@ impl TokenExpander {
             TokenExpander::MacroRules(it) => it.map_id_down(id),
             TokenExpander::Builtin(..) => id,
             TokenExpander::BuiltinDerive(..) => id,
+            TokenExpander::ProcMacro(..) => id,
         }
     }
 
@@ -49,6 +52,7 @@ impl TokenExpander {
             TokenExpander::MacroRules(it) => it.map_id_up(id),
             TokenExpander::Builtin(..) => (id, mbe::Origin::Call),
             TokenExpander::BuiltinDerive(..) => (id, mbe::Origin::Call),
+            TokenExpander::ProcMacro(..) => (id, mbe::Origin::Call),
         }
     }
 }
@@ -130,7 +134,10 @@ pub(crate) fn macro_def(
         MacroDefKind::BuiltInDerive(expander) => {
             Some(Arc::new((TokenExpander::BuiltinDerive(expander), mbe::TokenMap::default())))
         }
-        MacroDefKind::BuiltInEager(_expander) => None,
+        MacroDefKind::BuiltInEager(_) => None,
+        MacroDefKind::ProcMacro(expander) => {
+            Some(Arc::new((TokenExpander::ProcMacro(expander), mbe::TokenMap::default())))
+        }
     }
 }
 
