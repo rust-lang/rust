@@ -64,7 +64,6 @@ pub struct ModuleId {
 }
 
 /// An ID of a module, **local** to a specific crate
-// FIXME: rename to `LocalModuleId`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LocalModuleId(RawId);
 impl_arena_id!(LocalModuleId);
