@@ -21,7 +21,7 @@ mod util;
 pub mod wf;
 
 use crate::infer::outlives::env::OutlivesEnvironment;
-use crate::infer::{InferCtxt, SuppressRegionErrors, TyCtxtInferExt};
+use crate::infer::{InferCtxt, RegionckMode, TyCtxtInferExt};
 use crate::traits::error_reporting::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc::middle::region;
@@ -244,7 +244,7 @@ fn do_normalize_predicates<'tcx>(
             region_context,
             &region_scope_tree,
             &outlives_env,
-            SuppressRegionErrors::default(),
+            RegionckMode::default(),
         );
 
         let predicates = match infcx.fully_resolve(&predicates) {
