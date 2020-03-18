@@ -148,10 +148,17 @@ pub fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
 
 // This makes comma-separated lists look slightly nicer,
 // and also addresses a specific regression described in issue #63896.
-fn tt_prepend_space(tt: &TokenTree) -> bool {
+fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
     match tt {
         TokenTree::Token(token) => match token.kind {
             token::Comma => false,
+            _ => true,
+        },
+        TokenTree::Delimited(_, DelimToken::Paren, _) => match prev {
+            TokenTree::Token(token) => match token.kind {
+                token::Ident(_, _) => false,
+                _ => true,
+            },
             _ => true,
         },
         _ => true,
@@ -650,11 +657,14 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn print_tts(&mut self, tts: tokenstream::TokenStream, convert_dollar_crate: bool) {
-        for (i, tt) in tts.into_trees().enumerate() {
-            if i != 0 && tt_prepend_space(&tt) {
+        let mut iter = tts.into_trees().peekable();
+        while let Some(tt) = iter.next() {
+            let show_space =
+                if let Some(next) = iter.peek() { tt_prepend_space(next, &tt) } else { false };
+            self.print_tt(tt, convert_dollar_crate);
+            if show_space {
                 self.space();
             }
-            self.print_tt(tt, convert_dollar_crate);
         }
     }
 

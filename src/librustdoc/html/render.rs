@@ -3151,7 +3151,6 @@ fn render_attributes(w: &mut Buffer, it: &clean::Item, top: bool) {
             continue;
         }
 
-        // FIXME: this currently renders too many spaces as in: `#[repr(C, align (8))]`.
         attrs.push_str(&pprust::attribute_to_string(&attr));
     }
     if !attrs.is_empty() {
