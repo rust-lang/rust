@@ -5,7 +5,6 @@ pub use self::LateBoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
-pub use rustc::ty::IntVarValue;
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 
@@ -16,15 +15,14 @@ use rustc::middle::free_region::RegionRelations;
 use rustc::middle::region;
 use rustc::mir;
 use rustc::mir::interpret::ConstEvalResult;
-use rustc::session::config::BorrowckMode;
 use rustc::traits::select;
 use rustc::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::relate::RelateResult;
 use rustc::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
+pub use rustc::ty::IntVarValue;
 use rustc::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc::ty::{ConstVid, FloatVid, IntVid, TyVid};
-
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
@@ -32,8 +30,10 @@ use rustc_data_structures::unify as ut;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_session::config::BorrowckMode;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::BTreeMap;
 use std::fmt;

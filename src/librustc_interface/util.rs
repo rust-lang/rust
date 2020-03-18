@@ -1,5 +1,4 @@
 use log::info;
-use rustc::lint;
 use rustc::ty;
 use rustc_ast::ast::{AttrVec, BlockCheckMode};
 use rustc_ast::mut_visit::{visit_clobber, MutVisitor, *};
@@ -18,7 +17,7 @@ use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc_resolve::{self, Resolver};
 use rustc_session as session;
 use rustc_session::config::{ErrorOutputType, Input, OutputFilenames};
-use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
+use rustc_session::lint::{self, BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::CrateConfig;
 use rustc_session::CrateDisambiguator;
 use rustc_session::{config, early_error, filesearch, DiagnosticOutput, Session};

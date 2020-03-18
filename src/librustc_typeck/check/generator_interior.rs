@@ -4,7 +4,6 @@
 //! types computed here.
 
 use super::FnCtxt;
-use rustc::hir::map::Map;
 use rustc::middle::region::{self, YieldData};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -209,7 +208,7 @@ pub fn resolve_interior<'a, 'tcx>(
 // librustc/middle/region.rs since `expr_count` is compared against the results
 // there.
 impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None

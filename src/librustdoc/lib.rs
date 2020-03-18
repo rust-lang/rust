@@ -49,8 +49,8 @@ use std::env;
 use std::panic;
 use std::process;
 
-use rustc::session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
-use rustc::session::{early_error, early_warn};
+use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
+use rustc_session::{early_error, early_warn};
 
 #[macro_use]
 mod externalfiles;

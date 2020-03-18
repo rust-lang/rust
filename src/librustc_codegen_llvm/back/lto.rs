@@ -9,7 +9,6 @@ use log::{debug, info};
 use rustc::bug;
 use rustc::dep_graph::WorkProduct;
 use rustc::middle::exported_symbols::SymbolExportLevel;
-use rustc::session::config::{self, Lto};
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
@@ -19,6 +18,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{FatalError, Handler};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_session::cgu_reuse_tracker::CguReuse;
+use rustc_session::config::{self, Lto};
 
 use std::ffi::{CStr, CString};
 use std::fs::File;

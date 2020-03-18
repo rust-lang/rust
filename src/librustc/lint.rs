@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir::HirId;
-pub use rustc_session::lint::{builtin, Level, Lint, LintId, LintPass};
+use rustc_session::lint::{builtin, Level, Lint, LintId};
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};

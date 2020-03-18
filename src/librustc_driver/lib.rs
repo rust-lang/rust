@@ -18,12 +18,7 @@ extern crate lazy_static;
 
 pub extern crate rustc_plugin_impl as plugin;
 
-use rustc::lint::{Lint, LintId};
 use rustc::middle::cstore::MetadataLoader;
-use rustc::session::config::nightly_options;
-use rustc::session::config::{ErrorOutputType, Input, OutputType, PrintRequest};
-use rustc::session::{config, DiagnosticOutput, Session};
-use rustc::session::{early_error, early_warn};
 use rustc::ty::TyCtxt;
 use rustc::util::common::ErrorReported;
 use rustc_codegen_ssa::CodegenResults;
@@ -43,6 +38,11 @@ use rustc_metadata::locator;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_serialize::json::{self, ToJson};
+use rustc_session::config::nightly_options;
+use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest};
+use rustc_session::lint::{Lint, LintId};
+use rustc_session::{config, DiagnosticOutput, Session};
+use rustc_session::{early_error, early_warn};
 
 use std::borrow::Cow;
 use std::cmp::max;
@@ -652,7 +652,7 @@ impl RustcDefaultCalls {
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
     ) -> Compilation {
-        use rustc::session::config::PrintRequest::*;
+        use rustc_session::config::PrintRequest::*;
         // PrintRequest::NativeStaticLibs is special - printed during linking
         // (empty iterator returns true)
         if sess.opts.prints.iter().all(|&p| p == PrintRequest::NativeStaticLibs) {

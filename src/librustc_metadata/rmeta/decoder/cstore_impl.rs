@@ -10,7 +10,6 @@ use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::middle::cstore::{CrateSource, CrateStore, EncodedMetadata, NativeLibraryKind};
 use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
-use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::query::Providers;
 use rustc::ty::query::QueryConfig;
 use rustc::ty::{self, TyCtxt};
@@ -20,6 +19,7 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::Symbol;
 

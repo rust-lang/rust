@@ -31,7 +31,7 @@ pub mod dynamic_lib;
 pub mod locator;
 
 pub fn validate_crate_name(
-    sess: Option<&rustc::session::Session>,
+    sess: Option<&rustc_session::Session>,
     s: &str,
     sp: Option<rustc_span::Span>,
 ) {

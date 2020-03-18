@@ -2,10 +2,9 @@
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
 
-use crate::hir::map as hir_map;
-use crate::hir::map::definitions::{DefKey, DefPathTable};
-use crate::session::search_paths::PathKind;
-use crate::session::CrateDisambiguator;
+pub use self::NativeLibraryKind::*;
+
+use crate::hir::map::definitions::{DefKey, DefPath, DefPathHash, DefPathTable};
 use crate::ty::TyCtxt;
 
 use rustc_ast::ast;
@@ -14,14 +13,15 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_macros::HashStable;
+use rustc_session::search_paths::PathKind;
+pub use rustc_session::utils::NativeLibraryKind;
+use rustc_session::CrateDisambiguator;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::spec::Target;
+
 use std::any::Any;
 use std::path::{Path, PathBuf};
-
-pub use self::NativeLibraryKind::*;
-pub use rustc_session::utils::NativeLibraryKind;
 
 // lonely orphan structs and enums looking for a better home
 
@@ -197,8 +197,8 @@ pub trait CrateStore {
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
-    fn def_path(&self, def: DefId) -> hir_map::DefPath;
-    fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash;
+    fn def_path(&self, def: DefId) -> DefPath;
+    fn def_path_hash(&self, def: DefId) -> DefPathHash;
     fn def_path_table(&self, cnum: CrateNum) -> &DefPathTable;
 
     // "queries" used in resolve that aren't tracked for incremental compilation

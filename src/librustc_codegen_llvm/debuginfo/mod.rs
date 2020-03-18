@@ -20,12 +20,12 @@ use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::value::Value;
 use rustc::mir;
-use rustc::session::config::{self, DebugInfo};
 use rustc::ty::{self, Instance, ParamEnv, Ty};
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::IndexVec;
+use rustc_session::config::{self, DebugInfo};
 
 use libc::c_uint;
 use log::debug;

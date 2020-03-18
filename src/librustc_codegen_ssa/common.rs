@@ -1,8 +1,8 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use rustc::session::Session;
 use rustc::ty::{Ty, TyCtxt};
 use rustc_errors::struct_span_err;
+use rustc_session::Session;
 use rustc_span::Span;
 
 use crate::base;

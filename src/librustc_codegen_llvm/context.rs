@@ -1,31 +1,30 @@
 use crate::attributes;
+use crate::callee::get_fn;
 use crate::debuginfo;
 use crate::llvm;
 use crate::llvm_util;
-use crate::value::Value;
-use rustc::dep_graph::DepGraphSafe;
-
 use crate::type_::Type;
-use rustc_codegen_ssa::traits::*;
+use crate::value::Value;
 
-use crate::callee::get_fn;
 use rustc::bug;
+use rustc::dep_graph::DepGraphSafe;
 use rustc::mir::mono::CodegenUnit;
-use rustc::session::config::{self, CFGuard, DebugInfo};
-use rustc::session::Session;
 use rustc::ty::layout::{
     HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx,
 };
 use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc_codegen_ssa::base::wants_msvc_seh;
+use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_target::spec::{HasTargetSpec, Target};
-
+use rustc_session::config::{self, CFGuard, DebugInfo};
+use rustc_session::Session;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::Symbol;
+use rustc_target::spec::{HasTargetSpec, Target};
+
 use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
 use std::str;

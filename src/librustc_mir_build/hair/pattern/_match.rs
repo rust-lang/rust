@@ -235,17 +235,15 @@ use rustc_index::vec::Idx;
 use super::{compare_const_vals, PatternFoldable, PatternFolder};
 use super::{FieldPat, Pat, PatKind, PatRange};
 
-use rustc::ty::layout::{Integer, IntegerExt, Size, VariantIdx};
-use rustc::ty::{self, Const, Ty, TyCtxt, TypeFoldable, VariantDef};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{HirId, RangeEnd};
-
-use rustc::lint;
 use rustc::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
 use rustc::mir::Field;
+use rustc::ty::layout::{Integer, IntegerExt, Size, VariantIdx};
+use rustc::ty::{self, Const, Ty, TyCtxt, TypeFoldable, VariantDef};
 use rustc::util::common::ErrorReported;
-
 use rustc_attr::{SignedInt, UnsignedInt};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{HirId, RangeEnd};
+use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 
 use arena::TypedArena;

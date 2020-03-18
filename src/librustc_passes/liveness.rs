@@ -97,7 +97,6 @@ use self::LiveNodeKind::*;
 use self::VarKind::*;
 
 use rustc::hir::map::Map;
-use rustc::lint;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
 use rustc_ast::ast;
@@ -108,6 +107,7 @@ use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, Node};
+use rustc_session::lint;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -1370,7 +1370,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 // Checking for error conditions
 
 impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None

@@ -7,8 +7,6 @@ use rustc::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLib
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::middle::lang_items;
 use rustc::mir;
-use rustc::session::config::SymbolManglingVersion;
-use rustc::session::CrateDisambiguator;
 use rustc::ty::{self, ReprOptions, Ty};
 use rustc_ast::ast::{self, MacroDef};
 use rustc_attr as attr;
@@ -19,6 +17,8 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::Encoder;
+use rustc_session::config::SymbolManglingVersion;
+use rustc_session::CrateDisambiguator;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::{self, Span};

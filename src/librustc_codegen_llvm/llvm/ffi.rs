@@ -694,8 +694,8 @@ pub mod debuginfo {
     }
 
     impl DebugEmissionKind {
-        pub fn from_generic(kind: rustc::session::config::DebugInfo) -> Self {
-            use rustc::session::config::DebugInfo;
+        pub fn from_generic(kind: rustc_session::config::DebugInfo) -> Self {
+            use rustc_session::config::DebugInfo;
             match kind {
                 DebugInfo::None => DebugEmissionKind::NoDebug,
                 DebugInfo::Limited => DebugEmissionKind::LineTablesOnly,

@@ -56,10 +56,10 @@ use crate::creader::CStore;
 use rustc::middle::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
 use rustc::middle::cstore::{self, DepKind};
 use rustc::middle::dependency_format::{Dependencies, DependencyList, Linkage};
-use rustc::session::config;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::CrateNum;
+use rustc_session::config;
 use rustc_target::spec::PanicStrategy;
 
 crate fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
