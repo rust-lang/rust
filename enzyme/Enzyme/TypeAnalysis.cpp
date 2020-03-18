@@ -41,77 +41,77 @@
 #include "TBAA.h"
 
 
-        //TODO keep type information that is striated
-        // e.g. if you have an i8* [0:Int, 8:Int] => i64* [0:Int, 1:Int]
-        // After a depth len into the index tree, prune any lookups that are not {0} or {-1}
-        // Todo handle {double}** to double** where there is a 0 removed
-        ValueData ValueData::KeepForCast(const llvm::DataLayout& dl, llvm::Type* from, llvm::Type* to) const {
+//TODO keep type information that is striated
+// e.g. if you have an i8* [0:Int, 8:Int] => i64* [0:Int, 1:Int]
+// After a depth len into the index tree, prune any lookups that are not {0} or {-1}
+// Todo handle {double}** to double** where there is a 0 removed
+ValueData ValueData::KeepForCast(const llvm::DataLayout& dl, llvm::Type* from, llvm::Type* to) const {
 
-            ValueData vd;
+    ValueData vd;
 
-            for(auto &pair : mapping) {
+    for(auto &pair : mapping) {
 
-                ValueData vd2;
+        ValueData vd2;
 
-                //llvm::errs() << " considering casting from " << *from << " to " << *to << " fromidx: " << to_string(pair.first) << " dt:" << pair.second.str() << " fromsize: " << fromsize << " tosize: " << tosize << "\n";
+        //llvm::errs() << " considering casting from " << *from << " to " << *to << " fromidx: " << to_string(pair.first) << " dt:" << pair.second.str() << " fromsize: " << fromsize << " tosize: " << tosize << "\n";
 
-                if (pair.first.size() == 0) {
-                    vd2.insert(pair.first, pair.second);
-                    goto add;
-                }
-                {
-                uint64_t fromsize = dl.getTypeSizeInBits(from) / 8;
-                assert(fromsize > 0);
-                uint64_t tosize = dl.getTypeSizeInBits(to) / 8;
-                assert(tosize > 0);
+        if (pair.first.size() == 0) {
+            vd2.insert(pair.first, pair.second);
+            goto add;
+        }
+        {
+        uint64_t fromsize = dl.getTypeSizeInBits(from) / 8;
+        assert(fromsize > 0);
+        uint64_t tosize = dl.getTypeSizeInBits(to) / 8;
+        assert(tosize > 0);
 
-                // If the sizes are the same, whatever the original one is okay [ since tomemory[ i*sizeof(from) ] indeed the start of an object of type to since tomemory is "aligned" to type to
-                if (fromsize == tosize) {
-                    vd2.insert(pair.first, pair.second);
-                    goto add;
-                }
+        // If the sizes are the same, whatever the original one is okay [ since tomemory[ i*sizeof(from) ] indeed the start of an object of type to since tomemory is "aligned" to type to
+        if (fromsize == tosize) {
+            vd2.insert(pair.first, pair.second);
+            goto add;
+        }
 
-                // If the offset doesn't leak into a later element, we're fine to include
-                if (pair.first[0] != -1 && pair.first[0] < tosize) {
-                    vd2.insert(pair.first, pair.second);
-                    goto add;
-                }
+        // If the offset doesn't leak into a later element, we're fine to include
+        if (pair.first[0] != -1 && pair.first[0] < tosize) {
+            vd2.insert(pair.first, pair.second);
+            goto add;
+        }
 
-                if (pair.first[0] != -1) {
+        if (pair.first[0] != -1) {
+            vd.insert(pair.first, pair.second);
+            goto add;
+        } else {
+            //pair.first[0] == -1
+
+            if (fromsize < tosize) {
+                if (tosize % fromsize == 0) {
+                    //TODO should really be at each offset do a -1
                     vd.insert(pair.first, pair.second);
                     goto add;
                 } else {
-                    //pair.first[0] == -1
-
-                    if (fromsize < tosize) {
-                        if (tosize % fromsize == 0) {
-                            //TODO should really be at each offset do a -1
-                            vd.insert(pair.first, pair.second);
-                            goto add;
-                        } else {
-                            auto tmp(pair.first);
-                            tmp[0] = 0;
-                            vd.insert(tmp, pair.second);
-                            goto add;
-                        }
-                    } else {
-                        //fromsize > tosize
-                        // TODO should really insert all indices which are multiples of fromsize
-                        auto tmp(pair.first);
-                        tmp[0] = 0;
-                        vd.insert(tmp, pair.second);
-                        goto add;
-                    }
+                    auto tmp(pair.first);
+                    tmp[0] = 0;
+                    vd.insert(tmp, pair.second);
+                    goto add;
                 }
-                }
-
-                continue;
-                add:;
-                //llvm::errs() << " casting from " << *from << " to " << *to << " fromidx: " << to_string(pair.first) << " toidx: " << to_string(pair.first) << " dt:" << pair.second.str() << "\n";
-                vd |= vd2;
+            } else {
+                //fromsize > tosize
+                // TODO should really insert all indices which are multiples of fromsize
+                auto tmp(pair.first);
+                tmp[0] = 0;
+                vd.insert(tmp, pair.second);
+                goto add;
             }
-            return vd;
         }
+        }
+
+        continue;
+        add:;
+        //llvm::errs() << " casting from " << *from << " to " << *to << " fromidx: " << to_string(pair.first) << " toidx: " << to_string(pair.first) << " dt:" << pair.second.str() << "\n";
+        vd |= vd2;
+    }
+    return vd;
+}
 
 
 cl::opt<bool> printtype(
@@ -254,6 +254,14 @@ void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
         assert(0 && "illegal gep update");
     }
 
+    /*
+    dump();
+    if (origin)
+    llvm::errs() << "origin: " << *origin << "\n";
+    llvm::errs() << "val: " << *val << "\n";
+    llvm::errs() << " + old: " << analysis[val].str() << "\n";
+    llvm::errs() << " + tomerge: " << data.str() << "\n";
+    */
     if (analysis[val] |= data) {
     	//Add val so it can explicitly propagate this new info, if able to
     	if (val != origin)
@@ -378,7 +386,7 @@ bool couldBeZero(Value* val, std::map<Value*, bool>& intseen) {
     return intseen[val];
 }
 
-bool hasNonIntegralUse(TypeAnalyzer& TAZ, Value* val, std::map<Value*, bool>& intseen) {
+bool hasNonIntegralUse(TypeAnalyzer& TAZ, Value* val, std::map<Value*, bool>& intseen, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
     if (intseen.find(val) != intseen.end()) return intseen[val];
     //todo what to insert to intseen
 
@@ -401,23 +409,23 @@ bool hasNonIntegralUse(TypeAnalyzer& TAZ, Value* val, std::map<Value*, bool>& in
                 break;
             }
 
-            unknownUse |= hasNonIntegralUse(TAZ, ci, intseen);
+            unknownUse |= hasNonIntegralUse(TAZ, ci, intseen, sawReturn);
             continue;
         }
 
         if (auto bi = dyn_cast<BinaryOperator>(use)) {
 
-            unknownUse |= hasNonIntegralUse(TAZ, bi, intseen);
+            unknownUse |= hasNonIntegralUse(TAZ, bi, intseen, sawReturn);
             continue;
         }
 
         if (auto pn = dyn_cast<PHINode>(use)) {
-            unknownUse |= hasNonIntegralUse(TAZ, pn, intseen);
+            unknownUse |= hasNonIntegralUse(TAZ, pn, intseen, sawReturn);
             continue;
         }
 
         if (auto seli = dyn_cast<SelectInst>(use)) {
-            unknownUse |= hasNonIntegralUse(TAZ, seli, intseen);
+            unknownUse |= hasNonIntegralUse(TAZ, seli, intseen, sawReturn);
             continue;
         }
 
@@ -437,7 +445,30 @@ bool hasNonIntegralUse(TypeAnalyzer& TAZ, Value* val, std::map<Value*, bool>& in
                 if (ci->getName() == "__cxa_guard_acquire" || ci->getName() == "__cxa_guard_release" || ci->getName() == "__cxa_guard_abort" || ci->getName() == "printf" || ci->getName() == "fprintf") {
                     continue;
                 }
+
                 //TODO recursive fns
+
+                if (!ci->empty()) {
+                    auto a = ci->arg_begin();
+
+                    bool shouldHandleReturn=false;
+
+                    for(size_t i=0; i<call->getNumArgOperands(); i++) {
+                        if (call->getArgOperand(i) == val) {
+                            if(hasNonIntegralUse(TAZ, a, intseen, &shouldHandleReturn)) {
+                                return intseen[val] = unknownUse = true;
+                            }
+                        }
+                        a++;
+                    }
+
+                    if (shouldHandleReturn) {
+                        if(hasNonIntegralUse(TAZ, call, intseen, sawReturn)) {
+                            return intseen[val] = unknownUse = true;
+                        }
+                    }
+                    continue;
+                }
             }
         }
 
@@ -447,11 +478,12 @@ bool hasNonIntegralUse(TypeAnalyzer& TAZ, Value* val, std::map<Value*, bool>& in
 
         if (isa<CmpInst>(use)) continue;
         if (isa<SwitchInst>(use)) continue;
+        if (isa<BranchInst>(use)) continue;
 
-        //if (sawReturn && isa<ReturnInst>(use)) {
-        //    *sawReturn = true;
-        //    continue;
-        //}
+        if (sawReturn && isa<ReturnInst>(use)) {
+            *sawReturn = true;
+            continue;
+        }
 
         unknownUse = true;
         //llvm::errs() << "unknown use : " << *use << " of v: " << *v << "\n";
@@ -473,7 +505,7 @@ bool TypeAnalyzer::runUnusedChecks() {
             auto analysis = getAnalysis(&inst);
             if (analysis[{}] != IntType::Unknown) continue;
             std::map<Value*, bool> intseen;
-            if(!hasNonIntegralUse(*this, &inst, intseen)) {
+            if(!hasNonIntegralUse(*this, &inst, intseen, nullptr)) {
                 updateAnalysis(&inst, IntType::Integer, &inst);
                 changed = true;
             }
@@ -1007,15 +1039,15 @@ DataType TypeAnalysis::intType(Value* val, const NewFnTypeInfo& fn, bool errIfNo
 	return dt;
 }
 
-DataType TypeAnalysis::firstPointer(size_t num, Value* val, const NewFnTypeInfo& fn, bool errIfNotFound) {
+DataType TypeAnalysis::firstPointer(size_t num, Value* val, const NewFnTypeInfo& fn, bool errIfNotFound, bool pointerIntSame) {
     assert(val);
     assert(val->getType());
     assert(val->getType()->isPointerTy());
 	auto q = query(val, fn);
 	auto dt = q[{0}];
-	dt |= q[{-1}];
+	dt.mergeIn(q[{-1}], pointerIntSame);
     for(size_t i=1; i<num; i++) {
-        dt |= q[{(int)i}];
+        dt.mergeIn(q[{(int)i}], pointerIntSame);
     }
 
     if (auto inst = dyn_cast<Instruction>(val)) {
@@ -1070,8 +1102,8 @@ DataType TypeResults::intType(Value* val, bool errIfNotFound) {
 	return analysis.intType(val, info, errIfNotFound);
 }
 
-DataType TypeResults::firstPointer(size_t num, Value* val, bool errIfNotFound) {
-    return analysis.firstPointer(num, val, info, errIfNotFound);
+DataType TypeResults::firstPointer(size_t num, Value* val, bool errIfNotFound, bool pointerIntSame) {
+    return analysis.firstPointer(num, val, info, errIfNotFound, pointerIntSame);
 }
 
 ValueData TypeResults::getReturnAnalysis() {

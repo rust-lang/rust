@@ -72,7 +72,7 @@ attributes #0 = { noinline norecurse nounwind uwtable }
 ; CHECK-NEXT:   ret {} undef
 
 ; CHECK: invertland.rhs:                                   ; preds = %invertwhile.end.loopexit, %invertwhile.body
-; CHECK-NEXT:   %"'de5.0" = phi float [ %13, %invertwhile.body ], [ 0.000000e+00, %invertwhile.end.loopexit ]
+; CHECK-NEXT:   %[[de5:.+]] = phi float [ %13, %invertwhile.body ], [ 0.000000e+00, %invertwhile.end.loopexit ]
 ; CHECK-NEXT:   %"'de.0" = phi float [ %12, %invertwhile.body ], [ 0.000000e+00, %invertwhile.end.loopexit ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %"iv'ac.1", %invertwhile.body ], [ %loopLimit_cache.0, %invertwhile.end.loopexit ]
 ; CHECK-NEXT:   %_unwrap = sext i32 %i to i64
@@ -85,7 +85,7 @@ attributes #0 = { noinline norecurse nounwind uwtable }
 ; CHECK-NEXT:   %indvars.iv.next_unwrap = add i64 %6, %_unwrap
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr float, float* %"array'", i64 %indvars.iv.next_unwrap
 ; CHECK-NEXT:   %7 = load float, float* %"arrayidx'ipg", align 4
-; CHECK-NEXT:   %8 = fadd fast float %7, %"'de5.0"
+; CHECK-NEXT:   %8 = fadd fast float %7, %[[de5]]
 ; CHECK-NEXT:   store float %8, float* %"arrayidx'ipg", align 4
 ; CHECK-NEXT:   %9 = icmp eq i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   br i1 %9, label %invertentry, label %incinvertland.rhs

@@ -58,13 +58,13 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %"'ipc" = bitcast double* %"y'" to i64*
 ; CHECK-NEXT:   %3 = load i64, i64* %"'ipc"
 ; CHECK-NEXT:   store i64 0, i64* %"'ipc"
-; CHECK-NEXT:   %"'ipc2" = bitcast double* %"x'" to i64*
-; CHECK-NEXT:   %4 = load i64, i64* %"'ipc2"
+; CHECK-NEXT:   %[[ipc2:.+]] = bitcast double* %"x'" to i64*
+; CHECK-NEXT:   %4 = load i64, i64* %[[ipc2]]
 ; CHECK-NEXT:   %5 = bitcast i64 %3 to double
 ; CHECK-NEXT:   %6 = bitcast i64 %4 to double
 ; CHECK-NEXT:   %7 = fadd fast double %6, %5
 ; CHECK-NEXT:   %8 = bitcast double %7 to i64
-; CHECK-NEXT:   store i64 %8, i64* %"'ipc2"
+; CHECK-NEXT:   store i64 %8, i64* %[[ipc2]]
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

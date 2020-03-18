@@ -1117,6 +1117,9 @@ bool isFunctionArgumentConstant(TypeResults &TR, CallInst* CI, Value* val, Small
 
     assert(retvals.find(val) == retvals.end());
 
+    //TODO need to fixup the below, it currently is incorrect, but didn't have time to fix rn
+    return false;
+
     //static std::unordered_map<std::tuple<Function*, Value*, SmallPtrSet<Value*,20>, std::set<Value*> >, bool> metacache;
     static std::map<std::tuple<CallInst*, Value*, std::set<Value*>, std::set<Value*>, std::set<Value*>, std::set<Value*> >, bool> metacache;
     //auto metatuple = std::make_tuple(F, val, SmallPtrSet<Value*,20>(constants.begin(), constants.end()), std::set<Value*>(nonconstant.begin(), nonconstant.end()));

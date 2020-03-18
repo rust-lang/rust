@@ -145,7 +145,7 @@ public:
     }
 
     //returns whether changed
-    bool operator|=(const DataType dt) {
+    bool mergeIn(const DataType dt, bool pointerIntSame) {
         if (typeEnum == IntType::Anything) {
             return false;
         }
@@ -158,15 +158,26 @@ public:
         if (dt.typeEnum == IntType::Unknown) {
             return false;
         }
-		if (dt.typeEnum != typeEnum) {
-			llvm::errs() << "typeEnum: " << to_string(typeEnum) << " dt.typeEnum.str(): " << to_string(dt.typeEnum) << "\n";
-		}
+        if (dt.typeEnum != typeEnum) {
+            if (pointerIntSame) {
+                if ((typeEnum == IntType::Pointer && dt.typeEnum == IntType::Integer) ||
+                    (typeEnum == IntType::Integer && dt.typeEnum == IntType::Pointer)) {
+                    return false;
+                }
+            }
+            llvm::errs() << "typeEnum: " << to_string(typeEnum) << " dt.typeEnum.str(): " << to_string(dt.typeEnum) << "\n";
+        }
         assert(dt.typeEnum == typeEnum);
-		if (dt.type != type) {
-			llvm::errs() << "type: " << *type << " dt.type: " << *dt.type << "\n";
-		}
+        if (dt.type != type) {
+            llvm::errs() << "type: " << *type << " dt.type: " << *dt.type << "\n";
+        }
         assert(dt.type == type);
         return false;
+    }
+
+    //returns whether changed
+    bool operator|=(const DataType dt) {
+        return mergeIn(dt, /*pointerIntSame*/false);
     }
 
     bool pointerIntMerge(const DataType dt, llvm::BinaryOperator::BinaryOps op) {
@@ -631,20 +642,15 @@ public:
             return true;
         }
 
-        bool operator|=(const ValueData &v) {
-            //! Detect recursive merge
-            //if (v.mapping.size() == mapping.size() && mapping.size() ) {
-            //    if
-            //}
-
-            //llvm::errs() << "merging @ " << str() << " with " << v.str() << "\n";
+        bool mergeIn(const ValueData &v, bool pointerIntSame) {
+            //! Todo detect recursive merge
 
             bool changed = false;
 
             if (v[{-1}] != IntType::Unknown) {
                 for(auto &pair : mapping) {
                     if (pair.first.size() == 1 && pair.first[0] != -1) {
-                        pair.second |= v[{-1}];
+                        pair.second.mergeIn(v[{-1}], pointerIntSame);
                         //if (pair.second == ) // NOTE DELETE the non -1
                     }
                 }
@@ -654,11 +660,14 @@ public:
                 assert(pair.second != IntType::Unknown);
                 DataType dt = operator[](pair.first);
                 //llvm::errs() << "merging @ " << to_string(pair.first) << " old " << dt.str() << pair.second.str() << "\n";
-                changed |= (dt |= pair.second);
+                changed |= (dt.mergeIn(pair.second, pointerIntSame));
                 insert(pair.first, dt);
             }
-
             return changed;
+        }
+
+        bool operator|=(const ValueData &v) {
+            return mergeIn(v, /*pointerIntSame*/false);
         }
 
         bool operator&=(const ValueData &v) {
@@ -753,7 +762,11 @@ public:
 public:
 	TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn, llvm::Function* function);
 	DataType intType(llvm::Value* val, bool errIfNotFound=true);
-    DataType firstPointer(size_t num, llvm::Value* val, bool errIfNotFound=true);
+
+    //! Returns whether in the first num bytes there is pointer, int, float, or none
+    //! If pointerIntSame is set to true, then consider either as the same (and thus mergable)
+    DataType firstPointer(size_t num, llvm::Value* val, bool errIfNotFound=true, bool pointerIntSame=false);
+
     ValueData query(llvm::Value* val);
     NewFnTypeInfo getAnalyzedTypeInfo();
     ValueData getReturnAnalysis();
@@ -859,7 +872,7 @@ public:
 	ValueData query(llvm::Value* val, const NewFnTypeInfo& fn);
 
     DataType intType(llvm::Value* val, const NewFnTypeInfo& fn, bool errIfNotFound=true);
-    DataType firstPointer(size_t num, llvm::Value* val, const NewFnTypeInfo& fn, bool errIfNotFound=true);
+    DataType firstPointer(size_t num, llvm::Value* val, const NewFnTypeInfo& fn, bool errIfNotFound=true, bool pointerIntSame=false);
 
     inline ValueData getReturnAnalysis(const NewFnTypeInfo &fn, llvm::Function* function) {
         analyzeFunction(fn, function);
