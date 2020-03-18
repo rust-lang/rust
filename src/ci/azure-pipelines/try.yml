@@ -98,24 +98,24 @@ jobs:
         NO_DEBUG_ASSERTIONS: 1
 
 
-#- job: Windows
-#  timeoutInMinutes: 600
-#  pool:
-#    vmImage: 'vs2017-win2016'
-#  steps:
-#  - template: steps/run.yml
-#  strategy:
-#    matrix:
+- job: Windows
+  timeoutInMinutes: 600
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps:
+  - template: steps/run.yml
+  strategy:
+    matrix:
      # 32/64 bit MSVC tests
-#      x86_64-msvc-1:
-#        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
-#        SCRIPT: make ci-subset-1
-#        # FIXME(#59637)
-#        NO_DEBUG_ASSERTIONS: 1
-#        NO_LLVM_ASSERTIONS: 1
-#      x86_64-msvc-2:
-#        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
-#        SCRIPT: make ci-subset-2
+      x86_64-msvc-1:
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        SCRIPT: make ci-subset-1
+        # FIXME(#59637)
+        NO_DEBUG_ASSERTIONS: 1
+        NO_LLVM_ASSERTIONS: 1
+      x86_64-msvc-2:
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        SCRIPT: make ci-subset-2
 #      i686-msvc-1:
 #        INITIAL_RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
 #        SCRIPT: make ci-subset-1
