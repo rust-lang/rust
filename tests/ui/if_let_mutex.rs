@@ -2,14 +2,15 @@
 
 use std::sync::Mutex;
 
-fn do_stuff() {}
+fn do_stuff<T>(_: T) {}
 fn foo() {
     let m = Mutex::new(1u8);
 
-    if let Ok(locked) = m.lock() {
-        do_stuff();
+    if let Err(locked) = m.lock() {
+        do_stuff(locked);
     } else {
-        m.lock().unwrap();
+        let lock = m.lock().unwrap();
+        do_stuff(lock);
     };
 }
 

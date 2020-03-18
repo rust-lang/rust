@@ -734,7 +734,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "if_let_mutex",
         group: "correctness",
-        desc: "default lint description",
+        desc: "locking a `Mutex` in an `if let` block can cause deadlocks",
         deprecation: None,
         module: "if_let_mutex",
     },
