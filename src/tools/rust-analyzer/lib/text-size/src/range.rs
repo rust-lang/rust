@@ -11,7 +11,7 @@ use {
 /// # Translation from `text_unit`
 ///
 /// - `TextRange::from_to(from, to)`        ⟹ `TextRange(from, to)`
-/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::to(size).offset(offset)`
+/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::before(size).offset(offset)`
 /// - `range.start()`                       ⟹ `range.start()`
 /// - `range.end()`                         ⟹ `range.end()`
 /// - `range.len()`                         ⟹ `range.len()`
@@ -63,17 +63,6 @@ impl TextRange {
             start: TextSize::zero(),
             end,
         }
-    }
-
-    /// Create a range after the given start (`start..`).
-    ///
-    /// This returns a std [`RangeFrom`] rather than `TextRange` because
-    /// `TextRange` does not support right-unbounded ranges. As such, this
-    /// should only be used for direct indexing, and bounded ranges should be
-    /// used for persistent ranges (`TextRange(start, TextSize::of(text))`).
-    #[inline]
-    pub const fn after(start: TextSize) -> RangeFrom<usize> {
-        start.raw as usize..
     }
 
     /// Offset this range by some amount.
