@@ -29,7 +29,7 @@ macro_rules! throw_validation_failure {
             write_path(&mut msg, where_);
         }
         write!(&mut msg, ", but expected {}", $details).unwrap();
-        throw_unsup!(ValidationFailure(msg))
+        throw_ub!(ValidationFailure(msg))
     }};
     ($what:expr, $where:expr) => {{
         let mut msg = format!("encountered {}", $what);
@@ -38,7 +38,7 @@ macro_rules! throw_validation_failure {
             msg.push_str(" at ");
             write_path(&mut msg, where_);
         }
-        throw_unsup!(ValidationFailure(msg))
+        throw_ub!(ValidationFailure(msg))
     }};
 }
 
@@ -353,31 +353,39 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                     place.ptr, size, align
                 );
                 match err.kind {
-                    err_unsup!(InvalidNullPointerUsage) => {
+                    err_ub!(InvalidIntPointerUsage(0)) => {
                         throw_validation_failure!(format_args!("a NULL {}", kind), self.path)
                     }
-                    err_unsup!(AlignmentCheckFailed { required, has }) => {
-                        throw_validation_failure!(
-                            format_args!(
-                                "an unaligned {} \
-                                    (required {} byte alignment but found {})",
-                                kind,
-                                required.bytes(),
-                                has.bytes()
-                            ),
-                            self.path
-                        )
-                    }
+                    err_ub!(InvalidIntPointerUsage(i)) => throw_validation_failure!(
+                        format_args!("a {} to unallocated address {}", kind, i),
+                        self.path
+                    ),
+                    err_ub!(AlignmentCheckFailed { required, has }) => throw_validation_failure!(
+                        format_args!(
+                            "an unaligned {} (required {} byte alignment but found {})",
+                            kind,
+                            required.bytes(),
+                            has.bytes()
+                        ),
+                        self.path
+                    ),
                     err_unsup!(ReadBytesAsPointer) => throw_validation_failure!(
                         format_args!("a dangling {} (created from integer)", kind),
                         self.path
                     ),
-                    err_unsup!(PointerOutOfBounds { .. }) | err_unsup!(DanglingPointerDeref) => {
-                        throw_validation_failure!(
-                            format_args!("a dangling {} (not entirely in bounds)", kind),
-                            self.path
-                        )
-                    }
+                    err_ub!(PointerOutOfBounds { .. }) => throw_validation_failure!(
+                        format_args!(
+                            "a dangling {} (going beyond the bounds of its allocation)",
+                            kind
+                        ),
+                        self.path
+                    ),
+                    // This cannot happen during const-eval (because interning already detects
+                    // dangling pointers), but it can happen in Miri.
+                    err_ub!(PointerUseAfterFree(_)) => throw_validation_failure!(
+                        format_args!("a dangling {} (use-after-free)", kind),
+                        self.path
+                    ),
                     _ => bug!("Unexpected error during ptr inbounds test: {}", err),
                 }
             }
@@ -765,11 +773,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     Err(err) => {
                         // For some errors we might be able to provide extra information
                         match err.kind {
-                            err_unsup!(ReadUndefBytes(offset)) => {
+                            err_ub!(InvalidUndefBytes(Some(ptr))) => {
                                 // Some byte was undefined, determine which
                                 // element that byte belongs to so we can
                                 // provide an index.
-                                let i = (offset.bytes() / layout.size.bytes()) as usize;
+                                let i = (ptr.offset.bytes() / layout.size.bytes()) as usize;
                                 self.path.push(PathElem::ArrayElem(i));
 
                                 throw_validation_failure!("undefined bytes", self.path)
@@ -817,7 +825,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Run it.
         match visitor.visit_value(op) {
             Ok(()) => Ok(()),
-            Err(err) if matches!(err.kind, err_unsup!(ValidationFailure { .. })) => Err(err),
+            Err(err) if matches!(err.kind, err_ub!(ValidationFailure { .. })) => Err(err),
             Err(err) if cfg!(debug_assertions) => {
                 bug!("Unexpected error during validation: {}", err)
             }

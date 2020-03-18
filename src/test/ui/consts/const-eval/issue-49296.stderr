@@ -4,7 +4,7 @@ error: any use of this value will cause an error
 LL | const X: u64 = *wat(42);
    | ---------------^^^^^^^^-
    |                |
-   |                dangling pointer was dereferenced
+   |                pointer to alloc2 was dereferenced after this allocation got freed
    |
    = note: `#[deny(const_err)]` on by default
 

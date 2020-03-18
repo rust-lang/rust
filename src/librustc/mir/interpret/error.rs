@@ -1,7 +1,6 @@
-use super::{CheckInAllocMsg, Pointer, RawConst, ScalarMaybeUndef};
+use super::{AllocId, CheckInAllocMsg, Pointer, RawConst, ScalarMaybeUndef};
 
 use crate::hir::map::definitions::DefPathData;
-use crate::mir;
 use crate::mir::interpret::ConstValue;
 use crate::ty::layout::{Align, LayoutError, Size};
 use crate::ty::query::TyCtxtAt;
@@ -14,8 +13,7 @@ use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
-use rustc_span::{Pos, Span};
-use rustc_target::spec::abi::Abi;
+use rustc_span::{def_id::DefId, Pos, Span};
 use std::{any::Any, fmt};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
@@ -296,6 +294,8 @@ pub enum InvalidProgramInfo<'tcx> {
     TypeckError,
     /// An error occurred during layout computation.
     Layout(layout::LayoutError<'tcx>),
+    /// An invalid transmute happened.
+    TransmuteSizeDiff(Ty<'tcx>, Ty<'tcx>),
 }
 
 impl fmt::Debug for InvalidProgramInfo<'_> {
@@ -306,6 +306,11 @@ impl fmt::Debug for InvalidProgramInfo<'_> {
             ReferencedConstant => write!(f, "referenced constant has errors"),
             TypeckError => write!(f, "encountered constants with type errors, stopping evaluation"),
             Layout(ref err) => write!(f, "{}", err),
+            TransmuteSizeDiff(from_ty, to_ty) => write!(
+                f,
+                "tried to transmute from {:?} to {:?}, but their sizes differed",
+                from_ty, to_ty
+            ),
         }
     }
 }
@@ -321,7 +326,10 @@ pub enum UndefinedBehaviorInfo {
     /// An enum discriminant was set to a value which was outside the range of valid values.
     InvalidDiscriminant(ScalarMaybeUndef),
     /// A slice/array index projection went out-of-bounds.
-    BoundsCheckFailed { len: u64, index: u64 },
+    BoundsCheckFailed {
+        len: u64,
+        index: u64,
+    },
     /// Something was divided by 0 (x / 0).
     DivisionByZero,
     /// Something was "remainded" by 0 (x % 0).
@@ -330,6 +338,43 @@ pub enum UndefinedBehaviorInfo {
     PointerArithOverflow,
     /// Invalid metadata in a wide pointer (using `str` to avoid allocations).
     InvalidMeta(&'static str),
+    /// Reading a C string that does not end within its allocation.
+    UnterminatedCString(Pointer),
+    /// Dereferencing a dangling pointer after it got freed.
+    PointerUseAfterFree(AllocId),
+    /// Used a pointer outside the bounds it is valid for.
+    PointerOutOfBounds {
+        ptr: Pointer,
+        msg: CheckInAllocMsg,
+        allocation_size: Size,
+    },
+    /// Used a pointer with bad alignment.
+    AlignmentCheckFailed {
+        required: Align,
+        has: Align,
+    },
+    /// Using an integer as a pointer in the wrong way.
+    InvalidIntPointerUsage(u64),
+    /// Writing to read-only memory.
+    WriteToReadOnly(AllocId),
+    /// Using a pointer-not-to-a-function as function pointer.
+    InvalidFunctionPointer(Pointer),
+    // Trying to access the data behind a function pointer.
+    DerefFunctionPointer(AllocId),
+    /// The value validity check found a problem.
+    /// Should only be thrown by `validity.rs` and always point out which part of the value
+    /// is the problem.
+    ValidationFailure(String),
+    /// Using a non-boolean `u8` as bool.
+    InvalidBool(u8),
+    /// Using a non-character `u32` as character.
+    InvalidChar(u32),
+    /// Using uninitialized data where it is not allowed.
+    InvalidUndefBytes(Option<Pointer>),
+    /// Working with a local that is not currently live.
+    DeadLocal,
+    /// Trying to read from the return place of a function.
+    ReadFromReturnPlace,
 }
 
 impl fmt::Debug for UndefinedBehaviorInfo {
@@ -348,6 +393,50 @@ impl fmt::Debug for UndefinedBehaviorInfo {
             RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
             PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
             InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {}", msg),
+            UnterminatedCString(p) => write!(
+                f,
+                "reading a null-terminated string starting at {:?} with no null found before end of allocation",
+                p,
+            ),
+            PointerUseAfterFree(a) => {
+                write!(f, "pointer to {:?} was dereferenced after this allocation got freed", a)
+            }
+            PointerOutOfBounds { ptr, msg, allocation_size } => write!(
+                f,
+                "{} failed: pointer must be in-bounds at offset {}, \
+                           but is outside bounds of {} which has size {}",
+                msg,
+                ptr.offset.bytes(),
+                ptr.alloc_id,
+                allocation_size.bytes()
+            ),
+            InvalidIntPointerUsage(0) => write!(f, "invalid use of NULL pointer"),
+            InvalidIntPointerUsage(i) => write!(f, "invalid use of {} as a pointer", i),
+            AlignmentCheckFailed { required, has } => write!(
+                f,
+                "accessing memory with alignment {}, but alignment {} is required",
+                has.bytes(),
+                required.bytes()
+            ),
+            WriteToReadOnly(a) => write!(f, "writing to {:?} which is read-only", a),
+            InvalidFunctionPointer(p) => {
+                write!(f, "using {:?} as function pointer but it does not point to a function", p)
+            }
+            DerefFunctionPointer(a) => write!(f, "accessing {:?} which contains a function", a),
+            ValidationFailure(ref err) => write!(f, "type validation failed: {}", err),
+            InvalidBool(b) => write!(f, "interpreting an invalid 8-bit value as a bool: {}", b),
+            InvalidChar(c) => write!(f, "interpreting an invalid 32-bit value as a char: {}", c),
+            InvalidUndefBytes(Some(p)) => write!(
+                f,
+                "reading uninitialized memory at {:?}, but this operation requires initialized memory",
+                p
+            ),
+            InvalidUndefBytes(None) => write!(
+                f,
+                "using uninitialized data, but this operation requires initialized memory"
+            ),
+            DeadLocal => write!(f, "accessing a dead local variable"),
+            ReadFromReturnPlace => write!(f, "tried to read from the return place"),
         }
     }
 }
@@ -359,203 +448,45 @@ impl fmt::Debug for UndefinedBehaviorInfo {
 ///
 /// Currently, we also use this as fall-back error kind for errors that have not been
 /// categorized yet.
-pub enum UnsupportedOpInfo<'tcx> {
+pub enum UnsupportedOpInfo {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
-
     /// When const-prop encounters a situation it does not support, it raises this error.
     /// This must not allocate for performance reasons (hence `str`, not `String`).
     ConstPropUnsupported(&'static str),
-
-    // -- Everything below is not categorized yet --
-    FunctionAbiMismatch(Abi, Abi),
-    FunctionArgMismatch(Ty<'tcx>, Ty<'tcx>),
-    FunctionRetMismatch(Ty<'tcx>, Ty<'tcx>),
-    FunctionArgCountMismatch,
-    UnterminatedCString(Pointer),
-    DanglingPointerDeref,
-    DoubleFree,
-    InvalidMemoryAccess,
-    InvalidFunctionPointer,
-    InvalidBool,
-    PointerOutOfBounds {
-        ptr: Pointer,
-        msg: CheckInAllocMsg,
-        allocation_size: Size,
-    },
-    InvalidNullPointerUsage,
-    ReadPointerAsBytes,
-    ReadBytesAsPointer,
-    ReadForeignStatic,
-    InvalidPointerMath,
-    ReadUndefBytes(Size),
-    DeadLocal,
-    InvalidBoolOp(mir::BinOp),
-    UnimplementedTraitSelection,
-    CalledClosureAsFunction,
-    NoMirFor(String),
-    DerefFunctionPointer,
-    ExecuteMemory,
-    InvalidChar(u128),
-    OutOfTls,
-    TlsOutOfBounds,
-    AlignmentCheckFailed {
-        required: Align,
-        has: Align,
-    },
-    ValidationFailure(String),
-    VtableForArgumentlessMethod,
-    ModifiedConstantMemory,
+    /// Accessing an unsupported foreign static.
+    ReadForeignStatic(DefId),
+    /// Could not find MIR for a function.
+    NoMirFor(DefId),
+    /// Modified a static during const-eval.
+    /// FIXME: move this to `ConstEvalErrKind` through a machine hook.
     ModifiedStatic,
-    TypeNotPrimitive(Ty<'tcx>),
-    ReallocatedWrongMemoryKind(String, String),
-    DeallocatedWrongMemoryKind(String, String),
-    ReallocateNonBasePtr,
-    DeallocateNonBasePtr,
-    IncorrectAllocationInformation(Size, Size, Align, Align),
-    HeapAllocZeroBytes,
-    HeapAllocNonPowerOfTwoAlignment(u64),
-    ReadFromReturnPointer,
-    PathNotFound(Vec<String>),
-    TransmuteSizeDiff(Ty<'tcx>, Ty<'tcx>),
+    /// Encountered a pointer where we needed raw bytes.
+    ReadPointerAsBytes,
+    /// Encountered raw bytes where we needed a pointer.
+    ReadBytesAsPointer,
 }
 
-impl fmt::Debug for UnsupportedOpInfo<'tcx> {
+impl fmt::Debug for UnsupportedOpInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UnsupportedOpInfo::*;
         match self {
-            PointerOutOfBounds { ptr, msg, allocation_size } => write!(
-                f,
-                "{} failed: pointer must be in-bounds at offset {}, \
-                           but is outside bounds of allocation {} which has size {}",
-                msg,
-                ptr.offset.bytes(),
-                ptr.alloc_id,
-                allocation_size.bytes()
-            ),
-            ValidationFailure(ref err) => write!(f, "type validation failed: {}", err),
-            NoMirFor(ref func) => write!(f, "no MIR for `{}`", func),
-            FunctionAbiMismatch(caller_abi, callee_abi) => write!(
-                f,
-                "tried to call a function with ABI {:?} using caller ABI {:?}",
-                callee_abi, caller_abi
-            ),
-            FunctionArgMismatch(caller_ty, callee_ty) => write!(
-                f,
-                "tried to call a function with argument of type {:?} \
-                           passing data of type {:?}",
-                callee_ty, caller_ty
-            ),
-            TransmuteSizeDiff(from_ty, to_ty) => write!(
-                f,
-                "tried to transmute from {:?} to {:?}, but their sizes differed",
-                from_ty, to_ty
-            ),
-            FunctionRetMismatch(caller_ty, callee_ty) => write!(
-                f,
-                "tried to call a function with return type {:?} \
-                           passing return place of type {:?}",
-                callee_ty, caller_ty
-            ),
-            FunctionArgCountMismatch => {
-                write!(f, "tried to call a function with incorrect number of arguments")
+            Unsupported(ref msg) => write!(f, "{}", msg),
+            ConstPropUnsupported(ref msg) => {
+                write!(f, "Constant propagation encountered an unsupported situation: {}", msg)
             }
-            ReallocatedWrongMemoryKind(ref old, ref new) => {
-                write!(f, "tried to reallocate memory from `{}` to `{}`", old, new)
+            ReadForeignStatic(did) => {
+                write!(f, "tried to read from foreign (extern) static {:?}", did)
             }
-            DeallocatedWrongMemoryKind(ref old, ref new) => {
-                write!(f, "tried to deallocate `{}` memory but gave `{}` as the kind", old, new)
-            }
-            InvalidChar(c) => {
-                write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c)
-            }
-            AlignmentCheckFailed { required, has } => write!(
-                f,
-                "tried to access memory with alignment {}, but alignment {} is required",
-                has.bytes(),
-                required.bytes()
-            ),
-            TypeNotPrimitive(ty) => write!(f, "expected primitive type, got {}", ty),
-            PathNotFound(ref path) => write!(f, "cannot find path {:?}", path),
-            IncorrectAllocationInformation(size, size2, align, align2) => write!(
-                f,
-                "incorrect alloc info: expected size {} and align {}, \
-                           got size {} and align {}",
-                size.bytes(),
-                align.bytes(),
-                size2.bytes(),
-                align2.bytes()
-            ),
-            InvalidMemoryAccess => write!(f, "tried to access memory through an invalid pointer"),
-            DanglingPointerDeref => write!(f, "dangling pointer was dereferenced"),
-            DoubleFree => write!(f, "tried to deallocate dangling pointer"),
-            InvalidFunctionPointer => {
-                write!(f, "tried to use a function pointer after offsetting it")
-            }
-            InvalidBool => write!(f, "invalid boolean value read"),
-            InvalidNullPointerUsage => write!(f, "invalid use of NULL pointer"),
-            ReadPointerAsBytes => write!(
-                f,
-                "a raw memory access tried to access part of a pointer value as raw \
-                    bytes"
-            ),
-            ReadBytesAsPointer => {
-                write!(f, "a memory access tried to interpret some bytes as a pointer")
-            }
-            ReadForeignStatic => write!(f, "tried to read from foreign (extern) static"),
-            InvalidPointerMath => write!(
-                f,
-                "attempted to do invalid arithmetic on pointers that would leak base \
-                    addresses, e.g., comparing pointers into different allocations"
-            ),
-            DeadLocal => write!(f, "tried to access a dead local variable"),
-            DerefFunctionPointer => write!(f, "tried to dereference a function pointer"),
-            ExecuteMemory => write!(f, "tried to treat a memory pointer as a function pointer"),
-            OutOfTls => write!(f, "reached the maximum number of representable TLS keys"),
-            TlsOutOfBounds => write!(f, "accessed an invalid (unallocated) TLS key"),
-            CalledClosureAsFunction => {
-                write!(f, "tried to call a closure through a function pointer")
-            }
-            VtableForArgumentlessMethod => {
-                write!(f, "tried to call a vtable function without arguments")
-            }
-            ModifiedConstantMemory => write!(f, "tried to modify constant memory"),
+            NoMirFor(did) => write!(f, "could not load MIR for {:?}", did),
             ModifiedStatic => write!(
                 f,
                 "tried to modify a static's initial value from another static's \
                     initializer"
             ),
-            ReallocateNonBasePtr => write!(
-                f,
-                "tried to reallocate with a pointer not to the beginning of an \
-                    existing object"
-            ),
-            DeallocateNonBasePtr => write!(
-                f,
-                "tried to deallocate with a pointer not to the beginning of an \
-                    existing object"
-            ),
-            HeapAllocZeroBytes => write!(f, "tried to re-, de- or allocate zero bytes on the heap"),
-            ReadFromReturnPointer => write!(f, "tried to read from the return pointer"),
-            UnimplementedTraitSelection => {
-                write!(f, "there were unresolved type arguments during trait selection")
-            }
-            InvalidBoolOp(_) => write!(f, "invalid boolean operation"),
-            UnterminatedCString(_) => write!(
-                f,
-                "attempted to get length of a null-terminated string, but no null \
-                    found before end of allocation"
-            ),
-            ReadUndefBytes(_) => write!(f, "attempted to read undefined bytes"),
-            HeapAllocNonPowerOfTwoAlignment(_) => write!(
-                f,
-                "tried to re-, de-, or allocate heap memory with alignment that is \
-                    not a power of two"
-            ),
-            Unsupported(ref msg) => write!(f, "{}", msg),
-            ConstPropUnsupported(ref msg) => {
-                write!(f, "Constant propagation encountered an unsupported situation: {}", msg)
-            }
+
+            ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes",),
+            ReadBytesAsPointer => write!(f, "unable to turn bytes into a pointer"),
         }
     }
 }
@@ -590,7 +521,7 @@ pub enum InterpError<'tcx> {
     UndefinedBehavior(UndefinedBehaviorInfo),
     /// The program did something the interpreter does not support (some of these *might* be UB
     /// but the interpreter is not sure).
-    Unsupported(UnsupportedOpInfo<'tcx>),
+    Unsupported(UnsupportedOpInfo),
     /// The program was invalid (ill-typed, bad MIR, not sufficiently monomorphized, ...).
     InvalidProgram(InvalidProgramInfo<'tcx>),
     /// The program exhausted the interpreter's resources (stack/heap too big,
@@ -606,7 +537,7 @@ pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
 impl fmt::Display for InterpError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Forward `Display` to `Debug`.
-        write!(f, "{:?}", self)
+        fmt::Debug::fmt(self, f)
     }
 }
 
@@ -631,7 +562,7 @@ impl InterpError<'_> {
         match self {
             InterpError::MachineStop(_)
             | InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
-            | InterpError::Unsupported(UnsupportedOpInfo::ValidationFailure(_))
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationFailure(_))
             | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
             | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_)) => true,
             _ => false,
