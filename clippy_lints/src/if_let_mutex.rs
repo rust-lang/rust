@@ -1,6 +1,6 @@
 use crate::utils::{match_type, paths, span_lint_and_help};
 use if_chain::if_chain;
-use rustc_hir::{Expr, ExprKind, MatchSource, StmtKind};
+use rustc_hir::{Arm, Expr, ExprKind, MatchSource, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -11,7 +11,7 @@ declare_clippy_lint! {
     /// **Why is this bad?** The Mutex lock remains held for the whole
     /// `if let ... else` block and deadlocks.
     ///
-    /// **Known problems:** This lint does not generate an auto-applicable suggestion.
+    /// **Known problems:** None.
     ///
     /// **Example:**
     ///
@@ -49,47 +49,7 @@ impl LateLintPass<'_, '_> for IfLetMutex {
             if match_type(cx, ty, &paths::MUTEX); // make sure receiver is Mutex
             if method_chain_names(op, 10).iter().any(|s| s == "lock"); // and lock is called
 
-            if arms.iter().any(|arm| if_chain! {
-                if let ExprKind::Block(ref block, _l) = arm.body.kind;
-                if block.stmts.iter().any(|stmt| match stmt.kind {
-                    StmtKind::Local(l) => if_chain! {
-                        if let Some(ex) = l.init;
-                        if let ExprKind::MethodCall(_, _, _) = op.kind;
-                        if method_chain_names(ex, 10).iter().any(|s| s == "lock"); // and lock is called
-                        then {
-                            match_type_method_chain(cx, ex, 5)
-                        } else {
-                            false
-                        }
-                    },
-                    StmtKind::Expr(e) => if_chain! {
-                        if let ExprKind::MethodCall(_, _, _) = e.kind;
-                        if method_chain_names(e, 10).iter().any(|s| s == "lock"); // and lock is called
-                        then {
-                            match_type_method_chain(cx, ex, 5)
-                        } else {
-                            false
-                        }
-                    },
-                    StmtKind::Semi(e) => if_chain! {
-                        if let ExprKind::MethodCall(_, _, _) = e.kind;
-                        if method_chain_names(e, 10).iter().any(|s| s == "lock"); // and lock is called
-                        then {
-                            match_type_method_chain(cx, ex, 5)
-                        } else {
-                            false
-                        }
-                    },
-                    _ => {
-                        false
-                    },
-                });
-                then {
-                    true
-                } else {
-                    false
-                }
-            });
+            if arms.iter().any(|arm| matching_arm(arm, op, ex, cx));
             then {
                 span_lint_and_help(
                     cx,
@@ -100,6 +60,52 @@ impl LateLintPass<'_, '_> for IfLetMutex {
                 );
             }
         }
+    }
+}
+
+fn matching_arm(arm: &Arm<'_>, op: &Expr<'_>, ex: &Expr<'_>, cx: &LateContext<'_, '_>) -> bool {
+    if_chain! {
+        if let ExprKind::Block(ref block, _l) = arm.body.kind;
+        if block.stmts.iter().any(|stmt| matching_stmt(stmt, op, ex, cx));
+        then {
+            true
+        } else {
+            false
+        }
+    }
+}
+
+fn matching_stmt(stmt: &Stmt<'_>, op: &Expr<'_>, ex: &Expr<'_>, cx: &LateContext<'_, '_>) -> bool {
+    match stmt.kind {
+        StmtKind::Local(l) => if_chain! {
+            if let Some(ex) = l.init;
+            if let ExprKind::MethodCall(_, _, _) = op.kind;
+            if method_chain_names(ex, 10).iter().any(|s| s == "lock"); // and lock is called
+            then {
+                match_type_method_chain(cx, ex, 5)
+            } else {
+                false
+            }
+        },
+        StmtKind::Expr(e) => if_chain! {
+            if let ExprKind::MethodCall(_, _, _) = e.kind;
+            if method_chain_names(e, 10).iter().any(|s| s == "lock"); // and lock is called
+            then {
+                match_type_method_chain(cx, ex, 5)
+            } else {
+                false
+            }
+        },
+        StmtKind::Semi(e) => if_chain! {
+            if let ExprKind::MethodCall(_, _, _) = e.kind;
+            if method_chain_names(e, 10).iter().any(|s| s == "lock"); // and lock is called
+            then {
+                match_type_method_chain(cx, ex, 5)
+            } else {
+                false
+            }
+        },
+        _ => false,
     }
 }
 

@@ -113,10 +113,3 @@ fn returns_unit() {
         false
     };
 }
-
-fn issue_5271() {
-    let hello = Some(String::from("hello"));
-    let _x = match hello {
-        s @ _ => drop(s),
-    };
-}
