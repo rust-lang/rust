@@ -9,6 +9,7 @@ use rustc_ast::ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Para
 use rustc_ast::ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
@@ -86,10 +87,7 @@ impl<'a> Parser<'a> {
     /// Parses an expression.
     #[inline]
     pub fn parse_expr(&mut self) -> PResult<'a, P<Expr>> {
-        let (mut expr, tokens) =
-            self.collect_tokens(|this| this.parse_expr_res(Restrictions::empty(), None))?;
-        expr.tokens = Some(tokens);
-        Ok(expr)
+        self.parse_expr_res(Restrictions::empty(), None)
     }
 
     pub(super) fn parse_anon_const_expr(&mut self) -> PResult<'a, AnonConst> {
@@ -904,92 +902,96 @@ impl<'a> Parser<'a> {
         // attributes by giving them a empty "already-parsed" list.
         let attrs = AttrVec::new();
 
-        // Note: when adding new syntax here, don't forget to adjust `TokenKind::can_begin_expr()`.
-        let lo = self.token.span;
-        if let token::Literal(_) = self.token.kind {
-            // This match arm is a special-case of the `_` match arm below and
-            // could be removed without changing functionality, but it's faster
-            // to have it here, especially for programs with large constants.
-            self.parse_lit_expr(attrs)
-        } else if self.check(&token::OpenDelim(token::Paren)) {
-            self.parse_tuple_parens_expr(attrs)
-        } else if self.check(&token::OpenDelim(token::Brace)) {
-            self.parse_block_expr(None, lo, BlockCheckMode::Default, attrs)
-        } else if self.check(&token::BinOp(token::Or)) || self.check(&token::OrOr) {
-            self.parse_closure_expr(attrs)
-        } else if self.check(&token::OpenDelim(token::Bracket)) {
-            self.parse_array_or_repeat_expr(attrs)
-        } else if self.eat_lt() {
-            let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
-            Ok(self.mk_expr(lo.to(path.span), ExprKind::Path(Some(qself), path), attrs))
-        } else if self.check_path() {
-            self.parse_path_start_expr(attrs)
-        } else if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
-            self.parse_closure_expr(attrs)
-        } else if self.eat_keyword(kw::If) {
-            self.parse_if_expr(attrs)
-        } else if self.eat_keyword(kw::For) {
-            self.parse_for_expr(None, self.prev_token.span, attrs)
-        } else if self.eat_keyword(kw::While) {
-            self.parse_while_expr(None, self.prev_token.span, attrs)
-        } else if let Some(label) = self.eat_label() {
-            self.parse_labeled_expr(label, attrs)
-        } else if self.eat_keyword(kw::Loop) {
-            self.parse_loop_expr(None, self.prev_token.span, attrs)
-        } else if self.eat_keyword(kw::Continue) {
-            let kind = ExprKind::Continue(self.eat_label());
-            Ok(self.mk_expr(lo.to(self.prev_token.span), kind, attrs))
-        } else if self.eat_keyword(kw::Match) {
-            let match_sp = self.prev_token.span;
-            self.parse_match_expr(attrs).map_err(|mut err| {
-                err.span_label(match_sp, "while parsing this match expression");
-                err
-            })
-        } else if self.eat_keyword(kw::Unsafe) {
-            self.parse_block_expr(None, lo, BlockCheckMode::Unsafe(ast::UserProvided), attrs)
-        } else if self.is_do_catch_block() {
-            self.recover_do_catch(attrs)
-        } else if self.is_try_block() {
-            self.expect_keyword(kw::Try)?;
-            self.parse_try_block(lo, attrs)
-        } else if self.eat_keyword(kw::Return) {
-            self.parse_return_expr(attrs)
-        } else if self.eat_keyword(kw::Break) {
-            self.parse_break_expr(attrs)
-        } else if self.eat_keyword(kw::Yield) {
-            self.parse_yield_expr(attrs)
-        } else if self.eat_keyword(kw::Let) {
-            self.parse_let_expr(attrs)
-        } else if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
-            // Don't complain about bare semicolons after unclosed braces
-            // recovery in order to keep the error count down. Fixing the
-            // delimiters will possibly also fix the bare semicolon found in
-            // expression context. For example, silence the following error:
-            //
-            //     error: expected expression, found `;`
-            //      --> file.rs:2:13
-            //       |
-            //     2 |     foo(bar(;
-            //       |             ^ expected expression
-            self.bump();
-            Ok(self.mk_expr_err(self.token.span))
-        } else if self.token.uninterpolated_span().rust_2018() {
-            // `Span::rust_2018()` is somewhat expensive; don't get it repeatedly.
-            if self.check_keyword(kw::Async) {
-                if self.is_async_block() {
-                    // Check for `async {` and `async move {`.
-                    self.parse_async_block(attrs)
+        let (mut expr, tokens) = self.collect_tokens(|this| {
+            // Note: when adding new syntax here, don't forget to adjust `TokenKind::can_begin_expr()`.
+            let lo = this.token.span;
+            if let token::Literal(_) = this.token.kind {
+                // This match arm is a special-case of the `_` match arm below and
+                // could be removed without changing functionality, but it's faster
+                // to have it here, especially for programs with large constants.
+                this.parse_lit_expr(attrs)
+            } else if this.check(&token::OpenDelim(token::Paren)) {
+                this.parse_tuple_parens_expr(attrs)
+            } else if this.check(&token::OpenDelim(token::Brace)) {
+                this.parse_block_expr(None, lo, BlockCheckMode::Default, attrs)
+            } else if this.check(&token::BinOp(token::Or)) || this.check(&token::OrOr) {
+                this.parse_closure_expr(attrs)
+            } else if this.check(&token::OpenDelim(token::Bracket)) {
+                this.parse_array_or_repeat_expr(attrs)
+            } else if this.eat_lt() {
+                let (qself, path) = this.parse_qpath(PathStyle::Expr)?;
+                Ok(this.mk_expr(lo.to(path.span), ExprKind::Path(Some(qself), path), attrs))
+            } else if this.check_path() {
+                this.parse_path_start_expr(attrs)
+            } else if this.check_keyword(kw::Move) || this.check_keyword(kw::Static) {
+                this.parse_closure_expr(attrs)
+            } else if this.eat_keyword(kw::If) {
+                this.parse_if_expr(attrs)
+            } else if this.eat_keyword(kw::For) {
+                this.parse_for_expr(None, this.prev_token.span, attrs)
+            } else if this.eat_keyword(kw::While) {
+                this.parse_while_expr(None, this.prev_token.span, attrs)
+            } else if let Some(label) = this.eat_label() {
+                this.parse_labeled_expr(label, attrs)
+            } else if this.eat_keyword(kw::Loop) {
+                this.parse_loop_expr(None, this.prev_token.span, attrs)
+            } else if this.eat_keyword(kw::Continue) {
+                let kind = ExprKind::Continue(this.eat_label());
+                Ok(this.mk_expr(lo.to(this.prev_token.span), kind, attrs))
+            } else if this.eat_keyword(kw::Match) {
+                let match_sp = this.prev_token.span;
+                this.parse_match_expr(attrs).map_err(|mut err| {
+                    err.span_label(match_sp, "while parsing this match expression");
+                    err
+                })
+            } else if this.eat_keyword(kw::Unsafe) {
+                this.parse_block_expr(None, lo, BlockCheckMode::Unsafe(ast::UserProvided), attrs)
+            } else if this.is_do_catch_block() {
+                this.recover_do_catch(attrs)
+            } else if this.is_try_block() {
+                this.expect_keyword(kw::Try)?;
+                this.parse_try_block(lo, attrs)
+            } else if this.eat_keyword(kw::Return) {
+                this.parse_return_expr(attrs)
+            } else if this.eat_keyword(kw::Break) {
+                this.parse_break_expr(attrs)
+            } else if this.eat_keyword(kw::Yield) {
+                this.parse_yield_expr(attrs)
+            } else if this.eat_keyword(kw::Let) {
+                this.parse_let_expr(attrs)
+            } else if !this.unclosed_delims.is_empty() && this.check(&token::Semi) {
+                // Don't complain about bare semicolons after unclosed braces
+                // recovery in order to keep the error count down. Fixing the
+                // delimiters will possibly also fix the bare semicolon found in
+                // expression context. For example, silence the following error:
+                //
+                //     error: expected expression, found `;`
+                //      --> file.rs:2:13
+                //       |
+                //     2 |     foo(bar(;
+                //       |             ^ expected expression
+                this.bump();
+                Ok(this.mk_expr_err(this.token.span))
+            } else if this.token.uninterpolated_span().rust_2018() {
+                // `Span::rust_2018()` is somewhat expensive; don't get it repeatedly.
+                if this.check_keyword(kw::Async) {
+                    if this.is_async_block() {
+                        // Check for `async {` and `async move {`.
+                        this.parse_async_block(attrs)
+                    } else {
+                        this.parse_closure_expr(attrs)
+                    }
+                } else if this.eat_keyword(kw::Await) {
+                    this.recover_incorrect_await_syntax(lo, this.prev_token.span, attrs)
                 } else {
-                    self.parse_closure_expr(attrs)
+                    this.parse_lit_expr(attrs)
                 }
-            } else if self.eat_keyword(kw::Await) {
-                self.recover_incorrect_await_syntax(lo, self.prev_token.span, attrs)
             } else {
-                self.parse_lit_expr(attrs)
+                this.parse_lit_expr(attrs)
             }
-        } else {
-            self.parse_lit_expr(attrs)
-        }
+        })?;
+        expr.tokens = Some(tokens);
+        Ok(expr)
     }
 
     fn parse_lit_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
@@ -2124,8 +2126,18 @@ impl<'a> Parser<'a> {
         Ok(await_expr)
     }
 
-    crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
+    crate fn mk_expr_with_tokens(
+        &self,
+        span: Span,
+        kind: ExprKind,
+        attrs: AttrVec,
+        tokens: Option<TokenStream>,
+    ) -> P<Expr> {
         P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None })
+    }
+
+    crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
+        self.mk_expr_with_tokens(span, kind, attrs, None)
     }
 
     pub(super) fn mk_expr_err(&self, span: Span) -> P<Expr> {
