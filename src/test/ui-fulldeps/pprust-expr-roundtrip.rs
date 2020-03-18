@@ -55,6 +55,7 @@ fn expr(kind: ExprKind) -> P<Expr> {
         kind,
         span: DUMMY_SP,
         attrs: ThinVec::new(),
+        tokens: None
     })
 }
 
@@ -111,6 +112,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                     id: DUMMY_NODE_ID,
                     rules: BlockCheckMode::Default,
                     span: DUMMY_SP,
+                    tokens: None
                 });
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::If(e, block.clone(), None)));
             },
@@ -162,6 +164,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                     id: DUMMY_NODE_ID,
                     kind: PatKind::Wild,
                     span: DUMMY_SP,
+                    tokens: None
                 });
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Let(pat.clone(), e)))
             },
@@ -199,6 +202,7 @@ impl MutVisitor for AddParens {
                 kind: ExprKind::Paren(e),
                 span: DUMMY_SP,
                 attrs: ThinVec::new(),
+                tokens: None
             })
         });
     }
