@@ -77,9 +77,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let generator_types =
             check_fn(self, self.param_env, liberated_sig, decl, expr.hir_id, body, gen).1;
 
-        // Create type variables (for now) to represent the transformed
-        // types of upvars. These will be unified during the upvar
-        // inference phase (`upvar.rs`).
         let base_substs =
             InternalSubsts::identity_for_item(self.tcx, self.tcx.closure_base_def_id(expr_def_id));
         // HACK(eddyb) this hardcodes indices into substs but it should rely on
@@ -93,6 +90,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             GenericParamDefKind::Type { .. } => if param.index as usize == tupled_upvars_idx {
                 self.tcx.mk_tup(self.tcx.upvars(expr_def_id).iter().flat_map(|upvars| {
                     upvars.iter().map(|(&var_hir_id, _)| {
+                        // Create type variables (for now) to represent the transformed
+                        // types of upvars. These will be unified during the upvar
+                        // inference phase (`upvar.rs`).
                         self.infcx.next_ty_var(TypeVariableOrigin {
                             // FIXME(eddyb) distinguish upvar inference variables from the rest.
                             kind: TypeVariableOriginKind::ClosureSynthetic,
@@ -101,6 +101,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     })
                 }))
             } else {
+                // Create type variables (for now) to represent the various
+                // pieces of information kept in `{Closure,Generic}Substs`.
+                // They will either be unified below, or later during the upvar
+                // inference phase (`upvar.rs`)
                 self.infcx.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::ClosureSynthetic,
                     span: expr.span,
