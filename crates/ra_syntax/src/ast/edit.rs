@@ -273,6 +273,26 @@ impl ast::UseTree {
         }
         self.clone()
     }
+
+    #[must_use]
+    pub fn split_prefix(&self, prefix: &ast::Path) -> ast::UseTree {
+        let suffix = match split_path_prefix(&prefix) {
+            Some(it) => it,
+            None => return self.clone(),
+        };
+        let use_tree = make::use_tree(suffix.clone(), self.use_tree_list(), self.alias());
+        let nested = make::use_tree_list(iter::once(use_tree));
+        return make::use_tree(prefix.clone(), Some(nested), None);
+
+        fn split_path_prefix(prefix: &ast::Path) -> Option<ast::Path> {
+            let parent = prefix.parent_path()?;
+            let mut res = make::path_unqualified(parent.segment()?);
+            for p in iter::successors(parent.parent_path(), |it| it.parent_path()) {
+                res = make::path_qualified(res, p.segment()?);
+            }
+            Some(res)
+        }
+    }
 }
 
 #[must_use]

@@ -418,6 +418,20 @@ fn main() {
 }
 
 #[test]
+fn doctest_merge_imports() {
+    check(
+        "merge_imports",
+        r#####"
+use std::<|>fmt::Formatter;
+use std::io;
+"#####,
+        r#####"
+use std::{fmt::Formatter, io};
+"#####,
+    )
+}
+
+#[test]
 fn doctest_merge_match_arms() {
     check(
         "merge_match_arms",
