@@ -367,6 +367,10 @@ impl QueryContext for TyCtxt<'tcx> {
     fn def_path_str(&self, def_id: DefId) -> String {
         TyCtxt::def_path_str(*self, def_id)
     }
+
+    fn read_query_job<R>(&self, op: impl FnOnce(Option<QueryJobId<Self::DepKind>>) -> R) -> R {
+        tls::with_related_context(*self, move |icx| op(icx.query))
+    }
 }
 
 impl<'tcx> TyCtxt<'tcx> {

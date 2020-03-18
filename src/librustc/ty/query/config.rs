@@ -2,6 +2,7 @@
 
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::ty::query::caches::QueryCache;
+use crate::ty::query::job::QueryJobId;
 use crate::ty::query::plumbing::CycleError;
 use crate::ty::query::QueryState;
 use rustc_data_structures::profiling::ProfileCategory;
@@ -30,6 +31,9 @@ pub trait QueryContext: DepContext {
 
     /// Get string representation from DefPath.
     fn def_path_str(&self, def_id: DefId) -> String;
+
+    /// Get the query information from the TLS context.
+    fn read_query_job<R>(&self, op: impl FnOnce(Option<QueryJobId<Self::DepKind>>) -> R) -> R;
 }
 
 pub(crate) trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {

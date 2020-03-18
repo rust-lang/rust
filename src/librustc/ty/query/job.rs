@@ -53,11 +53,13 @@ pub struct QueryJobId<K> {
     pub kind: K,
 }
 
-impl QueryJobId<DepKind> {
-    pub fn new(job: QueryShardJobId, shard: usize, kind: DepKind) -> Self {
+impl<K> QueryJobId<K> {
+    pub fn new(job: QueryShardJobId, shard: usize, kind: K) -> Self {
         QueryJobId { job, shard: u16::try_from(shard).unwrap(), kind }
     }
+}
 
+impl QueryJobId<DepKind> {
     fn query<'tcx>(self, map: &QueryMap<'tcx>) -> Query<'tcx> {
         map.get(&self).unwrap().info.query.clone()
     }
@@ -223,16 +225,16 @@ impl<CTX: QueryContext> QueryLatch<CTX> {
 }
 
 #[cfg(parallel_compiler)]
-impl<'tcx> QueryLatch<TyCtxt<'tcx>> {
+impl<K, CTX> QueryLatch<CTX>
+where
+    K: rustc_query_system::dep_graph::DepKind,
+    CTX: QueryContext<DepKind = K>,
+{
     /// Awaits for the query job to complete.
-    pub(super) fn wait_on(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        span: Span,
-    ) -> Result<(), CycleError<TyCtxt<'tcx>>> {
-        tls::with_related_context(tcx, move |icx| {
+    pub(super) fn wait_on(&self, tcx: CTX, span: Span) -> Result<(), CycleError<CTX>> {
+        tcx.read_query_job(move |query| {
             let waiter = Lrc::new(QueryWaiter {
-                query: icx.query,
+                query,
                 span,
                 cycle: Lock::new(None),
                 condvar: Condvar::new(),
