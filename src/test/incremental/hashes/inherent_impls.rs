@@ -360,7 +360,7 @@ impl Foo {
 impl Foo {
     #[rustc_clean(
         cfg="cfail2",
-        except="hir_owner,hir_owner_items,generics_of,predicates_of,type_of,typeck_tables_of"
+        except="hir_owner,hir_owner_items,generics_of,predicates_of,type_of"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_lifetime_bound_to_lifetime_param_of_method<'a, 'b: 'a>(&self) { }

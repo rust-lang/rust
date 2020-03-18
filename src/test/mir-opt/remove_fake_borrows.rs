@@ -26,16 +26,16 @@ fn main() {
 //     goto -> bb7;
 // }
 // bb2: {
-//     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb3, otherwise: bb1];
+//     switchInt((*(*((_1 as Some).0: &&i32)))) -> [0i32: bb3, otherwise: bb1];
 // }
 // bb3: {
 //     goto -> bb4;
 // }
 // bb4: {
 //     _4 = &shallow _1;
-//     _5 = &shallow ((_1 as Some).0: &'<empty> &'<empty> i32);
-//     _6 = &shallow (*((_1 as Some).0: &'<empty> &'<empty> i32));
-//     _7 = &shallow (*(*((_1 as Some).0: &'<empty> &'<empty> i32)));
+//     _5 = &shallow ((_1 as Some).0: &&i32);
+//     _6 = &shallow (*((_1 as Some).0: &&i32));
+//     _7 = &shallow (*(*((_1 as Some).0: &&i32)));
 //     StorageLive(_8);
 //     _8 = _2;
 //     switchInt(move _8) -> [false: bb6, otherwise: bb5];
@@ -72,7 +72,7 @@ fn main() {
 //     goto -> bb7;
 // }
 // bb2: {
-//     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb3, otherwise: bb1];
+//     switchInt((*(*((_1 as Some).0: &&i32)))) -> [0i32: bb3, otherwise: bb1];
 // }
 // bb3: {
 //     goto -> bb4;
