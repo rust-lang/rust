@@ -7,6 +7,7 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
+use rustc::middle::limits::ensure_sufficient_stack;
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -120,7 +121,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                                 ty
                             );
                         }
-                        let folded_ty = self.fold_ty(concrete_ty);
+                        let folded_ty = ensure_sufficient_stack(|| self.fold_ty(concrete_ty));
                         self.anon_depth -= 1;
                         folded_ty
                     }

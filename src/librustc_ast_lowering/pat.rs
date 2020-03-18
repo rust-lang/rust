@@ -1,5 +1,6 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode};
 
+use rustc::{middle::limits::ensure_sufficient_stack, span_bug};
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_hir as hir;
@@ -9,6 +10,16 @@ use rustc_span::{source_map::Spanned, Span};
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     crate fn lower_pat(&mut self, p: &Pat) -> &'hir hir::Pat<'hir> {
         let node = match p.kind {
+            // FIXME: consider not using recursion to lower this.
+            PatKind::Paren(ref inner) => return self.lower_pat(inner),
+            _ => ensure_sufficient_stack(|| self.lower_pat_kind(p)),
+        };
+
+        self.pat_with_node_id_of(p, node)
+    }
+
+    fn lower_pat_kind(&mut self, p: &Pat) -> hir::PatKind<'hir> {
+        match p.kind {
             PatKind::Wild => hir::PatKind::Wild,
             PatKind::Ident(ref binding_mode, ident, ref sub) => {
                 let lower_sub = |this: &mut Self| sub.as_ref().map(|s| this.lower_pat(&*s));
@@ -74,11 +85,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // If we reach here the `..` pattern is not semantically allowed.
                 self.ban_illegal_rest_pat(p.span)
             }
-            PatKind::Paren(ref inner) => return self.lower_pat(inner),
-            PatKind::MacCall(_) => panic!("Shouldn't exist here"),
-        };
-
-        self.pat_with_node_id_of(p, node)
+            PatKind::Paren(_) => span_bug!(p.span, "Should have been handled by `lower_pat`"),
+            PatKind::MacCall(_) => span_bug!(p.span, "Shouldn't exist here"),
+        }
     }
 
     fn lower_pat_tuple(

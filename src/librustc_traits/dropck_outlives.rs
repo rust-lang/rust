@@ -191,27 +191,33 @@ fn dtorck_constraint_for_ty<'tcx>(
 
         ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
-            dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety, constraints)?;
+            rustc::middle::limits::ensure_sufficient_stack(|| {
+                dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety, constraints)
+            })?;
         }
 
-        ty::Tuple(tys) => {
-            for ty in tys.iter() {
-                dtorck_constraint_for_ty(
-                    tcx,
-                    span,
-                    for_ty,
-                    depth + 1,
-                    ty.expect_ty(),
-                    constraints,
-                )?;
-            }
-        }
+        ty::Tuple(tys) => rustc::middle::limits::ensure_sufficient_stack(|| {
+            tys.iter()
+                .map(|ty| {
+                    dtorck_constraint_for_ty(
+                        tcx,
+                        span,
+                        for_ty,
+                        depth + 1,
+                        ty.expect_ty(),
+                        constraints,
+                    )
+                })
+                .collect::<Result<(), _>>()
+        })?,
 
-        ty::Closure(def_id, substs) => {
-            for ty in substs.as_closure().upvar_tys(def_id, tcx) {
-                dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
-            }
-        }
+        ty::Closure(def_id, substs) => rustc::middle::limits::ensure_sufficient_stack(|| {
+            substs
+                .as_closure()
+                .upvar_tys(def_id, tcx)
+                .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints))
+                .collect::<Result<(), _>>()
+        })?,
 
         ty::Generator(def_id, substs, _movability) => {
             // rust-lang/rust#49918: types can be constructed, stored
