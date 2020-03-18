@@ -15,7 +15,7 @@ pub trait Foo {
 }
 
 impl<T: Foo> Foo for Vec<T> {
-    const N: i32 = T::N << 42; // FIXME this should warn
+    const N: i32 = T::N << 42; // ERROR: arithmetic operation will overflow
 }
 
 pub fn foo(x: i32) {
