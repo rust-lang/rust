@@ -100,7 +100,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Abort => {
-                M::abort(self)?;
+                M::abort(self, None)?;
             }
 
             // When we encounter Resume, we've finished unwinding
