@@ -111,21 +111,6 @@ impl<K, V> LeafNode<K, V> {
     }
 }
 
-impl<K, V> NodeHeader<K, V> {
-    fn is_shared_root(&self) -> bool {
-        ptr::eq(self, &EMPTY_ROOT_NODE as *const _ as *const _)
-    }
-}
-
-// We need to implement Sync here in order to make a static instance.
-unsafe impl Sync for NodeHeader<(), ()> {}
-
-// An empty node used as a placeholder for the root node, to avoid allocations.
-// We use just a header in order to save space, since no operation on an empty tree will
-// ever take a pointer past the first key.
-static EMPTY_ROOT_NODE: NodeHeader<(), ()> =
-    NodeHeader { parent: ptr::null(), parent_idx: MaybeUninit::uninit(), len: 0 };
-
 /// The underlying representation of internal nodes. As with `LeafNode`s, these should be hidden
 /// behind `BoxedNode`s to prevent dropping uninitialized keys and values. Any pointer to an
 /// `InternalNode` can be directly casted to a pointer to the underlying `LeafNode` portion of the
@@ -154,8 +139,8 @@ impl<K, V> InternalNode<K, V> {
 }
 
 /// A managed, non-null pointer to a node. This is either an owned pointer to
-/// `LeafNode<K, V>`, an owned pointer to `InternalNode<K, V>`, or a (not owned)
-/// pointer to `NodeHeader<(), ()` (more specifically, the pointer to EMPTY_ROOT_NODE).
+/// `LeafNode<K, V>` or an owned pointer to `InternalNode<K, V>`.
+///
 /// All of these types have a `NodeHeader<K, V>` prefix, meaning that they have at
 /// least the same size as `NodeHeader<K, V>` and store the same kinds of data at the same
 /// offsets; and they have a pointer alignment at least as large as `NodeHeader<K, V>`'s.
@@ -196,20 +181,6 @@ unsafe impl<K: Sync, V: Sync> Sync for Root<K, V> {}
 unsafe impl<K: Send, V: Send> Send for Root<K, V> {}
 
 impl<K, V> Root<K, V> {
-    /// Whether the instance of `Root` wraps a shared, empty root node. If not,
-    /// the entire tree is uniquely owned by the owner of the `Root` instance.
-    pub fn is_shared_root(&self) -> bool {
-        self.as_ref().is_shared_root()
-    }
-
-    /// Returns a shared tree, wrapping a shared root node that is eternally empty.
-    pub fn shared_empty_root() -> Self {
-        Root {
-            node: unsafe { BoxedNode::from_ptr(NonNull::from(&EMPTY_ROOT_NODE).cast()) },
-            height: 0,
-        }
-    }
-
     /// Returns a new owned tree, with its own root node that is initially empty.
     pub fn new_leaf() -> Self {
         Root { node: BoxedNode::from_leaf(Box::new(unsafe { LeafNode::new() })), height: 0 }
@@ -245,7 +216,6 @@ impl<K, V> Root<K, V> {
     /// Adds a new internal node with a single edge, pointing to the previous root, and make that
     /// new node the root. This increases the height by 1 and is the opposite of `pop_level`.
     pub fn push_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
-        debug_assert!(!self.is_shared_root());
         let mut new_node = Box::new(unsafe { InternalNode::new() });
         new_node.edges[0].write(unsafe { BoxedNode::from_ptr(self.node.as_ptr()) });
 
@@ -381,17 +351,11 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// Unsafe because the node must not be the shared root. For more information,
     /// see the `NodeRef` comments.
     unsafe fn as_leaf(&self) -> &LeafNode<K, V> {
-        debug_assert!(!self.is_shared_root());
         self.node.as_ref()
     }
 
     fn as_header(&self) -> &NodeHeader<K, V> {
         unsafe { &*(self.node.as_ptr() as *const NodeHeader<K, V>) }
-    }
-
-    /// Returns whether the node is the shared, empty root.
-    pub fn is_shared_root(&self) -> bool {
-        self.as_header().is_shared_root()
     }
 
     /// Borrows a view into the keys stored in the node.
@@ -464,7 +428,6 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     pub unsafe fn deallocate_and_ascend(
         self,
     ) -> Option<Handle<NodeRef<marker::Owned, K, V, marker::Internal>, marker::Edge>> {
-        assert!(!self.is_shared_root());
         let height = self.height;
         let node = self.node;
         let ret = self.ascend().ok();
@@ -527,14 +490,12 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     /// Unsafe because the caller must ensure that the node is not the shared root.
     unsafe fn into_key_slice(self) -> &'a [K] {
-        debug_assert!(!self.is_shared_root());
         // We cannot be the shared root, so `as_leaf` is okay.
         slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().keys), self.len())
     }
 
     /// Unsafe because the caller must ensure that the node is not the shared root.
     unsafe fn into_val_slice(self) -> &'a [V] {
-        debug_assert!(!self.is_shared_root());
         // We cannot be the shared root, so `as_leaf` is okay.
         slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().vals), self.len())
     }
@@ -555,7 +516,6 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 
     /// Unsafe because the caller must ensure that the node is not the shared root.
     unsafe fn into_key_slice_mut(mut self) -> &'a mut [K] {
-        debug_assert!(!self.is_shared_root());
         // We cannot be the shared root, so `as_leaf_mut` is okay.
         slice::from_raw_parts_mut(
             MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).keys),
@@ -565,7 +525,6 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 
     /// Unsafe because the caller must ensure that the node is not the shared root.
     unsafe fn into_val_slice_mut(mut self) -> &'a mut [V] {
-        debug_assert!(!self.is_shared_root());
         slice::from_raw_parts_mut(
             MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).vals),
             self.len(),
@@ -574,7 +533,6 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 
     /// Unsafe because the caller must ensure that the node is not the shared root.
     unsafe fn into_slices_mut(mut self) -> (&'a mut [K], &'a mut [V]) {
-        debug_assert!(!self.is_shared_root());
         // We cannot use the getters here, because calling the second one
         // invalidates the reference returned by the first.
         // More precisely, it is the call to `len` that is the culprit,
@@ -592,7 +550,6 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     /// Adds a key/value pair the end of the node.
     pub fn push(&mut self, key: K, val: V) {
         assert!(self.len() < CAPACITY);
-        debug_assert!(!self.is_shared_root());
 
         let idx = self.len();
 
@@ -607,7 +564,6 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     /// Adds a key/value pair to the beginning of the node.
     pub fn push_front(&mut self, key: K, val: V) {
         assert!(self.len() < CAPACITY);
-        debug_assert!(!self.is_shared_root());
 
         unsafe {
             slice_insert(self.keys_mut(), 0, key);
@@ -624,7 +580,6 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     pub fn push(&mut self, key: K, val: V, edge: Root<K, V>) {
         assert!(edge.height == self.height - 1);
         assert!(self.len() < CAPACITY);
-        debug_assert!(!self.is_shared_root());
 
         let idx = self.len();
 
@@ -658,7 +613,6 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     pub fn push_front(&mut self, key: K, val: V, edge: Root<K, V>) {
         assert!(edge.height == self.height - 1);
         assert!(self.len() < CAPACITY);
-        debug_assert!(!self.is_shared_root());
 
         unsafe {
             slice_insert(self.keys_mut(), 0, key);
@@ -904,7 +858,6 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
     fn insert_fit(&mut self, key: K, val: V) -> *mut V {
         // Necessary for correctness, but in a private module
         debug_assert!(self.node.len() < CAPACITY);
-        debug_assert!(!self.node.is_shared_root());
 
         unsafe {
             slice_insert(self.node.keys_mut(), self.idx, key);
@@ -1081,7 +1034,6 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
     /// - All the key/value pairs to the right of this handle are put into a newly
     ///   allocated node.
     pub fn split(mut self) -> (NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, K, V, Root<K, V>) {
-        assert!(!self.node.is_shared_root());
         unsafe {
             let mut new_node = Box::new(LeafNode::new());
 
@@ -1113,7 +1065,6 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
     pub fn remove(
         mut self,
     ) -> (Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>, K, V) {
-        assert!(!self.node.is_shared_root());
         unsafe {
             let k = slice_remove(self.node.keys_mut(), self.idx);
             let v = slice_remove(self.node.vals_mut(), self.idx);
