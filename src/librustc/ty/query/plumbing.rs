@@ -2,7 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use crate::ty::query::caches::QueryCache;
 use crate::ty::query::config::{QueryContext, QueryDescription};
 use crate::ty::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId};
@@ -17,6 +17,7 @@ use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, Handler, Level};
+use rustc_query_system::dep_graph::{DepKind, DepNode};
 use rustc_session::Session;
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::DUMMY_SP;
@@ -102,7 +103,7 @@ impl<CTX: QueryContext, C: QueryCache<CTX>> QueryState<CTX, C> {
 
     pub(super) fn try_collect_active_jobs(
         &self,
-        kind: DepKind,
+        kind: CTX::DepKind,
         make_query: fn(C::Key) -> CTX::Query,
         jobs: &mut FxHashMap<QueryJobId<CTX::DepKind>, QueryJobInfo<CTX>>,
     ) -> Option<()>
@@ -375,7 +376,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     fn start_query<F, R>(
         self,
-        token: QueryJobId<DepKind>,
+        token: QueryJobId<crate::dep_graph::DepKind>,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         compute: F,
     ) -> R
@@ -570,7 +571,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // Fast path for when incr. comp. is off. `to_dep_node` is
         // expensive for some `DepKind`s.
         if !self.dep_graph.is_fully_enabled() {
-            let null_dep_node = DepNode::new_no_params(crate::dep_graph::DepKind::Null);
+            let null_dep_node = DepNode::new_no_params(DepKind::NULL);
             return self.force_query_with_job::<Q>(key, job, null_dep_node).0;
         }
 
@@ -634,7 +635,7 @@ impl<'tcx> TyCtxt<'tcx> {
         key: Q::Key,
         prev_dep_node_index: SerializedDepNodeIndex,
         dep_node_index: DepNodeIndex,
-        dep_node: &DepNode,
+        dep_node: &DepNode<crate::dep_graph::DepKind>,
     ) -> Q::Value {
         // Note this function can be called concurrently from the same query
         // We must ensure that this is handled correctly.
@@ -689,7 +690,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn incremental_verify_ich<Q: QueryDescription<TyCtxt<'tcx>>>(
         self,
         result: &Q::Value,
-        dep_node: &DepNode,
+        dep_node: &DepNode<crate::dep_graph::DepKind>,
         dep_node_index: DepNodeIndex,
     ) {
         use rustc_data_structures::fingerprint::Fingerprint;
@@ -716,8 +717,8 @@ impl<'tcx> TyCtxt<'tcx> {
     fn force_query_with_job<Q: QueryDescription<TyCtxt<'tcx>> + 'tcx>(
         self,
         key: Q::Key,
-        job: JobOwner<'tcx, TyCtxt<'tcx>, Q::Cache>,
-        dep_node: DepNode,
+        job: JobOwner<'tcx, Self, Q::Cache>,
+        dep_node: DepNode<crate::dep_graph::DepKind>,
     ) -> (Q::Value, DepNodeIndex) {
         // If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
@@ -754,7 +755,7 @@ impl<'tcx> TyCtxt<'tcx> {
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
         if unlikely!(!diagnostics.is_empty()) {
-            if dep_node.kind != crate::dep_graph::DepKind::Null {
+            if dep_node.kind != DepKind::NULL {
                 self.queries.on_disk_cache.store_diagnostics(dep_node_index, diagnostics);
             }
         }
@@ -803,7 +804,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         key: Q::Key,
         span: Span,
-        dep_node: DepNode,
+        dep_node: DepNode<crate::dep_graph::DepKind>,
     ) {
         // We may be concurrently trying both execute and force a query.
         // Ensure that only one of them runs the query.

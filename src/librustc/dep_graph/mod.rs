@@ -27,6 +27,8 @@ pub type PreviousDepGraph = rustc_query_system::dep_graph::PreviousDepGraph<DepK
 pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<DepKind>;
 
 impl rustc_query_system::dep_graph::DepKind for DepKind {
+    const NULL: Self = DepKind::Null;
+
     fn is_eval_always(&self) -> bool {
         DepKind::is_eval_always(self)
     }
@@ -81,6 +83,10 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
             let icx = if let Some(icx) = icx { icx } else { return };
             op(icx.task_deps)
         })
+    }
+
+    fn can_reconstruct_query_key(&self) -> bool {
+        DepKind::can_reconstruct_query_key(self)
     }
 }
 

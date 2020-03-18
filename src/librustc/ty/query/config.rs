@@ -1,6 +1,5 @@
 //! Query configuration and description traits.
 
-use crate::dep_graph::DepKind;
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::ty::query::caches::QueryCache;
 use crate::ty::query::plumbing::CycleError;
@@ -23,7 +22,7 @@ pub trait QueryConfig<CTX> {
     type Value: Clone;
 }
 
-pub trait QueryContext: DepContext<DepKind = DepKind> {
+pub trait QueryContext: DepContext {
     type Query;
 
     /// Access the session.
