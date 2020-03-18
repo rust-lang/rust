@@ -11,21 +11,15 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 # Since matrix variables are readonly in Azure Pipelines, we take
 # INITIAL_RUST_CONFIGURE_ARGS and establish RUST_CONFIGURE_ARGS
 # which downstream steps can alter
-#if [[ -v INITIAL_RUST_CONFIGURE_ARGS ]]; then
-
-#if [[ -z "$INITIAL_RUST_CONFIGURE_ARGS" ]]; then
-#INITIAL_RUST_CONFIG=${INITIAL_RUST_CONFIGURE_ARGS}
-
+# MacOS ships with Bash 3.16, which means we cannot use 
+# if [[ -v FOO ]], as that was introduced in Bash 4.2
 if [[ -z "${INITIAL_RUST_CONFIGURE_ARGS+x}" ]]; then
     INITIAL_RUST_CONFIG=""
+    echo "No initial Rust Configure Args set"
 else
     INITIAL_RUST_CONFIG="${INITIAL_RUST_CONFIGURE_ARGS}"
+    ciCommandSetEnv RUST_CONFIGURE_ARGS "${INITIAL_RUST_CONFIG}"
 fi
-#if [ -z ${INITIAL_RUST_CONFIG}]; then
-#    ciCommandSetEnv RUST_CONFIGURE_ARGS "${INITIAL_RUST_CONFIG}"
-#else
-#    echo "No initial Rust Configure Args set"
-#fi
 
 # Builders starting with `dist-` are dist builders, but if they also end with
 # `-alt` they are alternate dist builders.
