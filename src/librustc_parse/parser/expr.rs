@@ -2133,7 +2133,7 @@ impl<'a> Parser<'a> {
         attrs: AttrVec,
         tokens: Option<TokenStream>,
     ) -> P<Expr> {
-        P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None })
+        P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens })
     }
 
     crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
