@@ -1,15 +1,15 @@
 //! Query configuration and description traits.
 
+use crate::dep_graph::DepKind;
 use crate::dep_graph::SerializedDepNodeIndex;
-use crate::dep_graph::{DepKind, DepNode};
 use crate::ty::query::caches::QueryCache;
 use crate::ty::query::plumbing::CycleError;
 use crate::ty::query::QueryState;
 use rustc_data_structures::profiling::ProfileCategory;
 use rustc_hir::def_id::DefId;
 
-use crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_query_system::dep_graph::{DepContext, DepNode};
 use rustc_session::Session;
 use std::borrow::Cow;
 use std::fmt::Debug;
@@ -23,7 +23,7 @@ pub trait QueryConfig<CTX> {
     type Value: Clone;
 }
 
-pub trait QueryContext: Copy {
+pub trait QueryContext: DepContext<DepKind = DepKind> {
     type Query;
 
     /// Access the session.
@@ -36,20 +36,22 @@ pub trait QueryContext: Copy {
 pub(crate) trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
     const ANON: bool;
     const EVAL_ALWAYS: bool;
-    const DEP_KIND: DepKind;
+    const DEP_KIND: CTX::DepKind;
 
     type Cache: QueryCache<CTX, Key = Self::Key, Value = Self::Value>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX, Self::Cache>;
 
-    fn to_dep_node(tcx: CTX, key: &Self::Key) -> DepNode;
+    fn to_dep_node(tcx: CTX, key: &Self::Key) -> DepNode<CTX::DepKind>;
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn compute(tcx: CTX, key: Self::Key) -> Self::Value;
 
-    fn hash_result(hcx: &mut StableHashingContext<'_>, result: &Self::Value)
-    -> Option<Fingerprint>;
+    fn hash_result(
+        hcx: &mut CTX::StableHashingContext,
+        result: &Self::Value,
+    ) -> Option<Fingerprint>;
 
     fn handle_cycle_error(tcx: CTX, error: CycleError<CTX>) -> Self::Value;
 }
