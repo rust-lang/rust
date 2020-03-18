@@ -14,8 +14,10 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 #if [[ -v INITIAL_RUST_CONFIGURE_ARGS ]]; then
 
 #if [[ -z "$INITIAL_RUST_CONFIGURE_ARGS" ]]; then
-if [[ -z "${INITIAL_RUST_CONFIGURE_ARGS}" ]]; then
+if [[ -z "${INITIAL_RUST_CONFIGURE_ARGS+x}" ]]; then
     ciCommandSetEnv RUST_CONFIGURE_ARGS "${INITIAL_RUST_CONFIGURE_ARGS}"
+else
+    echo "No initial Rust Configure Args set"
 fi
 
 # Builders starting with `dist-` are dist builders, but if they also end with
