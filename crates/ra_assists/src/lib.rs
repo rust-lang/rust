@@ -93,66 +93,66 @@ pub fn resolved_assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssi
 mod handlers {
     use crate::AssistHandler;
 
+    mod add_custom_impl;
     mod add_derive;
     mod add_explicit_type;
     mod add_impl;
-    mod add_custom_impl;
+    mod add_missing_impl_members;
     mod add_new;
     mod apply_demorgan;
     mod auto_import;
-    mod invert_if;
-    mod flip_comma;
-    mod flip_binexpr;
-    mod flip_trait_bound;
     mod change_visibility;
+    mod early_return;
     mod fill_match_arms;
-    mod merge_match_arms;
-    mod introduce_variable;
+    mod flip_binexpr;
+    mod flip_comma;
+    mod flip_trait_bound;
     mod inline_local_variable;
+    mod introduce_variable;
+    mod invert_if;
+    mod merge_match_arms;
+    mod move_bounds;
+    mod move_guard;
     mod raw_string;
+    mod remove_dbg;
     mod remove_mut;
     mod replace_if_let_with_match;
+    mod replace_qualified_name_with_use;
     mod split_import;
-    mod remove_dbg;
-    pub(crate) mod replace_qualified_name_with_use;
-    mod add_missing_impl_members;
-    mod move_guard;
-    mod move_bounds;
-    mod early_return;
 
     pub(crate) fn all() -> &'static [AssistHandler] {
         &[
+            add_custom_impl::add_custom_impl,
             add_derive::add_derive,
             add_explicit_type::add_explicit_type,
             add_impl::add_impl,
-            add_custom_impl::add_custom_impl,
+            add_missing_impl_members::add_missing_default_members,
+            add_missing_impl_members::add_missing_impl_members,
             add_new::add_new,
             apply_demorgan::apply_demorgan,
-            invert_if::invert_if,
+            auto_import::auto_import,
             change_visibility::change_visibility,
+            early_return::convert_to_guarded_return,
             fill_match_arms::fill_match_arms,
-            merge_match_arms::merge_match_arms,
-            flip_comma::flip_comma,
             flip_binexpr::flip_binexpr,
+            flip_comma::flip_comma,
             flip_trait_bound::flip_trait_bound,
-            introduce_variable::introduce_variable,
-            replace_if_let_with_match::replace_if_let_with_match,
-            split_import::split_import,
-            remove_dbg::remove_dbg,
-            replace_qualified_name_with_use::replace_qualified_name_with_use,
-            add_missing_impl_members::add_missing_impl_members,
-            add_missing_impl_members::add_missing_default_members,
             inline_local_variable::inline_local_variable,
-            move_guard::move_guard_to_arm_body,
-            move_guard::move_arm_cond_to_match_guard,
+            introduce_variable::introduce_variable,
+            invert_if::invert_if,
+            merge_match_arms::merge_match_arms,
             move_bounds::move_bounds_to_where_clause,
+            move_guard::move_arm_cond_to_match_guard,
+            move_guard::move_guard_to_arm_body,
             raw_string::add_hash,
             raw_string::make_raw_string,
             raw_string::make_usual_string,
             raw_string::remove_hash,
+            remove_dbg::remove_dbg,
             remove_mut::remove_mut,
-            early_return::convert_to_guarded_return,
-            auto_import::auto_import,
+            replace_if_let_with_match::replace_if_let_with_match,
+            replace_qualified_name_with_use::replace_qualified_name_with_use,
+            split_import::split_import,
         ]
     }
 }
