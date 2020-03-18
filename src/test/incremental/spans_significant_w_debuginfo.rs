@@ -13,5 +13,5 @@ pub fn main() {}
 
 #[cfg(rpass2)]
 #[rustc_dirty(label="hir_owner", cfg="rpass2")]
-#[rustc_dirty(label="hir_owner_items", cfg="rpass2")]
+#[rustc_dirty(label="hir_owner_nodes", cfg="rpass2")]
 pub fn main() {}

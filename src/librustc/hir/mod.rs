@@ -18,14 +18,14 @@ use rustc_hir::ItemLocalId;
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 
-pub struct HirOwner<'tcx> {
+pub struct Owner<'tcx> {
     parent: HirId,
     node: Node<'tcx>,
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for HirOwner<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let HirOwner { parent, node } = self;
+        let Owner { parent, node } = self;
         hcx.while_hashing_hir_bodies(false, |hcx| {
             parent.hash_stable(hcx, hasher);
             node.hash_stable(hcx, hasher);
@@ -34,22 +34,22 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for HirOwner<'tcx> {
 }
 
 #[derive(Clone)]
-pub struct HirItem<'tcx> {
+pub struct ParentedNode<'tcx> {
     parent: ItemLocalId,
     node: Node<'tcx>,
 }
 
-pub struct HirOwnerItems<'tcx> {
+pub struct OwnerNodes<'tcx> {
     hash: Fingerprint,
-    items: IndexVec<ItemLocalId, Option<HirItem<'tcx>>>,
+    nodes: IndexVec<ItemLocalId, Option<ParentedNode<'tcx>>>,
     bodies: FxHashMap<ItemLocalId, &'tcx Body<'tcx>>,
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for HirOwnerItems<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OwnerNodes<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        // We ignore the `items` and `bodies` fields since these refer to information included in
+        // We ignore the `nodes` and `bodies` fields since these refer to information included in
         // `hash` which is hashed in the collector and used for the crate hash.
-        let HirOwnerItems { hash, items: _, bodies: _ } = *self;
+        let OwnerNodes { hash, nodes: _, bodies: _ } = *self;
         hash.hash_stable(hcx, hasher);
     }
 }
@@ -79,8 +79,8 @@ pub fn provide(providers: &mut Providers<'_>) {
         &tcx.untracked_crate.modules[&module]
     };
     providers.hir_owner = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].signature.unwrap();
-    providers.hir_owner_items = |tcx, id| {
-        tcx.index_hir(LOCAL_CRATE).map[id].with_bodies.as_ref().map(|items| &**items).unwrap()
+    providers.hir_owner_nodes = |tcx, id| {
+        tcx.index_hir(LOCAL_CRATE).map[id].with_bodies.as_ref().map(|nodes| &**nodes).unwrap()
     };
     map::provide(providers);
 }

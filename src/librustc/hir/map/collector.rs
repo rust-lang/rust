@@ -1,7 +1,7 @@
 use crate::arena::Arena;
 use crate::hir::map::definitions::{self, DefPathHash};
 use crate::hir::map::{Entry, HirOwnerData, Map};
-use crate::hir::{HirItem, HirOwner, HirOwnerItems};
+use crate::hir::{Owner, OwnerNodes, ParentedNode};
 use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStore;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -203,30 +203,30 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let data = &mut self.map[id.owner];
 
         if data.with_bodies.is_none() {
-            data.with_bodies = Some(arena.alloc(HirOwnerItems {
+            data.with_bodies = Some(arena.alloc(OwnerNodes {
                 hash,
-                items: IndexVec::new(),
+                nodes: IndexVec::new(),
                 bodies: FxHashMap::default(),
             }));
         }
 
-        let items = data.with_bodies.as_mut().unwrap();
+        let nodes = data.with_bodies.as_mut().unwrap();
 
         if i == 0 {
             // Overwrite the dummy hash with the real HIR owner hash.
-            items.hash = hash;
+            nodes.hash = hash;
 
             // FIXME: feature(impl_trait_in_bindings) broken and trigger this assert
             //assert!(data.signature.is_none());
 
             data.signature =
-                Some(self.arena.alloc(HirOwner { parent: entry.parent, node: entry.node }));
+                Some(self.arena.alloc(Owner { parent: entry.parent, node: entry.node }));
         } else {
             assert_eq!(entry.parent.owner, id.owner);
             insert_vec_map(
-                &mut items.items,
+                &mut nodes.nodes,
                 id.local_id,
-                HirItem { parent: entry.parent.local_id, node: entry.node },
+                ParentedNode { parent: entry.parent.local_id, node: entry.node },
             );
         }
     }
