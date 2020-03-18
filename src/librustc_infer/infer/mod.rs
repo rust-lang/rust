@@ -29,7 +29,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_session::config::BorrowckMode;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -559,7 +559,7 @@ impl TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
 impl<'tcx> InferCtxtBuilder<'tcx> {
     /// Used only by `rustc_typeck` during body type-checking/inference,
     /// will initialize `in_progress_tables` with fresh `TypeckTables`.
-    pub fn with_fresh_in_progress_tables(mut self, table_owner: DefId) -> Self {
+    pub fn with_fresh_in_progress_tables(mut self, table_owner: LocalDefId) -> Self {
         self.fresh_tables = Some(RefCell::new(ty::TypeckTables::empty(Some(table_owner))));
         self
     }
