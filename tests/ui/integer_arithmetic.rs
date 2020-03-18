@@ -4,7 +4,9 @@
     clippy::shadow_reuse,
     clippy::shadow_unrelated,
     clippy::no_effect,
-    clippy::unnecessary_operation
+    clippy::unnecessary_operation,
+    clippy::op_ref,
+    clippy::trivially_copy_pass_by_ref
 )]
 
 #[rustfmt::skip]
@@ -40,25 +42,6 @@ fn main() {
     i &= 1;
     i ^= i;
 
-    let mut f = 1.0f32;
-
-    f * 2.0;
-
-    1.0 + f;
-    f * 2.0;
-    f / 2.0;
-    f - 2.0 * 4.2;
-    -f;
-
-    f += 1.0;
-    f -= 1.0;
-    f *= 2.0;
-    f /= 2.0;
-
-    // no error, overflows are checked by `overflowing_literals`
-    -1.;
-    -(-1.);
-
     // No errors for the following items because they are constant expressions
     enum Foo {
         Bar = -2,
@@ -90,4 +73,30 @@ fn main() {
             1 + 1
         };
     }
+
+
+}
+
+// warn on references as well! (#5328)
+pub fn int_arith_ref() {
+    3 + &1;
+    &3 + 1;
+    &3 + &1;
+}
+
+pub fn foo(x: &i32) -> i32 {
+    let a = 5;
+    a + x
+}
+
+pub fn bar(x: &i32, y: &i32) -> i32 {
+    x + y
+}
+
+pub fn baz(x: i32, y: &i32) -> i32 {
+    x + y
+}
+
+pub fn qux(x: i32, y: i32) -> i32 {
+    (&x + &y)
 }

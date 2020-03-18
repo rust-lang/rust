@@ -51,15 +51,4 @@ fn test_complex_conditions() {
     }
 }
 
-fn test_nested() {
-    fn nested() {
-        let x = Some(());
-        if x.is_some() {
-            x.unwrap(); // unnecessary
-        } else {
-            x.unwrap(); // will panic
-        }
-    }
-}
-
 fn main() {}

@@ -81,11 +81,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
                     | hir::BinOpKind::Gt => return,
                     _ => (),
                 }
+
                 let (l_ty, r_ty) = (cx.tables.expr_ty(l), cx.tables.expr_ty(r));
-                if l_ty.is_integral() && r_ty.is_integral() {
+                if l_ty.peel_refs().is_integral() && r_ty.peel_refs().is_integral() {
                     span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
                     self.expr_span = Some(expr.span);
-                } else if l_ty.is_floating_point() && r_ty.is_floating_point() {
+                } else if l_ty.peel_refs().is_floating_point() && r_ty.peel_refs().is_floating_point() {
                     span_lint(cx, FLOAT_ARITHMETIC, expr.span, "floating-point arithmetic detected");
                     self.expr_span = Some(expr.span);
                 }
