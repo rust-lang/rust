@@ -206,13 +206,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
 
     #[inline]
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
-        self.tcx
-            .layout_of(self.param_env.and(ty))
-            .map_err(|layout| {
-                let result = err_inval!(Layout(layout)).into();
-                trace!("layout_of: returning error: {:?}", result);
-                result
-            })
+        self.tcx.layout_of(self.param_env.and(ty)).map_err(|layout| {
+            let result = err_inval!(Layout(layout)).into();
+            trace!("layout_of: returning error: {:?}", result);
+            result
+        })
     }
 }
 
