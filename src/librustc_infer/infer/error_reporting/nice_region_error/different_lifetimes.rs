@@ -3,6 +3,8 @@
 
 use crate::infer::error_reporting::nice_region_error::util::AnonymousParamInfo;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::infer::lexical_region_resolve::RegionResolutionError;
+use crate::infer::SubregionOrigin;
 use rustc::util::common::ErrorReported;
 
 use rustc_errors::struct_span_err;
@@ -46,6 +48,15 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// It will later be extended to trait objects.
     pub(super) fn try_report_anon_anon_conflict(&self) -> Option<ErrorReported> {
         let (span, sub, sup) = self.regions()?;
+
+        if let Some(RegionResolutionError::ConcreteFailure(
+            SubregionOrigin::ReferenceOutlivesReferent(..),
+            ..,
+        )) = self.error
+        {
+            // This error doesn't make much sense in this case.
+            return None;
+        }
 
         // Determine whether the sub and sup consist of both anonymous (elided) regions.
         let anon_reg_sup = self.tcx().is_suitable_region(sup)?;

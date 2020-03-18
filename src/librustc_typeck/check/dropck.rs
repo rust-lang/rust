@@ -9,7 +9,7 @@ use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, Predicate, Ty, TyCtxt};
 use rustc_errors::struct_span_err;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{InferOk, SuppressRegionErrors, TyCtxtInferExt};
+use rustc_infer::infer::{InferOk, RegionckMode, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -139,7 +139,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
             drop_impl_did,
             &region_scope_tree,
             &outlives_env,
-            SuppressRegionErrors::default(),
+            RegionckMode::default(),
         );
         Ok(())
     })
