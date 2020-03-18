@@ -44,34 +44,7 @@ const B: usize = 6;
 pub const MIN_LEN: usize = B - 1;
 pub const CAPACITY: usize = 2 * B - 1;
 
-/// The underlying representation of leaf nodes. Note that it is often unsafe to actually store
-/// these, since only the first `len` keys and values are assumed to be initialized. As such,
-/// these should always be put behind pointers, and specifically behind `BoxedNode` in the owned
-/// case.
-///
-/// We have a separate type for the header and rely on it matching the prefix of `LeafNode`, in
-/// order to statically allocate a single dummy node to avoid allocations. This struct is
-/// `repr(C)` to prevent them from being reordered. `LeafNode` does not just contain a
-/// `NodeHeader` because we do not want unnecessary padding between `len` and the keys.
-/// Crucially, `NodeHeader` can be safely transmuted to different K and V. (This is exploited
-/// by `as_header`.)
-#[repr(C)]
-struct NodeHeader<K, V> {
-    /// We use `*const` as opposed to `*mut` so as to be covariant in `K` and `V`.
-    /// This either points to an actual node or is null.
-    parent: *const InternalNode<K, V>,
-
-    /// This node's index into the parent node's `edges` array.
-    /// `*node.parent.edges[node.parent_idx]` should be the same thing as `node`.
-    /// This is only guaranteed to be initialized when `parent` is non-null.
-    parent_idx: MaybeUninit<u16>,
-
-    /// The number of keys and values this node stores.
-    ///
-    /// This next to `parent_idx` to encourage the compiler to join `len` and
-    /// `parent_idx` into the same 32-bit word, reducing space overhead.
-    len: u16,
-}
+/// The underlying representation of leaf nodes.
 #[repr(C)]
 struct LeafNode<K, V> {
     /// We use `*const` as opposed to `*mut` so as to be covariant in `K` and `V`.
@@ -141,10 +114,7 @@ impl<K, V> InternalNode<K, V> {
 /// A managed, non-null pointer to a node. This is either an owned pointer to
 /// `LeafNode<K, V>` or an owned pointer to `InternalNode<K, V>`.
 ///
-/// All of these types have a `NodeHeader<K, V>` prefix, meaning that they have at
-/// least the same size as `NodeHeader<K, V>` and store the same kinds of data at the same
-/// offsets; and they have a pointer alignment at least as large as `NodeHeader<K, V>`'s.
-/// However, `BoxedNode` contains no information as to which of the three types
+/// However, `BoxedNode` contains no information as to which of the two types
 /// of nodes it actually contains, and, partially due to this lack of information,
 /// has no destructor.
 struct BoxedNode<K, V> {
@@ -279,8 +249,6 @@ impl<K, V> Root<K, V> {
 ///   `Leaf`, the `NodeRef` points to a leaf node, when this is `Internal` the
 ///   `NodeRef` points to an internal node, and when this is `LeafOrInternal` the
 ///   `NodeRef` could be pointing to either type of node.
-///
-///   Turning this into a `NodeHeader` reference is always safe.
 pub struct NodeRef<BorrowType, K, V, Type> {
     /// The number of levels below the node.
     height: usize,
@@ -322,7 +290,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// Note that, despite being safe, calling this function can have the side effect
     /// of invalidating mutable references that unsafe code has created.
     pub fn len(&self) -> usize {
-        self.as_header().len as usize
+        self.as_leaf().len as usize
     }
 
     /// Returns the height of this node in the whole tree. Zero height denotes the
@@ -353,10 +321,6 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         unsafe { self.node.as_ref() }
     }
 
-    fn as_header(&self) -> &NodeHeader<K, V> {
-        unsafe { &*(self.node.as_ptr() as *const NodeHeader<K, V>) }
-    }
-
     /// Borrows a view into the keys stored in the node.
     pub fn keys(&self) -> &[K] {
         self.reborrow().into_key_slice()
@@ -377,7 +341,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     pub fn ascend(
         self,
     ) -> Result<Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge>, Self> {
-        let parent_as_leaf = self.as_header().parent as *const LeafNode<K, V>;
+        let parent_as_leaf = self.as_leaf().parent as *const LeafNode<K, V>;
         if let Some(non_zero) = NonNull::new(parent_as_leaf as *mut _) {
             Ok(Handle {
                 node: NodeRef {
@@ -386,7 +350,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
                     root: self.root,
                     _marker: PhantomData,
                 },
-                idx: unsafe { usize::from(*self.as_header().parent_idx.as_ptr()) },
+                idx: unsafe { usize::from(*self.as_leaf().parent_idx.as_ptr()) },
                 _marker: PhantomData,
             })
         } else {
