@@ -1,0 +1,13 @@
+[package]
+edition = "2018"
+name = "ra_proc_macro"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+publish = false
+
+[lib]
+doctest = false
+
+[dependencies]
+ra_tt = { path = "../ra_tt" }
+ra_mbe = { path = "../ra_mbe" }
