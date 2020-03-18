@@ -16,7 +16,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 #if [[ -z "$INITIAL_RUST_CONFIGURE_ARGS" ]]; then
 #INITIAL_RUST_CONFIG=${INITIAL_RUST_CONFIGURE_ARGS}
 
-if [[ -z "${INITIAL_RUST_CONFIGURE_ARGS}"]]; then
+if [[ -z "${INITIAL_RUST_CONFIGURE_ARGS+x}" ]]; then
     INITIAL_RUST_CONFIG=""
 else
     INITIAL_RUST_CONFIG="${INITIAL_RUST_CONFIGURE_ARGS}"
