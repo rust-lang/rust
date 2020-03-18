@@ -1684,7 +1684,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 // case it ends up being assigned into the return place.
                                 annotated_closure = self.annotate_fn_sig(
                                     *def_id,
-                                    self.infcx.closure_sig(*def_id, *substs),
+                                    substs.as_closure().sig(*def_id, self.infcx.tcx),
                                 );
                                 debug!(
                                     "annotate_argument_and_return_for_borrow: \

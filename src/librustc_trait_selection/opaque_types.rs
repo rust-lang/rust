@@ -724,7 +724,7 @@ where
                     upvar_ty.visit_with(self);
                 }
 
-                substs.as_closure().sig_ty(def_id, self.tcx).visit_with(self);
+                substs.as_closure().sig_as_fn_ptr_ty(def_id, self.tcx).visit_with(self);
             }
 
             ty::Generator(def_id, ref substs, _) => {

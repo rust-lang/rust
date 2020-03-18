@@ -371,7 +371,7 @@ pub struct ClosureSubsts<'tcx> {
 /// parent slice and not canonical substs themselves.
 struct SplitClosureSubsts<'tcx> {
     closure_kind_ty: Ty<'tcx>,
-    closure_sig_ty: Ty<'tcx>,
+    closure_sig_as_fn_ptr_ty: Ty<'tcx>,
     upvar_kinds: &'tcx [GenericArg<'tcx>],
 }
 
@@ -384,7 +384,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
         let parent_len = generics.parent_count;
         SplitClosureSubsts {
             closure_kind_ty: self.substs.type_at(parent_len),
-            closure_sig_ty: self.substs.type_at(parent_len + 1),
+            closure_sig_as_fn_ptr_ty: self.substs.type_at(parent_len + 1),
             upvar_kinds: &self.substs[parent_len + 2..],
         }
     }
@@ -412,12 +412,10 @@ impl<'tcx> ClosureSubsts<'tcx> {
         self.split(def_id, tcx).closure_kind_ty
     }
 
-    /// Returns the type representing the closure signature for this
-    /// closure; may contain type variables during inference. To get
-    /// the closure signature during inference, use
-    /// `infcx.fn_sig(def_id)`.
-    pub fn sig_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
-        self.split(def_id, tcx).closure_sig_ty
+    /// Returns the `fn` pointer type representing the closure signature for this
+    /// closure.
+    pub fn sig_as_fn_ptr_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
+        self.split(def_id, tcx).closure_sig_as_fn_ptr_ty
     }
 
     /// Returns the closure kind for this closure; only usable outside
@@ -429,16 +427,12 @@ impl<'tcx> ClosureSubsts<'tcx> {
         self.split(def_id, tcx).closure_kind_ty.to_opt_closure_kind().unwrap()
     }
 
-    /// Extracts the signature from the closure; only usable outside
-    /// of an inference context, because in that context we know that
-    /// there are no type variables.
-    ///
-    /// If you have an inference context, use `infcx.closure_sig()`.
+    /// Extracts the signature from the closure.
     pub fn sig(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
-        let ty = self.sig_ty(def_id, tcx);
+        let ty = self.sig_as_fn_ptr_ty(def_id, tcx);
         match ty.kind {
             ty::FnPtr(sig) => sig,
-            _ => bug!("closure_sig_ty is not a fn-ptr: {:?}", ty.kind),
+            _ => bug!("closure_sig_as_fn_ptr_ty is not a fn-ptr: {:?}", ty.kind),
         }
     }
 }
@@ -2200,9 +2194,9 @@ impl<'tcx> TyS<'tcx> {
                 // ignore errors (#54954)
                 ty::Binder::dummy(FnSig::fake())
             }
-            Closure(..) => {
-                bug!("to get the signature of a closure, use `closure_sig()` not `fn_sig()`",)
-            }
+            Closure(..) => bug!(
+                "to get the signature of a closure, use `substs.as_closure().sig()` not `fn_sig()`",
+            ),
             _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self),
         }
     }

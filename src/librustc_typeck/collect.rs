@@ -1527,16 +1527,13 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             // argument. In any case they are embedded within the
             // closure type as part of the `ClosureSubsts`.
             //
-            // To get
-            // the signature of a closure, you should use the
-            // `closure_sig` method on the `ClosureSubsts`:
+            // To get the signature of a closure, you should use the
+            // `sig` method on the `ClosureSubsts`:
             //
-            //    closure_substs.sig(def_id, tcx)
-            //
-            // or, inside of an inference context, you can use
-            //
-            //    infcx.closure_sig(def_id, closure_substs)
-            bug!("to get the signature of a closure, use `closure_sig()` not `fn_sig()`");
+            //    substs.as_closure().sig(def_id, tcx)
+            bug!(
+                "to get the signature of a closure, use `substs.as_closure().sig()` not `fn_sig()`",
+            );
         }
 
         x => {

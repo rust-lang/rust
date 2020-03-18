@@ -681,9 +681,9 @@ pub trait PrettyPrinter<'tcx>:
 
                 if self.tcx().sess.verbose() {
                     p!(write(
-                        " closure_kind_ty={:?} closure_sig_ty={:?}",
+                        " closure_kind_ty={:?} closure_sig_as_fn_ptr_ty={:?}",
                         substs.as_closure().kind_ty(did, self.tcx()),
-                        substs.as_closure().sig_ty(did, self.tcx())
+                        substs.as_closure().sig_as_fn_ptr_ty(did, self.tcx())
                     ));
                 }
 

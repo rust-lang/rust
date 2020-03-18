@@ -105,12 +105,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
                 if self.closure_kind(def_id, substs).is_none() {
-                    let closure_ty = self.closure_sig(def_id, substs);
-                    let fn_sig = self
+                    let closure_sig = substs.as_closure().sig(def_id, self.tcx);
+                    let closure_sig = self
                         .replace_bound_vars_with_fresh_vars(
                             call_expr.span,
                             infer::FnCall,
-                            &closure_ty,
+                            &closure_sig,
                         )
                         .0;
                     let adjustments = autoderef.adjust_steps(self, Needs::None);
@@ -121,12 +121,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             callee_expr,
                             adjusted_ty,
                             adjustments,
-                            fn_sig,
+                            fn_sig: closure_sig,
                             closure_def_id: def_id,
                             closure_substs: substs,
                         },
                     );
-                    return Some(CallStep::DeferredClosure(fn_sig));
+                    return Some(CallStep::DeferredClosure(closure_sig));
                 }
             }
 
