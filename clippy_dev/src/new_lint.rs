@@ -131,7 +131,11 @@ declare_clippy_lint! {{
     /// **Example:**
     ///
     /// ```rust
-    /// // example code
+    /// // example code where clippy issues a warning
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// // example code which does not raise clippy warning
     /// ```
     pub {name_upper},
     {category},
