@@ -2,7 +2,7 @@ use rustc_ast::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
 use rustc_ast::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
 use rustc_ast::attr;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_errors::{struct_span_err, Handler};
+use rustc_errors::{struct_span_err, FatalError, Handler};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, GateIssue, UnstableFeatures};
 use rustc_session::parse::{feature_err, feature_err_issue, ParseSess};
@@ -13,19 +13,22 @@ use rustc_span::Span;
 use log::debug;
 
 macro_rules! gate_feature_fn {
-    ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr) => {{
+    ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr $(, $fatal: expr $(,)?)?) => {{
         let (cx, has_feature, span, name, explain) = (&*$cx, $has_feature, $span, $name, $explain);
         let has_feature: bool = has_feature(&$cx.features);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
         if !has_feature && !span.allows_unstable($name) {
             feature_err_issue(cx.parse_sess, name, span, GateIssue::Language, explain).emit();
+            $(
+                $fatal.raise();
+            )?
         }
     }};
 }
 
 macro_rules! gate_feature_post {
-    ($cx: expr, $feature: ident, $span: expr, $explain: expr) => {
-        gate_feature_fn!($cx, |x: &Features| x.$feature, $span, sym::$feature, $explain)
+    ($cx: expr, $feature: ident, $span: expr, $explain: expr $(, $fatal: expr $(,)?)?) => {
+        gate_feature_fn!($cx, |x: &Features| x.$feature, $span, sym::$feature, $explain $(, $fatal)?)
     };
 }
 
@@ -517,12 +520,18 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
         match param.kind {
-            GenericParamKind::Const { .. } => gate_feature_post!(
-                &self,
-                const_generics,
-                param.ident.span,
-                "const generics are unstable"
-            ),
+            GenericParamKind::Const { .. } => {
+                // FIXME(const_generics): we currently stop compilation prematurely in case a
+                // generic param is found in locations where the `const_generics`
+                // feature is required.
+                gate_feature_post!(
+                    &self,
+                    const_generics,
+                    param.ident.span,
+                    "const generics are unstable",
+                    FatalError,
+                );
+            }
             _ => {}
         }
         visit::walk_generic_param(self, param)
