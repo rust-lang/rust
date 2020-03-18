@@ -916,8 +916,8 @@ impl<T> Option<T> {
 
     /// Zips `self` with another `Option`.
     ///
-    /// Returns `Some((_, _))` when both `self` and `other`
-    /// are `Some(_)`, otherwise return `None`.
+    /// If `self` is `Some(s)` and other is `Some(o)`, this method returns `Some((s, o))`.
+    /// Otherwise, `None` is returned.
     ///
     /// # Examples
     ///
@@ -930,16 +930,15 @@ impl<T> Option<T> {
     /// assert_eq!(x.zip(y), Some((1, "hi")));
     /// assert_eq!(x.zip(z), None);
     /// ```
-    #[inline]
-    #[unstable(feature = "option_zip", issue = "none")]
+    #[unstable(feature = "option_zip", issue = "70086")]
     pub fn zip<U>(self, other: Option<U>) -> Option<(T, U)> {
         self.zip_with(other, |a, b| (a, b))
     }
 
     /// Zips `self` and another `Option` with function `f`.
     ///
-    /// Returns `Some(_)` when both `self` and `other`
-    /// are `Some(_)`, otherwise return `None`.
+    /// If `self` is `Some(s)` and other is `Some(o)`, this method returns `Some(f(s, o))`.
+    /// Otherwise, `None` is returned.
     ///
     /// # Examples
     ///
@@ -958,14 +957,13 @@ impl<T> Option<T> {
     ///     }
     /// }
     ///
-    /// let x = Some(17.);
-    /// let y = Some(42.);
+    /// let x = Some(17.5);
+    /// let y = Some(42.7);
     ///
-    /// assert_eq!(x.zip_with(y, Point::new), Some(Point { x: 17., y: 42. }));
+    /// assert_eq!(x.zip_with(y, Point::new), Some(Point { x: 17.5, y: 42.7 }));
     /// assert_eq!(x.zip_with(None, Point::new), None);
     /// ```
-    #[inline]
-    #[unstable(feature = "option_zip", issue = "none")]
+    #[unstable(feature = "option_zip", issue = "70086")]
     pub fn zip_with<U, F, R>(self, other: Option<U>, f: F) -> Option<R>
     where
         F: FnOnce(T, U) -> R,
