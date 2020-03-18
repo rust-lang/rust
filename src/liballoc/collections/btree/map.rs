@@ -1349,7 +1349,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
         self.fix_top();
     }
 
-    /// If the root node is the shared root node, allocate our own node.
+    /// If the root node is the empty (non-allocated) root node, allocate our
+    /// own node.
     fn ensure_root_is_owned(&mut self) {
         if self.root.is_none() {
             self.root = Some(node::Root::new_leaf());
@@ -1509,7 +1510,6 @@ impl<K, V> Drop for IntoIter<K, V> {
                 // don't have to care about panics this time (they'll abort).
                 while let Some(_) = self.0.next() {}
 
-                // No need to avoid the shared root, because the tree was definitely not empty.
                 unsafe {
                     let mut node =
                         unwrap_unchecked(ptr::read(&self.0.front)).into_node().forget_type();
