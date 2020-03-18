@@ -7,8 +7,8 @@ CLANG=../../build/bin/clang
 OPT=../../build/bin/opt
 
 %-unopt.ll: %.c
-	#$(CLANG) $^ -O0 -S -emit-llvm -o - -o $@ 
-	$(CLANG) $^ -O3 -S -emit-llvm -o - -o $@ 
+	$(CLANG) $^ -O0 -S -emit-llvm -o - -o $@ 
+	#$(CLANG) $^ -O3 -S -emit-llvm -o - -o $@ 
 	#$(CLANG) -fno-unroll-loops $^ -O2 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math -o $@ 
 
 %-unopt.ll: %.cpp

@@ -1038,6 +1038,12 @@ public:
       IRBuilder<> Builder2 = getReverseBuilder(II.getParent());
       Module* M = II.getParent()->getParent()->getParent();
 
+      Value* vdiff = nullptr;
+      if (!gutils->isConstantValue(&II)) {
+        vdiff = diffe(&II, Builder2);
+        setDiffe(&II, Constant::getNullValue(II.getType()), Builder2);
+      }
+
       switch(II.getIntrinsicID()) {
 
         case Intrinsic::assume:
@@ -1076,19 +1082,20 @@ public:
         }
 
         case Intrinsic::sqrt: {
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
+          if (vdiff && !gutils->isConstantValue(II.getOperand(0))) {
             Value* dif0 = Builder2.CreateBinOp(Instruction::FDiv,
-              Builder2.CreateFMul(ConstantFP::get(II.getType(), 0.5), diffe(&II, Builder2)),
+              Builder2.CreateFMul(ConstantFP::get(II.getType(), 0.5), vdiff),
               lookup(&II, Builder2)
             );
             addToDiffe(II.getOperand(0), dif0, Builder2);
           }
           return;
         }
+
         case Intrinsic::fabs: {
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
             Value* cmp  = Builder2.CreateFCmpOLT(lookup(II.getOperand(0), Builder2), ConstantFP::get(II.getOperand(0)->getType(), 0));
-            Value* dif0 = Builder2.CreateFMul(Builder2.CreateSelect(cmp, ConstantFP::get(II.getOperand(0)->getType(), -1), ConstantFP::get(II.getOperand(0)->getType(), 1)), diffe(&II, Builder2));
+            Value* dif0 = Builder2.CreateFMul(Builder2.CreateSelect(cmp, ConstantFP::get(II.getOperand(0)->getType(), -1), ConstantFP::get(II.getOperand(0)->getType(), 1)), vdiff);
             addToDiffe(II.getOperand(0), dif0, Builder2);
           }
           return;
@@ -1099,12 +1106,12 @@ public:
         case Intrinsic::maxnum: {
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
             Value* cmp  = Builder2.CreateFCmpOLT(lookup(II.getOperand(0), Builder2), lookup(II.getOperand(1), Builder2));
-            Value* dif0 = Builder2.CreateSelect(cmp, ConstantFP::get(II.getOperand(0)->getType(), 0), diffe(&II, Builder2));
+            Value* dif0 = Builder2.CreateSelect(cmp, ConstantFP::get(II.getOperand(0)->getType(), 0), vdiff);
             addToDiffe(II.getOperand(0), dif0, Builder2);
           }
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(1))) {
             Value* cmp  = Builder2.CreateFCmpOLT(lookup(II.getOperand(0), Builder2), lookup(II.getOperand(1), Builder2));
-            Value* dif1 = Builder2.CreateSelect(cmp, diffe(&II, Builder2), ConstantFP::get(II.getOperand(0)->getType(), 0));
+            Value* dif1 = Builder2.CreateSelect(cmp, vdiff, ConstantFP::get(II.getOperand(0)->getType(), 0));
             addToDiffe(II.getOperand(1), dif1, Builder2);
           }
           return;
@@ -1115,12 +1122,12 @@ public:
         case Intrinsic::minnum: {
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
             Value* cmp = Builder2.CreateFCmpOLT(lookup(II.getOperand(0), Builder2), lookup(II.getOperand(1), Builder2));
-            Value* dif0 = Builder2.CreateSelect(cmp, diffe(&II, Builder2), ConstantFP::get(II.getOperand(0)->getType(), 0));
+            Value* dif0 = Builder2.CreateSelect(cmp, vdiff, ConstantFP::get(II.getOperand(0)->getType(), 0));
             addToDiffe(II.getOperand(0), dif0, Builder2);
           }
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(1))) {
             Value* cmp = Builder2.CreateFCmpOLT(lookup(II.getOperand(0), Builder2), lookup(II.getOperand(1), Builder2));
-            Value* dif1 = Builder2.CreateSelect(cmp, ConstantFP::get(II.getOperand(0)->getType(), 0), diffe(&II, Builder2));
+            Value* dif1 = Builder2.CreateSelect(cmp, ConstantFP::get(II.getOperand(0)->getType(), 0), vdiff);
             addToDiffe(II.getOperand(1), dif1, Builder2);
           }
           return;
@@ -1128,7 +1135,7 @@ public:
 
         case Intrinsic::log: {
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
-            Value* dif0 = Builder2.CreateFDiv(diffe(&II, Builder2), lookup(II.getOperand(0), Builder2));
+            Value* dif0 = Builder2.CreateFDiv(vdiff, lookup(II.getOperand(0), Builder2));
             addToDiffe(II.getOperand(0), dif0, Builder2);
           }
           return;
@@ -1136,7 +1143,7 @@ public:
 
         case Intrinsic::log2: {
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
-            Value* dif0 = Builder2.CreateFDiv(diffe(&II, Builder2),
+            Value* dif0 = Builder2.CreateFDiv(vdiff,
               Builder2.CreateFMul(ConstantFP::get(II.getType(), 0.6931471805599453), lookup(II.getOperand(0), Builder2))
             );
             addToDiffe(II.getOperand(0), dif0, Builder2);
@@ -1145,7 +1152,7 @@ public:
         }
         case Intrinsic::log10: {
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
-            Value* dif0 = Builder2.CreateFDiv(diffe(&II, Builder2),
+            Value* dif0 = Builder2.CreateFDiv(vdiff,
               Builder2.CreateFMul(ConstantFP::get(II.getType(), 2.302585092994046), lookup(II.getOperand(0), Builder2))
             );
             addToDiffe(II.getOperand(0), dif0, Builder2);
@@ -1155,7 +1162,7 @@ public:
 
         case Intrinsic::exp: {
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
-            Value* dif0 = Builder2.CreateFMul(diffe(&II, Builder2), lookup(&II, Builder2));
+            Value* dif0 = Builder2.CreateFMul(vdiff, lookup(&II, Builder2));
             addToDiffe(II.getOperand(0), dif0, Builder2);
           }
           return;
@@ -1163,7 +1170,7 @@ public:
         case Intrinsic::exp2: {
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
             Value* dif0 = Builder2.CreateFMul(
-              Builder2.CreateFMul(diffe(&II, Builder2), lookup(&II, Builder2)), ConstantFP::get(II.getType(), 0.6931471805599453)
+              Builder2.CreateFMul(vdiff, lookup(&II, Builder2)), ConstantFP::get(II.getType(), 0.6931471805599453)
             );
             addToDiffe(II.getOperand(0), dif0, Builder2);
           }
@@ -1174,7 +1181,7 @@ public:
 
             /*
             dif0 = Builder2.CreateFMul(
-              Builder2.CreateFMul(diffe(&II),
+              Builder2.CreateFMul(vdiff,
                 Builder2.CreateFDiv(lookup(&II), lookup(II.getOperand(0)))), lookup(II.getOperand(1))
             );
             */
@@ -1185,7 +1192,7 @@ public:
             cal->setCallingConv(II.getCallingConv());
             cal->setTailCallKind(II.getTailCallKind());
             Value* dif0 = Builder2.CreateFMul(
-              Builder2.CreateFMul(diffe(&II, Builder2), cal)
+              Builder2.CreateFMul(vdiff, cal)
               , lookup(II.getOperand(1), Builder2)
             );
             addToDiffe(II.getOperand(0), dif0, Builder2);
@@ -1196,7 +1203,7 @@ public:
             Type *tys[] = {II.getOperand(1)->getType()};
 
             Value* dif1 = Builder2.CreateFMul(
-              Builder2.CreateFMul(diffe(&II, Builder2), lookup(&II, Builder2)),
+              Builder2.CreateFMul(vdiff, lookup(&II, Builder2)),
               Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::log, tys), args)
             );
             addToDiffe(II.getOperand(1), dif1, Builder2);
@@ -1208,7 +1215,7 @@ public:
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
             Value *args[] = {lookup(II.getOperand(0), Builder2)};
             Type *tys[] = {II.getOperand(0)->getType()};
-            Value* dif0 = Builder2.CreateFMul(diffe(&II, Builder2),
+            Value* dif0 = Builder2.CreateFMul(vdiff,
               Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::cos, tys), args) );
             addToDiffe(II.getOperand(0), dif0, Builder2);
           }
@@ -1218,7 +1225,7 @@ public:
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
             Value *args[] = {lookup(II.getOperand(0), Builder2)};
             Type *tys[] = {II.getOperand(0)->getType()};
-            Value* dif0 = Builder2.CreateFMul(diffe(&II, Builder2),
+            Value* dif0 = Builder2.CreateFMul(vdiff,
               Builder2.CreateFNeg(
                 Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::sin, tys), args) )
             );
