@@ -192,7 +192,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
         _unwind: Option<BasicBlock>,
     ) -> InterpResult<'tcx> {
-        throw_unsup!(ConstPropUnsupported("calling intrinsics isn't supported in ConstProp"));
+        throw_unsup!(ConstPropUnsupported("calling intrinsics isn't supported in ConstProp"))
     }
 
     fn assert_panic(
@@ -200,11 +200,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _msg: &rustc::mir::AssertMessage<'tcx>,
         _unwind: Option<rustc::mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        bug!("panics terminators are not evaluated in ConstProp");
+        bug!("panics terminators are not evaluated in ConstProp")
     }
 
     fn ptr_to_int(_mem: &Memory<'mir, 'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx, u64> {
-        throw_unsup!(ConstPropUnsupported("ptr-to-int casts aren't supported in ConstProp"));
+        throw_unsup!(ConstPropUnsupported("ptr-to-int casts aren't supported in ConstProp"))
     }
 
     fn binary_ptr_op(
@@ -217,7 +217,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         throw_unsup!(ConstPropUnsupported(
             "pointer arithmetic or comparisons aren't supported \
             in ConstProp"
-        ));
+        ))
     }
 
     #[inline(always)]
@@ -240,7 +240,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        throw_unsup!(ConstPropUnsupported("can't const prop `box` keyword"));
+        throw_unsup!(ConstPropUnsupported("can't const prop `box` keyword"))
     }
 
     fn access_local(
