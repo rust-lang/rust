@@ -916,7 +916,7 @@ impl<T> Option<T> {
 
     /// Zips `self` with another `Option`.
     ///
-    /// If `self` is `Some(s)` and other is `Some(o)`, this method returns `Some((s, o))`.
+    /// If `self` is `Some(s)` and `other` is `Some(o)`, this method returns `Some((s, o))`.
     /// Otherwise, `None` is returned.
     ///
     /// # Examples
@@ -937,7 +937,7 @@ impl<T> Option<T> {
 
     /// Zips `self` and another `Option` with function `f`.
     ///
-    /// If `self` is `Some(s)` and other is `Some(o)`, this method returns `Some(f(s, o))`.
+    /// If `self` is `Some(s)` and `other` is `Some(o)`, this method returns `Some(f(s, o))`.
     /// Otherwise, `None` is returned.
     ///
     /// # Examples
