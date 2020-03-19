@@ -115,16 +115,16 @@ def_regs! {
         f29: freg = ["f29", "ft9"],
         f30: freg = ["f30", "ft10"],
         f31: freg = ["f31", "ft11"],
-        "the frame pointer cannot be used as an operand for inline asm" =
-            ["x8", "s0", "fp"],
-        "the stack pointer cannot be used as an operand for inline asm" =
-            ["x2", "sp"],
-        "the global pointer cannot be used as an operand for inline asm" =
-            ["x3", "gp"],
-        "the thread pointer cannot be used as an operand for inline asm" =
-            ["x4", "tp"],
-        "the zero register cannot be used as an operand for inline asm" =
-            ["x0", "zero"],
+        #error = ["x8", "s0", "fp"] =>
+            "the frame pointer cannot be used as an operand for inline asm",
+        #error = ["x2", "sp"] =>
+            "the stack pointer cannot be used as an operand for inline asm",
+        #error = ["x3", "gp"] =>
+            "the global pointer cannot be used as an operand for inline asm",
+        #error = ["x4", "tp"] =>
+            "the thread pointer cannot be used as an operand for inline asm" ,
+        #error = ["x0", "zero"] =>
+            "the zero register cannot be used as an operand for inline asm",
     }
 }
 

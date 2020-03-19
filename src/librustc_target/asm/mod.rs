@@ -57,7 +57,7 @@ macro_rules! def_regs {
             $reg:ident: $class:ident $(, $extra_class:ident)* = [$reg_name:literal $(, $alias:literal)*] $(% $filter:ident)?,
         )*
         $(
-            $error:literal = [$($bad_reg:literal),+],
+            #error = [$($bad_reg:literal),+] => $error:literal,
         )*
     }) => {
         #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, Eq, PartialEq, Hash, HashStable_Generic)]

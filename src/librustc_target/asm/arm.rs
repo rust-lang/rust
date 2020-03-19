@@ -149,12 +149,12 @@ def_regs! {
         q13: qreg = ["q13"],
         q14: qreg = ["q14"],
         q15: qreg = ["q15"],
-        "the frame pointer cannot be used as an operand for inline asm" =
-            ["r11", "fp"],
-        "the stack pointer cannot be used as an operand for inline asm" =
-            ["r13", "sp"],
-        "the program pointer cannot be used as an operand for inline asm" =
-            ["r15", "pc"],
+        #error = ["r11", "fp"] =>
+            "the frame pointer cannot be used as an operand for inline asm",
+        #error = ["r13", "sp"] =>
+            "the stack pointer cannot be used as an operand for inline asm",
+        #error = ["r15", "pc"] =>
+            "the program pointer cannot be used as an operand for inline asm",
     }
 }
 
@@ -231,6 +231,15 @@ impl ArmInlineAsmReg {
                 }
             };
         }
+
+        // ARM's floating-point register file is interesting in that it can be
+        // viewed as 16 128-bit registers, 32 64-bit registers or 32 32-bit
+        // registers. Because these views overlap, the registers of different
+        // widths will conflict (e.g. d0 overlaps with s0 and s1, and q1
+        // overlaps with d2 and d3).
+        //
+        // See section E1.3.1 of the ARM Architecture Reference Manual for
+        // ARMv8-A for more details.
         reg_conflicts! {
             q0 : d0 d1 : s0 s1 s2 s3,
             q1 : d2 d3 : s4 s5 s6 s7,

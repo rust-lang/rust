@@ -24,13 +24,10 @@ impl AArch64InlineAsmRegClass {
         ty: InlineAsmType,
     ) -> Option<(char, &'static str, Option<&'static str>)> {
         match self {
-            Self::reg => {
-                if ty.size().bits() <= 32 {
-                    Some(('w', "w0", None))
-                } else {
-                    None
-                }
-            }
+            Self::reg => match ty.size().bits() {
+                64 => None,
+                _ => Some(('w', "w0", None)),
+            },
             Self::vreg | Self::vreg_low16 => match ty.size().bits() {
                 8 => Some(('b', "b0", None)),
                 16 => Some(('h', "h0", None)),
@@ -57,8 +54,8 @@ impl AArch64InlineAsmRegClass {
             Self::reg => types! { _: I8, I16, I32, I64, F32, F64; },
             Self::vreg | Self::vreg_low16 => types! {
                 "fp": I8, I16, I32, I64, F32, F64,
-                VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2), VecF64(1),
-                VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
+                    VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2), VecF64(1),
+                    VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
             },
         }
     }
@@ -128,12 +125,12 @@ def_regs! {
         v29: vreg = ["v29", "b29", "h29", "s29", "d29", "q29"],
         v30: vreg = ["v30", "b30", "h30", "s30", "d30", "q30"],
         v31: vreg = ["v31", "b31", "h31", "s31", "d31", "q31"],
-        "the frame pointer cannot be used as an operand for inline asm" =
-            ["x29", "fp"],
-        "the stack pointer cannot be used as an operand for inline asm" =
-            ["sp", "wsp"],
-        "the zero register cannot be used as an operand for inline asm" =
-            ["xzr", "wzr"],
+        #error = ["x29", "fp"] =>
+            "the frame pointer cannot be used as an operand for inline asm",
+        #error = ["sp", "wsp"] =>
+            "the stack pointer cannot be used as an operand for inline asm",
+        #error = ["xzr", "wzr"] =>
+            "the zero register cannot be used as an operand for inline asm",
     }
 }
 

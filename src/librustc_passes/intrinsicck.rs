@@ -239,8 +239,10 @@ impl ExprVisitor<'tcx> {
                     &format!("type `{}`", self.tables.expr_ty_adjusted(in_expr)),
                 );
                 err.span_label(expr.span, &format!("type `{}`", ty));
-                err.note("asm inout arguments must have the same type");
-                err.note("unless they are both pointers or integers of the same size");
+                err.note(
+                    "asm inout arguments must have the same type, \
+                    unless they are both pointers or integers of the same size",
+                );
                 err.emit();
             }
 
@@ -271,7 +273,16 @@ impl ExprVisitor<'tcx> {
             }
         };
 
-        // Check whether the selected type requires a target feature.
+        // Check whether the selected type requires a target feature. Note that
+        // this is different from the feature check we did earlier in AST
+        // lowering. While AST lowering checked that this register class is
+        // usable at all with the currently enabled features, some types may
+        // only be usable with a register class when a certain feature is
+        // enabled. We check this here since it depends on the results of typeck.
+        //
+        // Also note that this check isn't run when the operand type is never
+        // (!). In that case we still need the earlier check in AST lowering to
+        // verify that the register class is usable at all.
         if let Some(feature) = feature {
             if !self.tcx.sess.target_features.contains(&Symbol::intern(feature)) {
                 let msg = &format!("`{}` target feature is not enabled", feature);

@@ -83,8 +83,7 @@ LL |         asm!("{:r}", inout(reg) 0u16 => val_i8);
    |                                 |
    |                                 type `u16`
    |
-   = note: asm inout arguments must have the same type
-   = note: unless they are both pointers or integers of the same size
+   = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
 
 error: incompatible types for asm inout argument
   --> $DIR/type-check-3.rs:59:33
@@ -94,8 +93,7 @@ LL |         asm!("{:r}", inout(reg) 0u32 => val_f32);
    |                                 |
    |                                 type `u32`
    |
-   = note: asm inout arguments must have the same type
-   = note: unless they are both pointers or integers of the same size
+   = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
 
 error: incompatible types for asm inout argument
   --> $DIR/type-check-3.rs:61:33
@@ -105,8 +103,7 @@ LL |         asm!("{:r}", inout(reg) 0u32 => val_ptr);
    |                                 |
    |                                 type `u32`
    |
-   = note: asm inout arguments must have the same type
-   = note: unless they are both pointers or integers of the same size
+   = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
 
 error: incompatible types for asm inout argument
   --> $DIR/type-check-3.rs:63:33
@@ -116,8 +113,7 @@ LL |         asm!("{:r}", inout(reg) main => val_u32);
    |                                 |
    |                                 type `fn()`
    |
-   = note: asm inout arguments must have the same type
-   = note: unless they are both pointers or integers of the same size
+   = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
 
 error: aborting due to 9 previous errors; 4 warnings emitted
 

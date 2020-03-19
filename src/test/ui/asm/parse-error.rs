@@ -35,7 +35,10 @@ fn main() {
         asm!("", options(nomem, foo));
         //~^ ERROR expected one of
         asm!("", options(), options());
-        //~^ ERROR asm options cannot be specified twice
+        //~^ ERROR asm options cannot be specified multiple times
+        asm!("", options(), options(), options());
+        //~^ ERROR asm options cannot be specified multiple times
+        //~^^ ERROR asm options cannot be specified multiple times
         asm!("{}", options(), const foo);
         //~^ ERROR arguments are not allowed after options
         asm!("{a}", a = const foo, a = const bar);

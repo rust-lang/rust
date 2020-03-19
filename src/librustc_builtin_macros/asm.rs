@@ -80,46 +80,13 @@ fn parse_args<'a>(
             break;
         } // accept trailing commas
 
-        let span_start = p.token.span;
-
         // Parse options
         if p.eat(&token::Ident(sym::options, false)) {
-            p.expect(&token::OpenDelim(token::DelimToken::Paren))?;
-
-            while !p.eat(&token::CloseDelim(token::DelimToken::Paren)) {
-                if p.eat(&token::Ident(sym::pure, false)) {
-                    args.options |= InlineAsmOptions::PURE;
-                } else if p.eat(&token::Ident(sym::nomem, false)) {
-                    args.options |= InlineAsmOptions::NOMEM;
-                } else if p.eat(&token::Ident(sym::readonly, false)) {
-                    args.options |= InlineAsmOptions::READONLY;
-                } else if p.eat(&token::Ident(sym::preserves_flags, false)) {
-                    args.options |= InlineAsmOptions::PRESERVES_FLAGS;
-                } else if p.eat(&token::Ident(sym::noreturn, false)) {
-                    args.options |= InlineAsmOptions::NORETURN;
-                } else {
-                    p.expect(&token::Ident(sym::nostack, false))?;
-                    args.options |= InlineAsmOptions::NOSTACK;
-                }
-
-                // Allow trailing commas
-                if p.eat(&token::CloseDelim(token::DelimToken::Paren)) {
-                    break;
-                }
-                p.expect(&token::Comma)?;
-            }
-
-            let new_span = span_start.to(p.prev_token.span);
-            if let Some(options_span) = args.options_span {
-                ecx.struct_span_err(new_span, "asm options cannot be specified twice")
-                    .span_label(options_span, "previously here")
-                    .span_label(new_span, "duplicate options")
-                    .emit();
-            } else {
-                args.options_span = Some(new_span);
-            }
+            parse_options(&mut p, &mut args)?;
             continue;
         }
+
+        let span_start = p.token.span;
 
         // Parse operand names
         let name = if p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq) {
@@ -129,29 +96,6 @@ fn parse_args<'a>(
             Some(ident.name)
         } else {
             None
-        };
-
-        fn parse_reg<'a>(
-            p: &mut Parser<'a>,
-            explicit_reg: &mut bool,
-        ) -> Result<ast::InlineAsmRegOrRegClass, DiagnosticBuilder<'a>> {
-            p.expect(&token::OpenDelim(token::DelimToken::Paren))?;
-            let result = match p.token.kind {
-                token::Ident(name, false) => ast::InlineAsmRegOrRegClass::RegClass(name),
-                token::Literal(token::Lit { kind: token::LitKind::Str, symbol, suffix: _ }) => {
-                    *explicit_reg = true;
-                    ast::InlineAsmRegOrRegClass::Reg(symbol)
-                }
-                _ => {
-                    return Err(p.struct_span_err(
-                        p.token.span,
-                        "expected register class or explicit register",
-                    ));
-                }
-            };
-            p.bump();
-            p.expect(&token::CloseDelim(token::DelimToken::Paren))?;
-            Ok(result)
         };
 
         let mut explicit_reg = false;
@@ -317,6 +261,69 @@ fn parse_args<'a>(
     }
 
     Ok(args)
+}
+
+fn parse_options<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> Result<(), DiagnosticBuilder<'a>> {
+    let span_start = p.prev_token.span;
+
+    p.expect(&token::OpenDelim(token::DelimToken::Paren))?;
+
+    while !p.eat(&token::CloseDelim(token::DelimToken::Paren)) {
+        if p.eat(&token::Ident(sym::pure, false)) {
+            args.options |= InlineAsmOptions::PURE;
+        } else if p.eat(&token::Ident(sym::nomem, false)) {
+            args.options |= InlineAsmOptions::NOMEM;
+        } else if p.eat(&token::Ident(sym::readonly, false)) {
+            args.options |= InlineAsmOptions::READONLY;
+        } else if p.eat(&token::Ident(sym::preserves_flags, false)) {
+            args.options |= InlineAsmOptions::PRESERVES_FLAGS;
+        } else if p.eat(&token::Ident(sym::noreturn, false)) {
+            args.options |= InlineAsmOptions::NORETURN;
+        } else {
+            p.expect(&token::Ident(sym::nostack, false))?;
+            args.options |= InlineAsmOptions::NOSTACK;
+        }
+
+        // Allow trailing commas
+        if p.eat(&token::CloseDelim(token::DelimToken::Paren)) {
+            break;
+        }
+        p.expect(&token::Comma)?;
+    }
+
+    let new_span = span_start.to(p.prev_token.span);
+    if let Some(options_span) = args.options_span {
+        p.struct_span_err(new_span, "asm options cannot be specified multiple times")
+            .span_label(options_span, "previously here")
+            .span_label(new_span, "duplicate options")
+            .emit();
+    } else {
+        args.options_span = Some(new_span);
+    }
+
+    Ok(())
+}
+
+fn parse_reg<'a>(
+    p: &mut Parser<'a>,
+    explicit_reg: &mut bool,
+) -> Result<ast::InlineAsmRegOrRegClass, DiagnosticBuilder<'a>> {
+    p.expect(&token::OpenDelim(token::DelimToken::Paren))?;
+    let result = match p.token.kind {
+        token::Ident(name, false) => ast::InlineAsmRegOrRegClass::RegClass(name),
+        token::Literal(token::Lit { kind: token::LitKind::Str, symbol, suffix: _ }) => {
+            *explicit_reg = true;
+            ast::InlineAsmRegOrRegClass::Reg(symbol)
+        }
+        _ => {
+            return Err(
+                p.struct_span_err(p.token.span, "expected register class or explicit register")
+            );
+        }
+    };
+    p.bump();
+    p.expect(&token::CloseDelim(token::DelimToken::Paren))?;
+    Ok(result)
 }
 
 fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast::Expr> {

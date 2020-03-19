@@ -62,16 +62,13 @@ impl X86InlineAsmRegClass {
                 _ => None,
             },
             Self::xmm_reg => None,
-            Self::ymm_reg => {
-                if ty.size().bits() <= 128 {
-                    Some(('x', "xmm0", None))
-                } else {
-                    None
-                }
-            }
+            Self::ymm_reg => match ty.size().bits() {
+                256 => None,
+                _ => Some(('x', "xmm0", None)),
+            },
             Self::zmm_reg => match ty.size().bits() {
-                256 => Some(('y', "ymm0", None)),
                 512 => None,
+                256 => Some(('y', "ymm0", None)),
                 _ => Some(('x', "xmm0", None)),
             },
             Self::kreg => None,
@@ -108,18 +105,18 @@ impl X86InlineAsmRegClass {
             }
             Self::xmm_reg => types! {
                 "sse": I32, I64, F32, F64,
-                VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
+                  VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
             },
             Self::ymm_reg => types! {
                 "avx": I32, I64, F32, F64,
-                VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2),
-                VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF32(8), VecF64(4);
+                    VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2),
+                    VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF32(8), VecF64(4);
             },
             Self::zmm_reg => types! {
                 "avx512f": I32, I64, F32, F64,
-                VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2),
-                VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF32(8), VecF64(4),
-                VecI8(64), VecI16(32), VecI32(16), VecI64(8), VecF32(16), VecF64(8);
+                    VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2),
+                    VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF32(8), VecF64(4),
+                    VecI8(64), VecI16(32), VecI32(16), VecI64(8), VecF32(16), VecF64(8);
             },
             Self::kreg => types! {
                 "avx512f": I8, I16;
@@ -227,19 +224,20 @@ def_regs! {
         k5: kreg = ["k5"],
         k6: kreg = ["k6"],
         k7: kreg = ["k7"],
-        "high byte registers are not currently supported as operands for inline asm" =
-            ["ah", "bh", "ch", "dh"],
-        "the frame pointer cannot be used as an operand for inline asm" =
-            ["bp", "bpl", "ebp", "rbp"],
-        "the stack pointer cannot be used as an operand for inline asm" =
-            ["sp", "spl", "esp", "rsp"],
-        "the instruction pointer cannot be used as an operand for inline asm" =
-            ["ip", "eip", "rip"],
-        "x87 registers are not currently supported as operands for inline asm" =
-            ["st", "st(0)", "st(1)", "st(2)", "st(3)", "st(4)", "st(5)", "st(6)", "st(7)"],
-        "MMX registers are not currently supported as operands for inline asm" =
-            ["mm0", "mm1", "mm2", "mm3", "mm4", "mm5", "mm6", "mm7"],
-        "the k0 AVX mask register cannot be used as an operand for inline asm" = ["k0"],
+        #error = ["ah", "bh", "ch", "dh"] =>
+            "high byte registers are not currently supported as operands for inline asm",
+        #error = ["bp", "bpl", "ebp", "rbp"] =>
+            "the frame pointer cannot be used as an operand for inline asm",
+        #error = ["sp", "spl", "esp", "rsp"] =>
+            "the stack pointer cannot be used as an operand for inline asm",
+        #error = ["ip", "eip", "rip"] =>
+            "the instruction pointer cannot be used as an operand for inline asm",
+        #error = ["st", "st(0)", "st(1)", "st(2)", "st(3)", "st(4)", "st(5)", "st(6)", "st(7)"] =>
+            "x87 registers are not currently supported as operands for inline asm",
+        #error = ["mm0", "mm1", "mm2", "mm3", "mm4", "mm5", "mm6", "mm7"] =>
+            "MMX registers are not currently supported as operands for inline asm",
+        #error = ["k0"] =>
+            "the k0 AVX mask register cannot be used as an operand for inline asm",
     }
 }
 
@@ -316,6 +314,15 @@ impl X86InlineAsmReg {
                 }
             };
         }
+
+        // XMM*, YMM* and ZMM* are all different views of the same register.
+        //
+        // See section 15.5 of the combined Intel® 64 and IA-32 Architectures
+        // Software Developer’s Manual for more details.
+        //
+        // We don't need to specify conflicts for [x,y,z]mm[16-31] since these
+        // registers are only available with AVX-512, so we just specify them
+        // as aliases directly.
         reg_conflicts! {
             xmm0 : ymm0 : zmm0,
             xmm1 : ymm1 : zmm1,
