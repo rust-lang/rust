@@ -6,8 +6,6 @@ pub trait TextSized: Copy {
     fn text_size(self) -> TextSize;
 }
 
-/// This will panic for strings larger than `TextSize::MAX` when
-/// debug assertions are enabled, and wrap when they are disabled.
 impl TextSized for &'_ str {
     #[inline]
     fn text_size(self) -> TextSize {
