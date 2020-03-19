@@ -1,0 +1,24 @@
+error: this arithmetic operation will overflow
+  --> $DIR/lints-used-unused.rs:16:20
+   |
+LL |     const N: i32 = 1 << 42;
+   |                    ^^^^^^^ attempt to shift left with overflow
+   |
+note: the lint level is defined here
+  --> $DIR/lints-used-unused.rs:7:9
+   |
+LL | #![deny(arithmetic_overflow)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: any use of this value will cause an error
+  --> $DIR/lints-used-unused.rs:16:20
+   |
+LL |     const N: i32 = 1 << 42;
+   |     ---------------^^^^^^^-
+   |                    |
+   |                    attempt to shift left with overflow
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: aborting due to 2 previous errors
+
