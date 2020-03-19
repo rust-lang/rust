@@ -1,7 +1,7 @@
 use crate::base;
 use crate::common::CodegenCx;
 use crate::debuginfo;
-use crate::llvm::{self, SetUnnamedAddr, True};
+use crate::llvm::{self, True};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -183,7 +183,7 @@ impl CodegenCx<'ll, 'tcx> {
             };
             llvm::LLVMSetInitializer(gv, cv);
             set_global_alignment(&self, gv, align);
-            SetUnnamedAddr(gv, true);
+            llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::Global);
             gv
         }
     }
