@@ -994,7 +994,7 @@ fn encode_query_results<'a, 'tcx, Q, E>(
     query_result_index: &mut EncodedQueryResultIndex,
 ) -> Result<(), E::Error>
 where
-    Q: super::config::QueryDescription<TyCtxt<'tcx>>,
+    Q: super::QueryDescription<TyCtxt<'tcx>>,
     Q::Value: Encodable,
     E: 'a + TyEncoder,
 {

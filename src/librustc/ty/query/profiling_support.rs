@@ -1,11 +1,11 @@
 use crate::ty::context::TyCtxt;
-use crate::ty::query::caches::QueryCache;
-use crate::ty::query::plumbing::QueryState;
 use measureme::{StringComponent, StringId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
+use rustc_query_system::query::QueryCache;
+use rustc_query_system::query::QueryState;
 use std::fmt::Debug;
 use std::io::Write;
 

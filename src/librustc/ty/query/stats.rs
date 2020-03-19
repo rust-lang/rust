@@ -1,9 +1,9 @@
-use crate::ty::query::caches::QueryCache;
-use crate::ty::query::config::{QueryAccessors, QueryContext};
-use crate::ty::query::plumbing::QueryState;
 use crate::ty::query::queries;
 use crate::ty::TyCtxt;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_query_system::query::QueryCache;
+use rustc_query_system::query::QueryState;
+use rustc_query_system::query::{QueryAccessors, QueryContext};
 
 use std::any::type_name;
 use std::mem;
