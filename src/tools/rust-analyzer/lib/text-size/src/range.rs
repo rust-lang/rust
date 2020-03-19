@@ -2,7 +2,7 @@ use {
     crate::TextSize,
     std::{
         cmp, fmt,
-        ops::{Bound, Index, IndexMut, Range, RangeBounds},
+        ops::{Add, AddAssign, Bound, Index, IndexMut, Range, RangeBounds, Sub, SubAssign},
     },
 };
 
@@ -11,7 +11,7 @@ use {
 /// # Translation from `text_unit`
 ///
 /// - `TextRange::from_to(from, to)`        ⟹ `TextRange(from, to)`
-/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::up_to(size).offset(offset)`
+/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::up_to(size) + offset`
 /// - `range.start()`                       ⟹ `range.start()`
 /// - `range.end()`                         ⟹ `range.end()`
 /// - `range.len()`                         ⟹ `range.len()`
@@ -133,6 +133,38 @@ impl TextRange {
         let end = cmp::max(lhs.end(), rhs.end());
         TextRange(start, end)
     }
+
+    /// Add an offset to this range.
+    ///
+    /// Note that this is not appropriate for changing where a `TextRange` is
+    /// within some string; rather, it is for changing the reference anchor
+    /// that the `TextRange` is measured against.
+    ///
+    /// The unchecked version (`Add::add`) will _always_ panic on overflow,
+    /// in contrast to primitive integers, which check in debug mode only.
+    #[inline]
+    pub fn checked_add(self, offset: TextSize) -> Option<TextRange> {
+        Some(TextRange {
+            start: self.start.checked_add(offset)?,
+            end: self.end.checked_add(offset)?,
+        })
+    }
+
+    /// Subtract an offset from this range.
+    ///
+    /// Note that this is not appropriate for changing where a `TextRange` is
+    /// within some string; rather, it is for changing the reference anchor
+    /// that the `TextRange` is measured against.
+    ///
+    /// The unchecked version (`Sub::sub`) will _always_ panic on overflow,
+    /// in contrast to primitive integers, which check in debug mode only.
+    #[inline]
+    pub fn checked_sub(self, offset: TextSize) -> Option<TextRange> {
+        Some(TextRange {
+            start: self.start.checked_sub(offset)?,
+            end: self.end.checked_sub(offset)?,
+        })
+    }
 }
 
 impl Index<TextRange> for str {
@@ -167,5 +199,68 @@ where
     #[inline]
     fn from(r: TextRange) -> Self {
         r.start().into()..r.end().into()
+    }
+}
+
+macro_rules! ops {
+    (impl $Op:ident for TextRange by fn $f:ident = $op:tt) => {
+        impl $Op<&TextSize> for TextRange {
+            type Output = TextRange;
+            #[inline]
+            fn $f(self, other: &TextSize) -> TextRange {
+                self $op *other
+            }
+        }
+        impl<T> $Op<T> for &TextRange
+        where
+            TextRange: $Op<T, Output=TextRange>,
+        {
+            type Output = TextRange;
+            #[inline]
+            fn $f(self, other: T) -> TextRange {
+                *self $op other
+            }
+        }
+    };
+}
+
+impl Add<TextSize> for TextRange {
+    type Output = TextRange;
+    #[inline]
+    fn add(self, offset: TextSize) -> TextRange {
+        self.checked_add(offset)
+            .expect("TextRange +offset overflowed")
+    }
+}
+
+impl Sub<TextSize> for TextRange {
+    type Output = TextRange;
+    #[inline]
+    fn sub(self, offset: TextSize) -> TextRange {
+        self.checked_sub(offset)
+            .expect("TextRange -offset overflowed")
+    }
+}
+
+ops!(impl Add for TextRange by fn add = +);
+ops!(impl Sub for TextRange by fn sub = -);
+
+impl<A> AddAssign<A> for TextRange
+where
+    TextRange: Add<A, Output = TextRange>,
+{
+    #[inline]
+    fn add_assign(&mut self, rhs: A) {
+        *self = *self + rhs
+    }
+}
+
+impl<S> SubAssign<S> for TextRange
+where
+    TextRange: Sub<S, Output = TextRange>,
+{
+    #[inline]
+    fn sub_assign(&mut self, rhs: S) {
+        *self = *self - rhs
     }
 }
