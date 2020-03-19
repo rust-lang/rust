@@ -68,8 +68,6 @@ impl TextSize {
     pub const MIN: TextSize = TextSize(u32::MIN);
     /// The largest representable text size. (`u32::MAX`)
     pub const MAX: TextSize = TextSize(u32::MAX);
-    /// The text size of a single ASCII character.
-    pub const ASCII: TextSize = TextSize(1);
 
     /// Checked addition. Returns `None` if overflow occurred.
     #[inline]
