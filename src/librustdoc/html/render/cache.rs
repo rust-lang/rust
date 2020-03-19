@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use super::{plain_summary_line, shorten, Impl, IndexItem, IndexItemFunctionType, ItemType};
-use super::{RenderInfo, Type};
+use super::{Generic, RenderInfo, RenderType, TypeWithKind};
 
 /// Indicates where an external crate can be found.
 pub enum ExternalLocation {
@@ -588,17 +588,20 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let mut lastpathid = 0usize;
 
     for item in search_index {
-        item.parent_idx = item.parent.map(|defid| {
+        item.parent_idx = item.parent.and_then(|defid| {
             if defid_to_pathid.contains_key(&defid) {
-                *defid_to_pathid.get(&defid).expect("no pathid")
+                defid_to_pathid.get(&defid).map(|x| *x)
             } else {
                 let pathid = lastpathid;
                 defid_to_pathid.insert(defid, pathid);
                 lastpathid += 1;
 
-                let &(ref fqp, short) = paths.get(&defid).unwrap();
-                crate_paths.push((short, fqp.last().unwrap().clone()));
-                pathid
+                if let Some(&(ref fqp, short)) = paths.get(&defid) {
+                    crate_paths.push((short, fqp.last().unwrap().clone()));
+                    Some(pathid)
+                } else {
+                    None
+                }
             }
         });
 
@@ -647,20 +650,25 @@ fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
         _ => return None,
     };
 
-    let inputs =
-        all_types.iter().map(|arg| get_index_type(&arg)).filter(|a| a.name.is_some()).collect();
+    let inputs = all_types
+        .iter()
+        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty), *kind)))
+        .filter(|a| a.ty.name.is_some())
+        .collect();
     let output = ret_types
         .iter()
-        .map(|arg| get_index_type(&arg))
-        .filter(|a| a.name.is_some())
+        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty), *kind)))
+        .filter(|a| a.ty.name.is_some())
         .collect::<Vec<_>>();
     let output = if output.is_empty() { None } else { Some(output) };
 
     Some(IndexItemFunctionType { inputs, output })
 }
 
-fn get_index_type(clean_type: &clean::Type) -> Type {
-    let t = Type {
+fn get_index_type(clean_type: &clean::Type) -> RenderType {
+    let t = RenderType {
+        ty: clean_type.def_id(),
+        idx: None,
         name: get_index_type_name(clean_type, true).map(|s| s.to_ascii_lowercase()),
         generics: get_generics(clean_type),
     };
@@ -685,12 +693,17 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
     }
 }
 
-fn get_generics(clean_type: &clean::Type) -> Option<Vec<String>> {
+fn get_generics(clean_type: &clean::Type) -> Option<Vec<Generic>> {
     clean_type.generics().and_then(|types| {
         let r = types
             .iter()
-            .filter_map(|t| get_index_type_name(t, false))
-            .map(|s| s.to_ascii_lowercase())
+            .filter_map(|t| {
+                if let Some(name) = get_index_type_name(t, false) {
+                    Some(Generic { name: name.to_ascii_lowercase(), defid: t.def_id(), idx: None })
+                } else {
+                    None
+                }
+            })
             .collect::<Vec<_>>();
         if r.is_empty() { None } else { Some(r) }
     })
