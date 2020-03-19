@@ -103,9 +103,10 @@ FLAGS:
             run_release(dry_run)
         }
         "dist" => {
-            let nightly = args.contains("--nightly");
+            let version: String = args.value_from_str("--version")?;
+            let release_tag: String = args.value_from_str("--tag")?;
             args.finish()?;
-            run_dist(nightly)
+            run_dist(&version, &release_tag)
         }
         _ => {
             eprintln!(

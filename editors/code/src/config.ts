@@ -38,23 +38,17 @@ export class Config {
     ]
         .map(opt => `${this.rootSection}.${opt}`);
 
-    readonly packageJsonVersion = vscode
+    readonly packageJsonVersion: string = vscode
         .extensions
         .getExtension(this.extensionId)!
         .packageJSON
-        .version as string; // n.n.YYYYMMDD[-nightly]
+        .version;
 
-    /**
-     * Either `nightly` or `YYYY-MM-DD` (i.e. `stable` release)
-     */
-    readonly extensionReleaseTag: string = (() => {
-        if (this.packageJsonVersion.endsWith(NIGHTLY_TAG)) return NIGHTLY_TAG;
-
-        const realVersionRegexp = /^\d+\.\d+\.(\d{4})(\d{2})(\d{2})/;
-        const [, yyyy, mm, dd] = this.packageJsonVersion.match(realVersionRegexp)!;
-
-        return `${yyyy}-${mm}-${dd}`;
-    })();
+    readonly releaseTag: string = vscode
+        .extensions
+        .getExtension(this.extensionId)!
+        .packageJSON
+        .releaseTag;
 
     private cfg!: vscode.WorkspaceConfiguration;
 
