@@ -1,7 +1,10 @@
 use std::iter::successors;
 
-use ast::{edit::AstNodeEdit, make};
-use ra_syntax::{ast, AstNode, AstToken, Direction, InsertPosition, SyntaxElement, T};
+use ra_syntax::{
+    algo::neighbor,
+    ast::{self, edit::AstNodeEdit, make},
+    AstNode, AstToken, Direction, InsertPosition, SyntaxElement, T,
+};
 
 use crate::{Assist, AssistCtx, AssistId};
 
@@ -23,7 +26,7 @@ pub(crate) fn merge_imports(ctx: AssistCtx) -> Option<Assist> {
     let (merged, to_delete) = [Direction::Prev, Direction::Next]
         .iter()
         .copied()
-        .filter_map(|dir| next_use_item(&use_item, dir))
+        .filter_map(|dir| neighbor(&use_item, dir))
         .filter_map(|it| Some((it.clone(), it.use_tree()?)))
         .find_map(|(use_item, use_tree)| {
             Some((try_merge_trees(&tree, &use_tree)?, use_item.clone()))
@@ -47,10 +50,6 @@ pub(crate) fn merge_imports(ctx: AssistCtx) -> Option<Assist> {
         }
         edit.set_cursor(offset);
     })
-}
-
-fn next_use_item(this_use_item: &ast::UseItem, direction: Direction) -> Option<ast::UseItem> {
-    this_use_item.syntax().siblings(direction).skip(1).find_map(ast::UseItem::cast)
 }
 
 fn try_merge_trees(old: &ast::UseTree, new: &ast::UseTree) -> Option<ast::UseTree> {

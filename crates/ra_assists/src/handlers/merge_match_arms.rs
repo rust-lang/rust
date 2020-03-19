@@ -1,6 +1,7 @@
 use std::iter::successors;
 
 use ra_syntax::{
+    algo::neighbor,
     ast::{self, AstNode},
     Direction, TextUnit,
 };
@@ -53,7 +54,7 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
 
     // We check if the following match arms match this one. We could, but don't,
     // compare to the previous match arm as well.
-    let arms_to_merge = successors(Some(current_arm), next_arm)
+    let arms_to_merge = successors(Some(current_arm), |it| neighbor(it, Direction::Next))
         .take_while(|arm| {
             if arm.guard().is_some() {
                 return false;
@@ -102,14 +103,11 @@ fn contains_placeholder(a: &ast::MatchArm) -> bool {
     }
 }
 
-fn next_arm(arm: &ast::MatchArm) -> Option<ast::MatchArm> {
-    arm.syntax().siblings(Direction::Next).skip(1).find_map(ast::MatchArm::cast)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::merge_match_arms;
     use crate::helpers::{check_assist, check_assist_not_applicable};
+
+    use super::*;
 
     #[test]
     fn merge_match_arms_single_patterns() {
