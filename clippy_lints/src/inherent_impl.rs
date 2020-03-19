@@ -59,7 +59,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MultipleInherentImpl {
             // but filter out implementations that have generic params (type or lifetime)
             // or are derived from a macro
             if !in_macro(item.span) && generics.params.is_empty() {
-                self.impls.insert(item.hir_id.owner_def_id(), item.span);
+                self.impls.insert(item.hir_id.owner.to_def_id(), item.span);
             }
         }
     }
@@ -69,7 +69,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MultipleInherentImpl {
             // Retrieve all inherent implementations from the crate, grouped by type
             for impls in cx
                 .tcx
-                .crate_inherent_impls(item.hir_id.owner_def_id().krate)
+                .crate_inherent_impls(item.hir_id.owner.to_def_id().krate)
                 .inherent_impls
                 .values()
             {

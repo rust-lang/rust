@@ -297,8 +297,8 @@ pub fn qpath_res(cx: &LateContext<'_, '_>, qpath: &hir::QPath<'_>, id: hir::HirI
     match qpath {
         hir::QPath::Resolved(_, path) => path.res,
         hir::QPath::TypeRelative(..) => {
-            if cx.tcx.has_typeck_tables(id.owner_def_id()) {
-                cx.tcx.typeck_tables_of(id.owner_def_id()).qpath_res(qpath, id)
+            if cx.tcx.has_typeck_tables(id.owner.to_def_id()) {
+                cx.tcx.typeck_tables_of(id.owner.to_def_id()).qpath_res(qpath, id)
             } else {
                 Res::Err
             }
