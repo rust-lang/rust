@@ -2,7 +2,7 @@ use crate::dep_graph::SerializedDepNodeIndex;
 use crate::dep_graph::{DepKind, DepNode};
 use crate::ty::query::caches::QueryCache;
 use crate::ty::query::plumbing::CycleError;
-use crate::ty::query::{Query, QueryState};
+use crate::ty::query::QueryState;
 use crate::ty::TyCtxt;
 use rustc_data_structures::profiling::ProfileCategory;
 use rustc_hir::def_id::DefId;
@@ -28,17 +28,14 @@ pub trait QueryConfig<'tcx> {
 pub(crate) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     const ANON: bool;
     const EVAL_ALWAYS: bool;
+    const DEP_KIND: DepKind;
 
-    type Cache: QueryCache<Self::Key, Self::Value>;
-
-    fn query(key: Self::Key) -> Query<'tcx>;
+    type Cache: QueryCache<Key = Self::Key, Value = Self::Value>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(tcx: TyCtxt<'tcx>) -> &'a QueryState<'tcx, Self>;
+    fn query_state<'a>(tcx: TyCtxt<'tcx>) -> &'a QueryState<'tcx, Self::Cache>;
 
     fn to_dep_node(tcx: TyCtxt<'tcx>, key: &Self::Key) -> DepNode;
-
-    fn dep_kind() -> DepKind;
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn compute(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value;
@@ -62,10 +59,7 @@ pub(crate) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
     }
 }
 
-impl<'tcx, M: QueryAccessors<'tcx, Key = DefId>> QueryDescription<'tcx> for M
-where
-    <M as QueryAccessors<'tcx>>::Cache: QueryCache<DefId, <M as QueryConfig<'tcx>>::Value>,
-{
+impl<'tcx, M: QueryAccessors<'tcx, Key = DefId>> QueryDescription<'tcx> for M {
     default fn describe(tcx: TyCtxt<'_>, def_id: DefId) -> Cow<'static, str> {
         if !tcx.sess.verbose() {
             format!("processing `{}`", tcx.def_path_str(def_id)).into()
