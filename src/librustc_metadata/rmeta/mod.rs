@@ -196,13 +196,14 @@ crate struct CrateRoot<'tcx> {
     source_map: Lazy<[rustc_span::SourceFile]>,
     def_path_table: Lazy<map::definitions::DefPathTable>,
     impls: Lazy<[TraitImpls]>,
-    exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
     interpret_alloc_index: Lazy<[u32]>,
 
     per_def: LazyPerDefTables<'tcx>,
 
     /// The DefIndex's of any proc macros declared by this crate.
     proc_macro_data: Option<Lazy<[DefIndex]>>,
+
+    exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
 
     compiler_builtins: bool,
     needs_allocator: bool,
