@@ -45,8 +45,9 @@ mod imp {
     use libc::{mmap, munmap};
     use libc::{sigaction, sighandler_t, SA_ONSTACK, SA_SIGINFO, SIGBUS, SIG_DFL};
     use libc::{sigaltstack, SIGSTKSZ, SS_DISABLE};
-    use libc::{MAP_ANON, MAP_PRIVATE, PROT_READ, PROT_WRITE, SIGSEGV};
+    use libc::{MAP_ANON, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE, SIGSEGV};
 
+    use crate::sys::unix::os::page_size;
     use crate::sys_common::thread_info;
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -137,12 +138,22 @@ mod imp {
     }
 
     unsafe fn get_stackp() -> *mut libc::c_void {
-        let stackp =
-            mmap(ptr::null_mut(), SIGSTKSZ, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        let stackp = mmap(
+            ptr::null_mut(),
+            SIGSTKSZ + page_size(),
+            PROT_READ | PROT_WRITE,
+            MAP_PRIVATE | MAP_ANON,
+            -1,
+            0,
+        );
         if stackp == MAP_FAILED {
             panic!("failed to allocate an alternative stack");
         }
-        stackp
+        let guard_result = libc::mprotect(stackp, page_size(), PROT_NONE);
+        if guard_result != 0 {
+            panic!("failed to set up alternative stack guard page");
+        }
+        stackp.add(page_size())
     }
 
     #[cfg(any(
@@ -190,7 +201,9 @@ mod imp {
                 ss_size: SIGSTKSZ,
             };
             sigaltstack(&stack, ptr::null_mut());
-            munmap(handler._data, SIGSTKSZ);
+            // We know from `get_stackp` that the alternate stack we installed is part of a mapping
+            // that started one page earlier, so walk back a page and unmap from there.
+            munmap(handler._data.sub(page_size()), SIGSTKSZ + page_size());
         }
     }
 }
