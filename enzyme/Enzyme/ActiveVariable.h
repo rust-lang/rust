@@ -36,8 +36,6 @@
 extern llvm::cl::opt<bool> printconst;
 extern llvm::cl::opt<bool> nonmarkedglobals_inactive;
 
-llvm::Type* isKnownFloatTBAA(llvm::Instruction* inst);
-
 //DataType isIntASecretFloat(const std::map<llvm::Argument*, DataType> typeInfo, llvm::Value* val, IntType defaultType=IntType::Unknown, bool errIfNotFound=false);
 
 //! return the secret float type of val if found, otherwise nullptr

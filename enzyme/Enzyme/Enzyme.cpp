@@ -163,7 +163,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
   bool differentialReturn = cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
 
   std::map<Argument*, bool> volatile_args;
-  std::pair<std::map<Argument*, ValueData>, ValueData> type_args;
+  NewFnTypeInfo type_args;
   for(auto &a : cast<Function>(fn)->args()) {
     volatile_args[&a] = false;
     ValueData dt;
@@ -178,6 +178,8 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
         }
     }
     type_args.first.insert(std::pair<Argument*, ValueData>(&a, dt));
+    //TODO note that here we do NOT propagate constants in type info (and should consider whether we should)
+    type_args.third.insert(std::pair<Argument*, Constant*>(&a, nullptr));
   }
 
   TypeAnalysis TA;
@@ -254,7 +256,7 @@ public:
 
     //LoopInfo is required to ensure that all loops have preheaders
     //AU.addRequired<LoopInfoWrapperPass>();
-    
+
     //AU.addRequiredID(llvm::LoopSimplifyID);//<LoopSimplifyWrapperPass>();
   }
 
@@ -277,7 +279,7 @@ public:
     bool changed = false;
     for(Function& F: M) {
         if (F.empty()) continue;
-        
+
         AAResults AA(TLI);
         //auto &B_AA = getAnalysis<BasicAAWrapperPass>().getResult();
         //AA.addAAResult(B_AA);

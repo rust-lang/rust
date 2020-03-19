@@ -819,8 +819,8 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   %a9 = load double*, double** %m_data.i17, align 8, !tbaa !9
 ; CHECK-NEXT:   %subcall_augmented = call { { { {} }, i64 }, i64 } @augmented_sub(double* %a9, double* %"a9'ipl", i64 %a8) #9
 ; CHECK-NEXT:   %0 = extractvalue { { { {} }, i64 }, i64 } %subcall_augmented, 0
-; CHECK-NEXT:   %1 = extractvalue { { { {} }, i64 }, i64 } %subcall_augmented, 1
-; CHECK-NEXT:   %mvcond = icmp slt i64 %1, 0
+; CHECK-NEXT:   %subcall = extractvalue { { { {} }, i64 }, i64 } %subcall_augmented, 1
+; CHECK-NEXT:   %mvcond = icmp slt i64 %subcall, 0
 ; CHECK-NEXT:   br i1 %mvcond, label %one, label %invertentry
 
 ; CHECK: one:                                              ; preds = %entry
@@ -829,7 +829,7 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertentry:                                      ; preds = %entry, %one
-; CHECK-NEXT:   %2 = call {} @diffesub(double* %a9, double* %"a9'ipl", i64 %a8, { { {} }, i64 } %0) #9
+; CHECK-NEXT:   %1 = call {} @diffesub(double* %a9, double* %"a9'ipl", i64 %a8, { { {} }, i64 } %0) #9
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

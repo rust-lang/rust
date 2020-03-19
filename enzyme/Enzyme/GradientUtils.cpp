@@ -328,6 +328,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       for(auto &a : fn->args()) {
           uncacheable_args[&a] = !a.getType()->isFPOrFPVectorTy();
           type_args.first.insert(std::pair<Argument*, ValueData>(&a, DataType(IntType::Unknown)));
+          type_args.third.insert(std::pair<Argument*, Constant*>(&a, nullptr));
       }
       auto& augdata = CreateAugmentedPrimal(fn, /*constant_args*/{}, TLI, TA, AA, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*returnUsed*/!fn->getReturnType()->isEmptyTy() && !fn->getReturnType()->isVoidTy(), type_args, uncacheable_args, /*forceAnonymousTape*/true);
       auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, TA, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/Type::getInt8PtrTy(fn->getContext()), type_args, uncacheable_args, /*map*/&augdata); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));

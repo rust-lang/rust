@@ -368,6 +368,8 @@ public:
 	}
 };
 
+DataType parseTBAA(llvm::Instruction* inst);
+
 static inline std::string to_string(const DataType dt) {
 	return dt.str();
 }
@@ -391,340 +393,338 @@ typedef std::map<const std::vector<int>, const TypeResult> ValueDataMapType;
 
 class ValueData : public std::enable_shared_from_this<ValueData> {
 private:
-        //mapping of known indices to type if one exists
-        DataTypeMapType mapping;
+    //mapping of known indices to type if one exists
+    DataTypeMapType mapping;
 
-        //mapping of known indices to type if one exists
-        //ValueDataMapType recur_mapping;
+    //mapping of known indices to type if one exists
+    //ValueDataMapType recur_mapping;
 
-        static std::map<std::pair<DataTypeMapType, ValueDataMapType>, TypeResult> cache;
+    static std::map<std::pair<DataTypeMapType, ValueDataMapType>, TypeResult> cache;
 public:
-
-    public:
-        DataType operator[] (const std::vector<int> v) const {
-            auto found = mapping.find(v);
-            if (found != mapping.end()) {
-                return found->second;
-            }
-            return IntType::Unknown;
+    DataType operator[] (const std::vector<int> v) const {
+        auto found = mapping.find(v);
+        if (found != mapping.end()) {
+            return found->second;
         }
+        return IntType::Unknown;
+    }
 
-        void insert(const std::vector<int> v, DataType d) {
-            if (v.size() > 0) {
-                std::vector<int> tmp(v.begin(), v.end()-1);
-                auto found = mapping.find(tmp);
-                if (found != mapping.end()) {
-                    if (!(found->second == IntType::Pointer || found->second== IntType::Anything)) {
-                        llvm::errs() << "FAILED dt: " << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
-                    }
-                    assert(found->second == IntType::Pointer || found->second== IntType::Anything);
+    void insert(const std::vector<int> v, DataType d) {
+        if (v.size() > 0) {
+            std::vector<int> tmp(v.begin(), v.end()-1);
+            auto found = mapping.find(tmp);
+            if (found != mapping.end()) {
+                if (!(found->second == IntType::Pointer || found->second== IntType::Anything)) {
+                    llvm::errs() << "FAILED dt: " << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
                 }
+                assert(found->second == IntType::Pointer || found->second== IntType::Anything);
             }
-            if (v.size() > 6) {
-                llvm::errs() << "not handling more than 6 pointer lookups deep dt:" << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
+        }
+        if (v.size() > 6) {
+            llvm::errs() << "not handling more than 6 pointer lookups deep dt:" << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
+            return;
+        }
+        for(auto a : v) {
+            if (a > 1000) {
+                //llvm::errs() << "not handling more than 1000B offset pointer dt:" << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
                 return;
             }
-            for(auto a : v) {
-                if (a > 1000) {
-                    //llvm::errs() << "not handling more than 1000B offset pointer dt:" << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
-                    return;
-                }
-            }
-            mapping.insert(std::pair<const std::vector<int>, DataType>(v, d));
         }
+        mapping.insert(std::pair<const std::vector<int>, DataType>(v, d));
+    }
 
-        bool operator<(const ValueData& vd) const {
-            return mapping < vd.mapping;
+    bool operator<(const ValueData& vd) const {
+        return mapping < vd.mapping;
+    }
+
+    ValueData() {}
+    ValueData(DataType dat) {
+        if (dat != DataType(IntType::Unknown)) {
+            insert({}, dat);
         }
+    }
 
-        ValueData() {}
-        ValueData(DataType dat) {
-            if (dat != DataType(IntType::Unknown)) {
-                insert({}, dat);
-            }
-        }
+    static ValueData Unknown() {
+        return ValueData();
+    }
 
-        static ValueData Unknown() {
-            return ValueData();
-        }
-
-		ValueData JustInt() const {
-			ValueData vd;
-			for(auto &pair : mapping) {
-				if (pair.second.typeEnum == IntType::Integer) {
-					vd.insert(pair.first, pair.second);
-				}
+	ValueData JustInt() const {
+		ValueData vd;
+		for(auto &pair : mapping) {
+			if (pair.second.typeEnum == IntType::Integer) {
+				vd.insert(pair.first, pair.second);
 			}
-
-			return vd;
 		}
 
-        //TODO keep type information that is striated
-        // e.g. if you have an i8* [0:Int, 8:Int] => i64* [0:Int, 1:Int]
-        // After a depth len into the index tree, prune any lookups that are not {0} or {-1}
-        ValueData KeepForCast(const llvm::DataLayout& dl, llvm::Type* from, llvm::Type* to) const;
+		return vd;
+	}
 
-        static std::vector<int> appendIndices(std::vector<int> first, const std::vector<int> &second) {
-            for(unsigned i=0; i<second.size(); i++)
-                first.push_back(second[i]);
-            return first;
+    //TODO keep type information that is striated
+    // e.g. if you have an i8* [0:Int, 8:Int] => i64* [0:Int, 1:Int]
+    // After a depth len into the index tree, prune any lookups that are not {0} or {-1}
+    ValueData KeepForCast(const llvm::DataLayout& dl, llvm::Type* from, llvm::Type* to) const;
+
+    static std::vector<int> appendIndices(std::vector<int> first, const std::vector<int> &second) {
+        for(unsigned i=0; i<second.size(); i++)
+            first.push_back(second[i]);
+        return first;
+    }
+
+    ValueData Only(std::vector<int> indices) const {
+        ValueData dat;
+
+        for(const auto &pair : mapping) {
+            dat.insert(appendIndices(indices, pair.first), pair.second);
+            if (pair.first.size() > 0) {
+                dat.insert(indices, DataType(IntType::Pointer));
+            }
         }
 
-        ValueData Only(std::vector<int> indices) const {
-            ValueData dat;
+        return dat;
+    }
 
-            for(const auto &pair : mapping) {
-                dat.insert(appendIndices(indices, pair.first), pair.second);
-                if (pair.first.size() > 0) {
-                    dat.insert(indices, DataType(IntType::Pointer));
-                }
-            }
+    static bool lookupIndices(std::vector<int> &first, const std::vector<int> &second) {
+        if (first.size() > second.size()) return false;
 
-            return dat;
+        auto fs = first.size();
+        for(unsigned i=0; i<fs; i++) {
+            if (first[i] == -1) continue;
+            if (second[i] == -1) continue;
+            if (first[i] != second[i]) return false;
         }
 
-        static bool lookupIndices(std::vector<int> &first, const std::vector<int> &second) {
-            if (first.size() > second.size()) return false;
+        first.clear();
+        for(auto i=fs; i<second.size(); i++) {
+            first.push_back(second[i]);
+        }
+		return true;
+    }
 
-            auto fs = first.size();
-            for(unsigned i=0; i<fs; i++) {
-                if (first[i] == -1) continue;
-                if (second[i] == -1) continue;
-                if (first[i] != second[i]) return false;
-            }
+    ValueData Lookup(std::vector<int> indices) const {
 
-            first.clear();
-            for(auto i=fs; i<second.size(); i++) {
-                first.push_back(second[i]);
-            }
-			return true;
+        ValueData dat;
+
+        for(const auto &pair : mapping) {
+            std::vector<int> next = indices;
+            if (lookupIndices(next, pair.first))
+                dat.insert(next, pair.second);
         }
 
-        ValueData Lookup(std::vector<int> indices) const {
+        return dat;
+    }
 
-            ValueData dat;
+    static std::vector<int> mergeIndices(int offset, const std::vector<int> &second) {
+        assert(second.size() > 0);
 
-            for(const auto &pair : mapping) {
-                std::vector<int> next = indices;
-                if (lookupIndices(next, pair.first))
-                    dat.insert(next, pair.second);
-            }
-
-            return dat;
+        std::vector<int> next(second);
+        //-1 represents all elements in that range
+        if (offset == -1 || next[0] == -1) {
+            next[0] = -1;
+        } else {
+            next[0] += offset;
         }
 
-        static std::vector<int> mergeIndices(int offset, const std::vector<int> &second) {
-            assert(second.size() > 0);
+        assert(next.size() > 0);
+        return next;
+    }
 
-            std::vector<int> next(second);
-            //-1 represents all elements in that range
-            if (offset == -1 || next[0] == -1) {
-                next[0] = -1;
-            } else {
-                next[0] += offset;
+    ValueData MergeIndices(int offset) const {
+        ValueData dat;
+
+        for(const auto &pair : mapping) {
+            ValueData dat2;
+
+            if (pair.first.size() == 0) {
+                if (pair.second == IntType::Pointer || pair.second == IntType::Anything) continue;
+
+                llvm::errs() << "could not merge test  " << str() << "\n";
             }
-
-            assert(next.size() > 0);
-            return next;
+            dat2.insert(mergeIndices(offset, pair.first), pair.second);
+            dat |= dat2;
         }
 
-        ValueData MergeIndices(int offset) const {
-            ValueData dat;
+        return dat;
+    }
 
-            for(const auto &pair : mapping) {
-                ValueData dat2;
-
-                if (pair.first.size() == 0) {
-                    if (pair.second == IntType::Pointer || pair.second == IntType::Anything) continue;
-
-                    llvm::errs() << "could not merge test  " << str() << "\n";
-                }
-                dat2.insert(mergeIndices(offset, pair.first), pair.second);
-                dat |= dat2;
-            }
-
-            return dat;
+    static llvm::Type* indexIntoType(llvm::Type* ty, int idx) {
+        if (ty == nullptr) return nullptr;
+        if (idx == -1) idx = 0;
+        if (auto st = llvm::dyn_cast<llvm::StructType>(ty)) {
+            return st->getElementType(idx);
         }
-
-        static llvm::Type* indexIntoType(llvm::Type* ty, int idx) {
-            if (ty == nullptr) return nullptr;
-            if (idx == -1) idx = 0;
-            if (auto st = llvm::dyn_cast<llvm::StructType>(ty)) {
-                return st->getElementType(idx);
-            }
-            if (auto at = llvm::dyn_cast<llvm::ArrayType>(ty)) {
-                return at->getElementType();
-            }
-            return nullptr;
+        if (auto at = llvm::dyn_cast<llvm::ArrayType>(ty)) {
+            return at->getElementType();
         }
+        return nullptr;
+    }
 
-        // given previous [0, 1, 2], index[0, 1] we should get back [0, 2]
-        // we should also have type dependent [2], index[1], if index.type[1] cast to index.type[2] permits
-        static bool unmergeIndices(std::vector<int>& next, int offset, const std::vector<int> &previous) {
-            assert(next.size() == 0);
+    // given previous [0, 1, 2], index[0, 1] we should get back [0, 2]
+    // we should also have type dependent [2], index[1], if index.type[1] cast to index.type[2] permits
+    static bool unmergeIndices(std::vector<int>& next, int offset, const std::vector<int> &previous) {
+        assert(next.size() == 0);
 
-            assert(previous.size() > 0);
+        assert(previous.size() > 0);
 
-            next.assign(previous.begin(), previous.end());
+        next.assign(previous.begin(), previous.end());
 
-            if (next[0] == -1) {
-                return true;
-            }
-
-            if (next[0] < offset) {
-                return false;
-            }
-
-            next[0] -= offset;
+        if (next[0] == -1) {
             return true;
         }
 
-        //We want all the data from this value, given that we are indexing with indices
-        // E.g. we might have a { [0, 1, 2]: Int, [5, 10, 30]: Pointer}, we may index [0, 1] and should get back [0, 2]:Int
-        ValueData UnmergeIndices(int offset) const {
-            ValueData dat;
-
-            for(const auto &pair : mapping) {
-                ValueData dat2;
-                std::vector<int> next;
-
-                if (pair.first.size() == 0) {
-                    if (pair.second == IntType::Pointer) continue;
-
-                    llvm::errs() << "could not unmerge " << str() << "\n";
-                }
-                assert(pair.first.size() > 0);
-
-                if (unmergeIndices(next, offset, pair.first)) {
-                    //llvm::errs() << "next: " << to_string(next) << " indices: " << to_string(indices) << " pair.first: " << to_string(pair.first) << "\n";
-                    dat2.insert(next, pair.second);
-                }
-                dat |= dat2;
-            }
-
-            return dat;
+        if (next[0] < offset) {
+            return false;
         }
 
-        //Removes any anything types
-        ValueData PurgeAnything() const {
-            ValueData dat;
-            for(const auto &pair : mapping) {
-                if (pair.second == DataType(IntType::Anything)) continue;
+        next[0] -= offset;
+        return true;
+    }
+
+    //We want all the data from this value, given that we are indexing with indices
+    // E.g. we might have a { [0, 1, 2]: Int, [5, 10, 30]: Pointer}, we may index [0, 1] and should get back [0, 2]:Int
+    ValueData UnmergeIndices(int offset) const {
+        ValueData dat;
+
+        for(const auto &pair : mapping) {
+            ValueData dat2;
+            std::vector<int> next;
+
+            if (pair.first.size() == 0) {
+                if (pair.second == IntType::Pointer) continue;
+
+                llvm::errs() << "could not unmerge " << str() << "\n";
+            }
+            assert(pair.first.size() > 0);
+
+            if (unmergeIndices(next, offset, pair.first)) {
+                //llvm::errs() << "next: " << to_string(next) << " indices: " << to_string(indices) << " pair.first: " << to_string(pair.first) << "\n";
+                dat2.insert(next, pair.second);
+            }
+            dat |= dat2;
+        }
+
+        return dat;
+    }
+
+    //Removes any anything types
+    ValueData PurgeAnything() const {
+        ValueData dat;
+        for(const auto &pair : mapping) {
+            if (pair.second == DataType(IntType::Anything)) continue;
+            dat.insert(pair.first, pair.second);
+        }
+        return dat;
+    }
+
+    ValueData AtMost(int max) const {
+        assert(max > 0);
+        ValueData dat;
+        for(const auto &pair : mapping) {
+            if (pair.first.size() == 0 || pair.first[0] == -1 || pair.first[0] < max) {
                 dat.insert(pair.first, pair.second);
             }
-            return dat;
         }
+        return dat;
+    }
 
-        ValueData AtMost(int max) const {
-            assert(max > 0);
-            ValueData dat;
-            for(const auto &pair : mapping) {
-                if (pair.first.size() == 0 || pair.first[0] == -1 || pair.first[0] < max) {
-                    dat.insert(pair.first, pair.second);
-                }
-            }
-            return dat;
-        }
+    static ValueData Argument(DataType type, llvm::Value* v) {
+        if (v->getType()->isIntOrIntVectorTy()) return ValueData(type);
+        return ValueData(type).Only({0});
+    }
 
-        static ValueData Argument(DataType type, llvm::Value* v) {
-            if (v->getType()->isIntOrIntVectorTy()) return ValueData(type);
-            return ValueData(type).Only({0});
-        }
+    bool operator==(const ValueData &v) const {
+        return mapping == v.mapping;
+    }
 
-        bool operator==(const ValueData &v) const {
-            return mapping == v.mapping;
-        }
+    // Return if changed
+    bool operator=(const ValueData& v) {
+        if (*this == v) return false;
+        mapping = v.mapping;
+        return true;
+    }
 
-        // Return if changed
-        bool operator=(const ValueData& v) {
-            if (*this == v) return false;
-            mapping = v.mapping;
-            return true;
-        }
+    bool mergeIn(const ValueData &v, bool pointerIntSame) {
+        //! Todo detect recursive merge
 
-        bool mergeIn(const ValueData &v, bool pointerIntSame) {
-            //! Todo detect recursive merge
+        bool changed = false;
 
-            bool changed = false;
-
-            if (v[{-1}] != IntType::Unknown) {
-                for(auto &pair : mapping) {
-                    if (pair.first.size() == 1 && pair.first[0] != -1) {
-                        pair.second.mergeIn(v[{-1}], pointerIntSame);
-                        //if (pair.second == ) // NOTE DELETE the non -1
-                    }
-                }
-            }
-
-            for(auto &pair : v.mapping) {
-                assert(pair.second != IntType::Unknown);
-                DataType dt = operator[](pair.first);
-                //llvm::errs() << "merging @ " << to_string(pair.first) << " old " << dt.str() << pair.second.str() << "\n";
-                changed |= (dt.mergeIn(pair.second, pointerIntSame));
-                insert(pair.first, dt);
-            }
-            return changed;
-        }
-
-        bool operator|=(const ValueData &v) {
-            return mergeIn(v, /*pointerIntSame*/false);
-        }
-
-        bool operator&=(const ValueData &v) {
-            bool changed = false;
-
-            std::vector<std::vector<int>> keystodelete;
+        if (v[{-1}] != IntType::Unknown) {
             for(auto &pair : mapping) {
-                DataType other = IntType::Unknown;
-                auto fd = v.mapping.find(pair.first);
-                if (fd != v.mapping.end()) {
-                    other = fd->second;
-                }
-                changed = (pair.second &= other);
-                if (pair.second == IntType::Unknown) {
-                    keystodelete.push_back(pair.first);
+                if (pair.first.size() == 1 && pair.first[0] != -1) {
+                    pair.second.mergeIn(v[{-1}], pointerIntSame);
+                    //if (pair.second == ) // NOTE DELETE the non -1
                 }
             }
-
-            for(auto &key : keystodelete) {
-                mapping.erase(key);
-            }
-
-            return changed;
         }
 
+        for(auto &pair : v.mapping) {
+            assert(pair.second != IntType::Unknown);
+            DataType dt = operator[](pair.first);
+            //llvm::errs() << "merging @ " << to_string(pair.first) << " old " << dt.str() << pair.second.str() << "\n";
+            changed |= (dt.mergeIn(pair.second, pointerIntSame));
+            insert(pair.first, dt);
+        }
+        return changed;
+    }
 
-        bool pointerIntMerge(const ValueData &v, llvm::BinaryOperator::BinaryOps op) {
-            bool changed = false;
+    bool operator|=(const ValueData &v) {
+        return mergeIn(v, /*pointerIntSame*/false);
+    }
 
-            auto found = mapping.find({});
-            if (found != mapping.end()) {
-                changed |= ( found->second.pointerIntMerge(v[{}], op) );
-                if (found->second == IntType::Unknown) {
-                    mapping.erase(std::vector<int>({}));
-                }
-            } else if (v.mapping.find({}) != v.mapping.end()) {
-                DataType dt(IntType::Unknown);
-                dt.pointerIntMerge(v[{}], op);
-                if (dt != IntType::Unknown) {
-                    changed = true;
-                    mapping.emplace(std::vector<int>({}), dt);
-                }
+    bool operator&=(const ValueData &v) {
+        bool changed = false;
+
+        std::vector<std::vector<int>> keystodelete;
+        for(auto &pair : mapping) {
+            DataType other = IntType::Unknown;
+            auto fd = v.mapping.find(pair.first);
+            if (fd != v.mapping.end()) {
+                other = fd->second;
             }
-
-            std::vector<std::vector<int>> keystodelete;
-
-            for(auto &pair : mapping) {
-                if (pair.first != std::vector<int>({})) keystodelete.push_back(pair.first);
+            changed = (pair.second &= other);
+            if (pair.second == IntType::Unknown) {
+                keystodelete.push_back(pair.first);
             }
+        }
 
-            for(auto &key : keystodelete) {
-                mapping.erase(key);
+        for(auto &key : keystodelete) {
+            mapping.erase(key);
+        }
+
+        return changed;
+    }
+
+
+    bool pointerIntMerge(const ValueData &v, llvm::BinaryOperator::BinaryOps op) {
+        bool changed = false;
+
+        auto found = mapping.find({});
+        if (found != mapping.end()) {
+            changed |= ( found->second.pointerIntMerge(v[{}], op) );
+            if (found->second == IntType::Unknown) {
+                mapping.erase(std::vector<int>({}));
+            }
+        } else if (v.mapping.find({}) != v.mapping.end()) {
+            DataType dt(IntType::Unknown);
+            dt.pointerIntMerge(v[{}], op);
+            if (dt != IntType::Unknown) {
                 changed = true;
+                mapping.emplace(std::vector<int>({}), dt);
             }
-
-            return changed;
         }
+
+        std::vector<std::vector<int>> keystodelete;
+
+        for(auto &pair : mapping) {
+            if (pair.first != std::vector<int>({})) keystodelete.push_back(pair.first);
+        }
+
+        for(auto &key : keystodelete) {
+            mapping.erase(key);
+            changed = true;
+        }
+
+        return changed;
+    }
 
 	std::string str() const {
 		std::string out = "{";
@@ -748,8 +748,27 @@ public:
 
 typedef std::map<llvm::Argument*, DataType> FnTypeInfo;
 
-//First is arguments, then return type
-typedef std::pair<std::map<llvm::Argument*, ValueData>, ValueData> NewFnTypeInfo;
+//First is ; then ; then
+struct NewFnTypeInfo {
+public:
+    // arguments:type
+    std::map<llvm::Argument*, ValueData> first;
+    // return type
+    ValueData second;
+    // the specific constant of an argument, if it is constant
+    std::map<llvm::Argument*, llvm::Constant*> third;
+
+    llvm::Constant* isConstant(llvm::Value* val) const;
+    llvm::ConstantInt* isConstantInt(llvm::Value* val) const;
+};
+
+static inline bool operator<(const NewFnTypeInfo& lhs, const NewFnTypeInfo& rhs) {
+    if (lhs.first < rhs.first) return true;
+    if (rhs.first < lhs.first) return false;
+    if (lhs.second < rhs.second) return true;
+    if (rhs.second < lhs.second) return false;
+    return lhs.third < rhs.third;
+}
 
 class TypeAnalyzer;
 class TypeAnalysis;
@@ -771,6 +790,7 @@ public:
     NewFnTypeInfo getAnalyzedTypeInfo();
     ValueData getReturnAnalysis();
 };
+
 
 class TypeAnalyzer : public llvm::InstVisitor<TypeAnalyzer> {
 private:

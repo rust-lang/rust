@@ -446,19 +446,19 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   %B2p = getelementptr inbounds double, double* %B, i64 1
 ; CHECK-NEXT:   %B2 = load double, double* %B2p, align 8
 ; CHECK-NEXT:   %call_augmented = call { { { <2 x double> }, <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } @augmented_subfn(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double %B1, double %B2, i64 0)
-; CHECK-NEXT:   %0 = extractvalue { { { <2 x double> }, <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %call_augmented, 0
-; CHECK-NEXT:   %1 = extractvalue { { { <2 x double> }, <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %call_augmented, 1
-; CHECK-NEXT:   %2 = call { <2 x double> } @diffecopy(<2 x double>* %outvec, <2 x double>* %"outvec'", <2 x double> %1)
-; CHECK-NEXT:   %3 = extractvalue { <2 x double> } %2, 0
-; CHECK-NEXT:   %4 = call { double, double } @diffesubfn(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double %B1, double %B2, i64 0, <2 x double> %3, { { <2 x double> }, <2 x double>, <2 x double>, i8*, i8* } %0)
-; CHECK-NEXT:   %5 = extractvalue { double, double } %4, 0
-; CHECK-NEXT:   %6 = extractvalue { double, double } %4, 1
-; CHECK-NEXT:   %7 = load double, double* %"B2p'ipge", align 8
-; CHECK-NEXT:   %8 = fadd fast double %7, %6
-; CHECK-NEXT:   store double %8, double* %"B2p'ipge", align 8
-; CHECK-NEXT:   %9 = load double, double* %"B'", align 8
-; CHECK-NEXT:   %10 = fadd fast double %9, %5
-; CHECK-NEXT:   store double %10, double* %"B'", align 8
+; CHECK-NEXT:   %[[calltape:.+]] = extractvalue { { { <2 x double> }, <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %call_augmented, 0
+; CHECK-NEXT:   %call = extractvalue { { { <2 x double> }, <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %call_augmented, 1
+; CHECK-NEXT:   %[[copyret:.+]] = call { <2 x double> } @diffecopy(<2 x double>* %outvec, <2 x double>* %"outvec'", <2 x double> %call)
+; CHECK-NEXT:   %[[copyext:.+]] = extractvalue { <2 x double> } %[[copyret]], 0
+; CHECK-NEXT:   %[[subfnret:.+]] = call { double, double } @diffesubfn(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double %B1, double %B2, i64 0, <2 x double> %[[copyext]], { { <2 x double> }, <2 x double>, <2 x double>, i8*, i8* } %[[calltape]])
+; CHECK-NEXT:   %[[sub0:.+]] = extractvalue { double, double } %[[subfnret]], 0
+; CHECK-NEXT:   %[[sub1:.+]] = extractvalue { double, double } %[[subfnret]], 1
+; CHECK-NEXT:   %[[preb2:.+]] = load double, double* %"B2p'ipge", align 8
+; CHECK-NEXT:   %[[addb2:.+]] = fadd fast double %[[preb2]], %[[sub1]]
+; CHECK-NEXT:   store double %[[addb2]], double* %"B2p'ipge", align 8
+; CHECK-NEXT:   %[[preb:.+]] = load double, double* %"B'", align 8
+; CHECK-NEXT:   %[[addb:.+]] = fadd fast double %[[preb]], %[[sub0]]
+; CHECK-NEXT:   store double %[[addb]], double* %"B'", align 8
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

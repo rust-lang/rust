@@ -50,12 +50,12 @@ cl::opt<bool> nonmarkedglobals_inactive(
             cl::desc("Consider all nonmarked globals to be inactive"));
 
 bool isKnownIntegerTBAA(Instruction* inst) {
-    auto typeNameStringRef = getAccessNameTBAA(inst);
+    auto typeNameStringRef = getAccessNameTBAA(inst, {"long long", "long", "int", "bool", "any pointer", "vtable pointer", "float", "double"});
     if (typeNameStringRef == "long long" || typeNameStringRef == "long" || typeNameStringRef == "int" || typeNameStringRef == "bool") {// || typeNameStringRef == "omnipotent char") {
         if (printconst) {
             llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
         }
-	    return true;
+        return true;
     } else {
         //if (printconst)
         //    llvm::errs() << "unknown tbaa " << *inst << " " << typeNameStringRef << "\n";
@@ -63,6 +63,7 @@ bool isKnownIntegerTBAA(Instruction* inst) {
     return false;
 }
 
+#if 0
 bool isKnownPointerTBAA(Instruction* inst) {
     auto typeNameStringRef = getAccessNameTBAA(inst);
     if (typeNameStringRef == "any pointer" || typeNameStringRef == "vtable pointer") {// || typeNameStringRef == "omnipotent char") {
@@ -93,6 +94,7 @@ Type* isKnownFloatTBAA(Instruction* inst) {
     }
     return nullptr;
 }
+#endif
 
 cl::opt<bool> fast_tracking(
             "enzyme_fast_tracking", cl::init(true), cl::Hidden,
@@ -634,6 +636,7 @@ void appendArgumentInformation(FnTypeInfo &typeInfo, const FnTypeInfo &oldTypeIn
         }
 }
 
+#if 0
 bool trackIntUses(const FnTypeInfo& typeInfo, const std::vector<CallInst*> trace, Value* v, std::map<IntSeenKey, IntType>& intseen, std::set<PtrSeenKey>& ptrseen, SmallPtrSet<Type*, 4>& typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
     auto idx = IntSeenKey(typeInfo, v, shouldConsiderUnknownUse);
 
@@ -950,6 +953,7 @@ bool trackInt(const FnTypeInfo &typeInfo, const std::vector<CallInst*> trace, Va
     //llvm::errs() << " could not find type info for: " << *v << "\n";
     return false;
 }
+#endif
 
 #if 0
 DataType isIntASecretFloat(const std::map<Argument*, DataType> typeInfo, Value* val, IntType defaultType, bool errIfNotFound) {
@@ -1397,7 +1401,7 @@ bool isconstantM(TypeResults &TR, Instruction* inst, SmallPtrSetImpl<Value*> &co
 	}
 
 	if (isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
-		if (isKnownIntegerTBAA(inst)) {
+		if (parseTBAA(inst).typeEnum == IntType::Integer) {
 			if (printconst)
 				llvm::errs() << " constant instruction from TBAA " << *inst << "\n";
 			constants.insert(inst);

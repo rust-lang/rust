@@ -55,13 +55,13 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   %"dims'ipge" = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 1
 ; CHECK-NEXT:   %dims = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
 ; CHECK-NEXT:   %call_augmented = call { {}, i64 } @augmented_total(i64* nonnull %dims, i64* nonnull %"dims'ipge")
-; CHECK-NEXT:   %0 = extractvalue { {}, i64 } %call_augmented, 1
-; CHECK-NEXT:   %flt = uitofp i64 %0 to float
+; CHECK-NEXT:   %call = extractvalue { {}, i64 } %call_augmented, 1
+; CHECK-NEXT:   %flt = uitofp i64 %call to float
 ; CHECK-NEXT:   %"data'ipge" = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 0
 ; CHECK-NEXT:   %data = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 0
 ; CHECK-NEXT:   store float %flt, float* %data, align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %"data'ipge", align 4
-; CHECK-NEXT:   %1 = call {} @diffetotal(i64* nonnull %dims, i64* nonnull %"dims'ipge", {} undef)
+; CHECK-NEXT:   %[[unused:.+]] = call {} @diffetotal(i64* nonnull %dims, i64* nonnull %"dims'ipge", {} undef)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

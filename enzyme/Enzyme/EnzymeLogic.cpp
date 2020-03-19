@@ -699,11 +699,9 @@ public:
     auto storeSize = gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(valType) / 8;
 
     //! Storing a floating point value
-    if ( isKnownFloatTBAA(&SI) || valType->isFPOrFPVectorTy() || (valType->isIntOrIntVectorTy() && TR.firstPointer(storeSize, gutils->getOriginal(ptr), /*errifnotfound*/true, /*pointerIntSame*/true).isFloat() ) ) {
+    if ( parseTBAA(&SI).isFloat() || valType->isFPOrFPVectorTy() || (valType->isIntOrIntVectorTy() && TR.firstPointer(storeSize, gutils->getOriginal(ptr), /*errifnotfound*/true, /*pointerIntSame*/true).isFloat() ) ) {
       //! Only need to update the reverse function
-      llvm::errs() << " considering float si for things: " << SI << "\n";
       if (mode == DerivativeMode::Reverse || mode == DerivativeMode::Both) {
-      llvm::errs() << " + doing float si things: " << SI << "\n";
         IRBuilder<> Builder2 = getReverseBuilder(SI.getParent());
 
         if (gutils->isConstantValue(val)) {
@@ -719,7 +717,6 @@ public:
     //! Storing an integer or pointer
     } else {
       //if (gutils->isConstantValue(ptr)) return;
-      llvm::errs() << " considering si for things: " << SI << "\n";
       //! Only need to update the forward function
       if (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) {
         IRBuilder <> storeBuilder(&SI);
@@ -923,12 +920,13 @@ public:
     if (gutils->isConstantInstruction(&MTI)) return;
 
     // copying into nullptr is invalid (not sure why it exists here), but we shouldn't do it in reverse pass or shadow
-    if (isa<ConstantPointerNull>(MTI.getOperand(0))) return;
+    if (isa<ConstantPointerNull>(MTI.getOperand(0)) || TR.query(gutils->getOriginal(MTI.getOperand(0)))[{}] == IntType::Anything) return;
 
     size_t size = 1;
     if (auto ci = dyn_cast<ConstantInt>(MTI.getOperand(2))) {
       size = ci->getLimitedValue();
     }
+
 
     if (Type* secretty = TR.firstPointer(size, gutils->getOriginal(MTI.getOperand(0)), /*errifnotfound*/true, /*pointerIntSame*/true).isFloat()) {
       //no change to forward pass if represents floats
@@ -1355,9 +1353,24 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
     auto toarg = todiff->arg_begin();
     auto olarg = gutils->oldFunc->arg_begin();
     for(; toarg != todiff->arg_end(); toarg++, olarg++) {
+
+        {
         auto fd = oldTypeInfo.first.find(toarg);
         assert(fd != oldTypeInfo.first.end());
         typeInfo.first.insert(std::pair<Argument*, ValueData>(olarg, fd->second));
+        }
+
+        {
+        auto cfd = oldTypeInfo.third.find(toarg);
+        if (cfd == oldTypeInfo.third.end()) {
+          for(const auto& pair : oldTypeInfo.third) {
+              llvm::errs() << " oldTypeInfo.third[" << *pair.first << "]=" << pair.second << " - " << pair.first->getParent()->getName() << "\n";
+          }
+          llvm::errs() << " toarg: " << *toarg << " - " << toarg->getParent()->getName() << "\n";
+        }
+        assert(cfd != oldTypeInfo.third.end());
+        typeInfo.third.insert(std::pair<Argument*, Constant*>(olarg, cfd->second));
+        }
     }
     typeInfo.second = oldTypeInfo.second;
   }
@@ -2054,6 +2067,7 @@ void handleAugmentedCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, c
 
         for(auto &arg : called->args()) {
             nextTypeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, TR.query(gutils->getOriginal(op->getArgOperand(argnum)))));
+            nextTypeInfo.third.insert(std::pair<Argument*, Constant*>(&arg, TR.info.isConstant(gutils->getOriginal(op->getArgOperand(argnum)))));
             argnum++;
         }
         nextTypeInfo.second = TR.query(gutils->getOriginal(op));
@@ -2624,12 +2638,14 @@ void handleGradientCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, co
 
   bool constval = gutils->isConstantValue(op);
 
-  std::pair<std::map<Argument*, ValueData>, ValueData> nextTypeInfo;
+  NewFnTypeInfo nextTypeInfo;
   int argnum = 0;
 
   if (called) {
       for(auto &arg : called->args()) {
         nextTypeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, TR.query(gutils->getOriginal(op->getArgOperand(argnum)))));
+        nextTypeInfo.third.insert(std::pair<Argument*, Constant*>(&arg, TR.info.isConstant(gutils->getOriginal(op->getArgOperand(argnum)))));
+
         argnum++;
       }
       nextTypeInfo.second = TR.query(gutils->getOriginal(op));
@@ -2778,7 +2794,7 @@ void handleGradientCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, co
             if( subcheck && hasNonReturnUse) {
                 Value* newip = nullptr;
                 if (topLevel) {
-                    newip = BuilderZ.CreateExtractValue(augmentcall, {differetIdx});
+                    newip = BuilderZ.CreateExtractValue(augmentcall, {differetIdx}, op->getName()+"'ac");
                     assert(newip->getType() == op->getType());
                     placeholder->replaceAllUsesWith(newip);
                 } else {
@@ -3014,6 +3030,11 @@ badfn:;
       }
     }
     op->replaceAllUsesWith(dcall);
+    auto name = op->getName();
+    op->setName("");
+    if (dcall) {
+      dcall->setName(name);
+    }
   }
 
   gutils->erase(op);
@@ -3141,9 +3162,26 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     auto toarg = todiff->arg_begin();
     auto olarg = gutils->oldFunc->arg_begin();
     for(; toarg != todiff->arg_end(); toarg++, olarg++) {
-        auto fd = oldTypeInfo.first.find(toarg);
-        assert(fd != oldTypeInfo.first.end());
-        typeInfo.first.insert(std::pair<Argument*, ValueData>(olarg, fd->second));
+
+      {
+      auto fd = oldTypeInfo.first.find(toarg);
+      assert(fd != oldTypeInfo.first.end());
+      typeInfo.first.insert(std::pair<Argument*, ValueData>(olarg, fd->second));
+      }
+
+      {
+      auto cfd = oldTypeInfo.third.find(toarg);
+
+      if (cfd == oldTypeInfo.third.end()) {
+          for(const auto& pair : oldTypeInfo.third) {
+              llvm::errs() << " oldTypeInfo.third[" << *pair.first << "]=" << pair.second << " - " << pair.first->getParent()->getName() << "\n";
+          }
+          llvm::errs() << " toarg: " << *toarg << " - " << toarg->getParent()->getName() << "\n";
+      }
+
+      assert(cfd != oldTypeInfo.third.end());
+      typeInfo.third.insert(std::pair<Argument*, Constant*>(olarg, cfd->second));
+      }
     }
     typeInfo.second = oldTypeInfo.second;
   }

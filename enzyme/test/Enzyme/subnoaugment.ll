@@ -50,15 +50,15 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   %"dims'ipge" = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 1
 ; CHECK-NEXT:   %dims = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
 ; CHECK-NEXT:   %call_augmented = call { {}, double } @augmented_total(double* nonnull %dims, double* nonnull %"dims'ipge")
-; CHECK-NEXT:   %0 = extractvalue { {}, double } %call_augmented, 1
-; CHECK-NEXT:   %flt = fptrunc double %0 to float
+; CHECK-NEXT:   %call = extractvalue { {}, double } %call_augmented, 1
+; CHECK-NEXT:   %flt = fptrunc double %call to float
 ; CHECK-NEXT:   %"data'ipge" = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 0
 ; CHECK-NEXT:   %data = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 0
 ; CHECK-NEXT:   store float %flt, float* %data, align 4
-; CHECK-NEXT:   %1 = load float, float* %"data'ipge", align 4
+; CHECK-NEXT:   %0 = load float, float* %"data'ipge", align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %"data'ipge", align 4
-; CHECK-NEXT:   %2 = fpext float %1 to double
-; CHECK-NEXT:   %3 = call {} @diffetotal(double* nonnull %dims, double* nonnull %"dims'ipge", double %2, {} undef)
+; CHECK-NEXT:   %1 = fpext float %0 to double
+; CHECK-NEXT:   %[[unused:.+]] = call {} @diffetotal(double* nonnull %dims, double* nonnull %"dims'ipge", double %1, {} undef)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

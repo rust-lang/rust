@@ -265,36 +265,54 @@ using namespace llvm;
 
 //Modified from MDNode::isTBAAVtableAccess()
 
-static inline std::string getAccessNameTBAA(const MDNode* M) {
+static inline std::string getAccessNameTBAA(const MDNode* M, const std::set<std::string> &legalnames) {
 	if (!isStructPathTBAA(M)) {
-	   	 llvm::errs() << "not struct path tbaa\n";
-     if (M->getNumOperands() < 1)
-       return "";
-     if (const MDString *Tag1 = dyn_cast<MDString>(M->getOperand(0))) {
-       return Tag1->getString().str();
-     }
-     return "";
-   }
+    if (M->getNumOperands() < 1)
+      return "";
+    if (const MDString *Tag1 = dyn_cast<MDString>(M->getOperand(0))) {
+      return Tag1->getString().str();
+    }
+    return "";
+  }
 
-   // For struct-path aware TBAA, we use the access type of the tag.
-   TBAAStructTagNode Tag(M);
-   TBAAStructTypeNode AccessType(Tag.getAccessType());
-   if(auto *Id = dyn_cast<MDString>(AccessType.getId()))
-     return Id->getString().str();
-   return "";
+  // For struct-path aware TBAA, we use the access type of the tag.
+  //llvm::errs() << "M: " << *M << "\n";
+  TBAAStructTagNode Tag(M);
+  //llvm::errs() << "AT: " << *Tag.getAccessType() << "\n";
+  TBAAStructTypeNode AccessType(Tag.getAccessType());
+
+  //llvm::errs() << "numfields: " << AccessType.getNumFields() << "\n";
+  while (AccessType.getNumFields() > 0) {
+
+    if(auto *Id = dyn_cast<MDString>(AccessType.getId())) {
+      //llvm::errs() << "cur access type: " << Id->getString() << "\n";
+      if (legalnames.count(Id->getString().str())) {
+        return Id->getString().str();
+      }
+    }
+
+    AccessType = AccessType.getFieldType(0);
+    //llvm::errs() << "numfields: " << AccessType.getNumFields() << "\n";
+  }
+
+  if(auto *Id = dyn_cast<MDString>(AccessType.getId())) {
+    //llvm::errs() << "access type: " << Id->getString() << "\n";
+    return Id->getString().str();
+  }
+  return "";
 }
 
-static inline std::string getAccessNameTBAA(Instruction* Inst) {
+static inline std::string getAccessNameTBAA(Instruction* Inst, const std::set<std::string> &legalnames) {
  	if (const MDNode *M = Inst->getMetadata(LLVMContext::MD_tbaa_struct)) {
  		for(unsigned i=2; i<M->getNumOperands(); i+=3) {
 		 	if (const MDNode *M2 = dyn_cast<MDNode>(M->getOperand(i))) {
-		 		auto res = getAccessNameTBAA(M2);
+		 		auto res = getAccessNameTBAA(M2, legalnames);
  				if (res != "") return res;
  			}
  		}
  	}
  	if (const MDNode *M = Inst->getMetadata(LLVMContext::MD_tbaa)) {
- 		return getAccessNameTBAA(M);
+ 		return getAccessNameTBAA(M, legalnames);
  	}
  	return "";
 }
