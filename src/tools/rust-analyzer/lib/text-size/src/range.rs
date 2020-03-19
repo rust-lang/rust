@@ -64,18 +64,6 @@ impl TextRange {
             end,
         }
     }
-
-    /// Offset this range by some amount.
-    ///
-    /// This is typically used to convert a range from one coordinate space to
-    /// another, such as from within a substring to within an entire document.
-    #[inline]
-    pub fn offset(self, offset: TextSize) -> TextRange {
-        TextRange(
-            self.start().checked_add(offset).unwrap(),
-            self.end().checked_add(offset).unwrap(),
-        )
-    }
 }
 
 /// Identity methods.
