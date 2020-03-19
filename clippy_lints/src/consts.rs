@@ -268,6 +268,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     }
                 }
             },
+            ExprKind::Index(ref arr, ref index) => self.index(arr, index),
             // TODO: add other expressions.
             _ => None,
         }
@@ -341,6 +342,20 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 result
             },
             // FIXME: cover all usable cases.
+            _ => None,
+        }
+    }
+
+    fn index(&mut self, lhs: &'_ Expr<'_>, index: &'_ Expr<'_>) -> Option<Constant> {
+        let lhs = self.expr(lhs);
+        let index = self.expr(index);
+
+        match (lhs, index) {
+            (Some(Constant::Vec(vec)), Some(Constant::Int(index))) => match vec[index as usize] {
+                Constant::F32(x) => Some(Constant::F32(x)),
+                Constant::F64(x) => Some(Constant::F64(x)),
+                _ => None,
+            },
             _ => None,
         }
     }
