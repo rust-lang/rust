@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use format_buf::format;
 use hir::Adt;
 use join_to_string::join;
@@ -7,7 +9,6 @@ use ra_syntax::{
     },
     TextUnit, T,
 };
-use std::fmt::Write;
 
 use crate::{Assist, AssistCtx, AssistId};
 

@@ -1,7 +1,5 @@
 //! FIXME: write short doc here
 
-use crate::{Assist, AssistCtx, AssistId};
-
 use join_to_string::join;
 use ra_syntax::{
     ast::{self, AstNode},
@@ -9,6 +7,8 @@ use ra_syntax::{
     SyntaxKind::{IDENT, WHITESPACE},
     TextRange, TextUnit,
 };
+
+use crate::{Assist, AssistCtx, AssistId};
 
 const DERIVE_TRAIT: &str = "derive";
 
