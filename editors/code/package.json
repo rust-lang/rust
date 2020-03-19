@@ -5,8 +5,8 @@
     "preview": true,
     "private": true,
     "icon": "icon.png",
-    "//": "The real version is in release.yaml, this one just needs to be bigger",
-    "version": "0.2.20200309-nightly",
+    "version": "0.4.0-dev",
+    "releaseTag": "nightly",
     "publisher": "matklad",
     "repository": {
         "url": "https://github.com/rust-analyzer/rust-analyzer.git",

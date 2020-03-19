@@ -111,7 +111,7 @@ async function bootstrap(config: Config, state: PersistentState): Promise<string
 
 async function bootstrapExtension(config: Config, state: PersistentState): Promise<void> {
     if (config.channel === "stable") {
-        if (config.extensionReleaseTag === NIGHTLY_TAG) {
+        if (config.releaseTag === NIGHTLY_TAG) {
             vscode.window.showWarningMessage(`You are running a nightly version of rust-analyzer extension.
 To switch to stable, uninstall the extension and re-install it from the marketplace`);
         }
@@ -219,7 +219,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         if (userResponse !== "Download now") return dest;
     }
 
-    const release = await fetchRelease(config.extensionReleaseTag);
+    const release = await fetchRelease(config.releaseTag);
     const artifact = release.assets.find(artifact => artifact.name === binaryName);
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 

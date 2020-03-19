@@ -6,6 +6,7 @@ on:
   push:
     branches:
     - release
+    - nightly
 
 jobs:
   dist:
@@ -49,11 +50,11 @@ jobs:
 
     - name: Dist
       if: github.event_name == 'push'
-      run: cargo xtask dist
+      run: cargo xtask dist --version 0.2.$GITHUB_RUN_NUMBER         --tag $(date --iso --utc)
 
     - name: Dist
       if: github.event_name != 'push'
-      run: cargo xtask dist --nightly
+      run: cargo xtask dist --version 0.3.$GITHUB_RUN_NUMBER-nightly --tag nightly
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1

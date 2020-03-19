@@ -7,31 +7,27 @@ use crate::{
     project_root,
 };
 
-pub fn run_dist(nightly: bool) -> Result<()> {
+pub fn run_dist(version: &str, release_tag: &str) -> Result<()> {
     let dist = project_root().join("dist");
     rm_rf(&dist)?;
     fs2::create_dir_all(&dist)?;
 
     if cfg!(target_os = "linux") {
-        dist_client(nightly)?;
+        dist_client(version, release_tag)?;
     }
     dist_server()?;
     Ok(())
 }
 
-fn dist_client(nightly: bool) -> Result<()> {
+fn dist_client(version: &str, release_tag: &str) -> Result<()> {
     let _d = pushd("./editors/code");
+    let nightly = release_tag == "nightly";
 
-    let package_json_path = PathBuf::from("./package.json");
-    let mut patch = Patch::new(package_json_path.clone())?;
+    let mut patch = Patch::new("./package.json")?;
 
-    let date = run!("date --utc +%Y%m%d")?;
-    let version_suffix = if nightly { "-nightly" } else { "" };
-
-    patch.replace(
-        r#""version": "0.2.20200309-nightly""#,
-        &format!(r#""version": "0.1.{}{}""#, date, version_suffix),
-    );
+    patch
+        .replace(r#""version": "0.4.0-dev""#, &format!(r#""version": "{}""#, version))
+        .replace(r#""releaseTag": "nightly""#, &format!(r#""releaseTag": "{}""#, release_tag));
 
     if nightly {
         patch.replace(
@@ -86,7 +82,8 @@ struct Patch {
 }
 
 impl Patch {
-    fn new(path: PathBuf) -> Result<Patch> {
+    fn new(path: impl Into<PathBuf>) -> Result<Patch> {
+        let path = path.into();
         let contents = fs2::read_to_string(&path)?;
         Ok(Patch { path, original_contents: contents.clone(), contents })
     }
