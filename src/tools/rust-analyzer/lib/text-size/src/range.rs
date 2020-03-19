@@ -2,7 +2,7 @@ use {
     crate::TextSize,
     std::{
         cmp, fmt,
-        ops::{Bound, Index, IndexMut, Range, RangeBounds, RangeFrom},
+        ops::{Bound, Index, IndexMut, Range, RangeBounds},
     },
 };
 
