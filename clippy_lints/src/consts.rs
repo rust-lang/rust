@@ -492,6 +492,41 @@ pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
             },
             _ => None,
         },
+        ty::ConstKind::Value(ConstValue::ByRef { alloc, offset: _ }) => match result.ty.kind {
+            ty::Array(sub_type, len) => match sub_type.kind {
+                ty::Float(FloatTy::F32) => match miri_to_const(len) {
+                    Some(Constant::Int(len)) => alloc
+                        .inspect_with_undef_and_ptr_outside_interpreter(0..(4 * len as usize))
+                        .to_owned()
+                        .chunks(4)
+                        .map(|chunk| {
+                            Some(Constant::F32(f32::from_le_bytes(
+                                chunk.try_into().expect("this shouldn't happen"),
+                            )))
+                        })
+                        .collect::<Option<Vec<Constant>>>()
+                        .map(Constant::Vec),
+                    _ => None,
+                },
+                ty::Float(FloatTy::F64) => match miri_to_const(len) {
+                    Some(Constant::Int(len)) => alloc
+                        .inspect_with_undef_and_ptr_outside_interpreter(0..(8 * len as usize))
+                        .to_owned()
+                        .chunks(8)
+                        .map(|chunk| {
+                            Some(Constant::F64(f64::from_le_bytes(
+                                chunk.try_into().expect("this shouldn't happen"),
+                            )))
+                        })
+                        .collect::<Option<Vec<Constant>>>()
+                        .map(Constant::Vec),
+                    _ => None,
+                },
+                // FIXME: implement other array type conversions.
+                _ => None,
+            },
+            _ => None,
+        },
         // FIXME: implement other conversions.
         _ => None,
     }
