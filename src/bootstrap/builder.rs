@@ -698,6 +698,20 @@ impl<'a> Builder<'a> {
         cmd
     }
 
+    /// Return the path to `llvm-config` for the target, if it exists.
+    ///
+    /// Note that this returns `None` if LLVM is disabled, or if we're in a
+    /// check build or dry-run, where there's no need to build all of LLVM.
+    fn llvm_config(&self, target: Interned<String>) -> Option<PathBuf> {
+        if self.config.llvm_enabled() && self.kind != Kind::Check && !self.config.dry_run {
+            let llvm_config = self.ensure(native::Llvm { target });
+            if llvm_config.is_file() {
+                return Some(llvm_config);
+            }
+        }
+        None
+    }
+
     /// Prepares an invocation of `cargo` to be run.
     ///
     /// This will create a `Command` that represents a pending execution of
@@ -1038,14 +1052,11 @@ impl<'a> Builder<'a> {
         // requirement, but the `-L` library path is not propagated across
         // separate Cargo projects. We can add LLVM's library path to the
         // platform-specific environment variable as a workaround.
-        //
-        // Note that this is disabled if LLVM itself is disabled or we're in a
-        // check build, where if we're in a check build there's no need to build
-        // all of LLVM and such.
-        if self.config.llvm_enabled() && self.kind != Kind::Check && mode == Mode::ToolRustc {
-            let llvm_config = self.ensure(native::Llvm { target });
-            let llvm_libdir = output(Command::new(&llvm_config).arg("--libdir"));
-            add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cargo);
+        if mode == Mode::ToolRustc {
+            if let Some(llvm_config) = self.llvm_config(target) {
+                let llvm_libdir = output(Command::new(&llvm_config).arg("--libdir"));
+                add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cargo);
+            }
         }
 
         if self.config.incremental {
