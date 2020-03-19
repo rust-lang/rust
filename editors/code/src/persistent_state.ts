@@ -1,49 +1,41 @@
 import * as vscode from 'vscode';
-import { log } from "./util";
+import { log } from './util';
 
 export class PersistentState {
-    constructor(private readonly ctx: vscode.ExtensionContext) {
+    constructor(private readonly globalState: vscode.Memento) {
+        const { lastCheck, releaseId, serverVersion } = this;
+        log.debug("PersistentState: ", { lastCheck, releaseId, serverVersion });
     }
 
-    readonly installedNightlyExtensionReleaseDate = new DateStorage(
-        "installed-nightly-extension-release-date",
-        this.ctx.globalState
-    );
-    readonly serverReleaseDate = new DateStorage("server-release-date", this.ctx.globalState);
-    readonly serverReleaseTag = new Storage<null | string>("server-release-tag", this.ctx.globalState, null);
-}
-
-
-export class Storage<T> {
-    constructor(
-        private readonly key: string,
-        private readonly storage: vscode.Memento,
-        private readonly defaultVal: T
-    ) { }
-
-    get(): T {
-        const val = this.storage.get(this.key, this.defaultVal);
-        log.debug(this.key, "==", val);
-        return val;
+    /**
+     * Used to check for *nightly* updates once an hour.
+     */
+    get lastCheck(): number | undefined {
+        return this.globalState.get("lastCheck");
     }
-    async set(val: T) {
-        log.debug(this.key, "=", val);
-        await this.storage.update(this.key, val);
-    }
-}
-export class DateStorage {
-    inner: Storage<null | string>;
-
-    constructor(key: string, storage: vscode.Memento) {
-        this.inner = new Storage(key, storage, null);
+    async updateLastCheck(value: number) {
+        await this.globalState.update("lastCheck", value);
     }
 
-    get(): null | Date {
-        const dateStr = this.inner.get();
-        return dateStr ? new Date(dateStr) : null;
+    /**
+     * Release id of the *nightly* extension.
+     * Used to check if we should update.
+     */
+    get releaseId(): number | undefined {
+        return this.globalState.get("releaseId");
+    }
+    async updateReleaseId(value: number) {
+        await this.globalState.update("releaseId", value);
     }
 
-    async set(date: null | Date) {
-        await this.inner.set(date ? date.toString() : null);
+    /**
+     * Version of the extension that installed the server.
+     * Used to check if we need to update the server.
+     */
+    get serverVersion(): string | undefined {
+        return this.globalState.get("serverVersion");
+    }
+    async updateServerVersion(value: string | undefined) {
+        await this.globalState.update("serverVersion", value);
     }
 }

@@ -16,6 +16,7 @@
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": [
+        // "--user-data-dir=${workspaceFolder}/target/code",
         "--disable-extensions",
         "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
       ],
