@@ -24,7 +24,7 @@ cfg_if::cfg_if! {
         // If we're not documenting libstd then we just expose the main modules
         // as we otherwise would.
 
-        #[cfg(any(target_os = "redox", unix, target_os = "vxworks"))]
+        #[cfg(any(target_os = "redox", unix, target_os = "vxworks", target_os = "hermit"))]
         #[stable(feature = "rust1", since = "1.0.0")]
         pub use crate::sys::ext as unix;
 
