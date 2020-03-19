@@ -2,7 +2,7 @@
 
 use anyhow::{bail, Context, Result};
 use std::{
-    env,
+    env, ops,
     path::{Path, PathBuf},
     process::{Command, Output},
 };
@@ -19,10 +19,17 @@ pub struct SysrootCrate(RawId);
 impl_arena_id!(SysrootCrate);
 
 #[derive(Debug, Clone)]
-struct SysrootCrateData {
-    name: String,
-    root: PathBuf,
-    deps: Vec<SysrootCrate>,
+pub struct SysrootCrateData {
+    pub name: String,
+    pub root: PathBuf,
+    pub deps: Vec<SysrootCrate>,
+}
+
+impl ops::Index<SysrootCrate> for Sysroot {
+    type Output = SysrootCrateData;
+    fn index(&self, index: SysrootCrate) -> &SysrootCrateData {
+        &self.crates[index]
+    }
 }
 
 impl Sysroot {
@@ -129,18 +136,9 @@ fn get_or_install_rust_src(cargo_toml: &Path) -> Result<PathBuf> {
     Ok(src_path)
 }
 
-impl SysrootCrate {
-    pub fn name(self, sysroot: &Sysroot) -> &str {
-        &sysroot.crates[self].name
-    }
-    pub fn root(self, sysroot: &Sysroot) -> &Path {
-        sysroot.crates[self].root.as_path()
-    }
-    pub fn root_dir(self, sysroot: &Sysroot) -> &Path {
-        self.root(sysroot).parent().unwrap()
-    }
-    pub fn deps<'a>(self, sysroot: &'a Sysroot) -> impl Iterator<Item = SysrootCrate> + 'a {
-        sysroot.crates[self].deps.iter().copied()
+impl SysrootCrateData {
+    pub fn root_dir(&self) -> &Path {
+        self.root.parent().unwrap()
     }
 }
 

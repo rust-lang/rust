@@ -138,12 +138,12 @@ impl ProjectWorkspace {
             ProjectWorkspace::Cargo { cargo, sysroot } => {
                 let mut roots = Vec::with_capacity(cargo.packages().len() + sysroot.crates().len());
                 for pkg in cargo.packages() {
-                    let root = pkg.root(&cargo).to_path_buf();
-                    let member = pkg.is_member(&cargo);
+                    let root = cargo[pkg].root().to_path_buf();
+                    let member = cargo[pkg].is_member;
                     roots.push(PackageRoot::new(root, member));
                 }
                 for krate in sysroot.crates() {
-                    roots.push(PackageRoot::new(krate.root_dir(&sysroot).to_path_buf(), false))
+                    roots.push(PackageRoot::new(sysroot[krate].root_dir().to_path_buf(), false))
                 }
                 roots
             }
@@ -164,7 +164,7 @@ impl ProjectWorkspace {
             ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => {
                 let mut out_dirs = Vec::with_capacity(cargo.packages().len());
                 for pkg in cargo.packages() {
-                    if let Some(out_dir) = pkg.out_dir(&cargo) {
+                    if let Some(out_dir) = &cargo[pkg].out_dir {
                         out_dirs.push(out_dir.to_path_buf());
                     }
                 }
@@ -260,7 +260,7 @@ impl ProjectWorkspace {
             ProjectWorkspace::Cargo { cargo, sysroot } => {
                 let mut sysroot_crates = FxHashMap::default();
                 for krate in sysroot.crates() {
-                    if let Some(file_id) = load(krate.root(&sysroot)) {
+                    if let Some(file_id) = load(&sysroot[krate].root) {
                         // Crates from sysroot have `cfg(test)` disabled
                         let cfg_options = {
                             let mut opts = default_cfg_options.clone();
@@ -274,7 +274,7 @@ impl ProjectWorkspace {
                             file_id,
                             Edition::Edition2018,
                             Some(
-                                CrateName::new(krate.name(&sysroot))
+                                CrateName::new(&sysroot[krate].name)
                                     .expect("Sysroot crate names should not contain dashes"),
                             ),
                             cfg_options,
@@ -285,8 +285,8 @@ impl ProjectWorkspace {
                     }
                 }
                 for from in sysroot.crates() {
-                    for to in from.deps(&sysroot) {
-                        let name = to.name(&sysroot);
+                    for &to in sysroot[from].deps.iter() {
+                        let name = &sysroot[to].name;
                         if let (Some(&from), Some(&to)) =
                             (sysroot_crates.get(&from), sysroot_crates.get(&to))
                         {
@@ -309,18 +309,18 @@ impl ProjectWorkspace {
                 // Next, create crates for each package, target pair
                 for pkg in cargo.packages() {
                     let mut lib_tgt = None;
-                    for tgt in pkg.targets(&cargo) {
-                        let root = tgt.root(&cargo);
+                    for &tgt in cargo[pkg].targets.iter() {
+                        let root = cargo[tgt].root.as_path();
                         if let Some(file_id) = load(root) {
-                            let edition = pkg.edition(&cargo);
+                            let edition = cargo[pkg].edition;
                             let cfg_options = {
                                 let mut opts = default_cfg_options.clone();
-                                opts.insert_features(pkg.features(&cargo).iter().map(Into::into));
+                                opts.insert_features(cargo[pkg].features.iter().map(Into::into));
                                 opts
                             };
                             let mut env = Env::default();
                             let mut extern_source = ExternSource::default();
-                            if let Some(out_dir) = pkg.out_dir(cargo) {
+                            if let Some(out_dir) = &cargo[pkg].out_dir {
                                 // FIXME: We probably mangle non UTF-8 paths here, figure out a better solution
                                 env.set("OUT_DIR", out_dir.to_string_lossy().to_string());
                                 if let Some(&extern_source_id) = extern_source_roots.get(out_dir) {
@@ -330,16 +330,16 @@ impl ProjectWorkspace {
                             let crate_id = crate_graph.add_crate_root(
                                 file_id,
                                 edition,
-                                Some(CrateName::normalize_dashes(pkg.name(&cargo))),
+                                Some(CrateName::normalize_dashes(&cargo[pkg].name)),
                                 cfg_options,
                                 env,
                                 extern_source,
                             );
-                            if tgt.kind(&cargo) == TargetKind::Lib {
+                            if cargo[tgt].kind == TargetKind::Lib {
                                 lib_tgt = Some(crate_id);
                                 pkg_to_lib_crate.insert(pkg, crate_id);
                             }
-                            if tgt.is_proc_macro(&cargo) {
+                            if cargo[tgt].is_proc_macro {
                                 if let Some(proc_macro) = libproc_macro {
                                     if crate_graph
                                         .add_dep(
@@ -351,7 +351,7 @@ impl ProjectWorkspace {
                                     {
                                         log::error!(
                                             "cyclic dependency on proc_macro for {}",
-                                            pkg.name(&cargo)
+                                            &cargo[pkg].name
                                         )
                                     }
                                 }
@@ -371,7 +371,7 @@ impl ProjectWorkspace {
                                         // For root projects with dashes in their name,
                                         // cargo metadata does not do any normalization,
                                         // so we do it ourselves currently
-                                        CrateName::normalize_dashes(pkg.name(&cargo)),
+                                        CrateName::normalize_dashes(&cargo[pkg].name),
                                         to,
                                     )
                                     .is_err()
@@ -379,7 +379,7 @@ impl ProjectWorkspace {
                                 {
                                     log::error!(
                                         "cyclic dependency between targets of {}",
-                                        pkg.name(&cargo)
+                                        &cargo[pkg].name
                                     )
                                 }
                             }
@@ -391,7 +391,7 @@ impl ProjectWorkspace {
                                 .add_dep(from, CrateName::new("core").unwrap(), core)
                                 .is_err()
                             {
-                                log::error!("cyclic dependency on core for {}", pkg.name(&cargo))
+                                log::error!("cyclic dependency on core for {}", &cargo[pkg].name)
                             }
                         }
                         if let Some(alloc) = liballoc {
@@ -399,7 +399,7 @@ impl ProjectWorkspace {
                                 .add_dep(from, CrateName::new("alloc").unwrap(), alloc)
                                 .is_err()
                             {
-                                log::error!("cyclic dependency on alloc for {}", pkg.name(&cargo))
+                                log::error!("cyclic dependency on alloc for {}", &cargo[pkg].name)
                             }
                         }
                         if let Some(std) = libstd {
@@ -407,7 +407,7 @@ impl ProjectWorkspace {
                                 .add_dep(from, CrateName::new("std").unwrap(), std)
                                 .is_err()
                             {
-                                log::error!("cyclic dependency on std for {}", pkg.name(&cargo))
+                                log::error!("cyclic dependency on std for {}", &cargo[pkg].name)
                             }
                         }
                     }
@@ -416,7 +416,7 @@ impl ProjectWorkspace {
                 // Now add a dep edge from all targets of upstream to the lib
                 // target of downstream.
                 for pkg in cargo.packages() {
-                    for dep in pkg.dependencies(&cargo) {
+                    for dep in cargo[pkg].dependencies.iter() {
                         if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
                             for &from in pkg_crates.get(&pkg).into_iter().flatten() {
                                 if crate_graph
@@ -425,8 +425,8 @@ impl ProjectWorkspace {
                                 {
                                     log::error!(
                                         "cyclic dependency {} -> {}",
-                                        pkg.name(&cargo),
-                                        dep.pkg.name(&cargo)
+                                        &cargo[pkg].name,
+                                        &cargo[dep.pkg].name
                                     )
                                 }
                             }

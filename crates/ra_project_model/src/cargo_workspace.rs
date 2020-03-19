@@ -1,6 +1,9 @@
 //! FIXME: write short doc here
 
-use std::path::{Path, PathBuf};
+use std::{
+    ops,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context, Result};
 use cargo_metadata::{CargoOpt, Message, MetadataCommand, PackageId};
@@ -22,6 +25,20 @@ pub struct CargoWorkspace {
     packages: Arena<Package, PackageData>,
     targets: Arena<Target, TargetData>,
     workspace_root: PathBuf,
+}
+
+impl ops::Index<Package> for CargoWorkspace {
+    type Output = PackageData;
+    fn index(&self, index: Package) -> &PackageData {
+        &self.packages[index]
+    }
+}
+
+impl ops::Index<Target> for CargoWorkspace {
+    type Output = TargetData;
+    fn index(&self, index: Target) -> &TargetData {
+        &self.targets[index]
+    }
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -61,15 +78,15 @@ pub struct Target(RawId);
 impl_arena_id!(Target);
 
 #[derive(Debug, Clone)]
-struct PackageData {
-    name: String,
-    manifest: PathBuf,
-    targets: Vec<Target>,
-    is_member: bool,
-    dependencies: Vec<PackageDependency>,
-    edition: Edition,
-    features: Vec<String>,
-    out_dir: Option<PathBuf>,
+pub struct PackageData {
+    pub name: String,
+    pub manifest: PathBuf,
+    pub targets: Vec<Target>,
+    pub is_member: bool,
+    pub dependencies: Vec<PackageDependency>,
+    pub edition: Edition,
+    pub features: Vec<String>,
+    pub out_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -79,12 +96,12 @@ pub struct PackageDependency {
 }
 
 #[derive(Debug, Clone)]
-struct TargetData {
-    pkg: Package,
-    name: String,
-    root: PathBuf,
-    kind: TargetKind,
-    is_proc_macro: bool,
+pub struct TargetData {
+    pub package: Package,
+    pub name: String,
+    pub root: PathBuf,
+    pub kind: TargetKind,
+    pub is_proc_macro: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -115,52 +132,9 @@ impl TargetKind {
     }
 }
 
-impl Package {
-    pub fn name(self, ws: &CargoWorkspace) -> &str {
-        ws.packages[self].name.as_str()
-    }
-    pub fn root(self, ws: &CargoWorkspace) -> &Path {
-        ws.packages[self].manifest.parent().unwrap()
-    }
-    pub fn edition(self, ws: &CargoWorkspace) -> Edition {
-        ws.packages[self].edition
-    }
-    pub fn features(self, ws: &CargoWorkspace) -> &[String] {
-        &ws.packages[self].features
-    }
-    pub fn targets<'a>(self, ws: &'a CargoWorkspace) -> impl Iterator<Item = Target> + 'a {
-        ws.packages[self].targets.iter().cloned()
-    }
-    #[allow(unused)]
-    pub fn is_member(self, ws: &CargoWorkspace) -> bool {
-        ws.packages[self].is_member
-    }
-    pub fn dependencies<'a>(
-        self,
-        ws: &'a CargoWorkspace,
-    ) -> impl Iterator<Item = &'a PackageDependency> + 'a {
-        ws.packages[self].dependencies.iter()
-    }
-    pub fn out_dir(self, ws: &CargoWorkspace) -> Option<&Path> {
-        ws.packages[self].out_dir.as_ref().map(PathBuf::as_path)
-    }
-}
-
-impl Target {
-    pub fn package(self, ws: &CargoWorkspace) -> Package {
-        ws.targets[self].pkg
-    }
-    pub fn name(self, ws: &CargoWorkspace) -> &str {
-        ws.targets[self].name.as_str()
-    }
-    pub fn root(self, ws: &CargoWorkspace) -> &Path {
-        ws.targets[self].root.as_path()
-    }
-    pub fn kind(self, ws: &CargoWorkspace) -> TargetKind {
-        ws.targets[self].kind
-    }
-    pub fn is_proc_macro(self, ws: &CargoWorkspace) -> bool {
-        ws.targets[self].is_proc_macro
+impl PackageData {
+    pub fn root(&self) -> &Path {
+        self.manifest.parent().unwrap()
     }
 }
 
@@ -219,7 +193,7 @@ impl CargoWorkspace {
             for meta_tgt in meta_pkg.targets {
                 let is_proc_macro = meta_tgt.kind.as_slice() == ["proc-macro"];
                 let tgt = targets.alloc(TargetData {
-                    pkg,
+                    package: pkg,
                     name: meta_tgt.name,
                     root: meta_tgt.src_path.clone(),
                     kind: TargetKind::new(meta_tgt.kind.as_slice()),
@@ -265,7 +239,10 @@ impl CargoWorkspace {
     }
 
     pub fn target_by_root(&self, root: &Path) -> Option<Target> {
-        self.packages().filter_map(|pkg| pkg.targets(self).find(|it| it.root(self) == root)).next()
+        self.packages()
+            .filter_map(|pkg| self[pkg].targets.iter().find(|&&it| self[it].root == root))
+            .next()
+            .copied()
     }
 
     pub fn workspace_root(&self) -> &Path {

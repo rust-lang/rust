@@ -77,9 +77,9 @@ impl CargoTargetSpec {
             ProjectWorkspace::Cargo { cargo, .. } => {
                 let tgt = cargo.target_by_root(&path)?;
                 Some(CargoTargetSpec {
-                    package: tgt.package(&cargo).name(&cargo).to_string(),
-                    target: tgt.name(&cargo).to_string(),
-                    target_kind: tgt.kind(&cargo),
+                    package: cargo[cargo[tgt].package].name.clone(),
+                    target: cargo[tgt].name.clone(),
+                    target_kind: cargo[tgt].kind,
                 })
             }
             ProjectWorkspace::Json { .. } => None,
