@@ -231,7 +231,7 @@ function load_files(out_folder, crate) {
     finalJS = "";
 
     var arraysToLoad = ["itemTypes"];
-    var variablesToLoad = ["MAX_LEV_DISTANCE", "MAX_RESULTS",
+    var variablesToLoad = ["MAX_LEV_DISTANCE", "MAX_RESULTS", "NO_TYPE_FILTER",
                            "GENERICS_DATA", "NAME", "INPUTS_DATA", "OUTPUT_DATA",
                            "TY_PRIMITIVE", "TY_KEYWORD",
                            "levenshtein_row2"];
@@ -328,7 +328,7 @@ function main(argv) {
             console.log("OK");
         }
     }
-    return errors;
+    return errors > 0 ? 1 : 0;
 }
 
 process.exit(main(process.argv));
