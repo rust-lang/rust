@@ -537,28 +537,6 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-impl<'tcx> TyCtxt<'tcx> {
-    #[inline(never)]
-    pub(super) fn get_query<Q: QueryDescription<TyCtxt<'tcx>> + 'tcx>(
-        self,
-        span: Span,
-        key: Q::Key,
-    ) -> Q::Value {
-        debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
-
-        try_get_cached(
-            self,
-            Q::query_state(self),
-            key,
-            |value, index| {
-                self.dep_graph.read_index(index);
-                value.clone()
-            },
-            |key, lookup| try_execute_query::<Q, _, _>(self, span, key, lookup),
-        )
-    }
-}
-
     #[inline(always)]
     fn try_execute_query<Q, CTX, K>(
         tcx: CTX,
@@ -797,7 +775,13 @@ impl<'tcx> TyCtxt<'tcx> {
         (result, dep_node_index)
     }
 
-impl<'tcx> TyCtxt<'tcx> {
+pub(super) trait QueryGetter: QueryContext {
+    fn get_query<Q: QueryDescription<Self>>(
+        self,
+        span: Span,
+        key: Q::Key,
+    ) -> Q::Value;
+
     /// Ensure that either this query has all green inputs or been executed.
     /// Executing `query::ensure(D)` is considered a read of the dep-node `D`.
     ///
@@ -805,7 +789,50 @@ impl<'tcx> TyCtxt<'tcx> {
     /// side-effects -- e.g., in order to report errors for erroneous programs.
     ///
     /// Note: The optimization is only available during incr. comp.
-    pub(super) fn ensure_query<Q: QueryDescription<TyCtxt<'tcx>> + 'tcx>(self, key: Q::Key) {
+    fn ensure_query<Q: QueryDescription<Self>>(self, key: Q::Key);
+
+    fn force_query<Q: QueryDescription<Self>>(
+        self,
+        key: Q::Key,
+        span: Span,
+        dep_node: DepNode<Self::DepKind>,
+    );
+}
+
+impl<CTX, K> QueryGetter for CTX
+where
+    CTX: QueryContext<DepKind = K>,
+    CTX: HashStableContextProvider<<CTX as DepContext>::StableHashingContext>,
+    K: DepKind,
+{
+    #[inline(never)]
+    fn get_query<Q: QueryDescription<Self>>(
+        self,
+        span: Span,
+        key: Q::Key,
+    ) -> Q::Value {
+        debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
+
+        try_get_cached(
+            self,
+            Q::query_state(self),
+            key,
+            |value, index| {
+                self.dep_graph().read_index(index);
+                value.clone()
+            },
+            |key, lookup| try_execute_query::<Q, _, _>(self, span, key, lookup),
+        )
+    }
+
+    /// Ensure that either this query has all green inputs or been executed.
+    /// Executing `query::ensure(D)` is considered a read of the dep-node `D`.
+    ///
+    /// This function is particularly useful when executing passes for their
+    /// side-effects -- e.g., in order to report errors for erroneous programs.
+    ///
+    /// Note: The optimization is only available during incr. comp.
+    fn ensure_query<Q: QueryDescription<Self>>(self, key: Q::Key) {
         if Q::EVAL_ALWAYS {
             let _ = self.get_query::<Q>(DUMMY_SP, key);
             return;
@@ -816,7 +843,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let dep_node = Q::to_dep_node(self, &key);
 
-        match self.dep_graph.try_mark_green_and_read(self, &dep_node) {
+        match self.dep_graph().try_mark_green_and_read(self, &dep_node) {
             None => {
                 // A None return from `try_mark_green_and_read` means that this is either
                 // a new dep node or that the dep node has already been marked red.
@@ -827,17 +854,16 @@ impl<'tcx> TyCtxt<'tcx> {
                 let _ = self.get_query::<Q>(DUMMY_SP, key);
             }
             Some((_, dep_node_index)) => {
-                self.prof.query_cache_hit(dep_node_index.into());
+                self.profiler().query_cache_hit(dep_node_index.into());
             }
         }
     }
 
-    #[allow(dead_code)]
-    pub(super) fn force_query<Q: QueryDescription<TyCtxt<'tcx>> + 'tcx>(
+    fn force_query<Q: QueryDescription<Self>>(
         self,
         key: Q::Key,
         span: Span,
-        dep_node: DepNode<crate::dep_graph::DepKind>,
+        dep_node: DepNode<Self::DepKind>,
     ) {
         // We may be concurrently trying both execute and force a query.
         // Ensure that only one of them runs the query.
