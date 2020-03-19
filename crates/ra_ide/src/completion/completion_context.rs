@@ -197,11 +197,11 @@ impl<'a> CompletionContext<'a> {
                     self.is_pat_binding = true;
                 }
 
-                if parent.and_then(ast::RecordFieldPatList::cast).is_none() {
-                    let bind_pat_string = bind_pat.syntax().to_string();
-                    if !bind_pat_string.contains("ref ") && !bind_pat_string.contains(" @ ") {
-                        self.is_pat_binding_and_path = true;
-                    }
+                if parent.and_then(ast::RecordFieldPatList::cast).is_none()
+                    && bind_pat.pat().is_none()
+                    && !bind_pat.is_ref()
+                {
+                    self.is_pat_binding_and_path = true;
                 }
             }
             if is_node::<ast::Param>(name.syntax()) {

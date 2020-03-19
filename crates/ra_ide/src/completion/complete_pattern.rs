@@ -98,6 +98,13 @@ mod tests {
                 kind: Const,
             },
             CompletionItem {
+                label: "Z",
+                source_range: [246; 246),
+                delete: [246; 246),
+                insert: "Z",
+                kind: Const,
+            },
+            CompletionItem {
                 label: "m",
                 source_range: [246; 246),
                 delete: [246; 246),
@@ -137,6 +144,21 @@ mod tests {
                 delete: [151; 151),
                 insert: "E",
                 kind: Enum,
+            },
+            CompletionItem {
+                label: "E",
+                source_range: [151; 151),
+                delete: [151; 151),
+                insert: "E",
+                kind: Enum,
+            },
+            CompletionItem {
+                label: "m!",
+                source_range: [151; 151),
+                delete: [151; 151),
+                insert: "m!($0)",
+                kind: Macro,
+                detail: "macro_rules! m",
             },
         ]
         "###);

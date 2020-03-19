@@ -11,7 +11,6 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     ctx.scope().process_all_names(&mut |name, res| match (ctx.is_pat_binding_and_path, &res) {
         (true, ScopeDef::ModuleDef(ModuleDef::Function(..))) => (),
         (true, ScopeDef::ModuleDef(ModuleDef::Static(..))) => (),
-        (true, ScopeDef::ModuleDef(ModuleDef::Const(..))) => (),
         (true, ScopeDef::Local(..)) => (),
         _ => acc.add_resolution(ctx, name.to_string(), &res),
     });
@@ -25,6 +24,27 @@ mod tests {
 
     fn do_reference_completion(ra_fixture: &str) -> Vec<CompletionItem> {
         do_completion(ra_fixture, CompletionKind::Reference)
+    }
+
+    #[test]
+    fn bind_pat_and_path_ignore_at() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                enum Enum {
+                    A,
+                    B,
+                }
+                fn quux(x: Option<Enum>) {
+                    match x {
+                        None => (),
+                        Some(en<|> @ Enum::A) => (),
+                    }
+                }
+                "
+            ),
+            @r###"[]"###
+        );
     }
 
     #[test]
