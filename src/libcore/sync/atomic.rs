@@ -2259,7 +2259,7 @@ fn strongest_failure_ordering(order: Ordering) -> Ordering {
 }
 
 #[inline]
-unsafe fn atomic_store<T>(dst: *mut T, val: T, order: Ordering) {
+unsafe fn atomic_store<T: Copy>(dst: *mut T, val: T, order: Ordering) {
     match order {
         Release => intrinsics::atomic_store_rel(dst, val),
         Relaxed => intrinsics::atomic_store_relaxed(dst, val),
@@ -2270,7 +2270,7 @@ unsafe fn atomic_store<T>(dst: *mut T, val: T, order: Ordering) {
 }
 
 #[inline]
-unsafe fn atomic_load<T>(dst: *const T, order: Ordering) -> T {
+unsafe fn atomic_load<T: Copy>(dst: *const T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_load_acq(dst),
         Relaxed => intrinsics::atomic_load_relaxed(dst),
@@ -2282,7 +2282,7 @@ unsafe fn atomic_load<T>(dst: *const T, order: Ordering) -> T {
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_swap<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xchg_acq(dst, val),
         Release => intrinsics::atomic_xchg_rel(dst, val),
@@ -2295,7 +2295,7 @@ unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
 /// Returns the previous value (like __sync_fetch_and_add).
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_add<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xadd_acq(dst, val),
         Release => intrinsics::atomic_xadd_rel(dst, val),
@@ -2308,7 +2308,7 @@ unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
 /// Returns the previous value (like __sync_fetch_and_sub).
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_sub<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xsub_acq(dst, val),
         Release => intrinsics::atomic_xsub_rel(dst, val),
@@ -2320,7 +2320,7 @@ unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_compare_exchange<T>(
+unsafe fn atomic_compare_exchange<T: Copy>(
     dst: *mut T,
     old: T,
     new: T,
@@ -2346,7 +2346,7 @@ unsafe fn atomic_compare_exchange<T>(
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_compare_exchange_weak<T>(
+unsafe fn atomic_compare_exchange_weak<T: Copy>(
     dst: *mut T,
     old: T,
     new: T,
@@ -2372,7 +2372,7 @@ unsafe fn atomic_compare_exchange_weak<T>(
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_and<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_and_acq(dst, val),
         Release => intrinsics::atomic_and_rel(dst, val),
@@ -2384,7 +2384,7 @@ unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_nand<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_nand<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_nand_acq(dst, val),
         Release => intrinsics::atomic_nand_rel(dst, val),
@@ -2396,7 +2396,7 @@ unsafe fn atomic_nand<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_or<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_or_acq(dst, val),
         Release => intrinsics::atomic_or_rel(dst, val),
@@ -2408,7 +2408,7 @@ unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_xor<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xor_acq(dst, val),
         Release => intrinsics::atomic_xor_rel(dst, val),
@@ -2421,7 +2421,7 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
 /// returns the max value (signed comparison)
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_max<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_max<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_max_acq(dst, val),
         Release => intrinsics::atomic_max_rel(dst, val),
@@ -2434,7 +2434,7 @@ unsafe fn atomic_max<T>(dst: *mut T, val: T, order: Ordering) -> T {
 /// returns the min value (signed comparison)
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_min<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_min<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_min_acq(dst, val),
         Release => intrinsics::atomic_min_rel(dst, val),
@@ -2447,7 +2447,7 @@ unsafe fn atomic_min<T>(dst: *mut T, val: T, order: Ordering) -> T {
 /// returns the max value (unsigned comparison)
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_umax<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_umax<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_umax_acq(dst, val),
         Release => intrinsics::atomic_umax_rel(dst, val),
@@ -2460,7 +2460,7 @@ unsafe fn atomic_umax<T>(dst: *mut T, val: T, order: Ordering) -> T {
 /// returns the min value (unsigned comparison)
 #[inline]
 #[cfg(target_has_atomic = "8")]
-unsafe fn atomic_umin<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_umin_acq(dst, val),
         Release => intrinsics::atomic_umin_rel(dst, val),
