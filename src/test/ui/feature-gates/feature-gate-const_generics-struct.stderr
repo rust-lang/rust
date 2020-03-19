@@ -1,5 +1,5 @@
 error[E0658]: const generics are unstable
-  --> $DIR/feature-gate-const_generics-struct.rs:1:18
+  --> $DIR/feature-gate-const_generics-struct.rs:3:18
    |
 LL | struct Foo<const X: usize>([(); X]);
    |                  ^

@@ -1,5 +1,5 @@
 error[E0658]: const generics are unstable
-  --> $DIR/feature-gate-const_generics-fn.rs:1:14
+  --> $DIR/feature-gate-const_generics-fn.rs:3:14
    |
 LL | fn foo<const X: ()>() {}
    |              ^
