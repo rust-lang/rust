@@ -3,7 +3,7 @@ use crate::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ItemLocalId};
@@ -32,7 +32,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 
 struct HirIdValidator<'a, 'hir> {
     hir_map: Map<'hir>,
-    owner_def_index: Option<DefIndex>,
+    owner: Option<LocalDefId>,
     hir_ids_seen: FxHashSet<ItemLocalId>,
     errors: &'a Lock<Vec<String>>,
 }
@@ -46,7 +46,7 @@ impl<'a, 'hir> OuterVisitor<'a, 'hir> {
     fn new_inner_visitor(&self, hir_map: Map<'hir>) -> HirIdValidator<'a, 'hir> {
         HirIdValidator {
             hir_map,
-            owner_def_index: None,
+            owner: None,
             hir_ids_seen: Default::default(),
             errors: self.errors,
         }
@@ -78,12 +78,12 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
     }
 
     fn check<F: FnOnce(&mut HirIdValidator<'a, 'hir>)>(&mut self, hir_id: HirId, walk: F) {
-        assert!(self.owner_def_index.is_none());
-        let owner_def_index = self.hir_map.local_def_id(hir_id).index;
-        self.owner_def_index = Some(owner_def_index);
+        assert!(self.owner.is_none());
+        let owner = self.hir_map.local_def_id(hir_id).expect_local();
+        self.owner = Some(owner);
         walk(self);
 
-        if owner_def_index == CRATE_DEF_INDEX {
+        if owner.local_def_index == CRATE_DEF_INDEX {
             return;
         }
 
@@ -105,27 +105,26 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
             let mut missing_items = Vec::with_capacity(missing.len());
 
             for local_id in missing {
-                let hir_id =
-                    HirId { owner: owner_def_index, local_id: ItemLocalId::from_u32(local_id) };
+                let hir_id = HirId { owner, local_id: ItemLocalId::from_u32(local_id) };
 
                 trace!("missing hir id {:#?}", hir_id);
 
                 missing_items.push(format!(
                     "[local_id: {}, owner: {}]",
                     local_id,
-                    self.hir_map.def_path(DefId::local(owner_def_index)).to_string_no_crate()
+                    self.hir_map.def_path(owner).to_string_no_crate()
                 ));
             }
             self.error(|| {
                 format!(
                     "ItemLocalIds not assigned densely in {}. \
                 Max ItemLocalId = {}, missing IDs = {:?}; seens IDs = {:?}",
-                    self.hir_map.def_path(DefId::local(owner_def_index)).to_string_no_crate(),
+                    self.hir_map.def_path(owner).to_string_no_crate(),
                     max,
                     missing_items,
                     self.hir_ids_seen
                         .iter()
-                        .map(|&local_id| HirId { owner: owner_def_index, local_id })
+                        .map(|&local_id| HirId { owner, local_id })
                         .map(|h| format!("({:?} {})", h, self.hir_map.node_to_string(h)))
                         .collect::<Vec<_>>()
                 )
@@ -142,7 +141,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
     }
 
     fn visit_id(&mut self, hir_id: HirId) {
-        let owner = self.owner_def_index.expect("no owner_def_index");
+        let owner = self.owner.expect("no owner");
 
         if hir_id == hir::DUMMY_HIR_ID {
             self.error(|| {
@@ -159,8 +158,8 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
                 format!(
                     "HirIdValidator: The recorded owner of {} is {} instead of {}",
                     self.hir_map.node_to_string(hir_id),
-                    self.hir_map.def_path(DefId::local(hir_id.owner)).to_string_no_crate(),
-                    self.hir_map.def_path(DefId::local(owner)).to_string_no_crate()
+                    self.hir_map.def_path(hir_id.owner).to_string_no_crate(),
+                    self.hir_map.def_path(owner).to_string_no_crate()
                 )
             });
         }

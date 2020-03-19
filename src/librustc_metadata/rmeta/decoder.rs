@@ -364,7 +364,7 @@ impl<'a, 'tcx> SpecializedDecoder<DefIndex> for DecodeContext<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedDecoder<LocalDefId> for DecodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_decode(&mut self) -> Result<LocalDefId, Self::Error> {
-        self.specialized_decode().map(|i| LocalDefId::from_def_id(i))
+        Ok(DefId::decode(self)?.expect_local())
     }
 }
 

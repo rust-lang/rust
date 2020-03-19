@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, DefIndex};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
@@ -123,16 +123,16 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
-        if def_id.is_local() {
-            self.definitions.def_path_hash(def_id.index)
+        if let Some(def_id) = def_id.as_local() {
+            self.local_def_path_hash(def_id)
         } else {
             self.cstore.def_path_hash(def_id)
         }
     }
 
     #[inline]
-    pub fn local_def_path_hash(&self, def_index: DefIndex) -> DefPathHash {
-        self.definitions.def_path_hash(def_index)
+    pub fn local_def_path_hash(&self, def_id: LocalDefId) -> DefPathHash {
+        self.definitions.def_path_hash(def_id)
     }
 
     #[inline]

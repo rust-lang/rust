@@ -1128,7 +1128,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Call(ref f, ref args) => {
-                let m = self.ir.tcx.parent_module(expr.hir_id);
+                let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
                 let succ = if self.ir.tcx.is_ty_uninhabited_from(
                     m,
                     self.tables.expr_ty(expr),
@@ -1143,7 +1143,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::MethodCall(.., ref args) => {
-                let m = self.ir.tcx.parent_module(expr.hir_id);
+                let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
                 let succ = if self.ir.tcx.is_ty_uninhabited_from(
                     m,
                     self.tables.expr_ty(expr),

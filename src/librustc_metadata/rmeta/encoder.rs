@@ -1350,7 +1350,7 @@ impl EncodeContext<'tcx> {
         let is_proc_macro = self.tcx.sess.crate_types.borrow().contains(&CrateType::ProcMacro);
         if is_proc_macro {
             let tcx = self.tcx;
-            Some(self.lazy(tcx.hir().krate().proc_macros.iter().map(|p| p.owner)))
+            Some(self.lazy(tcx.hir().krate().proc_macros.iter().map(|p| p.owner.local_def_index)))
         } else {
             None
         }
@@ -1438,8 +1438,8 @@ impl EncodeContext<'tcx> {
             .into_iter()
             .map(|(trait_def_id, mut impls)| {
                 // Bring everything into deterministic order for hashing
-                impls.sort_by_cached_key(|&def_index| {
-                    tcx.hir().definitions().def_path_hash(def_index)
+                impls.sort_by_cached_key(|&index| {
+                    tcx.hir().definitions().def_path_hash(LocalDefId { local_def_index: index })
                 });
 
                 TraitImpls {

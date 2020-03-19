@@ -9,7 +9,7 @@ use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, DefIdSet, DefIndex};
+use rustc_hir::def_id::DefIdSet;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::InferCtxt;
@@ -107,11 +107,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         body: &'tcx hir::Body<'tcx>,
         rustc_dump_user_substs: bool,
     ) -> WritebackCx<'cx, 'tcx> {
-        let owner = body.id().hir_id;
+        let owner = body.id().hir_id.owner;
 
         WritebackCx {
             fcx,
-            tables: ty::TypeckTables::empty(Some(DefId::local(owner.owner))),
+            tables: ty::TypeckTables::empty(Some(owner.to_def_id())),
             body,
             rustc_dump_user_substs,
         }
@@ -342,7 +342,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
         for (&id, &origin) in fcx_tables.closure_kind_origins().iter() {
-            let hir_id = hir::HirId { owner: common_local_id_root.index, local_id: id };
+            let hir_id = hir::HirId { owner: common_local_id_root.expect_local(), local_id: id };
             self.tables.closure_kind_origins_mut().insert(hir_id, origin);
         }
     }
@@ -364,7 +364,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         let mut errors_buffer = Vec::new();
         for (&local_id, c_ty) in fcx_tables.user_provided_types().iter() {
-            let hir_id = hir::HirId { owner: common_local_id_root.index, local_id };
+            let hir_id = hir::HirId { owner: common_local_id_root.expect_local(), local_id };
 
             if cfg!(debug_assertions) && c_ty.has_local_value() {
                 span_bug!(hir_id.to_span(self.fcx.tcx), "writeback: `{:?}` is a local value", c_ty);
@@ -557,7 +557,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
         for (&local_id, fn_sig) in fcx_tables.liberated_fn_sigs().iter() {
-            let hir_id = hir::HirId { owner: common_local_id_root.index, local_id };
+            let hir_id = hir::HirId { owner: common_local_id_root.expect_local(), local_id };
             let fn_sig = self.resolve(fn_sig, &hir_id);
             self.tables.liberated_fn_sigs_mut().insert(hir_id, fn_sig.clone());
         }
@@ -569,7 +569,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
         for (&local_id, ftys) in fcx_tables.fru_field_types().iter() {
-            let hir_id = hir::HirId { owner: common_local_id_root.index, local_id };
+            let hir_id = hir::HirId { owner: common_local_id_root.expect_local(), local_id };
             let ftys = self.resolve(ftys, &hir_id);
             self.tables.fru_field_types_mut().insert(hir_id, ftys);
         }
@@ -594,13 +594,6 @@ trait Locatable {
 impl Locatable for Span {
     fn to_span(&self, _: TyCtxt<'_>) -> Span {
         *self
-    }
-}
-
-impl Locatable for DefIndex {
-    fn to_span(&self, tcx: TyCtxt<'_>) -> Span {
-        let hir_id = tcx.hir().def_index_to_hir_id(*self);
-        tcx.hir().span(hir_id)
     }
 }
 

@@ -9,7 +9,7 @@ use crate::ty::TyCtxt;
 use rustc_ast::ast::{self, Name, NodeId};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::print::Nested;
@@ -138,7 +138,7 @@ pub struct IndexedHir<'hir> {
     /// The SVH of the local crate.
     pub crate_hash: Svh,
 
-    pub(super) map: IndexVec<DefIndex, HirOwnerData<'hir>>,
+    pub(super) map: IndexVec<LocalDefId, HirOwnerData<'hir>>,
 }
 
 #[derive(Copy, Clone)]
@@ -188,20 +188,19 @@ impl<'hir> Map<'hir> {
         &self.tcx.definitions
     }
 
-    pub fn def_key(&self, def_id: DefId) -> DefKey {
-        assert!(def_id.is_local());
-        self.tcx.definitions.def_key(def_id.index)
+    pub fn def_key(&self, def_id: LocalDefId) -> DefKey {
+        self.tcx.definitions.def_key(def_id)
     }
 
     pub fn def_path_from_hir_id(&self, id: HirId) -> Option<DefPath> {
-        self.opt_local_def_id(id).map(|def_id| self.def_path(def_id))
+        self.opt_local_def_id(id).map(|def_id| self.def_path(def_id.expect_local()))
     }
 
-    pub fn def_path(&self, def_id: DefId) -> DefPath {
-        assert!(def_id.is_local());
-        self.tcx.definitions.def_path(def_id.index)
+    pub fn def_path(&self, def_id: LocalDefId) -> DefPath {
+        self.tcx.definitions.def_path(def_id)
     }
 
+    // FIXME(eddyb) this function can and should return `LocalDefId`.
     #[inline]
     pub fn local_def_id_from_node_id(&self, node: NodeId) -> DefId {
         self.opt_local_def_id_from_node_id(node).unwrap_or_else(|| {
@@ -214,6 +213,7 @@ impl<'hir> Map<'hir> {
         })
     }
 
+    // FIXME(eddyb) this function can and should return `LocalDefId`.
     #[inline]
     pub fn local_def_id(&self, hir_id: HirId) -> DefId {
         self.opt_local_def_id(hir_id).unwrap_or_else(|| {
@@ -228,12 +228,12 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<DefId> {
         let node_id = self.hir_to_node_id(hir_id);
-        self.tcx.definitions.opt_local_def_id(node_id)
+        self.opt_local_def_id_from_node_id(node_id)
     }
 
     #[inline]
     pub fn opt_local_def_id_from_node_id(&self, node: NodeId) -> Option<DefId> {
-        self.tcx.definitions.opt_local_def_id(node)
+        Some(self.tcx.definitions.opt_local_def_id(node)?.to_def_id())
     }
 
     #[inline]
@@ -257,13 +257,8 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn def_index_to_hir_id(&self, def_index: DefIndex) -> HirId {
-        self.tcx.definitions.def_index_to_hir_id(def_index)
-    }
-
-    #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
-        self.tcx.definitions.def_index_to_hir_id(def_id.to_def_id().index)
+        self.tcx.definitions.local_def_id_to_hir_id(def_id)
     }
 
     pub fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {
@@ -347,10 +342,10 @@ impl<'hir> Map<'hir> {
 
     fn get_entry(&self, id: HirId) -> Entry<'hir> {
         if id.local_id == ItemLocalId::from_u32(0) {
-            let owner = self.tcx.hir_owner(id.owner_def_id());
+            let owner = self.tcx.hir_owner(id.owner);
             Entry { parent: owner.parent, node: owner.node }
         } else {
-            let owner = self.tcx.hir_owner_items(id.owner_def_id());
+            let owner = self.tcx.hir_owner_items(id.owner);
             let item = owner.items[id.local_id].as_ref().unwrap();
             Entry { parent: HirId { owner: id.owner, local_id: item.parent }, node: item.node }
         }
@@ -378,11 +373,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
-        self.tcx
-            .hir_owner_items(DefId::local(id.hir_id.owner))
-            .bodies
-            .get(&id.hir_id.local_id)
-            .unwrap()
+        self.tcx.hir_owner_items(id.hir_id.owner).bodies.get(&id.hir_id.local_id).unwrap()
     }
 
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
@@ -410,6 +401,7 @@ impl<'hir> Map<'hir> {
         parent
     }
 
+    // FIXME(eddyb) this function can and should return `LocalDefId`.
     pub fn body_owner_def_id(&self, id: BodyId) -> DefId {
         self.local_def_id(self.body_owner(id))
     }
@@ -496,7 +488,7 @@ impl<'hir> Map<'hir> {
     where
         V: ItemLikeVisitor<'hir>,
     {
-        let module = self.tcx.hir_module_items(module);
+        let module = self.tcx.hir_module_items(module.expect_local());
 
         for id in &module.items {
             visitor.visit_item(self.expect_item(*id));
@@ -782,6 +774,7 @@ impl<'hir> Map<'hir> {
         scope
     }
 
+    // FIXME(eddyb) this function can and should return `LocalDefId`.
     pub fn get_parent_did(&self, id: HirId) -> DefId {
         self.local_def_id(self.get_parent_item(id))
     }

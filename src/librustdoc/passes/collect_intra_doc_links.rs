@@ -348,7 +348,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         let parent_node = self.cx.as_local_hir_id(item.def_id).and_then(|hir_id| {
             // FIXME: this fails hard for impls in non-module scope, but is necessary for the
             // current `resolve()` implementation.
-            match self.cx.as_local_hir_id(self.cx.tcx.parent_module(hir_id)).unwrap() {
+            match self.cx.as_local_hir_id(self.cx.tcx.parent_module(hir_id).to_def_id()).unwrap() {
                 id if id != hir_id => Some(id),
                 _ => None,
             }

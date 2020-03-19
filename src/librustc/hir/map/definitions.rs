@@ -5,11 +5,10 @@
 //! expressions) that are mostly just leftovers.
 
 use rustc_ast::ast;
-use rustc_ast::node_id::NodeMap;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::IndexVec;
 use rustc_session::CrateDisambiguator;
 use rustc_span::hygiene::ExpnId;
@@ -78,25 +77,29 @@ impl DefPathTable {
 #[derive(Clone, Default)]
 pub struct Definitions {
     table: DefPathTable,
-    node_to_def_index: NodeMap<DefIndex>,
-    def_index_to_node: IndexVec<DefIndex, ast::NodeId>,
 
-    pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
-    /// The reverse mapping of `node_to_hir_id`.
-    pub(super) hir_to_node_id: FxHashMap<hir::HirId, ast::NodeId>,
+    def_id_to_span: IndexVec<LocalDefId, Span>,
+
+    // FIXME(eddyb) don't go through `ast::NodeId` to convert between `HirId`
+    // and `LocalDefId` - ideally all `LocalDefId`s would be HIR owners.
+    node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
+    def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
+
+    pub(super) node_id_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
+    /// The reverse mapping of `node_id_to_hir_id`.
+    pub(super) hir_id_to_node_id: FxHashMap<hir::HirId, ast::NodeId>,
 
     /// If `ExpnId` is an ID of some macro expansion,
     /// then `DefId` is the normal module (`mod`) in which the expanded macro was defined.
     parent_modules_of_macro_defs: FxHashMap<ExpnId, DefId>,
-    /// Item with a given `DefIndex` was defined during macro expansion with ID `ExpnId`.
-    expansions_that_defined: FxHashMap<DefIndex, ExpnId>,
-    next_disambiguator: FxHashMap<(DefIndex, DefPathData), u32>,
-    def_index_to_span: FxHashMap<DefIndex, Span>,
+    /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
+    expansions_that_defined: FxHashMap<LocalDefId, ExpnId>,
+    next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
     /// we know what parent node that fragment should be attached to thanks to this table.
-    invocation_parents: FxHashMap<ExpnId, DefIndex>,
+    invocation_parents: FxHashMap<ExpnId, LocalDefId>,
     /// Indices of unnamed struct or variant fields with unresolved attributes.
-    placeholder_field_indices: NodeMap<usize>,
+    placeholder_field_indices: FxHashMap<ast::NodeId, usize>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -296,13 +299,13 @@ impl Definitions {
         self.table.index_to_key.len()
     }
 
-    pub fn def_key(&self, index: DefIndex) -> DefKey {
-        self.table.def_key(index)
+    pub fn def_key(&self, id: LocalDefId) -> DefKey {
+        self.table.def_key(id.local_def_index)
     }
 
     #[inline(always)]
-    pub fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
-        self.table.def_path_hash(index)
+    pub fn def_path_hash(&self, id: LocalDefId) -> DefPathHash {
+        self.table.def_path_hash(id.local_def_index)
     }
 
     /// Returns the path from the crate root to `index`. The root
@@ -310,29 +313,27 @@ impl Definitions {
     /// empty vector for the crate root). For an inlined item, this
     /// will be the path of the item in the external crate (but the
     /// path will begin with the path to the external crate).
-    pub fn def_path(&self, index: DefIndex) -> DefPath {
-        DefPath::make(LOCAL_CRATE, index, |p| self.def_key(p))
+    pub fn def_path(&self, id: LocalDefId) -> DefPath {
+        DefPath::make(LOCAL_CRATE, id.local_def_index, |index| {
+            self.def_key(LocalDefId { local_def_index: index })
+        })
     }
 
     #[inline]
-    pub fn opt_def_index(&self, node: ast::NodeId) -> Option<DefIndex> {
-        self.node_to_def_index.get(&node).copied()
+    pub fn opt_local_def_id(&self, node: ast::NodeId) -> Option<LocalDefId> {
+        self.node_id_to_def_id.get(&node).copied()
     }
 
-    #[inline]
-    pub fn opt_local_def_id(&self, node: ast::NodeId) -> Option<DefId> {
-        self.opt_def_index(node).map(DefId::local)
-    }
-
+    // FIXME(eddyb) this function can and should return `LocalDefId`.
     #[inline]
     pub fn local_def_id(&self, node: ast::NodeId) -> DefId {
-        self.opt_local_def_id(node).unwrap()
+        self.opt_local_def_id(node).unwrap().to_def_id()
     }
 
     #[inline]
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
-        if def_id.krate == LOCAL_CRATE {
-            let node_id = self.def_index_to_node[def_id.index];
+        if let Some(def_id) = def_id.as_local() {
+            let node_id = self.def_id_to_node_id[def_id];
             if node_id != ast::DUMMY_NODE_ID {
                 return Some(node_id);
             }
@@ -342,39 +343,36 @@ impl Definitions {
 
     #[inline]
     pub fn as_local_hir_id(&self, def_id: DefId) -> Option<hir::HirId> {
-        if def_id.krate == LOCAL_CRATE {
-            let hir_id = self.def_index_to_hir_id(def_id.index);
+        if let Some(def_id) = def_id.as_local() {
+            let hir_id = self.local_def_id_to_hir_id(def_id);
             if hir_id != hir::DUMMY_HIR_ID { Some(hir_id) } else { None }
         } else {
             None
         }
     }
 
+    // FIXME(eddyb) rename to `hir_id_to_node_id`.
     #[inline]
     pub fn hir_to_node_id(&self, hir_id: hir::HirId) -> ast::NodeId {
-        self.hir_to_node_id[&hir_id]
+        self.hir_id_to_node_id[&hir_id]
     }
 
+    // FIXME(eddyb) rename to `node_id_to_hir_id`.
     #[inline]
     pub fn node_to_hir_id(&self, node_id: ast::NodeId) -> hir::HirId {
-        self.node_to_hir_id[node_id]
+        self.node_id_to_hir_id[node_id]
     }
 
     #[inline]
-    pub fn def_index_to_hir_id(&self, def_index: DefIndex) -> hir::HirId {
-        let node_id = self.def_index_to_node[def_index];
-        self.node_to_hir_id[node_id]
+    pub fn local_def_id_to_hir_id(&self, id: LocalDefId) -> hir::HirId {
+        let node_id = self.def_id_to_node_id[id];
+        self.node_id_to_hir_id[node_id]
     }
 
-    /// Retrieves the span of the given `DefId` if `DefId` is in the local crate, the span exists
-    /// and it's not `DUMMY_SP`.
+    /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
-        if def_id.krate == LOCAL_CRATE {
-            self.def_index_to_span.get(&def_id.index).copied()
-        } else {
-            None
-        }
+        if let Some(def_id) = def_id.as_local() { Some(self.def_id_to_span[def_id]) } else { None }
     }
 
     /// Adds a root definition (no parent) and a few other reserved definitions.
@@ -382,7 +380,7 @@ impl Definitions {
         &mut self,
         crate_name: &str,
         crate_disambiguator: CrateDisambiguator,
-    ) -> DefIndex {
+    ) -> LocalDefId {
         let key = DefKey {
             parent: None,
             disambiguated_data: DisambiguatedDefPathData {
@@ -395,36 +393,38 @@ impl Definitions {
         let def_path_hash = key.compute_stable_hash(parent_hash);
 
         // Create the definition.
-        let root_index = self.table.allocate(key, def_path_hash);
-        assert_eq!(root_index, CRATE_DEF_INDEX);
-        assert!(self.def_index_to_node.is_empty());
-        self.def_index_to_node.push(ast::CRATE_NODE_ID);
-        self.node_to_def_index.insert(ast::CRATE_NODE_ID, root_index);
-        self.set_invocation_parent(ExpnId::root(), root_index);
+        let root = LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) };
+        assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
-        root_index
+        assert_eq!(self.def_id_to_node_id.push(ast::CRATE_NODE_ID), root);
+        assert_eq!(self.def_id_to_span.push(rustc_span::DUMMY_SP), root);
+
+        self.node_id_to_def_id.insert(ast::CRATE_NODE_ID, root);
+        self.set_invocation_parent(ExpnId::root(), root);
+
+        root
     }
 
     /// Adds a definition with a parent definition.
     pub fn create_def_with_parent(
         &mut self,
-        parent: DefIndex,
+        parent: LocalDefId,
         node_id: ast::NodeId,
         data: DefPathData,
         expn_id: ExpnId,
         span: Span,
-    ) -> DefIndex {
+    ) -> LocalDefId {
         debug!(
             "create_def_with_parent(parent={:?}, node_id={:?}, data={:?})",
             parent, node_id, data
         );
 
         assert!(
-            !self.node_to_def_index.contains_key(&node_id),
+            !self.node_id_to_def_id.contains_key(&node_id),
             "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
             node_id,
             data,
-            self.table.def_key(self.node_to_def_index[&node_id])
+            self.table.def_key(self.node_id_to_def_id[&node_id].local_def_index),
         );
 
         // The root node must be created with `create_root_def()`.
@@ -439,59 +439,55 @@ impl Definitions {
         };
 
         let key = DefKey {
-            parent: Some(parent),
+            parent: Some(parent.local_def_index),
             disambiguated_data: DisambiguatedDefPathData { data, disambiguator },
         };
 
-        let parent_hash = self.table.def_path_hash(parent);
+        let parent_hash = self.table.def_path_hash(parent.local_def_index);
         let def_path_hash = key.compute_stable_hash(parent_hash);
 
         debug!("create_def_with_parent: after disambiguation, key = {:?}", key);
 
         // Create the definition.
-        let index = self.table.allocate(key, def_path_hash);
-        assert_eq!(index.index(), self.def_index_to_node.len());
-        self.def_index_to_node.push(node_id);
+        let def_id = LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) };
 
-        // Some things for which we allocate `DefIndex`es don't correspond to
+        assert_eq!(self.def_id_to_node_id.push(node_id), def_id);
+        assert_eq!(self.def_id_to_span.push(span), def_id);
+
+        // Some things for which we allocate `LocalDefId`s don't correspond to
         // anything in the AST, so they don't have a `NodeId`. For these cases
-        // we don't need a mapping from `NodeId` to `DefIndex`.
+        // we don't need a mapping from `NodeId` to `LocalDefId`.
         if node_id != ast::DUMMY_NODE_ID {
-            debug!("create_def_with_parent: def_index_to_node[{:?} <-> {:?}", index, node_id);
-            self.node_to_def_index.insert(node_id, index);
+            debug!("create_def_with_parent: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
+            self.node_id_to_def_id.insert(node_id, def_id);
         }
 
         if expn_id != ExpnId::root() {
-            self.expansions_that_defined.insert(index, expn_id);
+            self.expansions_that_defined.insert(def_id, expn_id);
         }
 
-        // The span is added if it isn't dummy.
-        if !span.is_dummy() {
-            self.def_index_to_span.insert(index, span);
-        }
-
-        index
+        def_id
     }
 
     /// Initializes the `ast::NodeId` to `HirId` mapping once it has been generated during
     /// AST to HIR lowering.
     pub fn init_node_id_to_hir_id_mapping(&mut self, mapping: IndexVec<ast::NodeId, hir::HirId>) {
         assert!(
-            self.node_to_hir_id.is_empty(),
+            self.node_id_to_hir_id.is_empty(),
             "trying to initialize `NodeId` -> `HirId` mapping twice"
         );
-        self.node_to_hir_id = mapping;
+        self.node_id_to_hir_id = mapping;
 
-        // Build the reverse mapping of `node_to_hir_id`.
-        self.hir_to_node_id = self
-            .node_to_hir_id
+        // Build the reverse mapping of `node_id_to_hir_id`.
+        self.hir_id_to_node_id = self
+            .node_id_to_hir_id
             .iter_enumerated()
             .map(|(node_id, &hir_id)| (hir_id, node_id))
             .collect();
     }
 
-    pub fn expansion_that_defined(&self, index: DefIndex) -> ExpnId {
-        self.expansions_that_defined.get(&index).copied().unwrap_or(ExpnId::root())
+    pub fn expansion_that_defined(&self, id: LocalDefId) -> ExpnId {
+        self.expansions_that_defined.get(&id).copied().unwrap_or(ExpnId::root())
     }
 
     pub fn parent_module_of_macro_def(&self, expn_id: ExpnId) -> DefId {
@@ -502,13 +498,13 @@ impl Definitions {
         self.parent_modules_of_macro_defs.insert(expn_id, module);
     }
 
-    pub fn invocation_parent(&self, invoc_id: ExpnId) -> DefIndex {
+    pub fn invocation_parent(&self, invoc_id: ExpnId) -> LocalDefId {
         self.invocation_parents[&invoc_id]
     }
 
-    pub fn set_invocation_parent(&mut self, invoc_id: ExpnId, parent: DefIndex) {
+    pub fn set_invocation_parent(&mut self, invoc_id: ExpnId, parent: LocalDefId) {
         let old_parent = self.invocation_parents.insert(invoc_id, parent);
-        assert!(old_parent.is_none(), "parent `DefIndex` is reset for an invocation");
+        assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
     }
 
     pub fn placeholder_field_index(&self, node_id: ast::NodeId) -> usize {

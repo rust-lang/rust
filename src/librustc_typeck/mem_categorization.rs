@@ -470,7 +470,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
         let upvar_id = ty::UpvarId {
             var_path: ty::UpvarPath { hir_id: var_id },
-            closure_expr_id: closure_expr_def_id.to_local(),
+            closure_expr_id: closure_expr_def_id.expect_local(),
         };
         let var_ty = self.node_ty(var_id)?;
 

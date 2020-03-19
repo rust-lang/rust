@@ -5,7 +5,7 @@ use crate::hir::{
     VisibilityKind,
 };
 use crate::hir_id::{HirId, ItemLocalId};
-use rustc_span::def_id::{DefIndex, DefPathHash};
+use rustc_span::def_id::{DefPathHash, LocalDefId};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
@@ -21,7 +21,7 @@ pub trait HashStableContext:
     fn hash_hir_ty(&mut self, _: &Ty<'_>, hasher: &mut StableHasher);
     fn hash_hir_visibility_kind(&mut self, _: &VisibilityKind<'_>, hasher: &mut StableHasher);
     fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F);
-    fn local_def_path_hash(&self, def_index: DefIndex) -> DefPathHash;
+    fn local_def_path_hash(&self, def_id: LocalDefId) -> DefPathHash;
 }
 
 impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {

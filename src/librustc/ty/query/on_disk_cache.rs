@@ -11,7 +11,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, Once};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
-use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{
@@ -657,26 +656,7 @@ impl<'a, 'tcx> SpecializedDecoder<DefId> for CacheDecoder<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedDecoder<LocalDefId> for CacheDecoder<'a, 'tcx> {
     #[inline]
     fn specialized_decode(&mut self) -> Result<LocalDefId, Self::Error> {
-        Ok(LocalDefId::from_def_id(DefId::decode(self)?))
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<hir::HirId> for CacheDecoder<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<hir::HirId, Self::Error> {
-        // Load the `DefPathHash` which is what we encoded the `DefIndex` as.
-        let def_path_hash = DefPathHash::decode(self)?;
-
-        // Use the `DefPathHash` to map to the current `DefId`.
-        let def_id = self.tcx().def_path_hash_to_def_id.as_ref().unwrap()[&def_path_hash];
-
-        debug_assert!(def_id.is_local());
-
-        // The `ItemLocalId` needs no remapping.
-        let local_id = hir::ItemLocalId::decode(self)?;
-
-        // Reconstruct the `HirId` and look up the corresponding `NodeId` in the
-        // context of the current session.
-        Ok(hir::HirId { owner: def_id.index, local_id })
+        Ok(DefId::decode(self)?.expect_local())
     }
 }
 
@@ -870,21 +850,6 @@ where
         ty_codec::encode_spanned_predicates(self, predicates, |encoder| {
             &mut encoder.predicate_shorthands
         })
-    }
-}
-
-impl<'a, 'tcx, E> SpecializedEncoder<hir::HirId> for CacheEncoder<'a, 'tcx, E>
-where
-    E: 'a + TyEncoder,
-{
-    #[inline]
-    fn specialized_encode(&mut self, id: &hir::HirId) -> Result<(), Self::Error> {
-        let hir::HirId { owner, local_id } = *id;
-
-        let def_path_hash = self.tcx.hir().definitions().def_path_hash(owner);
-
-        def_path_hash.encode(self)?;
-        local_id.encode(self)
     }
 }
 

@@ -870,11 +870,11 @@ impl<'a> CrateLoader<'a> {
                 let cnum = self.resolve_crate(name, item.span, dep_kind, None);
 
                 let def_id = definitions.opt_local_def_id(item.id).unwrap();
-                let path_len = definitions.def_path(def_id.index).data.len();
+                let path_len = definitions.def_path(def_id).data.len();
                 self.update_extern_crate(
                     cnum,
                     ExternCrate {
-                        src: ExternCrateSource::Extern(def_id),
+                        src: ExternCrateSource::Extern(def_id.to_def_id()),
                         span: item.span,
                         path_len,
                         dependency_of: LOCAL_CRATE,
