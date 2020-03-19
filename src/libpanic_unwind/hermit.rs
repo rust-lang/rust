@@ -4,7 +4,6 @@
 
 use alloc::boxed::Box;
 use core::any::Any;
-use core::ptr;
 
 pub unsafe fn cleanup(_ptr: *mut u8) -> Box<dyn Any + Send> {
     extern "C" {
