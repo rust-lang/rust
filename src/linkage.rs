@@ -6,9 +6,7 @@ pub fn get_clif_linkage(mono_item: MonoItem, linkage: RLinkage, visibility: Visi
     match (linkage, visibility) {
         (RLinkage::External, Visibility::Default) => Linkage::Export,
         (RLinkage::Internal, Visibility::Default) => Linkage::Local,
-        // FIXME this should get external linkage, but hidden visibility,
-        // not internal linkage and default visibility
-        (RLinkage::External, Visibility::Hidden) => Linkage::Export,
+        (RLinkage::External, Visibility::Hidden) => Linkage::Hidden,
         _ => panic!("{:?} = {:?} {:?}", mono_item, linkage, visibility),
     }
 }
