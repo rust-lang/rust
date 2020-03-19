@@ -1,5 +1,7 @@
-use ra_syntax::ast::{self, AstNode};
-use ra_syntax::T;
+use ra_syntax::{
+    ast::{self, AstNode},
+    T,
+};
 
 use crate::{utils::invert_boolean_expression, Assist, AssistCtx, AssistId};
 

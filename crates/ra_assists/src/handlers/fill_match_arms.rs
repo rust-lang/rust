@@ -3,10 +3,10 @@
 use std::iter;
 
 use hir::{Adt, HasSource, Semantics};
+use ra_ide_db::RootDatabase;
 use ra_syntax::ast::{self, edit::IndentLevel, make, AstNode, NameOwner};
 
 use crate::{Assist, AssistCtx, AssistId};
-use ra_ide_db::RootDatabase;
 
 // Assist: fill_match_arms
 //

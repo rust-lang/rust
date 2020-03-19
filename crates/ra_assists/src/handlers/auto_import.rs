@@ -1,8 +1,5 @@
-use crate::{
-    assist_ctx::{Assist, AssistCtx},
-    utils::insert_use_statement,
-    AssistId,
-};
+use std::collections::BTreeSet;
+
 use hir::{
     AsAssocItem, AssocItemContainer, ModPath, Module, ModuleDef, PathResolution, Semantics, Trait,
     Type,
@@ -14,7 +11,12 @@ use ra_syntax::{
     SyntaxNode,
 };
 use rustc_hash::FxHashSet;
-use std::collections::BTreeSet;
+
+use crate::{
+    assist_ctx::{Assist, AssistCtx},
+    utils::insert_use_statement,
+    AssistId,
+};
 
 // Assist: auto_import
 //
