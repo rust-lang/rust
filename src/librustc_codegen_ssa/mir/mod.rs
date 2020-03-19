@@ -86,13 +86,18 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: Copy + TypeFoldable<'tcx>,
     {
-        self.cx.tcx().subst_and_normalize_erasing_regions(
-            self.instance.substs,
-            ty::ParamEnv::reveal_all(),
-            value,
-        )
+        debug!("monomorphize: self.instance={:?}", self.instance);
+        if let Some(substs) = self.instance.substs_for_mir_body() {
+            self.cx.tcx().subst_and_normalize_erasing_regions(
+                substs,
+                ty::ParamEnv::reveal_all(),
+                &value,
+            )
+        } else {
+            self.cx.tcx().normalize_erasing_regions(ty::ParamEnv::reveal_all(), *value)
+        }
     }
 }
 

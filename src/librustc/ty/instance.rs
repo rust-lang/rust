@@ -381,6 +381,32 @@ impl<'tcx> Instance<'tcx> {
         Instance { def, substs }
     }
 
+    /// FIXME(#69925) Depending on the kind of `InstanceDef`, the MIR body associated with an
+    /// instance is expressed in terms of the generic parameters of `self.def_id()`, and in other
+    /// cases the MIR body is expressed in terms of the types found in the substitution array.
+    /// In the former case, we want to substitute those generic types and replace them with the
+    /// values from the substs when monomorphizing the function body. But in the latter case, we
+    /// don't want to do that substitution, since it has already been done effectively.
+    ///
+    /// This function returns `Some(substs)` in the former case and None otherwise -- i.e., if
+    /// this function returns `None`, then the MIR body does not require substitution during
+    /// monomorphization.
+    pub fn substs_for_mir_body(&self) -> Option<SubstsRef<'tcx>> {
+        match self.def {
+            InstanceDef::CloneShim(..)
+            | InstanceDef::DropGlue(_, Some(_)) => None,
+            InstanceDef::ClosureOnceShim { .. }
+            | InstanceDef::DropGlue(..)
+            // FIXME(#69925): `FnPtrShim` should be in the other branch.
+            | InstanceDef::FnPtrShim(..)
+            | InstanceDef::Item(_)
+            | InstanceDef::Intrinsic(..)
+            | InstanceDef::ReifyShim(..)
+            | InstanceDef::Virtual(..)
+            | InstanceDef::VtableShim(..) => Some(self.substs),
+        }
+    }
+
     pub fn is_vtable_shim(&self) -> bool {
         if let InstanceDef::VtableShim(..) = self.def { true } else { false }
     }
