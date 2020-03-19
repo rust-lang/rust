@@ -1,6 +1,5 @@
 //! Upvar (closure capture) collection from cross-body HIR uses of `Res::Local`s.
 
-use rustc::hir::map::Map;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -44,7 +43,7 @@ struct LocalCollector {
 }
 
 impl Visitor<'tcx> for LocalCollector {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
@@ -73,7 +72,7 @@ impl CaptureCollector<'_, '_> {
 }
 
 impl Visitor<'tcx> for CaptureCollector<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None

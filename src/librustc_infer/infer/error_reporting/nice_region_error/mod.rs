@@ -17,12 +17,7 @@ mod util;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     pub fn try_report_nice_region_error(&self, error: &RegionResolutionError<'tcx>) -> bool {
-        if let Some(tables) = self.in_progress_tables {
-            let tables = tables.borrow();
-            NiceRegionError::new(self, error.clone(), Some(&tables)).try_report().is_some()
-        } else {
-            NiceRegionError::new(self, error.clone(), None).try_report().is_some()
-        }
+        NiceRegionError::new(self, error.clone()).try_report().is_some()
     }
 }
 
@@ -30,16 +25,11 @@ pub struct NiceRegionError<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     error: Option<RegionResolutionError<'tcx>>,
     regions: Option<(Span, ty::Region<'tcx>, ty::Region<'tcx>)>,
-    tables: Option<&'cx ty::TypeckTables<'tcx>>,
 }
 
 impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
-    pub fn new(
-        infcx: &'cx InferCtxt<'cx, 'tcx>,
-        error: RegionResolutionError<'tcx>,
-        tables: Option<&'cx ty::TypeckTables<'tcx>>,
-    ) -> Self {
-        Self { infcx, error: Some(error), regions: None, tables }
+    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>, error: RegionResolutionError<'tcx>) -> Self {
+        Self { infcx, error: Some(error), regions: None }
     }
 
     pub fn new_from_span(
@@ -47,9 +37,8 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
         span: Span,
         sub: ty::Region<'tcx>,
         sup: ty::Region<'tcx>,
-        tables: Option<&'cx ty::TypeckTables<'tcx>>,
     ) -> Self {
-        Self { infcx, error: None, regions: Some((span, sub, sup)), tables }
+        Self { infcx, error: None, regions: Some((span, sub, sup)) }
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {

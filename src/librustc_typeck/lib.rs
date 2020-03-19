@@ -88,10 +88,7 @@ mod outlives;
 mod structured_errors;
 mod variance;
 
-use rustc::lint;
 use rustc::middle;
-use rustc::session;
-use rustc::session::config::EntryFnType;
 use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -103,6 +100,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
+use rustc_session::config::EntryFnType;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;

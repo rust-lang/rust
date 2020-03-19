@@ -216,13 +216,13 @@ use crate::creader::Library;
 use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
 use rustc::middle::cstore::{CrateSource, MetadataLoader};
-use rustc::session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
-use rustc::session::search_paths::PathKind;
-use rustc::session::{config, CrateDisambiguator, Session};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
+use rustc_session::search_paths::PathKind;
+use rustc_session::{config, CrateDisambiguator, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};

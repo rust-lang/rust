@@ -52,7 +52,6 @@
 
 use crate::astconv::AstConv;
 use crate::check::{FnCtxt, Needs};
-use rustc::session::parse::feature_err;
 use rustc::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
@@ -66,11 +65,13 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
+use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
+
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
 

@@ -26,6 +26,7 @@ stable_deref_trait = "1.0.0"
 rustc_ast = { path = "../librustc_ast" }
 rustc_expand = { path = "../librustc_expand" }
 rustc_span = { path = "../librustc_span" }
+rustc_session = { path = "../librustc_session" }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["errhandlingapi", "libloaderapi"] }

@@ -12,5 +12,5 @@ const C: C =
       #[cfg(debug_assertions)]
       field: 0,
 
-      #[cfg(not (debug_assertions))]
+      #[cfg(not(debug_assertions))]
       field: 1,};

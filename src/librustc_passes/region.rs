@@ -6,7 +6,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
-use rustc::hir::map::Map;
 use rustc::middle::region::*;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
@@ -696,7 +695,7 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None

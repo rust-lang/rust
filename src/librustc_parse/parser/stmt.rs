@@ -5,7 +5,6 @@ use super::pat::GateOr;
 use super::path::PathStyle;
 use super::{BlockMode, Parser, Restrictions, SemiColonMode};
 use crate::maybe_whole;
-use crate::DirectoryOwnership;
 
 use rustc_ast::ast;
 use rustc_ast::ast::{AttrStyle, AttrVec, Attribute, MacCall, MacStmtStyle};
@@ -54,7 +53,7 @@ impl<'a> Parser<'a> {
             // that starts like a path (1 token), but it fact not a path.
             // Also, we avoid stealing syntax from `parse_item_`.
             self.parse_stmt_path_start(lo, attrs)?
-        } else if let Some(item) = self.parse_stmt_item(attrs.clone())? {
+        } else if let Some(item) = self.parse_item_common(attrs.clone(), false, true, |_| true)? {
             // FIXME: Bad copy of attrs
             self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
         } else if self.eat(&token::Semi) {
@@ -70,13 +69,6 @@ impl<'a> Parser<'a> {
             return Ok(None);
         };
         Ok(Some(stmt))
-    }
-
-    fn parse_stmt_item(&mut self, attrs: Vec<Attribute>) -> PResult<'a, Option<ast::Item>> {
-        let old = mem::replace(&mut self.directory.ownership, DirectoryOwnership::UnownedViaBlock);
-        let item = self.parse_item_common(attrs, false, true, |_| true)?;
-        self.directory.ownership = old;
-        Ok(item)
     }
 
     fn parse_stmt_path_start(&mut self, lo: Span, attrs: Vec<Attribute>) -> PResult<'a, Stmt> {

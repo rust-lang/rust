@@ -17,4 +17,5 @@ rustc_hir = { path = "../librustc_hir" }
 rustc_lint = { path = "../librustc_lint" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_ast = { path = "../librustc_ast" }
+rustc_session = { path = "../librustc_session" }
 rustc_span = { path = "../librustc_span" }

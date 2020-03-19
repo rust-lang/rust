@@ -18,7 +18,7 @@ use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 use rustc_ast::ast;
 use rustc_ast::visit as ast_visit;
-use rustc_session::lint::{LintBuffer, LintPass};
+use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_session::Session;
 use rustc_span::Span;
 
@@ -37,13 +37,7 @@ struct EarlyContextAndPass<'a, T: EarlyLintPass> {
 impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
-            let rustc_session::lint::BufferedEarlyLint {
-                span,
-                msg,
-                node_id: _,
-                lint_id,
-                diagnostic,
-            } = early_lint;
+            let BufferedEarlyLint { span, msg, node_id: _, lint_id, diagnostic } = early_lint;
             self.context.lookup_with_diagnostics(
                 lint_id.lint,
                 Some(span),
@@ -326,11 +320,9 @@ pub fn check_ast_crate<T: EarlyLintPass>(
     lint_buffer: Option<LintBuffer>,
     builtin_lints: T,
 ) {
-    let mut passes: Vec<_> = if pre_expansion {
-        lint_store.pre_expansion_passes.iter().map(|p| (p)()).collect()
-    } else {
-        lint_store.early_passes.iter().map(|p| (p)()).collect()
-    };
+    let passes =
+        if pre_expansion { &lint_store.pre_expansion_passes } else { &lint_store.early_passes };
+    let mut passes: Vec<_> = passes.iter().map(|p| (p)()).collect();
     let mut buffered = lint_buffer.unwrap_or_default();
 
     if !sess.opts.debugging_opts.no_interleave_lints {

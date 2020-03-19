@@ -9,7 +9,6 @@ pub use self::Variance::*;
 use crate::arena::Arena;
 use crate::hir::exports::ExportMap;
 use crate::hir::map as hir_map;
-
 use crate::ich::Fingerprint;
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::Canonical;
@@ -19,7 +18,6 @@ use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
 use crate::mir::interpret::ErrorHandled;
 use crate::mir::GeneratorLayout;
 use crate::mir::ReadOnlyBodyAndCache;
-use crate::session::DataTypeKind;
 use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::layout::VariantIdx;
@@ -42,6 +40,7 @@ use rustc_hir::{Constness, GlobMap, Node, TraitMap};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Encodable, Encoder};
+use rustc_session::DataTypeKind;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -1700,7 +1699,7 @@ rustc_index::newtype_index! {
 }
 
 impl UniverseIndex {
-    pub const ROOT: UniverseIndex = UniverseIndex::from_u32_const(0);
+    pub const ROOT: UniverseIndex = UniverseIndex::from_u32(0);
 
     /// Returns the "next" universe index in order -- this new index
     /// is considered to extend all previous universes. This

@@ -1,6 +1,5 @@
 use crate::infer::InferCtxtExt as _;
 use crate::traits::{self, PredicateObligation};
-use rustc::session::config::nightly_options;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::free_region_map::FreeRegionRelations;
 use rustc::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
@@ -13,6 +12,7 @@ use rustc_hir::Node;
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, InferOk};
+use rustc_session::config::nightly_options;
 use rustc_span::Span;
 
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;

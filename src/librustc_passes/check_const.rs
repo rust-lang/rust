@@ -8,8 +8,6 @@
 //! through, but errors for structured control flow in a `const` should be emitted here.
 
 use rustc::hir::map::Map;
-use rustc::session::config::nightly_options;
-use rustc::session::parse::feature_err;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 use rustc_ast::ast::Mutability;
@@ -17,6 +15,8 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_session::config::nightly_options;
+use rustc_session::parse::feature_err;
 use rustc_span::{sym, Span, Symbol};
 
 use std::fmt;

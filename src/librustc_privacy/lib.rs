@@ -5,7 +5,6 @@
 
 use rustc::bug;
 use rustc::hir::map::Map;
-use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::fold::TypeVisitor;
 use rustc::ty::query::Providers;
@@ -20,6 +19,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, DeepVisitor, NestedVisitorMap, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, Node, PatKind};
+use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
@@ -1447,7 +1447,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
-    type Map = Map<'v>;
+    type Map = intravisit::ErasedMap<'v>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None

@@ -161,7 +161,13 @@ pub struct AllocId(pub u64);
 
 impl fmt::Debug for AllocId {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "alloc{}", self.0)
+        fmt::Display::fmt(self, fmt)
+    }
+}
+
+impl fmt::Display for AllocId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "alloc{}", self.0)
     }
 }
 
@@ -348,12 +354,6 @@ impl<'s> AllocDecodingSession<'s> {
         });
 
         Ok(alloc_id)
-    }
-}
-
-impl fmt::Display for AllocId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
     }
 }
 

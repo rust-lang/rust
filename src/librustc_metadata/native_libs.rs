@@ -1,12 +1,12 @@
 use rustc::middle::cstore::{self, NativeLibrary};
-use rustc::session::parse::feature_err;
-use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_session::parse::feature_err;
+use rustc_session::Session;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::spec::abi::Abi;

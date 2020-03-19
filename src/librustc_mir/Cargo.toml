@@ -27,6 +27,7 @@ rustc_infer = { path = "../librustc_infer" }
 rustc_lexer = { path = "../librustc_lexer" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
+rustc_session = { path = "../librustc_session" }
 rustc_target = { path = "../librustc_target" }
 rustc_trait_selection = { path = "../librustc_trait_selection" }
 rustc_ast = { path = "../librustc_ast" }

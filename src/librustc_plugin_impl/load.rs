@@ -2,10 +2,10 @@
 
 use crate::Registry;
 use rustc::middle::cstore::MetadataLoader;
-use rustc::session::Session;
 use rustc_ast::ast::{Crate, Ident};
 use rustc_errors::struct_span_err;
 use rustc_metadata::locator;
+use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 

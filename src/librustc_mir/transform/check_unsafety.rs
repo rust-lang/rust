@@ -1,5 +1,3 @@
-use rustc::hir::map::Map;
-use rustc::lint::builtin::{SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
 use rustc::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::*;
 use rustc::ty::cast::CastTy;
@@ -11,6 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit;
 use rustc_hir::Node;
+use rustc_session::lint::builtin::{SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
 use rustc_span::symbol::{sym, Symbol};
 
 use std::ops::Bound;
@@ -451,7 +450,7 @@ struct UnusedUnsafeVisitor<'a> {
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'a> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
         intravisit::NestedVisitorMap::None

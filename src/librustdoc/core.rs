@@ -1,23 +1,22 @@
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
-use rustc::session::config::ErrorOutputType;
-use rustc::session::DiagnosticOutput;
-use rustc::session::{self, config};
 use rustc::ty::{Ty, TyCtxt};
+use rustc_ast::ast::CRATE_NODE_ID;
+use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_driver::abort_on_err;
+use rustc_errors::emitter::{Emitter, EmitterWriter};
+use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Namespace::TypeNS;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc_hir::HirId;
 use rustc_interface::interface;
 use rustc_resolve as resolve;
+use rustc_session::config::ErrorOutputType;
 use rustc_session::lint;
-
-use rustc_ast::ast::CRATE_NODE_ID;
-use rustc_attr as attr;
-use rustc_errors::emitter::{Emitter, EmitterWriter};
-use rustc_errors::json::JsonEmitter;
+use rustc_session::DiagnosticOutput;
+use rustc_session::{config, Session};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
@@ -34,8 +33,8 @@ use crate::html::render::RenderInfo;
 
 use crate::passes::{self, Condition::*, ConditionalPass};
 
-pub use rustc::session::config::{CodegenOptions, DebuggingOptions, Input, Options};
-pub use rustc::session::search_paths::SearchPath;
+pub use rustc_session::config::{CodegenOptions, DebuggingOptions, Input, Options};
+pub use rustc_session::search_paths::SearchPath;
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
@@ -68,7 +67,7 @@ pub struct DocContext<'tcx> {
 }
 
 impl<'tcx> DocContext<'tcx> {
-    pub fn sess(&self) -> &session::Session {
+    pub fn sess(&self) -> &Session {
         &self.tcx.sess
     }
 

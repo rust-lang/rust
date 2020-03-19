@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: type `&'static !` is non-empty
+error[E0004]: non-exhaustive patterns: type `&!` is non-empty
   --> $DIR/always-inhabited-union-ref.rs:23:11
    |
 LL |     match uninhab_ref() {

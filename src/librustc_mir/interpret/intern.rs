@@ -327,7 +327,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
         if let Err(error) = interned {
             // This can happen when e.g. the tag of an enum is not a valid discriminant. We do have
             // to read enum discriminants in order to find references in enum variant fields.
-            if let err_unsup!(ValidationFailure(_)) = error.kind {
+            if let err_ub!(ValidationFailure(_)) = error.kind {
                 let err = crate::const_eval::error_to_const_error(&ecx, error);
                 match err.struct_error(
                     ecx.tcx,
@@ -390,7 +390,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             }
         } else if ecx.memory.dead_alloc_map.contains_key(&alloc_id) {
             // dangling pointer
-            throw_unsup!(ValidationFailure("encountered dangling pointer in final constant".into()))
+            throw_ub_format!("encountered dangling pointer in final constant")
         } else if ecx.tcx.alloc_map.lock().get(alloc_id).is_none() {
             // We have hit an `AllocId` that is neither in local or global memory and isn't marked
             // as dangling by local memory.

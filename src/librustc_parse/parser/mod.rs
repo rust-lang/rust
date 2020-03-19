@@ -1,8 +1,6 @@
 pub mod attr;
 mod expr;
 mod item;
-mod module;
-pub use module::{ModulePath, ModulePathSuccess};
 mod pat;
 mod path;
 mod ty;
@@ -13,7 +11,6 @@ mod stmt;
 use diagnostics::Error;
 
 use crate::lexer::UnmatchedBrace;
-use crate::{Directory, DirectoryOwnership};
 
 use log::debug;
 use rustc_ast::ast::DUMMY_NODE_ID;
@@ -28,11 +25,9 @@ use rustc_ast::util::comments::{doc_comment_style, strip_doc_comment_decoration}
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_session::parse::ParseSess;
-use rustc_span::source_map::respan;
+use rustc_span::source_map::{respan, Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{FileName, Span, DUMMY_SP};
 
-use std::path::PathBuf;
 use std::{cmp, mem, slice};
 
 bitflags::bitflags! {
@@ -93,11 +88,6 @@ pub struct Parser<'a> {
     /// The previous token.
     pub prev_token: Token,
     restrictions: Restrictions,
-    /// Used to determine the path to externally loaded source files.
-    pub(super) directory: Directory,
-    /// `true` to parse sub-modules in other files.
-    // Public for rustfmt usage.
-    pub recurse_into_file_modules: bool,
     /// Name of the root module this parser originated from. If `None`, then the
     /// name is not known. This does not change while the parser is descending
     /// into modules, and sub-parsers have new values for this name.
@@ -105,9 +95,6 @@ pub struct Parser<'a> {
     expected_tokens: Vec<TokenType>,
     token_cursor: TokenCursor,
     desugar_doc_comments: bool,
-    /// `true` we should configure out of line modules as we parse.
-    // Public for rustfmt usage.
-    pub cfg_mods: bool,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
     /// appropriately.
@@ -355,8 +342,6 @@ impl<'a> Parser<'a> {
     pub fn new(
         sess: &'a ParseSess,
         tokens: TokenStream,
-        directory: Option<Directory>,
-        recurse_into_file_modules: bool,
         desugar_doc_comments: bool,
         subparser_name: Option<&'static str>,
     ) -> Self {
@@ -365,11 +350,6 @@ impl<'a> Parser<'a> {
             token: Token::dummy(),
             prev_token: Token::dummy(),
             restrictions: Restrictions::empty(),
-            recurse_into_file_modules,
-            directory: Directory {
-                path: PathBuf::new(),
-                ownership: DirectoryOwnership::Owned { relative: None },
-            },
             root_module_name: None,
             expected_tokens: Vec::new(),
             token_cursor: TokenCursor {
@@ -377,7 +357,6 @@ impl<'a> Parser<'a> {
                 stack: Vec::new(),
             },
             desugar_doc_comments,
-            cfg_mods: true,
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
             unclosed_delims: Vec::new(),
@@ -388,18 +367,6 @@ impl<'a> Parser<'a> {
 
         // Make parser point to the first token.
         parser.bump();
-
-        if let Some(directory) = directory {
-            parser.directory = directory;
-        } else if !parser.token.span.is_dummy() {
-            if let Some(FileName::Real(path)) =
-                &sess.source_map().lookup_char_pos(parser.token.span.lo()).file.unmapped_path
-            {
-                if let Some(directory_path) = path.parent() {
-                    parser.directory.path = directory_path.to_path_buf();
-                }
-            }
-        }
 
         parser
     }

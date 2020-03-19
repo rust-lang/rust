@@ -95,9 +95,9 @@ async fn join_retval() -> Joiner {
 }
 
 fn main() {
-    assert_eq!(8, std::mem::size_of_val(&single()));
-    assert_eq!(12, std::mem::size_of_val(&single_with_noop()));
-    assert_eq!(3084, std::mem::size_of_val(&joined()));
-    assert_eq!(3084, std::mem::size_of_val(&joined_with_noop()));
-    assert_eq!(3080, std::mem::size_of_val(&join_retval()));
+    assert_eq!(2, std::mem::size_of_val(&single()));
+    assert_eq!(3, std::mem::size_of_val(&single_with_noop()));
+    assert_eq!(3078, std::mem::size_of_val(&joined()));
+    assert_eq!(3078, std::mem::size_of_val(&joined_with_noop()));
+    assert_eq!(3074, std::mem::size_of_val(&join_retval()));
 }

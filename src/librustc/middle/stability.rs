@@ -3,7 +3,6 @@
 
 pub use self::StabilityLevel::*;
 
-use crate::session::{DiagnosticMessageId, Session};
 use crate::ty::{self, TyCtxt};
 use rustc_ast::ast::CRATE_NODE_ID;
 use rustc_attr::{self as attr, ConstStability, Deprecation, RustcDeprecation, Stability};
@@ -17,6 +16,7 @@ use rustc_hir::{self, HirId};
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiagnostics, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
+use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
 

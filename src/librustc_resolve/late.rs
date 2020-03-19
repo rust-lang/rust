@@ -11,7 +11,7 @@ use crate::{path_names_to_string, BindingError, CrateLint, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, NameBindingKind, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
-use rustc::{bug, lint, span_bug};
+use rustc::{bug, span_bug};
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
@@ -23,6 +23,7 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::TraitCandidate;
+use rustc_session::lint;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};

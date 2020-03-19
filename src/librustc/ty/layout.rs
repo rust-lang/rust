@@ -1,29 +1,27 @@
-use crate::session::{self, DataTypeKind};
+use crate::ich::StableHashingContext;
+use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
+use crate::ty::subst::Subst;
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 
 use rustc_ast::ast::{self, Ident, IntTy, UintTy};
 use rustc_attr as attr;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir as hir;
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::{Idx, IndexVec};
+use rustc_session::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use rustc_span::DUMMY_SP;
+use rustc_target::abi::call::{
+    ArgAbi, ArgAttribute, ArgAttributes, Conv, FnAbi, PassMode, Reg, RegKind,
+};
+pub use rustc_target::abi::*;
+use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec};
 
 use std::cmp;
 use std::fmt;
 use std::iter;
 use std::mem;
 use std::ops::Bound;
-
-use crate::ich::StableHashingContext;
-use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
-use crate::ty::subst::Subst;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir as hir;
-use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{Idx, IndexVec};
-
-use rustc_target::abi::call::{
-    ArgAbi, ArgAttribute, ArgAttributes, Conv, FnAbi, PassMode, Reg, RegKind,
-};
-pub use rustc_target::abi::*;
-use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec};
 
 pub trait IntegerExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx>;
@@ -1409,12 +1407,15 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // locals as part of the prefix. We compute the layout of all of
         // these fields at once to get optimal packing.
         let discr_index = substs.as_generator().prefix_tys(def_id, tcx).count();
-        // FIXME(eddyb) set the correct vaidity range for the discriminant.
-        let discr_layout = self.layout_of(substs.as_generator().discr_ty(tcx))?;
-        let discr = match &discr_layout.abi {
-            Abi::Scalar(s) => s.clone(),
-            _ => bug!(),
-        };
+
+        // `info.variant_fields` already accounts for the reserved variants, so no need to add them.
+        let max_discr = (info.variant_fields.len() - 1) as u128;
+        let discr_int = Integer::fit_unsigned(max_discr);
+        let discr_int_ty = discr_int.to_ty(tcx, false);
+        let discr = Scalar { value: Primitive::Int(discr_int, false), valid_range: 0..=max_discr };
+        let discr_layout = self.tcx.intern_layout(LayoutDetails::scalar(self, discr.clone()));
+        let discr_layout = TyLayout { ty: discr_int_ty, details: discr_layout };
+
         let promoted_layouts = ineligible_locals
             .iter()
             .map(|local| subst_field(info.field_tys[local]))
@@ -1648,7 +1649,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         if min_size < field_end {
                             min_size = field_end;
                         }
-                        session::FieldInfo {
+                        FieldInfo {
                             name: name.to_string(),
                             offset: offset.bytes(),
                             size: field_layout.size.bytes(),
@@ -1658,13 +1659,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 })
                 .collect();
 
-            session::VariantInfo {
+            VariantInfo {
                 name: n.map(|n| n.to_string()),
-                kind: if layout.is_unsized() {
-                    session::SizeKind::Min
-                } else {
-                    session::SizeKind::Exact
-                },
+                kind: if layout.is_unsized() { SizeKind::Min } else { SizeKind::Exact },
                 align: layout.align.abi.bytes(),
                 size: if min_size.bytes() == 0 { layout.size.bytes() } else { min_size.bytes() },
                 fields: field_info,

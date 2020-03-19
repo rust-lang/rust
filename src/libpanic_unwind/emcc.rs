@@ -6,8 +6,6 @@
 //! Emscripten's runtime always implements those APIs and does not
 //! implement libunwind.
 
-#![allow(private_no_mangle_fns)]
-
 use alloc::boxed::Box;
 use core::any::Any;
 use core::mem;

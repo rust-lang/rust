@@ -3,7 +3,6 @@ use crate::hir::map::definitions::DefPathHash;
 use crate::ich::{CachingSourceMapView, Fingerprint};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
-use crate::session::{CrateDisambiguator, Session};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
@@ -19,6 +18,7 @@ use rustc_serialize::{
     opaque, Decodable, Decoder, Encodable, Encoder, SpecializedDecoder, SpecializedEncoder,
     UseSpecializedDecodable, UseSpecializedEncodable,
 };
+use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::hygiene::{ExpnId, SyntaxContext};
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::{BytePos, SourceFile, Span, DUMMY_SP};
