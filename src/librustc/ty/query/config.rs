@@ -2,13 +2,14 @@
 
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::ty::query::caches::QueryCache;
-use crate::ty::query::job::QueryJobId;
+use crate::ty::query::job::{QueryJobId, QueryJobInfo};
 use crate::ty::query::plumbing::CycleError;
 use crate::ty::query::QueryState;
 use rustc_data_structures::profiling::ProfileCategory;
 use rustc_hir::def_id::DefId;
 
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_query_system::dep_graph::{DepContext, DepNode};
 use rustc_session::Session;
 use std::borrow::Cow;
@@ -24,7 +25,7 @@ pub trait QueryConfig<CTX> {
 }
 
 pub trait QueryContext: DepContext {
-    type Query;
+    type Query: Clone;
 
     /// Access the session.
     fn session(&self) -> &Session;
@@ -34,6 +35,10 @@ pub trait QueryContext: DepContext {
 
     /// Get the query information from the TLS context.
     fn read_query_job<R>(&self, op: impl FnOnce(Option<QueryJobId<Self::DepKind>>) -> R) -> R;
+
+    fn try_collect_active_jobs(
+        &self,
+    ) -> Option<FxHashMap<QueryJobId<Self::DepKind>, QueryJobInfo<Self>>>;
 }
 
 pub(crate) trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
@@ -56,7 +61,7 @@ pub(crate) trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
         result: &Self::Value,
     ) -> Option<Fingerprint>;
 
-    fn handle_cycle_error(tcx: CTX, error: CycleError<CTX>) -> Self::Value;
+    fn handle_cycle_error(tcx: CTX, error: CycleError<CTX::Query>) -> Self::Value;
 }
 
 pub(crate) trait QueryDescription<CTX: QueryContext>: QueryAccessors<CTX> {

@@ -332,10 +332,10 @@ where
 }
 
 #[derive(Clone)]
-pub(crate) struct CycleError<CTX: QueryContext> {
+pub(crate) struct CycleError<Q> {
     /// The query and related span that uses the cycle.
-    pub(super) usage: Option<(Span, CTX::Query)>,
-    pub(super) cycle: Vec<QueryInfo<CTX>>,
+    pub(super) usage: Option<(Span, Q)>,
+    pub(super) cycle: Vec<QueryInfo<Q>>,
 }
 
 /// The result of `try_start`.
@@ -370,6 +370,12 @@ impl QueryContext for TyCtxt<'tcx> {
 
     fn read_query_job<R>(&self, op: impl FnOnce(Option<QueryJobId<Self::DepKind>>) -> R) -> R {
         tls::with_related_context(*self, move |icx| op(icx.query))
+    }
+
+    fn try_collect_active_jobs(
+        &self,
+    ) -> Option<FxHashMap<QueryJobId<Self::DepKind>, QueryJobInfo<Self>>> {
+        self.queries.try_collect_active_jobs()
     }
 }
 
@@ -409,7 +415,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[cold]
     pub(super) fn report_cycle(
         self,
-        CycleError { usage, cycle: stack }: CycleError<TyCtxt<'tcx>>,
+        CycleError { usage, cycle: stack }: CycleError<Query<'tcx>>,
     ) -> DiagnosticBuilder<'tcx> {
         assert!(!stack.is_empty());
 
@@ -1033,7 +1039,7 @@ macro_rules! define_queries_inner {
 
             fn handle_cycle_error(
                 tcx: TyCtxt<'tcx>,
-                error: CycleError<TyCtxt<'tcx>>
+                error: CycleError<Query<'tcx>>
             ) -> Self::Value {
                 handle_cycle_error!([$($modifiers)*][tcx, error])
             }

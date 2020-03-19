@@ -1,11 +1,10 @@
-use crate::dep_graph::DepKind;
-use crate::ty::context::TyCtxt;
 use crate::ty::query::config::QueryContext;
 use crate::ty::query::plumbing::CycleError;
-use crate::ty::query::Query;
+#[cfg(parallel_compiler)]
 use crate::ty::tls;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_query_system::dep_graph::DepContext;
 use rustc_span::Span;
 
 use std::convert::TryFrom;
@@ -28,13 +27,13 @@ use {
 
 /// Represents a span and a query key.
 #[derive(Clone, Debug)]
-pub struct QueryInfo<CTX: QueryContext> {
+pub struct QueryInfo<Q> {
     /// The span corresponding to the reason for which this query was required.
     pub span: Span,
-    pub query: CTX::Query,
+    pub query: Q,
 }
 
-type QueryMap<'tcx> = FxHashMap<QueryJobId<DepKind>, QueryJobInfo<TyCtxt<'tcx>>>;
+type QueryMap<CTX> = FxHashMap<QueryJobId<<CTX as DepContext>::DepKind>, QueryJobInfo<CTX>>;
 
 /// A value uniquely identifiying an active query job within a shard in the query cache.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
@@ -53,35 +52,36 @@ pub struct QueryJobId<K> {
     pub kind: K,
 }
 
-impl<K> QueryJobId<K> {
+impl<K: rustc_query_system::dep_graph::DepKind> QueryJobId<K> {
     pub fn new(job: QueryShardJobId, shard: usize, kind: K) -> Self {
         QueryJobId { job, shard: u16::try_from(shard).unwrap(), kind }
     }
-}
 
-impl QueryJobId<DepKind> {
-    fn query<'tcx>(self, map: &QueryMap<'tcx>) -> Query<'tcx> {
+    fn query<CTX: QueryContext<DepKind = K>>(self, map: &QueryMap<CTX>) -> CTX::Query {
         map.get(&self).unwrap().info.query.clone()
     }
 
     #[cfg(parallel_compiler)]
-    fn span(self, map: &QueryMap<'_>) -> Span {
+    fn span<CTX: QueryContext<DepKind = K>>(self, map: &QueryMap<CTX>) -> Span {
         map.get(&self).unwrap().job.span
     }
 
     #[cfg(parallel_compiler)]
-    fn parent(self, map: &QueryMap<'_>) -> Option<QueryJobId<DepKind>> {
+    fn parent<CTX: QueryContext<DepKind = K>>(self, map: &QueryMap<CTX>) -> Option<QueryJobId<K>> {
         map.get(&self).unwrap().job.parent
     }
 
     #[cfg(parallel_compiler)]
-    fn latch<'a, 'tcx>(self, map: &'a QueryMap<'tcx>) -> Option<&'a QueryLatch<TyCtxt<'tcx>>> {
+    fn latch<'a, CTX: QueryContext<DepKind = K>>(
+        self,
+        map: &'a QueryMap<CTX>,
+    ) -> Option<&'a QueryLatch<CTX>> {
         map.get(&self).unwrap().job.latch.as_ref()
     }
 }
 
 pub struct QueryJobInfo<CTX: QueryContext> {
-    pub info: QueryInfo<CTX>,
+    pub info: QueryInfo<CTX::Query>,
     pub job: QueryJob<CTX>,
 }
 
@@ -147,16 +147,12 @@ pub(super) struct QueryLatch<CTX: QueryContext> {
 }
 
 #[cfg(not(parallel_compiler))]
-impl<'tcx> QueryLatch<TyCtxt<'tcx>> {
-    pub(super) fn find_cycle_in_stack(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        span: Span,
-    ) -> CycleError<TyCtxt<'tcx>> {
-        let query_map = tcx.queries.try_collect_active_jobs().unwrap();
+impl<CTX: QueryContext> QueryLatch<CTX> {
+    pub(super) fn find_cycle_in_stack(&self, tcx: CTX, span: Span) -> CycleError<CTX::Query> {
+        let query_map = tcx.try_collect_active_jobs().unwrap();
 
         // Get the current executing query (waiter) and find the waitee amongst its parents
-        let mut current_job = tls::with_related_context(tcx, |icx| icx.query);
+        let mut current_job = tcx.read_query_job(|query| query);
         let mut cycle = Vec::new();
 
         while let Some(job) = current_job {
@@ -192,7 +188,7 @@ struct QueryWaiter<CTX: QueryContext> {
     query: Option<QueryJobId<CTX::DepKind>>,
     condvar: Condvar,
     span: Span,
-    cycle: Lock<Option<CycleError<CTX>>>,
+    cycle: Lock<Option<CycleError<CTX::Query>>>,
 }
 
 #[cfg(parallel_compiler)]
@@ -225,13 +221,9 @@ impl<CTX: QueryContext> QueryLatch<CTX> {
 }
 
 #[cfg(parallel_compiler)]
-impl<K, CTX> QueryLatch<CTX>
-where
-    K: rustc_query_system::dep_graph::DepKind,
-    CTX: QueryContext<DepKind = K>,
-{
+impl<CTX: QueryContext> QueryLatch<CTX> {
     /// Awaits for the query job to complete.
-    pub(super) fn wait_on(&self, tcx: CTX, span: Span) -> Result<(), CycleError<CTX>> {
+    pub(super) fn wait_on(&self, tcx: CTX, span: Span) -> Result<(), CycleError<CTX::Query>> {
         tcx.read_query_job(move |query| {
             let waiter = Lrc::new(QueryWaiter {
                 query,
@@ -299,7 +291,7 @@ impl<CTX: QueryContext> QueryLatch<CTX> {
 
 /// A resumable waiter of a query. The usize is the index into waiters in the query's latch
 #[cfg(parallel_compiler)]
-type Waiter = (QueryJobId<DepKind>, usize);
+type Waiter<K> = (QueryJobId<K>, usize);
 
 /// Visits all the non-resumable and resumable waiters of a query.
 /// Only waiters in a query are visited.
@@ -311,13 +303,13 @@ type Waiter = (QueryJobId<DepKind>, usize);
 /// required information to resume the waiter.
 /// If all `visit` calls returns None, this function also returns None.
 #[cfg(parallel_compiler)]
-fn visit_waiters<'tcx, F>(
-    query_map: &QueryMap<'tcx>,
-    query: QueryJobId<DepKind>,
+fn visit_waiters<CTX: QueryContext, F>(
+    query_map: &QueryMap<CTX>,
+    query: QueryJobId<CTX::DepKind>,
     mut visit: F,
-) -> Option<Option<Waiter>>
+) -> Option<Option<Waiter<CTX::DepKind>>>
 where
-    F: FnMut(Span, QueryJobId<DepKind>) -> Option<Option<Waiter>>,
+    F: FnMut(Span, QueryJobId<CTX::DepKind>) -> Option<Option<Waiter<CTX::DepKind>>>,
 {
     // Visit the parent query which is a non-resumable waiter since it's on the same stack
     if let Some(parent) = query.parent(query_map) {
@@ -346,13 +338,13 @@ where
 /// If a cycle is detected, this initial value is replaced with the span causing
 /// the cycle.
 #[cfg(parallel_compiler)]
-fn cycle_check<'tcx>(
-    query_map: &QueryMap<'tcx>,
-    query: QueryJobId<DepKind>,
+fn cycle_check<CTX: QueryContext>(
+    query_map: &QueryMap<CTX>,
+    query: QueryJobId<CTX::DepKind>,
     span: Span,
-    stack: &mut Vec<(Span, QueryJobId<DepKind>)>,
-    visited: &mut FxHashSet<QueryJobId<DepKind>>,
-) -> Option<Option<Waiter>> {
+    stack: &mut Vec<(Span, QueryJobId<CTX::DepKind>)>,
+    visited: &mut FxHashSet<QueryJobId<CTX::DepKind>>,
+) -> Option<Option<Waiter<CTX::DepKind>>> {
     if !visited.insert(query) {
         return if let Some(p) = stack.iter().position(|q| q.1 == query) {
             // We detected a query cycle, fix up the initial span and return Some
@@ -387,10 +379,10 @@ fn cycle_check<'tcx>(
 /// from `query` without going through any of the queries in `visited`.
 /// This is achieved with a depth first search.
 #[cfg(parallel_compiler)]
-fn connected_to_root<'tcx>(
-    query_map: &QueryMap<'tcx>,
-    query: QueryJobId<DepKind>,
-    visited: &mut FxHashSet<QueryJobId<DepKind>>,
+fn connected_to_root<CTX: QueryContext>(
+    query_map: &QueryMap<CTX>,
+    query: QueryJobId<CTX::DepKind>,
+    visited: &mut FxHashSet<QueryJobId<CTX::DepKind>>,
 ) -> bool {
     // We already visited this or we're deliberately ignoring it
     if !visited.insert(query) {
@@ -410,12 +402,12 @@ fn connected_to_root<'tcx>(
 
 // Deterministically pick an query from a list
 #[cfg(parallel_compiler)]
-fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, QueryJobId<DepKind>)>(
-    query_map: &QueryMap<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    queries: &'a [T],
-    f: F,
-) -> &'a T {
+fn pick_query<'a, CTX, T, F>(query_map: &QueryMap<CTX>, tcx: CTX, queries: &'a [T], f: F) -> &'a T
+where
+    CTX: QueryContext,
+    CTX::Query: HashStable<CTX::StableHashingContext>,
+    F: Fn(&T) -> (Span, QueryJobId<CTX::DepKind>),
+{
     // Deterministically pick an entry point
     // FIXME: Sort this instead
     let mut hcx = tcx.create_stable_hashing_context();
@@ -440,12 +432,15 @@ fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, QueryJobId<DepKind>)>(
 /// If a cycle was not found, the starting query is removed from `jobs` and
 /// the function returns false.
 #[cfg(parallel_compiler)]
-fn remove_cycle<'tcx>(
-    query_map: &QueryMap<'tcx>,
-    jobs: &mut Vec<QueryJobId<DepKind>>,
-    wakelist: &mut Vec<Lrc<QueryWaiter<TyCtxt<'tcx>>>>,
-    tcx: TyCtxt<'tcx>,
-) -> bool {
+fn remove_cycle<CTX: QueryContext>(
+    query_map: &QueryMap<CTX>,
+    jobs: &mut Vec<QueryJobId<CTX::DepKind>>,
+    wakelist: &mut Vec<Lrc<QueryWaiter<CTX>>>,
+    tcx: CTX,
+) -> bool
+where
+    CTX::Query: HashStable<CTX::StableHashingContext>,
+{
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
     // Look for a cycle starting with the last query in `jobs`
@@ -497,7 +492,7 @@ fn remove_cycle<'tcx>(
                     }
                 }
             })
-            .collect::<Vec<(Span, QueryJobId<DepKind>, Option<(Span, QueryJobId<DepKind>)>)>>();
+            .collect::<Vec<(Span, QueryJobId<CTX::DepKind>, Option<(Span, QueryJobId<CTX::DepKind>)>)>>();
 
         // Deterministically pick an entry point
         let (_, entry_point, usage) = pick_query(query_map, tcx, &entry_points, |e| (e.0, e.1));
@@ -569,15 +564,18 @@ pub unsafe fn handle_deadlock() {
 /// There may be multiple cycles involved in a deadlock, so this searches
 /// all active queries for cycles before finally resuming all the waiters at once.
 #[cfg(parallel_compiler)]
-fn deadlock(tcx: TyCtxt<'_>, registry: &rayon_core::Registry) {
+fn deadlock<CTX: QueryContext>(tcx: CTX, registry: &rayon_core::Registry)
+where
+    CTX::Query: HashStable<CTX::StableHashingContext>,
+{
     let on_panic = OnDrop(|| {
         eprintln!("deadlock handler panicked, aborting process");
         process::abort();
     });
 
     let mut wakelist = Vec::new();
-    let query_map = tcx.queries.try_collect_active_jobs().unwrap();
-    let mut jobs: Vec<QueryJobId<DepKind>> = query_map.keys().cloned().collect();
+    let query_map = tcx.try_collect_active_jobs().unwrap();
+    let mut jobs: Vec<QueryJobId<CTX::DepKind>> = query_map.keys().cloned().collect();
 
     let mut found_cycle = false;
 
