@@ -1,6 +1,6 @@
-use rustc::session::Session;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
+use rustc_session::Session;
 use std::str::FromStr;
 
 /// Deprecation status of attributes known by Clippy.
