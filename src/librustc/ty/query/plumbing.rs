@@ -247,7 +247,8 @@ where
                 return TryGetJob::Cycle(Q::handle_cycle_error(tcx, cycle));
             }
 
-            let cached = tcx.try_get_cached(
+            let cached = try_get_cached(
+                tcx,
                 Q::query_state(tcx),
                 (*key).clone(),
                 |value, index| (value.clone(), index),
@@ -500,32 +501,34 @@ impl<'tcx> TyCtxt<'tcx> {
 
         eprintln!("end of query stack");
     }
+}
 
     /// Checks if the query is already computed and in the cache.
     /// It returns the shard index and a lock guard to the shard,
     /// which will be used if the query is not in the cache and we need
     /// to compute it.
     #[inline(always)]
-    fn try_get_cached<C, R, OnHit, OnMiss>(
-        self,
-        state: &'tcx QueryState<TyCtxt<'tcx>, C>,
+    fn try_get_cached<CTX, C, R, OnHit, OnMiss>(
+        tcx: CTX,
+        state: &QueryState<CTX, C>,
         key: C::Key,
         // `on_hit` can be called while holding a lock to the query cache
         on_hit: OnHit,
         on_miss: OnMiss,
     ) -> R
     where
-        C: QueryCache<TyCtxt<'tcx>>,
+        C: QueryCache<CTX>,
+        CTX: QueryContext,
         OnHit: FnOnce(&C::Value, DepNodeIndex) -> R,
-        OnMiss: FnOnce(C::Key, QueryLookup<'_, TyCtxt<'tcx>, C::Key, C::Sharded>) -> R,
+        OnMiss: FnOnce(C::Key, QueryLookup<'_, CTX, C::Key, C::Sharded>) -> R,
     {
         state.cache.lookup(
             state,
-            QueryStateShard::<TyCtxt<'tcx>, C::Key, C::Sharded>::get_cache,
+            QueryStateShard::<CTX, C::Key, C::Sharded>::get_cache,
             key,
             |value, index| {
-                if unlikely!(self.prof.enabled()) {
-                    self.prof.query_cache_hit(index.into());
+                if unlikely!(tcx.profiler().enabled()) {
+                    tcx.profiler().query_cache_hit(index.into());
                 }
                 #[cfg(debug_assertions)]
                 {
@@ -537,6 +540,7 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
+impl<'tcx> TyCtxt<'tcx> {
     #[inline(never)]
     pub(super) fn get_query<Q: QueryDescription<TyCtxt<'tcx>> + 'tcx>(
         self,
@@ -545,7 +549,8 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Q::Value {
         debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
 
-        self.try_get_cached(
+        try_get_cached(
+            self,
             Q::query_state(self),
             key,
             |value, index| {
@@ -819,7 +824,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // We may be concurrently trying both execute and force a query.
         // Ensure that only one of them runs the query.
 
-        self.try_get_cached(
+        try_get_cached(
+            self,
             Q::query_state(self),
             key,
             |_, _| {
