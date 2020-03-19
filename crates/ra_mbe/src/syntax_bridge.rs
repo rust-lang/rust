@@ -267,6 +267,108 @@ struct RawConvertor<'a> {
     inner: std::slice::Iter<'a, Token>,
 }
 
+trait SrcToken {
+    fn kind() -> SyntaxKind;
+}
+
+trait TokenConvertor  {
+    type Token : SrcToken;
+
+    fn go(&mut self) -> Option<tt::Subtree> {
+        let mut subtree = tt::Subtree::default();
+        subtree.delimiter = None;
+        while self.peek().is_some() {
+            self.collect_leaf(&mut subtree.token_trees);
+        }
+        if subtree.token_trees.is_empty() {
+            return None;
+        }
+        if subtree.token_trees.len() == 1 {
+            if let tt::TokenTree::Subtree(first) = &subtree.token_trees[0] {
+                return Some(first.clone());
+            }
+        }
+        Some(subtree)
+    }
+
+    fn bump(&mut self) -> Option<(Self::Token, TextRange)>;
+
+    fn peek(&self) -> Option<Self::Token>;
+
+    fn collect_leaf(&mut self, result: &mut Vec<tt::TokenTree>) {
+        let (token, range) = match self.bump() {
+            None => return,
+            Some(it) => it,
+        };
+
+        let k: SyntaxKind = token.kind();
+        if k == COMMENT {
+            let node = doc_comment(&self.text[range]);
+            if let Some(tokens) = convert_doc_comment(&node) {
+                result.extend(tokens);
+            }
+            return;
+        }
+
+        result.push(if k.is_punct() {
+            let delim = match k {
+                T!['('] => Some((tt::DelimiterKind::Parenthesis, T![')'])),
+                T!['{'] => Some((tt::DelimiterKind::Brace, T!['}'])),
+                T!['['] => Some((tt::DelimiterKind::Bracket, T![']'])),
+                _ => None,
+            };
+
+            if let Some((kind, closed)) = delim {
+                let mut subtree = tt::Subtree::default();
+                let id = self.id_alloc.open_delim(range);
+                subtree.delimiter = Some(tt::Delimiter { kind, id });
+
+                while self.peek().map(|it| it.kind != closed).unwrap_or(false) {
+                    self.collect_leaf(&mut subtree.token_trees);
+                }
+                let last_range = match self.bump() {
+                    None => return,
+                    Some(it) => it.1,
+                };
+                self.id_alloc.close_delim(id, last_range);
+                subtree.into()
+            } else {
+                let spacing = match self.peek() {
+                    Some(next)
+                        if next.kind.is_trivia()
+                            || next.kind == T!['[']
+                            || next.kind == T!['{']
+                            || next.kind == T!['('] =>
+                    {
+                        tt::Spacing::Alone
+                    }
+                    Some(next) if next.kind.is_punct() => tt::Spacing::Joint,
+                    _ => tt::Spacing::Alone,
+                };
+                let char =
+                    self.text[range].chars().next().expect("Token from lexer must be single char");
+
+                tt::Leaf::from(tt::Punct { char, spacing, id: self.id_alloc.alloc(range) }).into()
+            }
+        } else {
+            macro_rules! make_leaf {
+                ($i:ident) => {
+                    tt::$i { id: self.id_alloc.alloc(range), text: self.text[range].into() }.into()
+                };
+            }
+            let leaf: tt::Leaf = match k {
+                T![true] | T![false] => make_leaf!(Literal),
+                IDENT | LIFETIME => make_leaf!(Ident),
+                k if k.is_keyword() => make_leaf!(Ident),
+                k if k.is_literal() => make_leaf!(Literal),
+                _ => return,
+            };
+
+            leaf.into()
+        });
+    }
+}
+
 impl RawConvertor<'_> {
     fn go(&mut self) -> Option<tt::Subtree> {
         let mut subtree = tt::Subtree::default();
@@ -295,6 +397,7 @@ impl RawConvertor<'_> {
     fn peek(&self) -> Option<Token> {
         self.inner.as_slice().get(0).cloned()
     }
+    
 
     fn collect_leaf(&mut self, result: &mut Vec<tt::TokenTree>) {
         let (token, range) = match self.bump() {

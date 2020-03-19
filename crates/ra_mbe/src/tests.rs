@@ -427,22 +427,28 @@ MACRO_ITEMS@[0; 40)
     );
 }
 
+fn to_subtree(tt: &tt::TokenTree) -> &tt::Subtree {
+    if let tt::TokenTree::Subtree(subtree) = tt {
+        return &subtree;
+    }
+    unreachable!("It is not a subtree");
+}
+fn to_literal(tt: &tt::TokenTree) -> &tt::Literal {
+    if let tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) = tt {
+        return lit;
+    }
+    unreachable!("It is not a literal");
+}
+
+fn to_punct(tt: &tt::TokenTree) -> &tt::Punct {
+    if let tt::TokenTree::Leaf(tt::Leaf::Punct(lit)) = tt {
+        return lit;
+    }
+    unreachable!("It is not a Punct");
+}
+
 #[test]
 fn test_expand_literals_to_token_tree() {
-    fn to_subtree(tt: &tt::TokenTree) -> &tt::Subtree {
-        if let tt::TokenTree::Subtree(subtree) = tt {
-            return &subtree;
-        }
-        unreachable!("It is not a subtree");
-    }
-
-    fn to_literal(tt: &tt::TokenTree) -> &tt::Literal {
-        if let tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) = tt {
-            return lit;
-        }
-        unreachable!("It is not a literal");
-    }
-
     let expansion = parse_macro(
         r#"
             macro_rules! literals {
@@ -468,6 +474,22 @@ fn test_expand_literals_to_token_tree() {
     assert_eq!(to_literal(&stm_tokens[10 + 3]).text, "12E+99_f64");
     // [let] [s] [=] ["rust1"] [;]
     assert_eq!(to_literal(&stm_tokens[15 + 3]).text, "\"rust1\"");
+}
+
+#[test]
+fn test_attr_to_token_tree() {
+    let expansion = parse_to_token_tree_by_syntax(
+        r#"
+            #[derive(Copy)]
+            struct Foo;
+            "#,
+    );
+
+    assert_eq!(to_punct(&expansion.token_trees[0]).char, '#');
+    assert_eq!(
+        to_subtree(&expansion.token_trees[1]).delimiter_kind(),
+        Some(tt::DelimiterKind::Bracket)
+    );
 }
 
 #[test]
@@ -1515,6 +1537,16 @@ pub(crate) fn parse_macro(ra_fixture: &str) -> MacroFixture {
 
     let rules = MacroRules::parse(&definition_tt).unwrap();
     MacroFixture { rules }
+}
+
+pub(crate) fn parse_to_token_tree_by_syntax(ra_fixture: &str) -> tt::Subtree {
+    let source_file = ast::SourceFile::parse(ra_fixture).ok().unwrap();
+    let tt = syntax_node_to_token_tree(source_file.syntax()).unwrap().0;
+
+    let parsed = parse_to_token_tree(ra_fixture).unwrap().0;
+    assert_eq!(tt, parsed);
+
+    parsed
 }
 
 fn debug_dump_ignore_spaces(node: &ra_syntax::SyntaxNode) -> String {
