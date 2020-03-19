@@ -5,7 +5,7 @@ extern crate alloc;
 use alloc::alloc::Global;
 use std::alloc::{AllocRef, Layout};
 
-// error-pattern: incorrect alloc info: expected size 2 and align 1, got size 1 and align 1
+// error-pattern: allocation has size 1 and alignment 1, but gave size 2 and alignment 1
 
 fn main() {
     unsafe {

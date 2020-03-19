@@ -1,4 +1,4 @@
-// error-pattern: dangling pointer was dereferenced
+// error-pattern: invalid use of 4 as a pointer
 use std::ptr::NonNull;
 
 fn main() { unsafe {

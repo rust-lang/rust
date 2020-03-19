@@ -1,4 +1,4 @@
-// error-pattern: dangling pointer was dereferenced
+// error-pattern: invalid use of 1 as a pointer
 
 fn main() {
     let ptr = Box::into_raw(Box::new(0u32));

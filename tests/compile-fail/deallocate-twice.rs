@@ -5,7 +5,7 @@ extern crate alloc;
 use alloc::alloc::Global;
 use std::alloc::{AllocRef, Layout};
 
-// error-pattern: tried to deallocate dangling pointer
+// error-pattern: dereferenced after this allocation got freed
 
 fn main() {
     unsafe {

@@ -11,7 +11,7 @@ fn firstn() -> impl Generator<Yield = u64, Return = ()> {
         let num = &mut num;
 
         yield *num;
-        *num += 1; //~ ERROR dangling pointer was dereferenced
+        *num += 1; //~ ERROR dereferenced after this allocation got freed
     }
 }
 

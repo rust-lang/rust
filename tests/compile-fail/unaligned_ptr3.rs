@@ -7,5 +7,5 @@ fn main() {
     // This must fail because alignment is violated. Test specifically for loading pointers,
     // which have special code in miri's memory.
     let _x = unsafe { *x };
-    //~^ ERROR tried to access memory with alignment 2, but alignment
+    //~^ ERROR memory with alignment 2, but alignment
 }

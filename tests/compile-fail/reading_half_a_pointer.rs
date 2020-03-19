@@ -24,6 +24,6 @@ fn main() {
     // starts 1 byte to the right, so using it would actually be wrong!
     let d_alias = &mut w.data as *mut _ as *mut *const u8;
     unsafe {
-        let _x = *d_alias; //~ ERROR tried to access part of a pointer value as raw bytes
+        let _x = *d_alias; //~ ERROR unable to turn pointer into raw bytes
     }
 }

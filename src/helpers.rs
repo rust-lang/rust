@@ -18,7 +18,7 @@ use crate::*;
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 
 /// Gets an instance for a path.
-fn resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> InterpResult<'tcx, DefId> {
+fn try_resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId> {
     tcx.crates()
         .iter()
         .find(|&&krate| tcx.original_crate_name(krate).as_str() == path[0])
@@ -41,19 +41,47 @@ fn resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> InterpResult<'tc
             }
             None
         })
-        .ok_or_else(|| {
-            let path = path.iter().map(|&s| s.to_owned()).collect();
-            err_unsup!(PathNotFound(path)).into()
-        })
 }
 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Gets an instance for a path.
-    fn resolve_path(&self, path: &[&str]) -> InterpResult<'tcx, ty::Instance<'tcx>> {
-        Ok(ty::Instance::mono(
-            self.eval_context_ref().tcx.tcx,
-            resolve_did(self.eval_context_ref().tcx.tcx, path)?,
-        ))
+    fn resolve_path(&self, path: &[&str]) -> ty::Instance<'tcx> {
+        let did = try_resolve_did(self.eval_context_ref().tcx.tcx, path)
+            .unwrap_or_else(|| panic!("failed to find required Rust item: {:?}", path));
+        ty::Instance::mono(self.eval_context_ref().tcx.tcx, did)
+    }
+
+    /// Evaluates the scalar at the specified path. Returns Some(val)
+    /// if the path could be resolved, and None otherwise
+    fn eval_path_scalar(
+        &mut self,
+        path: &[&str],
+    ) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+        let this = self.eval_context_mut();
+        let instance = this.resolve_path(path);
+        let cid = GlobalId { instance, promoted: None };
+        let const_val = this.const_eval_raw(cid)?;
+        let const_val = this.read_scalar(const_val.into())?;
+        return Ok(const_val);
+    }
+
+    /// Helper function to get a `libc` constant as a `Scalar`.
+    fn eval_libc(&mut self, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
+        self.eval_context_mut()
+            .eval_path_scalar(&["libc", name])?
+            .not_undef()
+    }
+
+    /// Helper function to get a `libc` constant as an `i32`.
+    fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
+        self.eval_libc(name)?.to_i32()
+    }
+
+    /// Helper function to get the `TyLayout` of a `libc` type
+    fn libc_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyLayout<'tcx>> {
+        let this = self.eval_context_mut();
+        let ty = this.resolve_path(&["libc", name]).monomorphic_ty(*this.tcx);
+        this.layout_of(ty)
     }
 
     /// Write a 0 of the appropriate size to `dest`.
@@ -98,7 +126,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if this.machine.communicate {
             // Fill the buffer using the host's rng.
             getrandom::getrandom(&mut data)
-                .map_err(|err| err_unsup_format!("getrandom failed: {}", err))?;
+                .map_err(|err| err_unsup_format!("host getrandom failed: {}", err))?;
         } else {
             let rng = this.memory.extra.rng.get_mut();
             rng.fill_bytes(&mut data);
@@ -313,26 +341,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    /// Helper function to get a `libc` constant as a `Scalar`.
-    fn eval_libc(&mut self, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
-        self.eval_context_mut()
-            .eval_path_scalar(&["libc", name])?
-            .ok_or_else(|| err_unsup_format!("Path libc::{} cannot be resolved.", name))?
-            .not_undef()
-    }
-
-    /// Helper function to get a `libc` constant as an `i32`.
-    fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
-        self.eval_libc(name)?.to_i32()
-    }
-
-    /// Helper function to get the `TyLayout` of a `libc` type
-    fn libc_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyLayout<'tcx>> {
-        let this = self.eval_context_mut();
-        let ty = this.resolve_path(&["libc", name])?.monomorphic_ty(*this.tcx);
-        this.layout_of(ty)
-    }
-
     // Writes several `ImmTy`s contiguosly into memory. This is useful when you have to pack
     // different values into a struct.
     fn write_packed_immediates(
@@ -360,7 +368,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn check_no_isolation(&self, name: &str) -> InterpResult<'tcx> {
         if !self.eval_context_ref().machine.communicate {
             throw_unsup_format!(
-                "`{}` not available when isolation is enabled. Pass the flag `-Zmiri-disable-isolation` to disable it.",
+                "`{}` not available when isolation is enabled (pass the flag `-Zmiri-disable-isolation` to disable isolation)",
                 name,
             )
         }
@@ -416,13 +424,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 AlreadyExists => "EEXIST",
                 WouldBlock => "EWOULDBLOCK",
                 _ => {
-                    throw_unsup_format!("The {} error cannot be transformed into a raw os error", e)
+                    throw_unsup_format!("io error {} cannot be transformed into a raw os error", e)
                 }
             })?
         } else {
             // FIXME: we have to implement the Windows equivalent of this.
             throw_unsup_format!(
-                "Setting the last OS error from an io::Error is unsupported for {}.",
+                "setting the last OS error from an io::Error is unsupported for {}.",
                 target.target_os
             )
         };
@@ -531,7 +539,7 @@ pub fn immty_from_int_checked<'tcx>(
 ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
     let int = int.into();
     Ok(ImmTy::try_from_int(int, layout).ok_or_else(|| {
-        err_unsup_format!("Signed value {:#x} does not fit in {} bits", int, layout.size.bits())
+        err_unsup_format!("signed value {:#x} does not fit in {} bits", int, layout.size.bits())
     })?)
 }
 
@@ -541,6 +549,6 @@ pub fn immty_from_uint_checked<'tcx>(
 ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
     let int = int.into();
     Ok(ImmTy::try_from_uint(int, layout).ok_or_else(|| {
-        err_unsup_format!("Signed value {:#x} does not fit in {} bits", int, layout.size.bits())
+        err_unsup_format!("unsigned value {:#x} does not fit in {} bits", int, layout.size.bits())
     })?)
 }

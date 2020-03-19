@@ -165,7 +165,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .expect("No panic runtime found!");
                 let panic_runtime = tcx.crate_name(*panic_runtime);
                 let start_panic_instance =
-                    this.resolve_path(&[&*panic_runtime.as_str(), link_name])?;
+                    this.resolve_path(&[&*panic_runtime.as_str(), link_name]);
                 return Ok(Some(&*this.load_mir(start_panic_instance.def, None)?));
             }
             _ => {}
@@ -222,12 +222,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "__rust_alloc" => {
                 let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
                 let align = this.read_scalar(args[1])?.to_machine_usize(this)?;
-                if size == 0 {
-                    throw_unsup!(HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
+                Self::check_alloc_request(size, align)?;
                 let ptr = this.memory.allocate(
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
@@ -238,12 +233,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "__rust_alloc_zeroed" => {
                 let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
                 let align = this.read_scalar(args[1])?.to_machine_usize(this)?;
-                if size == 0 {
-                    throw_unsup!(HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
+                Self::check_alloc_request(size, align)?;
                 let ptr = this.memory.allocate(
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
@@ -257,12 +247,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let old_size = this.read_scalar(args[1])?.to_machine_usize(this)?;
                 let align = this.read_scalar(args[2])?.to_machine_usize(this)?;
-                if old_size == 0 {
-                    throw_unsup!(HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
+                // No need to check old_size/align; we anyway check that they match the allocation.
                 let ptr = this.force_ptr(ptr)?;
                 this.memory.deallocate(
                     ptr,
@@ -274,12 +259,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let old_size = this.read_scalar(args[1])?.to_machine_usize(this)?;
                 let align = this.read_scalar(args[2])?.to_machine_usize(this)?;
                 let new_size = this.read_scalar(args[3])?.to_machine_usize(this)?;
-                if old_size == 0 || new_size == 0 {
-                    throw_unsup!(HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    throw_unsup!(HeapAllocNonPowerOfTwoAlignment(align));
-                }
+                Self::check_alloc_request(new_size, align)?;
+                // No need to check old_size; we anyway check that they match the allocation.
                 let ptr = this.force_ptr(this.read_scalar(args[0])?.not_undef()?)?;
                 let align = Align::from_bytes(align).unwrap();
                 let new_ptr = this.memory.reallocate(
@@ -455,26 +436,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             _ => match this.tcx.sess.target.target.target_os.as_str() {
                 "linux" | "macos" => return posix::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
                 "windows" => return windows::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
-                target => throw_unsup_format!("The {} target platform is not supported", target),
+                target => throw_unsup_format!("the {} target platform is not supported", target),
             }
         };
 
         Ok(true)
     }
 
-    /// Evaluates the scalar at the specified path. Returns Some(val)
-    /// if the path could be resolved, and None otherwise
-    fn eval_path_scalar(
-        &mut self,
-        path: &[&str],
-    ) -> InterpResult<'tcx, Option<ScalarMaybeUndef<Tag>>> {
-        let this = self.eval_context_mut();
-        if let Ok(instance) = this.resolve_path(path) {
-            let cid = GlobalId { instance, promoted: None };
-            let const_val = this.const_eval_raw(cid)?;
-            let const_val = this.read_scalar(const_val.into())?;
-            return Ok(Some(const_val));
+    /// Check some basic requirements for this allocation request:
+    /// non-zero size, power-of-two alignment.
+    fn check_alloc_request(size: u64, align: u64) -> InterpResult<'tcx> {
+        if size == 0 {
+            throw_ub_format!("creating allocation with size 0");
         }
-        return Ok(None);
+        if !align.is_power_of_two() {
+            throw_ub_format!("creating allocation with non-power-of-two alignment {}", align);
+        }
+        Ok(())
     }
 }

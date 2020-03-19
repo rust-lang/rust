@@ -7,5 +7,5 @@ fn main() {
         std::mem::transmute::<&Box<usize>, &fn(i32)>(&b)
     };
 
-    (*g)(42) //~ ERROR tried to treat a memory pointer as a function pointer
+    (*g)(42) //~ ERROR it does not point to a function
 }

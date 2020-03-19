@@ -10,5 +10,5 @@ fn main() {
     let bad = unsafe {
         std::mem::transmute::<&[u8], [u8; 8]>(&[1u8])
     };
-    let _val = bad[0] + bad[bad.len()-1]; //~ ERROR a raw memory access tried to access part of a pointer value as raw bytes
+    let _val = bad[0] + bad[bad.len()-1]; //~ ERROR unable to turn pointer into raw bytes
 }
