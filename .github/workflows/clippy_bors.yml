@@ -208,8 +208,9 @@ jobs:
     - name: Extract Binaries
       run: |
         DIR=$CARGO_TARGET_DIR/debug
+        rm $DIR/deps/integration-*.d
+        mv $DIR/deps/integration-* $DIR/integration
         find $DIR ! -executable -o -type d ! -path $DIR | xargs rm -rf
-        mv $DIR/integration-* $DIR/integration
         rm -rf $CARGO_TARGET_DIR/release
 
     - name: Upload Binaries

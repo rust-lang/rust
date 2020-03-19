@@ -135,7 +135,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemKind::Fn(..) => {
                 // ignore main()
                 if it.ident.name == sym!(main) {
-                    let def_id = cx.tcx.hir().local_def_id(it.hir_id);
+                    let def_id = it.hir_id.owner;
                     let def_key = cx.tcx.hir().def_key(def_id);
                     if def_key.parent == Some(hir::def_id::CRATE_DEF_INDEX) {
                         return;

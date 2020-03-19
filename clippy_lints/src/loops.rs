@@ -1679,7 +1679,7 @@ fn check_for_mutation(
         span_low: None,
         span_high: None,
     };
-    let def_id = def_id::DefId::local(body.hir_id.owner);
+    let def_id = body.hir_id.owner.to_def_id();
     cx.tcx.infer_ctxt().enter(|infcx| {
         ExprUseVisitor::new(&mut delegate, &infcx, def_id, cx.param_env, cx.tables).walk_expr(body);
     });

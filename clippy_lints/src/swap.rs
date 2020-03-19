@@ -99,7 +99,7 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block<'_>) {
             then {
                 if let ExprKind::Field(ref lhs1, _) = lhs1.kind {
                     if let ExprKind::Field(ref lhs2, _) = lhs2.kind {
-                        if lhs1.hir_id.owner_def_id() == lhs2.hir_id.owner_def_id() {
+                        if lhs1.hir_id.owner == lhs2.hir_id.owner {
                             return;
                         }
                     }

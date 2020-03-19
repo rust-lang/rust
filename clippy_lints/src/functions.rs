@@ -486,7 +486,7 @@ fn is_mutable_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, tys: &mut FxHash
     if let hir::PatKind::Wild = pat.kind {
         return false; // ignore `_` patterns
     }
-    let def_id = pat.hir_id.owner_def_id();
+    let def_id = pat.hir_id.owner.to_def_id();
     if cx.tcx.has_typeck_tables(def_id) {
         is_mutable_ty(cx, &cx.tcx.typeck_tables_of(def_id).pat_ty(pat), pat.span, tys)
     } else {
@@ -601,7 +601,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
             Call(_, args) | MethodCall(_, _, args) => {
                 let mut tys = FxHashSet::default();
                 for arg in args {
-                    let def_id = arg.hir_id.owner_def_id();
+                    let def_id = arg.hir_id.owner.to_def_id();
                     if self.cx.tcx.has_typeck_tables(def_id)
                         && is_mutable_ty(
                             self.cx,

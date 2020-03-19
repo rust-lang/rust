@@ -1,3 +1,17 @@
+error: transmute from a type (`&T`) to itself
+  --> $DIR/transmute_ptr_to_ptr.rs:8:5
+   |
+LL |     std::mem::transmute::<&'a T, &'static T>(t)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::useless-transmute` implied by `-D warnings`
+
+error: transmute from a type (`&T`) to itself
+  --> $DIR/transmute_ptr_to_ptr.rs:13:5
+   |
+LL |     std::mem::transmute::<&'a T, &'b T>(t)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: transmute from a pointer to a pointer
   --> $DIR/transmute_ptr_to_ptr.rs:29:29
    |
@@ -36,5 +50,17 @@ error: transmute from a reference to a reference
 LL |         let _: &GenericParam<f32> = std::mem::transmute(&GenericParam { t: 1u32 });
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&GenericParam { t: 1u32 } as *const GenericParam<u32> as *const GenericParam<f32>)`
 
-error: aborting due to 6 previous errors
+error: transmute from a type (`&LifetimeParam`) to itself
+  --> $DIR/transmute_ptr_to_ptr.rs:50:47
+   |
+LL |     let _: &LifetimeParam<'static> = unsafe { std::mem::transmute(&lp) };
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from a type (`&GenericParam<&LifetimeParam>`) to itself
+  --> $DIR/transmute_ptr_to_ptr.rs:51:62
+   |
+LL |     let _: &GenericParam<&LifetimeParam<'static>> = unsafe { std::mem::transmute(&GenericParam { t: &lp }) };
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
 

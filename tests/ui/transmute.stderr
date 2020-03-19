@@ -1,4 +1,4 @@
-error: transmute from a type (`&'a T`) to itself
+error: transmute from a type (`&T`) to itself
   --> $DIR/transmute.rs:19:20
    |
 LL |     let _: &'a T = core::intrinsics::transmute(t);
