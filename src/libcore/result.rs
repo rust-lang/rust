@@ -230,9 +230,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::fmt;
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
 use crate::ops::{self, Deref, DerefMut};
+use crate::{convert, fmt};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
@@ -1211,6 +1211,38 @@ impl<T, E> Result<Option<T>, E> {
             Ok(None) => None,
             Err(e) => Some(Err(e)),
         }
+    }
+}
+
+impl<T, E> Result<Result<T, E>, E> {
+    /// Converts from `Result<Result<T, E>, E>` to `Result<T, E>`
+    ///
+    /// # Examples
+    /// Basic usage:
+    /// ```
+    /// #![feature(result_flattening)]
+    /// let x: Result<Result<&'static str, u32>, u32> = Ok(Ok("hello"));
+    /// assert_eq!(Ok("hello"), x.flatten());
+    ///
+    /// let x: Result<Result<&'static str, u32>, u32> = Ok(Err(6));
+    /// assert_eq!(Err(6), x.flatten());
+    ///
+    /// let x: Result<Result<&'static str, u32>, u32> = Err(6);
+    /// assert_eq!(Err(6), x.flatten());
+    /// ```
+    ///
+    /// Flattening once only removes one level of nesting:
+    ///
+    /// ```
+    /// #![feature(result_flattening)]
+    /// let x: Result<Result<Result<&'static str, u32>, u32>, u32> = Ok(Ok(Ok("hello")));
+    /// assert_eq!(Ok(Ok("hello")), x.flatten());
+    /// assert_eq!(Ok("hello"), x.flatten().flatten());
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_flattening", issue = "70142")]
+    pub fn flatten(self) -> Result<T, E> {
+        self.and_then(convert::identity)
     }
 }
 
