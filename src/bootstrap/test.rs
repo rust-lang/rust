@@ -728,9 +728,6 @@ impl Step for Tidy {
         let mut cmd = builder.tool_cmd(Tool::Tidy);
         cmd.arg(builder.src.join("src"));
         cmd.arg(&builder.initial_cargo);
-        if !builder.config.vendor {
-            cmd.arg("--no-vendor");
-        }
         if builder.is_verbose() {
             cmd.arg("--verbose");
         }

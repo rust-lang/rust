@@ -386,9 +386,9 @@ dependencies = [
 
 [[package]]
 name = "cargo_metadata"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d2d1617e838936c0d2323a65cc151e03ae19a7678dd24f72bccf27119b90a5d"
+checksum = "46e3374c604fb39d1a2f35ed5e4a4e30e60d01fab49446e08f1b3e9a90aef202"
 dependencies = [
  "semver",
  "serde",
@@ -450,7 +450,7 @@ dependencies = [
 name = "clippy"
 version = "0.0.212"
 dependencies = [
- "cargo_metadata 0.9.0",
+ "cargo_metadata 0.9.1",
  "clippy-mini-macro-test",
  "clippy_lints",
  "compiletest_rs",
@@ -473,7 +473,7 @@ version = "0.2.0"
 name = "clippy_lints"
 version = "0.0.212"
 dependencies = [
- "cargo_metadata 0.9.0",
+ "cargo_metadata 0.9.1",
  "if_chain",
  "itertools 0.9.0",
  "lazy_static 1.4.0",
@@ -2132,7 +2132,7 @@ name = "miri"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "cargo_metadata 0.9.0",
+ "cargo_metadata 0.9.1",
  "colored",
  "compiletest_rs",
  "directories",
@@ -4860,10 +4860,9 @@ dependencies = [
 name = "tidy"
 version = "0.1.0"
 dependencies = [
+ "cargo_metadata 0.9.1",
  "lazy_static 1.4.0",
  "regex",
- "serde",
- "serde_json",
  "walkdir",
 ]
 
