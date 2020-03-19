@@ -162,9 +162,9 @@ where
     id: QueryJobId<CTX::DepKind>,
 }
 
-impl<'tcx, C> JobOwner<'tcx, TyCtxt<'tcx>, C>
+impl<'tcx, CTX: QueryContext, C> JobOwner<'tcx, CTX, C>
 where
-    C: QueryCache<TyCtxt<'tcx>> + 'tcx,
+    C: QueryCache<CTX>,
     C::Key: Eq + Hash + Clone + Debug,
     C::Value: Clone,
 {
@@ -177,14 +177,16 @@ where
     /// This function is inlined because that results in a noticeable speed-up
     /// for some compile-time benchmarks.
     #[inline(always)]
-    fn try_start<'a, 'b, Q>(
-        tcx: TyCtxt<'tcx>,
+    fn try_start<'a, 'b, Q, K>(
+        tcx: CTX,
         span: Span,
         key: &C::Key,
-        mut lookup: QueryLookup<'a, TyCtxt<'tcx>, C::Key, C::Sharded>,
-    ) -> TryGetJob<'b, TyCtxt<'tcx>, C>
+        mut lookup: QueryLookup<'a, CTX, C::Key, C::Sharded>,
+    ) -> TryGetJob<'b, CTX, C>
     where
-        Q: QueryDescription<TyCtxt<'tcx>, Key = C::Key, Value = C::Value, Cache = C>,
+        K: DepKind,
+        Q: QueryDescription<CTX, Key = C::Key, Value = C::Value, Cache = C>,
+        CTX: QueryContext<DepKind = K>,
     {
         let lock = &mut *lookup.lock;
 
@@ -196,7 +198,7 @@ where
                         // in another thread has completed. Record how long we wait in the
                         // self-profiler.
                         let _query_blocked_prof_timer = if cfg!(parallel_compiler) {
-                            Some(tcx.prof.query_blocked())
+                            Some(tcx.profiler().query_blocked())
                         } else {
                             None
                         };
@@ -219,7 +221,7 @@ where
 
                 let global_id = QueryJobId::new(id, lookup.shard, Q::DEP_KIND);
 
-                let job = tls::with_related_context(tcx, |icx| QueryJob::new(id, span, icx.query));
+                let job = tcx.read_query_job(|query| QueryJob::new(id, span, query));
 
                 entry.insert(QueryResult::Started(job));
 
@@ -262,14 +264,7 @@ where
             return TryGetJob::JobCompleted(cached);
         }
     }
-}
 
-impl<'tcx, CTX: QueryContext, C> JobOwner<'tcx, CTX, C>
-where
-    C: QueryCache<CTX>,
-    C::Key: Eq + Hash + Clone + Debug,
-    C::Value: Clone,
-{
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
     #[inline(always)]
@@ -573,7 +568,7 @@ impl<'tcx> TyCtxt<'tcx> {
             <Q::Cache as QueryCache<TyCtxt<'tcx>>>::Sharded,
         >,
     ) -> Q::Value {
-        let job = match JobOwner::try_start::<Q>(self, span, &key, lookup) {
+        let job = match JobOwner::try_start::<Q, _>(self, span, &key, lookup) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::Cycle(result) => return result,
             #[cfg(parallel_compiler)]
@@ -832,7 +827,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // Cache hit, do nothing
             },
             |key, lookup| {
-                let job = match JobOwner::try_start::<Q>(self, span, &key, lookup) {
+                let job = match JobOwner::try_start::<Q, _>(self, span, &key, lookup) {
                     TryGetJob::NotYetStarted(job) => job,
                     TryGetJob::Cycle(_) => return,
                     #[cfg(parallel_compiler)]
