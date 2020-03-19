@@ -24,8 +24,8 @@ use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt},
     db::DefDatabase,
     expr::{
-        ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal, LogicOp,
-        MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
+        dummy_expr_id, ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal,
+        LogicOp, MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
     path::GenericArgs,
@@ -51,7 +51,7 @@ pub(super) fn lower(
             exprs: Arena::default(),
             pats: Arena::default(),
             params: Vec::new(),
-            body_expr: ExprId::dummy(),
+            body_expr: dummy_expr_id(),
             item_scope: Default::default(),
         },
     }

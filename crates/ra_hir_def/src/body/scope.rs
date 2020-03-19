@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 use hir_expand::name::Name;
-use ra_arena::{impl_arena_id, Arena, RawId};
+use ra_arena::{Arena, Idx};
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -12,13 +12,11 @@ use crate::{
     DefWithBodyId,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ScopeId(RawId);
-impl_arena_id!(ScopeId);
+pub type ScopeId = Idx<ScopeData>;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ExprScopes {
-    scopes: Arena<ScopeId, ScopeData>,
+    scopes: Arena<ScopeData>,
     scope_by_expr: FxHashMap<ExprId, ScopeId>,
 }
 

@@ -966,7 +966,7 @@ mod tests {
 
         let def_map = {
             let edition = db.crate_graph()[krate].edition;
-            let mut modules: Arena<LocalModuleId, ModuleData> = Arena::default();
+            let mut modules: Arena<ModuleData> = Arena::default();
             let root = modules.alloc(ModuleData::default());
             CrateDefMap {
                 krate,

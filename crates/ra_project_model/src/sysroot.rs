@@ -7,16 +7,14 @@ use std::{
     process::{Command, Output},
 };
 
-use ra_arena::{impl_arena_id, Arena, RawId};
+use ra_arena::{Arena, Idx};
 
 #[derive(Default, Debug, Clone)]
 pub struct Sysroot {
-    crates: Arena<SysrootCrate, SysrootCrateData>,
+    crates: Arena<SysrootCrateData>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SysrootCrate(RawId);
-impl_arena_id!(SysrootCrate);
+pub type SysrootCrate = Idx<SysrootCrateData>;
 
 #[derive(Debug, Clone)]
 pub struct SysrootCrateData {

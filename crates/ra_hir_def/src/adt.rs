@@ -27,7 +27,7 @@ pub struct StructData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
     pub name: Name,
-    pub variants: Arena<LocalEnumVariantId, EnumVariantData>,
+    pub variants: Arena<EnumVariantData>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,8 +38,8 @@ pub struct EnumVariantData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VariantData {
-    Record(Arena<LocalStructFieldId, StructFieldData>),
-    Tuple(Arena<LocalStructFieldId, StructFieldData>),
+    Record(Arena<StructFieldData>),
+    Tuple(Arena<StructFieldData>),
     Unit,
 }
 
@@ -104,7 +104,7 @@ impl HasChildSource for EnumId {
 
 fn lower_enum(
     db: &dyn DefDatabase,
-    trace: &mut Trace<LocalEnumVariantId, EnumVariantData, ast::EnumVariant>,
+    trace: &mut Trace<EnumVariantData, ast::EnumVariant>,
     ast: &InFile<ast::EnumDef>,
 ) {
     for var in ast.value.variant_list().into_iter().flat_map(|it| it.variants()) {
@@ -128,8 +128,8 @@ impl VariantData {
         }
     }
 
-    pub fn fields(&self) -> &Arena<LocalStructFieldId, StructFieldData> {
-        const EMPTY: &Arena<LocalStructFieldId, StructFieldData> = &Arena::new();
+    pub fn fields(&self) -> &Arena<StructFieldData> {
+        const EMPTY: &Arena<StructFieldData> = &Arena::new();
         match &self {
             VariantData::Record(fields) | VariantData::Tuple(fields) => fields,
             _ => EMPTY,
@@ -183,11 +183,7 @@ pub enum StructKind {
 
 fn lower_struct(
     db: &dyn DefDatabase,
-    trace: &mut Trace<
-        LocalStructFieldId,
-        StructFieldData,
-        Either<ast::TupleFieldDef, ast::RecordFieldDef>,
-    >,
+    trace: &mut Trace<StructFieldData, Either<ast::TupleFieldDef, ast::RecordFieldDef>>,
     ast: &InFile<ast::StructKind>,
 ) -> StructKind {
     match &ast.value {

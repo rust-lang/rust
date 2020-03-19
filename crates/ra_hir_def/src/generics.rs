@@ -43,7 +43,7 @@ pub enum TypeParamProvenance {
 /// Data about the generic parameters of a function, struct, impl, etc.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct GenericParams {
-    pub types: Arena<LocalTypeParamId, TypeParamData>,
+    pub types: Arena<TypeParamData>,
     // lifetimes: Arena<LocalLifetimeParamId, LifetimeParamData>,
     pub where_predicates: Vec<WherePredicate>,
 }

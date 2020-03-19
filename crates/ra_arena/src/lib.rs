@@ -2,6 +2,7 @@
 
 use std::{
     fmt,
+    hash::{Hash, Hasher},
     iter::FromIterator,
     marker::PhantomData,
     ops::{Index, IndexMut},
@@ -36,86 +37,110 @@ impl fmt::Display for RawId {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct Arena<ID, T> {
-    data: Vec<T>,
-    _ty: PhantomData<ID>,
+pub struct Idx<T> {
+    raw: RawId,
+    _ty: PhantomData<fn() -> T>,
 }
 
-impl<ID: ArenaId, T: fmt::Debug> fmt::Debug for Arena<ID, T> {
+impl<T> Clone for Idx<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<T> Copy for Idx<T> {}
+
+impl<T> PartialEq for Idx<T> {
+    fn eq(&self, other: &Idx<T>) -> bool {
+        self.raw == other.raw
+    }
+}
+impl<T> Eq for Idx<T> {}
+
+impl<T> Hash for Idx<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.raw.hash(state)
+    }
+}
+
+impl<T> fmt::Debug for Idx<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut type_name = std::any::type_name::<T>();
+        if let Some(idx) = type_name.rfind(':') {
+            type_name = &type_name[idx + 1..]
+        }
+        write!(f, "Idx::<{}>({})", type_name, self.raw)
+    }
+}
+
+impl<T> Idx<T> {
+    pub fn from_raw(raw: RawId) -> Self {
+        Idx { raw, _ty: PhantomData }
+    }
+    pub fn into_raw(self) -> RawId {
+        self.raw
+    }
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct Arena<T> {
+    data: Vec<T>,
+}
+
+impl<T: fmt::Debug> fmt::Debug for Arena<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("Arena").field("len", &self.len()).field("data", &self.data).finish()
     }
 }
 
-#[macro_export]
-macro_rules! impl_arena_id {
-    ($name:ident) => {
-        impl $crate::ArenaId for $name {
-            fn from_raw(raw: $crate::RawId) -> Self {
-                $name(raw)
-            }
-            fn into_raw(self) -> $crate::RawId {
-                self.0
-            }
-        }
-    };
-}
-
-pub trait ArenaId {
-    fn from_raw(raw: RawId) -> Self;
-    fn into_raw(self) -> RawId;
-}
-
-impl<ID, T> Arena<ID, T> {
-    pub const fn new() -> Arena<ID, T> {
-        Arena { data: Vec::new(), _ty: PhantomData }
+impl<T> Arena<T> {
+    pub const fn new() -> Arena<T> {
+        Arena { data: Vec::new() }
     }
-}
 
-impl<ID: ArenaId, T> Arena<ID, T> {
     pub fn len(&self) -> usize {
         self.data.len()
     }
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
-    pub fn alloc(&mut self, value: T) -> ID {
+    pub fn alloc(&mut self, value: T) -> Idx<T> {
         let id = RawId(self.data.len() as u32);
         self.data.push(value);
-        ID::from_raw(id)
+        Idx::from_raw(id)
     }
-    pub fn iter(&self) -> impl Iterator<Item = (ID, &T)> + ExactSizeIterator + DoubleEndedIterator {
-        self.data.iter().enumerate().map(|(idx, value)| (ID::from_raw(RawId(idx as u32)), value))
-    }
-}
-
-impl<ID: ArenaId, T> Default for Arena<ID, T> {
-    fn default() -> Arena<ID, T> {
-        Arena { data: Vec::new(), _ty: PhantomData }
+    pub fn iter(
+        &self,
+    ) -> impl Iterator<Item = (Idx<T>, &T)> + ExactSizeIterator + DoubleEndedIterator {
+        self.data.iter().enumerate().map(|(idx, value)| (Idx::from_raw(RawId(idx as u32)), value))
     }
 }
 
-impl<ID: ArenaId, T> Index<ID> for Arena<ID, T> {
+impl<T> Default for Arena<T> {
+    fn default() -> Arena<T> {
+        Arena { data: Vec::new() }
+    }
+}
+
+impl<T> Index<Idx<T>> for Arena<T> {
     type Output = T;
-    fn index(&self, idx: ID) -> &T {
+    fn index(&self, idx: Idx<T>) -> &T {
         let idx = idx.into_raw().0 as usize;
         &self.data[idx]
     }
 }
 
-impl<ID: ArenaId, T> IndexMut<ID> for Arena<ID, T> {
-    fn index_mut(&mut self, idx: ID) -> &mut T {
+impl<T> IndexMut<Idx<T>> for Arena<T> {
+    fn index_mut(&mut self, idx: Idx<T>) -> &mut T {
         let idx = idx.into_raw().0 as usize;
         &mut self.data[idx]
     }
 }
 
-impl<ID: ArenaId, T> FromIterator<T> for Arena<ID, T> {
+impl<T> FromIterator<T> for Arena<T> {
     fn from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = T>,
     {
-        Arena { data: Vec::from_iter(iter), _ty: PhantomData }
+        Arena { data: Vec::from_iter(iter) }
     }
 }

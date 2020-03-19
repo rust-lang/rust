@@ -12,7 +12,7 @@ use hir_expand::{
     hygiene::Hygiene,
     name::{AsName, Name},
 };
-use ra_arena::{impl_arena_id, Arena, RawId};
+use ra_arena::{Arena, Idx};
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner, VisibilityOwner},
@@ -34,11 +34,11 @@ use crate::{
 /// on most edits.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RawItems {
-    modules: Arena<Module, ModuleData>,
-    imports: Arena<Import, ImportData>,
-    defs: Arena<Def, DefData>,
-    macros: Arena<Macro, MacroData>,
-    impls: Arena<Impl, ImplData>,
+    modules: Arena<ModuleData>,
+    imports: Arena<ImportData>,
+    defs: Arena<DefData>,
+    macros: Arena<MacroData>,
+    impls: Arena<ImplData>,
     /// items for top-level module
     items: Vec<RawItem>,
 }
@@ -68,9 +68,9 @@ impl RawItems {
     }
 }
 
-impl Index<Module> for RawItems {
+impl Index<Idx<ModuleData>> for RawItems {
     type Output = ModuleData;
-    fn index(&self, idx: Module) -> &ModuleData {
+    fn index(&self, idx: Idx<ModuleData>) -> &ModuleData {
         &self.modules[idx]
     }
 }
@@ -82,23 +82,23 @@ impl Index<Import> for RawItems {
     }
 }
 
-impl Index<Def> for RawItems {
+impl Index<Idx<DefData>> for RawItems {
     type Output = DefData;
-    fn index(&self, idx: Def) -> &DefData {
+    fn index(&self, idx: Idx<DefData>) -> &DefData {
         &self.defs[idx]
     }
 }
 
-impl Index<Macro> for RawItems {
+impl Index<Idx<MacroData>> for RawItems {
     type Output = MacroData;
-    fn index(&self, idx: Macro) -> &MacroData {
+    fn index(&self, idx: Idx<MacroData>) -> &MacroData {
         &self.macros[idx]
     }
 }
 
-impl Index<Impl> for RawItems {
+impl Index<Idx<ImplData>> for RawItems {
     type Output = ImplData;
-    fn index(&self, idx: Impl) -> &ImplData {
+    fn index(&self, idx: Idx<ImplData>) -> &ImplData {
         &self.impls[idx]
     }
 }
@@ -111,16 +111,12 @@ pub(super) struct RawItem {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(super) enum RawItemKind {
-    Module(Module),
+    Module(Idx<ModuleData>),
     Import(Import),
-    Def(Def),
-    Macro(Macro),
-    Impl(Impl),
+    Def(Idx<DefData>),
+    Macro(Idx<MacroData>),
+    Impl(Idx<ImplData>),
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct Module(RawId);
-impl_arena_id!(Module);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum ModuleData {
@@ -137,9 +133,7 @@ pub(super) enum ModuleData {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct Import(RawId);
-impl_arena_id!(Import);
+pub(crate) type Import = Idx<ImportData>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportData {
@@ -152,9 +146,7 @@ pub struct ImportData {
     pub(super) visibility: RawVisibility,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct Def(RawId);
-impl_arena_id!(Def);
+// type Def = Idx<DefData>;
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct DefData {
@@ -190,10 +182,6 @@ impl DefKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct Macro(RawId);
-impl_arena_id!(Macro);
-
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct MacroData {
     pub(super) ast_id: FileAstId<ast::MacroCall>,
@@ -202,10 +190,6 @@ pub(super) struct MacroData {
     pub(super) export: bool,
     pub(super) builtin: bool,
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct Impl(RawId);
-impl_arena_id!(Impl);
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct ImplData {
@@ -220,7 +204,11 @@ struct RawItemsCollector {
 }
 
 impl RawItemsCollector {
-    fn process_module(&mut self, current_module: Option<Module>, body: impl ast::ModuleItemOwner) {
+    fn process_module(
+        &mut self,
+        current_module: Option<Idx<ModuleData>>,
+        body: impl ast::ModuleItemOwner,
+    ) {
         for item_or_macro in body.items_with_macros() {
             match item_or_macro {
                 ast::ItemOrMacro::Macro(m) => self.add_macro(current_module, m),
@@ -229,7 +217,7 @@ impl RawItemsCollector {
         }
     }
 
-    fn add_item(&mut self, current_module: Option<Module>, item: ast::ModuleItem) {
+    fn add_item(&mut self, current_module: Option<Idx<ModuleData>>, item: ast::ModuleItem) {
         let attrs = self.parse_attrs(&item);
         let visibility = RawVisibility::from_ast_with_hygiene(item.visibility(), &self.hygiene);
         let (kind, name) = match item {
@@ -285,7 +273,7 @@ impl RawItemsCollector {
         }
     }
 
-    fn add_module(&mut self, current_module: Option<Module>, module: ast::Module) {
+    fn add_module(&mut self, current_module: Option<Idx<ModuleData>>, module: ast::Module) {
         let name = match module.name() {
             Some(it) => it.as_name(),
             None => return,
@@ -315,7 +303,7 @@ impl RawItemsCollector {
         tested_by!(name_res_works_for_broken_modules);
     }
 
-    fn add_use_item(&mut self, current_module: Option<Module>, use_item: ast::UseItem) {
+    fn add_use_item(&mut self, current_module: Option<Idx<ModuleData>>, use_item: ast::UseItem) {
         // FIXME: cfg_attr
         let is_prelude = use_item.has_atom_attr("prelude_import");
         let attrs = self.parse_attrs(&use_item);
@@ -345,7 +333,7 @@ impl RawItemsCollector {
 
     fn add_extern_crate_item(
         &mut self,
-        current_module: Option<Module>,
+        current_module: Option<Idx<ModuleData>>,
         extern_crate: ast::ExternCrateItem,
     ) {
         if let Some(name_ref) = extern_crate.name_ref() {
@@ -371,7 +359,7 @@ impl RawItemsCollector {
         }
     }
 
-    fn add_macro(&mut self, current_module: Option<Module>, m: ast::MacroCall) {
+    fn add_macro(&mut self, current_module: Option<Idx<ModuleData>>, m: ast::MacroCall) {
         let attrs = self.parse_attrs(&m);
         let path = match m.path().and_then(|path| ModPath::from_src(path, &self.hygiene)) {
             Some(it) => it,
@@ -391,19 +379,29 @@ impl RawItemsCollector {
         self.push_item(current_module, attrs, RawItemKind::Macro(m));
     }
 
-    fn add_impl(&mut self, current_module: Option<Module>, imp: ast::ImplDef) {
+    fn add_impl(&mut self, current_module: Option<Idx<ModuleData>>, imp: ast::ImplDef) {
         let attrs = self.parse_attrs(&imp);
         let ast_id = self.source_ast_id_map.ast_id(&imp);
         let imp = self.raw_items.impls.alloc(ImplData { ast_id });
         self.push_item(current_module, attrs, RawItemKind::Impl(imp))
     }
 
-    fn push_import(&mut self, current_module: Option<Module>, attrs: Attrs, data: ImportData) {
+    fn push_import(
+        &mut self,
+        current_module: Option<Idx<ModuleData>>,
+        attrs: Attrs,
+        data: ImportData,
+    ) {
         let import = self.raw_items.imports.alloc(data);
         self.push_item(current_module, attrs, RawItemKind::Import(import))
     }
 
-    fn push_item(&mut self, current_module: Option<Module>, attrs: Attrs, kind: RawItemKind) {
+    fn push_item(
+        &mut self,
+        current_module: Option<Idx<ModuleData>>,
+        attrs: Attrs,
+        kind: RawItemKind,
+    ) {
         match current_module {
             Some(module) => match &mut self.raw_items.modules[module] {
                 ModuleData::Definition { items, .. } => items,
