@@ -23,7 +23,7 @@ use rustc_errors::Diagnostic;
 use std::fmt;
 use std::hash::Hash;
 
-pub trait DepContext: Copy {
+pub trait DepContext: Copy + DepGraphSafe {
     type DepKind: self::DepKind;
     type StableHashingContext: crate::HashStableContext;
 
@@ -47,6 +47,9 @@ pub trait DepContext: Copy {
 
     /// Register diagnostics for the given node, for use in next session.
     fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>);
+
+    /// Register diagnostics for the given node, for use in next session.
+    fn store_diagnostics_for_anon_node(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>);
 
     /// Access the profiler.
     fn profiler(&self) -> &SelfProfilerRef;

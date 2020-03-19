@@ -7,7 +7,7 @@ use crate::ty::query::caches::QueryCache;
 use crate::ty::query::config::{QueryContext, QueryDescription};
 use crate::ty::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId};
 use crate::ty::query::Query;
-use crate::ty::tls;
+use crate::ty::tls::{self, ImplicitCtxt};
 use crate::ty::{self, TyCtxt};
 
 #[cfg(not(parallel_compiler))]
@@ -17,7 +17,8 @@ use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, Handler, Level};
-use rustc_query_system::dep_graph::{DepKind, DepNode};
+use rustc_query_system::dep_graph::{DepContext, DepGraph, DepKind, DepNode};
+use rustc_query_system::HashStableContextProvider;
 use rustc_session::Session;
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::DUMMY_SP;
@@ -364,6 +365,10 @@ impl QueryContext for TyCtxt<'tcx> {
         TyCtxt::def_path_str(*self, def_id)
     }
 
+    fn dep_graph(&self) -> &DepGraph<Self::DepKind> {
+        &self.dep_graph
+    }
+
     fn read_query_job<R>(&self, op: impl FnOnce(Option<QueryJobId<Self::DepKind>>) -> R) -> R {
         tls::with_related_context(*self, move |icx| op(icx.query))
     }
@@ -373,29 +378,24 @@ impl QueryContext for TyCtxt<'tcx> {
     ) -> Option<FxHashMap<QueryJobId<Self::DepKind>, QueryJobInfo<Self>>> {
         self.queries.try_collect_active_jobs()
     }
-}
 
-impl<'tcx> TyCtxt<'tcx> {
     /// Executes a job by changing the `ImplicitCtxt` to point to the
     /// new query job while it executes. It returns the diagnostics
     /// captured during execution and the actual result.
     #[inline(always)]
-    fn start_query<F, R>(
-        self,
-        token: QueryJobId<crate::dep_graph::DepKind>,
+    fn start_query<R>(
+        &self,
+        token: QueryJobId<Self::DepKind>,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: F,
-    ) -> R
-    where
-        F: FnOnce(TyCtxt<'tcx>) -> R,
-    {
+        compute: impl FnOnce(Self) -> R,
+    ) -> R {
         // The `TyCtxt` stored in TLS has the same global interner lifetime
         // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
         // when accessing the `ImplicitCtxt`.
-        tls::with_related_context(self, move |current_icx| {
+        tls::with_related_context(*self, move |current_icx| {
             // Update the `ImplicitCtxt` to point to our new query job.
-            let new_icx = tls::ImplicitCtxt {
-                tcx: self,
+            let new_icx = ImplicitCtxt {
+                tcx: *self,
                 query: Some(token),
                 diagnostics,
                 layout_depth: current_icx.layout_depth,
@@ -403,10 +403,12 @@ impl<'tcx> TyCtxt<'tcx> {
             };
 
             // Use the `ImplicitCtxt` while we execute the query.
-            tls::enter_context(&new_icx, |_| compute(self))
+            tls::enter_context(&new_icx, |_| compute(*self))
         })
     }
+}
 
+impl<'tcx> TyCtxt<'tcx> {
     #[inline(never)]
     #[cold]
     pub(super) fn report_cycle(
@@ -552,74 +554,80 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.dep_graph.read_index(index);
                 value.clone()
             },
-            |key, lookup| self.try_execute_query::<Q>(span, key, lookup),
+            |key, lookup| try_execute_query::<Q, _, _>(self, span, key, lookup),
         )
     }
+}
 
     #[inline(always)]
-    fn try_execute_query<Q: QueryDescription<TyCtxt<'tcx>> + 'tcx>(
-        self,
+    fn try_execute_query<Q, CTX, K>(
+        tcx: CTX,
         span: Span,
         key: Q::Key,
         lookup: QueryLookup<
             '_,
-            TyCtxt<'tcx>,
+            CTX,
             Q::Key,
-            <Q::Cache as QueryCache<TyCtxt<'tcx>>>::Sharded,
+            <Q::Cache as QueryCache<CTX>>::Sharded,
         >,
-    ) -> Q::Value {
-        let job = match JobOwner::try_start::<Q, _>(self, span, &key, lookup) {
+    ) -> Q::Value
+    where
+        Q: QueryDescription<CTX>,
+        CTX: QueryContext<DepKind = K>,
+        CTX: HashStableContextProvider<<CTX as DepContext>::StableHashingContext>,
+        K: DepKind,
+    {
+        let job = match JobOwner::try_start::<Q, _>(tcx, span, &key, lookup) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::Cycle(result) => return result,
             #[cfg(parallel_compiler)]
             TryGetJob::JobCompleted((v, index)) => {
-                self.dep_graph.read_index(index);
+                tcx.dep_graph().read_index(index);
                 return v;
             }
         };
 
         // Fast path for when incr. comp. is off. `to_dep_node` is
         // expensive for some `DepKind`s.
-        if !self.dep_graph.is_fully_enabled() {
+        if !tcx.dep_graph().is_fully_enabled() {
             let null_dep_node = DepNode::new_no_params(DepKind::NULL);
-            return self.force_query_with_job::<Q>(key, job, null_dep_node).0;
+            return force_query_with_job::<Q, _, _>(tcx, key, job, null_dep_node).0;
         }
 
         if Q::ANON {
-            let prof_timer = self.prof.query_provider();
+            let prof_timer = tcx.profiler().query_provider();
 
             let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-                self.start_query(job.id, diagnostics, |tcx| {
-                    tcx.dep_graph.with_anon_task(Q::DEP_KIND, || Q::compute(tcx, key))
+                tcx.start_query(job.id, diagnostics, |tcx| {
+                    tcx.dep_graph().with_anon_task(Q::DEP_KIND, || Q::compute(tcx, key))
                 })
             });
 
             prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-            self.dep_graph.read_index(dep_node_index);
+            tcx.dep_graph().read_index(dep_node_index);
 
             if unlikely!(!diagnostics.is_empty()) {
-                self.queries
-                    .on_disk_cache
-                    .store_diagnostics_for_anon_node(dep_node_index, diagnostics);
+                tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
             }
 
-            job.complete(self, &result, dep_node_index);
+            job.complete(tcx, &result, dep_node_index);
 
             return result;
         }
 
-        let dep_node = Q::to_dep_node(self, &key);
+        let dep_node = Q::to_dep_node(tcx, &key);
 
         if !Q::EVAL_ALWAYS {
             // The diagnostics for this query will be
             // promoted to the current session during
             // `try_mark_green()`, so we can ignore them here.
-            let loaded = self.start_query(job.id, None, |tcx| {
-                let marked = tcx.dep_graph.try_mark_green_and_read(tcx, &dep_node);
+            let loaded = tcx.start_query(job.id, None, |tcx| {
+                let marked = tcx.dep_graph().try_mark_green_and_read(tcx, &dep_node);
                 marked.map(|(prev_dep_node_index, dep_node_index)| {
                     (
-                        tcx.load_from_disk_and_cache_in_memory::<Q>(
+                        load_from_disk_and_cache_in_memory::<Q, _>(
+                            tcx,
                             key.clone(),
                             prev_dep_node_index,
                             dep_node_index,
@@ -630,32 +638,36 @@ impl<'tcx> TyCtxt<'tcx> {
                 })
             });
             if let Some((result, dep_node_index)) = loaded {
-                job.complete(self, &result, dep_node_index);
+                job.complete(tcx, &result, dep_node_index);
                 return result;
             }
         }
 
-        let (result, dep_node_index) = self.force_query_with_job::<Q>(key, job, dep_node);
-        self.dep_graph.read_index(dep_node_index);
+        let (result, dep_node_index) = force_query_with_job::<Q, _, _>(tcx, key, job, dep_node);
+        tcx.dep_graph().read_index(dep_node_index);
         result
     }
 
-    fn load_from_disk_and_cache_in_memory<Q: QueryDescription<TyCtxt<'tcx>>>(
-        self,
+    fn load_from_disk_and_cache_in_memory<Q, CTX>(
+        tcx: CTX,
         key: Q::Key,
         prev_dep_node_index: SerializedDepNodeIndex,
         dep_node_index: DepNodeIndex,
-        dep_node: &DepNode<crate::dep_graph::DepKind>,
-    ) -> Q::Value {
+        dep_node: &DepNode<CTX::DepKind>,
+    ) -> Q::Value
+    where
+        CTX: QueryContext,
+        Q: QueryDescription<CTX>,
+    {
         // Note this function can be called concurrently from the same query
         // We must ensure that this is handled correctly.
 
-        debug_assert!(self.dep_graph.is_green(dep_node));
+        debug_assert!(tcx.dep_graph().is_green(dep_node));
 
         // First we try to load the result from the on-disk cache.
-        let result = if Q::cache_on_disk(self, key.clone(), None) {
-            let prof_timer = self.prof.incr_cache_loading();
-            let result = Q::try_load_from_disk(self, prev_dep_node_index);
+        let result = if Q::cache_on_disk(tcx, key.clone(), None) {
+            let prof_timer = tcx.profiler().incr_cache_loading();
+            let result = Q::try_load_from_disk(tcx, prev_dep_node_index);
             prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
             // We always expect to find a cached result for things that
@@ -676,10 +688,10 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             // We could not load a result from the on-disk cache, so
             // recompute.
-            let prof_timer = self.prof.query_provider();
+            let prof_timer = tcx.profiler().query_provider();
 
             // The dep-graph for this computation is already in-place.
-            let result = self.dep_graph.with_ignore(|| Q::compute(self, key));
+            let result = tcx.dep_graph().with_ignore(|| Q::compute(tcx, key));
 
             prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -688,8 +700,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // If `-Zincremental-verify-ich` is specified, re-hash results from
         // the cache and make sure that they have the expected fingerprint.
-        if unlikely!(self.sess.opts.debugging_opts.incremental_verify_ich) {
-            self.incremental_verify_ich::<Q>(&result, dep_node, dep_node_index);
+        if unlikely!(tcx.session().opts.debugging_opts.incremental_verify_ich) {
+            incremental_verify_ich::<Q, _>(tcx, &result, dep_node, dep_node_index);
         }
 
         result
@@ -697,46 +709,56 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline(never)]
     #[cold]
-    fn incremental_verify_ich<Q: QueryDescription<TyCtxt<'tcx>>>(
-        self,
+    fn incremental_verify_ich<Q, CTX>(
+        tcx: CTX,
         result: &Q::Value,
-        dep_node: &DepNode<crate::dep_graph::DepKind>,
+        dep_node: &DepNode<CTX::DepKind>,
         dep_node_index: DepNodeIndex,
-    ) {
+    )
+    where
+        CTX: QueryContext,
+        Q: QueryDescription<CTX>,
+    {
         use rustc_data_structures::fingerprint::Fingerprint;
 
         assert!(
-            Some(self.dep_graph.fingerprint_of(dep_node_index))
-                == self.dep_graph.prev_fingerprint_of(dep_node),
+            Some(tcx.dep_graph().fingerprint_of(dep_node_index))
+                == tcx.dep_graph().prev_fingerprint_of(dep_node),
             "fingerprint for green query instance not loaded from cache: {:?}",
             dep_node,
         );
 
         debug!("BEGIN verify_ich({:?})", dep_node);
-        let mut hcx = self.create_stable_hashing_context();
+        let mut hcx = tcx.create_stable_hashing_context();
 
         let new_hash = Q::hash_result(&mut hcx, result).unwrap_or(Fingerprint::ZERO);
         debug!("END verify_ich({:?})", dep_node);
 
-        let old_hash = self.dep_graph.fingerprint_of(dep_node_index);
+        let old_hash = tcx.dep_graph().fingerprint_of(dep_node_index);
 
         assert!(new_hash == old_hash, "found unstable fingerprints for {:?}", dep_node,);
     }
 
     #[inline(always)]
-    fn force_query_with_job<Q: QueryDescription<TyCtxt<'tcx>> + 'tcx>(
-        self,
+    fn force_query_with_job<Q, CTX, K>(
+        tcx: CTX,
         key: Q::Key,
-        job: JobOwner<'tcx, Self, Q::Cache>,
-        dep_node: DepNode<crate::dep_graph::DepKind>,
-    ) -> (Q::Value, DepNodeIndex) {
+        job: JobOwner<'tcx, CTX, Q::Cache>,
+        dep_node: DepNode<CTX::DepKind>,
+    ) -> (Q::Value, DepNodeIndex)
+    where
+        Q: QueryDescription<CTX>,
+        CTX: QueryContext<DepKind = K>,
+        CTX: HashStableContextProvider<<CTX as DepContext>::StableHashingContext>,
+        K: DepKind,
+    {
         // If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
         //    in `DepGraph::try_mark_green()`.
         // 2. Two distinct query keys get mapped to the same `DepNode`
         //    (see for example #48923).
         assert!(
-            !self.dep_graph.dep_node_exists(&dep_node),
+            !tcx.dep_graph().dep_node_exists(&dep_node),
             "forcing query with already existing `DepNode`\n\
                  - query-key: {:?}\n\
                  - dep-node: {:?}",
@@ -744,12 +766,12 @@ impl<'tcx> TyCtxt<'tcx> {
             dep_node
         );
 
-        let prof_timer = self.prof.query_provider();
+        let prof_timer = tcx.profiler().query_provider();
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-            self.start_query(job.id, diagnostics, |tcx| {
+            tcx.start_query(job.id, diagnostics, |tcx| {
                 if Q::EVAL_ALWAYS {
-                    tcx.dep_graph.with_eval_always_task(
+                    tcx.dep_graph().with_eval_always_task(
                         dep_node,
                         tcx,
                         key,
@@ -757,7 +779,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         Q::hash_result,
                     )
                 } else {
-                    tcx.dep_graph.with_task(dep_node, tcx, key, Q::compute, Q::hash_result)
+                    tcx.dep_graph().with_task(dep_node, tcx, key, Q::compute, Q::hash_result)
                 }
             })
         });
@@ -766,15 +788,16 @@ impl<'tcx> TyCtxt<'tcx> {
 
         if unlikely!(!diagnostics.is_empty()) {
             if dep_node.kind != DepKind::NULL {
-                self.queries.on_disk_cache.store_diagnostics(dep_node_index, diagnostics);
+                tcx.store_diagnostics(dep_node_index, diagnostics);
             }
         }
 
-        job.complete(self, &result, dep_node_index);
+        job.complete(tcx, &result, dep_node_index);
 
         (result, dep_node_index)
     }
 
+impl<'tcx> TyCtxt<'tcx> {
     /// Ensure that either this query has all green inputs or been executed.
     /// Executing `query::ensure(D)` is considered a read of the dep-node `D`.
     ///
@@ -833,7 +856,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     #[cfg(parallel_compiler)]
                     TryGetJob::JobCompleted(_) => return,
                 };
-                self.force_query_with_job::<Q>(key, job, dep_node);
+                force_query_with_job::<Q, _, _>(self, key, job, dep_node);
             },
         );
     }

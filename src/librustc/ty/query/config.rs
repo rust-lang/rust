@@ -11,7 +11,10 @@ use rustc_hir::def_id::DefId;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::HashStable;
-use rustc_query_system::dep_graph::{DepContext, DepNode};
+use rustc_data_structures::sync::Lock;
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_errors::Diagnostic;
+use rustc_query_system::dep_graph::{DepContext, DepGraph, DepNode};
 use rustc_session::Session;
 use std::borrow::Cow;
 use std::fmt::Debug;
@@ -34,12 +37,25 @@ pub trait QueryContext: DepContext {
     /// Get string representation from DefPath.
     fn def_path_str(&self, def_id: DefId) -> String;
 
+    /// Access the DepGraph.
+    fn dep_graph(&self) -> &DepGraph<Self::DepKind>;
+
     /// Get the query information from the TLS context.
     fn read_query_job<R>(&self, op: impl FnOnce(Option<QueryJobId<Self::DepKind>>) -> R) -> R;
 
     fn try_collect_active_jobs(
         &self,
     ) -> Option<FxHashMap<QueryJobId<Self::DepKind>, QueryJobInfo<Self>>>;
+
+    /// Executes a job by changing the `ImplicitCtxt` to point to the
+    /// new query job while it executes. It returns the diagnostics
+    /// captured during execution and the actual result.
+    fn start_query<R>(
+        &self,
+        token: QueryJobId<Self::DepKind>,
+        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
+        compute: impl FnOnce(Self) -> R,
+    ) -> R;
 }
 
 pub(crate) trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
