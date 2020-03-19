@@ -143,7 +143,7 @@ impl ProjectWorkspace {
                     roots.push(PackageRoot::new(root, member));
                 }
                 for krate in sysroot.crates() {
-                    roots.push(PackageRoot::new(krate.root_dir(&sysroot).to_path_buf(), false))
+                    roots.push(PackageRoot::new(sysroot[krate].root_dir().to_path_buf(), false))
                 }
                 roots
             }
@@ -260,7 +260,7 @@ impl ProjectWorkspace {
             ProjectWorkspace::Cargo { cargo, sysroot } => {
                 let mut sysroot_crates = FxHashMap::default();
                 for krate in sysroot.crates() {
-                    if let Some(file_id) = load(krate.root(&sysroot)) {
+                    if let Some(file_id) = load(&sysroot[krate].root) {
                         // Crates from sysroot have `cfg(test)` disabled
                         let cfg_options = {
                             let mut opts = default_cfg_options.clone();
@@ -274,7 +274,7 @@ impl ProjectWorkspace {
                             file_id,
                             Edition::Edition2018,
                             Some(
-                                CrateName::new(krate.name(&sysroot))
+                                CrateName::new(&sysroot[krate].name)
                                     .expect("Sysroot crate names should not contain dashes"),
                             ),
                             cfg_options,
@@ -285,8 +285,8 @@ impl ProjectWorkspace {
                     }
                 }
                 for from in sysroot.crates() {
-                    for to in from.deps(&sysroot) {
-                        let name = to.name(&sysroot);
+                    for &to in sysroot[from].deps.iter() {
+                        let name = &sysroot[to].name;
                         if let (Some(&from), Some(&to)) =
                             (sysroot_crates.get(&from), sysroot_crates.get(&to))
                         {
