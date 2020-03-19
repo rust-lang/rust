@@ -34,16 +34,16 @@ pub use unicode_data::uppercase::lookup as Uppercase;
 pub use unicode_data::white_space::lookup as White_Space;
 
 #[inline(always)]
-fn range_search<const N: usize, const N1: usize, const N2: usize>(
+fn range_search<const N: usize, const CHUNK_SIZE: usize, const N1: usize, const N2: usize>(
     needle: u32,
     chunk_idx_map: &[u8; N],
     (last_chunk_idx, last_chunk_mapping): (u16, u8),
-    bitset_chunk_idx: &[[u8; 16]; N1],
+    bitset_chunk_idx: &[[u8; CHUNK_SIZE]; N1],
     bitset: &[u64; N2],
 ) -> bool {
     let bucket_idx = (needle / 64) as usize;
-    let chunk_map_idx = bucket_idx / 16;
-    let chunk_piece = bucket_idx % 16;
+    let chunk_map_idx = bucket_idx / CHUNK_SIZE;
+    let chunk_piece = bucket_idx % CHUNK_SIZE;
     let chunk_idx = if chunk_map_idx >= N {
         if chunk_map_idx == last_chunk_idx as usize {
             last_chunk_mapping

@@ -42,6 +42,7 @@ use std::convert::TryFrom;
 use std::fmt::Write;
 use std::ops::Range;
 
+#[derive(Clone)]
 pub struct RawEmitter {
     pub file: String,
     pub bytes_used: usize,
@@ -65,6 +66,8 @@ impl RawEmitter {
         if unique_words.len() > u8::max_value() as usize {
             panic!("cannot pack {} into 8 bits", unique_words.len());
         }
+        // needed for the chunk mapping to work
+        assert_eq!(unique_words[0], 0, "first word is all zeros");
 
         let word_indices = unique_words
             .iter()
@@ -72,17 +75,42 @@ impl RawEmitter {
             .enumerate()
             .map(|(idx, word)| (word, u8::try_from(idx).unwrap()))
             .collect::<HashMap<_, _>>();
+        let compressed_words = words.iter().map(|w| word_indices[w]).collect::<Vec<u8>>();
 
-        let mut idx = words.iter().map(|w| word_indices[w]).collect::<Vec<u8>>();
-        let chunk_length = 16;
-        for _ in 0..(chunk_length - (idx.len() % chunk_length)) {
-            assert_eq!(unique_words[0], 0, "first word is all zeros");
-            // pad out bitset index with zero words so we have all chunks of 16
-            idx.push(0);
+        let mut best = None;
+        for length in 1..=64 {
+            let mut temp = self.clone();
+            temp.emit_chunk_map(&compressed_words, length);
+            if let Some((_, size)) = best {
+                if temp.bytes_used < size {
+                    best = Some((length, temp.bytes_used));
+                }
+            } else {
+                best = Some((length, temp.bytes_used));
+            }
+        }
+        self.emit_chunk_map(&compressed_words, best.unwrap().0);
+
+        writeln!(
+            &mut self.file,
+            "static BITSET: [u64; {}] = [{}];",
+            unique_words.len(),
+            fmt_list(&unique_words),
+        )
+        .unwrap();
+        self.bytes_used += 8 * unique_words.len();
+    }
+
+    fn emit_chunk_map(&mut self, compressed_words: &[u8], chunk_length: usize) {
+        let mut compressed_words = compressed_words.to_vec();
+        for _ in 0..(chunk_length - (compressed_words.len() % chunk_length)) {
+            // pad out bitset index with zero words so we have all chunks of
+            // chunkchunk_length
+            compressed_words.push(0);
         }
 
         let mut chunks = BTreeSet::new();
-        for chunk in idx.chunks(chunk_length) {
+        for chunk in compressed_words.chunks(chunk_length) {
             chunks.insert(chunk);
         }
         let chunk_map = chunks
@@ -92,7 +120,7 @@ impl RawEmitter {
             .map(|(idx, chunk)| (chunk, idx))
             .collect::<HashMap<_, _>>();
         let mut chunk_indices = Vec::new();
-        for chunk in idx.chunks(chunk_length) {
+        for chunk in compressed_words.chunks(chunk_length) {
             chunk_indices.push(chunk_map[chunk]);
         }
         writeln!(
@@ -105,7 +133,6 @@ impl RawEmitter {
         self.bytes_used += 3;
         // Strip out the empty pieces, presuming our above pop() made us now
         // have some trailing zeros.
-        assert_eq!(unique_words[0], 0, "first word is all zeros");
         while let Some(0) = chunk_indices.last() {
             chunk_indices.pop();
         }
@@ -119,20 +146,13 @@ impl RawEmitter {
         self.bytes_used += chunk_indices.len();
         writeln!(
             &mut self.file,
-            "static BITSET_INDEX_CHUNKS: [[u8; 16]; {}] = [{}];",
+            "static BITSET_INDEX_CHUNKS: [[u8; {}]; {}] = [{}];",
+            chunk_length,
             chunks.len(),
             fmt_list(chunks.iter()),
         )
         .unwrap();
-        self.bytes_used += 16 * chunks.len();
-        writeln!(
-            &mut self.file,
-            "static BITSET: [u64; {}] = [{}];",
-            unique_words.len(),
-            fmt_list(&unique_words),
-        )
-        .unwrap();
-        self.bytes_used += 8 * unique_words.len();
+        self.bytes_used += chunk_length * chunks.len();
     }
 
     pub fn emit_lookup(&mut self) {
