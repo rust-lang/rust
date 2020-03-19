@@ -723,8 +723,8 @@ pub struct ArgsOs {
 /// (such as `*` and `?`). On Windows this is not done, and such arguments are
 /// passed as-is.
 ///
-/// On glibc Linux, arguments are retrieved by placing a function in .init_array.
-/// glibc passes argc, argv, and envp to functions in .init_array, as a non-standard extension.
+/// On glibc Linux systems, arguments are retrieved by placing a function in ".init_array".
+/// Glibc passes argc, argv, and envp to functions in ".init_array", as a non-standard extension.
 /// This allows `std::env::args` to work even in a `cdylib` or `staticlib`, as it does on macOS
 /// and Windows.
 ///
@@ -758,8 +758,8 @@ pub fn args() -> Args {
 /// set to arbitrary text, and it may not even exist, so this property should
 /// not be relied upon for security purposes.
 ///
-/// On glibc Linux, arguments are retrieved by placing a function in .init_array.
-/// glibc passes argc, argv, and envp to functions in .init_array, as a non-standard extension.
+/// On glibc Linux systems, arguments are retrieved by placing a function in ".init_array".
+/// Glibc passes argc, argv, and envp to functions in ".init_array", as a non-standard extension.
 /// This allows `std::env::args` to work even in a `cdylib` or `staticlib`, as it does on macOS
 /// and Windows.
 ///
