@@ -5,6 +5,31 @@ import { Config } from './config';
 import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
 import { SemanticTokensFeature, DocumentSemanticsTokensSignature } from 'vscode-languageclient/lib/semanticTokens.proposed';
 
+export function configToOptions(config: Config): object {
+    return {
+        publishDecorations: !config.highlightingSemanticTokens,
+        lruCapacity: config.lruCapacity,
+
+        inlayHintsType: config.inlayHints.typeHints,
+        inlayHintsParameter: config.inlayHints.parameterHints,
+        inlayHintsChaining: config.inlayHints.chainingHints,
+        inlayHintsMaxLength: config.inlayHints.maxLength,
+
+        cargoWatchEnable: config.cargoWatchOptions.enable,
+        cargoWatchArgs: config.cargoWatchOptions.arguments,
+        cargoWatchCommand: config.cargoWatchOptions.command,
+        cargoWatchAllTargets: config.cargoWatchOptions.allTargets,
+
+        excludeGlobs: config.excludeGlobs,
+        useClientWatching: config.useClientWatching,
+        featureFlags: config.featureFlags,
+        withSysroot: config.withSysroot,
+        cargoFeatures: config.cargoFeatures,
+        rustfmtArgs: config.rustfmtArgs,
+        vscodeLldb: vscode.extensions.getExtension("vadimcn.vscode-lldb") != null,
+    };
+}
+
 export async function createClient(config: Config, serverPath: string): Promise<lc.LanguageClient> {
     // '.' Is the fallback if no folder is open
     // TODO?: Workspace folders support Uri's (eg: file://test.txt).
@@ -22,32 +47,10 @@ export async function createClient(config: Config, serverPath: string): Promise<
     const traceOutputChannel = vscode.window.createOutputChannel(
         'Rust Analyzer Language Server Trace',
     );
-    const cargoWatchOpts = config.cargoWatchOptions;
 
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'rust' }],
-        initializationOptions: {
-            publishDecorations: !config.highlightingSemanticTokens,
-            lruCapacity: config.lruCapacity,
-
-            inlayHintsType: config.inlayHints.typeHints,
-            inlayHintsParameter: config.inlayHints.parameterHints,
-            inlayHintsChaining: config.inlayHints.chainingHints,
-            inlayHintsMaxLength: config.inlayHints.maxLength,
-
-            cargoWatchEnable: cargoWatchOpts.enable,
-            cargoWatchArgs: cargoWatchOpts.arguments,
-            cargoWatchCommand: cargoWatchOpts.command,
-            cargoWatchAllTargets: cargoWatchOpts.allTargets,
-
-            excludeGlobs: config.excludeGlobs,
-            useClientWatching: config.useClientWatching,
-            featureFlags: config.featureFlags,
-            withSysroot: config.withSysroot,
-            cargoFeatures: config.cargoFeatures,
-            rustfmtArgs: config.rustfmtArgs,
-            vscodeLldb: vscode.extensions.getExtension("vadimcn.vscode-lldb") != null,
-        },
+        initializationOptions: configToOptions(config),
         traceOutputChannel,
         middleware: {
             // Workaround for https://github.com/microsoft/vscode-languageserver-node/issues/576
