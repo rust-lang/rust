@@ -181,7 +181,7 @@ Here is a sampling:
 
 [**Algebraic Data Types (ADTs)**]() An [*algebraic Data Type*][wikiadt] is a  `struct`, `enum` or
 `union`.  Under the hood, `struct`, `enum` and `union` are actually implemented the same way: they
-are both [`ty::TyKind::Adt`][kindadt].  It’s basically a user defined type. We will talk more about
+are all [`ty::TyKind::Adt`][kindadt].  It’s basically a user defined type. We will talk more about
 these later.
 
 [**Foreign**][kindforeign] Corresponds to `extern type T`.
