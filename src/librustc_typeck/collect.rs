@@ -1295,7 +1295,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
     // FIXME(const_generics): a few places in the compiler expect generic params
     // to be in the order lifetimes, then type params, then const params.
     //
-    // To prevent internal errors in case a const params are supplied in front of
+    // To prevent internal errors in case const parameters are supplied before
     // type parameters we first add all type params, then all const params.
     params.extend(ast_generics.params.iter().filter_map(|param| {
         if let GenericParamKind::Type { ref default, synthetic, .. } = param.kind {
