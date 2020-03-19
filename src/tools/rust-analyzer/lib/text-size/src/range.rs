@@ -11,7 +11,7 @@ use {
 /// # Translation from `text_unit`
 ///
 /// - `TextRange::from_to(from, to)`        ⟹ `TextRange(from, to)`
-/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::up_to(size).offset(offset)`
+/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::up_to(size) + offset`
 /// - `range.start()`                       ⟹ `range.start()`
 /// - `range.end()`                         ⟹ `range.end()`
 /// - `range.len()`                         ⟹ `range.len()`
