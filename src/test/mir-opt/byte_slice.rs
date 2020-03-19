@@ -6,10 +6,10 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.main.EraseRegions.after.mir
+// START rustc.main.SimplifyCfg-elaborate-drops.after.mir
 // ...
 // _1 = const b"foo";
 // ...
 // _2 = [const 5u8, const 120u8];
 // ...
-// END rustc.main.EraseRegions.after.mir
+// END rustc.main.SimplifyCfg-elaborate-drops.after.mir

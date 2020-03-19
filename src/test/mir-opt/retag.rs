@@ -8,8 +8,12 @@ struct Test(i32);
 
 impl Test {
     // Make sure we run the pass on a method, not just on bare functions.
-    fn foo<'x>(&self, x: &'x mut i32) -> &'x mut i32 { x }
-    fn foo_shr<'x>(&self, x: &'x i32) -> &'x i32 { x }
+    fn foo<'x>(&self, x: &'x mut i32) -> &'x mut i32 {
+        x
+    }
+    fn foo_shr<'x>(&self, x: &'x i32) -> &'x i32 {
+        x
+    }
 }
 
 impl Drop for Test {
@@ -27,7 +31,10 @@ fn main() {
     }
 
     // Also test closures
-    let c: fn(&i32) -> &i32 = |x: &i32| -> &i32 { let _y = x; x };
+    let c: fn(&i32) -> &i32 = |x: &i32| -> &i32 {
+        let _y = x;
+        x
+    };
     let _w = c(&x);
 
     // need to call `foo_shr` or it doesn't even get generated
@@ -38,7 +45,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.{{impl}}-foo.EraseRegions.after.mir
+// START rustc.{{impl}}-foo.SimplifyCfg-elaborate-drops.after.mir
 //     bb0: {
 //         Retag([fn entry] _1);
 //         Retag([fn entry] _2);
@@ -48,8 +55,8 @@ fn main() {
 //         ...
 //         return;
 //     }
-// END rustc.{{impl}}-foo.EraseRegions.after.mir
-// START rustc.{{impl}}-foo_shr.EraseRegions.after.mir
+// END rustc.{{impl}}-foo.SimplifyCfg-elaborate-drops.after.mir
+// START rustc.{{impl}}-foo_shr.SimplifyCfg-elaborate-drops.after.mir
 //     bb0: {
 //         Retag([fn entry] _1);
 //         Retag([fn entry] _2);
@@ -59,8 +66,8 @@ fn main() {
 //         ...
 //         return;
 //     }
-// END rustc.{{impl}}-foo_shr.EraseRegions.after.mir
-// START rustc.main.EraseRegions.after.mir
+// END rustc.{{impl}}-foo_shr.SimplifyCfg-elaborate-drops.after.mir
+// START rustc.main.SimplifyCfg-elaborate-drops.after.mir
 // fn main() -> () {
 //     ...
 //     bb0: {
@@ -96,8 +103,8 @@ fn main() {
 //
 //     ...
 // }
-// END rustc.main.EraseRegions.after.mir
-// START rustc.main-{{closure}}.EraseRegions.after.mir
+// END rustc.main.SimplifyCfg-elaborate-drops.after.mir
+// START rustc.main-{{closure}}.SimplifyCfg-elaborate-drops.after.mir
 // fn main::{{closure}}#0(_1: &[closure@main::{{closure}}#0], _2: &i32) -> &i32 {
 //     ...
 //     bb0: {
@@ -112,7 +119,7 @@ fn main() {
 //         return;
 //     }
 // }
-// END rustc.main-{{closure}}.EraseRegions.after.mir
+// END rustc.main-{{closure}}.SimplifyCfg-elaborate-drops.after.mir
 // START rustc.ptr-drop_in_place.Test.SimplifyCfg-make_shim.after.mir
 // fn  std::intrinsics::drop_in_place(_1: *mut Test) -> () {
 //     ...

@@ -913,7 +913,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         ty,
                         val: ty::ConstKind::Unevaluated(
                             def_id,
-                            InternalSubsts::identity_for_item(tcx, def_id),
+                            InternalSubsts::for_item(tcx, def_id, |param, _| {
+                                if let ty::GenericParamDefKind::Lifetime = param.kind {
+                                    tcx.lifetimes.re_erased.into()
+                                } else {
+                                    tcx.mk_param_from_def(param)
+                                }
+                            }),
                             Some(promoted_id),
                         ),
                     }),

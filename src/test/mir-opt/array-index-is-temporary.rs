@@ -15,7 +15,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.main.EraseRegions.after.mir
+// START rustc.main.SimplifyCfg-elaborate-drops.after.mir
 //     bb0: {
 //         ...
 //         _4 = &mut _2;
@@ -38,4 +38,4 @@ fn main() {
 //         ...
 //         return;
 //     }
-// END rustc.main.EraseRegions.after.mir
+// END rustc.main.SimplifyCfg-elaborate-drops.after.mir
