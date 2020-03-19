@@ -2328,6 +2328,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "misc_early",
     },
     Lint {
+        name: "unnested_or_patterns",
+        group: "complexity",
+        desc: "unnested or-patterns, e.g., `Foo(Bar) | Foo(Baz) instead of `Foo(Bar | Baz)`",
+        deprecation: None,
+        module: "unnested_or_patterns",
+    },
+    Lint {
         name: "unreachable",
         group: "restriction",
         desc: "`unreachable!` should not be present in production code",

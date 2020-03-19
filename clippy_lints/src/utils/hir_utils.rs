@@ -332,19 +332,13 @@ fn swap_binop<'a>(
 
 /// Checks if the two `Option`s are both `None` or some equal values as per
 /// `eq_fn`.
-fn both<X, F>(l: &Option<X>, r: &Option<X>, mut eq_fn: F) -> bool
-where
-    F: FnMut(&X, &X) -> bool,
-{
+pub fn both<X>(l: &Option<X>, r: &Option<X>, mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
     l.as_ref()
         .map_or_else(|| r.is_none(), |x| r.as_ref().map_or(false, |y| eq_fn(x, y)))
 }
 
 /// Checks if two slices are equal as per `eq_fn`.
-fn over<X, F>(left: &[X], right: &[X], mut eq_fn: F) -> bool
-where
-    F: FnMut(&X, &X) -> bool,
-{
+pub fn over<X>(left: &[X], right: &[X], mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
     left.len() == right.len() && left.iter().zip(right).all(|(x, y)| eq_fn(x, y))
 }
 

@@ -1,5 +1,6 @@
 // error-pattern:cargo-clippy
 
+#![feature(bindings_after_at)]
 #![feature(box_syntax)]
 #![feature(box_patterns)]
 #![feature(or_patterns)]
@@ -12,6 +13,7 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![feature(crate_visibility_modifier)]
 #![feature(concat_idents)]
+#![feature(drain_filter)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
@@ -319,6 +321,7 @@ mod types;
 mod unicode;
 mod unnamed_address;
 mod unnecessary_sort_by;
+mod unnested_or_patterns;
 mod unsafe_removed_from_name;
 mod unused_io_amount;
 mod unused_self;
@@ -836,6 +839,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &unnamed_address::FN_ADDRESS_COMPARISONS,
         &unnamed_address::VTABLE_ADDRESS_COMPARISONS,
         &unnecessary_sort_by::UNNECESSARY_SORT_BY,
+        &unnested_or_patterns::UNNESTED_OR_PATTERNS,
         &unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
         &unused_io_amount::UNUSED_IO_AMOUNT,
         &unused_self::UNUSED_SELF,
@@ -1073,6 +1077,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || box non_expressive_names::NonExpressiveNames {
         single_char_binding_names_threshold,
     });
+    store.register_early_pass(|| box unnested_or_patterns::UnnestedOrPatterns);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1433,6 +1438,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unnamed_address::FN_ADDRESS_COMPARISONS),
         LintId::of(&unnamed_address::VTABLE_ADDRESS_COMPARISONS),
         LintId::of(&unnecessary_sort_by::UNNECESSARY_SORT_BY),
+        LintId::of(&unnested_or_patterns::UNNESTED_OR_PATTERNS),
         LintId::of(&unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME),
         LintId::of(&unused_io_amount::UNUSED_IO_AMOUNT),
         LintId::of(&unwrap::PANICKING_UNWRAP),
@@ -1616,6 +1622,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::UNNECESSARY_CAST),
         LintId::of(&types::VEC_BOX),
         LintId::of(&unnecessary_sort_by::UNNECESSARY_SORT_BY),
+        LintId::of(&unnested_or_patterns::UNNESTED_OR_PATTERNS),
         LintId::of(&unwrap::UNNECESSARY_UNWRAP),
         LintId::of(&useless_conversion::USELESS_CONVERSION),
         LintId::of(&zero_div_zero::ZERO_DIVIDED_BY_ZERO),
