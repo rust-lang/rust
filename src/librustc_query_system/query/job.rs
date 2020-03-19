@@ -1,10 +1,8 @@
-use crate::ty::query::config::QueryContext;
-use crate::ty::query::plumbing::CycleError;
-#[cfg(parallel_compiler)]
-use crate::ty::tls;
+use crate::dep_graph::{DepKind, DepContext};
+use crate::query::config::QueryContext;
+use crate::query::plumbing::CycleError;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_query_system::dep_graph::DepContext;
 use rustc_span::Span;
 
 use std::convert::TryFrom;
@@ -22,7 +20,7 @@ use {
     rustc_rayon_core as rayon_core,
     rustc_span::DUMMY_SP,
     std::iter::FromIterator,
-    std::{mem, process, thread},
+    std::{mem, process},
 };
 
 /// Represents a span and a query key.
@@ -52,7 +50,7 @@ pub struct QueryJobId<K> {
     pub kind: K,
 }
 
-impl<K: rustc_query_system::dep_graph::DepKind> QueryJobId<K> {
+impl<K: DepKind> QueryJobId<K> {
     pub fn new(job: QueryShardJobId, shard: usize, kind: K) -> Self {
         QueryJobId { job, shard: u16::try_from(shard).unwrap(), kind }
     }
@@ -529,38 +527,13 @@ fn remove_cycle<CTX: QueryContext>(
     }
 }
 
-/// Creates a new thread and forwards information in thread locals to it.
-/// The new thread runs the deadlock handler.
-/// Must only be called when a deadlock is about to happen.
-#[cfg(parallel_compiler)]
-pub unsafe fn handle_deadlock() {
-    let registry = rayon_core::Registry::current();
-
-    let gcx_ptr = tls::GCX_PTR.with(|gcx_ptr| gcx_ptr as *const _);
-    let gcx_ptr = &*gcx_ptr;
-
-    let rustc_span_globals =
-        rustc_span::GLOBALS.with(|rustc_span_globals| rustc_span_globals as *const _);
-    let rustc_span_globals = &*rustc_span_globals;
-    let syntax_globals = rustc_ast::attr::GLOBALS.with(|syntax_globals| syntax_globals as *const _);
-    let syntax_globals = &*syntax_globals;
-    thread::spawn(move || {
-        tls::GCX_PTR.set(gcx_ptr, || {
-            rustc_ast::attr::GLOBALS.set(syntax_globals, || {
-                rustc_span::GLOBALS
-                    .set(rustc_span_globals, || tls::with_global(|tcx| deadlock(tcx, &registry)))
-            });
-        })
-    });
-}
-
 /// Detects query cycles by using depth first search over all active query jobs.
 /// If a query cycle is found it will break the cycle by finding an edge which
 /// uses a query latch and then resuming that waiter.
 /// There may be multiple cycles involved in a deadlock, so this searches
 /// all active queries for cycles before finally resuming all the waiters at once.
 #[cfg(parallel_compiler)]
-fn deadlock<CTX: QueryContext>(tcx: CTX, registry: &rayon_core::Registry) {
+pub fn deadlock<CTX: QueryContext>(tcx: CTX, registry: &rayon_core::Registry) {
     let on_panic = OnDrop(|| {
         eprintln!("deadlock handler panicked, aborting process");
         process::abort();

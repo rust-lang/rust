@@ -1,6 +1,6 @@
 use crate::dep_graph::DepNodeIndex;
-use crate::ty::query::config::QueryContext;
-use crate::ty::query::plumbing::{QueryLookup, QueryState, QueryStateShard};
+use crate::query::config::QueryContext;
+use crate::query::plumbing::{QueryLookup, QueryState, QueryStateShard};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
@@ -8,11 +8,11 @@ use std::default::Default;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-pub(crate) trait CacheSelector<CTX: QueryContext, K, V> {
+pub trait CacheSelector<CTX: QueryContext, K, V> {
     type Cache: QueryCache<CTX, Key = K, Value = V>;
 }
 
-pub(crate) trait QueryCache<CTX: QueryContext>: Default {
+pub trait QueryCache<CTX: QueryContext>: Default {
     type Key;
     type Value;
     type Sharded: Default;

@@ -2,25 +2,21 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
+use crate::dep_graph::{DepKind, DepContext, DepNode};
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
-use crate::ty::query::caches::QueryCache;
-use crate::ty::query::config::{QueryContext, QueryDescription};
-use crate::ty::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId};
-use crate::ty::query::Query;
-use crate::ty::tls::{self, ImplicitCtxt};
-use crate::ty::{self, TyCtxt};
+use crate::query::caches::QueryCache;
+use crate::query::config::{QueryContext, QueryDescription};
+use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId};
+use crate::HashStableContextProvider;
 
 #[cfg(not(parallel_compiler))]
 use rustc_data_structures::cold_path;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHasher};
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, FatalError, Handler, Level};
-use rustc_query_system::dep_graph::{DepContext, DepGraph, DepKind, DepNode};
-use rustc_query_system::HashStableContextProvider;
-use rustc_session::Session;
-use rustc_span::def_id::DefId;
+use rustc_errors::{Diagnostic, FatalError};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
 use std::collections::hash_map::Entry;
@@ -33,7 +29,7 @@ use std::ptr;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub(crate) struct QueryStateShard<CTX: QueryContext, K, C> {
+pub struct QueryStateShard<CTX: QueryContext, K, C> {
     cache: C,
     active: FxHashMap<K, QueryResult<CTX>>,
 
@@ -53,15 +49,15 @@ impl<CTX: QueryContext, K, C: Default> Default for QueryStateShard<CTX, K, C> {
     }
 }
 
-pub(crate) struct QueryState<CTX: QueryContext, C: QueryCache<CTX>> {
+pub struct QueryState<CTX: QueryContext, C: QueryCache<CTX>> {
     cache: C,
     shards: Sharded<QueryStateShard<CTX, C::Key, C::Sharded>>,
     #[cfg(debug_assertions)]
-    pub(super) cache_hits: AtomicUsize,
+    pub cache_hits: AtomicUsize,
 }
 
 impl<CTX: QueryContext, C: QueryCache<CTX>> QueryState<CTX, C> {
-    pub(super) fn get_lookup<K2: Hash>(
+    pub(super) fn get_lookup<'tcx, K2: Hash>(
         &'tcx self,
         key: &K2,
     ) -> QueryLookup<'tcx, CTX, C::Key, C::Sharded> {
@@ -89,7 +85,7 @@ enum QueryResult<CTX: QueryContext> {
 }
 
 impl<CTX: QueryContext, C: QueryCache<CTX>> QueryState<CTX, C> {
-    pub(super) fn iter_results<R>(
+    pub fn iter_results<R>(
         &self,
         f: impl for<'a> FnOnce(
             Box<dyn Iterator<Item = (&'a C::Key, &'a C::Value, DepNodeIndex)> + 'a>,
@@ -97,12 +93,13 @@ impl<CTX: QueryContext, C: QueryCache<CTX>> QueryState<CTX, C> {
     ) -> R {
         self.cache.iter(&self.shards, |shard| &mut shard.cache, f)
     }
-    pub(super) fn all_inactive(&self) -> bool {
+
+    pub fn all_inactive(&self) -> bool {
         let shards = self.shards.lock_shards();
         shards.iter().all(|shard| shard.active.is_empty())
     }
 
-    pub(super) fn try_collect_active_jobs(
+    pub fn try_collect_active_jobs(
         &self,
         kind: CTX::DepKind,
         make_query: fn(C::Key) -> CTX::Query,
@@ -144,7 +141,7 @@ impl<CTX: QueryContext, C: QueryCache<CTX>> Default for QueryState<CTX, C> {
 }
 
 /// Values used when checking a query cache which can be reused on a cache-miss to execute the query.
-pub(crate) struct QueryLookup<'tcx, CTX: QueryContext, K, C> {
+pub struct QueryLookup<'tcx, CTX: QueryContext, K, C> {
     pub(super) key_hash: u64,
     shard: usize,
     pub(super) lock: LockGuard<'tcx, QueryStateShard<CTX, K, C>>,
@@ -329,10 +326,10 @@ where
 }
 
 #[derive(Clone)]
-pub(crate) struct CycleError<Q> {
+pub struct CycleError<Q> {
     /// The query and related span that uses the cycle.
-    pub(super) usage: Option<(Span, Q)>,
-    pub(super) cycle: Vec<QueryInfo<Q>>,
+    pub usage: Option<(Span, Q)>,
+    pub cycle: Vec<QueryInfo<Q>>,
 }
 
 /// The result of `try_start`.
@@ -352,152 +349,6 @@ where
 
     /// Trying to execute the query resulted in a cycle.
     Cycle(C::Value),
-}
-
-impl QueryContext for TyCtxt<'tcx> {
-    type Query = Query<'tcx>;
-
-    fn session(&self) -> &Session {
-        &self.sess
-    }
-
-    fn def_path_str(&self, def_id: DefId) -> String {
-        TyCtxt::def_path_str(*self, def_id)
-    }
-
-    fn dep_graph(&self) -> &DepGraph<Self::DepKind> {
-        &self.dep_graph
-    }
-
-    fn read_query_job<R>(&self, op: impl FnOnce(Option<QueryJobId<Self::DepKind>>) -> R) -> R {
-        tls::with_related_context(*self, move |icx| op(icx.query))
-    }
-
-    fn try_collect_active_jobs(
-        &self,
-    ) -> Option<FxHashMap<QueryJobId<Self::DepKind>, QueryJobInfo<Self>>> {
-        self.queries.try_collect_active_jobs()
-    }
-
-    /// Executes a job by changing the `ImplicitCtxt` to point to the
-    /// new query job while it executes. It returns the diagnostics
-    /// captured during execution and the actual result.
-    #[inline(always)]
-    fn start_query<R>(
-        &self,
-        token: QueryJobId<Self::DepKind>,
-        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: impl FnOnce(Self) -> R,
-    ) -> R {
-        // The `TyCtxt` stored in TLS has the same global interner lifetime
-        // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
-        // when accessing the `ImplicitCtxt`.
-        tls::with_related_context(*self, move |current_icx| {
-            // Update the `ImplicitCtxt` to point to our new query job.
-            let new_icx = ImplicitCtxt {
-                tcx: *self,
-                query: Some(token),
-                diagnostics,
-                layout_depth: current_icx.layout_depth,
-                task_deps: current_icx.task_deps,
-            };
-
-            // Use the `ImplicitCtxt` while we execute the query.
-            tls::enter_context(&new_icx, |_| compute(*self))
-        })
-    }
-}
-
-impl<'tcx> TyCtxt<'tcx> {
-    #[inline(never)]
-    #[cold]
-    pub(super) fn report_cycle(
-        self,
-        CycleError { usage, cycle: stack }: CycleError<Query<'tcx>>,
-    ) -> DiagnosticBuilder<'tcx> {
-        assert!(!stack.is_empty());
-
-        let fix_span = |span: Span, query: &Query<'tcx>| {
-            self.sess.source_map().guess_head_span(query.default_span(self, span))
-        };
-
-        // Disable naming impls with types in this path, since that
-        // sometimes cycles itself, leading to extra cycle errors.
-        // (And cycle errors around impls tend to occur during the
-        // collect/coherence phases anyhow.)
-        ty::print::with_forced_impl_filename_line(|| {
-            let span = fix_span(stack[1 % stack.len()].span, &stack[0].query);
-            let mut err = struct_span_err!(
-                self.sess,
-                span,
-                E0391,
-                "cycle detected when {}",
-                stack[0].query.describe(self)
-            );
-
-            for i in 1..stack.len() {
-                let query = &stack[i].query;
-                let span = fix_span(stack[(i + 1) % stack.len()].span, query);
-                err.span_note(span, &format!("...which requires {}...", query.describe(self)));
-            }
-
-            err.note(&format!(
-                "...which again requires {}, completing the cycle",
-                stack[0].query.describe(self)
-            ));
-
-            if let Some((span, query)) = usage {
-                err.span_note(
-                    fix_span(span, &query),
-                    &format!("cycle used when {}", query.describe(self)),
-                );
-            }
-
-            err
-        })
-    }
-
-    pub fn try_print_query_stack(handler: &Handler) {
-        eprintln!("query stack during panic:");
-
-        // Be careful reyling on global state here: this code is called from
-        // a panic hook, which means that the global `Handler` may be in a weird
-        // state if it was responsible for triggering the panic.
-        tls::with_context_opt(|icx| {
-            if let Some(icx) = icx {
-                let query_map = icx.tcx.queries.try_collect_active_jobs();
-
-                let mut current_query = icx.query;
-                let mut i = 0;
-
-                while let Some(query) = current_query {
-                    let query_info =
-                        if let Some(info) = query_map.as_ref().and_then(|map| map.get(&query)) {
-                            info
-                        } else {
-                            break;
-                        };
-                    let mut diag = Diagnostic::new(
-                        Level::FailureNote,
-                        &format!(
-                            "#{} [{}] {}",
-                            i,
-                            query_info.info.query.name(),
-                            query_info.info.query.describe(icx.tcx)
-                        ),
-                    );
-                    diag.span =
-                        icx.tcx.sess.source_map().guess_head_span(query_info.info.span).into();
-                    handler.force_print_diagnostic(diag);
-
-                    current_query = query_info.job.parent;
-                    i += 1;
-                }
-            }
-        });
-
-        eprintln!("end of query stack");
-    }
 }
 
     /// Checks if the query is already computed and in the cache.
@@ -697,8 +548,6 @@ impl<'tcx> TyCtxt<'tcx> {
         CTX: QueryContext,
         Q: QueryDescription<CTX>,
     {
-        use rustc_data_structures::fingerprint::Fingerprint;
-
         assert!(
             Some(tcx.dep_graph().fingerprint_of(dep_node_index))
                 == tcx.dep_graph().prev_fingerprint_of(dep_node),
@@ -721,7 +570,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn force_query_with_job<Q, CTX, K>(
         tcx: CTX,
         key: Q::Key,
-        job: JobOwner<'tcx, CTX, Q::Cache>,
+        job: JobOwner<'_, CTX, Q::Cache>,
         dep_node: DepNode<CTX::DepKind>,
     ) -> (Q::Value, DepNodeIndex)
     where
@@ -775,7 +624,7 @@ impl<'tcx> TyCtxt<'tcx> {
         (result, dep_node_index)
     }
 
-pub(super) trait QueryGetter: QueryContext {
+pub trait QueryGetter: QueryContext {
     fn get_query<Q: QueryDescription<Self>>(
         self,
         span: Span,
@@ -886,384 +735,4 @@ where
             },
         );
     }
-}
-
-macro_rules! handle_cycle_error {
-    ([][$tcx: expr, $error:expr]) => {{
-        $tcx.report_cycle($error).emit();
-        Value::from_cycle_error($tcx)
-    }};
-    ([fatal_cycle $($rest:tt)*][$tcx:expr, $error:expr]) => {{
-        $tcx.report_cycle($error).emit();
-        $tcx.sess.abort_if_errors();
-        unreachable!()
-    }};
-    ([cycle_delay_bug $($rest:tt)*][$tcx:expr, $error:expr]) => {{
-        $tcx.report_cycle($error).delay_as_bug();
-        Value::from_cycle_error($tcx)
-    }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
-        handle_cycle_error!([$($($modifiers)*)*][$($args)*])
-    };
-}
-
-macro_rules! is_anon {
-    ([]) => {{
-        false
-    }};
-    ([anon $($rest:tt)*]) => {{
-        true
-    }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*]) => {
-        is_anon!([$($($modifiers)*)*])
-    };
-}
-
-macro_rules! is_eval_always {
-    ([]) => {{
-        false
-    }};
-    ([eval_always $($rest:tt)*]) => {{
-        true
-    }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*]) => {
-        is_eval_always!([$($($modifiers)*)*])
-    };
-}
-
-macro_rules! query_storage {
-    (<$tcx:tt>[][$K:ty, $V:ty]) => {
-        <<$K as Key>::CacheSelector as CacheSelector<TyCtxt<$tcx>, $K, $V>>::Cache
-    };
-    (<$tcx:tt>[storage($ty:ty) $($rest:tt)*][$K:ty, $V:ty]) => {
-        $ty
-    };
-    (<$tcx:tt>[$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
-        query_storage!(<$tcx>[$($($modifiers)*)*][$($args)*])
-    };
-}
-
-macro_rules! hash_result {
-    ([][$hcx:expr, $result:expr]) => {{
-        dep_graph::hash_result($hcx, &$result)
-    }};
-    ([no_hash $($rest:tt)*][$hcx:expr, $result:expr]) => {{
-        None
-    }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
-        hash_result!([$($($modifiers)*)*][$($args)*])
-    };
-}
-
-macro_rules! define_queries {
-    (<$tcx:tt> $($category:tt {
-        $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*
-    },)*) => {
-        define_queries_inner! { <$tcx>
-            $($( $(#[$attr])* category<$category> [$($modifiers)*] fn $name: $node($K) -> $V,)*)*
-        }
-    }
-}
-
-macro_rules! define_queries_inner {
-    (<$tcx:tt>
-     $($(#[$attr:meta])* category<$category:tt>
-        [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
-
-        use std::mem;
-        use crate::{
-            rustc_data_structures::stable_hasher::HashStable,
-            rustc_data_structures::stable_hasher::StableHasher,
-            ich::StableHashingContext
-        };
-        use rustc_data_structures::profiling::ProfileCategory;
-
-        define_queries_struct! {
-            tcx: $tcx,
-            input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
-        }
-
-        #[allow(nonstandard_style)]
-        #[derive(Clone, Debug)]
-        pub enum Query<$tcx> {
-            $($(#[$attr])* $name($K)),*
-        }
-
-        impl<$tcx> Query<$tcx> {
-            pub fn name(&self) -> &'static str {
-                match *self {
-                    $(Query::$name(_) => stringify!($name),)*
-                }
-            }
-
-            pub fn describe(&self, tcx: TyCtxt<$tcx>) -> Cow<'static, str> {
-                let (r, name) = match *self {
-                    $(Query::$name(key) => {
-                        (queries::$name::describe(tcx, key), stringify!($name))
-                    })*
-                };
-                if tcx.sess.verbose() {
-                    format!("{} [{}]", r, name).into()
-                } else {
-                    r
-                }
-            }
-
-            // FIXME(eddyb) Get more valid `Span`s on queries.
-            pub fn default_span(&self, tcx: TyCtxt<$tcx>, span: Span) -> Span {
-                if !span.is_dummy() {
-                    return span;
-                }
-                // The `def_span` query is used to calculate `default_span`,
-                // so exit to avoid infinite recursion.
-                if let Query::def_span(..) = *self {
-                    return span
-                }
-                match *self {
-                    $(Query::$name(key) => key.default_span(tcx),)*
-                }
-            }
-        }
-
-        impl<'a, $tcx> HashStable<StableHashingContext<'a>> for Query<$tcx> {
-            fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-                mem::discriminant(self).hash_stable(hcx, hasher);
-                match *self {
-                    $(Query::$name(key) => key.hash_stable(hcx, hasher),)*
-                }
-            }
-        }
-
-        pub mod queries {
-            use std::marker::PhantomData;
-
-            $(#[allow(nonstandard_style)]
-            pub struct $name<$tcx> {
-                data: PhantomData<&$tcx ()>
-            })*
-        }
-
-        $(impl<$tcx> QueryConfig<TyCtxt<$tcx>> for queries::$name<$tcx> {
-            type Key = $K;
-            type Value = $V;
-            const NAME: &'static str = stringify!($name);
-            const CATEGORY: ProfileCategory = $category;
-        }
-
-        impl<$tcx> QueryAccessors<TyCtxt<$tcx>> for queries::$name<$tcx> {
-            const ANON: bool = is_anon!([$($modifiers)*]);
-            const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
-            const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$node;
-
-            type Cache = query_storage!(<$tcx>[$($modifiers)*][$K, $V]);
-
-            #[inline(always)]
-            fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<TyCtxt<$tcx>, Self::Cache> {
-                &tcx.queries.$name
-            }
-
-            #[allow(unused)]
-            #[inline(always)]
-            fn to_dep_node(tcx: TyCtxt<$tcx>, key: &Self::Key) -> DepNode {
-                DepConstructor::$node(tcx, *key)
-            }
-
-            #[inline]
-            fn compute(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value {
-                let provider = tcx.queries.providers.get(key.query_crate())
-                    // HACK(eddyb) it's possible crates may be loaded after
-                    // the query engine is created, and because crate loading
-                    // is not yet integrated with the query engine, such crates
-                    // would be missing appropriate entries in `providers`.
-                    .unwrap_or(&tcx.queries.fallback_extern_providers)
-                    .$name;
-                provider(tcx, key)
-            }
-
-            fn hash_result(
-                _hcx: &mut StableHashingContext<'_>,
-                _result: &Self::Value
-            ) -> Option<Fingerprint> {
-                hash_result!([$($modifiers)*][_hcx, _result])
-            }
-
-            fn handle_cycle_error(
-                tcx: TyCtxt<'tcx>,
-                error: CycleError<Query<'tcx>>
-            ) -> Self::Value {
-                handle_cycle_error!([$($modifiers)*][tcx, error])
-            }
-        })*
-
-        #[derive(Copy, Clone)]
-        pub struct TyCtxtEnsure<'tcx> {
-            pub tcx: TyCtxt<'tcx>,
-        }
-
-        impl TyCtxtEnsure<$tcx> {
-            $($(#[$attr])*
-            #[inline(always)]
-            pub fn $name(self, key: $K) {
-                self.tcx.ensure_query::<queries::$name<'_>>(key)
-            })*
-        }
-
-        #[derive(Copy, Clone)]
-        pub struct TyCtxtAt<'tcx> {
-            pub tcx: TyCtxt<'tcx>,
-            pub span: Span,
-        }
-
-        impl Deref for TyCtxtAt<'tcx> {
-            type Target = TyCtxt<'tcx>;
-            #[inline(always)]
-            fn deref(&self) -> &Self::Target {
-                &self.tcx
-            }
-        }
-
-        impl TyCtxt<$tcx> {
-            /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
-            /// are executed instead of just returning their results.
-            #[inline(always)]
-            pub fn ensure(self) -> TyCtxtEnsure<$tcx> {
-                TyCtxtEnsure {
-                    tcx: self,
-                }
-            }
-
-            /// Returns a transparent wrapper for `TyCtxt` which uses
-            /// `span` as the location of queries performed through it.
-            #[inline(always)]
-            pub fn at(self, span: Span) -> TyCtxtAt<$tcx> {
-                TyCtxtAt {
-                    tcx: self,
-                    span
-                }
-            }
-
-            $($(#[$attr])*
-            #[inline(always)]
-            pub fn $name(self, key: $K) -> $V {
-                self.at(DUMMY_SP).$name(key)
-            })*
-
-            /// All self-profiling events generated by the query engine use
-            /// virtual `StringId`s for their `event_id`. This method makes all
-            /// those virtual `StringId`s point to actual strings.
-            ///
-            /// If we are recording only summary data, the ids will point to
-            /// just the query names. If we are recording query keys too, we
-            /// allocate the corresponding strings here.
-            pub fn alloc_self_profile_query_strings(self) {
-                use crate::ty::query::profiling_support::{
-                    alloc_self_profile_query_strings_for_query_cache,
-                    QueryKeyStringCache,
-                };
-
-                if !self.prof.enabled() {
-                    return;
-                }
-
-                let mut string_cache = QueryKeyStringCache::new();
-
-                $({
-                    alloc_self_profile_query_strings_for_query_cache(
-                        self,
-                        stringify!($name),
-                        &self.queries.$name,
-                        &mut string_cache,
-                    );
-                })*
-            }
-        }
-
-        impl TyCtxtAt<$tcx> {
-            $($(#[$attr])*
-            #[inline(always)]
-            pub fn $name(self, key: $K) -> $V {
-                self.tcx.get_query::<queries::$name<'_>>(self.span, key)
-            })*
-        }
-
-        define_provider_struct! {
-            tcx: $tcx,
-            input: ($(([$($modifiers)*] [$name] [$K] [$V]))*)
-        }
-
-        impl<$tcx> Copy for Providers<$tcx> {}
-        impl<$tcx> Clone for Providers<$tcx> {
-            fn clone(&self) -> Self { *self }
-        }
-    }
-}
-
-macro_rules! define_queries_struct {
-    (tcx: $tcx:tt,
-     input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
-        pub struct Queries<$tcx> {
-            /// This provides access to the incrimental comilation on-disk cache for query results.
-            /// Do not access this directly. It is only meant to be used by
-            /// `DepGraph::try_mark_green()` and the query infrastructure.
-            pub(crate) on_disk_cache: OnDiskCache<'tcx>,
-
-            providers: IndexVec<CrateNum, Providers<$tcx>>,
-            fallback_extern_providers: Box<Providers<$tcx>>,
-
-            $($(#[$attr])*  $name: QueryState<
-                TyCtxt<$tcx>,
-                <queries::$name<$tcx> as QueryAccessors<TyCtxt<'tcx>>>::Cache,
-            >,)*
-        }
-
-        impl<$tcx> Queries<$tcx> {
-            pub(crate) fn new(
-                providers: IndexVec<CrateNum, Providers<$tcx>>,
-                fallback_extern_providers: Providers<$tcx>,
-                on_disk_cache: OnDiskCache<'tcx>,
-            ) -> Self {
-                Queries {
-                    providers,
-                    fallback_extern_providers: Box::new(fallback_extern_providers),
-                    on_disk_cache,
-                    $($name: Default::default()),*
-                }
-            }
-
-            pub(crate) fn try_collect_active_jobs(
-                &self
-            ) -> Option<FxHashMap<QueryJobId<crate::dep_graph::DepKind>, QueryJobInfo<TyCtxt<'tcx>>>> {
-                let mut jobs = FxHashMap::default();
-
-                $(
-                    self.$name.try_collect_active_jobs(
-                        <queries::$name<'tcx> as QueryAccessors<TyCtxt<'tcx>>>::DEP_KIND,
-                        Query::$name,
-                        &mut jobs,
-                    )?;
-                )*
-
-                Some(jobs)
-            }
-        }
-    };
-}
-
-macro_rules! define_provider_struct {
-    (tcx: $tcx:tt,
-     input: ($(([$($modifiers:tt)*] [$name:ident] [$K:ty] [$R:ty]))*)) => {
-        pub struct Providers<$tcx> {
-            $(pub $name: fn(TyCtxt<$tcx>, $K) -> $R,)*
-        }
-
-        impl<$tcx> Default for Providers<$tcx> {
-            fn default() -> Self {
-                $(fn $name<$tcx>(_: TyCtxt<$tcx>, key: $K) -> $R {
-                    bug!("`tcx.{}({:?})` unsupported by its crate",
-                         stringify!($name), key);
-                })*
-                Providers { $($name),* }
-            }
-        }
-    };
 }

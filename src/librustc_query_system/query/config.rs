@@ -1,10 +1,11 @@
 //! Query configuration and description traits.
 
 use crate::dep_graph::SerializedDepNodeIndex;
-use crate::ty::query::caches::QueryCache;
-use crate::ty::query::job::{QueryJobId, QueryJobInfo};
-use crate::ty::query::plumbing::CycleError;
-use crate::ty::query::QueryState;
+use crate::dep_graph::{DepContext, DepGraph, DepNode};
+use crate::query::caches::QueryCache;
+use crate::query::job::{QueryJobId, QueryJobInfo};
+use crate::query::plumbing::CycleError;
+use crate::query::QueryState;
 use rustc_data_structures::profiling::ProfileCategory;
 use rustc_hir::def_id::DefId;
 
@@ -14,7 +15,6 @@ use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
-use rustc_query_system::dep_graph::{DepContext, DepGraph, DepNode};
 use rustc_session::Session;
 use std::borrow::Cow;
 use std::fmt::Debug;
@@ -58,7 +58,7 @@ pub trait QueryContext: DepContext {
     ) -> R;
 }
 
-pub(crate) trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
+pub trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
     const ANON: bool;
     const EVAL_ALWAYS: bool;
     const DEP_KIND: CTX::DepKind;
@@ -81,7 +81,7 @@ pub(crate) trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
     fn handle_cycle_error(tcx: CTX, error: CycleError<CTX::Query>) -> Self::Value;
 }
 
-pub(crate) trait QueryDescription<CTX: QueryContext>: QueryAccessors<CTX> {
+pub trait QueryDescription<CTX: QueryContext>: QueryAccessors<CTX> {
     fn describe(tcx: CTX, key: Self::Key) -> Cow<'static, str>;
 
     #[inline]
@@ -90,7 +90,7 @@ pub(crate) trait QueryDescription<CTX: QueryContext>: QueryAccessors<CTX> {
     }
 
     fn try_load_from_disk(_: CTX, _: SerializedDepNodeIndex) -> Option<Self::Value> {
-        bug!("QueryDescription::load_from_disk() called for an unsupported query.")
+        panic!("QueryDescription::load_from_disk() called for an unsupported query.")
     }
 }
 
@@ -112,6 +112,6 @@ where
     }
 
     default fn try_load_from_disk(_: CTX, _: SerializedDepNodeIndex) -> Option<Self::Value> {
-        bug!("QueryDescription::load_from_disk() called for an unsupported query.")
+        panic!("QueryDescription::load_from_disk() called for an unsupported query.")
     }
 }
