@@ -74,7 +74,6 @@ pub struct ModuleConfig {
     pub emit_no_opt_bc: bool,
     pub emit_bc: bool,
     pub emit_bc_compressed: bool,
-    pub emit_lto_bc: bool,
     pub emit_ir: bool,
     pub emit_asm: bool,
     pub emit_obj: bool,
@@ -116,7 +115,6 @@ impl ModuleConfig {
             emit_pre_lto_bc: false,
             emit_bc: false,
             emit_bc_compressed: false,
-            emit_lto_bc: false,
             emit_ir: false,
             emit_asm: false,
             emit_obj: false,
@@ -381,7 +379,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         modules_config.emit_no_opt_bc = true;
         modules_config.emit_pre_lto_bc = true;
         modules_config.emit_bc = true;
-        modules_config.emit_lto_bc = true;
         metadata_config.emit_bc = true;
         allocator_config.emit_bc = true;
     }
