@@ -10,6 +10,7 @@ use rustc_hir::def_id::DefId;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::HashStable;
 use rustc_query_system::dep_graph::{DepContext, DepNode};
 use rustc_session::Session;
 use std::borrow::Cow;
@@ -25,7 +26,7 @@ pub trait QueryConfig<CTX> {
 }
 
 pub trait QueryContext: DepContext {
-    type Query: Clone;
+    type Query: Clone + HashStable<Self::StableHashingContext>;
 
     /// Access the session.
     fn session(&self) -> &Session;

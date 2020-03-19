@@ -405,7 +405,6 @@ fn connected_to_root<CTX: QueryContext>(
 fn pick_query<'a, CTX, T, F>(query_map: &QueryMap<CTX>, tcx: CTX, queries: &'a [T], f: F) -> &'a T
 where
     CTX: QueryContext,
-    CTX::Query: HashStable<CTX::StableHashingContext>,
     F: Fn(&T) -> (Span, QueryJobId<CTX::DepKind>),
 {
     // Deterministically pick an entry point
@@ -437,10 +436,7 @@ fn remove_cycle<CTX: QueryContext>(
     jobs: &mut Vec<QueryJobId<CTX::DepKind>>,
     wakelist: &mut Vec<Lrc<QueryWaiter<CTX>>>,
     tcx: CTX,
-) -> bool
-where
-    CTX::Query: HashStable<CTX::StableHashingContext>,
-{
+) -> bool {
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
     // Look for a cycle starting with the last query in `jobs`
@@ -564,10 +560,7 @@ pub unsafe fn handle_deadlock() {
 /// There may be multiple cycles involved in a deadlock, so this searches
 /// all active queries for cycles before finally resuming all the waiters at once.
 #[cfg(parallel_compiler)]
-fn deadlock<CTX: QueryContext>(tcx: CTX, registry: &rayon_core::Registry)
-where
-    CTX::Query: HashStable<CTX::StableHashingContext>,
-{
+fn deadlock<CTX: QueryContext>(tcx: CTX, registry: &rayon_core::Registry) {
     let on_panic = OnDrop(|| {
         eprintln!("deadlock handler panicked, aborting process");
         process::abort();
