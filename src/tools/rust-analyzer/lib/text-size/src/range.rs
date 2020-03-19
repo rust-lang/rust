@@ -11,7 +11,7 @@ use {
 /// # Translation from `text_unit`
 ///
 /// - `TextRange::from_to(from, to)`        ⟹ `TextRange(from, to)`
-/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::before(size).offset(offset)`
+/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::up_to(size).offset(offset)`
 /// - `range.start()`                       ⟹ `range.start()`
 /// - `range.end()`                         ⟹ `range.end()`
 /// - `range.len()`                         ⟹ `range.len()`
@@ -58,7 +58,7 @@ impl TextRange {
 
     /// Create a range up to the given end (`..end`).
     #[inline]
-    pub const fn before(end: TextSize) -> TextRange {
+    pub const fn up_to(end: TextSize) -> TextRange {
         TextRange {
             start: TextSize::zero(),
             end,
