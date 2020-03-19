@@ -40,6 +40,7 @@ use crate::{
     world::{Options, WorldSnapshot, WorldState},
     Result, ServerConfig,
 };
+use req::ConfigurationParams;
 
 #[derive(Debug)]
 pub struct LspError {
@@ -336,10 +337,10 @@ struct LoopState {
     in_flight_libraries: usize,
     pending_libraries: Vec<(SourceRootId, Vec<(FileId, RelativePathBuf, Arc<String>)>)>,
     workspace_loaded: bool,
-
     roots_progress_reported: Option<usize>,
     roots_scanned: usize,
     roots_total: usize,
+    configuration_request_id: Option<RequestId>,
 }
 
 impl LoopState {
@@ -397,15 +398,14 @@ fn loop_turn(
                 req,
             )?,
             Message::Notification(not) => {
-                on_notification(
-                    &connection.sender,
-                    world_state,
-                    &mut loop_state.pending_requests,
-                    &mut loop_state.subscriptions,
-                    not,
-                )?;
+                on_notification(&connection.sender, world_state, loop_state, not)?;
             }
             Message::Response(resp) => {
+                if Some(&resp.id) == loop_state.configuration_request_id.as_ref() {
+                    loop_state.configuration_request_id.take();
+                    eprintln!("!!!!!!!!!!!!!!1");
+                    dbg!(&resp);
+                }
                 let removed = loop_state.pending_responses.remove(&resp.id);
                 if !removed {
                     log::error!("unexpected response: {:?}", resp)
@@ -569,8 +569,7 @@ fn on_request(
 fn on_notification(
     msg_sender: &Sender<Message>,
     state: &mut WorldState,
-    pending_requests: &mut PendingRequests,
-    subs: &mut Subscriptions,
+    loop_state: &mut LoopState,
     not: Notification,
 ) -> Result<()> {
     let not = match notification_cast::<req::Cancel>(not) {
@@ -579,7 +578,7 @@ fn on_notification(
                 NumberOrString::Number(id) => id.into(),
                 NumberOrString::String(id) => id.into(),
             };
-            if pending_requests.cancel(&id) {
+            if loop_state.pending_requests.cancel(&id) {
                 let response = Response::new_err(
                     id,
                     ErrorCode::RequestCanceled as i32,
@@ -598,7 +597,7 @@ fn on_notification(
             if let Some(file_id) =
                 state.vfs.write().add_file_overlay(&path, params.text_document.text)
             {
-                subs.add_sub(FileId(file_id.0));
+                loop_state.subscriptions.add_sub(FileId(file_id.0));
             }
             return Ok(());
         }
@@ -629,7 +628,7 @@ fn on_notification(
             let uri = params.text_document.uri;
             let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
             if let Some(file_id) = state.vfs.write().remove_file_overlay(path.as_path()) {
-                subs.remove_sub(FileId(file_id.0));
+                loop_state.subscriptions.remove_sub(FileId(file_id.0));
             }
             let params =
                 req::PublishDiagnosticsParams { uri, diagnostics: Vec::new(), version: None };
@@ -641,15 +640,17 @@ fn on_notification(
     };
     let not = match notification_cast::<req::DidChangeConfiguration>(not) {
         Ok(_params) => {
-            dbg!(_params);
-            // let request = request_new::<req::WorkspaceConfiguration>(
-            //     loop_state.next_request_id(),
-            //     ConfigurationParams::default(),
-            // );
-            // let zz = connection.sender.send(request.into()).unwrap();
+            let request_id = loop_state.next_request_id();
+            let request = request_new::<req::WorkspaceConfiguration>(
+                request_id.clone(),
+                ConfigurationParams::default(),
+            );
+            msg_sender.send(request.into()).unwrap();
+            loop_state.configuration_request_id.replace(request_id);
+
             return Ok(());
         }
-        Err(not) => dbg!(not),
+        Err(not) => not,
     };
     let not = match notification_cast::<req::DidChangeWatchedFiles>(not) {
         Ok(params) => {

@@ -12,9 +12,9 @@ export class Config {
     private readonly requiresReloadOpts = [
         "serverPath",
         "cargoFeatures",
-        "cargo-watch",
-        "highlighting.semanticTokens",
-        "inlayHints",
+        "excludeGlobs",
+        "useClientWatching",
+        "highlighting",
         "updates.channel",
     ]
         .map(opt => `${this.rootSection}.${opt}`);
