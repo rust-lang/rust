@@ -243,7 +243,7 @@ pub fn main_loop(
                     break;
                 };
             }
-            loop_turn(
+            if let Some(new_server_config) = loop_turn(
                 &pool,
                 &task_sender,
                 &libdata_sender,
@@ -251,7 +251,9 @@ pub fn main_loop(
                 &mut world_state,
                 &mut loop_state,
                 event,
-            )?;
+            )? {
+                dbg!(new_server_config);
+            }
         }
     }
     world_state.analysis_host.request_cancellation();
@@ -361,7 +363,7 @@ fn loop_turn(
     world_state: &mut WorldState,
     loop_state: &mut LoopState,
     event: Event,
-) -> Result<()> {
+) -> Result<Option<ServerConfig>> {
     let loop_start = Instant::now();
 
     // NOTE: don't count blocking select! call as a loop-turn time
@@ -371,6 +373,8 @@ fn loop_turn(
     if queue_count > 0 {
         log::info!("queued count = {}", queue_count);
     }
+
+    let mut new_server_config = None;
 
     match event {
         Event::Task(task) => {
@@ -401,14 +405,19 @@ fn loop_turn(
                 on_notification(&connection.sender, world_state, loop_state, not)?;
             }
             Message::Response(resp) => {
-                if Some(&resp.id) == loop_state.configuration_request_id.as_ref() {
-                    loop_state.configuration_request_id.take();
-                    eprintln!("!!!!!!!!!!!!!!1");
-                    dbg!(&resp);
-                }
                 let removed = loop_state.pending_responses.remove(&resp.id);
                 if !removed {
                     log::error!("unexpected response: {:?}", resp)
+                }
+                if Some(&resp.id) == loop_state.configuration_request_id.as_ref() {
+                    loop_state.configuration_request_id.take();
+                    let new_config =
+                        serde_json::from_value::<Vec<ServerConfig>>(resp.result.unwrap())
+                            .unwrap()
+                            .first()
+                            .unwrap()
+                            .to_owned();
+                    new_server_config = Some(new_config);
                 }
             }
         },
@@ -479,7 +488,7 @@ fn loop_turn(
         }
     }
 
-    Ok(())
+    Ok(new_server_config)
 }
 
 fn on_task(
