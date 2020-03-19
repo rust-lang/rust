@@ -1,6 +1,7 @@
 use crate::rmeta::table::FixedSizeEncoding;
 use crate::rmeta::*;
 
+use log::{debug, trace};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::map::Map;
 use rustc::middle::cstore::{EncodedMetadata, ForeignModule, LinkagePreference, NativeLibrary};
@@ -29,9 +30,7 @@ use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
 use rustc_session::config::{self, CrateType};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{self, FileName, SourceFile, Span};
-
-use log::{debug, trace};
+use rustc_span::{self, ExternalSource, FileName, SourceFile, Span};
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
@@ -165,20 +164,56 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
             return TAG_INVALID_SPAN.encode(self);
         }
 
-        // HACK(eddyb) there's no way to indicate which crate a Span is coming
-        // from right now, so decoding would fail to find the SourceFile if
-        // it's not local to the crate the Span is found in.
-        if self.source_file_cache.is_imported() {
-            return TAG_INVALID_SPAN.encode(self);
-        }
+        // There are two possible cases here:
+        // 1. This span comes from a 'foreign' crate - e.g. some crate upstream of the
+        // crate we are writing metadata for. When the metadata for *this* crate gets
+        // deserialized, the deserializer will need to know which crate it originally came
+        // from. We use `TAG_VALID_SPAN_FOREIGN` to indicate that a `CrateNum` should
+        // be deserialized after the rest of the span data, which tells the deserializer
+        // which crate contains the source map information.
+        // 2. This span comes from our own crate. No special hamdling is needed - we just
+        // write `TAG_VALID_SPAN_LOCAL` to let the deserializer know that it should use
+        // our own source map information.
+        let (tag, lo, hi) = if self.source_file_cache.is_imported() {
+            // To simplify deserialization, we 'rebase' this span onto the crate it originally came from
+            // (the crate that 'owns' the file it references. These rebased 'lo' and 'hi' values
+            // are relative to the source map information for the 'foreign' crate whose CrateNum
+            // we write into the metadata. This allows `imported_source_files` to binary
+            // search through the 'foreign' crate's source map information, using the
+            // deserialized 'lo' and 'hi' values directly.
+            //
+            // All of this logic ensures that the final result of deserialization is a 'normal'
+            // Span that can be used without any additional trouble.
+            let external_start_pos = {
+                // Introduce a new scope so that we drop the 'lock()' temporary
+                match &*self.source_file_cache.external_src.lock() {
+                    ExternalSource::Foreign { original_start_pos, .. } => *original_start_pos,
+                    src => panic!("Unexpected external source {:?}", src),
+                }
+            };
+            let lo = (span.lo - self.source_file_cache.start_pos) + external_start_pos;
+            let hi = (span.hi - self.source_file_cache.start_pos) + external_start_pos;
 
-        TAG_VALID_SPAN.encode(self)?;
-        span.lo.encode(self)?;
+            (TAG_VALID_SPAN_FOREIGN, lo, hi)
+        } else {
+            (TAG_VALID_SPAN_LOCAL, span.lo, span.hi)
+        };
+
+        tag.encode(self)?;
+        lo.encode(self)?;
 
         // Encode length which is usually less than span.hi and profits more
         // from the variable-length integer encoding that we use.
-        let len = span.hi - span.lo;
-        len.encode(self)
+        let len = hi - lo;
+        len.encode(self)?;
+
+        if tag == TAG_VALID_SPAN_FOREIGN {
+            // This needs to be two lines to avoid holding the `self.source_file_cache`
+            // while calling `cnum.encode(self)`
+            let cnum = self.source_file_cache.cnum;
+            cnum.encode(self)?;
+        }
+        Ok(())
 
         // Don't encode the expansion context.
     }
