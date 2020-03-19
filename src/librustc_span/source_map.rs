@@ -296,14 +296,16 @@ impl SourceMap {
         &self,
         filename: FileName,
         name_was_remapped: bool,
-        crate_of_origin: u32,
         src_hash: u128,
         name_hash: u128,
         source_len: usize,
+        cnum: CrateNum,
         mut file_local_lines: Vec<BytePos>,
         mut file_local_multibyte_chars: Vec<MultiByteChar>,
         mut file_local_non_narrow_chars: Vec<NonNarrowChar>,
         mut file_local_normalized_pos: Vec<NormalizedPos>,
+        original_start_pos: BytePos,
+        original_end_pos: BytePos,
     ) -> Lrc<SourceFile> {
         let start_pos = self
             .allocate_address_space(source_len)
@@ -332,10 +334,13 @@ impl SourceMap {
             name: filename,
             name_was_remapped,
             unmapped_path: None,
-            crate_of_origin,
             src: None,
             src_hash,
-            external_src: Lock::new(ExternalSource::AbsentOk),
+            external_src: Lock::new(ExternalSource::Foreign {
+                kind: ExternalSourceKind::AbsentOk,
+                original_start_pos,
+                original_end_pos,
+            }),
             start_pos,
             end_pos,
             lines: file_local_lines,
@@ -343,6 +348,7 @@ impl SourceMap {
             non_narrow_chars: file_local_non_narrow_chars,
             normalized_pos: file_local_normalized_pos,
             name_hash,
+            cnum,
         });
 
         let mut files = self.files.borrow_mut();

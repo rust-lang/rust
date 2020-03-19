@@ -254,7 +254,7 @@ a.test-arrow:hover{
 }
 
 pre.compile_fail {
-	border-left: 2px solid rgba(255,0,0,.6);
+	border-left: 2px solid rgba(255,0,0,.8);
 }
 
 pre.compile_fail:hover, .information:hover + pre.compile_fail {
@@ -270,7 +270,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .tooltip.compile_fail {
-	color: rgba(255,0,0,.6);
+	color: rgba(255,0,0,.8);
 }
 
 .information > .compile_fail:hover {
@@ -282,7 +282,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .information > .ignore:hover {
-	color: rgba(255,142,0,1);
+	color: #ff9200;
 }
 
 .search-failed a {
@@ -290,8 +290,9 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .tooltip .tooltiptext {
-	background-color: black;
+	background-color: #000;
 	color: #fff;
+	border-color: #000;
 }
 
 .tooltip .tooltiptext::after {

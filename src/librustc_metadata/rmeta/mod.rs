@@ -405,5 +405,6 @@ struct GeneratorData<'tcx> {
 }
 
 // Tags used for encoding Spans:
-const TAG_VALID_SPAN: u8 = 0;
-const TAG_INVALID_SPAN: u8 = 1;
+const TAG_VALID_SPAN_LOCAL: u8 = 0;
+const TAG_VALID_SPAN_FOREIGN: u8 = 1;
+const TAG_INVALID_SPAN: u8 = 2;

@@ -386,7 +386,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             return Ok(DUMMY_SP);
         }
 
-        debug_assert_eq!(tag, TAG_VALID_SPAN);
+        debug_assert!(tag == TAG_VALID_SPAN_LOCAL || tag == TAG_VALID_SPAN_FOREIGN);
 
         let lo = BytePos::decode(self)?;
         let len = BytePos::decode(self)?;
@@ -398,7 +398,68 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             bug!("Cannot decode Span without Session.")
         };
 
-        let imported_source_files = self.cdata().imported_source_files(&sess.source_map());
+        // There are two possibilities here:
+        // 1. This is a 'local span', which is located inside a `SourceFile`
+        // that came from this crate. In this case, we use the source map data
+        // encoded in this crate. This branch should be taken nearly all of the time.
+        // 2. This is a 'foreign span', which is located inside a `SourceFile`
+        // that came from a *different* crate (some crate upstream of the one
+        // whose metadata we're looking at). For example, consider this dependency graph:
+        //
+        // A -> B -> C
+        //
+        // Suppose that we're currently compiling crate A, and start deserializing
+        // metadata from crate B. When we deserialize a Span from crate B's metadata,
+        // there are two posibilites:
+        //
+        // 1. The span references a file from crate B. This makes it a 'local' span,
+        // which means that we can use crate B's serialized source map information.
+        // 2. The span references a file from crate C. This makes it a 'foreign' span,
+        // which means we need to use Crate *C* (not crate B) to determine the source
+        // map information. We only record source map information for a file in the
+        // crate that 'owns' it, so deserializing a Span may require us to look at
+        // a transitive dependency.
+        //
+        // When we encode a foreign span, we adjust its 'lo' and 'high' values
+        // to be based on the *foreign* crate (e.g. crate C), not the crate
+        // we are writing metadata for (e.g. crate B). This allows us to
+        // treat the 'local' and 'foreign' cases almost identically during deserialization:
+        // we can call `imported_source_files` for the proper crate, and binary search
+        // through the returned slice using our span.
+        let imported_source_files = if tag == TAG_VALID_SPAN_LOCAL {
+            self.cdata().imported_source_files(sess.source_map())
+        } else {
+            // FIXME: We don't decode dependencies of proc-macros.
+            // Remove this once #69976 is merged
+            if self.cdata().root.is_proc_macro_crate() {
+                debug!(
+                    "SpecializedDecoder<Span>::specialized_decode: skipping span for proc-macro crate {:?}",
+                    self.cdata().cnum
+                );
+                // Decode `CrateNum` as u32 - using `CrateNum::decode` will ICE
+                // since we don't have `cnum_map` populated.
+                // This advances the decoder position so that we can continue
+                // to read metadata.
+                let _ = u32::decode(self)?;
+                return Ok(DUMMY_SP);
+            }
+            // tag is TAG_VALID_SPAN_FOREIGN, checked by `debug_assert` above
+            let cnum = CrateNum::decode(self)?;
+            debug!(
+                "SpecializedDecoder<Span>::specialized_decode: loading source files from cnum {:?}",
+                cnum
+            );
+
+            // Decoding 'foreign' spans should be rare enough that it's
+            // not worth it to maintain a per-CrateNum cache for `last_source_file_index`.
+            // We just set it to 0, to ensure that we don't try to access something out
+            // of bounds for our initial 'guess'
+            self.last_source_file_index = 0;
+
+            let foreign_data = self.cdata().cstore.get_crate_data(cnum);
+            foreign_data.imported_source_files(sess.source_map())
+        };
+
         let source_file = {
             // Optimize for the case that most spans within a translated item
             // originate from the same source_file.
@@ -412,16 +473,32 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
                     .binary_search_by_key(&lo, |source_file| source_file.original_start_pos)
                     .unwrap_or_else(|index| index - 1);
 
-                self.last_source_file_index = index;
+                // Don't try to cache the index for foreign spans,
+                // as this would require a map from CrateNums to indices
+                if tag == TAG_VALID_SPAN_LOCAL {
+                    self.last_source_file_index = index;
+                }
                 &imported_source_files[index]
             }
         };
 
         // Make sure our binary search above is correct.
-        debug_assert!(lo >= source_file.original_start_pos && lo <= source_file.original_end_pos);
+        debug_assert!(
+            lo >= source_file.original_start_pos && lo <= source_file.original_end_pos,
+            "Bad binary search: lo={:?} source_file.original_start_pos={:?} source_file.original_end_pos={:?}",
+            lo,
+            source_file.original_start_pos,
+            source_file.original_end_pos
+        );
 
         // Make sure we correctly filtered out invalid spans during encoding
-        debug_assert!(hi >= source_file.original_start_pos && hi <= source_file.original_end_pos);
+        debug_assert!(
+            hi >= source_file.original_start_pos && hi <= source_file.original_end_pos,
+            "Bad binary search: hi={:?} source_file.original_start_pos={:?} source_file.original_end_pos={:?}",
+            hi,
+            source_file.original_start_pos,
+            source_file.original_end_pos
+        );
 
         let lo =
             (lo + source_file.translated_source_file.start_pos) - source_file.original_start_pos;
@@ -1425,14 +1502,16 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     let local_version = local_source_map.new_imported_source_file(
                         name,
                         name_was_remapped,
-                        self.cnum.as_u32(),
                         src_hash,
                         name_hash,
                         source_length,
+                        self.cnum,
                         lines,
                         multibyte_chars,
                         non_narrow_chars,
                         normalized_pos,
+                        start_pos,
+                        end_pos,
                     );
                     debug!(
                         "CrateMetaData::imported_source_files alloc \
