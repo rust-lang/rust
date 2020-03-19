@@ -73,6 +73,10 @@ pub fn least_common_ancestor(u: &SyntaxNode, v: &SyntaxNode) -> Option<SyntaxNod
     v.ancestors().find(|it| u_ancestors.contains(it))
 }
 
+pub fn neighbor<T: AstNode>(me: &T, direction: Direction) -> Option<T> {
+    me.syntax().siblings(direction).skip(1).find_map(T::cast)
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum InsertPosition<T> {
     First,
