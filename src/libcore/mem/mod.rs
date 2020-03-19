@@ -84,7 +84,7 @@ pub use crate::intrinsics::transmute;
 ///
 /// let mut v = vec![65, 122];
 /// // Build a `String` using the contents of `v`
-/// let s = unsafe { String::from_raw_parts(v.as_mut_ptr(), 2, v.capacity()) };
+/// let s = unsafe { String::from_raw_parts(v.as_mut_ptr(), v.len(), v.capacity()) };
 /// // leak `v` because its memory is now managed by `s`
 /// mem::forget(v);  // ERROR - v is invalid and must not be passed to a function
 /// assert_eq!(s, "Az");
@@ -113,10 +113,9 @@ pub use crate::intrinsics::transmute;
 /// // does not get dropped!
 /// let mut v = ManuallyDrop::new(v);
 /// // Now disassemble `v`. These operations cannot panic, so there cannot be a leak.
-/// let ptr = v.as_mut_ptr();
-/// let cap = v.capacity();
+/// let (ptr, len, cap) = (v.as_mut_ptr(), v.len(), v.capacity());
 /// // Finally, build a `String`.
-/// let s = unsafe { String::from_raw_parts(ptr, 2, cap) };
+/// let s = unsafe { String::from_raw_parts(ptr, len, cap) };
 /// assert_eq!(s, "Az");
 /// // `s` is implicitly dropped and its memory deallocated.
 /// ```
