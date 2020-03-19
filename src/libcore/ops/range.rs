@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::hash::{Hash, Hasher};
+use crate::hash::Hash;
 
 /// An unbounded range (`..`).
 ///
