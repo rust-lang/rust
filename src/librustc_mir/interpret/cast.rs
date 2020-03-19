@@ -3,6 +3,7 @@ use rustc::ty::layout::{self, Size, TyLayout};
 use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc_ast::ast::FloatTy;
 use rustc_span::symbol::sym;
+use rustc_target::abi::LayoutOf;
 
 use rustc::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc::mir::CastKind;
@@ -134,7 +135,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             layout::Variants::Single { index } => {
                 if let Some(discr) = src.layout.ty.discriminant_for_variant(*self.tcx, index) {
                     assert!(src.layout.is_zst());
-                    return Ok(Scalar::from_uint(discr.val, dest_layout.size).into());
+                    let discr_layout = self.layout_of(discr.ty)?;
+                    return Ok(self.cast_from_int(discr.val, discr_layout, dest_layout)?.into());
                 }
             }
             layout::Variants::Multiple { .. } => {}
