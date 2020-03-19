@@ -49,11 +49,11 @@ jobs:
         node-version: 12.x
 
     - name: Dist
-      if: github.event_name == 'push'
+      if: github.ref == 'refs/heads/release'
       run: cargo xtask dist --version 0.2.$GITHUB_RUN_NUMBER         --tag $(date --iso --utc)
 
     - name: Dist
-      if: github.event_name != 'push'
+      if: github.ref != 'refs/heads/release'
       run: cargo xtask dist --version 0.3.$GITHUB_RUN_NUMBER-nightly --tag nightly
 
     - name: Upload artifacts
@@ -73,9 +73,9 @@ jobs:
         node-version: 12.x
 
     - run: echo "::set-env name=TAG::$(date --iso --utc)"
-      if: github.event_name == 'push'
+      if: github.ref == 'refs/heads/release'
     - run: echo "::set-env name=TAG::nightly"
-      if: github.event_name == 'schedule'
+      if: github.ref != 'refs/heads/release'
     - run: 'echo "TAG: $TAG"'
 
     - name: Checkout repository
@@ -106,7 +106,7 @@ jobs:
       working-directory: ./editors/code
 
     - name: Publish Extension
-      if: github.event_name == 'push'
+      if: github.ref == 'refs/heads/release'
       working-directory: ./editors/code
       # token from https://dev.azure.com/rust-analyzer/
       run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer.vsix
