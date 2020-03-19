@@ -34,7 +34,7 @@
     "dependencies": {
         "jsonc-parser": "^2.2.1",
         "node-fetch": "^2.6.0",
-        "vscode-languageclient": "^6.1.1"
+        "vscode-languageclient": "^6.1.2"
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^11.0.2",
