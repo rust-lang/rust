@@ -8,24 +8,19 @@ use {
 
 /// A range in text, represented as a pair of [`TextSize`][struct@TextSize].
 ///
-/// It is a logical error to have `end() < start()`, but
-/// code must not assume this is true for `unsafe` guarantees.
-///
 /// # Translation from `text_unit`
 ///
-/// - `TextRange::from_to(from, to)`        ⟹ `TextRange::from(from..to)`
-/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::from(offset..offset + size)`
+/// - `TextRange::from_to(from, to)`        ⟹ `TextRange(from, to)`
+/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::up_to(size).offset(offset)`
 /// - `range.start()`                       ⟹ `range.start()`
 /// - `range.end()`                         ⟹ `range.end()`
-/// - `range.len()`                         ⟹ `range.len()`<sup>†</sup>
+/// - `range.len()`                         ⟹ `range.len()`
 /// - `range.is_empty()`                    ⟹ `range.is_empty()`
-/// - `a.is_subrange(b)`                    ⟹ `b.contains(a)`
+/// - `a.is_subrange(b)`                    ⟹ `b.contains_range(a)`
 /// - `a.intersection(b)`                   ⟹ `TextRange::intersection(a, b)`
 /// - `a.extend_to(b)`                      ⟹ `TextRange::covering(a, b)`
-/// - `range.contains(offset)`              ⟹ `range.contains_exclusive(point)`
+/// - `range.contains(offset)`              ⟹ `range.contains(point)`
 /// - `range.contains_inclusive(offset)`    ⟹ `range.contains_inclusive(point)`
-///
-/// † See the note on [`TextRange::len`] for differing behavior for incorrect reverse ranges.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct TextRange {
     // Invariant: start <= end
@@ -39,47 +34,61 @@ impl fmt::Debug for TextRange {
     }
 }
 
-/// Creates a new `TextRange` with given `start` and `end.
+/// Creates a new `TextRange` with the given `start` and `end` (`start..end`).
 ///
 /// # Panics
 ///
 /// Panics if `end < start`.
 #[allow(non_snake_case)]
+#[inline]
 pub fn TextRange(start: TextSize, end: TextSize) -> TextRange {
     assert!(start <= end);
     TextRange { start, end }
 }
 
-/// Identity methods.
 impl TextRange {
-    /// Creates a zero-length range at the specified offset.
-    pub const fn empty(self, offset: TextSize) -> TextRange {
+    /// Create a zero-length range at the specified offset (`offset..offset`).
+    #[inline]
+    pub const fn empty(offset: TextSize) -> TextRange {
         TextRange {
             start: offset,
             end: offset,
         }
     }
 
+    /// Create a range up to the given end (`..end`).
+    #[inline]
+    pub const fn up_to(end: TextSize) -> TextRange {
+        TextRange {
+            start: TextSize::zero(),
+            end,
+        }
+    }
+}
+
+/// Identity methods.
+impl TextRange {
     /// The start point of this range.
+    #[inline]
     pub const fn start(self) -> TextSize {
         self.start
     }
 
     /// The end point of this range.
+    #[inline]
     pub const fn end(self) -> TextSize {
         self.end
     }
 
     /// The size of this range.
+    #[inline]
     pub const fn len(self) -> TextSize {
         // HACK for const fn: math on primitives only
         TextSize(self.end().raw - self.start().raw)
     }
 
-    /// Check if this range empty or reversed.
-    ///
-    /// When `end() < start()`, this returns false.
-    /// Code should prefer `is_empty()` to `len() == 0`.
+    /// Check if this range is empty.
+    #[inline]
     pub const fn is_empty(self) -> bool {
         // HACK for const fn: math on primitives only
         self.start().raw == self.end().raw
@@ -99,8 +108,7 @@ impl TextRange {
     ///
     /// The end index is considered included.
     pub fn contains_inclusive(self, offset: TextSize) -> bool {
-        let point = offset.into();
-        self.start() <= point && point <= self.end()
+        self.start() <= offset && offset <= self.end()
     }
 
     /// Check if this range completely contains another range.
@@ -129,12 +137,14 @@ impl TextRange {
 
 impl Index<TextRange> for str {
     type Output = str;
+    #[inline]
     fn index(&self, index: TextRange) -> &Self::Output {
         &self[Range::<usize>::from(index)]
     }
 }
 
 impl IndexMut<TextRange> for str {
+    #[inline]
     fn index_mut(&mut self, index: TextRange) -> &mut Self::Output {
         &mut self[Range::<usize>::from(index)]
     }
@@ -154,6 +164,7 @@ impl<T> From<TextRange> for Range<T>
 where
     T: From<TextSize>,
 {
+    #[inline]
     fn from(r: TextRange) -> Self {
         r.start().into()..r.end().into()
     }

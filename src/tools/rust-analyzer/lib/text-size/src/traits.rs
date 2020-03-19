@@ -7,6 +7,7 @@ pub trait TextSized: Copy {
 }
 
 impl TextSized for &'_ str {
+    #[inline]
     fn text_size(self) -> TextSize {
         self.len()
             .try_into()
@@ -15,6 +16,7 @@ impl TextSized for &'_ str {
 }
 
 impl TextSized for char {
+    #[inline]
     fn text_size(self) -> TextSize {
         TextSize(self.len_utf8() as u32)
     }
