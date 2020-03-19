@@ -10,7 +10,7 @@ use std::{
     marker::PhantomData,
 };
 
-use ra_arena::{impl_arena_id, Arena, RawId};
+use ra_arena::{Arena, Idx};
 use ra_syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 /// `AstId` points to an AST node in a specific file.
@@ -49,14 +49,12 @@ impl<N: AstNode> FileAstId<N> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct ErasedFileAstId(RawId);
-impl_arena_id!(ErasedFileAstId);
+type ErasedFileAstId = Idx<SyntaxNodePtr>;
 
 /// Maps items' `SyntaxNode`s to `ErasedFileAstId`s and back.
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct AstIdMap {
-    arena: Arena<ErasedFileAstId, SyntaxNodePtr>,
+    arena: Arena<SyntaxNodePtr>,
 }
 
 impl AstIdMap {

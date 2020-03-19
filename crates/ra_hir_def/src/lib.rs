@@ -50,7 +50,7 @@ use hir_expand::{
     ast_id_map::FileAstId, eager::expand_eager_macro, hygiene::Hygiene, AstId, HirFileId, InFile,
     MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
-use ra_arena::{impl_arena_id, RawId};
+use ra_arena::Idx;
 use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_syntax::{ast, AstNode};
 
@@ -64,9 +64,7 @@ pub struct ModuleId {
 }
 
 /// An ID of a module, **local** to a specific crate
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LocalModuleId(RawId);
-impl_arena_id!(LocalModuleId);
+pub type LocalModuleId = Idx<nameres::ModuleData>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ItemLoc<N: AstNode> {
@@ -127,9 +125,7 @@ pub struct EnumVariantId {
     pub local_id: LocalEnumVariantId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LocalEnumVariantId(RawId);
-impl_arena_id!(LocalEnumVariantId);
+pub type LocalEnumVariantId = Idx<adt::EnumVariantData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructFieldId {
@@ -137,9 +133,7 @@ pub struct StructFieldId {
     pub local_id: LocalStructFieldId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LocalStructFieldId(RawId);
-impl_arena_id!(LocalStructFieldId);
+pub type LocalStructFieldId = Idx<adt::StructFieldData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(salsa::InternId);
@@ -172,9 +166,7 @@ pub struct TypeParamId {
     pub local_id: LocalTypeParamId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LocalTypeParamId(RawId);
-impl_arena_id!(LocalTypeParamId);
+pub type LocalTypeParamId = Idx<generics::TypeParamData>;
 
 macro_rules! impl_froms {
     ($e:ident: $($v:ident $(($($sv:ident),*))?),*) => {

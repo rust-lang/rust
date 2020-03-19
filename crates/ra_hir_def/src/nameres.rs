@@ -77,7 +77,7 @@ use crate::{
 #[derive(Debug, PartialEq, Eq)]
 pub struct CrateDefMap {
     pub root: LocalModuleId,
-    pub modules: Arena<LocalModuleId, ModuleData>,
+    pub modules: Arena<ModuleData>,
     pub(crate) krate: CrateId,
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
@@ -187,7 +187,7 @@ impl CrateDefMap {
         });
         let def_map = {
             let edition = db.crate_graph()[krate].edition;
-            let mut modules: Arena<LocalModuleId, ModuleData> = Arena::default();
+            let mut modules: Arena<ModuleData> = Arena::default();
             let root = modules.alloc(ModuleData::default());
             CrateDefMap {
                 krate,

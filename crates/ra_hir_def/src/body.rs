@@ -121,8 +121,8 @@ pub(crate) struct Mark {
 /// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq)]
 pub struct Body {
-    pub exprs: Arena<ExprId, Expr>,
-    pub pats: Arena<PatId, Pat>,
+    pub exprs: Arena<Expr>,
+    pub pats: Arena<Pat>,
     /// The patterns for the function's parameters. While the parameter types are
     /// part of the function signature, the patterns are not (they don't change
     /// the external type of the function).

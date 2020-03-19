@@ -710,9 +710,7 @@ fn unresolved_module_diagnostics() {
         @r###"
     [
         UnresolvedModule {
-            module: LocalModuleId(
-                0,
-            ),
+            module: Idx::<ModuleData>(0),
             declaration: InFile {
                 file_id: HirFileId(
                     FileId(
@@ -722,9 +720,7 @@ fn unresolved_module_diagnostics() {
                     ),
                 ),
                 value: FileAstId {
-                    raw: ErasedFileAstId(
-                        1,
-                    ),
+                    raw: Idx::<SyntaxNodePtr>(1),
                     _ty: PhantomData,
                 },
             },

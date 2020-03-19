@@ -13,7 +13,7 @@
 //! See also a neighboring `body` module.
 
 use hir_expand::name::Name;
-use ra_arena::{impl_arena_id, RawId};
+use ra_arena::{Idx, RawId};
 use ra_syntax::ast::RangeOp;
 
 use crate::{
@@ -22,19 +22,12 @@ use crate::{
     type_ref::{Mutability, TypeRef},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ExprId(RawId);
-impl_arena_id!(ExprId);
-
-impl ExprId {
-    pub fn dummy() -> ExprId {
-        ExprId((!0).into())
-    }
+pub type ExprId = Idx<Expr>;
+pub(crate) fn dummy_expr_id() -> ExprId {
+    ExprId::from_raw(RawId::from(!0))
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PatId(RawId);
-impl_arena_id!(PatId);
+pub type PatId = Idx<Pat>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Literal {

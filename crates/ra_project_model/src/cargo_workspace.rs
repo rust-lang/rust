@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use cargo_metadata::{CargoOpt, Message, MetadataCommand, PackageId};
-use ra_arena::{impl_arena_id, Arena, RawId};
+use ra_arena::{Arena, Idx};
 use ra_cargo_watch::run_cargo;
 use ra_db::Edition;
 use rustc_hash::FxHashMap;
@@ -22,8 +22,8 @@ use serde::Deserialize;
 /// concepts.
 #[derive(Debug, Clone)]
 pub struct CargoWorkspace {
-    packages: Arena<Package, PackageData>,
-    targets: Arena<Target, TargetData>,
+    packages: Arena<PackageData>,
+    targets: Arena<TargetData>,
     workspace_root: PathBuf,
 }
 
@@ -69,13 +69,9 @@ impl Default for CargoFeatures {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Package(RawId);
-impl_arena_id!(Package);
+pub type Package = Idx<PackageData>;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Target(RawId);
-impl_arena_id!(Target);
+pub type Target = Idx<TargetData>;
 
 #[derive(Debug, Clone)]
 pub struct PackageData {
