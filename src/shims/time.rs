@@ -1,13 +1,8 @@
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, SystemTime, Instant};
 
 use crate::stacked_borrows::Tag;
 use crate::*;
 use helpers::immty_from_int_checked;
-
-// Returns the time elapsed between now and the unix epoch as a `Duration`.
-fn get_time<'tcx>() -> InterpResult<'tcx, Duration> {
-    system_time_to_duration(&SystemTime::now())
-}
 
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
 pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Duration> {
@@ -28,15 +23,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("clock_gettime")?;
 
         let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
-        if clk_id != this.eval_libc_i32("CLOCK_REALTIME")? {
+        let tp = this.deref_operand(tp_op)?;
+
+        let duration = if clk_id == this.eval_libc_i32("CLOCK_REALTIME")? {
+            system_time_to_duration(&SystemTime::now())?
+        } else if clk_id == this.eval_libc_i32("CLOCK_MONOTONIC")? {
+            // Absolute time does not matter, only relative time does, so we can just
+            // use our own time anchor here.
+            Instant::now().duration_since(this.machine.time_anchor)
+        } else {
             let einval = this.eval_libc("EINVAL")?;
             this.set_last_error(einval)?;
             return Ok(-1);
-        }
+        };
 
-        let tp = this.deref_operand(tp_op)?;
-
-        let duration = get_time()?;
         let tv_sec = duration.as_secs();
         let tv_nsec = duration.subsec_nanos();
 
@@ -68,7 +68,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let tv = this.deref_operand(tv_op)?;
 
-        let duration = get_time()?;
+        let duration = system_time_to_duration(&SystemTime::now())?;
         let tv_sec = duration.as_secs();
         let tv_usec = duration.subsec_micros();
 

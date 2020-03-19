@@ -5,6 +5,7 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::num::NonZeroU64;
 use std::rc::Rc;
+use std::time::Instant;
 
 use rand::rngs::StdRng;
 
@@ -164,6 +165,9 @@ pub struct Evaluator<'tcx> {
     /// the call to `miri_start_panic` (the panic payload) when unwinding.
     /// This is pointer-sized, and matches the `Payload` type in `src/libpanic_unwind/miri.rs`.
     pub(crate) panic_payload: Option<Scalar<Tag>>,
+
+    /// The "time anchor" for this machine's monotone clock (for `Instant` simulation).
+    pub(crate) time_anchor: Instant,
 }
 
 impl<'tcx> Evaluator<'tcx> {
@@ -182,6 +186,7 @@ impl<'tcx> Evaluator<'tcx> {
             file_handler: Default::default(),
             dir_handler: Default::default(),
             panic_payload: None,
+            time_anchor: Instant::now(),
         }
     }
 }
