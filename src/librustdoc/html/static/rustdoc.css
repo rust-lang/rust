@@ -1032,7 +1032,7 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 
 .information {
 	position: absolute;
-	left: -20px;
+	left: -25px;
 	margin-top: 7px;
 	z-index: 1;
 }
@@ -1047,12 +1047,13 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	width: 120px;
 	display: none;
 	text-align: center;
-	padding: 5px 3px;
+	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
 	margin-left: 5px;
 	top: -5px;
 	left: 105%;
 	z-index: 10;
+	font-size: 16px;
 }
 
 .tooltip:hover .tooltiptext {
@@ -1063,14 +1064,20 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	content: " ";
 	position: absolute;
 	top: 50%;
-	left: 11px;
+	left: 16px;
 	margin-top: -5px;
 	border-width: 5px;
 	border-style: solid;
 }
 
+.tooltip.compile_fail, .tooltip.ignore {
+	font-weight: bold;
+	font-size: 20px;
+}
+
 .tooltip .tooltiptext {
 	border: 1px solid;
+	font-weight: normal;
 }
 
 pre.rust {
