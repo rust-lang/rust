@@ -780,8 +780,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     present_first @ Some(_) => present_first,
                     // Uninhabited because it has no variants, or only absent ones.
                     None if def.is_enum() => return tcx.layout_raw(param_env.and(tcx.types.never)),
-                    // if it's a struct, still compute a layout so that we can still compute the
-                    // field offsets
+                    // If it's a struct, still compute a layout so that we can still compute the
+                    // field offsets.
                     None => Some(VariantIdx::new(0)),
                 };
 
@@ -1987,7 +1987,15 @@ where
 {
     fn for_variant(this: TyLayout<'tcx>, cx: &C, variant_index: VariantIdx) -> TyLayout<'tcx> {
         let details = match this.variants {
-            Variants::Single { index } if index == variant_index => this.details,
+            Variants::Single { index }
+                // If all variants but one are uninhabited, the variant layout is the enum layout.
+                if index == variant_index &&
+                // Don't confuse variants of uninhabited enums with the enum itself.
+                // For more details see https://github.com/rust-lang/rust/issues/69763.
+                this.fields != FieldPlacement::Union(0) =>
+            {
+                this.details
+            }
 
             Variants::Single { index } => {
                 // Deny calling for_variant more than once for non-Single enums.
