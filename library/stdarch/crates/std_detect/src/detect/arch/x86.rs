@@ -92,7 +92,7 @@ features! {
     /// RDSEED
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] tsc: "tsc";
     /// TSC (Time Stamp Counter)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] mmx: "mmx";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] mmx: "mmx";
     /// MMX (MultiMedia eXtensions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] sse: "sse";
     /// SSE (Streaming SIMD Extensions)
@@ -106,7 +106,7 @@ features! {
     /// SSE4.1 (Streaming SIMD Extensions 4.1)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] sse4_2: "sse4.2";
     /// SSE4.2 (Streaming SIMD Extensions 4.2)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] sse4a: "sse4a";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] sse4a: "sse4a";
     /// SSE4a (Streaming SIMD Extensions 4a)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] sha: "sha";
     /// SHA
@@ -114,19 +114,23 @@ features! {
     /// AVX (Advanced Vector Extensions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx2: "avx2";
     /// AVX2 (Advanced Vector Extensions 2)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512f: "avx512f" ;
+    // Detection for the AVX-512 features below was accidentally stabilized in
+    // Rust 1.27.0, even though the corresponding intrinsics are still unstable
+    // or unimplemeted. There are stable callers who rely on detection support,
+    // e.g. to call AVX-512 C code via FFI.
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512f: "avx512f" ;
     /// AVX-512 F (Foundation)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512cd: "avx512cd" ;
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512cd: "avx512cd" ;
     /// AVX-512 CD (Conflict Detection Instructions)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512er: "avx512er";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512er: "avx512er";
     /// AVX-512 ER (Expo nential and Reciprocal Instructions)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512pf: "avx512pf";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512pf: "avx512pf";
     /// AVX-512 PF (Prefetch Instructions)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512bw: "avx512bw";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512bw: "avx512bw";
     /// AVX-512 BW (Byte and Word Instructions)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512dq: "avx512dq";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512dq: "avx512dq";
     /// AVX-512 DQ (Doubleword and Quadword)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vl: "avx512vl";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vl: "avx512vl";
     /// AVX-512 VL (Vector Length Extensions)
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512ifma: "avx512ifma";
     /// AVX-512 IFMA (Integer Fused Multiply Add)
@@ -161,7 +165,7 @@ features! {
     /// BMI2 (Bit Manipulation Instructions 2)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] lzcnt: "lzcnt";
     /// ABM (Advanced Bit Manipulation) / LZCNT (Leading Zero Count)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] tbm: "tbm";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] tbm: "tbm";
     /// TBM (Trailing Bit Manipulation)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] popcnt: "popcnt";
     /// POPCNT (Population Count)
