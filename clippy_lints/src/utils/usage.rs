@@ -5,7 +5,7 @@ use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{def_id, Expr, HirId, Path};
+use rustc_hir::{Expr, HirId, Path};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_span::symbol::Ident;
@@ -17,7 +17,7 @@ pub fn mutated_variables<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &'a LateContext<'a,
         used_mutably: FxHashSet::default(),
         skip: false,
     };
-    let def_id = def_id::DefId::local(expr.hir_id.owner);
+    let def_id = expr.hir_id.owner.to_def_id();
     cx.tcx.infer_ctxt().enter(|infcx| {
         ExprUseVisitor::new(&mut delegate, &infcx, def_id, cx.param_env, cx.tables).walk_expr(expr);
     });

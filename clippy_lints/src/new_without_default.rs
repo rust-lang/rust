@@ -149,9 +149,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                     if_chain! {
                                         if let Some(ref impling_types) = self.impling_types;
                                         if let Some(self_def) = cx.tcx.type_of(self_did).ty_adt_def();
-                                        if self_def.did.is_local();
+                                        if let Some(self_def_id) = self_def.did.as_local();
                                         then {
-                                            let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_def.did.to_local());
+                                            let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_def_id);
                                             if impling_types.contains(&self_id) {
                                                 return;
                                             }
