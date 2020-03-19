@@ -30,10 +30,7 @@ fn main() {
     pal::check(&path, &mut bad);
     unstable_book::check(&path, collected, &mut bad);
     unit_tests::check(&path, &mut bad);
-    if !args.iter().any(|s| *s == "--no-vendor") {
-        deps::check(&path, &mut bad);
-    }
-    deps::check_whitelist(&path, &cargo, &mut bad);
+    deps::check(&path, &cargo, &mut bad);
     extdeps::check(&path, &mut bad);
     ui_tests::check(&path, &mut bad);
     error_codes_check::check(&path, &mut bad);
