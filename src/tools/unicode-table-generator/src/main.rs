@@ -152,8 +152,16 @@ fn main() {
         std::process::exit(1);
     });
 
+    // Optional test path, which is a Rust source file testing that the unicode
+    // property lookups are correct.
+    let test_path = std::env::args().nth(2);
+
     let unicode_data = load_data();
     let ranges_by_property = &unicode_data.ranges;
+
+    if let Some(path) = test_path {
+        std::fs::write(&path, generate_tests(&write_location, &ranges_by_property)).unwrap();
+    }
 
     let mut total_bytes = 0;
     let mut modules = Vec::new();
@@ -234,6 +242,99 @@ fn fmt_list<V: std::fmt::Debug>(values: impl IntoIterator<Item = V>) -> String {
     out.push_str(line.trim_end());
     out.push('\n');
     out
+}
+
+fn generate_tests(data_path: &str, ranges: &[(&str, Vec<Range<u32>>)]) -> String {
+    let mut s = String::new();
+    s.push_str("#![allow(incomplete_features, unused)]\n");
+    s.push_str("#![feature(const_generics)]\n\n");
+    s.push_str(&format!("#[path = \"{}\"]\n", data_path));
+    s.push_str("mod unicode_data;\n\n");
+
+    s.push_str(
+        "
+#[inline(always)]
+fn range_search<const N: usize, const CHUNK_SIZE: usize, const N1: usize, const N2: usize>(
+    needle: u32,
+    chunk_idx_map: &[u8; N],
+    (last_chunk_idx, last_chunk_mapping): (u16, u8),
+    bitset_chunk_idx: &[[u8; CHUNK_SIZE]; N1],
+    bitset: &[u64; N2],
+) -> bool {
+    let bucket_idx = (needle / 64) as usize;
+    let chunk_map_idx = bucket_idx / CHUNK_SIZE;
+    let chunk_piece = bucket_idx % CHUNK_SIZE;
+    let chunk_idx = if chunk_map_idx >= N {
+        if chunk_map_idx == last_chunk_idx as usize {
+            last_chunk_mapping
+        } else {
+            return false;
+        }
+    } else {
+        chunk_idx_map[chunk_map_idx]
+    };
+    let idx = bitset_chunk_idx[(chunk_idx as usize)][chunk_piece];
+    let word = bitset[(idx as usize)];
+    (word & (1 << (needle % 64) as u64)) != 0
+}
+    ",
+    );
+
+    s.push_str("\nfn main() {\n");
+
+    for (property, ranges) in ranges {
+        s.push_str(&format!(r#"    println!("Testing {}");"#, property));
+        s.push('\n');
+        s.push_str(&format!("    {}();\n", property.to_lowercase()));
+        let mut is_true = Vec::new();
+        let mut is_false = Vec::new();
+        for ch_num in 0..(std::char::MAX as u32) {
+            if std::char::from_u32(ch_num).is_none() {
+                continue;
+            }
+            if ranges.iter().any(|r| r.contains(&ch_num)) {
+                is_true.push(ch_num);
+            } else {
+                is_false.push(ch_num);
+            }
+        }
+
+        s.push_str(&format!("    fn {}() {{\n", property.to_lowercase()));
+        generate_asserts(&mut s, property, &is_true, true);
+        generate_asserts(&mut s, property, &is_false, false);
+        s.push_str("    }\n\n");
+    }
+
+    s.push_str("}");
+    s
+}
+
+fn generate_asserts(s: &mut String, property: &str, points: &[u32], truthy: bool) {
+    for range in ranges_from_set(points) {
+        if range.end == range.start + 1 {
+            s.push_str(&format!(
+                "        assert!({}unicode_data::{}::lookup(std::char::from_u32({}).unwrap()), \"{}\");\n",
+                if truthy { "" } else { "!" },
+                property.to_lowercase(),
+                range.start,
+                std::char::from_u32(range.start).unwrap(),
+        ));
+        } else {
+            s.push_str(&format!("        for chn in {:?}u32 {{\n", range));
+            s.push_str(&format!(
+                "            assert!({}unicode_data::{}::lookup(std::char::from_u32(chn).unwrap()), \"{{:?}}\", chn);\n",
+                if truthy { "" } else { "!" },
+                property.to_lowercase(),
+        ));
+            s.push_str("        }\n");
+        }
+    }
+}
+
+fn ranges_from_set(set: &[u32]) -> Vec<Range<u32>> {
+    let mut ranges = set.iter().map(|e| (*e)..(*e + 1)).collect::<Vec<Range<u32>>>();
+    merge_ranges(&mut ranges);
+    ranges
 }
 
 fn merge_ranges(ranges: &mut Vec<Range<u32>>) {
