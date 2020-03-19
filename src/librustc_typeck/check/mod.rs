@@ -305,11 +305,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
         match *self {
             ExpectHasType(ety) => {
                 let ety = fcx.shallow_resolve(ety);
-                if !ety.is_ty_var() {
-                    ExpectHasType(ety)
-                } else {
-                    NoExpectation
-                }
+                if !ety.is_ty_var() { ExpectHasType(ety) } else { NoExpectation }
             }
             ExpectRvalueLikeUnsized(ety) => ExpectRvalueLikeUnsized(ety),
             _ => NoExpectation,
@@ -1619,11 +1615,7 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: DefId, span:
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
         fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
-            if t == self.opaque_identity_ty {
-                false
-            } else {
-                t.super_visit_with(self)
-            }
+            if t == self.opaque_identity_ty { false } else { t.super_visit_with(self) }
         }
 
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
@@ -3778,8 +3770,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &'b self,
         self_ty: ty::TyVid,
     ) -> impl Iterator<Item = (ty::PolyTraitRef<'tcx>, traits::PredicateObligation<'tcx>)>
-           + Captures<'tcx>
-           + 'b {
+    + Captures<'tcx>
+    + 'b {
         // FIXME: consider using `sub_root_var` here so we
         // can see through subtyping.
         let ty_var_root = self.root_var(self_ty);
