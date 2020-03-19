@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "module": "commonjs",
-        "target": "es2018",
+        "target": "es2019",
         "outDir": "out",
         "lib": [
             "es2019"
