@@ -2698,14 +2698,14 @@ impl<'tcx> TyS<'tcx> {
     /// [isize] => { [isize], isize }
     /// ```
     pub fn walk(&'tcx self) -> TypeWalker<'tcx> {
-        TypeWalker::new(self)
+        TypeWalker::new(self.into())
     }
 
     /// Iterator that walks the immediate children of `self`. Hence
     /// `Foo<Bar<i32>, u32>` yields the sequence `[Bar<i32>, u32]`
     /// (but not `i32`, like `walk`).
-    pub fn walk_shallow(&'tcx self) -> smallvec::IntoIter<walk::TypeWalkerArray<'tcx>> {
-        walk::walk_shallow(self)
+    pub fn walk_shallow(&'tcx self) -> impl Iterator<Item = Ty<'tcx>> {
+        walk::walk_shallow(self.into())
     }
 
     /// Walks `ty` and any types appearing within `ty`, invoking the
