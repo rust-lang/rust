@@ -705,7 +705,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
     const char *LinkageName, size_t LinkageNameLen,
     LLVMMetadataRef File, unsigned LineNo,
     LLVMMetadataRef Ty, unsigned ScopeLine, LLVMRustDIFlags Flags,
-    LLVMRustDISPFlags SPFlags, LLVMValueRef Fn, LLVMMetadataRef TParam,
+    LLVMRustDISPFlags SPFlags, LLVMValueRef MaybeFn, LLVMMetadataRef TParam,
     LLVMMetadataRef Decl) {
   DITemplateParameterArray TParams =
       DITemplateParameterArray(unwrap<MDTuple>(TParam));
@@ -739,7 +739,8 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
       ScopeLine, llvmFlags, IsOptimized, TParams,
       unwrapDIPtr<DISubprogram>(Decl));
 #endif
-  unwrap<Function>(Fn)->setSubprogram(Sub);
+  if (MaybeFn)
+    unwrap<Function>(MaybeFn)->setSubprogram(Sub);
   return wrap(Sub);
 }
 
@@ -913,12 +914,12 @@ LLVMRustDIBuilderGetOrCreateArray(LLVMRustDIBuilderRef Builder,
 
 extern "C" LLVMValueRef LLVMRustDIBuilderInsertDeclareAtEnd(
     LLVMRustDIBuilderRef Builder, LLVMValueRef V, LLVMMetadataRef VarInfo,
-    int64_t *AddrOps, unsigned AddrOpsCount, LLVMValueRef DL,
+    int64_t *AddrOps, unsigned AddrOpsCount, LLVMMetadataRef DL,
     LLVMBasicBlockRef InsertAtEnd) {
   return wrap(Builder->insertDeclare(
       unwrap(V), unwrap<DILocalVariable>(VarInfo),
       Builder->createExpression(llvm::ArrayRef<int64_t>(AddrOps, AddrOpsCount)),
-      DebugLoc(cast<MDNode>(unwrap<MetadataAsValue>(DL)->getMetadata())),
+      DebugLoc(cast<MDNode>(DL)),
       unwrap(InsertAtEnd)));
 }
 
@@ -981,7 +982,7 @@ LLVMRustDICompositeTypeReplaceArrays(LLVMRustDIBuilderRef Builder,
                          DINodeArray(unwrap<MDTuple>(Params)));
 }
 
-extern "C" LLVMValueRef
+extern "C" LLVMMetadataRef
 LLVMRustDIBuilderCreateDebugLocation(LLVMContextRef ContextRef, unsigned Line,
                                      unsigned Column, LLVMMetadataRef Scope,
                                      LLVMMetadataRef InlinedAt) {
@@ -990,7 +991,7 @@ LLVMRustDIBuilderCreateDebugLocation(LLVMContextRef ContextRef, unsigned Line,
   DebugLoc debug_loc = DebugLoc::get(Line, Column, unwrapDIPtr<MDNode>(Scope),
                                      unwrapDIPtr<MDNode>(InlinedAt));
 
-  return wrap(MetadataAsValue::get(Context, debug_loc.getAsMDNode()));
+  return wrap(debug_loc.getAsMDNode());
 }
 
 extern "C" int64_t LLVMRustDIBuilderCreateOpDeref() {

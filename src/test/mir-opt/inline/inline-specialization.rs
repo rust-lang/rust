@@ -36,7 +36,7 @@ impl<T> Foo for Vec<T> {
 // scope 1 {
 //   debug x => _1;
 // }
-// scope 2 {
+// scope 2 (inlined <std::vec::Vec<()> as Foo>::bar) {
 // }
 // bb0: {
 //   StorageLive(_1);

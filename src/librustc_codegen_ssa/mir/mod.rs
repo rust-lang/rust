@@ -23,7 +23,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     mir: mir::ReadOnlyBodyAndCache<'tcx, 'tcx>,
 
-    debug_context: Option<FunctionDebugContext<Bx::DIScope>>,
+    debug_context: Option<FunctionDebugContext<Bx::DIScope, Bx::DILocation>>,
 
     llfn: Bx::Function,
 

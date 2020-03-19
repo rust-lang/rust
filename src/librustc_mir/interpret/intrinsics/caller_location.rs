@@ -14,11 +14,34 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// `None` is returned and the callsite of the function invocation itself should be used.
     crate fn find_closest_untracked_caller_location(&self) -> Option<Span> {
         let mut caller_span = None;
-        for next_caller in self.stack.iter().rev() {
-            if !next_caller.instance.def.requires_caller_location(*self.tcx) {
+        for frame in self.stack.iter().rev() {
+            if let Some(source_info) = frame.current_source_info() {
+                // Walk up the `SourceScope`s, in case some of them are from MIR inlining.
+                let mut scope = source_info.scope;
+                loop {
+                    let scope_data = &frame.body.source_scopes[scope];
+
+                    if let Some((callee, callsite_span)) = scope_data.inlined {
+                        // Stop before ("inside") the callsite of a non-`#[track_caller]` function.
+                        if !callee.def.requires_caller_location(*self.tcx) {
+                            return caller_span;
+                        }
+                        caller_span = Some(callsite_span);
+                    }
+
+                    // Skip past all of the parents with `inlined: None`.
+                    match scope_data.inlined_parent_scope {
+                        Some(parent) => scope = parent,
+                        None => break,
+                    }
+                }
+            }
+
+            // Stop before ("inside") the callsite of a non-`#[track_caller]` function.
+            if !frame.instance.def.requires_caller_location(*self.tcx) {
                 return caller_span;
             }
-            caller_span = Some(next_caller.span);
+            caller_span = Some(frame.span);
         }
 
         caller_span

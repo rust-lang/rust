@@ -39,11 +39,11 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::{Interner, Symbol};
-use rustc_span::{self, FileName, Span};
+use rustc_span::{self, Span};
 use rustc_target::abi::HasDataLayout;
 
 use libc::{c_longlong, c_uint};
@@ -751,15 +751,11 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
     metadata
 }
 
-pub fn file_metadata(
-    cx: &CodegenCx<'ll, '_>,
-    file_name: &FileName,
-    defining_crate: CrateNum,
-) -> &'ll DIFile {
-    debug!("file_metadata: file_name: {}, defining_crate: {}", file_name, defining_crate);
+pub fn file_metadata(cx: &CodegenCx<'ll, '_>, file: &rustc_span::SourceFile) -> &'ll DIFile {
+    debug!("file_metadata({:?})", file);
 
-    let file_name = Some(file_name.to_string());
-    let directory = if defining_crate == LOCAL_CRATE {
+    let file_name = Some(file.name.to_string());
+    let directory = if file.is_real_file() && !file.is_imported() {
         Some(cx.sess().working_dir.0.to_string_lossy().to_string())
     } else {
         // If the path comes from an upstream crate we assume it has been made
@@ -2310,7 +2306,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
 
     let (file_metadata, line_number) = if !span.is_dummy() {
         let loc = cx.lookup_debug_loc(span.lo());
-        (file_metadata(cx, &loc.file.name, LOCAL_CRATE), loc.line)
+        (file_metadata(cx, &loc.file), loc.line)
     } else {
         (unknown_file_metadata(cx), None)
     };
@@ -2412,8 +2408,7 @@ pub fn extend_scope_to_file(
     cx: &CodegenCx<'ll, '_>,
     scope_metadata: &'ll DIScope,
     file: &rustc_span::SourceFile,
-    defining_crate: CrateNum,
 ) -> &'ll DILexicalBlock {
-    let file_metadata = file_metadata(cx, &file.name, defining_crate);
+    let file_metadata = file_metadata(cx, file);
     unsafe { llvm::LLVMRustDIBuilderCreateLexicalBlockFile(DIB(cx), scope_metadata, file_metadata) }
 }

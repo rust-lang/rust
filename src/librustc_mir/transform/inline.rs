@@ -3,10 +3,9 @@
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::visit::*;
 use rustc::mir::*;
-use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
+use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_attr as attr;
-use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::config::Sanitizer;
@@ -29,10 +28,9 @@ pub struct Inline;
 
 #[derive(Copy, Clone, Debug)]
 struct CallSite<'tcx> {
-    callee: DefId,
-    substs: SubstsRef<'tcx>,
+    callee: Instance<'tcx>,
     bb: BasicBlock,
-    location: SourceInfo,
+    source_info: SourceInfo,
 }
 
 impl<'tcx> MirPass<'tcx> for Inline {
@@ -94,35 +92,43 @@ impl Inliner<'tcx> {
             local_change = false;
             while let Some(callsite) = callsites.pop_front() {
                 debug!("checking whether to inline callsite {:?}", callsite);
-                if !self.tcx.is_mir_available(callsite.callee) {
-                    debug!("checking whether to inline callsite {:?} - MIR unavailable", callsite);
-                    continue;
+
+                if let InstanceDef::Item(callee_def_id) = callsite.callee.def {
+                    if !self.tcx.is_mir_available(callee_def_id) {
+                        debug!(
+                            "checking whether to inline callsite {:?} - MIR unavailable",
+                            callsite,
+                        );
+                        continue;
+                    }
                 }
 
                 let self_node_id = self.tcx.hir().as_local_node_id(self.source.def_id()).unwrap();
-                let callee_node_id = self.tcx.hir().as_local_node_id(callsite.callee);
+                let callee_node_id = self.tcx.hir().as_local_node_id(callsite.callee.def_id());
 
                 let callee_body = if let Some(callee_node_id) = callee_node_id {
-                    // Avoid a cycle here by only using `optimized_mir` only if we have
+                    // Avoid a cycle here by only using `instance_mir` only if we have
                     // a lower node id than the callee. This ensures that the callee will
                     // not inline us. This trick only works without incremental compilation.
                     // So don't do it if that is enabled.
                     if !self.tcx.dep_graph.is_fully_enabled()
                         && self_node_id.as_u32() < callee_node_id.as_u32()
                     {
-                        self.tcx.optimized_mir(callsite.callee)
+                        self.tcx.instance_mir(callsite.callee.def)
                     } else {
                         continue;
                     }
                 } else {
                     // This cannot result in a cycle since the callee MIR is from another crate
                     // and is already optimized.
-                    self.tcx.optimized_mir(callsite.callee)
+                    self.tcx.instance_mir(callsite.callee.def)
                 };
+
+                let callee_body: &Body<'tcx> = &*callee_body;
 
                 let callee_body = if self.consider_optimizing(callsite, callee_body) {
                     self.tcx.subst_and_normalize_erasing_regions(
-                        &callsite.substs,
+                        &callsite.callee.substs,
                         param_env,
                         callee_body,
                     )
@@ -183,18 +189,13 @@ impl Inliner<'tcx> {
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { func: ref op, .. } = terminator.kind {
             if let ty::FnDef(callee_def_id, substs) = op.ty(caller_body, self.tcx).kind {
-                let instance = Instance::resolve(self.tcx, param_env, callee_def_id, substs)?;
+                let callee = Instance::resolve(self.tcx, param_env, callee_def_id, substs)?;
 
-                if let InstanceDef::Virtual(..) = instance.def {
+                if let InstanceDef::Virtual(..) | InstanceDef::Intrinsic(_) = callee.def {
                     return None;
                 }
 
-                return Some(CallSite {
-                    callee: instance.def_id(),
-                    substs: instance.substs,
-                    bb,
-                    location: terminator.source_info,
-                });
+                return Some(CallSite { callee, bb, source_info: terminator.source_info });
             }
         }
 
@@ -219,12 +220,7 @@ impl Inliner<'tcx> {
             return false;
         }
 
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee);
-
-        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER) {
-            debug!("`#[track_caller]` present - not inlining");
-            return false;
-        }
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee.def_id());
 
         // Avoid inlining functions marked as no_sanitize if sanitizer is enabled,
         // since instrumentation might be enabled and performed on the caller.
@@ -264,8 +260,8 @@ impl Inliner<'tcx> {
         // Only inline local functions if they would be eligible for cross-crate
         // inlining. This is to ensure that the final crate doesn't have MIR that
         // reference unexported symbols
-        if callsite.callee.is_local() {
-            if callsite.substs.non_erasable_generics().count() == 0 && !hinted {
+        if callsite.callee.def_id().is_local() {
+            if callsite.callee.substs.non_erasable_generics().count() == 0 && !hinted {
                 debug!("    callee is an exported function - not inlining");
                 return false;
             }
@@ -321,7 +317,7 @@ impl Inliner<'tcx> {
                     work_list.push(target);
                     // If the location doesn't actually need dropping, treat it like
                     // a regular goto.
-                    let ty = location.ty(callee_body, tcx).subst(tcx, callsite.substs).ty;
+                    let ty = location.ty(callee_body, tcx).subst(tcx, callsite.callee.substs).ty;
                     if ty.needs_drop(tcx, param_env) {
                         cost += CALL_PENALTY;
                         if let Some(unwind) = unwind {
@@ -371,7 +367,7 @@ impl Inliner<'tcx> {
 
         for v in callee_body.vars_and_temps_iter() {
             let v = &callee_body.local_decls[v];
-            let ty = v.ty.subst(tcx, callsite.substs);
+            let ty = v.ty.subst(tcx, callsite.callee.substs);
             // Cost of the var is the size in machine-words, if we know
             // it.
             if let Some(size) = type_size_of(tcx, param_env, ty) {
@@ -399,7 +395,7 @@ impl Inliner<'tcx> {
         &self,
         callsite: CallSite<'tcx>,
         caller_body: &mut BodyAndCache<'tcx>,
-        mut callee_body: BodyAndCache<'tcx>,
+        mut callee_body: Body<'tcx>,
     ) -> bool {
         let terminator = caller_body[callsite.bb].terminator.take().unwrap();
         match terminator.kind {
@@ -407,21 +403,22 @@ impl Inliner<'tcx> {
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
                 debug!("inlined {:?} into {:?}", callsite.callee, self.source);
 
+                // FIXME(eddyb) replace with a "first inlined local/scope" index,
+                // as they are contiguous.
                 let mut local_map = IndexVec::with_capacity(callee_body.local_decls.len());
                 let mut scope_map = IndexVec::with_capacity(callee_body.source_scopes.len());
 
                 for mut scope in callee_body.source_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
-                        scope.parent_scope = Some(callsite.location.scope);
-                        // FIXME(eddyb) is this really needed?
-                        // (also note that it's always overwritten below)
-                        scope.span = callee_body.span;
-                    }
+                        scope.parent_scope = Some(callsite.source_info.scope);
 
-                    // FIXME(eddyb) this doesn't seem right at all.
-                    // The inlined source scopes should probably be annotated as
-                    // such, but also contain all of the original information.
-                    scope.span = callsite.location.span;
+                        // Mark the outermost callee scope as an inlined one.
+                        assert_eq!(scope.inlined, None);
+                        scope.inlined = Some((callsite.callee, callsite.source_info.span));
+                    } else if scope.inlined_parent_scope.is_none() {
+                        // Make it easy to find the scope with `inlined` set above.
+                        scope.inlined_parent_scope = Some(scope_map[OUTERMOST_SOURCE_SCOPE]);
+                    }
 
                     let idx = caller_body.source_scopes.push(scope);
                     scope_map.push(idx);
@@ -431,7 +428,6 @@ impl Inliner<'tcx> {
                     let mut local = callee_body.local_decls[loc].clone();
 
                     local.source_info.scope = scope_map[local.source_info.scope];
-                    local.source_info.span = callsite.location.span;
 
                     let idx = caller_body.local_decls.push(local);
                     local_map.push(idx);
@@ -463,13 +459,13 @@ impl Inliner<'tcx> {
 
                     let ty = dest.ty(&**caller_body, self.tcx);
 
-                    let temp = LocalDecl::new_temp(ty, callsite.location.span);
+                    let temp = LocalDecl::new_temp(ty, callsite.source_info.span);
 
                     let tmp = caller_body.local_decls.push(temp);
                     let tmp = Place::from(tmp);
 
                     let stmt = Statement {
-                        source_info: callsite.location,
+                        source_info: callsite.source_info,
                         kind: StatementKind::Assign(box (tmp, dest)),
                     };
                     caller_body[callsite.bb].statements.push(stmt);
@@ -501,13 +497,20 @@ impl Inliner<'tcx> {
                     caller_body.var_debug_info.push(var_debug_info);
                 }
 
+                // HACK(eddyb) work around the `basic_blocks` field of `mir::Body`
+                // being private, due to `BodyAndCache` implementing `DerefMut`
+                // to `mir::Body` (which would allow bypassing `basic_blocks_mut`).
+                // The only way to make `basic_blocks` public again would be to
+                // remove that `DerefMut` impl and add more `*_mut` accessors.
+                let mut callee_body = BodyAndCache::new(callee_body);
+
                 for (bb, mut block) in callee_body.basic_blocks_mut().drain_enumerated(..) {
                     integrator.visit_basic_block_data(bb, &mut block);
                     caller_body.basic_blocks_mut().push(block);
                 }
 
                 let terminator = Terminator {
-                    source_info: callsite.location,
+                    source_info: callsite.source_info,
                     kind: TerminatorKind::Goto { target: BasicBlock::new(bb_len) },
                 };
 
@@ -554,7 +557,9 @@ impl Inliner<'tcx> {
         //     tmp2 = tuple_tmp.2
         //
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
-        if tcx.is_closure(callsite.callee) {
+        // FIXME(eddyb) make this check for `"rust-call"` ABI combined with
+        // `callee_body.spread_arg == None`, instead of special-casing closures.
+        if tcx.is_closure(callsite.callee.def_id()) {
             let mut args = args.into_iter();
             let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
             let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
@@ -614,11 +619,11 @@ impl Inliner<'tcx> {
 
         let ty = arg.ty(&**caller_body, self.tcx);
 
-        let arg_tmp = LocalDecl::new_temp(ty, callsite.location.span);
+        let arg_tmp = LocalDecl::new_temp(ty, callsite.source_info.span);
         let arg_tmp = caller_body.local_decls.push(arg_tmp);
 
         let stmt = Statement {
-            source_info: callsite.location,
+            source_info: callsite.source_info,
             kind: StatementKind::Assign(box (Place::from(arg_tmp), arg)),
         };
         caller_body[callsite.bb].statements.push(stmt);
@@ -642,9 +647,12 @@ fn type_size_of<'tcx>(
  * stuff.
 */
 struct Integrator<'a, 'tcx> {
+    // FIXME(eddyb) replace this with a `RangeFrom<BasicBlock>`.
     block_idx: usize,
     args: &'a [Local],
+    // FIXME(eddyb) replace this with a `RangeFrom<Local>`.
     local_map: IndexVec<Local, Local>,
+    // FIXME(eddyb) replace this with a `RangeFrom<SourceScope>`.
     scope_map: IndexVec<SourceScope, SourceScope>,
     destination: Place<'tcx>,
     return_block: BasicBlock,

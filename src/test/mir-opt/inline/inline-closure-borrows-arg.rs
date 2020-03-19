@@ -30,7 +30,7 @@ fn foo<T: Copy>(_t: T, q: &i32) -> i32 {
 //     let mut _9: &i32;
 //     scope 1 {
 //         debug x => _3;
-//         scope 2 {
+//         scope 2 (inlined foo::<T>::{{closure}}#0) {
 //             debug r => _8;
 //             debug _s => _9;
 //         }
