@@ -3,6 +3,7 @@ use super::{ConstEvalResult, ErrorHandled, GlobalId};
 use crate::mir;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::{self, TyCtxt};
+use crate::ty::fold::TypeFoldable;
 use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 
@@ -18,7 +19,13 @@ impl<'tcx> TyCtxt<'tcx> {
         let substs = InternalSubsts::identity_for_item(self, def_id);
         let instance = ty::Instance::new(def_id, substs);
         let cid = GlobalId { instance, promoted: None };
-        let param_env = self.param_env(def_id).with_reveal_all();
+        let needs_subst = instance.needs_subst();
+        let param_env = if needs_subst {
+            self.param_env(def_id)
+        } else {
+            self.param_env(def_id).with_reveal_all()
+        };
+        debug!("const_eval_poly: needs_subst = {:?}. param_env = {:?}", needs_subst, param_env);
         self.const_eval_global_id(param_env, cid, None)
     }
 
