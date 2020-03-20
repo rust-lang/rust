@@ -15,5 +15,13 @@ if isWindows && isAzurePipelines; then
 elif isLinux && isGitHubActions; then
     sudo mkdir -p /mnt/more-space
     sudo chown -R "$(whoami):" /mnt/more-space
-    ln -s /mnt/more-space obj
+
+    # Switch the whole workspace to the /mnt partition, which has more space.
+    # We don't just symlink the `obj` directory as doing that creates problems
+    # with the docker container.
+    current_dir="$(readlink -f "$(pwd)")"
+    cd /tmp
+    mv "${current_dir}" /mnt/more-space/workspace
+    ln -s /mnt/more-space/workspace "${current_dir}"
+    cd "${current_dir}"
 fi
