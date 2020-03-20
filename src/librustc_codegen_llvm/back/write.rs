@@ -732,7 +732,9 @@ pub(crate) unsafe fn codegen(
             })?;
         }
 
-        if config.emit_asm || (config.emit_obj && config.no_integrated_as) {
+        let config_emit_normal_obj = config.emit_obj && !config.obj_is_bitcode;
+
+        if config.emit_asm || (config_emit_normal_obj && config.no_integrated_as) {
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg("LLVM_module_codegen_emit_asm", &module.name[..]);
@@ -747,7 +749,7 @@ pub(crate) unsafe fn codegen(
             })?;
         }
 
-        if config.emit_obj && !config.obj_is_bitcode && !config.no_integrated_as {
+        if config_emit_normal_obj && !config.no_integrated_as {
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
@@ -761,7 +763,7 @@ pub(crate) unsafe fn codegen(
                     llvm::FileType::ObjectFile,
                 )
             })?;
-        } else if config.emit_obj && config.no_integrated_as {
+        } else if config_emit_normal_obj && config.no_integrated_as {
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg("LLVM_module_codegen_asm_to_obj", &module.name[..]);
