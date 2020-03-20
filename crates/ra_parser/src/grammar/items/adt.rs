@@ -83,11 +83,13 @@ pub(crate) fn enum_variant_list(p: &mut Parser) {
             match p.current() {
                 T!['{'] => record_field_def_list(p),
                 T!['('] => tuple_field_def_list(p),
-                T![=] => {
-                    p.bump(T![=]);
-                    expressions::expr(p);
-                }
                 _ => (),
+            }
+
+            // test variant_discriminant
+            // enum E { X(i32) = 10 }
+            if p.eat(T![=]) {
+                expressions::expr(p);
             }
             var.complete(p, ENUM_VARIANT);
         } else {
