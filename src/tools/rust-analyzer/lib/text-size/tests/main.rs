@@ -37,23 +37,26 @@ fn contains() {
 }
 
 #[test]
-fn intersection() {
-    assert_eq!(
-        TextRange::intersection(range(1..2), range(2..3)),
-        Some(range(2..2))
-    );
-    assert_eq!(
-        TextRange::intersection(range(1..5), range(2..3)),
-        Some(range(2..3))
-    );
-    assert_eq!(TextRange::intersection(range(1..2), range(3..4)), None);
+fn intersect() {
+    assert_eq!(range(1..2).intersect(range(2..3)), Some(range(2..2)));
+    assert_eq!(range(1..5).intersect(range(2..3)), Some(range(2..3)));
+    assert_eq!(range(1..2).intersect(range(3..4)), None);
 }
 
 #[test]
-fn covering() {
-    assert_eq!(TextRange::covering(range(1..2), range(2..3)), range(1..3));
-    assert_eq!(TextRange::covering(range(1..5), range(2..3)), range(1..5));
-    assert_eq!(TextRange::covering(range(1..2), range(4..5)), range(1..5));
+fn cover() {
+    assert_eq!(range(1..2).cover(range(2..3)), range(1..3));
+    assert_eq!(range(1..5).cover(range(2..3)), range(1..5));
+    assert_eq!(range(1..2).cover(range(4..5)), range(1..5));
+}
+
+#[test]
+fn cover_offset() {
+    assert_eq!(range(1..3).cover_offset(size(0)), range(0..3));
+    assert_eq!(range(1..3).cover_offset(size(1)), range(1..3));
+    assert_eq!(range(1..3).cover_offset(size(2)), range(1..3));
+    assert_eq!(range(1..3).cover_offset(size(3)), range(1..3));
+    assert_eq!(range(1..3).cover_offset(size(4)), range(1..4));
 }
 
 #[test]
