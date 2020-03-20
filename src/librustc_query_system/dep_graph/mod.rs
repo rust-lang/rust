@@ -76,14 +76,6 @@ pub trait DepKind: Copy + fmt::Debug + Eq + Ord + Hash {
     /// Implementation of `std::fmt::Debug` for `DepNode`.
     fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
-    /// Assert the current implicit context does not track any dependency.
-    fn assert_ignored();
-
-    /// Execute the operation ignoring the dependencies.
-    fn with_ignore_deps<OP, R>(op: OP) -> R
-    where
-        OP: FnOnce() -> R;
-
     /// Execute the operation with provided dependencies.
     fn with_deps<OP, R>(deps: Option<&Lock<TaskDeps<Self>>>, op: OP) -> R
     where

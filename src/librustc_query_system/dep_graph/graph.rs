@@ -151,7 +151,9 @@ impl<K: DepKind> DepGraph<K> {
 
     pub fn assert_ignored(&self) {
         if let Some(..) = self.data {
-            K::assert_ignored();
+            K::read_deps(|task_deps| {
+                assert!(task_deps.is_none(), "expected no task dependency tracking");
+            })
         }
     }
 
@@ -159,7 +161,7 @@ impl<K: DepKind> DepGraph<K> {
     where
         OP: FnOnce() -> R,
     {
-        K::with_ignore_deps(op)
+        K::with_deps(None, op)
     }
 
     /// Starts a new dep-graph task. Dep-graph tasks are specified

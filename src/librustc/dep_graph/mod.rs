@@ -62,24 +62,6 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
         write!(f, ")")
     }
 
-    fn assert_ignored() {
-        ty::tls::with_context_opt(|icx| {
-            let icx = if let Some(icx) = icx { icx } else { return };
-            assert!(icx.task_deps.is_none(), "expected no task dependency tracking");
-        })
-    }
-
-    fn with_ignore_deps<OP, R>(op: OP) -> R
-    where
-        OP: FnOnce() -> R,
-    {
-        ty::tls::with_context(|icx| {
-            let icx = ty::tls::ImplicitCtxt { task_deps: None, ..icx.clone() };
-
-            ty::tls::enter_context(&icx, |_| op())
-        })
-    }
-
     fn with_deps<OP, R>(task_deps: Option<&Lock<TaskDeps>>, op: OP) -> R
     where
         OP: FnOnce() -> R,
