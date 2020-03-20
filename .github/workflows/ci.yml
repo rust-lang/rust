@@ -746,7 +746,7 @@ jobs:
   try-success:
     needs:
       - try
-    if: success()
+    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'"
     steps:
       - name: mark the job as a success
         run: exit 0
@@ -755,7 +755,7 @@ jobs:
   try-failure:
     needs:
       - try
-    if: "!success()"
+    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'"
     steps:
       - name: mark the job as a failure
         run: exit 1
@@ -764,7 +764,7 @@ jobs:
   auto-success:
     needs:
       - auto
-    if: success()
+    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
     steps:
       - name: mark the job as a success
         run: exit 0
@@ -773,7 +773,7 @@ jobs:
   auto-failure:
     needs:
       - auto
-    if: "!success()"
+    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
     steps:
       - name: mark the job as a failure
         run: exit 1

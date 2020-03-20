@@ -221,14 +221,12 @@ x--expand-yaml-anchors--remove:
     runs-on: ubuntu-latest
 
   - &base-success-job
-    if: success()
     steps:
       - name: mark the job as a success
         run: exit 0
     <<: *base-outcome-job
 
   - &base-failure-job
-    if: "!success()"
     steps:
       - name: mark the job as a failure
         run: exit 1
@@ -695,13 +693,17 @@ jobs:
   # successful listening to webhooks only.
   try-success:
     needs: [try]
+    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'"
     <<: *base-success-job
   try-failure:
     needs: [try]
+    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'"
     <<: *base-failure-job
   auto-success:
     needs: [auto]
+    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
     <<: *base-success-job
   auto-failure:
     needs: [auto]
+    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
     <<: *base-failure-job
