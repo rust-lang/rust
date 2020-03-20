@@ -110,10 +110,6 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         TyCtxt::create_stable_hashing_context(*self)
     }
 
-    fn force_from_dep_node(&self, node: &DepNode) -> bool {
-        ty::query::force_from_dep_node(*self, node)
-    }
-
     /// Extracts the DefId corresponding to this DepNode. This will work
     /// if two conditions are met:
     ///
@@ -133,7 +129,7 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         }
     }
 
-    fn ensure_node_can_be_forced(&self, dep_dep_node: &DepNode) -> Option<()> {
+    fn try_force_previous_green(&self, dep_dep_node: &DepNode) -> bool {
         // FIXME: This match is just a workaround for incremental bugs and should
         // be removed. https://github.com/rust-lang/rust/issues/62649 is one such
         // bug that must be fixed before removing this.
@@ -162,12 +158,12 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
                         // Since the given `DefPath` does not
                         // denote the item that previously
                         // existed, we just fail to mark green.
-                        return None;
+                        return false;
                     }
                 } else {
                     // If the node does not exist anymore, we
                     // just fail to mark green.
-                    return None;
+                    return false;
                 }
             }
             _ => {
@@ -175,7 +171,9 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
                 // forced.
             }
         }
-        Some(())
+
+        debug!("try_force_previous_green({:?}) --- trying to force", dep_dep_node);
+        ty::query::force_from_dep_node(*self, dep_dep_node)
     }
 
     fn has_errors_or_delayed_span_bugs(&self) -> bool {

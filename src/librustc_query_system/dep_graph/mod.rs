@@ -31,8 +31,8 @@ pub trait DepContext: Copy {
     /// Create a hashing context for hashing new results.
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext;
 
-    /// Force the execution of a query given the associated `DepNode`.
-    fn force_from_dep_node(&self, node: &DepNode<Self::DepKind>) -> bool;
+    /// Try to force a dep node to execute and see if it's green.
+    fn try_force_previous_green(&self, node: &DepNode<Self::DepKind>) -> bool;
 
     /// Extracts the DefId corresponding to this DepNode. This will work
     /// if two conditions are met:
@@ -45,9 +45,6 @@ pub trait DepContext: Copy {
     /// refers to something from the previous compilation session that
     /// has been removed.
     fn extract_def_id(&self, node: &DepNode<Self::DepKind>) -> Option<DefId>;
-
-    /// Check the legality of forcing this node.
-    fn ensure_node_can_be_forced(&self, dep_dep_node: &DepNode<Self::DepKind>) -> Option<()>;
 
     /// Return whether the current session is tainted by errors.
     fn has_errors_or_delayed_span_bugs(&self) -> bool;

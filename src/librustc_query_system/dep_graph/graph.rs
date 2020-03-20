@@ -635,8 +635,6 @@ impl<K: DepKind> DepGraph<K> {
                             current_deps.push(node_index);
                             continue;
                         }
-                    } else {
-                        tcx.ensure_node_can_be_forced(dep_dep_node)?;
                     }
 
                     // We failed to mark it green, so we try to force the query.
@@ -645,7 +643,7 @@ impl<K: DepKind> DepGraph<K> {
                             dependency {:?}",
                         dep_node, dep_dep_node
                     );
-                    if tcx.force_from_dep_node(dep_dep_node) {
+                    if tcx.try_force_previous_green(dep_dep_node) {
                         let dep_dep_node_color = data.colors.get(dep_dep_node_index);
 
                         match dep_dep_node_color {
