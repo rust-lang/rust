@@ -56,7 +56,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
 
         self.return_to_block(ret.map(|r| r.1))?;
         self.dump_place(*dest);
-        return Ok(true);
+        Ok(true)
     }
 
     /// "Intercept" a function call to a panic-related function

@@ -595,7 +595,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         }
 
         // if we made it through that loop above, we made progress!
-        return true;
+        true
     }
 
     fn nominal_obligations(

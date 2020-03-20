@@ -136,7 +136,7 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
         } else {
             // Fast path for the common case.
             self.relate(a.skip_binder(), b.skip_binder())?;
-            return Ok(a.clone());
+            Ok(a.clone())
         }
     }
 }

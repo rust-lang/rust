@@ -132,7 +132,6 @@ where
         }
         Err(err) => {
             sess.err(&format!("failed to write dep-graph to `{}`: {}", path_buf.display(), err));
-            return;
         }
     }
 }

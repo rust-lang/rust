@@ -43,8 +43,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
             ..
         })
         | Node::TraitItem(hir::TraitItem {
-            kind:
-                hir::TraitItemKind::Fn(hir::FnSig { decl, .. }, hir::TraitFn::Provided(body_id)),
+            kind: hir::TraitItemKind::Fn(hir::FnSig { decl, .. }, hir::TraitFn::Provided(body_id)),
             ..
         }) => (*body_id, decl.output.span()),
         Node::Item(hir::Item { kind: hir::ItemKind::Static(ty, _, body_id), .. })
@@ -368,7 +367,7 @@ impl BlockContext {
             }
         }
 
-        return None;
+        None
     }
 
     /// Looks at the topmost frame on the BlockContext and reports

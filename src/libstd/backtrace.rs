@@ -250,7 +250,7 @@ impl Backtrace {
             },
         };
         ENABLED.store(enabled as usize + 1, SeqCst);
-        return enabled;
+        enabled
     }
 
     /// Capture a stack backtrace of the current thread.

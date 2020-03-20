@@ -1423,7 +1423,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                 Some(_) | None => false,
             }
         } else {
-            return false;
+            false
         }
     }
 
@@ -1837,7 +1837,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
             && self.tcx.is_private_dep(item_id.krate);
 
         log::debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
-        return ret;
+        ret
     }
 }
 

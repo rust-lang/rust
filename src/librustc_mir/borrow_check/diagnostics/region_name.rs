@@ -500,7 +500,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             }
         }
 
-        return None;
+        None
     }
 
     /// We've found an enum/struct/union type with the substitutions

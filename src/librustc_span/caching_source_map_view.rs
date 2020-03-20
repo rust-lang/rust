@@ -99,10 +99,6 @@ impl<'sm> CachingSourceMapView<'sm> {
         cache_entry.line_end = line_bounds.1;
         cache_entry.time_stamp = self.time_stamp;
 
-        return Some((
-            cache_entry.file.clone(),
-            cache_entry.line_number,
-            pos - cache_entry.line_start,
-        ));
+        Some((cache_entry.file.clone(), cache_entry.line_number, pos - cache_entry.line_start))
     }
 }

@@ -98,7 +98,7 @@ fn mirror_stmts<'a, 'tcx>(
             }
         }
     }
-    return result;
+    result
 }
 
 crate fn to_expr_ref<'a, 'tcx>(

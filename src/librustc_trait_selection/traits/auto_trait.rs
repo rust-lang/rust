@@ -113,7 +113,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             return AutoTraitResult::ExplicitImpl;
         }
 
-        return tcx.infer_ctxt().enter(|infcx| {
+        tcx.infer_ctxt().enter(|infcx| {
             let mut fresh_preds = FxHashSet::default();
 
             // Due to the way projections are handled by SelectionContext, we need to run
@@ -219,8 +219,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
             let info = AutoTraitInfo { full_user_env, region_data, vid_to_region };
 
-            return AutoTraitResult::PositiveImpl(auto_trait_callback(&infcx, info));
-        });
+            AutoTraitResult::PositiveImpl(auto_trait_callback(&infcx, info))
+        })
     }
 }
 
@@ -384,7 +384,7 @@ impl AutoTraitFinder<'tcx> {
             ty, trait_did, new_env, final_user_env
         );
 
-        return Some((new_env, final_user_env));
+        Some((new_env, final_user_env))
     }
 
     /// This method is designed to work around the following issue:
@@ -492,7 +492,7 @@ impl AutoTraitFinder<'tcx> {
                 }
                 _ => {}
             }
-            return true;
+            true
         });
 
         if should_add_new {
@@ -591,15 +591,15 @@ impl AutoTraitFinder<'tcx> {
     }
 
     fn is_param_no_infer(&self, substs: SubstsRef<'_>) -> bool {
-        return self.is_of_param(substs.type_at(0)) && !substs.types().any(|t| t.has_infer_types());
+        self.is_of_param(substs.type_at(0)) && !substs.types().any(|t| t.has_infer_types())
     }
 
     pub fn is_of_param(&self, ty: Ty<'_>) -> bool {
-        return match ty.kind {
+        match ty.kind {
             ty::Param(_) => true,
             ty::Projection(p) => self.is_of_param(p.self_ty()),
             _ => false,
-        };
+        }
     }
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
@@ -804,7 +804,7 @@ impl AutoTraitFinder<'tcx> {
                 _ => panic!("Unexpected predicate {:?} {:?}", ty, predicate),
             };
         }
-        return true;
+        true
     }
 
     pub fn clean_pred(
