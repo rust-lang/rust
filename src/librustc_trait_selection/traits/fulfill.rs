@@ -73,7 +73,10 @@ pub struct FulfillmentContext<'tcx> {
 #[derive(Clone, Debug)]
 pub struct PendingPredicateObligation<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
-    pub stalled_on: Vec<ty::InferTy>,
+    // FIXME(eddyb) look into whether this could be a `SmallVec`.
+    // Judging by the comment in `process_obligation`, the 1-element
+    // case is common so this could be a `SmallVec<[_; 1]>`.
+    pub stalled_on: Vec<Ty<'tcx>>,
 }
 
 // `PendingPredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -266,8 +269,13 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             // Match arms are in order of frequency, which matters because this
             // code is so hot. 1 and 0 dominate; 2+ is fairly rare.
             1 => {
-                let infer = pending_obligation.stalled_on[0];
-                ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(infer)
+                let unresolved = pending_obligation.stalled_on[0];
+                match unresolved.kind {
+                    ty::Infer(infer) => {
+                        ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(infer)
+                    }
+                    _ => unreachable!(),
+                }
             }
             0 => {
                 // In this case we haven't changed, but wish to make a change.
@@ -277,9 +285,16 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 // This `for` loop was once a call to `all()`, but this lower-level
                 // form was a perf win. See #64545 for details.
                 (|| {
-                    for &infer in &pending_obligation.stalled_on {
-                        if ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(infer) {
-                            return true;
+                    for &unresolved in &pending_obligation.stalled_on {
+                        match unresolved.kind {
+                            ty::Infer(infer) => {
+                                if ShallowResolver::new(self.selcx.infcx())
+                                    .shallow_resolve_changed(infer)
+                                {
+                                    return true;
+                                }
+                            }
+                            _ => unreachable!(),
                         }
                     }
                     false
@@ -308,13 +323,6 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         }
 
         debug!("process_obligation: obligation = {:?} cause = {:?}", obligation, obligation.cause);
-
-        fn infer_ty(ty: Ty<'tcx>) -> ty::InferTy {
-            match ty.kind {
-                ty::Infer(infer) => infer,
-                _ => panic!(),
-            }
-        }
 
         match obligation.predicate {
             ty::Predicate::Trait(ref data, _) => {
@@ -351,7 +359,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         // trait selection is because we don't have enough
                         // information about the types in the trait.
                         pending_obligation.stalled_on =
-                            trait_ref_type_vars(self.selcx, data.to_poly_trait_ref());
+                            trait_ref_infer_vars(self.selcx, data.to_poly_trait_ref());
 
                         debug!(
                             "process_predicate: pending obligation {:?} now stalled on {:?}",
@@ -429,7 +437,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     Ok(None) => {
                         let tcx = self.selcx.tcx();
                         pending_obligation.stalled_on =
-                            trait_ref_type_vars(self.selcx, data.to_poly_trait_ref(tcx));
+                            trait_ref_infer_vars(self.selcx, data.to_poly_trait_ref(tcx));
                         ProcessResult::Unchanged
                     }
                     Ok(Some(os)) => ProcessResult::Changed(mk_pending(os)),
@@ -467,7 +475,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     obligation.cause.span,
                 ) {
                     None => {
-                        pending_obligation.stalled_on = vec![infer_ty(ty)];
+                        assert!(matches!(ty.kind, ty::Infer(_)));
+                        pending_obligation.stalled_on = vec![ty];
                         ProcessResult::Unchanged
                     }
                     Some(os) => ProcessResult::Changed(mk_pending(os)),
@@ -482,10 +491,10 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 ) {
                     None => {
                         // None means that both are unresolved.
-                        pending_obligation.stalled_on = vec![
-                            infer_ty(subtype.skip_binder().a),
-                            infer_ty(subtype.skip_binder().b),
-                        ];
+                        assert!(matches!(subtype.skip_binder().a.kind, ty::Infer(_)));
+                        assert!(matches!(subtype.skip_binder().b.kind, ty::Infer(_)));
+                        pending_obligation.stalled_on =
+                            vec![subtype.skip_binder().a, subtype.skip_binder().b];
                         ProcessResult::Unchanged
                     }
                     Some(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
@@ -534,20 +543,19 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     }
 }
 
-/// Returns the set of type variables contained in a trait ref
-fn trait_ref_type_vars<'a, 'tcx>(
+/// Returns the set of inference variables contained in a trait ref.
+fn trait_ref_infer_vars<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
-    t: ty::PolyTraitRef<'tcx>,
-) -> Vec<ty::InferTy> {
-    t.skip_binder() // ok b/c this check doesn't care about regions
+    ty: ty::PolyTraitRef<'tcx>,
+) -> Vec<Ty<'tcx>> {
+    ty.skip_binder() // ok b/c this check doesn't care about regions
         .input_types()
-        .map(|t| selcx.infcx().resolve_vars_if_possible(&t))
-        .filter(|t| t.has_infer_types())
-        .flat_map(|t| t.walk())
-        .filter_map(|t| match t.kind {
-            ty::Infer(infer) => Some(infer),
-            _ => None,
-        })
+        .map(|ty| selcx.infcx().resolve_vars_if_possible(&ty))
+        // FIXME(eddyb) try using `maybe_walk` to skip *all* subtrees that
+        // don't contain inference variables, not just the outermost level.
+        .filter(|ty| ty.has_infer_types())
+        .flat_map(|ty| ty.walk())
+        .filter(|ty| matches!(ty.kind, ty::Infer(_)))
         .collect()
 }
 
