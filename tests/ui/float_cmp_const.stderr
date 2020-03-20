@@ -83,5 +83,17 @@ note: `f32::EPSILON` and `f64::EPSILON` are available.
 LL |     v != ONE;
    |     ^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: strict comparison of `f32` or `f64` constant
+  --> $DIR/float_cmp_const.rs:61:5
+   |
+LL |     NON_ZERO_ARRAY == NON_ZERO_ARRAY2;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `std::f32::EPSILON` and `std::f64::EPSILON` are available.
+  --> $DIR/float_cmp_const.rs:61:5
+   |
+LL |     NON_ZERO_ARRAY == NON_ZERO_ARRAY2;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
 
