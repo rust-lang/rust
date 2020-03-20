@@ -87,6 +87,8 @@ impl Buf {
         // Safety: Slice is just a wrapper for Wtf8,
         // and self.inner.as_mut_slice() returns &mut Wtf8.
         // Therefore, transmuting &mut Wtf8 to &mut Slice is safe.
+        // Additionally, care should be taken to ensure the slice
+        // is always valid Wtf8.
         unsafe { mem::transmute(self.inner.as_mut_slice()) }
     }
 

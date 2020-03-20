@@ -534,6 +534,8 @@ impl OsStr {
     fn from_inner_mut(inner: &mut Slice) -> &mut OsStr {
         // Safety: OsStr is just a wrapper of Slice,
         // therefore converting &mut Slice to &mut OsStr is safe.
+        // Any method that mutates OsStr must be careful not to
+        // break platform-specific encoding, in particular Wtf8 on Windows.
         unsafe { &mut *(inner as *mut Slice as *mut OsStr) }
     }
 
