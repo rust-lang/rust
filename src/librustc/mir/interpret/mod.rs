@@ -49,7 +49,7 @@ macro_rules! err_exhaust {
 // In the `throw_*` macros, avoid `return` to make them work with `try {}`.
 #[macro_export]
 macro_rules! throw_unsup {
-    ($($tt:tt)*) => { Err(err_unsup!($($tt)*))? };
+    ($($tt:tt)*) => { Err::<!, _>(err_unsup!($($tt)*))? };
 }
 
 #[macro_export]
@@ -59,12 +59,12 @@ macro_rules! throw_unsup_format {
 
 #[macro_export]
 macro_rules! throw_inval {
-    ($($tt:tt)*) => { Err(err_inval!($($tt)*))? };
+    ($($tt:tt)*) => { Err::<!, _>(err_inval!($($tt)*))? };
 }
 
 #[macro_export]
 macro_rules! throw_ub {
-    ($($tt:tt)*) => { Err(err_ub!($($tt)*))? };
+    ($($tt:tt)*) => { Err::<!, _>(err_ub!($($tt)*))? };
 }
 
 #[macro_export]
@@ -74,13 +74,13 @@ macro_rules! throw_ub_format {
 
 #[macro_export]
 macro_rules! throw_exhaust {
-    ($($tt:tt)*) => { Err(err_exhaust!($($tt)*))? };
+    ($($tt:tt)*) => { Err::<!, _>(err_exhaust!($($tt)*))? };
 }
 
 #[macro_export]
 macro_rules! throw_machine_stop {
     ($($tt:tt)*) => {
-        Err($crate::mir::interpret::InterpError::MachineStop(Box::new($($tt)*)))?
+        Err::<!, _>($crate::mir::interpret::InterpError::MachineStop(Box::new($($tt)*)))?
     };
 }
 
