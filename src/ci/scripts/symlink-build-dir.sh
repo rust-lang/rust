@@ -1,8 +1,8 @@
 #!/bin/bash
-# We've had issues with the default drive in use running out of space during a
-# build, and it looks like the `C:` drive has more space than the default `D:`
-# drive. We should probably confirm this with the azure pipelines team at some
-# point, but this seems to fix our "disk space full" problems.
+# We've had multiple issues with the default disk running out of disk space
+# during builds, and it looks like other disks mounted in the VMs have more
+# space available. This script synlinks the build directory to those other
+# disks, in the CI providers and OSes affected by this.
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -12,4 +12,8 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 if isWindows && isAzurePipelines; then
     cmd //c "mkdir c:\\MORE_SPACE"
     cmd //c "mklink /J build c:\\MORE_SPACE"
+elif isLinux && isGitHubActions; then
+    sudo mkdir -p /mnt/more-space
+    sudo chown -R "$(whoami):" /mnt/more-space
+    ln -s /mnt/more-space obj
 fi
