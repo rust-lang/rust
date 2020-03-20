@@ -11,3 +11,5 @@
 extern crate transitive_dep_two;
 
 transitive_dep_two::parse_error!(); //~ ERROR expected one of
+
+fn main() {}
