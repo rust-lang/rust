@@ -29,8 +29,8 @@ program, and cannot run all programs:
   positives here, so if you program runs fine in Miri right now that is by no
   means a guarantee that it is UB-free when these questions get answered.
 
-    In particular, Miri does currently not check that integers are initialized
-  or that references point to valid data.
+    In particular, Miri does currently not check that integers/floats are
+  initialized or that references point to valid data.
 * If the program relies on unspecified details of how data is laid out, it will
   still run fine in Miri -- but might break (including causing UB) on different
   compiler versions or different platforms.
@@ -243,6 +243,7 @@ Definite bugs found:
 * [The Unix allocator calling `posix_memalign` in an invalid way](https://github.com/rust-lang/rust/issues/62251)
 * [`getrandom` calling the `getrandom` syscall in an invalid way](https://github.com/rust-random/getrandom/pull/73)
 * [`Vec`](https://github.com/rust-lang/rust/issues/69770) and [`BTreeMap`](https://github.com/rust-lang/rust/issues/69769) leaking memory under some (panicky) conditions
+* [Memory leak in `beef`](https://github.com/maciejhirsz/beef/issues/12)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
@@ -251,6 +252,7 @@ Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows 
 * [`LinkedList` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/60072)
 * [`Vec::push` invalidating existing references into the vector](https://github.com/rust-lang/rust/issues/60847)
 * [`align_to_mut` violating uniqueness of mutable references](https://github.com/rust-lang/rust/issues/68549)
+* [Aliasing mutable references in `sized-chunks`](https://github.com/bodil/sized-chunks/issues/8)
 
 ## License
 
