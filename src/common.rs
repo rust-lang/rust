@@ -221,23 +221,23 @@ pub fn type_min_max_value(ty: Type, signed: bool) -> (i64, i64) {
         (types::I8, false) | (types::I16, false) | (types::I32, false) | (types::I64, false) => {
             0i64
         }
-        (types::I8, true) => i8::min_value() as i64,
-        (types::I16, true) => i16::min_value() as i64,
-        (types::I32, true) => i32::min_value() as i64,
-        (types::I64, true) => i64::min_value(),
+        (types::I8, true) => i8::MIN as i64,
+        (types::I16, true) => i16::MIN as i64,
+        (types::I32, true) => i32::MIN as i64,
+        (types::I64, true) => i64::MIN,
         (types::I128, _) => unimplemented!(),
         _ => unreachable!(),
     };
 
     let max = match (ty, signed) {
-        (types::I8, false) => u8::max_value() as i64,
-        (types::I16, false) => u16::max_value() as i64,
-        (types::I32, false) => u32::max_value() as i64,
-        (types::I64, false) => u64::max_value() as i64,
-        (types::I8, true) => i8::max_value() as i64,
-        (types::I16, true) => i16::max_value() as i64,
-        (types::I32, true) => i32::max_value() as i64,
-        (types::I64, true) => i64::max_value(),
+        (types::I8, false) => u8::MAX as i64,
+        (types::I16, false) => u16::MAX as i64,
+        (types::I32, false) => u32::MAX as i64,
+        (types::I64, false) => u64::MAX as i64,
+        (types::I8, true) => i8::MAX as i64,
+        (types::I16, true) => i16::MAX as i64,
+        (types::I32, true) => i32::MAX as i64,
+        (types::I64, true) => i64::MAX,
         (types::I128, _) => unimplemented!(),
         _ => unreachable!(),
     };

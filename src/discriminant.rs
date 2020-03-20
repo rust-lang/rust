@@ -119,7 +119,7 @@ pub fn codegen_get_discriminant<'tcx>(
             let relative_discr = if niche_start == 0 {
                 encoded_discr
             } else {
-                // FIXME handle niche_start > i64::max_value()
+                // FIXME handle niche_start > i64::MAX
                 fx.bcx
                     .ins()
                     .iadd_imm(encoded_discr, -i64::try_from(niche_start).unwrap())

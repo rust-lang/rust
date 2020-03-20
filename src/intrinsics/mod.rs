@@ -227,7 +227,7 @@ fn bool_to_zero_or_max_uint<'tcx>(
     let max = fx
         .bcx
         .ins()
-        .iconst(int_ty, (u64::max_value() >> (64 - int_ty.bits())) as i64);
+        .iconst(int_ty, (u64::MAX >> (64 - int_ty.bits())) as i64);
     let mut res = fx.bcx.ins().select(val, max, zero);
 
     if ty.is_float() {

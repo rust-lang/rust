@@ -108,7 +108,7 @@ pub fn maybe_codegen<'tcx>(
                     }
                     (BinOp::Shr, true) => {
                         let sign = fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, lhs_msb, 0);
-                        let all_ones = fx.bcx.ins().iconst(types::I64, u64::max_value() as i64);
+                        let all_ones = fx.bcx.ins().iconst(types::I64, u64::MAX as i64);
                         let all_sign_bits = fx.bcx.ins().select(sign, all_zeros, all_ones);
 
                         let val = fx.bcx.ins().iconcat(lhs_msb, all_sign_bits);
