@@ -95,12 +95,6 @@ $ cargo xtask install
 ----
 
 You'll need Cargo, nodejs and npm for this.
-To make VS Code use the freshly built server, add this to the settings:
-
-[source,json]
-----
-{ "rust-analyzer.serverPath": "rust-analyzer" }
-----
 
 Note that installing via `xtask install` does not work for VS Code Remote, instead you'll need to install the `.vsix` manually.
 

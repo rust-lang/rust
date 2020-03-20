@@ -6,7 +6,7 @@
     "private": true,
     "icon": "icon.png",
     "version": "0.4.0-dev",
-    "releaseTag": "nightly",
+    "releaseTag": null,
     "publisher": "matklad",
     "repository": {
         "url": "https://github.com/rust-analyzer/rust-analyzer.git",
