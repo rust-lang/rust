@@ -23,7 +23,7 @@ Thanks! <3
 label = "ICEBreaker-LLVM"
 
 [ping.icebreakers-cleanup-crew]
-alias = ["cleanup", "cleanups", "shrink", "reduce", "bisect"]
+alias = ["cleanup", "cleanups", "cleanup-crew", "shrink", "reduce", "bisect"]
 message = """\
 Hey Cleanup Crew ICE-breakers! This bug has been identified as a good
 "Cleanup ICE-breaking candidate". In case it's useful, here are some
