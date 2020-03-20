@@ -355,7 +355,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let base = match op.try_as_mplace(self) {
             Ok(mplace) => {
-                // The easy case
+                // We can reuse the mplace field computation logic for indirect operands.
                 let field = self.mplace_field(mplace, field)?;
                 return Ok(field.into());
             }
@@ -490,7 +490,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Copy(ref place) | Move(ref place) => self.eval_place_to_op(place, layout)?,
 
             Constant(ref constant) => {
-                let val = self.subst_from_frame_and_normalize_erasing_regions(constant.literal);
+                let val =
+                    self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal);
                 self.eval_const_to_op(val, layout)?
             }
         };

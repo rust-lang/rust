@@ -410,14 +410,6 @@ where
                 stride * field
             }
             layout::FieldPlacement::Union(count) => {
-                // This is a narrow bug-fix for rust-lang/rust#69191: if we are
-                // trying to access absent field of uninhabited variant, then
-                // signal UB (but don't ICE the compiler).
-                // FIXME temporary hack to work around incoherence between
-                // layout computation and MIR building
-                if field >= count as u64 && base.layout.abi == layout::Abi::Uninhabited {
-                    throw_ub!(Unreachable);
-                }
                 assert!(
                     field < count as u64,
                     "Tried to access field {} of union {:#?} with {} fields",
@@ -648,9 +640,11 @@ where
                         // bail out.
                         None => Place::null(&*self),
                     },
-                    layout: self.layout_of(self.subst_from_frame_and_normalize_erasing_regions(
-                        self.frame().body.return_ty(),
-                    ))?,
+                    layout: self.layout_of(
+                        self.subst_from_current_frame_and_normalize_erasing_regions(
+                            self.frame().body.return_ty(),
+                        ),
+                    )?,
                 }
             }
             local => PlaceTy {

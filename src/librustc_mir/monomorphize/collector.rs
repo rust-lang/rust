@@ -185,7 +185,7 @@ use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::{self, Local, Location};
 use rustc::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc::ty::print::obsolete::DefPathBasedNames;
-use rustc::ty::subst::{InternalSubsts, SubstsRef};
+use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
@@ -493,7 +493,21 @@ struct MirNeighborCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
     output: &'a mut Vec<MonoItem<'tcx>>,
-    param_substs: SubstsRef<'tcx>,
+    instance: Instance<'tcx>,
+}
+
+impl<'a, 'tcx> MirNeighborCollector<'a, 'tcx> {
+    pub fn monomorphize<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        debug!("monomorphize: self.instance={:?}", self.instance);
+        if let Some(substs) = self.instance.substs_for_mir_body() {
+            self.tcx.subst_and_normalize_erasing_regions(substs, ty::ParamEnv::reveal_all(), &value)
+        } else {
+            self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), value)
+        }
+    }
 }
 
 impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
@@ -509,17 +523,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 ref operand,
                 target_ty,
             ) => {
-                let target_ty = self.tcx.subst_and_normalize_erasing_regions(
-                    self.param_substs,
-                    ty::ParamEnv::reveal_all(),
-                    &target_ty,
-                );
+                let target_ty = self.monomorphize(target_ty);
                 let source_ty = operand.ty(self.body, self.tcx);
-                let source_ty = self.tcx.subst_and_normalize_erasing_regions(
-                    self.param_substs,
-                    ty::ParamEnv::reveal_all(),
-                    &source_ty,
-                );
+                let source_ty = self.monomorphize(source_ty);
                 let (source_ty, target_ty) =
                     find_vtable_types_for_unsizing(self.tcx, source_ty, target_ty);
                 // This could also be a different Unsize instruction, like
@@ -540,11 +546,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 _,
             ) => {
                 let fn_ty = operand.ty(self.body, self.tcx);
-                let fn_ty = self.tcx.subst_and_normalize_erasing_regions(
-                    self.param_substs,
-                    ty::ParamEnv::reveal_all(),
-                    &fn_ty,
-                );
+                let fn_ty = self.monomorphize(fn_ty);
                 visit_fn_use(self.tcx, fn_ty, false, &mut self.output);
             }
             mir::Rvalue::Cast(
@@ -553,11 +555,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 _,
             ) => {
                 let source_ty = operand.ty(self.body, self.tcx);
-                let source_ty = self.tcx.subst_and_normalize_erasing_regions(
-                    self.param_substs,
-                    ty::ParamEnv::reveal_all(),
-                    &source_ty,
-                );
+                let source_ty = self.monomorphize(source_ty);
                 match source_ty.kind {
                     ty::Closure(def_id, substs) => {
                         let instance = Instance::resolve_closure(
@@ -593,7 +591,23 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, location: Location) {
         debug!("visiting const {:?} @ {:?}", *constant, location);
 
-        collect_const(self.tcx, *constant, self.param_substs, self.output);
+        let substituted_constant = self.monomorphize(*constant);
+        let param_env = ty::ParamEnv::reveal_all();
+
+        match substituted_constant.val {
+            ty::ConstKind::Value(val) => collect_const_value(self.tcx, val, self.output),
+            ty::ConstKind::Unevaluated(def_id, substs, promoted) => {
+                match self.tcx.const_eval_resolve(param_env, def_id, substs, promoted, None) {
+                    Ok(val) => collect_const_value(self.tcx, val, self.output),
+                    Err(ErrorHandled::Reported) => {}
+                    Err(ErrorHandled::TooGeneric) => span_bug!(
+                        self.tcx.def_span(def_id),
+                        "collection encountered polymorphic constant",
+                    ),
+                }
+            }
+            _ => {}
+        }
 
         self.super_const(constant);
     }
@@ -605,21 +619,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         match *kind {
             mir::TerminatorKind::Call { ref func, .. } => {
                 let callee_ty = func.ty(self.body, tcx);
-                let callee_ty = tcx.subst_and_normalize_erasing_regions(
-                    self.param_substs,
-                    ty::ParamEnv::reveal_all(),
-                    &callee_ty,
-                );
+                let callee_ty = self.monomorphize(callee_ty);
                 visit_fn_use(self.tcx, callee_ty, true, &mut self.output);
             }
             mir::TerminatorKind::Drop { ref location, .. }
             | mir::TerminatorKind::DropAndReplace { ref location, .. } => {
                 let ty = location.ty(self.body, self.tcx).ty;
-                let ty = tcx.subst_and_normalize_erasing_regions(
-                    self.param_substs,
-                    ty::ParamEnv::reveal_all(),
-                    &ty,
-                );
+                let ty = self.monomorphize(ty);
                 visit_drop_use(self.tcx, ty, true, self.output);
             }
             mir::TerminatorKind::Goto { .. }
@@ -1156,8 +1162,7 @@ fn collect_neighbours<'tcx>(
     debug!("collect_neighbours: {:?}", instance.def_id());
     let body = tcx.instance_mir(instance.def);
 
-    MirNeighborCollector { tcx, body: &body, output, param_substs: instance.substs }
-        .visit_body(body);
+    MirNeighborCollector { tcx, body: &body, output, instance }.visit_body(body);
 }
 
 fn def_id_to_string(tcx: TyCtxt<'_>, def_id: DefId) -> String {
@@ -1165,33 +1170,6 @@ fn def_id_to_string(tcx: TyCtxt<'_>, def_id: DefId) -> String {
     let printer = DefPathBasedNames::new(tcx, false, false);
     printer.push_def_path(def_id, &mut output);
     output
-}
-
-fn collect_const<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    constant: &'tcx ty::Const<'tcx>,
-    param_substs: SubstsRef<'tcx>,
-    output: &mut Vec<MonoItem<'tcx>>,
-) {
-    debug!("visiting const {:?}", constant);
-
-    let param_env = ty::ParamEnv::reveal_all();
-    let substituted_constant =
-        tcx.subst_and_normalize_erasing_regions(param_substs, param_env, &constant);
-
-    match substituted_constant.val {
-        ty::ConstKind::Value(val) => collect_const_value(tcx, val, output),
-        ty::ConstKind::Unevaluated(def_id, substs, promoted) => {
-            match tcx.const_eval_resolve(param_env, def_id, substs, promoted, None) {
-                Ok(val) => collect_const_value(tcx, val, output),
-                Err(ErrorHandled::Reported) => {}
-                Err(ErrorHandled::TooGeneric) => {
-                    span_bug!(tcx.def_span(def_id), "collection encountered polymorphic constant",)
-                }
-            }
-        }
-        _ => {}
-    }
 }
 
 fn collect_const_value<'tcx>(

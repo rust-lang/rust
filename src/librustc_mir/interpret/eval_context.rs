@@ -335,15 +335,25 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Call this on things you got out of the MIR (so it is as generic as the current
     /// stack frame), to bring it into the proper environment for this interpreter.
-    pub(super) fn subst_from_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
+    pub(super) fn subst_from_current_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
         &self,
         value: T,
     ) -> T {
-        self.tcx.subst_and_normalize_erasing_regions(
-            self.frame().instance.substs,
-            self.param_env,
-            &value,
-        )
+        self.subst_from_frame_and_normalize_erasing_regions(self.frame(), value)
+    }
+
+    /// Call this on things you got out of the MIR (so it is as generic as the provided
+    /// stack frame), to bring it into the proper environment for this interpreter.
+    pub(super) fn subst_from_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
+        &self,
+        frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
+        value: T,
+    ) -> T {
+        if let Some(substs) = frame.instance.substs_for_mir_body() {
+            self.tcx.subst_and_normalize_erasing_regions(substs, self.param_env, &value)
+        } else {
+            self.tcx.normalize_erasing_regions(self.param_env, value)
+        }
     }
 
     /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
@@ -371,11 +381,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             None => {
                 let layout = crate::interpret::operand::from_known_layout(layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
-                    let local_ty = self.tcx.subst_and_normalize_erasing_regions(
-                        frame.instance.substs,
-                        self.param_env,
-                        &local_ty,
-                    );
+                    let local_ty =
+                        self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty);
                     self.layout_of(local_ty)
                 })?;
                 if let Some(state) = frame.locals.get(local) {
