@@ -237,12 +237,16 @@ impl TokenIdAlloc {
     fn open_delim(&mut self, open_abs_range: TextRange) -> tt::TokenId {
         let token_id = tt::TokenId(self.next_id);
         self.next_id += 1;
-        self.map.insert_delim(token_id, open_abs_range, open_abs_range);
+        self.map.insert_delim(
+            token_id,
+            open_abs_range - self.global_offset,
+            open_abs_range - self.global_offset,
+        );
         token_id
     }
 
     fn close_delim(&mut self, id: tt::TokenId, close_abs_range: TextRange) {
-        self.map.update_close_delim(id, close_abs_range);
+        self.map.update_close_delim(id, close_abs_range - self.global_offset);
     }
 }
 
@@ -297,6 +301,7 @@ trait TokenConvertor {
         }
 
         result.push(if k.is_punct() {
+            assert_eq!(range.len().to_usize(), 1);
             let delim = match k {
                 T!['('] => Some((tt::DelimiterKind::Parenthesis, T![')'])),
                 T!['{'] => Some((tt::DelimiterKind::Brace, T!['}'])),
@@ -461,25 +466,25 @@ impl TokenConvertor for Convertor {
     }
 
     fn bump(&mut self) -> Option<(Self::Token, TextRange)> {
-        let curr = self.current.clone()?;
-        if !curr.text_range().is_subrange(&self.range) {
-            return None;
-        }
-
         if let Some((punct, offset)) = self.punct_offset.clone() {
             if offset.to_usize() + 1 < punct.text().len() {
                 let offset = offset + TextUnit::from_usize(1);
                 let range = punct.text_range();
-                self.punct_offset = Some((punct, offset));
+                self.punct_offset = Some((punct.clone(), offset));
                 let range = TextRange::offset_len(range.start() + offset, TextUnit::from_usize(1));
-                return Some((SynToken::Punch(curr, offset), range));
+                return Some((SynToken::Punch(punct, offset), range));
             }
         }
 
+        let curr = self.current.clone()?;
+        if !curr.text_range().is_subrange(&self.range) {
+            return None;
+        }
         self.current = curr.next_token();
 
         let token = if curr.kind().is_punct() {
             let range = curr.text_range();
+            let range = TextRange::offset_len(range.start(), TextUnit::from_usize(1));
             self.punct_offset = Some((curr.clone(), TextUnit::from_usize(0)));
             (SynToken::Punch(curr, TextUnit::from_usize(0)), range)
         } else {
@@ -492,16 +497,16 @@ impl TokenConvertor for Convertor {
     }
 
     fn peek(&self) -> Option<Self::Token> {
-        let curr = self.current.clone()?;
-        if !curr.text_range().is_subrange(&self.range) {
-            return None;
-        }
-
         if let Some((punct, mut offset)) = self.punct_offset.clone() {
             offset = offset + TextUnit::from_usize(1);
             if offset.to_usize() < punct.text().len() {
                 return Some(SynToken::Punch(punct, offset));
             }
+        }
+
+        let curr = self.current.clone()?;
+        if !curr.text_range().is_subrange(&self.range) {
+            return None;
         }
 
         let token = if curr.kind().is_punct() {
