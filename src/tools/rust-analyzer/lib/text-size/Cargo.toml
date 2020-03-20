@@ -9,8 +9,8 @@ authors = [
 ]
 description = "Newtypes for text offsets"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/matklad/text_unit"
-documentation = "https://docs.rs/text_unit"
+repository = "https://github.com/rust-analyzer/text-size"
+documentation = "https://docs.rs/text-size"
 
 [dependencies]
 serde = { version = "1.0", optional = true, default_features = false }
