@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::hash::{Hash, Hasher};
+use crate::hash::Hash;
 
 /// An unbounded range (`..`).
 ///
@@ -330,7 +330,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);  // RangeInclusive
 /// ```
 #[doc(alias = "..=")]
-#[derive(Clone)] // not Copy -- see #27186
+#[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
     // Note that the fields here are not public to allow changing the
@@ -348,26 +348,6 @@ pub struct RangeInclusive<Idx> {
     //
     // This is required to support PartialEq and Hash without a PartialOrd bound or specialization.
     pub(crate) exhausted: bool,
-}
-
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<Idx: PartialEq> PartialEq for RangeInclusive<Idx> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.start == other.start && self.end == other.end && self.exhausted == other.exhausted
-    }
-}
-
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<Idx: Eq> Eq for RangeInclusive<Idx> {}
-
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<Idx: Hash> Hash for RangeInclusive<Idx> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.start.hash(state);
-        self.end.hash(state);
-        self.exhausted.hash(state);
-    }
 }
 
 impl<Idx> RangeInclusive<Idx> {
