@@ -1,4 +1,4 @@
-// compile-flags: -Z no-landing-pads -C codegen-units=1
+// compile-flags: -C panic=abort -C codegen-units=1
 // error-pattern:converging_fn called
 // ignore-cloudabi no std::process
 
