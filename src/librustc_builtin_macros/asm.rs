@@ -61,6 +61,7 @@ pub fn expand_asm<'cx>(
         kind: ast::ExprKind::InlineAsm(P(inline_asm)),
         span: cx.with_def_site_ctxt(sp),
         attrs: ast::AttrVec::new(),
+        tokens: None,
     }))
 }
 
