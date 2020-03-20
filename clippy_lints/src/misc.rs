@@ -475,6 +475,11 @@ fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> boo
     match constant(cx, cx.tables, expr) {
         Some((Constant::F32(f), _)) => f == 0.0 || f.is_infinite(),
         Some((Constant::F64(f), _)) => f == 0.0 || f.is_infinite(),
+        Some((Constant::Vec(vec), _)) => vec.iter().all(|f| match f {
+            Constant::F32(f) => *f == 0.0 || (*f).is_infinite(),
+            Constant::F64(f) => *f == 0.0 || (*f).is_infinite(),
+            _ => false,
+        }),
         _ => false,
     }
 }
