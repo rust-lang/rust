@@ -1,4 +1,5 @@
-use crate::utils::span_lint_and_help;
+use crate::utils::span_lint_and_then;
+use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind, VisibilityKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -43,12 +44,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantPubCrate {
         if let VisibilityKind::Crate { .. } = item.vis.node {
             if !cx.access_levels.is_exported(item.hir_id) {
                 if let Some(false) = self.is_exported.last() {
-                    span_lint_and_help(
+                    let span = item.span.with_hi(item.ident.span.hi());
+                    span_lint_and_then(
                         cx,
                         REDUNDANT_PUB_CRATE,
-                        item.span,
+                        span,
                         &format!("pub(crate) {} inside private module", item.kind.descr()),
-                        "consider using `pub` instead of `pub(crate)`",
+                        |db| {
+                            db.span_suggestion(
+                                item.vis.span,
+                                "consider using",
+                                "pub".to_string(),
+                                Applicability::MachineApplicable,
+                            );
+                        },
                     )
                 }
             }
