@@ -1,7 +1,14 @@
 #![feature(never_type, rustc_attrs)]
 #![crate_type = "lib"]
 
-enum E { Foo, Bar(!, i32, i32) }
+#[rustc_layout(debug)]
+enum E { Foo, Bar(!, i32, i32) } //~ ERROR: layout debugging
 
 #[rustc_layout(debug)]
-type Test = E; //~ ERROR: layout debugging
+struct S { f1: i32, f2: (), f3: i32 } //~ ERROR: layout debugging
+
+#[rustc_layout(debug)]
+union U { f1: (i32, i32), f3: i32 } //~ ERROR: layout debugging
+
+#[rustc_layout(debug)]
+type Test = Result<i32, i32>; //~ ERROR: layout debugging

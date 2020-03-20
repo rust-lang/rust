@@ -29,12 +29,18 @@ impl ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         let item_def_id = self.tcx.hir().local_def_id(item.hir_id);
 
-        if let ItemKind::TyAlias(..) = item.kind {
-            for attr in self.tcx.get_attrs(item_def_id).iter() {
-                if attr.check_name(sym::rustc_layout) {
-                    self.dump_layout_of(item_def_id, item, attr);
+        match item.kind {
+            ItemKind::TyAlias(..) |
+            ItemKind::Enum(..) |
+            ItemKind::Struct(..) |
+            ItemKind::Union(..) => {
+                for attr in self.tcx.get_attrs(item_def_id).iter() {
+                    if attr.check_name(sym::rustc_layout) {
+                        self.dump_layout_of(item_def_id, item, attr);
+                    }
                 }
             }
+            _ => {}
         }
     }
 
