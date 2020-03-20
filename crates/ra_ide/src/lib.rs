@@ -138,6 +138,11 @@ impl AnalysisHost {
     pub fn new(lru_capacity: Option<usize>) -> AnalysisHost {
         AnalysisHost { db: RootDatabase::new(lru_capacity) }
     }
+
+    pub fn update_lru_capacity(&mut self, lru_capacity: Option<usize>) {
+        self.db.update_lru_capacity(lru_capacity);
+    }
+
     /// Returns a snapshot of the current state, which you can query for
     /// semantic information.
     pub fn analysis(&self) -> Analysis {

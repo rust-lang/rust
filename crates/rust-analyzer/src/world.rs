@@ -199,6 +199,17 @@ impl WorldState {
         }
     }
 
+    pub fn update_configuration(
+        &mut self,
+        lru_capacity: Option<usize>,
+        options: Options,
+        feature_flags: FeatureFlags,
+    ) {
+        self.feature_flags = Arc::new(feature_flags);
+        self.analysis_host.update_lru_capacity(lru_capacity);
+        self.options = options;
+    }
+
     /// Returns a vec of libraries
     /// FIXME: better API here
     pub fn process_changes(

@@ -17,8 +17,9 @@ use std::{
 use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{
-    ClientCapabilities, NumberOrString, WorkDoneProgress, WorkDoneProgressBegin,
-    WorkDoneProgressCreateParams, WorkDoneProgressEnd, WorkDoneProgressReport,
+    ClientCapabilities, NumberOrString, TextDocumentClientCapabilities, WorkDoneProgress,
+    WorkDoneProgressBegin, WorkDoneProgressCreateParams, WorkDoneProgressEnd,
+    WorkDoneProgressReport,
 };
 use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckTask};
 use ra_ide::{Canceled, FileId, InlayHintsOptions, LibraryData, SourceRootId};
@@ -64,6 +65,53 @@ impl fmt::Display for LspError {
 
 impl Error for LspError {}
 
+fn get_feature_flags(config: &ServerConfig, connection: &Connection) -> FeatureFlags {
+    let mut ff = FeatureFlags::default();
+    for (flag, &value) in &config.feature_flags {
+        if ff.set(flag.as_str(), value).is_err() {
+            log::error!("unknown feature flag: {:?}", flag);
+            show_message(
+                req::MessageType::Error,
+                format!("unknown feature flag: {:?}", flag),
+                &connection.sender,
+            );
+        }
+    }
+    log::info!("feature_flags: {:#?}", ff);
+    ff
+}
+
+fn get_options(
+    config: &ServerConfig,
+    text_document_caps: Option<&TextDocumentClientCapabilities>,
+) -> Options {
+    Options {
+        publish_decorations: config.publish_decorations,
+        supports_location_link: text_document_caps
+            .and_then(|it| it.definition)
+            .and_then(|it| it.link_support)
+            .unwrap_or(false),
+        line_folding_only: text_document_caps
+            .and_then(|it| it.folding_range.as_ref())
+            .and_then(|it| it.line_folding_only)
+            .unwrap_or(false),
+        inlay_hints: InlayHintsOptions {
+            type_hints: config.inlay_hints_type,
+            parameter_hints: config.inlay_hints_parameter,
+            chaining_hints: config.inlay_hints_chaining,
+            max_length: config.inlay_hints_max_length,
+        },
+        cargo_watch: CheckOptions {
+            enable: config.cargo_watch_enable,
+            args: config.cargo_watch_args.clone(),
+            command: config.cargo_watch_command.clone(),
+            all_targets: config.cargo_watch_all_targets,
+        },
+        rustfmt_args: config.rustfmt_args.clone(),
+        vscode_lldb: config.vscode_lldb,
+    }
+}
+
 pub fn main_loop(
     ws_roots: Vec<PathBuf>,
     client_caps: ClientCapabilities,
@@ -91,23 +139,10 @@ pub fn main_loop(
         SetThreadPriority(thread, thread_priority_above_normal);
     }
 
+    let text_document_caps = client_caps.text_document.as_ref();
     let mut loop_state = LoopState::default();
     let mut world_state = {
-        let feature_flags = {
-            let mut ff = FeatureFlags::default();
-            for (flag, value) in config.feature_flags {
-                if ff.set(flag.as_str(), value).is_err() {
-                    log::error!("unknown feature flag: {:?}", flag);
-                    show_message(
-                        req::MessageType::Error,
-                        format!("unknown feature flag: {:?}", flag),
-                        &connection.sender,
-                    );
-                }
-            }
-            ff
-        };
-        log::info!("feature_flags: {:#?}", feature_flags);
+        let feature_flags = get_feature_flags(&config, &connection);
 
         // FIXME: support dynamic workspace loading.
         let workspaces = {
@@ -169,42 +204,13 @@ pub fn main_loop(
             connection.sender.send(request.into()).unwrap();
         }
 
-        let options = {
-            let text_document_caps = client_caps.text_document.as_ref();
-            Options {
-                publish_decorations: config.publish_decorations,
-                supports_location_link: text_document_caps
-                    .and_then(|it| it.definition)
-                    .and_then(|it| it.link_support)
-                    .unwrap_or(false),
-                line_folding_only: text_document_caps
-                    .and_then(|it| it.folding_range.as_ref())
-                    .and_then(|it| it.line_folding_only)
-                    .unwrap_or(false),
-                inlay_hints: InlayHintsOptions {
-                    type_hints: config.inlay_hints_type,
-                    parameter_hints: config.inlay_hints_parameter,
-                    chaining_hints: config.inlay_hints_chaining,
-                    max_length: config.inlay_hints_max_length,
-                },
-                cargo_watch: CheckOptions {
-                    enable: config.cargo_watch_enable,
-                    args: config.cargo_watch_args,
-                    command: config.cargo_watch_command,
-                    all_targets: config.cargo_watch_all_targets,
-                },
-                rustfmt_args: config.rustfmt_args,
-                vscode_lldb: config.vscode_lldb,
-            }
-        };
-
         WorldState::new(
             ws_roots,
             workspaces,
             config.lru_capacity,
             &globs,
             Watch(!config.use_client_watching),
-            options,
+            get_options(&config, text_document_caps),
             feature_flags,
         )
     };
@@ -243,17 +249,16 @@ pub fn main_loop(
                     break;
                 };
             }
-            if let Some(new_server_config) = loop_turn(
+            loop_turn(
                 &pool,
                 &task_sender,
                 &libdata_sender,
                 &connection,
+                text_document_caps,
                 &mut world_state,
                 &mut loop_state,
                 event,
-            )? {
-                dbg!(new_server_config);
-            }
+            )?;
         }
     }
     world_state.analysis_host.request_cancellation();
@@ -360,10 +365,11 @@ fn loop_turn(
     task_sender: &Sender<Task>,
     libdata_sender: &Sender<LibraryData>,
     connection: &Connection,
+    text_document_caps: Option<&TextDocumentClientCapabilities>,
     world_state: &mut WorldState,
     loop_state: &mut LoopState,
     event: Event,
-) -> Result<Option<ServerConfig>> {
+) -> Result<()> {
     let loop_start = Instant::now();
 
     // NOTE: don't count blocking select! call as a loop-turn time
@@ -373,8 +379,6 @@ fn loop_turn(
     if queue_count > 0 {
         log::info!("queued count = {}", queue_count);
     }
-
-    let mut new_server_config = None;
 
     match event {
         Event::Task(task) => {
@@ -411,13 +415,18 @@ fn loop_turn(
                 }
                 if Some(&resp.id) == loop_state.configuration_request_id.as_ref() {
                     loop_state.configuration_request_id.take();
+                    // TODO kb unwrap-unwrap-unwrap
                     let new_config =
                         serde_json::from_value::<Vec<ServerConfig>>(resp.result.unwrap())
                             .unwrap()
                             .first()
                             .unwrap()
                             .to_owned();
-                    new_server_config = Some(new_config);
+                    world_state.update_configuration(
+                        new_config.lru_capacity,
+                        get_options(&new_config, text_document_caps),
+                        get_feature_flags(&new_config, connection),
+                    );
                 }
             }
         },
@@ -488,7 +497,7 @@ fn loop_turn(
         }
     }
 
-    Ok(new_server_config)
+    Ok(())
 }
 
 fn on_task(

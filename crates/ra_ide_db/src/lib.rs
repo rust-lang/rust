@@ -115,11 +115,15 @@ impl RootDatabase {
         db.set_crate_graph_with_durability(Default::default(), Durability::HIGH);
         db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
         db.set_library_roots_with_durability(Default::default(), Durability::HIGH);
-        let lru_capacity = lru_capacity.unwrap_or(ra_db::DEFAULT_LRU_CAP);
-        db.query_mut(ra_db::ParseQuery).set_lru_capacity(lru_capacity);
-        db.query_mut(hir::db::ParseMacroQuery).set_lru_capacity(lru_capacity);
-        db.query_mut(hir::db::MacroExpandQuery).set_lru_capacity(lru_capacity);
+        db.update_lru_capacity(lru_capacity);
         db
+    }
+
+    pub fn update_lru_capacity(&mut self, lru_capacity: Option<usize>) {
+        let lru_capacity = lru_capacity.unwrap_or(ra_db::DEFAULT_LRU_CAP);
+        self.query_mut(ra_db::ParseQuery).set_lru_capacity(lru_capacity);
+        self.query_mut(hir::db::ParseMacroQuery).set_lru_capacity(lru_capacity);
+        self.query_mut(hir::db::MacroExpandQuery).set_lru_capacity(lru_capacity);
     }
 }
 
