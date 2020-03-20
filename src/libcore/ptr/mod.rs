@@ -810,9 +810,7 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn write<T>(dst: *mut T, src: T) {
-    // FIXME: the debug assertion here causes codegen test failures on some architectures.
-    // See <https://github.com/rust-lang/rust/pull/69208#issuecomment-591326757>.
-    // debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
+    debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
     intrinsics::move_val_init(&mut *dst, src)
 }
 
