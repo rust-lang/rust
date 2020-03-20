@@ -67,9 +67,9 @@ struct AlignContainsPacked4C {
 
 // The align limit was originally smaller (2^15).
 // Check that it works with big numbers.
-#[repr(align(0x10000))]
+#[repr(align(0x1000))]
 struct AlignLarge {
-    stuff: [u8; 0x10000],
+    stuff: [u8; 0x1000],
 }
 
 union UnionContainsAlign {
@@ -233,13 +233,13 @@ pub fn main() {
     assert!(is_aligned_to(&a, 16));
 
     let mut large = box AlignLarge {
-        stuff: [0; 0x10000],
+        stuff: [0; 0x1000],
     };
     large.stuff[0] = 132;
     *large.stuff.last_mut().unwrap() = 102;
     assert_eq!(large.stuff[0], 132);
     assert_eq!(large.stuff.last(), Some(&102));
-    assert_eq!(mem::align_of::<AlignLarge>(), 0x10000);
-    assert_eq!(mem::align_of_val(&*large), 0x10000);
-    assert!(is_aligned_to(&*large, 0x10000));
+    assert_eq!(mem::align_of::<AlignLarge>(), 0x1000);
+    assert_eq!(mem::align_of_val(&*large), 0x1000);
+    assert!(is_aligned_to(&*large, 0x1000));
 }
