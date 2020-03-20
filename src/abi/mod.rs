@@ -200,7 +200,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
             .declare_func_in_func(func_id, &mut self.bcx.func);
 
         #[cfg(debug_assertions)]
-        self.add_entity_comment(func_ref, format!("{:?}", inst));
+        self.add_comment(func_ref, format!("{:?}", inst));
 
         func_ref
     }

@@ -69,7 +69,6 @@ use crate::prelude::*;
 pub struct CommentWriter {
     global_comments: Vec<String>,
     entity_comments: HashMap<AnyEntity, String>,
-    inst_comments: HashMap<Inst, String>,
 }
 
 impl CommentWriter {
@@ -94,7 +93,30 @@ impl CommentWriter {
         CommentWriter {
             global_comments,
             entity_comments: HashMap::new(),
-            inst_comments: HashMap::new(),
+        }
+    }
+}
+
+#[cfg(debug_assertions)]
+impl CommentWriter {
+    pub fn add_global_comment<S: Into<String>>(&mut self, comment: S) {
+        self.global_comments.push(comment.into());
+    }
+
+    pub fn add_comment<'s, S: Into<Cow<'s, str>>, E: Into<AnyEntity>>(
+        &mut self,
+        entity: E,
+        comment: S,
+    ) {
+        use std::collections::hash_map::Entry;
+        match self.entity_comments.entry(entity.into()) {
+            Entry::Occupied(mut occ) => {
+                occ.get_mut().push('\n');
+                occ.get_mut().push_str(comment.into().as_ref());
+            }
+            Entry::Vacant(vac) => {
+                vac.insert(comment.into().into_owned());
+            }
         }
     }
 }
@@ -157,7 +179,7 @@ impl FuncWriter for &'_ CommentWriter {
         indent: usize,
     ) -> fmt::Result {
         PlainWriter.write_instruction(w, func, aliases, isa, inst, indent)?;
-        if let Some(comment) = self.inst_comments.get(&inst) {
+        if let Some(comment) = self.entity_comments.get(&inst.into()) {
             writeln!(w, "; {}", comment.replace('\n', "\n; "))?;
         }
         Ok(())
@@ -167,37 +189,15 @@ impl FuncWriter for &'_ CommentWriter {
 #[cfg(debug_assertions)]
 impl<'a, 'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     pub fn add_global_comment<S: Into<String>>(&mut self, comment: S) {
-        self.clif_comments.global_comments.push(comment.into());
+        self.clif_comments.add_global_comment(comment);
     }
 
-    pub fn add_entity_comment<'s, S: Into<Cow<'s, str>>, E: Into<AnyEntity>>(
+    pub fn add_comment<'s, S: Into<Cow<'s, str>>, E: Into<AnyEntity>>(
         &mut self,
         entity: E,
         comment: S,
     ) {
-        use std::collections::hash_map::Entry;
-        match self.clif_comments.entity_comments.entry(entity.into()) {
-            Entry::Occupied(mut occ) => {
-                occ.get_mut().push('\n');
-                occ.get_mut().push_str(comment.into().as_ref());
-            }
-            Entry::Vacant(vac) => {
-                vac.insert(comment.into().into_owned());
-            }
-        }
-    }
-
-    pub fn add_comment<'s, S: Into<Cow<'s, str>>>(&mut self, inst: Inst, comment: S) {
-        use std::collections::hash_map::Entry;
-        match self.clif_comments.inst_comments.entry(inst) {
-            Entry::Occupied(mut occ) => {
-                occ.get_mut().push('\n');
-                occ.get_mut().push_str(comment.into().as_ref());
-            }
-            Entry::Vacant(vac) => {
-                vac.insert(comment.into().into_owned());
-            }
-        }
+       self.clif_comments.add_comment(entity, comment);
     }
 }
 

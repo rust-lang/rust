@@ -10,6 +10,7 @@
 //! being loaded by a `stack_load`.
 
 use std::collections::{BTreeMap, HashSet};
+use std::fmt;
 use std::ops::Not;
 
 use cranelift_codegen::cursor::{Cursor, FuncCursor};
@@ -19,8 +20,14 @@ use cranelift_codegen::ir::immediates::Offset32;
 use crate::prelude::*;
 
 /// Workaround for `StackSlot` not implementing `Ord`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 struct OrdStackSlot(StackSlot);
+
+impl fmt::Debug for OrdStackSlot {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
 
 impl PartialOrd for OrdStackSlot {
     fn partial_cmp(&self, rhs: &Self) -> Option<std::cmp::Ordering> {
@@ -153,10 +160,9 @@ impl<'a> OptimizeContext<'a> {
     }
 }
 
-pub(super) fn optimize_function<T: std::fmt::Debug>(
+pub(super) fn optimize_function(
     ctx: &mut Context,
-    _clif_comments: &mut crate::pretty_clif::CommentWriter,
-    name: T,
+    clif_comments: &mut crate::pretty_clif::CommentWriter,
 ) {
     combine_stack_addr_with_load_store(&mut ctx.func);
 
@@ -167,7 +173,9 @@ pub(super) fn optimize_function<T: std::fmt::Debug>(
     remove_unused_stack_addr_and_stack_load(&mut opt_ctx);
 
     #[cfg(debug_assertions)] {
-        println!("stack slot usage: {:?}", opt_ctx.stack_slot_usage_map);
+        for (&OrdStackSlot(stack_slot), usage) in &opt_ctx.stack_slot_usage_map {
+            clif_comments.add_comment(stack_slot, format!("used by: {:?}", usage));
+        }
     }
 
     for (stack_slot, users) in opt_ctx.stack_slot_usage_map.iter_mut() {
@@ -182,28 +190,26 @@ pub(super) fn optimize_function<T: std::fmt::Debug>(
 
             #[cfg(debug_assertions)]
             for &store in &potential_stores {
-                println!(
+                clif_comments.add_comment(load, format!(
                     "Potential store -> load forwarding {} -> {} ({:?}, {:?})",
                     opt_ctx.ctx.func.dfg.display_inst(store, None),
                     opt_ctx.ctx.func.dfg.display_inst(load, None),
                     spatial_overlap(&opt_ctx.ctx.func, store, load),
                     temporal_order(&opt_ctx.ctx, store, load),
-                );
+                ));
             }
 
             match *potential_stores {
                 [] => {
-                    #[cfg(debug_assertions)] {
-                        println!("[{:?}] [BUG?] Reading uninitialized memory", name);
-                    }
+                    #[cfg(debug_assertions)]
+                    clif_comments.add_comment(load, format!("[BUG?] Reading uninitialized memory"));
                 }
                 [store] if spatial_overlap(&opt_ctx.ctx.func, store, load) == SpatialOverlap::Full && temporal_order(&opt_ctx.ctx, store, load) == TemporalOrder::DefinitivelyBefore => {
                     // Only one store could have been the origin of the value.
                     let stored_value = opt_ctx.ctx.func.dfg.inst_args(store)[0];
 
-                    #[cfg(debug_assertions)] {
-                        println!("Store to load forward {} -> {}", store, load);
-                    }
+                    #[cfg(debug_assertions)]
+                    clif_comments.add_comment(load, format!("Store to load forward {} -> {}", store, load));
 
                     users.change_load_to_alias(&mut opt_ctx.ctx.func, load, stored_value);
                 }
@@ -216,22 +222,22 @@ pub(super) fn optimize_function<T: std::fmt::Debug>(
 
             #[cfg(debug_assertions)]
             for &load in &potential_loads {
-                println!(
+                clif_comments.add_comment(store, format!(
                     "Potential load from store {} <- {} ({:?}, {:?})",
                     opt_ctx.ctx.func.dfg.display_inst(load, None),
                     opt_ctx.ctx.func.dfg.display_inst(store, None),
                     spatial_overlap(&opt_ctx.ctx.func, store, load),
                     temporal_order(&opt_ctx.ctx, store, load),
-                );
+                ));
             }
 
             if potential_loads.is_empty() {
                 // Never loaded; can safely remove all stores and the stack slot.
                 // FIXME also remove stores when there is always a next store before a load.
 
-                #[cfg(debug_assertions)] {
-                    println!("[{:?}] Remove dead stack store {} of {}", name, opt_ctx.ctx.func.dfg.display_inst(store, None), stack_slot.0);
-                }
+                #[cfg(debug_assertions)]
+                clif_comments.add_comment(store, format!("Remove dead stack store {} of {}", opt_ctx.ctx.func.dfg.display_inst(store, None), stack_slot.0));
+
                 users.remove_dead_store(&mut opt_ctx.ctx.func, store);
             }
         }
@@ -239,10 +245,6 @@ pub(super) fn optimize_function<T: std::fmt::Debug>(
         if users.stack_store.is_empty() && users.stack_load.is_empty() {
             opt_ctx.ctx.func.stack_slots[stack_slot.0].size = 0;
         }
-    }
-
-    #[cfg(debug_assertions)] {
-        println!();
     }
 }
 

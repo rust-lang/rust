@@ -19,7 +19,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
     let puts = fx.module.declare_func_in_func(puts, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     {
-        fx.add_entity_comment(puts, "puts");
+        fx.add_comment(puts, "puts");
     }
 
     let symbol_name = fx.tcx.symbol_name(fx.instance);
@@ -46,7 +46,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
     let local_msg_id = fx.module.declare_data_in_func(msg_id, fx.bcx.func);
     #[cfg(debug_assertions)]
     {
-        fx.add_entity_comment(local_msg_id, msg);
+        fx.add_comment(local_msg_id, msg);
     }
     let msg_ptr = fx.bcx.ins().global_value(pointer_ty(fx.tcx), local_msg_id);
     fx.bcx.ins().call(puts, &[msg_ptr]);

@@ -52,7 +52,7 @@ fn codegen_static_ref<'tcx>(
     let data_id = data_id_for_static(fx.tcx, fx.module, def_id, linkage);
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
-    fx.add_entity_comment(local_data_id, format!("{:?}", def_id));
+    fx.add_comment(local_data_id, format!("{:?}", def_id));
     cplace_for_dataid(fx, layout, local_data_id)
 }
 
@@ -114,7 +114,7 @@ pub fn trans_const_value<'tcx>(
                             let data_id = data_id_for_alloc_id(fx.module, ptr.alloc_id, alloc.align);
                             let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             #[cfg(debug_assertions)]
-                            fx.add_entity_comment(local_data_id, format!("{:?}", ptr.alloc_id));
+                            fx.add_comment(local_data_id, format!("{:?}", ptr.alloc_id));
                             fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                         }
                         Some(GlobalAlloc::Function(instance)) => {
@@ -128,7 +128,7 @@ pub fn trans_const_value<'tcx>(
                             let data_id = data_id_for_static(fx.tcx, fx.module, def_id, linkage);
                             let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             #[cfg(debug_assertions)]
-                            fx.add_entity_comment(local_data_id, format!("{:?}", def_id));
+                            fx.add_comment(local_data_id, format!("{:?}", def_id));
                             fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                         }
                         None => bug!("missing allocation {:?}", ptr.alloc_id),
@@ -200,7 +200,7 @@ fn trans_const_place<'tcx>(
     let data_id = data_id_for_alloc_id(fx.module, alloc_id, alloc.align);
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
-    fx.add_entity_comment(local_data_id, format!("{:?}", alloc_id));
+    fx.add_comment(local_data_id, format!("{:?}", alloc_id));
     cplace_for_dataid(fx, fx.layout_of(const_.ty), local_data_id)
 }
 

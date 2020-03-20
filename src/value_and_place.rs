@@ -381,7 +381,7 @@ impl<'tcx> CPlace<'tcx> {
             };
             fx.add_comment(
                 fx.bcx.func.layout.last_inst(cur_block).unwrap(),
-                format!("write_cvalue: {:?} <- {:?}",self, from),
+                format!("write_cvalue: {:?}: {:?} <- {:?}: {:?}", self.inner(), self.layout().ty, from.0, from.layout().ty),
             );
         }
 
