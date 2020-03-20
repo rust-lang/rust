@@ -1,13 +1,19 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
 use crate::completion::{CompletionContext, Completions};
+use hir::{ModuleDef, ScopeDef};
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.is_trivial_path {
+    if !ctx.is_trivial_path && !ctx.is_pat_binding_and_path {
         return;
     }
 
-    ctx.scope().process_all_names(&mut |name, res| acc.add_resolution(ctx, name.to_string(), &res));
+    ctx.scope().process_all_names(&mut |name, res| match (ctx.is_pat_binding_and_path, &res) {
+        (true, ScopeDef::ModuleDef(ModuleDef::Function(..))) => (),
+        (true, ScopeDef::ModuleDef(ModuleDef::Static(..))) => (),
+        (true, ScopeDef::Local(..)) => (),
+        _ => acc.add_resolution(ctx, name.to_string(), &res),
+    });
 }
 
 #[cfg(test)]
@@ -18,6 +24,79 @@ mod tests {
 
     fn do_reference_completion(ra_fixture: &str) -> Vec<CompletionItem> {
         do_completion(ra_fixture, CompletionKind::Reference)
+    }
+
+    #[test]
+    fn bind_pat_and_path_ignore_at() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                enum Enum {
+                    A,
+                    B,
+                }
+                fn quux(x: Option<Enum>) {
+                    match x {
+                        None => (),
+                        Some(en<|> @ Enum::A) => (),
+                    }
+                }
+                "
+            ),
+            @r###"[]"###
+        );
+    }
+
+    #[test]
+    fn bind_pat_and_path_ignore_ref() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                enum Enum {
+                    A,
+                    B,
+                }
+                fn quux(x: Option<Enum>) {
+                    match x {
+                        None => (),
+                        Some(ref en<|>) => (),
+                    }
+                }
+                "
+            ),
+            @r###"[]"###
+        );
+    }
+
+    #[test]
+    fn bind_pat_and_path() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                enum Enum {
+                    A,
+                    B,
+                }
+                fn quux(x: Option<Enum>) {
+                    match x {
+                        None => (),
+                        Some(En<|>) => (),
+                    }
+                }
+                "
+            ),
+            @r###"
+            [
+                CompletionItem {
+                    label: "Enum",
+                    source_range: [231; 233),
+                    delete: [231; 233),
+                    insert: "Enum",
+                    kind: Enum,
+                },
+            ]
+            "###
+        );
     }
 
     #[test]

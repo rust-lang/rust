@@ -36,6 +36,9 @@ pub(crate) struct CompletionContext<'a> {
     /// If a name-binding or reference to a const in a pattern.
     /// Irrefutable patterns (like let) are excluded.
     pub(super) is_pat_binding: bool,
+    // A bind battern which may also be part of a path.
+    // if let Some(En<|>) = Some(Enum::A)
+    pub(super) is_pat_binding_and_path: bool,
     /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
     pub(super) is_trivial_path: bool,
     /// If not a trivial path, the prefix (qualifier).
@@ -95,6 +98,7 @@ impl<'a> CompletionContext<'a> {
             impl_def: None,
             is_param: false,
             is_pat_binding: false,
+            is_pat_binding_and_path: false,
             is_trivial_path: false,
             path_prefix: None,
             after_if: false,
@@ -188,9 +192,16 @@ impl<'a> CompletionContext<'a> {
             if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
                 let parent = bind_pat.syntax().parent();
                 if parent.clone().and_then(ast::MatchArm::cast).is_some()
-                    || parent.and_then(ast::Condition::cast).is_some()
+                    || parent.clone().and_then(ast::Condition::cast).is_some()
                 {
                     self.is_pat_binding = true;
+                }
+
+                if parent.and_then(ast::RecordFieldPatList::cast).is_none()
+                    && bind_pat.pat().is_none()
+                    && !bind_pat.is_ref()
+                {
+                    self.is_pat_binding_and_path = true;
                 }
             }
             if is_node::<ast::Param>(name.syntax()) {
