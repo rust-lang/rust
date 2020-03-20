@@ -574,8 +574,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         buf_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-        this.check_no_isolation("stat")?;
         this.assert_platform("macos", "stat");
+        this.check_no_isolation("stat")?;
         // `stat` always follows symlinks.
         this.macos_stat_or_lstat(true, path_op, buf_op)
     }
@@ -587,8 +587,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         buf_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-        this.check_no_isolation("lstat")?;
         this.assert_platform("macos", "lstat");
+        this.check_no_isolation("lstat")?;
         this.macos_stat_or_lstat(false, path_op, buf_op)
     }
 
@@ -599,8 +599,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        this.check_no_isolation("fstat")?;
         this.assert_platform("macos", "fstat");
+        this.check_no_isolation("fstat")?;
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
@@ -621,8 +621,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        this.check_no_isolation("statx")?;
         this.assert_platform("linux", "statx");
+        this.check_no_isolation("statx")?;
 
         let statxbuf_scalar = this.read_scalar(statxbuf_op)?.not_undef()?;
         let pathname_scalar = this.read_scalar(pathname_op)?.not_undef()?;
@@ -880,8 +880,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        this.check_no_isolation("readdir64_r")?;
         this.assert_platform("linux", "readdir64_r");
+        this.check_no_isolation("readdir64_r")?;
 
         let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
@@ -967,8 +967,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        this.check_no_isolation("readdir_r")?;
         this.assert_platform("macos", "readdir_r");
+        this.check_no_isolation("readdir_r")?;
 
         let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
