@@ -1,4 +1,7 @@
-use {crate::TextSize, std::convert::TryInto};
+use {
+    crate::TextSize,
+    std::{convert::TryInto, ops::Deref},
+};
 
 /// Text-like structures that have a text size.
 pub trait TextSized: Copy {
@@ -12,6 +15,17 @@ impl TextSized for &'_ str {
         self.len()
             .try_into()
             .unwrap_or_else(|_| panic!("string too large ({}) for TextSize", self.len()))
+    }
+}
+
+impl<D> TextSized for &'_ D
+where
+    D: Deref,
+    for<'a> &'a D::Target: TextSized,
+{
+    #[inline]
+    fn text_size(self) -> TextSize {
+        self.deref().text_size()
     }
 }
 
