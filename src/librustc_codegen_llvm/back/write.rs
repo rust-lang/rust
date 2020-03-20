@@ -749,29 +749,31 @@ pub(crate) unsafe fn codegen(
             })?;
         }
 
-        if config_emit_normal_obj && !config.no_integrated_as {
-            let _timer = cgcx
-                .prof
-                .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
-            with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(
-                    diag_handler,
-                    tm,
-                    cpm,
-                    llmod,
-                    &obj_out,
-                    llvm::FileType::ObjectFile,
-                )
-            })?;
-        } else if config_emit_normal_obj && config.no_integrated_as {
-            let _timer = cgcx
-                .prof
-                .generic_activity_with_arg("LLVM_module_codegen_asm_to_obj", &module.name[..]);
-            let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
-            run_assembler(cgcx, diag_handler, &assembly, &obj_out);
+        if config_emit_normal_obj {
+            if !config.no_integrated_as {
+                let _timer = cgcx
+                    .prof
+                    .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
+                with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                    write_output_file(
+                        diag_handler,
+                        tm,
+                        cpm,
+                        llmod,
+                        &obj_out,
+                        llvm::FileType::ObjectFile,
+                    )
+                })?;
+            } else {
+                let _timer = cgcx
+                    .prof
+                    .generic_activity_with_arg("LLVM_module_codegen_asm_to_obj", &module.name[..]);
+                let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
+                run_assembler(cgcx, diag_handler, &assembly, &obj_out);
 
-            if !config.emit_asm && !cgcx.save_temps {
-                drop(fs::remove_file(&assembly));
+                if !config.emit_asm && !cgcx.save_temps {
+                    drop(fs::remove_file(&assembly));
+                }
             }
         }
 
