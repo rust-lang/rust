@@ -149,6 +149,10 @@ impl TokenMap {
             }
         }
     }
+
+    fn remove_delim(&mut self, token_id: tt::TokenId) {
+        self.entries.retain(|(tid, _)| *tid != token_id);
+    }
 }
 
 /// Returns the textual content of a doc comment block as a quoted string
@@ -245,8 +249,15 @@ impl TokenIdAlloc {
         token_id
     }
 
-    fn close_delim(&mut self, id: tt::TokenId, close_abs_range: TextRange) {
-        self.map.update_close_delim(id, close_abs_range - self.global_offset);
+    fn close_delim(&mut self, id: tt::TokenId, close_abs_range: Option<TextRange>) {
+        match close_abs_range {
+            None => {
+                self.map.remove_delim(id);
+            }
+            Some(close) => {
+                self.map.update_close_delim(id, close - self.global_offset);
+            }
+        }
     }
 }
 
@@ -318,10 +329,22 @@ trait TokenConvertor {
                     self.collect_leaf(&mut subtree.token_trees);
                 }
                 let last_range = match self.bump() {
-                    None => return,
+                    None => {
+                        // For error resilience, we insert an char punct for the opening delim here
+                        self.id_alloc().close_delim(id, None);
+                        let leaf: tt::Leaf = tt::Punct {
+                            id: self.id_alloc().alloc(range),
+                            char: token.to_char().unwrap(),
+                            spacing: tt::Spacing::Alone,
+                        }
+                        .into();
+                        result.push(leaf.into());
+                        result.extend(subtree.token_trees);
+                        return;
+                    }
                     Some(it) => it.1,
                 };
-                self.id_alloc().close_delim(id, last_range);
+                self.id_alloc().close_delim(id, Some(last_range));
                 subtree.into()
             } else {
                 let spacing = match self.peek() {

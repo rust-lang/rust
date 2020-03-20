@@ -1694,5 +1694,5 @@ fn test_expand_bad_literal() {
         macro_rules! foo { ($i:literal) => {}; }
     "#,
     )
-    .assert_expand_err(r#"foo!(&k");"#, &ExpandError::ConversionError);
+    .assert_expand_err(r#"foo!(&k");"#, &ExpandError::BindingError("".into()));
 }
