@@ -57,16 +57,15 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
     }
 }
 
-pub fn walk_shallow(parent: GenericArg<'tcx>) -> impl Iterator<Item = Ty<'tcx>> {
-    let mut stack = SmallVec::new();
-    push_inner(&mut stack, parent);
-    stack.into_iter().filter_map(|child| {
-        // FIXME(eddyb) remove this filter and expose all `GenericArg`s.
-        match child.unpack() {
-            GenericArgKind::Type(ty) => Some(ty),
-            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => None,
-        }
-    })
+impl GenericArg<'tcx> {
+    /// Iterator that walks the immediate children of `self`. Hence
+    /// `Foo<Bar<i32>, u32>` yields the sequence `[Bar<i32>, u32]`
+    /// (but not `i32`, like `walk`).
+    pub fn walk_shallow(self) -> impl Iterator<Item = GenericArg<'tcx>> {
+        let mut stack = SmallVec::new();
+        push_inner(&mut stack, self);
+        stack.into_iter()
+    }
 }
 
 // We push `GenericArg`s on the stack in reverse order so as to

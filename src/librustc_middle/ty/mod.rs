@@ -2701,13 +2701,6 @@ impl<'tcx> TyS<'tcx> {
         TypeWalker::new(self.into())
     }
 
-    /// Iterator that walks the immediate children of `self`. Hence
-    /// `Foo<Bar<i32>, u32>` yields the sequence `[Bar<i32>, u32]`
-    /// (but not `i32`, like `walk`).
-    pub fn walk_shallow(&'tcx self) -> impl Iterator<Item = Ty<'tcx>> {
-        walk::walk_shallow(self.into())
-    }
-
     /// Walks `ty` and any types appearing within `ty`, invoking the
     /// callback `f` on each type. If the callback returns `false`, then the
     /// children of the current type are ignored.
