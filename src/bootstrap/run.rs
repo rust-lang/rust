@@ -7,8 +7,6 @@ pub struct ExpandYamlAnchors;
 
 impl Step for ExpandYamlAnchors {
     type Output = ();
-    const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
 
     /// Runs the `expand-yaml_anchors` tool.
     ///
