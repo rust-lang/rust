@@ -18,7 +18,7 @@ use rustc::bug;
 use rustc::session::config::{self, Lto, OutputType, Passes, Sanitizer, SwitchWithOptPath};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
-use rustc_codegen_ssa::back::write::{run_assembler, CodegenContext, ModuleConfig};
+use rustc_codegen_ssa::back::write::{run_assembler, CodegenContext, EmbedBitcode, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, RLIB_BYTECODE_EXTENSION};
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -662,7 +662,7 @@ pub(crate) unsafe fn codegen(
                 }
             }
 
-            if config.embed_bitcode {
+            if config.embed_bitcode == EmbedBitcode::Full {
                 let _timer = cgcx.prof.generic_activity_with_arg(
                     "LLVM_module_codegen_embed_bitcode",
                     &module.name[..],
@@ -682,7 +682,7 @@ pub(crate) unsafe fn codegen(
                     diag_handler.err(&msg);
                 }
             }
-        } else if config.embed_bitcode_marker {
+        } else if config.embed_bitcode == EmbedBitcode::Marker {
             embed_bitcode(cgcx, llcx, llmod, None);
         }
 
