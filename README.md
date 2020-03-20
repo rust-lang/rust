@@ -243,6 +243,7 @@ Definite bugs found:
 * [The Unix allocator calling `posix_memalign` in an invalid way](https://github.com/rust-lang/rust/issues/62251)
 * [`getrandom` calling the `getrandom` syscall in an invalid way](https://github.com/rust-random/getrandom/pull/73)
 * [`Vec`](https://github.com/rust-lang/rust/issues/69770) and [`BTreeMap`](https://github.com/rust-lang/rust/issues/69769) leaking memory under some (panicky) conditions
+* [Memory leak in `beef`](https://github.com/maciejhirsz/beef/issues/12)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
@@ -251,6 +252,7 @@ Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows 
 * [`LinkedList` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/60072)
 * [`Vec::push` invalidating existing references into the vector](https://github.com/rust-lang/rust/issues/60847)
 * [`align_to_mut` violating uniqueness of mutable references](https://github.com/rust-lang/rust/issues/68549)
+* [Aliasing mutable references in `sized-chunks`](https://github.com/bodil/sized-chunks/issues/8)
 
 ## License
 
