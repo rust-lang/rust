@@ -1,13 +1,18 @@
-error: any use of this value will cause an error
-  --> $DIR/dangling-alloc-id-ice.rs:8:1
+warning: union is never used: `Foo`
+  --> $DIR/dangling-alloc-id-ice.rs:4:7
+   |
+LL | union Foo<'a> {
+   |       ^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: constant item is never used: `FOO`
+  --> $DIR/dangling-alloc-id-ice.rs:10:1
    |
 LL | / const FOO: &() = {
+LL | |
 LL | |     let y = ();
 LL | |     unsafe { Foo { y: &y }.long_live_the_unit }
 LL | | };
-   | |__^ encountered dangling pointer in final constant
-   |
-   = note: `#[deny(const_err)]` on by default
-
-error: aborting due to previous error
+   | |__^
 
