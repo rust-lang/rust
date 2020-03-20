@@ -634,30 +634,24 @@ pub(crate) unsafe fn codegen(
             f(cpm)
         }
 
-        // If we don't have the integrated assembler, then we need to emit asm
-        // from LLVM and use `gcc` to create the object file.
-        let asm_to_obj = config.emit_obj && config.no_integrated_as;
-
-        // Change what we write and cleanup based on whether obj files are
-        // just llvm bitcode. In that case write bitcode, and possibly
-        // delete the bitcode if it wasn't requested. Don't generate the
-        // machine code, instead copy the .o file from the .bc
-        let write_bc = config.emit_bc || config.obj_is_bitcode;
-        let rm_bc = !config.emit_bc && config.obj_is_bitcode;
-        let write_obj = config.emit_obj && !config.obj_is_bitcode && !asm_to_obj;
-        let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode;
+        // Two things to note:
+        // - If object files are just LLVM bitcode we write bitcode, copy it to
+        //   the .o file, and delete the bitcode if it wasn't otherwise
+        //   requested.
+        // - If we don't have the integrated assembler then we need to emit
+        //   asm from LLVM and use `gcc` to create the object file.
 
         let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
         let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
 
-        if write_bc || config.emit_bc_compressed || config.embed_bitcode {
+        if config.bitcode_needed() {
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg("LLVM_module_codegen_make_bitcode", &module.name[..]);
             let thin = ThinBuffer::new(llmod);
             let data = thin.data();
 
-            if write_bc {
+            if config.emit_bc || config.obj_is_bitcode {
                 let _timer = cgcx.prof.generic_activity_with_arg(
                     "LLVM_module_codegen_emit_bitcode",
                     &module.name[..],
@@ -740,7 +734,7 @@ pub(crate) unsafe fn codegen(
                 })?;
             }
 
-            if config.emit_asm || asm_to_obj {
+            if config.emit_asm || (config.emit_obj && config.no_integrated_as) {
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_emit_asm", &module.name[..]);
@@ -762,7 +756,7 @@ pub(crate) unsafe fn codegen(
                 })?;
             }
 
-            if write_obj {
+            if config.emit_obj && !config.obj_is_bitcode && !config.no_integrated_as {
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
@@ -776,7 +770,7 @@ pub(crate) unsafe fn codegen(
                         llvm::FileType::ObjectFile,
                     )
                 })?;
-            } else if asm_to_obj {
+            } else if config.emit_obj && config.no_integrated_as {
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_asm_to_obj", &module.name[..]);
@@ -789,14 +783,14 @@ pub(crate) unsafe fn codegen(
             }
         }
 
-        if copy_bc_to_obj {
+        if config.emit_obj && config.obj_is_bitcode {
             debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
             if let Err(e) = link_or_copy(&bc_out, &obj_out) {
                 diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
             }
         }
 
-        if rm_bc {
+        if !config.emit_bc && config.obj_is_bitcode {
             debug!("removing_bitcode {:?}", bc_out);
             if let Err(e) = fs::remove_file(&bc_out) {
                 diag_handler.err(&format!("failed to remove bitcode: {}", e));
