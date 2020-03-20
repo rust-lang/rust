@@ -1,4 +1,5 @@
 use std::time::{Duration, SystemTime, Instant};
+use std::convert::TryFrom;
 
 use crate::stacked_borrows::Tag;
 use crate::*;
@@ -12,7 +13,6 @@ pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Du
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    // Foreign function used by linux
     fn clock_gettime(
         &mut self,
         clk_id_op: OpTy<'tcx, Tag>,
@@ -20,8 +20,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        this.assert_platform("linux", "clock_gettime");
         this.check_no_isolation("clock_gettime")?;
-        this.assert_platform("linux");
 
         let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
         let tp = this.deref_operand(tp_op)?;
@@ -50,7 +50,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         Ok(0)
     }
-    // Foreign function used by generic unix (in particular macOS)
+
     fn gettimeofday(
         &mut self,
         tv_op: OpTy<'tcx, Tag>,
@@ -58,8 +58,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        this.assert_platform("macos", "gettimeofday");
         this.check_no_isolation("gettimeofday")?;
-        this.assert_platform("macos");
 
         // Using tz is obsolete and should always be null
         let tz = this.read_scalar(tz_op)?.not_undef()?;
@@ -83,5 +83,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.write_packed_immediates(tv, &imms)?;
 
         Ok(0)
+    }
+
+    fn mach_absolute_time(&self) -> InterpResult<'tcx, u64> {
+        let this = self.eval_context_ref();
+
+        this.assert_platform("macos", "mach_absolute_time");
+        this.check_no_isolation("mach_absolute_time")?;
+
+        // This returns a u64, with time units determined dynamically by `mach_timebase_info`.
+        // We return plain nanoseconds.
+        let duration = Instant::now().duration_since(this.machine.time_anchor);
+        u64::try_from(duration.as_nanos())
+            .map_err(|_| err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported").into())
     }
 }

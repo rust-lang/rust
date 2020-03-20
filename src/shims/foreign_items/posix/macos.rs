@@ -66,6 +66,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.gettimeofday(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
+            "mach_absolute_time" => {
+                let result = this.mach_absolute_time()?;
+                this.write_scalar(Scalar::from_uint(result, dest.layout.size), dest)?;
+            }
 
             // Other shims
             "pthread_attr_get_np" => {
