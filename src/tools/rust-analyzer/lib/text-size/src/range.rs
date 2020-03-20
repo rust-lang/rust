@@ -135,8 +135,8 @@ impl TextRange {
     }
 
     /// Extends the range to cover `other` offsets as well.
-    pub fn cover_offset(self, other: TextSize) -> TextRange {
-        self.cover(TextRange::empty(other))
+    pub fn cover_offset(self, offset: TextSize) -> TextRange {
+        self.cover(TextRange::empty(offset))
     }
 
     /// Add an offset to this range.
