@@ -67,7 +67,7 @@ impl RawEmitter {
             panic!("cannot pack {} into 8 bits", unique_words.len());
         }
         // needed for the chunk mapping to work
-        assert_eq!(unique_words[0], 0, "first word is all zeros");
+        assert_eq!(unique_words[0], 0, "has a zero word");
 
         let word_indices = unique_words
             .iter()
@@ -80,7 +80,7 @@ impl RawEmitter {
         let mut best = None;
         for length in 1..=64 {
             let mut temp = self.clone();
-            temp.emit_chunk_map(&compressed_words, length);
+            temp.emit_chunk_map(word_indices[&0], &compressed_words, length);
             if let Some((_, size)) = best {
                 if temp.bytes_used < size {
                     best = Some((length, temp.bytes_used));
@@ -89,7 +89,7 @@ impl RawEmitter {
                 best = Some((length, temp.bytes_used));
             }
         }
-        self.emit_chunk_map(&compressed_words, best.unwrap().0);
+        self.emit_chunk_map(word_indices[&0], &compressed_words, best.unwrap().0);
 
         writeln!(
             &mut self.file,
@@ -101,12 +101,12 @@ impl RawEmitter {
         self.bytes_used += 8 * unique_words.len();
     }
 
-    fn emit_chunk_map(&mut self, compressed_words: &[u8], chunk_length: usize) {
+    fn emit_chunk_map(&mut self, zero_at: u8, compressed_words: &[u8], chunk_length: usize) {
         let mut compressed_words = compressed_words.to_vec();
         for _ in 0..(chunk_length - (compressed_words.len() % chunk_length)) {
             // pad out bitset index with zero words so we have all chunks of
             // chunkchunk_length
-            compressed_words.push(0);
+            compressed_words.push(zero_at);
         }
 
         let mut chunks = BTreeSet::new();
@@ -123,6 +123,14 @@ impl RawEmitter {
         for chunk in compressed_words.chunks(chunk_length) {
             chunk_indices.push(chunk_map[chunk]);
         }
+
+        // If one of the chunks has all of the entries point to the bitset
+        // word filled with zeros, then pop those off the end -- we know they
+        // are useless.
+        let zero_chunk_idx = chunks.iter().position(|chunk| chunk.iter().all(|e| *e == zero_at));
+        while zero_chunk_idx.is_some() && chunk_indices.last().cloned() == zero_chunk_idx {
+            chunk_indices.pop();
+        }
         writeln!(
             &mut self.file,
             "static BITSET_LAST_CHUNK_MAP: (u16, u8) = ({}, {});",
@@ -131,9 +139,9 @@ impl RawEmitter {
         )
         .unwrap();
         self.bytes_used += 3;
-        // Strip out the empty pieces, presuming our above pop() made us now
-        // have some trailing zeros.
-        while let Some(0) = chunk_indices.last() {
+        // Try to pop again, now that we've recorded a non-zero pointing index
+        // into the LAST_CHUNK_MAP.
+        while zero_chunk_idx.is_some() && chunk_indices.last().cloned() == zero_chunk_idx {
             chunk_indices.pop();
         }
         writeln!(
