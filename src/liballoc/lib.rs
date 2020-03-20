@@ -80,6 +80,7 @@
 #![feature(box_into_raw_non_null)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
 #![feature(const_generic_impls_guard)]
