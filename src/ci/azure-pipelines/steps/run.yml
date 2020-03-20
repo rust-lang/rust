@@ -59,8 +59,8 @@ steps:
   displayName: Install InnoSetup
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
-- bash: src/ci/scripts/windows-symlink-build-dir.sh
-  displayName: Ensure the build happens on C:\ instead of D:\
+- bash: src/ci/scripts/symlink-build-dir.sh
+  displayName: Ensure the build happens on a partition with enough space
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/disable-git-crlf-conversion.sh
