@@ -773,17 +773,19 @@ pub(crate) unsafe fn codegen(
             }
         }
 
-        if config.emit_obj && config.obj_is_bitcode {
-            debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
-            if let Err(e) = link_or_copy(&bc_out, &obj_out) {
-                diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
+        if config.obj_is_bitcode {
+            if config.emit_obj {
+                debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
+                if let Err(e) = link_or_copy(&bc_out, &obj_out) {
+                    diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
+                }
             }
-        }
 
-        if !config.emit_bc && config.obj_is_bitcode {
-            debug!("removing_bitcode {:?}", bc_out);
-            if let Err(e) = fs::remove_file(&bc_out) {
-                diag_handler.err(&format!("failed to remove bitcode: {}", e));
+            if !config.emit_bc {
+                debug!("removing_bitcode {:?}", bc_out);
+                if let Err(e) = fs::remove_file(&bc_out) {
+                    diag_handler.err(&format!("failed to remove bitcode: {}", e));
+                }
             }
         }
 
