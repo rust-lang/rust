@@ -24,7 +24,6 @@ pub struct ServerOpt {
 
 impl InstallCmd {
     pub fn run(self) -> Result<()> {
-        let both = self.server.is_some() && self.client.is_some();
         if cfg!(target_os = "macos") {
             fix_path_for_mac().context("Fix path for mac")?
         }
@@ -33,16 +32,6 @@ impl InstallCmd {
         }
         if let Some(client) = self.client {
             install_client(client).context("install client")?;
-        }
-        if both {
-            eprintln!(
-                "
-    Installation complete.
-
-    Add `\"rust-analyzer.serverPath\": \"rust-analyzer\",` to VS Code settings,
-    otherwise it will use the latest release from GitHub.
-"
-            )
         }
         Ok(())
     }

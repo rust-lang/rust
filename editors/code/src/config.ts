@@ -44,11 +44,11 @@ export class Config {
         .packageJSON
         .version;
 
-    readonly releaseTag: string = vscode
+    readonly releaseTag: string | undefined = vscode
         .extensions
         .getExtension(this.extensionId)!
         .packageJSON
-        .releaseTag;
+        .releaseTag ?? undefined;
 
     private cfg!: vscode.WorkspaceConfiguration;
 
