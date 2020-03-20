@@ -356,6 +356,17 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 Constant::F64(x) => Some(Constant::F64(x)),
                 _ => None,
             },
+            (Some(Constant::Vec(vec)), _) => {
+                if !vec.is_empty() && vec.iter().all(|x| *x == vec[0]) {
+                    match vec[0] {
+                        Constant::F32(x) => Some(Constant::F32(x)),
+                        Constant::F64(x) => Some(Constant::F64(x)),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            },
             _ => None,
         }
     }
