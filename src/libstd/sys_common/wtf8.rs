@@ -613,6 +613,10 @@ impl Wtf8 {
         }
     }
 
+    pub fn clone_into(&self, buf: &mut Wtf8Buf) {
+        self.bytes.clone_into(&mut buf.bytes)
+    }
+
     /// Boxes this `Wtf8`.
     #[inline]
     pub fn into_box(&self) -> Box<Wtf8> {

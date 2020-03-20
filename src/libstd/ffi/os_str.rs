@@ -952,8 +952,7 @@ impl ToOwned for OsStr {
         self.to_os_string()
     }
     fn clone_into(&self, target: &mut OsString) {
-        target.clear();
-        target.push(self);
+        self.inner.clone_into(&mut target.inner)
     }
 }
 
