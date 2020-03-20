@@ -136,7 +136,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if let Some(discr) = src.layout.ty.discriminant_for_variant(*self.tcx, index) {
                     assert!(src.layout.is_zst());
                     let discr_layout = self.layout_of(discr.ty)?;
-                    return Ok(self.cast_from_int(discr.val, discr_layout, dest_layout)?.into());
+                    return Ok(self
+                        .cast_from_int_like(discr.val, discr_layout, dest_layout)?
+                        .into());
                 }
             }
             layout::Variants::Multiple { .. } => {}
@@ -173,10 +175,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // (b) cast from an integer-like (including bool, char, enums).
         // In both cases we want the bits.
         let bits = self.force_bits(src.to_scalar()?, src.layout.size)?;
-        Ok(self.cast_from_int(bits, src.layout, dest_layout)?.into())
+        Ok(self.cast_from_int_like(bits, src.layout, dest_layout)?.into())
     }
 
-    fn cast_from_int(
+    fn cast_from_int_like(
         &self,
         v: u128, // raw bits
         src_layout: TyLayout<'tcx>,
