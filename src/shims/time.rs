@@ -21,6 +21,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.check_no_isolation("clock_gettime")?;
+        this.assert_platform("linux");
 
         let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
         let tp = this.deref_operand(tp_op)?;
@@ -58,6 +59,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.check_no_isolation("gettimeofday")?;
+        this.assert_platform("macos");
+
         // Using tz is obsolete and should always be null
         let tz = this.read_scalar(tz_op)?.not_undef()?;
         if !this.is_null(tz)? {
