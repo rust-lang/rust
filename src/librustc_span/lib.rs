@@ -856,7 +856,7 @@ pub enum ExternalSource {
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum ExternalSourceKind {
     /// The external source has been loaded already.
-    Present(String),
+    Present(Lrc<String>),
     /// No attempt has been made to load the external source.
     AbsentOk,
     /// A failed attempt has been made to load the external source.
@@ -872,7 +872,7 @@ impl ExternalSource {
         }
     }
 
-    pub fn get_source(&self) -> Option<&str> {
+    pub fn get_source(&self) -> Option<&Lrc<String>> {
         match self {
             ExternalSource::Foreign { kind: ExternalSourceKind::Present(ref src), .. } => Some(src),
             _ => None,
@@ -1138,7 +1138,7 @@ impl SourceFile {
                     hasher.write(src.as_bytes());
 
                     if hasher.finish::<u128>() == self.src_hash {
-                        *src_kind = ExternalSourceKind::Present(src);
+                        *src_kind = ExternalSourceKind::Present(Lrc::new(src));
                         return true;
                     }
                 } else {
