@@ -118,20 +118,25 @@ impl TextRange {
 
     /// The range covered by both ranges, if it exists.
     /// If the ranges touch but do not overlap, the output range is empty.
-    pub fn intersection(lhs: TextRange, rhs: TextRange) -> Option<TextRange> {
-        let start = cmp::max(lhs.start(), rhs.start());
-        let end = cmp::min(lhs.end(), rhs.end());
+    pub fn intersect(self, other: TextRange) -> Option<TextRange> {
+        let start = cmp::max(self.start(), other.start());
+        let end = cmp::min(self.end(), other.end());
         if end < start {
             return None;
         }
         Some(TextRange(start, end))
     }
 
-    /// The smallest range that completely contains both ranges.
-    pub fn covering(lhs: TextRange, rhs: TextRange) -> TextRange {
-        let start = cmp::min(lhs.start(), rhs.start());
-        let end = cmp::max(lhs.end(), rhs.end());
+    /// Extends the range to cover `other` as well.
+    pub fn cover(self, other: TextRange) -> TextRange {
+        let start = cmp::min(self.start(), other.start());
+        let end = cmp::max(self.end(), other.end());
         TextRange(start, end)
+    }
+
+    /// Extends the range to cover `other` offsets as well.
+    pub fn cover_offset(self, offset: TextSize) -> TextRange {
+        self.cover(TextRange::empty(offset))
     }
 
     /// Add an offset to this range.
