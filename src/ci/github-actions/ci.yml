@@ -279,7 +279,7 @@ jobs:
     name: try
     env:
       <<: [*shared-ci-variables, *prod-variables]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/try'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'
     strategy:
       matrix:
         name:
@@ -299,7 +299,7 @@ jobs:
     name: auto
     env:
       <<: [*shared-ci-variables, *prod-variables]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/auto'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
     strategy:
       matrix:
         name:
@@ -677,7 +677,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       <<: [*prod-variables]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'
     steps:
       - name: checkout the source code
         uses: actions/checkout@v1
