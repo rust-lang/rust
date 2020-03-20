@@ -5,7 +5,7 @@ import { Config } from './config';
 import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
 import { SemanticTokensFeature, DocumentSemanticsTokensSignature } from 'vscode-languageclient/lib/semanticTokens.proposed';
 
-export function configToOptions(config: Config): object {
+export function configToServerOptions(config: Config): object {
     return {
         publishDecorations: !config.highlightingSemanticTokens,
         lruCapacity: config.lruCapacity,
@@ -50,7 +50,7 @@ export async function createClient(config: Config, serverPath: string): Promise<
 
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'rust' }],
-        initializationOptions: configToOptions(config),
+        initializationOptions: configToServerOptions(config),
         traceOutputChannel,
         middleware: {
             // Workaround for https://github.com/microsoft/vscode-languageserver-node/issues/576

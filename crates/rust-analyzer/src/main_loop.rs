@@ -413,20 +413,27 @@ fn loop_turn(
                 if !removed {
                     log::error!("unexpected response: {:?}", resp)
                 }
-                if Some(&resp.id) == loop_state.configuration_request_id.as_ref() {
+
+                if Some(resp.id) == loop_state.configuration_request_id {
                     loop_state.configuration_request_id.take();
-                    // TODO kb unwrap-unwrap-unwrap
-                    let new_config =
-                        serde_json::from_value::<Vec<ServerConfig>>(resp.result.unwrap())
-                            .unwrap()
-                            .first()
-                            .unwrap()
-                            .to_owned();
-                    world_state.update_configuration(
-                        new_config.lru_capacity,
-                        get_options(&new_config, text_document_caps),
-                        get_feature_flags(&new_config, connection),
-                    );
+                    if let Some(err) = resp.error {
+                        log::error!("failed fetch the server settings: {:?}", err)
+                    } else if resp.result.is_none() {
+                        log::error!("received empty server settings response from the client")
+                    } else {
+                        let new_config =
+                            serde_json::from_value::<Vec<ServerConfig>>(resp.result.unwrap())?
+                                .first()
+                                .expect(
+                                    "The client is expected to always send a non-empty config data",
+                                )
+                                .to_owned();
+                        world_state.update_configuration(
+                            new_config.lru_capacity,
+                            get_options(&new_config, text_document_caps),
+                            get_feature_flags(&new_config, connection),
+                        );
+                    }
                 }
             }
         },
@@ -657,13 +664,15 @@ fn on_notification(
         Err(not) => not,
     };
     let not = match notification_cast::<req::DidChangeConfiguration>(not) {
-        Ok(_params) => {
+        Ok(_) => {
+            // As stated in https://github.com/microsoft/language-server-protocol/issues/676,
+            // this notification's parameters should be ignored and the actual config queried separately.
             let request_id = loop_state.next_request_id();
             let request = request_new::<req::WorkspaceConfiguration>(
                 request_id.clone(),
                 ConfigurationParams::default(),
             );
-            msg_sender.send(request.into()).unwrap();
+            msg_sender.send(request.into())?;
             loop_state.configuration_request_id.replace(request_id);
 
             return Ok(());
