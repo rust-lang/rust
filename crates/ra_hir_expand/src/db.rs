@@ -277,7 +277,7 @@ pub fn parse_macro_with_arg(
         Some((parse, Arc::new(rev_token_map)))
     } else {
         // FIXME:
-        // In future, we should proprate the actual error with recovery information
+        // In future, we should propagate the actual error with recovery information
         // instead of ignore the error here.
 
         // Safe check for recurisve identity macro
