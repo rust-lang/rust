@@ -15,7 +15,7 @@ impl Drop for Droppy {
 }
 
 // END RUST SOURCE
-// START rustc.main.EraseRegions.before.mir
+// START rustc.main.SimplifyCfg-elaborate-drops.after.mir
 // fn main() -> () {
 //     let mut _0: ();
 //     let mut _1: Packed;
@@ -56,4 +56,4 @@ impl Drop for Droppy {
 //         drop(_1) -> [return: bb2, unwind: bb1];
 //     }
 // }
-// END rustc.main.EraseRegions.before.mir
+// END rustc.main.SimplifyCfg-elaborate-drops.after.mir
