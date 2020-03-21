@@ -81,9 +81,7 @@ fn get_rpaths(config: &mut RPathConfig<'_>, libs: &[PathBuf]) -> Vec<String> {
     rpaths.extend_from_slice(&fallback_rpaths);
 
     // Remove duplicates
-    let rpaths = minimize_rpaths(&rpaths);
-
-    rpaths
+    minimize_rpaths(&rpaths)
 }
 
 fn get_rpaths_relative_to_output(config: &mut RPathConfig<'_>, libs: &[PathBuf]) -> Vec<String> {

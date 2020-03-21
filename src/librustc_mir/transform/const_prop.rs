@@ -400,7 +400,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     where
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
-        let r = match f(self) {
+        match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
                 // Some errors shouldn't come up because creating them causes
@@ -414,8 +414,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 );
                 None
             }
-        };
-        r
+        }
     }
 
     fn eval_constant(&mut self, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {

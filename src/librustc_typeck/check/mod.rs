@@ -3654,14 +3654,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Otherwise, fall back to the immutable version.
         let (imm_tr, imm_op) = self.resolve_place_op(op, false);
-        let method = match (method, imm_tr) {
+        match (method, imm_tr) {
             (None, Some(trait_did)) => {
                 self.lookup_method_in_trait(span, imm_op, trait_did, base_ty, Some(arg_tys))
             }
             (method, _) => method,
-        };
-
-        method
+        }
     }
 
     fn check_method_argument_types(

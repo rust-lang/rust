@@ -179,14 +179,12 @@ impl<'a> StringReader<'a> {
             rustc_lexer::TokenKind::LineComment => {
                 let string = self.str_from(start);
                 // comments with only more "/"s are not doc comments
-                let tok = if comments::is_line_doc_comment(string) {
+                if comments::is_line_doc_comment(string) {
                     self.forbid_bare_cr(start, string, "bare CR not allowed in doc-comment");
                     token::DocComment(Symbol::intern(string))
                 } else {
                     token::Comment
-                };
-
-                tok
+                }
             }
             rustc_lexer::TokenKind::BlockComment { terminated } => {
                 let string = self.str_from(start);
@@ -204,14 +202,12 @@ impl<'a> StringReader<'a> {
                     self.fatal_span_(start, last_bpos, msg).raise();
                 }
 
-                let tok = if is_doc_comment {
+                if is_doc_comment {
                     self.forbid_bare_cr(start, string, "bare CR not allowed in block doc-comment");
                     token::DocComment(Symbol::intern(string))
                 } else {
                     token::Comment
-                };
-
-                tok
+                }
             }
             rustc_lexer::TokenKind::Whitespace => token::Whitespace,
             rustc_lexer::TokenKind::Ident | rustc_lexer::TokenKind::RawIdent => {
