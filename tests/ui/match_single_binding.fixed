@@ -67,4 +67,14 @@ fn main() {
     // Lint
     let Point { x, y } = coords();
     let product = x * y;
+    // Lint
+    let v = vec![Some(1), Some(2), Some(3), Some(4)];
+    #[allow(clippy::let_and_return)]
+    let _ = v
+        .iter()
+        .map(|i| {
+            let unwrapped = i.unwrap();
+            unwrapped
+        })
+        .collect::<Vec<u8>>();
 }

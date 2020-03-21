@@ -80,4 +80,13 @@ fn main() {
     let product = match coords() {
         Point { x, y } => x * y,
     };
+    // Lint
+    let v = vec![Some(1), Some(2), Some(3), Some(4)];
+    #[allow(clippy::let_and_return)]
+    let _ = v
+        .iter()
+        .map(|i| match i.unwrap() {
+            unwrapped => unwrapped,
+        })
+        .collect::<Vec<u8>>();
 }

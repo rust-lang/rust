@@ -150,5 +150,22 @@ LL |     let Point { x, y } = coords();
 LL |     let product = x * y;
    |
 
-error: aborting due to 10 previous errors
+error: this match could be written as a `let` statement
+  --> $DIR/match_single_binding.rs:88:18
+   |
+LL |           .map(|i| match i.unwrap() {
+   |  __________________^
+LL | |             unwrapped => unwrapped,
+LL | |         })
+   | |_________^
+   |
+help: consider using `let` statement
+   |
+LL |         .map(|i| {
+LL |             let unwrapped = i.unwrap();
+LL |             unwrapped
+LL |         })
+   |
+
+error: aborting due to 11 previous errors
 

@@ -3,9 +3,10 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::is_unused;
 use crate::utils::{
-    expr_block, get_arg_name, in_macro, indent_of, is_allowed, is_expn_of, is_refutable, is_wild, match_qpath,
-    match_type, match_var, multispan_sugg, remove_blocks, snippet, snippet_block, snippet_with_applicability,
-    span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then, walk_ptrs_ty,
+    expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable, is_wild,
+    match_qpath, match_type, match_var, multispan_sugg, remove_blocks, snippet, snippet_block,
+    snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
+    walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc::lint::in_external_macro;
@@ -928,14 +929,27 @@ fn check_match_single_binding<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>, arms:
                     ),
                 )
             } else {
+                // If we are in closure, we need curly braces around suggestion
+                let mut indent = " ".repeat(indent_of(cx, ex.span).unwrap_or(0));
+                let (mut cbrace_start, mut cbrace_end) = ("".to_string(), "".to_string());
+                if let Some(parent_expr) = get_parent_expr(cx, expr) {
+                    if let ExprKind::Closure(..) = parent_expr.kind {
+                        cbrace_end = format!("\n{}}}", indent);
+                        // Fix body indent due to the closure
+                        indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
+                        cbrace_start = format!("{{\n{}", indent);
+                    }
+                };
                 (
                     expr.span,
                     format!(
-                        "let {} = {};\n{}{}",
+                        "{}let {} = {};\n{}{}{}",
+                        cbrace_start,
                         snippet_with_applicability(cx, bind_names, "..", &mut applicability),
                         snippet_with_applicability(cx, matched_vars, "..", &mut applicability),
-                        " ".repeat(indent_of(cx, expr.span).unwrap_or(0)),
-                        snippet_body
+                        indent,
+                        snippet_body,
+                        cbrace_end
                     ),
                 )
             };
