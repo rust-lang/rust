@@ -272,9 +272,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     item.span,
                 );
             }
-            ty::Error => {
-                return;
-            }
+            ty::Error => {}
             _ => {
                 struct_span_err!(
                     self.tcx.sess,
@@ -288,7 +286,6 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                        to wrap it instead",
                 )
                 .emit();
-                return;
             }
         }
     }

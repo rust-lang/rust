@@ -1140,7 +1140,7 @@ pub fn parse_error_format(
         _ => {}
     }
 
-    return error_format;
+    error_format
 }
 
 fn parse_crate_edition(matches: &getopts::Matches) -> Edition {

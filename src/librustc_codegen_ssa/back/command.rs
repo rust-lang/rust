@@ -119,7 +119,7 @@ impl Command {
         for k in &self.env_remove {
             ret.env_remove(k);
         }
-        return ret;
+        ret
     }
 
     // extensions

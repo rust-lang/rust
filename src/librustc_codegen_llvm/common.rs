@@ -96,15 +96,11 @@ impl BackendTypes for CodegenCx<'ll, 'tcx> {
 
 impl CodegenCx<'ll, 'tcx> {
     pub fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
-        unsafe {
-            return llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint);
-        }
+        unsafe { llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint) }
     }
 
     pub fn const_vector(&self, elts: &[&'ll Value]) -> &'ll Value {
-        unsafe {
-            return llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint);
-        }
+        unsafe { llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint) }
     }
 
     pub fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
@@ -330,7 +326,7 @@ pub fn val_ty(v: &Value) -> &Type {
 pub fn bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
-        return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
+        llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True)
     }
 }
 

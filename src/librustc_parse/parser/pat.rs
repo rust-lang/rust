@@ -918,7 +918,7 @@ impl<'a> Parser<'a> {
             }
             err.emit();
         }
-        return Ok((fields, etc));
+        Ok((fields, etc))
     }
 
     /// Recover on `...` as if it were `..` to avoid further errors.

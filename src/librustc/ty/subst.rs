@@ -524,7 +524,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
             self.root_ty = None;
         }
 
-        return t1;
+        t1
     }
 
     fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {

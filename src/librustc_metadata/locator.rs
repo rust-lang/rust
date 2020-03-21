@@ -949,7 +949,7 @@ fn get_metadata_section(
     let start = Instant::now();
     let ret = get_metadata_section_imp(target, flavor, filename, loader);
     info!("reading {:?} => {:?}", filename.file_name().unwrap(), start.elapsed());
-    return ret;
+    ret
 }
 
 /// A trivial wrapper for `Mmap` that implements `StableDeref`.

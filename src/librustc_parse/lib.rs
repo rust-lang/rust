@@ -320,7 +320,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
                 going with stringified version"
         );
     }
-    return tokens_for_real;
+    tokens_for_real
 }
 
 fn prepend_attrs(

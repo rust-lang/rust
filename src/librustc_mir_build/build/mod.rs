@@ -377,7 +377,7 @@ impl BlockContext {
             }
         }
 
-        return None;
+        None
     }
 
     /// Looks at the topmost frame on the BlockContext and reports

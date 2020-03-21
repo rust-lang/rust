@@ -146,7 +146,7 @@ crate fn program_clauses_for_env<'tcx>(
 
     debug!("program_clauses_for_env: closure = {:#?}", closure);
 
-    return tcx.mk_clauses(closure.into_iter());
+    tcx.mk_clauses(closure.into_iter())
 }
 
 crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {

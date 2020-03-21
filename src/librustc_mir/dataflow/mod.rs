@@ -122,7 +122,7 @@ pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: Symbol) -> Opti
             }
         }
     }
-    return None;
+    None
 }
 
 pub struct MoveDataParamEnv<'tcx> {
@@ -171,7 +171,7 @@ where
                     return None;
                 }
             }
-            return None;
+            None
         };
 
         let print_preflow_to = name_found(tcx.sess, attributes, sym::borrowck_graphviz_preflow);

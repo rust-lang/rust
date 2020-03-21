@@ -751,7 +751,7 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
         bug!("cannot create local mono-item for {:?}", def_id)
     }
 
-    return true;
+    true
 }
 
 /// For a given pair of source and target type that occur in an unsizing coercion,

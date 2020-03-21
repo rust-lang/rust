@@ -2128,7 +2128,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 return Err(ErrorReported);
             }
         }
-        return Ok(bound);
+        Ok(bound)
     }
 
     fn complain_about_assoc_type_not_found<I>(
@@ -2709,7 +2709,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             Res::Err => {
                 self.set_tainted_by_errors();
-                return self.tcx().types.err;
+                self.tcx().types.err
             }
             _ => span_bug!(span, "unexpected resolution: {:?}", path.res),
         }
@@ -3047,7 +3047,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             )
             .emit();
         }
-        return Some(r);
+        Some(r)
     }
 }
 

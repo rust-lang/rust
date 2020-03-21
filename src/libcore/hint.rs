@@ -114,6 +114,6 @@ pub fn black_box<T>(dummy: T) -> T {
     // more than we want, but it's so far good enough.
     unsafe {
         asm!("" : : "r"(&dummy));
-        return dummy;
+        dummy
     }
 }

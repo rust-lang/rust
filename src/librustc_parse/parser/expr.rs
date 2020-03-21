@@ -996,7 +996,7 @@ impl<'a> Parser<'a> {
                 let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Lit(literal), attrs);
                 self.maybe_recover_from_bad_qpath(expr, true)
             }
-            None => return Err(self.expected_expression_found()),
+            None => Err(self.expected_expression_found()),
         }
     }
 
@@ -1714,7 +1714,7 @@ impl<'a> Parser<'a> {
         }
         let hi = self.token.span;
         self.bump();
-        return Ok(self.mk_expr(lo.to(hi), ExprKind::Match(scrutinee, arms), attrs));
+        Ok(self.mk_expr(lo.to(hi), ExprKind::Match(scrutinee, arms), attrs))
     }
 
     pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
