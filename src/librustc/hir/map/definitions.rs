@@ -5,20 +5,19 @@
 //! expressions) that are mostly just leftovers.
 
 use rustc_ast::ast;
+use rustc_ast::crate_disambiguator::CrateDisambiguator;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hir as hir;
+pub use rustc_hir::def_id::DefPathHash;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::IndexVec;
-use rustc_session::CrateDisambiguator;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
 use std::fmt::Write;
 use std::hash::Hash;
-
-pub use rustc_hir::def_id::DefPathHash;
 
 /// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.
 /// Internally the `DefPathTable` holds a tree of `DefKey`s, where each `DefKey`
