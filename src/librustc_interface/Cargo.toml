@@ -28,7 +28,7 @@ rustc_incremental = { path = "../librustc_incremental" }
 rustc_traits = { path = "../librustc_traits" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
-rustc_codegen_utils = { path = "../librustc_codegen_utils" }
+rustc_symbol_mangling = { path = "../librustc_symbol_mangling" }
 rustc_codegen_llvm = { path = "../librustc_codegen_llvm", optional = true }
 rustc_hir = { path = "../librustc_hir" }
 rustc_infer = { path = "../librustc_infer" }

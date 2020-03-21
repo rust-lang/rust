@@ -3567,7 +3567,6 @@ dependencies = [
  "rustc_ast",
  "rustc_attr",
  "rustc_codegen_ssa",
- "rustc_codegen_utils",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3598,35 +3597,19 @@ dependencies = [
  "rustc_apfloat",
  "rustc_ast",
  "rustc_attr",
- "rustc_codegen_utils",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fs_util",
  "rustc_hir",
  "rustc_incremental",
  "rustc_index",
- "rustc_session",
- "rustc_span",
- "rustc_target",
- "serialize",
- "tempfile",
-]
-
-[[package]]
-name = "rustc_codegen_utils"
-version = "0.0.0"
-dependencies = [
- "log",
- "punycode",
- "rustc",
- "rustc-demangle",
- "rustc_ast",
- "rustc_data_structures",
- "rustc_hir",
  "rustc_metadata",
  "rustc_session",
  "rustc_span",
+ "rustc_symbol_mangling",
  "rustc_target",
+ "serialize",
+ "tempfile",
 ]
 
 [[package]]
@@ -3665,7 +3648,6 @@ dependencies = [
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_codegen_ssa",
- "rustc_codegen_utils",
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_errors",
@@ -3814,7 +3796,6 @@ dependencies = [
  "rustc_builtin_macros",
  "rustc_codegen_llvm",
  "rustc_codegen_ssa",
- "rustc_codegen_utils",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_expand",
@@ -3832,6 +3813,7 @@ dependencies = [
  "rustc_resolve",
  "rustc_session",
  "rustc_span",
+ "rustc_symbol_mangling",
  "rustc_target",
  "rustc_trait_selection",
  "rustc_traits",
@@ -4071,7 +4053,6 @@ dependencies = [
  "rustc",
  "rustc_ast",
  "rustc_ast_pretty",
- "rustc_codegen_utils",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_parse",
@@ -4110,6 +4091,23 @@ dependencies = [
  "scoped-tls",
  "serialize",
  "unicode-width",
+]
+
+[[package]]
+name = "rustc_symbol_mangling"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "punycode",
+ "rustc",
+ "rustc-demangle",
+ "rustc_ast",
+ "rustc_data_structures",
+ "rustc_hir",
+ "rustc_metadata",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
 ]
 
 [[package]]

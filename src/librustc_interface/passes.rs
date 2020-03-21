@@ -14,8 +14,7 @@ use rustc::util::common::ErrorReported;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self, ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_codegen_utils::link::filename_for_metadata;
+use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::sync::{par_iter, Lrc, Once, ParallelIterator, WorkerLocal};
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::PResult;
@@ -29,9 +28,11 @@ use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_resolve::{Resolver, ResolverArenas};
-use rustc_session::config::{self, CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::config::{PpMode, PpSourceMode};
+use rustc_session::config::{
+    self, CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode,
+};
 use rustc_session::lint;
+use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -477,12 +478,7 @@ fn generated_output_paths(
             // by appending `.rlib`, `.exe`, etc., so we can skip this transformation.
             OutputType::Exe if !exact_name => {
                 for crate_type in sess.crate_types.borrow().iter() {
-                    let p = ::rustc_codegen_utils::link::filename_for_input(
-                        sess,
-                        *crate_type,
-                        crate_name,
-                        outputs,
-                    );
+                    let p = filename_for_input(sess, *crate_type, crate_name, outputs);
                     out_filenames.push(p);
                 }
             }
@@ -682,7 +678,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     rustc_ty::provide(providers);
     rustc_metadata::provide(providers);
     rustc_lint::provide(providers);
-    rustc_codegen_utils::provide(providers);
+    rustc_symbol_mangling::provide(providers);
     rustc_codegen_ssa::provide(providers);
 }
 

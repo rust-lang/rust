@@ -1,13 +1,13 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "rustc_codegen_utils"
+name = "rustc_symbol_mangling"
 version = "0.0.0"
 edition = "2018"
 
 [lib]
-name = "rustc_codegen_utils"
+name = "rustc_symbol_mangling"
 path = "lib.rs"
-test = false
+doctest = false
 
 [dependencies]
 log = "0.4"

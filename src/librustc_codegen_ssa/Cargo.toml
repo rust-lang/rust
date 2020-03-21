@@ -25,7 +25,7 @@ rustc_span = { path = "../librustc_span" }
 rustc = { path = "../librustc" }
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_attr = { path = "../librustc_attr" }
-rustc_codegen_utils = { path = "../librustc_codegen_utils" }
+rustc_symbol_mangling = { path = "../librustc_symbol_mangling" }
 rustc_data_structures = { path = "../librustc_data_structures"}
 rustc_errors = { path = "../librustc_errors" }
 rustc_fs_util = { path = "../librustc_fs_util" }
@@ -34,3 +34,4 @@ rustc_incremental = { path = "../librustc_incremental" }
 rustc_index = { path = "../librustc_index" }
 rustc_target = { path = "../librustc_target" }
 rustc_session = { path = "../librustc_session" }
+rustc_metadata = { path = "../librustc_metadata" }

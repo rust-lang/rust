@@ -27,13 +27,12 @@ rustc_parse = { path = "../librustc_parse" }
 rustc_plugin_impl = { path = "../librustc_plugin_impl" }
 rustc_save_analysis = { path = "../librustc_save_analysis" }
 rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
-rustc_codegen_utils = { path = "../librustc_codegen_utils" }
+rustc_session = { path = "../librustc_session" }
 rustc_error_codes = { path = "../librustc_error_codes" }
 rustc_interface = { path = "../librustc_interface" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
-rustc_session = { path = "../librustc_session" }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["consoleapi", "debugapi", "processenv"] }

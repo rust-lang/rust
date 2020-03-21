@@ -1,6 +1,7 @@
+//! Related to out filenames of compilation (e.g. save analysis, binaries).
+use crate::config::{self, Input, OutputFilenames, OutputType};
+use crate::Session;
 use rustc_ast::{ast, attr};
-use rustc_session::config::{self, Input, OutputFilenames, OutputType};
-use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use std::path::{Path, PathBuf};
@@ -24,9 +25,9 @@ pub fn out_filename(
     out_filename
 }
 
-// Make sure files are writeable.  Mac, FreeBSD, and Windows system linkers
-// check this already -- however, the Linux linker will happily overwrite a
-// read-only file.  We should be consistent.
+/// Make sure files are writeable.  Mac, FreeBSD, and Windows system linkers
+/// check this already -- however, the Linux linker will happily overwrite a
+/// read-only file.  We should be consistent.
 pub fn check_file_is_writeable(file: &Path, sess: &Session) {
     if !is_writeable(file) {
         sess.fatal(&format!(
@@ -46,7 +47,7 @@ fn is_writeable(p: &Path) -> bool {
 
 pub fn find_crate_name(sess: Option<&Session>, attrs: &[ast::Attribute], input: &Input) -> String {
     let validate = |s: String, span: Option<Span>| {
-        rustc_metadata::validate_crate_name(sess, &s, span);
+        validate_crate_name(sess, &s, span);
         s
     };
 
@@ -94,6 +95,36 @@ pub fn find_crate_name(sess: Option<&Session>, attrs: &[ast::Attribute], input: 
     }
 
     "rust_out".to_string()
+}
+
+pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
+    let mut err_count = 0;
+    {
+        let mut say = |s: &str| {
+            match (sp, sess) {
+                (_, None) => panic!("{}", s),
+                (Some(sp), Some(sess)) => sess.span_err(sp, s),
+                (None, Some(sess)) => sess.err(s),
+            }
+            err_count += 1;
+        };
+        if s.is_empty() {
+            say("crate name must not be empty");
+        }
+        for c in s.chars() {
+            if c.is_alphanumeric() {
+                continue;
+            }
+            if c == '_' {
+                continue;
+            }
+            say(&format!("invalid character `{}` in crate name: `{}`", c, s));
+        }
+    }
+
+    if err_count > 0 {
+        sess.unwrap().abort_if_errors();
+    }
 }
 
 pub fn filename_for_metadata(

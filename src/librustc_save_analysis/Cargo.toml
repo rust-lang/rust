@@ -13,12 +13,11 @@ log = "0.4"
 rustc = { path = "../librustc" }
 rustc_ast_pretty = { path = "../librustc_ast_pretty" }
 rustc_data_structures = { path = "../librustc_data_structures" }
-rustc_codegen_utils = { path = "../librustc_codegen_utils" }
+rustc_session = { path = "../librustc_session" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_parse = { path = "../librustc_parse" }
 serde_json = "1"
 rustc_ast = { path = "../librustc_ast" }
-rustc_session = { path = "../librustc_session" }
 rustc_span = { path = "../librustc_span" }
 rls-data = "0.19"
 rls-span = "0.5"
