@@ -864,7 +864,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             first_merge,
             any_changed
         );
-        return any_changed;
+        any_changed
     }
 
     // Indicates that a local variable was *defined*; we know that no

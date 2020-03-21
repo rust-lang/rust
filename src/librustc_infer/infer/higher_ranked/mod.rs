@@ -30,7 +30,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
 
         let span = self.trace.cause.span;
 
-        return self.infcx.commit_if_ok(|snapshot| {
+        self.infcx.commit_if_ok(|snapshot| {
             // First, we instantiate each bound region in the supertype with a
             // fresh placeholder region.
             let (b_prime, placeholder_map) = self.infcx.replace_bound_vars_with_placeholders(b);
@@ -53,7 +53,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
             debug!("higher_ranked_sub: OK result={:?}", result);
 
             Ok(ty::Binder::bind(result))
-        });
+        })
     }
 }
 

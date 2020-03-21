@@ -169,12 +169,12 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                                 debug!("QueryNormalizer: result = {:#?}", result);
                                 debug!("QueryNormalizer: obligations = {:#?}", obligations);
                                 self.obligations.extend(obligations);
-                                return result.normalized_ty;
+                                result.normalized_ty
                             }
 
                             Err(_) => {
                                 self.error = true;
-                                return ty;
+                                ty
                             }
                         }
                     }

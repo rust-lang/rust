@@ -273,7 +273,6 @@ fn lint_int_literal<'a, 'tcx>(
                     cx.sess()
                         .source_map()
                         .span_to_snippet(lit.span)
-                        .ok()
                         .expect("must get snippet from literal"),
                     t.name_str(),
                     min,
@@ -338,7 +337,6 @@ fn lint_uint_literal<'a, 'tcx>(
                     cx.sess()
                         .source_map()
                         .span_to_snippet(lit.span)
-                        .ok()
                         .expect("must get snippet from literal"),
                     t.name_str(),
                     min,

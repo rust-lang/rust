@@ -64,7 +64,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ge => l >= r,
             _ => bug!("Invalid operation on char: {:?}", bin_op),
         };
-        return (Scalar::from_bool(res), false, self.tcx.types.bool);
+        (Scalar::from_bool(res), false, self.tcx.types.bool)
     }
 
     fn binary_bool_op(
@@ -87,7 +87,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             BitXor => l ^ r,
             _ => bug!("Invalid operation on bool: {:?}", bin_op),
         };
-        return (Scalar::from_bool(res), false, self.tcx.types.bool);
+        (Scalar::from_bool(res), false, self.tcx.types.bool)
     }
 
     fn binary_float_op<F: Float + Into<Scalar<M::PointerTag>>>(
@@ -113,7 +113,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Rem => ((l % r).value.into(), ty),
             _ => bug!("invalid float op: `{:?}`", bin_op),
         };
-        return (val, false, ty);
+        (val, false, ty)
     }
 
     fn binary_int_op(

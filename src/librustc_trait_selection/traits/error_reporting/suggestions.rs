@@ -351,7 +351,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // Different to previous arm because one is `&hir::Local` and the other
             // is `P<hir::Local>`.
             Some(hir::Node::Local(local)) => get_name(err, &local.pat.kind),
-            _ => return None,
+            _ => None,
         }
     }
 

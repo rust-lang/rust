@@ -132,7 +132,7 @@ where
             }
         }
 
-        return None;
+        None
     }
 }
 

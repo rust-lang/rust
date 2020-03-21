@@ -489,7 +489,6 @@ impl<'a> TraitDef<'a> {
                 // set earlier; see
                 // librustc_expand/expand.rs:MacroExpander::fully_expand_fragment()
                 // librustc_expand/base.rs:Annotatable::derive_allowed()
-                return;
             }
         }
     }

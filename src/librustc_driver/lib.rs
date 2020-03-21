@@ -752,7 +752,7 @@ impl RustcDefaultCalls {
                 PrintRequest::NativeStaticLibs => {}
             }
         }
-        return Compilation::Stop;
+        Compilation::Stop
     }
 }
 
