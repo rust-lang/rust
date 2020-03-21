@@ -146,7 +146,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             }
 
             // ok, don't skip this
-            return false;
+            false
         })
     }
 

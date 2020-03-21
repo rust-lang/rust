@@ -465,7 +465,7 @@ fn new_index(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
             |v| intravisit::walk_crate(v, krate),
         );
     }
-    return index;
+    index
 }
 
 /// Cross-references the feature names of unstable APIs with enabled

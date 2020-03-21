@@ -221,10 +221,10 @@ pub fn trait_ref_is_knowable<'tcx>(
     // we are an owner.
     if orphan_check_trait_ref(tcx, trait_ref, InCrate::Local).is_ok() {
         debug!("trait_ref_is_knowable: orphan check passed");
-        return None;
+        None
     } else {
         debug!("trait_ref_is_knowable: nonlocal, nonfundamental, unowned");
-        return Some(Conflict::Upstream);
+        Some(Conflict::Upstream)
     }
 }
 

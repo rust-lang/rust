@@ -852,7 +852,7 @@ impl CrateInfo {
             info.missing_lang_items.insert(cnum, missing);
         }
 
-        return info;
+        info
     }
 }
 
@@ -887,7 +887,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
                 }
             }
         }
-        return tcx.sess.opts.optimize;
+        tcx.sess.opts.optimize
     };
 
     providers.dllimport_foreign_items = |tcx, krate| {

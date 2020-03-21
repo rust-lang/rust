@@ -269,7 +269,7 @@ impl EarlyLintPass for UnsafeCode {
                 })
             }
 
-            _ => return,
+            _ => {}
         }
     }
 

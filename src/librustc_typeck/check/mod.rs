@@ -1580,7 +1580,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: DefId) -> bool {
     } else {
         span_bug!(span, "unions must be ty::Adt, but got {:?}", item_type.kind);
     }
-    return true;
+    true
 }
 
 /// Checks that an opaque type does not contain cycles and does not use `Self` or `T::Foo`
@@ -2313,7 +2313,7 @@ fn check_representable(tcx: TyCtxt<'_>, sp: Span, item_def_id: DefId) -> bool {
         }
         Representability::Representable | Representability::ContainsRecursive => (),
     }
-    return true;
+    true
 }
 
 pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {

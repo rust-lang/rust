@@ -278,7 +278,7 @@ impl<'a> Parser<'a> {
             _ => {}
         }
         e.span_label(sp, "expected `{`");
-        return Err(e);
+        Err(e)
     }
 
     /// Parses a block. Inner attributes are allowed.

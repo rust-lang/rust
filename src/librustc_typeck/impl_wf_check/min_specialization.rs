@@ -270,7 +270,7 @@ fn check_static_lifetimes<'tcx>(
     span: Span,
 ) {
     if tcx.any_free_region_meets(parent_substs, |r| *r == ty::ReStatic) {
-        tcx.sess.struct_span_err(span, &format!("cannot specialize on `'static` lifetime")).emit();
+        tcx.sess.struct_span_err(span, "cannot specialize on `'static` lifetime").emit();
     }
 }
 

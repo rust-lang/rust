@@ -877,7 +877,7 @@ where
                     // If sub-roots are equal, then `for_vid` and
                     // `vid` are related via subtyping.
                     debug!("TypeGeneralizer::tys: occurs check failed");
-                    return Err(TypeError::Mismatch);
+                    Err(TypeError::Mismatch)
                 } else {
                     match variables.probe(vid) {
                         TypeVariableValue::Known { value: u } => {
@@ -898,7 +898,7 @@ where
 
                             let u = self.tcx().mk_ty_var(new_var_id);
                             debug!("generalize: replacing original vid={:?} with new={:?}", vid, u);
-                            return Ok(u);
+                            Ok(u)
                         }
                     }
                 }

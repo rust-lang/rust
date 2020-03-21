@@ -444,7 +444,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 vec![]
             };
 
-            return create_DIArray(DIB(cx), &template_params[..]);
+            create_DIArray(DIB(cx), &template_params[..])
         }
 
         fn get_parameter_names(cx: &CodegenCx<'_, '_>, generics: &ty::Generics) -> Vec<Symbol> {

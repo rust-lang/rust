@@ -222,7 +222,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
                 return true;
             }
         }
-        return false;
+        false
     }
     fn emit_unlabled_cf_in_while_condition(&mut self, span: Span, cf_type: &str) {
         struct_span_err!(

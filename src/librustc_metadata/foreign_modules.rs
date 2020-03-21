@@ -6,7 +6,7 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<ForeignModule> {
     let mut collector = Collector { tcx, modules: Vec::new() };
     tcx.hir().krate().visit_all_item_likes(&mut collector);
-    return collector.modules;
+    collector.modules
 }
 
 struct Collector<'tcx> {

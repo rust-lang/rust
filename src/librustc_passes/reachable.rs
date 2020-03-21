@@ -30,9 +30,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>, attrs: Codegen
     }
 
     match item.kind {
-        hir::ItemKind::Fn(ref sig, ..) if sig.header.is_const() => {
-            return true;
-        }
+        hir::ItemKind::Fn(ref sig, ..) if sig.header.is_const() => true,
         hir::ItemKind::Impl { .. } | hir::ItemKind::Fn(..) => {
             let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
             generics.requires_monomorphization(tcx)

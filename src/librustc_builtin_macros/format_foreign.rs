@@ -359,7 +359,7 @@ pub mod printf {
         //
         // Note: `move` used to capture copies of the cursors as they are *now*.
         let fallback = move || {
-            return Some((
+            Some((
                 Substitution::Format(Format {
                     span: start.slice_between(next).unwrap(),
                     parameter: None,
@@ -371,7 +371,7 @@ pub mod printf {
                     position: InnerSpan::new(start.at, next.at),
                 }),
                 next.slice_after(),
-            ));
+            ))
         };
 
         // Next parsing state.

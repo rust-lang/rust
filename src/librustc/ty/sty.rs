@@ -1612,7 +1612,7 @@ impl<'tcx> PolyExistentialProjection<'tcx> {
     }
 
     pub fn item_def_id(&self) -> DefId {
-        return self.skip_binder().item_def_id;
+        self.skip_binder().item_def_id
     }
 }
 
@@ -2000,8 +2000,8 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_unsafe_ptr(&self) -> bool {
         match self.kind {
-            RawPtr(_) => return true,
-            _ => return false,
+            RawPtr(_) => true,
+            _ => false,
         }
     }
 

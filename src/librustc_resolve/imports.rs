@@ -1108,7 +1108,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                     match binding.kind {
                                         // Never suggest the name that has binding error
                                         // i.e., the name that cannot be previously resolved
-                                        NameBindingKind::Res(Res::Err, _) => return None,
+                                        NameBindingKind::Res(Res::Err, _) => None,
                                         _ => Some(&i.name),
                                     }
                                 }

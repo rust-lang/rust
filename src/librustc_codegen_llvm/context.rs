@@ -800,7 +800,7 @@ impl CodegenCx<'b, 'tcx> {
             ifn!("llvm.dbg.declare", fn(self.type_metadata(), self.type_metadata()) -> void);
             ifn!("llvm.dbg.value", fn(self.type_metadata(), t_i64, self.type_metadata()) -> void);
         }
-        return None;
+        None
     }
 }
 

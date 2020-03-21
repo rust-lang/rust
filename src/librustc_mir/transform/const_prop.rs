@@ -483,7 +483,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             err.span_label(source_info.span, format!("{:?}", panic));
             err.emit()
         });
-        return None;
+        None
     }
 
     fn check_unary_op(

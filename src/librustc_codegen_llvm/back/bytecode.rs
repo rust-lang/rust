@@ -83,7 +83,7 @@ pub fn encode(identifier: &str, bytecode: &[u8]) -> Vec<u8> {
         encoded.push(0);
     }
 
-    return encoded;
+    encoded
 }
 
 pub struct DecodedBytecode<'a> {
@@ -132,7 +132,7 @@ impl<'a> DecodedBytecode<'a> {
     pub fn bytecode(&self) -> Vec<u8> {
         let mut data = Vec::new();
         DeflateDecoder::new(self.encoded_bytecode).read_to_end(&mut data).unwrap();
-        return data;
+        data
     }
 
     pub fn identifier(&self) -> &'a str {

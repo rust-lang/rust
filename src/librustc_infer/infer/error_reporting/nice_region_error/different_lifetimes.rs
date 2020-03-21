@@ -142,6 +142,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             .span_label(span_2, String::new())
             .span_label(span, span_label)
             .emit();
-        return Some(ErrorReported);
+        Some(ErrorReported)
     }
 }

@@ -452,12 +452,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 debug!("Expanding value of {:?} from {:?} to {:?}", b_vid, cur_region, lub);
 
                 *b_data = VarValue::Value(lub);
-                return true;
+                true
             }
 
-            VarValue::ErrorValue => {
-                return false;
-            }
+            VarValue::ErrorValue => false,
         }
     }
 
@@ -804,7 +802,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
         }
 
-        return graph;
+        graph
     }
 
     fn collect_error_for_expanding_node(
