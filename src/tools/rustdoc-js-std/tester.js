@@ -65,6 +65,7 @@ function main(argv) {
     var errors = 0;
 
     fs.readdirSync(test_folder).forEach(function(file) {
+        process.stdout.write('Checking "' + file + '" ... ');
         errors += tools.runChecks(path.join(test_folder, file), loaded, index);
     });
     return errors > 0 ? 1 : 0;
