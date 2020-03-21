@@ -88,7 +88,7 @@ pub trait Error: Debug + Display {
     /// fn main() {
     ///     match get_super_error() {
     ///         Err(e) => {
-    ///             println!("Error: {}", e.description());
+    ///             println!("Error: {}", e);
     ///             println!("Caused by: {}", e.source().unwrap());
     ///         }
     ///         _ => println!("No error"),
