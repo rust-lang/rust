@@ -336,7 +336,7 @@ impl ProjectWorkspace {
                                 extern_source,
                             );
                             if cargo[tgt].kind == TargetKind::Lib {
-                                lib_tgt = Some(crate_id);
+                                lib_tgt = Some((crate_id, cargo[tgt].name.clone()));
                                 pkg_to_lib_crate.insert(pkg, crate_id);
                             }
                             if cargo[tgt].is_proc_macro {
@@ -363,7 +363,7 @@ impl ProjectWorkspace {
 
                     // Set deps to the core, std and to the lib target of the current package
                     for &from in pkg_crates.get(&pkg).into_iter().flatten() {
-                        if let Some(to) = lib_tgt {
+                        if let Some((to, name)) = lib_tgt.clone() {
                             if to != from
                                 && crate_graph
                                     .add_dep(
@@ -371,7 +371,7 @@ impl ProjectWorkspace {
                                         // For root projects with dashes in their name,
                                         // cargo metadata does not do any normalization,
                                         // so we do it ourselves currently
-                                        CrateName::normalize_dashes(&cargo[pkg].name),
+                                        CrateName::normalize_dashes(&name),
                                         to,
                                     )
                                     .is_err()
