@@ -362,7 +362,7 @@ impl WatchThread {
                         _ => {}
                     }
 
-                    // if the send channel was closed, so we want to shutdown
+                    // if the send channel was closed, we want to shutdown
                     message_send.send(CheckEvent::Msg(message)).is_ok()
                 });
 
