@@ -386,43 +386,20 @@ where
         Ok(place)
     }
 
-    /// Offset a pointer to project to a field. Unlike `place_field`, this is always
-    /// possible without allocating, so it can take `&self`. Also return the field's layout.
+    /// Offset a pointer to project to a field of a struct/union. Unlike `place_field`, this is
+    /// always possible without allocating, so it can take `&self`. Also return the field's layout.
     /// This supports both struct and array fields.
+    ///
+    /// This also works for arrays, but then the `usize` index type is restricting.
+    /// For indexing into arrays, use `mplace_index`.
     #[inline(always)]
     pub fn mplace_field(
         &self,
         base: MPlaceTy<'tcx, M::PointerTag>,
-        field: u64,
+        field: usize,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        // Not using the layout method because we want to compute on u64
-        let (offset, field_layout) = match base.layout.fields {
-            layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
-                let field = usize::try_from(field).unwrap();
-                (offsets[field], base.layout.field(self, field)?)
-            }
-            layout::FieldPlacement::Array { stride, .. } => {
-                let len = base.len(self)?;
-                if field >= len {
-                    // This can only be reached in ConstProp and non-rustc-MIR.
-                    throw_ub!(BoundsCheckFailed { len, index: field });
-                }
-                // All fields have the same layout.
-                (Size::mul(stride, field), base.layout.field(self, 9)?)
-            }
-            layout::FieldPlacement::Union(count) => {
-                let field = usize::try_from(field).unwrap();
-                assert!(
-                    field < count,
-                    "Tried to access field {} of union {:#?} with {} fields",
-                    field,
-                    base.layout,
-                    count
-                );
-                // Offset is always 0
-                (Size::from_bytes(0), base.layout.field(self, field)?)
-            }
-        };
+        let offset = base.layout.fields.offset(field);
+        let field_layout = base.layout.field(self, field)?;
 
         // Offset may need adjustment for unsized fields.
         let (meta, offset) = if field_layout.is_unsized() {
@@ -450,6 +427,32 @@ where
         // We do not look at `base.layout.align` nor `field_layout.align`, unlike
         // codegen -- mostly to see if we can get away with that
         base.offset(offset, meta, field_layout, self)
+    }
+
+    /// Index into an array.
+    #[inline(always)]
+    pub fn mplace_index(
+        &self,
+        base: MPlaceTy<'tcx, M::PointerTag>,
+        index: u64,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        // Not using the layout method because we want to compute on u64
+        match base.layout.fields {
+            layout::FieldPlacement::Array { stride, .. } => {
+                let len = base.len(self)?;
+                if index >= len {
+                    // This can only be reached in ConstProp and non-rustc-MIR.
+                    throw_ub!(BoundsCheckFailed { len, index });
+                }
+                let offset = Size::mul(stride, index);
+                // All fields have the same layout.
+                let field_layout = base.layout.field(self, 0)?;
+
+                assert!(!field_layout.is_unsized());
+                base.offset(offset, MemPlaceMeta::None, field_layout, self)
+            }
+            _ => bug!("`mplace_index` called on non-array type {:?}", base.layout.ty),
+        }
     }
 
     // Iterates over all fields of an array. Much more efficient than doing the
@@ -528,7 +531,7 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         use rustc::mir::ProjectionElem::*;
         Ok(match *proj_elem {
-            Field(field, _) => self.mplace_field(base, u64::try_from(field.index()).unwrap())?,
+            Field(field, _) => self.mplace_field(base, field.index())?,
             Downcast(_, variant) => self.mplace_downcast(base, variant)?,
             Deref => self.deref_operand(base.into())?,
 
@@ -536,8 +539,11 @@ where
                 let layout = self.layout_of(self.tcx.types.usize)?;
                 let n = self.access_local(self.frame(), local, Some(layout))?;
                 let n = self.read_scalar(n)?;
-                let n = self.force_bits(n.not_undef()?, self.tcx.data_layout.pointer_size)?;
-                self.mplace_field(base, u64::try_from(n).unwrap())?
+                let n = u64::try_from(
+                    self.force_bits(n.not_undef()?, self.tcx.data_layout.pointer_size)?,
+                )
+                .unwrap();
+                self.mplace_index(base, n)?
             }
 
             ConstantIndex { offset, min_length, from_end } => {
@@ -555,7 +561,7 @@ where
                     u64::from(offset)
                 };
 
-                self.mplace_field(base, index)?
+                self.mplace_index(base, index)?
             }
 
             Subslice { from, to, from_end } => {
@@ -571,12 +577,21 @@ where
     pub fn place_field(
         &mut self,
         base: PlaceTy<'tcx, M::PointerTag>,
-        field: u64,
+        field: usize,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         // FIXME: We could try to be smarter and avoid allocation for fields that span the
         // entire place.
         let mplace = self.force_allocation(base)?;
         Ok(self.mplace_field(mplace, field)?.into())
+    }
+
+    pub fn place_index(
+        &mut self,
+        base: PlaceTy<'tcx, M::PointerTag>,
+        index: u64,
+    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
+        let mplace = self.force_allocation(base)?;
+        Ok(self.mplace_index(mplace, index)?.into())
     }
 
     pub fn place_downcast(
@@ -604,7 +619,7 @@ where
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         use rustc::mir::ProjectionElem::*;
         Ok(match *proj_elem {
-            Field(field, _) => self.place_field(base, u64::try_from(field.index()).unwrap())?,
+            Field(field, _) => self.place_field(base, field.index())?,
             Downcast(_, variant) => self.place_downcast(base, variant)?,
             Deref => self.deref_operand(self.place_to_op(base)?)?.into(),
             // For the other variants, we have to force an allocation.
@@ -1073,7 +1088,7 @@ where
                 let size = discr_layout.value.size(self);
                 let discr_val = truncate(discr_val, size);
 
-                let discr_dest = self.place_field(dest, u64::try_from(discr_index).unwrap())?;
+                let discr_dest = self.place_field(dest, discr_index)?;
                 self.write_scalar(Scalar::from_uint(discr_val, size), discr_dest)?;
             }
             layout::Variants::Multiple {
@@ -1104,7 +1119,7 @@ where
                         niche_start_val,
                     )?;
                     // Write result.
-                    let niche_dest = self.place_field(dest, u64::try_from(discr_index).unwrap())?;
+                    let niche_dest = self.place_field(dest, discr_index)?;
                     self.write_immediate(*discr_val, niche_dest)?;
                 }
             }

@@ -320,11 +320,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Example: `Arc<T>` -> `Arc<Trait>`
                 // here we need to increase the size of every &T thin ptr field to a fat ptr
                 for i in 0..src.layout.fields.count() {
-                    let dst_field = self.place_field(dest, i as u64)?;
+                    let dst_field = self.place_field(dest, i)?;
                     if dst_field.layout.is_zst() {
                         continue;
                     }
-                    let src_field = self.operand_field(src, i as u64)?;
+                    let src_field = self.operand_field(src, i)?;
                     if src_field.layout.ty == dst_field.layout.ty {
                         self.copy_op(src_field, dst_field)?;
                     } else {

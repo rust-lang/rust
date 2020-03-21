@@ -351,7 +351,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn operand_field(
         &self,
         op: OpTy<'tcx, M::PointerTag>,
-        field: u64,
+        field: usize,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let base = match op.try_as_mplace(self) {
             Ok(mplace) => {
@@ -362,7 +362,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Err(value) => value,
         };
 
-        let field = field.try_into().unwrap();
         let field_layout = op.layout.field(self, field)?;
         if field_layout.is_zst() {
             let immediate = Scalar::zst().into();
@@ -382,6 +381,21 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
         Ok(OpTy { op: Operand::Immediate(immediate), layout: field_layout })
+    }
+
+    pub fn operand_index(
+        &self,
+        op: OpTy<'tcx, M::PointerTag>,
+        index: u64,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        if let Ok(index) = usize::try_from(index) {
+            // We can just treat this as a field.
+            self.operand_field(op, index)
+        } else {
+            // Indexing into a big array. This must be an mplace.
+            let mplace = op.assert_mem_place(self);
+            Ok(self.mplace_index(mplace, index)?.into())
+        }
     }
 
     pub fn operand_downcast(
@@ -406,7 +420,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::ProjectionElem::*;
         Ok(match *proj_elem {
-            Field(field, _) => self.operand_field(base, u64::try_from(field.index()).unwrap())?,
+            Field(field, _) => self.operand_field(base, field.index())?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
             Deref => self.deref_operand(base)?.into(),
             Subslice { .. } | ConstantIndex { .. } | Index(_) => {
@@ -593,7 +607,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         // read raw discriminant value
-        let discr_op = self.operand_field(rval, u64::try_from(discr_index).unwrap())?;
+        let discr_op = self.operand_field(rval, discr_index)?;
         let discr_val = self.read_immediate(discr_op)?;
         let raw_discr = discr_val.to_scalar_or_undef();
         trace!("discr value: {:?}", raw_discr);

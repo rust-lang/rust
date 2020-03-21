@@ -350,8 +350,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 );
 
                 for i in 0..len {
-                    let place = self.place_field(dest, i)?;
-                    let value = if i == index { elem } else { self.operand_field(input, i)? };
+                    let place = self.place_index(dest, i)?;
+                    let value = if i == index { elem } else { self.operand_index(input, i)? };
                     self.copy_op(value, place)?;
                 }
             }
@@ -370,7 +370,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     "Return type `{}` must match vector element type `{}`",
                     dest.layout.ty, e_ty
                 );
-                self.copy_op(self.operand_field(args[0], index)?, dest)?;
+                self.copy_op(self.operand_index(args[0], index)?, dest)?;
             }
             _ => return Ok(false),
         }

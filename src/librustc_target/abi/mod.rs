@@ -3,6 +3,7 @@ pub use Primitive::*;
 
 use crate::spec::Target;
 
+use std::convert::TryFrom;
 use std::ops::{Add, AddAssign, Deref, Mul, Range, RangeInclusive, Sub};
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -665,7 +666,7 @@ impl FieldPlacement {
                 Size::ZERO
             }
             FieldPlacement::Array { stride, count } => {
-                let i = i as u64;
+                let i = u64::try_from(i).unwrap();
                 assert!(i < count);
                 stride * i
             }

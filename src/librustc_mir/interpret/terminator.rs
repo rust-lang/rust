@@ -309,7 +309,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                     .map(|&a| Ok(a))
                                     .chain(
                                         (0..untuple_arg.layout.fields.count())
-                                            .map(|i| self.operand_field(untuple_arg, i as u64)),
+                                            .map(|i| self.operand_field(untuple_arg, i)),
                                     )
                                     .collect::<InterpResult<'_, Vec<OpTy<'tcx, M::PointerTag>>>>(
                                     )?,
@@ -332,7 +332,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if Some(local) == body.spread_arg {
                             // Must be a tuple
                             for i in 0..dest.layout.fields.count() {
-                                let dest = self.place_field(dest, i as u64)?;
+                                let dest = self.place_field(dest, i)?;
                                 self.pass_argument(rust_abi, &mut caller_iter, dest)?;
                             }
                         } else {

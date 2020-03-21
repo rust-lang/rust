@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::ops::Mul;
 
 use rustc::mir::interpret::{InterpResult, Pointer, PointerArithmetic, Scalar};
@@ -56,7 +57,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `get_vtable` in `rust_codegen_llvm/meth.rs`.
         // /////////////////////////////////////////////////////////////////////////////////////////
         let vtable = self.memory.allocate(
-            ptr_size * (3 + methods.len() as u64),
+            Size::mul(ptr_size, u64::try_from(methods.len()).unwrap().checked_add(3).unwrap()),
             ptr_align,
             MemoryKind::Vtable,
         );
@@ -172,10 +173,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .expect("cannot be a ZST");
         let alloc = self.memory.get_raw(vtable.alloc_id)?;
         let size = alloc.read_ptr_sized(self, vtable.offset(pointer_size, self)?)?.not_undef()?;
-        let size = self.force_bits(size, pointer_size)? as u64;
+        let size = u64::try_from(self.force_bits(size, pointer_size)?).unwrap();
         let align =
             alloc.read_ptr_sized(self, vtable.offset(pointer_size * 2, self)?)?.not_undef()?;
-        let align = self.force_bits(align, pointer_size)? as u64;
+        let align = u64::try_from(self.force_bits(align, pointer_size)?).unwrap();
 
         if size >= self.tcx.data_layout().obj_size_bound() {
             throw_ub_format!(

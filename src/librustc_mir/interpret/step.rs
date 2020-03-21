@@ -2,8 +2,6 @@
 //!
 //! The main entry point is the `step` method.
 
-use std::convert::TryFrom;
-
 use rustc::mir;
 use rustc::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc::ty::layout::LayoutOf;
@@ -194,8 +192,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Ignore zero-sized fields.
                     if !op.layout.is_zst() {
                         let field_index = active_field_index.unwrap_or(i);
-                        let field_dest =
-                            self.place_field(dest, u64::try_from(field_index).unwrap())?;
+                        let field_dest = self.place_field(dest, field_index)?;
                         self.copy_op(op, field_dest)?;
                     }
                 }
