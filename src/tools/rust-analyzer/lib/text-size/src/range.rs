@@ -10,18 +10,18 @@ use {
 ///
 /// # Translation from `text_unit`
 ///
-/// - `TextRange::from_to(from, to)`        ⟹ `TextRange(from, to)`
-/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::up_to(size) + offset`
+/// - `TextRange::from_to(from, to)`        ⟹ `TextRange::new(from, to)`
+/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::from_len(offset, size)`
 /// - `range.start()`                       ⟹ `range.start()`
 /// - `range.end()`                         ⟹ `range.end()`
 /// - `range.len()`                         ⟹ `range.len()`
 /// - `range.is_empty()`                    ⟹ `range.is_empty()`
 /// - `a.is_subrange(b)`                    ⟹ `b.contains_range(a)`
-/// - `a.intersection(b)`                   ⟹ `TextRange::intersection(a, b)`
-/// - `a.extend_to(b)`                      ⟹ `TextRange::covering(a, b)`
+/// - `a.intersection(b)`                   ⟹ `a.intersect(b)`
+/// - `a.extend_to(b)`                      ⟹ `a.cover(b)`
 /// - `range.contains(offset)`              ⟹ `range.contains(point)`
 /// - `range.contains_inclusive(offset)`    ⟹ `range.contains_inclusive(point)`
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Default, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct TextRange {
     // Invariant: start <= end
     start: TextSize,
@@ -34,19 +34,24 @@ impl fmt::Debug for TextRange {
     }
 }
 
-/// Creates a new `TextRange` with the given `start` and `end` (`start..end`).
-///
-/// # Panics
-///
-/// Panics if `end < start`.
-#[allow(non_snake_case)]
-#[inline]
-pub fn TextRange(start: TextSize, end: TextSize) -> TextRange {
-    assert!(start <= end);
-    TextRange { start, end }
-}
-
 impl TextRange {
+    /// Creates a new `TextRange` with the given `start` and `end` (`start..end`).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `end < start`.
+    #[inline]
+    pub fn new(start: TextSize, end: TextSize) -> TextRange {
+        assert!(start <= end);
+        TextRange { start, end }
+    }
+
+    /// Create a new `TextRange` with the given `start` and `len` (`start..start + len`).
+    #[inline]
+    pub fn from_len(start: TextSize, len: TextSize) -> TextRange {
+        TextRange::new(start, start + len)
+    }
+
     /// Create a zero-length range at the specified offset (`offset..offset`).
     #[inline]
     pub const fn empty(offset: TextSize) -> TextRange {
@@ -59,10 +64,8 @@ impl TextRange {
     /// Create a range up to the given end (`..end`).
     #[inline]
     pub const fn up_to(end: TextSize) -> TextRange {
-        TextRange {
-            start: TextSize::zero(),
-            end,
-        }
+        let start = TextSize::zero();
+        TextRange { start, end }
     }
 }
 
@@ -84,7 +87,9 @@ impl TextRange {
     #[inline]
     pub const fn len(self) -> TextSize {
         // HACK for const fn: math on primitives only
-        TextSize(self.end().raw - self.start().raw)
+        TextSize {
+            raw: self.end().raw - self.start().raw,
+        }
     }
 
     /// Check if this range is empty.
@@ -124,14 +129,14 @@ impl TextRange {
         if end < start {
             return None;
         }
-        Some(TextRange(start, end))
+        Some(TextRange::new(start, end))
     }
 
     /// Extends the range to cover `other` as well.
     pub fn cover(self, other: TextRange) -> TextRange {
         let start = cmp::min(self.start(), other.start());
         let end = cmp::max(self.end(), other.end());
-        TextRange(start, end)
+        TextRange::new(start, end)
     }
 
     /// Extends the range to cover `other` offsets as well.

@@ -17,7 +17,7 @@ impl<'de> Deserialize<'de> for TextSize {
     where
         D: Deserializer<'de>,
     {
-        Deserialize::deserialize(deserializer).map(TextSize)
+        u32::deserialize(deserializer).map(TextSize::from)
     }
 }
 
@@ -43,6 +43,6 @@ impl<'de> Deserialize<'de> for TextRange {
                 start, end
             )));
         }
-        Ok(TextRange(start, end))
+        Ok(TextRange::new(start, end))
     }
 }
