@@ -13,14 +13,14 @@ echo
 
 # Test
 function run_tests {
-  if [ -n "${FOREIGN_TARGET+exists}" ]; then
-    echo "Testing foreign architecture $FOREIGN_TARGET"
+  if [ -n "${MIRI_TEST_TARGET+exists}" ]; then
+    echo "Testing foreign architecture $MIRI_TEST_TARGET"
   else
     echo "Testing host architecture"
   fi
 
   ./miri test --locked
-  if ! [ -n "${FOREIGN_TARGET+exists}" ]; then
+  if ! [ -n "${MIRI_TEST_TARGET+exists}" ]; then
     # Only for host architecture: tests with MIR optimizations
     MIRI_TEST_FLAGS="-Z mir-opt-level=3" ./miri test
   fi
@@ -38,10 +38,10 @@ MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
 
 if [ "$TRAVIS_OS_NAME" == linux ]; then
   # cross-test 64bit macOS from Linux
-  FOREIGN_TARGET=x86_64-apple-darwin run_tests
+  MIRI_TEST_TARGET=x86_64-apple-darwin run_tests
   # cross-test 32bit Windows from Linux
-  FOREIGN_TARGET=i686-pc-windows-msvc run_tests
+  MIRI_TEST_TARGET=i686-pc-windows-msvc run_tests
 elif [ "$TRAVIS_OS_NAME" == osx ]; then
   # cross-test 64bit Windows from macOS
-  FOREIGN_TARGET=x86_64-pc-windows-msvc run_tests
+  MIRI_TEST_TARGET=x86_64-pc-windows-msvc run_tests
 fi
