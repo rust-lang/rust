@@ -187,6 +187,16 @@ macro_rules! declare_arena {
             drop: DropArena,
             $($name: arena_for_type!($a[$ty]),)*
         }
+
+        $(
+            impl ArenaAllocatable for $ty {}
+            unsafe impl<$tcx> ArenaField<$tcx> for $ty {
+                #[inline]
+                fn arena<'a>(_arena: &'a Arena<$tcx>) -> Option<&'a TypedArena<Self>> {
+                    which_arena_for_type!($a[&_arena.$name])
+                }
+            }
+        )*
     }
 }
 
@@ -202,23 +212,7 @@ macro_rules! which_arena_for_type {
     };
 }
 
-macro_rules! impl_arena_allocatable {
-    ([], [$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) => {
-        $(
-            impl ArenaAllocatable for $ty {}
-            unsafe impl<$tcx> ArenaField<$tcx> for $ty {
-                #[inline]
-                fn arena<'a>(_arena: &'a Arena<$tcx>) -> Option<&'a TypedArena<Self>> {
-                    which_arena_for_type!($a[&_arena.$name])
-                }
-            }
-        )*
-    }
-}
-
 arena_types!(declare_arena, [], 'tcx);
-
-arena_types!(impl_arena_allocatable, [], 'tcx);
 
 #[marker]
 pub trait ArenaAllocatable {}
