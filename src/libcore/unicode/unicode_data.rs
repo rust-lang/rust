@@ -27,11 +27,11 @@ fn range_search<
     } else {
         return false;
     };
-    let idx = bitset_chunk_idx[(chunk_idx as usize)][chunk_piece] as usize;
-    let word = if idx < CANONICAL {
-        bitset_canonical[idx]
+    let idx = bitset_chunk_idx[chunk_idx as usize][chunk_piece] as usize;
+    let word = if let Some(word) = bitset_canonical.get(idx) {
+        *word
     } else {
-        let (real_idx, mapping) = bitset_canonicalized[idx - CANONICAL];
+        let (real_idx, mapping) = bitset_canonicalized[idx - bitset_canonical.len()];
         let mut word = bitset_canonical[real_idx as usize];
         let should_invert = mapping & (1 << 6) != 0;
         if should_invert {
