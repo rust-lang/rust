@@ -34,8 +34,17 @@ pub(super) fn mangle(
         binders: vec![],
         out: String::from(prefix),
     };
-    cx = if instance.is_vtable_shim() {
-        cx.path_append_ns(|cx| cx.print_def_path(def_id, substs), 'S', 0, "").unwrap()
+
+    // Append `::{shim:...#0}` to shims that can coexist with a non-shim instance.
+    let shim_kind = match instance.def {
+        ty::InstanceDef::VtableShim(_) => Some("vtable"),
+        ty::InstanceDef::ReifyShim(_) => Some("reify"),
+
+        _ => None,
+    };
+
+    cx = if let Some(shim_kind) = shim_kind {
+        cx.path_append_ns(|cx| cx.print_def_path(def_id, substs), 'S', 0, shim_kind).unwrap()
     } else {
         cx.print_def_path(def_id, substs).unwrap()
     };
