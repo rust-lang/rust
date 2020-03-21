@@ -20,8 +20,7 @@ impl TextSized for &'_ str {
 
 impl<D> TextSized for &'_ D
 where
-    D: Deref,
-    for<'a> &'a D::Target: TextSized,
+    D: Deref<Target = str>,
 {
     #[inline]
     fn text_size(self) -> TextSize {
