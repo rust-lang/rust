@@ -1,6 +1,8 @@
 //! Visitor for a run-time value with a given layout: Traverse enums, structs and other compound
 //! types until we arrive at the leaves, with custom handling for primitive types.
 
+use std::convert::TryFrom;
+
 use rustc::mir::interpret::InterpResult;
 use rustc::ty;
 use rustc::ty::layout::{self, TyLayout, VariantIdx};
@@ -206,7 +208,7 @@ macro_rules! make_value_visitor {
                         // errors: Projecting to a field needs access to `ecx`.
                         let fields: Vec<InterpResult<'tcx, Self::V>> =
                             (0..offsets.len()).map(|i| {
-                                v.project_field(self.ecx(), i as u64)
+                                v.project_field(self.ecx(), u64::try_from(i).unwrap())
                             })
                             .collect();
                         self.visit_aggregate(v, fields.into_iter())?;

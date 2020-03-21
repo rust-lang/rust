@@ -95,6 +95,27 @@ mod pointer;
 mod queries;
 mod value;
 
+use std::convert::TryFrom;
+use std::fmt;
+use std::io;
+use std::num::NonZeroU32;
+use std::sync::atomic::{AtomicU32, Ordering};
+
+use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
+use rustc_ast::ast::LitKind;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::{HashMapExt, Lock};
+use rustc_data_structures::tiny_list::TinyList;
+use rustc_hir::def_id::DefId;
+use rustc_macros::HashStable;
+use rustc_serialize::{Decodable, Encodable, Encoder};
+
+use crate::mir;
+use crate::ty::codec::TyDecoder;
+use crate::ty::layout::{self, Size};
+use crate::ty::subst::GenericArgKind;
+use crate::ty::{self, Instance, Ty, TyCtxt};
+
 pub use self::error::{
     struct_error, ConstEvalErr, ConstEvalRawResult, ConstEvalResult, ErrorHandled, FrameInfo,
     InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, MachineStopType,
@@ -106,24 +127,6 @@ pub use self::value::{get_slice_bytes, ConstValue, RawConst, Scalar, ScalarMaybe
 pub use self::allocation::{Allocation, AllocationExtra, Relocations, UndefMask};
 
 pub use self::pointer::{CheckInAllocMsg, Pointer, PointerArithmetic};
-
-use crate::mir;
-use crate::ty::codec::TyDecoder;
-use crate::ty::layout::{self, Size};
-use crate::ty::subst::GenericArgKind;
-use crate::ty::{self, Instance, Ty, TyCtxt};
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
-use rustc_ast::ast::LitKind;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::{HashMapExt, Lock};
-use rustc_data_structures::tiny_list::TinyList;
-use rustc_hir::def_id::DefId;
-use rustc_macros::HashStable;
-use rustc_serialize::{Decodable, Encodable, Encoder};
-use std::fmt;
-use std::io;
-use std::num::NonZeroU32;
-use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Uniquely identifies one of the following:
 /// - A constant
@@ -264,8 +267,8 @@ impl<'s> AllocDecodingSession<'s> {
         D: TyDecoder<'tcx>,
     {
         // Read the index of the allocation.
-        let idx = decoder.read_u32()? as usize;
-        let pos = self.state.data_offsets[idx] as usize;
+        let idx = usize::try_from(decoder.read_u32()?).unwrap();
+        let pos = usize::try_from(self.state.data_offsets[idx]).unwrap();
 
         // Decode the `AllocDiscriminant` now so that we know if we have to reserve an
         // `AllocId`.

@@ -1,17 +1,19 @@
 //! The virtual memory representation of the MIR interpreter.
 
+use std::borrow::Cow;
+use std::convert::TryFrom;
+use std::iter;
+use std::ops::{Add, Deref, DerefMut, Mul, Range, Sub};
+
+use rustc_ast::ast::Mutability;
+use rustc_data_structures::sorted_map::SortedMap;
+use rustc_target::abi::HasDataLayout;
+
 use super::{
     read_target_uint, write_target_uint, AllocId, InterpResult, Pointer, Scalar, ScalarMaybeUndef,
 };
 
 use crate::ty::layout::{Align, Size};
-
-use rustc_ast::ast::Mutability;
-use rustc_data_structures::sorted_map::SortedMap;
-use rustc_target::abi::HasDataLayout;
-use std::borrow::Cow;
-use std::iter;
-use std::ops::{Deref, DerefMut, Range};
 
 // NOTE: When adding new fields, make sure to adjust the `Snapshot` impl in
 // `src/librustc_mir/interpret/snapshot.rs`.
@@ -90,7 +92,7 @@ impl<Tag> Allocation<Tag> {
     /// Creates a read-only allocation initialized by the given bytes
     pub fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, align: Align) -> Self {
         let bytes = slice.into().into_owned();
-        let size = Size::from_bytes(bytes.len() as u64);
+        let size = Size::from_bytes(u64::try_from(bytes.len()).unwrap());
         Self {
             bytes,
             relocations: Relocations::new(),
@@ -107,9 +109,8 @@ impl<Tag> Allocation<Tag> {
     }
 
     pub fn undef(size: Size, align: Align) -> Self {
-        assert_eq!(size.bytes() as usize as u64, size.bytes());
         Allocation {
-            bytes: vec![0; size.bytes() as usize],
+            bytes: vec![0; usize::try_from(size.bytes()).unwrap()],
             relocations: Relocations::new(),
             undef_mask: UndefMask::new(size, false),
             size,
@@ -152,7 +153,7 @@ impl Allocation<(), ()> {
 /// Raw accessors. Provide access to otherwise private bytes.
 impl<Tag, Extra> Allocation<Tag, Extra> {
     pub fn len(&self) -> usize {
-        self.size.bytes() as usize
+        usize::try_from(self.size.bytes()).unwrap()
     }
 
     /// Looks at a slice which may describe undefined bytes or describe a relocation. This differs
@@ -182,13 +183,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// Returns the range of this allocation that was meant.
     #[inline]
     fn check_bounds(&self, offset: Size, size: Size) -> Range<usize> {
-        let end = offset + size; // This does overflow checking.
-        assert_eq!(
-            end.bytes() as usize as u64,
-            end.bytes(),
-            "cannot handle this access on this host architecture"
-        );
-        let end = end.bytes() as usize;
+        let end = Size::add(offset, size); // This does overflow checking.
+        let end = usize::try_from(end.bytes()).expect("access too big for this host architecture");
         assert!(
             end <= self.len(),
             "Out-of-bounds access at offset {}, size {} in allocation of size {}",
@@ -196,7 +192,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
             size.bytes(),
             self.len()
         );
-        (offset.bytes() as usize)..end
+        usize::try_from(offset.bytes()).unwrap()..end
     }
 
     /// The last argument controls whether we error out when there are undefined
@@ -294,11 +290,11 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
     ) -> InterpResult<'tcx, &[u8]> {
-        assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
-        let offset = ptr.offset.bytes() as usize;
+        let offset = usize::try_from(ptr.offset.bytes()).unwrap();
         Ok(match self.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
-                let size_with_null = Size::from_bytes((size + 1) as u64);
+                let size_with_null =
+                    Size::from_bytes(u64::try_from(size.checked_add(1).unwrap()).unwrap());
                 // Go through `get_bytes` for checks and AllocationExtra hooks.
                 // We read the null, so we include it in the request, but we want it removed
                 // from the result, so we do subslicing.
@@ -343,7 +339,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         let (lower, upper) = src.size_hint();
         let len = upper.expect("can only write bounded iterators");
         assert_eq!(lower, len, "can only write iterators with a precise length");
-        let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(len as u64))?;
+        let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(u64::try_from(len).unwrap()))?;
         // `zip` would stop when the first iterator ends; we want to definitely
         // cover all of `bytes`.
         for dest in bytes {
@@ -386,7 +382,11 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         } else {
             match self.relocations.get(&ptr.offset) {
                 Some(&(tag, alloc_id)) => {
-                    let ptr = Pointer::new_with_tag(alloc_id, Size::from_bytes(bits as u64), tag);
+                    let ptr = Pointer::new_with_tag(
+                        alloc_id,
+                        Size::from_bytes(u64::try_from(bits).unwrap()),
+                        tag,
+                    );
                     return Ok(ScalarMaybeUndef::Scalar(ptr.into()));
                 }
                 None => {}
@@ -433,7 +433,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         };
 
         let bytes = match val.to_bits_or_ptr(type_size, cx) {
-            Err(val) => val.offset.bytes() as u128,
+            Err(val) => u128::from(val.offset.bytes()),
             Ok(data) => data,
         };
 
@@ -479,7 +479,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
         // the beginning of this range.
         let start = ptr.offset.bytes().saturating_sub(cx.data_layout().pointer_size.bytes() - 1);
-        let end = ptr.offset + size; // This does overflow checking.
+        let end = Size::add(ptr.offset, size); // This does overflow checking.
         self.relocations.range(Size::from_bytes(start)..end)
     }
 
@@ -524,7 +524,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
             )
         };
         let start = ptr.offset;
-        let end = start + size;
+        let end = Size::add(start, size);
 
         // Mark parts of the outermost relocations as undefined if they partially fall outside the
         // given range.
@@ -563,7 +563,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     #[inline]
     fn check_defined(&self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
         self.undef_mask
-            .is_range_defined(ptr.offset, ptr.offset + size)
+            .is_range_defined(ptr.offset, Size::add(ptr.offset, size))
             .or_else(|idx| throw_ub!(InvalidUndefBytes(Some(Pointer::new(ptr.alloc_id, idx)))))
     }
 
@@ -571,7 +571,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         if size.bytes() == 0 {
             return;
         }
-        self.undef_mask.set_range(ptr.offset, ptr.offset + size, new_state);
+        self.undef_mask.set_range(ptr.offset, Size::add(ptr.offset, size), new_state);
     }
 }
 
@@ -616,7 +616,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
 
         for i in 1..size.bytes() {
             // FIXME: optimize to bitshift the current undef block's bits and read the top bit.
-            if self.undef_mask.get(src.offset + Size::from_bytes(i)) == cur {
+            if self.undef_mask.get(Size::add(src.offset, Size::from_bytes(i))) == cur {
                 cur_len += 1;
             } else {
                 ranges.push(cur_len);
@@ -643,7 +643,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         if defined.ranges.len() <= 1 {
             self.undef_mask.set_range_inbounds(
                 dest.offset,
-                dest.offset + size * repeat,
+                Size::add(dest.offset, Size::mul(size, repeat)),
                 defined.initial,
             );
             return;
@@ -721,10 +721,10 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         for i in 0..length {
             new_relocations.extend(relocations.iter().map(|&(offset, reloc)| {
                 // compute offset for current repetition
-                let dest_offset = dest.offset + (i * size);
+                let dest_offset = Size::add(dest.offset, Size::mul(size, i));
                 (
                     // shift offsets from source allocation to destination allocation
-                    offset + dest_offset - src.offset,
+                    Size::sub(Size::add(offset, dest_offset), src.offset),
                     reloc,
                 )
             }));
@@ -861,18 +861,18 @@ impl UndefMask {
         if amount.bytes() == 0 {
             return;
         }
-        let unused_trailing_bits = self.blocks.len() as u64 * Self::BLOCK_SIZE - self.len.bytes();
+        let unused_trailing_bits =
+            u64::try_from(self.blocks.len()).unwrap() * Self::BLOCK_SIZE - self.len.bytes();
         if amount.bytes() > unused_trailing_bits {
             let additional_blocks = amount.bytes() / Self::BLOCK_SIZE + 1;
-            assert_eq!(additional_blocks as usize as u64, additional_blocks);
             self.blocks.extend(
                 // FIXME(oli-obk): optimize this by repeating `new_state as Block`.
-                iter::repeat(0).take(additional_blocks as usize),
+                iter::repeat(0).take(usize::try_from(additional_blocks).unwrap()),
             );
         }
         let start = self.len;
         self.len += amount;
-        self.set_range_inbounds(start, start + amount, new_state);
+        self.set_range_inbounds(start, Size::add(start, amount), new_state);
     }
 }
 
@@ -881,7 +881,5 @@ fn bit_index(bits: Size) -> (usize, usize) {
     let bits = bits.bytes();
     let a = bits / UndefMask::BLOCK_SIZE;
     let b = bits % UndefMask::BLOCK_SIZE;
-    assert_eq!(a as usize as u64, a);
-    assert_eq!(b as usize as u64, b);
-    (a as usize, b as usize)
+    (usize::try_from(a).unwrap(), usize::try_from(b).unwrap())
 }

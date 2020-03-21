@@ -8,6 +8,8 @@
 
 use std::borrow::Cow;
 use std::collections::VecDeque;
+use std::convert::TryFrom;
+use std::ops::{Add, Mul};
 use std::ptr;
 
 use rustc::ty::layout::{Align, HasDataLayout, Size, TargetDataLayout};
@@ -346,7 +348,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         };
         Ok(match normalized.to_bits_or_ptr(self.pointer_size(), self) {
             Ok(bits) => {
-                let bits = bits as u64; // it's ptr-sized
+                let bits = u64::try_from(bits).unwrap(); // it's ptr-sized
                 assert!(size.bytes() == 0);
                 // Must be non-NULL.
                 if bits == 0 {
@@ -667,7 +669,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
             if alloc.undef_mask().is_range_defined(i, i + Size::from_bytes(1)).is_ok() {
                 // this `as usize` is fine, since `i` came from a `usize`
-                let i = i.bytes() as usize;
+                let i = usize::try_from(i.bytes()).unwrap();
 
                 // Checked definedness (and thus range) and relocations. This access also doesn't
                 // influence interpreter execution but is only for debugging.
@@ -835,7 +837,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         let src = src.into_iter();
         let size = Size::from_bytes(src.size_hint().0 as u64);
-        // `write_bytes` checks that this lower bound matches the upper bound matches reality.
+        // `write_bytes` checks that this lower bound `size` matches the upper bound and reality.
         let ptr = match self.check_ptr_access(ptr, size, Align::from_bytes(1).unwrap())? {
             Some(ptr) => ptr,
             None => return Ok(()), // zero-sized access
@@ -874,14 +876,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         let tcx = self.tcx.tcx;
 
-        // The bits have to be saved locally before writing to dest in case src and dest overlap.
-        assert_eq!(size.bytes() as usize as u64, size.bytes());
-
         // This checks relocation edges on the src.
         let src_bytes =
             self.get_raw(src.alloc_id)?.get_bytes_with_undef_and_ptr(&tcx, src, size)?.as_ptr();
         let dest_bytes =
-            self.get_raw_mut(dest.alloc_id)?.get_bytes_mut(&tcx, dest, size * length)?;
+            self.get_raw_mut(dest.alloc_id)?.get_bytes_mut(&tcx, dest, Size::mul(size, length))?;
 
         // If `dest_bytes` is empty we just optimize to not run anything for zsts.
         // See #67539
@@ -902,7 +901,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             // touched if the bytes stay undef for the whole interpreter execution. On contemporary
             // operating system this can avoid physically allocating the page.
             let dest_alloc = self.get_raw_mut(dest.alloc_id)?;
-            dest_alloc.mark_definedness(dest, size * length, false);
+            dest_alloc.mark_definedness(dest, Size::mul(size, length), false);
             dest_alloc.mark_relocation_range(relocations);
             return Ok(());
         }
@@ -913,11 +912,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // The pointers above remain valid even if the `HashMap` table is moved around because they
         // point into the `Vec` storing the bytes.
         unsafe {
-            assert_eq!(size.bytes() as usize as u64, size.bytes());
             if src.alloc_id == dest.alloc_id {
                 if nonoverlapping {
-                    if (src.offset <= dest.offset && src.offset + size > dest.offset)
-                        || (dest.offset <= src.offset && dest.offset + size > src.offset)
+                    if (src.offset <= dest.offset && Size::add(src.offset, size) > dest.offset)
+                        || (dest.offset <= src.offset && Size::add(dest.offset, size) > src.offset)
                     {
                         throw_ub_format!("copy_nonoverlapping called on overlapping ranges")
                     }
@@ -926,16 +924,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 for i in 0..length {
                     ptr::copy(
                         src_bytes,
-                        dest_bytes.offset((size.bytes() * i) as isize),
-                        size.bytes() as usize,
+                        dest_bytes.offset(isize::try_from(Size::mul(size, i).bytes()).unwrap()),
+                        usize::try_from(size.bytes()).unwrap(),
                     );
                 }
             } else {
                 for i in 0..length {
                     ptr::copy_nonoverlapping(
                         src_bytes,
-                        dest_bytes.offset((size.bytes() * i) as isize),
-                        size.bytes() as usize,
+                        dest_bytes.offset(isize::try_from(Size::mul(size, i).bytes()).unwrap()),
+                        usize::try_from(size.bytes()).unwrap(),
                     );
                 }
             }
@@ -975,7 +973,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, u128> {
         match scalar.to_bits_or_ptr(size, self) {
             Ok(bits) => Ok(bits),
-            Err(ptr) => Ok(M::ptr_to_int(&self, ptr)? as u128),
+            Err(ptr) => Ok(M::ptr_to_int(&self, ptr)?.into()),
         }
     }
 }

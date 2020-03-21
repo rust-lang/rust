@@ -1,8 +1,10 @@
-use super::{FnVal, InterpCx, Machine, MemoryKind};
+use std::ops::Mul;
 
 use rustc::mir::interpret::{InterpResult, Pointer, PointerArithmetic, Scalar};
 use rustc::ty::layout::{Align, HasDataLayout, LayoutOf, Size};
 use rustc::ty::{self, Instance, Ty, TypeFoldable};
+
+use super::{FnVal, InterpCx, Machine, MemoryKind};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
@@ -103,11 +105,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn get_vtable_slot(
         &self,
         vtable: Scalar<M::PointerTag>,
-        idx: usize,
+        idx: u64,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
         let ptr_size = self.pointer_size();
         // Skip over the 'drop_ptr', 'size', and 'align' fields.
-        let vtable_slot = vtable.ptr_offset(ptr_size * (idx as u64 + 3), self)?;
+        let vtable_slot =
+            vtable.ptr_offset(Size::mul(ptr_size, idx.checked_add(3).unwrap()), self)?;
         let vtable_slot = self
             .memory
             .check_ptr_access(vtable_slot, ptr_size, self.tcx.data_layout.pointer_align.abi)?

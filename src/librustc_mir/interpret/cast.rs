@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use rustc::ty::adjustment::PointerCast;
 use rustc::ty::layout::{self, Size, TyLayout};
 use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
@@ -206,8 +208,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Char => {
                 // `u8` to `char` cast
-                assert_eq!(v as u8 as u128, v);
-                Ok(Scalar::from_uint(v, Size::from_bytes(4)))
+                Ok(Scalar::from_uint(u8::try_from(v).unwrap(), Size::from_bytes(4)))
             }
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
@@ -227,6 +228,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match dest_ty.kind {
             // float -> uint
             Uint(t) => {
+                // FIXME: can we make `bit_width` return a type more compatible with `Size::bits`?
                 let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits() as usize);
                 let v = f.to_u128(width).value;
                 // This should already fit the bit width

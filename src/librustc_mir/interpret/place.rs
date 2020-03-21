@@ -4,6 +4,7 @@
 
 use std::convert::TryFrom;
 use std::hash::Hash;
+use std::ops::Mul;
 
 use rustc::mir;
 use rustc::mir::interpret::truncate;
@@ -405,11 +406,11 @@ where
                     // This can only be reached in ConstProp and non-rustc-MIR.
                     throw_ub!(BoundsCheckFailed { len, index: field });
                 }
-                stride * field
+                Size::mul(stride, field) // `Size` multiplication is checked
             }
             layout::FieldPlacement::Union(count) => {
                 assert!(
-                    field < count as u64,
+                    field < u64::try_from(count).unwrap(),
                     "Tried to access field {} of union {:#?} with {} fields",
                     field,
                     base.layout,
@@ -420,7 +421,7 @@ where
             }
         };
         // the only way conversion can fail if is this is an array (otherwise we already panicked
-        // above). In that case, all fields are equal.
+        // above). In that case, all fields have the same layout.
         let field_layout = base.layout.field(self, usize::try_from(field).unwrap_or(0))?;
 
         // Offset may need adjustment for unsized fields.
@@ -465,7 +466,7 @@ where
         };
         let layout = base.layout.field(self, 0)?;
         let dl = &self.tcx.data_layout;
-        Ok((0..len).map(move |i| base.offset(i * stride, MemPlaceMeta::None, layout, dl)))
+        Ok((0..len).map(move |i| base.offset(Size::mul(stride, i), MemPlaceMeta::None, layout, dl)))
     }
 
     fn mplace_subslice(
@@ -477,11 +478,11 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
         let actual_to = if from_end {
-            if from + to > len {
+            if from.checked_add(to).map_or(true, |to| to > len) {
                 // This can only be reached in ConstProp and non-rustc-MIR.
-                throw_ub!(BoundsCheckFailed { len: len as u64, index: from as u64 + to as u64 });
+                throw_ub!(BoundsCheckFailed { len: len, index: from.saturating_add(to) });
             }
-            len - to
+            len.checked_sub(to).unwrap()
         } else {
             to
         };
@@ -489,12 +490,12 @@ where
         // Not using layout method because that works with usize, and does not work with slices
         // (that have count 0 in their layout).
         let from_offset = match base.layout.fields {
-            layout::FieldPlacement::Array { stride, .. } => stride * from,
+            layout::FieldPlacement::Array { stride, .. } => Size::mul(stride, from), // `Size` multiplication is checked
             _ => bug!("Unexpected layout of index access: {:#?}", base.layout),
         };
 
         // Compute meta and new layout
-        let inner_len = actual_to - from;
+        let inner_len = actual_to.checked_sub(from).unwrap();
         let (meta, ty) = match base.layout.ty.kind {
             // It is not nice to match on the type, but that seems to be the only way to
             // implement this.
@@ -527,7 +528,7 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         use rustc::mir::ProjectionElem::*;
         Ok(match *proj_elem {
-            Field(field, _) => self.mplace_field(base, field.index() as u64)?,
+            Field(field, _) => self.mplace_field(base, u64::try_from(field.index()).unwrap())?,
             Downcast(_, variant) => self.mplace_downcast(base, variant)?,
             Deref => self.deref_operand(base.into())?,
 
@@ -541,14 +542,14 @@ where
 
             ConstantIndex { offset, min_length, from_end } => {
                 let n = base.len(self)?;
-                if n < min_length as u64 {
+                if n < u64::from(min_length) {
                     // This can only be reached in ConstProp and non-rustc-MIR.
-                    throw_ub!(BoundsCheckFailed { len: min_length as u64, index: n as u64 });
+                    throw_ub!(BoundsCheckFailed { len: min_length.into(), index: n.into() });
                 }
 
                 let index = if from_end {
-                    assert!(0 < offset && offset - 1 < min_length);
-                    n - u64::from(offset)
+                    assert!(0 < offset && offset <= min_length);
+                    n.checked_sub(u64::from(offset)).unwrap()
                 } else {
                     assert!(offset < min_length);
                     u64::from(offset)
@@ -603,7 +604,7 @@ where
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         use rustc::mir::ProjectionElem::*;
         Ok(match *proj_elem {
-            Field(field, _) => self.place_field(base, field.index() as u64)?,
+            Field(field, _) => self.place_field(base, u64::try_from(field.index()).unwrap())?,
             Downcast(_, variant) => self.place_downcast(base, variant)?,
             Deref => self.deref_operand(self.place_to_op(base)?)?.into(),
             // For the other variants, we have to force an allocation.
@@ -1028,7 +1029,7 @@ where
         kind: MemoryKind<M::MemoryKind>,
     ) -> MPlaceTy<'tcx, M::PointerTag> {
         let ptr = self.memory.allocate_bytes(str.as_bytes(), kind);
-        let meta = Scalar::from_uint(str.len() as u128, self.pointer_size());
+        let meta = Scalar::from_uint(u128::try_from(str.len()).unwrap(), self.pointer_size());
         let mplace = MemPlace {
             ptr: ptr.into(),
             align: Align::from_bytes(1).unwrap(),
@@ -1072,7 +1073,7 @@ where
                 let size = discr_layout.value.size(self);
                 let discr_val = truncate(discr_val, size);
 
-                let discr_dest = self.place_field(dest, discr_index as u64)?;
+                let discr_dest = self.place_field(dest, u64::try_from(discr_index).unwrap())?;
                 self.write_scalar(Scalar::from_uint(discr_val, size), discr_dest)?;
             }
             layout::Variants::Multiple {
@@ -1103,7 +1104,7 @@ where
                         niche_start_val,
                     )?;
                     // Write result.
-                    let niche_dest = self.place_field(dest, discr_index as u64)?;
+                    let niche_dest = self.place_field(dest, u64::try_from(discr_index).unwrap())?;
                     self.write_immediate(*discr_val, niche_dest)?;
                 }
             }

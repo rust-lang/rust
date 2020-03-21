@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use rustc_apfloat::{
     ieee::{Double, Single},
     Float,
@@ -156,7 +158,7 @@ impl Scalar<()> {
     #[inline(always)]
     fn check_data(data: u128, size: u8) {
         debug_assert_eq!(
-            truncate(data, Size::from_bytes(size as u64)),
+            truncate(data, Size::from_bytes(u64::from(size))),
             data,
             "Scalar value {:#x} exceeds size of {} bytes",
             data,
@@ -203,8 +205,11 @@ impl<'tcx, Tag> Scalar<Tag> {
         let dl = cx.data_layout();
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(size as u64, dl.pointer_size.bytes());
-                Ok(Scalar::Raw { data: dl.offset(data as u64, i.bytes())? as u128, size })
+                assert_eq!(u64::from(size), dl.pointer_size.bytes());
+                Ok(Scalar::Raw {
+                    data: u128::from(dl.offset(u64::try_from(data).unwrap(), i.bytes())?),
+                    size,
+                })
             }
             Scalar::Ptr(ptr) => ptr.offset(i, dl).map(Scalar::Ptr),
         }
@@ -215,8 +220,13 @@ impl<'tcx, Tag> Scalar<Tag> {
         let dl = cx.data_layout();
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(size as u64, dl.pointer_size.bytes());
-                Scalar::Raw { data: dl.overflowing_offset(data as u64, i.bytes()).0 as u128, size }
+                assert_eq!(u64::from(size), dl.pointer_size.bytes());
+                Scalar::Raw {
+                    data: u128::from(
+                        dl.overflowing_offset(u64::try_from(data).unwrap(), i.bytes()).0,
+                    ),
+                    size,
+                }
             }
             Scalar::Ptr(ptr) => Scalar::Ptr(ptr.wrapping_offset(i, dl)),
         }
@@ -227,8 +237,11 @@ impl<'tcx, Tag> Scalar<Tag> {
         let dl = cx.data_layout();
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(size as u64, dl.pointer_size().bytes());
-                Ok(Scalar::Raw { data: dl.signed_offset(data as u64, i)? as u128, size })
+                assert_eq!(u64::from(size), dl.pointer_size.bytes());
+                Ok(Scalar::Raw {
+                    data: u128::from(dl.signed_offset(u64::try_from(data).unwrap(), i)?),
+                    size,
+                })
             }
             Scalar::Ptr(ptr) => ptr.signed_offset(i, dl).map(Scalar::Ptr),
         }
@@ -239,9 +252,11 @@ impl<'tcx, Tag> Scalar<Tag> {
         let dl = cx.data_layout();
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(size as u64, dl.pointer_size.bytes());
+                assert_eq!(u64::from(size), dl.pointer_size.bytes());
                 Scalar::Raw {
-                    data: dl.overflowing_signed_offset(data as u64, i128::from(i)).0 as u128,
+                    data: u128::from(
+                        dl.overflowing_signed_offset(u64::try_from(data).unwrap(), i128::from(i)).0,
+                    ),
                     size,
                 }
             }
@@ -281,25 +296,25 @@ impl<'tcx, Tag> Scalar<Tag> {
     #[inline]
     pub fn from_u8(i: u8) -> Self {
         // Guaranteed to be truncated and does not need sign extension.
-        Scalar::Raw { data: i as u128, size: 1 }
+        Scalar::Raw { data: i.into(), size: 1 }
     }
 
     #[inline]
     pub fn from_u16(i: u16) -> Self {
         // Guaranteed to be truncated and does not need sign extension.
-        Scalar::Raw { data: i as u128, size: 2 }
+        Scalar::Raw { data: i.into(), size: 2 }
     }
 
     #[inline]
     pub fn from_u32(i: u32) -> Self {
         // Guaranteed to be truncated and does not need sign extension.
-        Scalar::Raw { data: i as u128, size: 4 }
+        Scalar::Raw { data: i.into(), size: 4 }
     }
 
     #[inline]
     pub fn from_u64(i: u64) -> Self {
         // Guaranteed to be truncated and does not need sign extension.
-        Scalar::Raw { data: i as u128, size: 8 }
+        Scalar::Raw { data: i.into(), size: 8 }
     }
 
     #[inline]
@@ -376,7 +391,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(target_size.bytes(), size as u64);
+                assert_eq!(target_size.bytes(), u64::from(size));
                 Scalar::check_data(data, size);
                 Ok(data)
             }
@@ -394,7 +409,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(target_size.bytes(), size as u64);
+                assert_eq!(target_size.bytes(), u64::from(size));
                 Scalar::check_data(data, size);
                 Ok(data)
             }
@@ -458,27 +473,27 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     /// Converts the scalar to produce an `u8`. Fails if the scalar is a pointer.
     pub fn to_u8(self) -> InterpResult<'static, u8> {
-        self.to_unsigned_with_bit_width(8).map(|v| v as u8)
+        self.to_unsigned_with_bit_width(8).map(|v| u8::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `u16`. Fails if the scalar is a pointer.
     pub fn to_u16(self) -> InterpResult<'static, u16> {
-        self.to_unsigned_with_bit_width(16).map(|v| v as u16)
+        self.to_unsigned_with_bit_width(16).map(|v| u16::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `u32`. Fails if the scalar is a pointer.
     pub fn to_u32(self) -> InterpResult<'static, u32> {
-        self.to_unsigned_with_bit_width(32).map(|v| v as u32)
+        self.to_unsigned_with_bit_width(32).map(|v| u32::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `u64`. Fails if the scalar is a pointer.
     pub fn to_u64(self) -> InterpResult<'static, u64> {
-        self.to_unsigned_with_bit_width(64).map(|v| v as u64)
+        self.to_unsigned_with_bit_width(64).map(|v| u64::try_from(v).unwrap())
     }
 
     pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'static, u64> {
         let b = self.to_bits(cx.data_layout().pointer_size)?;
-        Ok(b as u64)
+        Ok(u64::try_from(b).unwrap())
     }
 
     #[inline]
@@ -490,41 +505,41 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     /// Converts the scalar to produce an `i8`. Fails if the scalar is a pointer.
     pub fn to_i8(self) -> InterpResult<'static, i8> {
-        self.to_signed_with_bit_width(8).map(|v| v as i8)
+        self.to_signed_with_bit_width(8).map(|v| i8::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i16`. Fails if the scalar is a pointer.
     pub fn to_i16(self) -> InterpResult<'static, i16> {
-        self.to_signed_with_bit_width(16).map(|v| v as i16)
+        self.to_signed_with_bit_width(16).map(|v| i16::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i32`. Fails if the scalar is a pointer.
     pub fn to_i32(self) -> InterpResult<'static, i32> {
-        self.to_signed_with_bit_width(32).map(|v| v as i32)
+        self.to_signed_with_bit_width(32).map(|v| i32::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i64`. Fails if the scalar is a pointer.
     pub fn to_i64(self) -> InterpResult<'static, i64> {
-        self.to_signed_with_bit_width(64).map(|v| v as i64)
+        self.to_signed_with_bit_width(64).map(|v| i64::try_from(v).unwrap())
     }
 
     pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'static, i64> {
         let sz = cx.data_layout().pointer_size;
         let b = self.to_bits(sz)?;
         let b = sign_extend(b, sz) as i128;
-        Ok(b as i64)
+        Ok(i64::try_from(b).unwrap())
     }
 
     #[inline]
     pub fn to_f32(self) -> InterpResult<'static, Single> {
         // Going through `u32` to check size and truncation.
-        Ok(Single::from_bits(self.to_u32()? as u128))
+        Ok(Single::from_bits(self.to_u32()?.into()))
     }
 
     #[inline]
     pub fn to_f64(self) -> InterpResult<'static, Double> {
         // Going through `u64` to check size and truncation.
-        Ok(Double::from_bits(self.to_u64()? as u128))
+        Ok(Double::from_bits(self.to_u64()?.into()))
     }
 }
 
@@ -671,8 +686,8 @@ pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> 
         data.get_bytes(
             cx,
             // invent a pointer, only the offset is relevant anyway
-            Pointer::new(AllocId(0), Size::from_bytes(start as u64)),
-            Size::from_bytes(len as u64),
+            Pointer::new(AllocId(0), Size::from_bytes(u64::try_from(start).unwrap())),
+            Size::from_bytes(u64::try_from(len).unwrap()),
         )
         .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
     } else {

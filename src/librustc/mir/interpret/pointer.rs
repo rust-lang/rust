@@ -62,9 +62,9 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     /// This should be called by all the other methods before returning!
     #[inline]
     fn truncate_to_ptr(&self, (val, over): (u64, bool)) -> (u64, bool) {
-        let val = val as u128;
+        let val = u128::from(val);
         let max_ptr_plus_1 = 1u128 << self.pointer_size().bits();
-        ((val % max_ptr_plus_1) as u64, over || val >= max_ptr_plus_1)
+        (u64::try_from(val % max_ptr_plus_1).unwrap(), over || val >= max_ptr_plus_1)
     }
 
     #[inline]

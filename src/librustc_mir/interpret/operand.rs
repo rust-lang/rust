@@ -341,7 +341,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     // Turn the wide MPlace into a string (must already be dereferenced!)
     pub fn read_str(&self, mplace: MPlaceTy<'tcx, M::PointerTag>) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
-        let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len as u64))?;
+        let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(u64::from(len)))?;
         let str = ::std::str::from_utf8(bytes)
             .map_err(|err| err_ub_format!("this string is not valid UTF-8: {}", err))?;
         Ok(str)
@@ -406,7 +406,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::ProjectionElem::*;
         Ok(match *proj_elem {
-            Field(field, _) => self.operand_field(base, field.index() as u64)?,
+            Field(field, _) => self.operand_field(base, u64::try_from(field.index()).unwrap())?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
             Deref => self.deref_operand(base)?.into(),
             Subslice { .. } | ConstantIndex { .. } | Index(_) => {
@@ -556,11 +556,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // where none should happen.
                 let ptr = Pointer::new(
                     self.tcx.alloc_map.lock().create_memory_alloc(data),
-                    Size::from_bytes(start as u64), // offset: `start`
+                    Size::from_bytes(start.try_into().unwrap()), // offset: `start`
                 );
                 Operand::Immediate(Immediate::new_slice(
                     self.tag_global_base_pointer(ptr).into(),
-                    (end - start) as u64, // len: `end - start`
+                    u64::try_from(end.checked_sub(start).unwrap()).unwrap(), // len: `end - start`
                     self,
                 ))
             }
@@ -581,7 +581,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     .layout
                     .ty
                     .discriminant_for_variant(*self.tcx, index)
-                    .map_or(index.as_u32() as u128, |discr| discr.val);
+                    .map_or(u128::from(index.as_u32()), |discr| discr.val);
                 return Ok((discr_val, index));
             }
             layout::Variants::Multiple {
@@ -593,7 +593,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         // read raw discriminant value
-        let discr_op = self.operand_field(rval, discr_index as u64)?;
+        let discr_op = self.operand_field(rval, u64::try_from(discr_index).unwrap())?;
         let discr_val = self.read_immediate(discr_op)?;
         let raw_discr = discr_val.to_scalar_or_undef();
         trace!("discr value: {:?}", raw_discr);
@@ -657,7 +657,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if !ptr_valid {
                             throw_ub!(InvalidDiscriminant(raw_discr.erase_tag().into()))
                         }
-                        (dataful_variant.as_u32() as u128, dataful_variant)
+                        (u128::from(dataful_variant.as_u32()), dataful_variant)
                     }
                     Ok(raw_discr) => {
                         // We need to use machine arithmetic to get the relative variant idx:
@@ -686,7 +686,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 .expect("tagged layout for non adt")
                                 .variants
                                 .len();
-                            assert!((variant_index as usize) < variants_len);
+                            assert!(usize::try_from(variant_index).unwrap() < variants_len);
                             (u128::from(variant_index), VariantIdx::from_u32(variant_index))
                         } else {
                             (u128::from(dataful_variant.as_u32()), dataful_variant)
