@@ -38,7 +38,6 @@
 
 use rustc::dep_graph::DepGraph;
 use rustc::hir::map::definitions::{DefKey, DefPathData, Definitions};
-use rustc::{bug, span_bug};
 use rustc_ast::ast;
 use rustc_ast::ast::*;
 use rustc_ast::attr;
@@ -675,7 +674,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn expect_full_res(&mut self, id: NodeId) -> Res<NodeId> {
         self.resolver.get_partial_res(id).map_or(Res::Err, |pr| {
             if pr.unresolved_segments() != 0 {
-                bug!("path not fully resolved: {:?}", pr);
+                panic!("path not fully resolved: {:?}", pr);
             }
             pr.base_res()
         })
@@ -1343,7 +1342,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 }
             }
-            TyKind::MacCall(_) => bug!("`TyKind::MacCall` should have been expanded by now"),
+            TyKind::MacCall(_) => panic!("`TyKind::MacCall` should have been expanded by now"),
             TyKind::CVarArgs => {
                 self.sess.delay_span_bug(
                     t.span,
@@ -1578,7 +1577,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         hir::LifetimeName::Param(param_name) => {
                             (param_name, hir::LifetimeParamKind::Explicit)
                         }
-                        _ => bug!("expected `LifetimeName::Param` or `ParamName::Plain`"),
+                        _ => panic!("expected `LifetimeName::Param` or `ParamName::Plain`"),
                     };
 
                     self.output_lifetime_params.push(hir::GenericParam {
@@ -2099,7 +2098,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     | hir::LifetimeName::Underscore
                     | hir::LifetimeName::Static => hir::ParamName::Plain(lt.name.ident()),
                     hir::LifetimeName::ImplicitObjectLifetimeDefault => {
-                        span_bug!(
+                        self.sess.diagnostic().span_bug(
                             param.ident.span,
                             "object-lifetime-default should not occur here",
                         );
@@ -2166,7 +2165,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::TraitRef<'hir> {
         let path = match self.lower_qpath(p.ref_id, &None, &p.path, ParamMode::Explicit, itctx) {
             hir::QPath::Resolved(None, path) => path,
-            qpath => bug!("lower_trait_ref: unexpected QPath `{:?}`", qpath),
+            qpath => panic!("lower_trait_ref: unexpected QPath `{:?}`", qpath),
         };
         hir::TraitRef { path, hir_ref_id: self.lower_node_id(p.ref_id) }
     }

@@ -1,6 +1,5 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 
-use rustc::bug;
 use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
@@ -757,7 +756,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 Some(movability)
             }
             Some(hir::GeneratorKind::Async(_)) => {
-                bug!("non-`async` closure body turned `async` during lowering");
+                panic!("non-`async` closure body turned `async` during lowering");
             }
             None => {
                 if movability == Movability::Static {
