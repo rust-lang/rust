@@ -569,5 +569,105 @@ impl DropArena {
     }
 }
 
+#[macro_export]
+macro_rules! arena_for_type {
+    ([][$ty:ty]) => {
+        $crate::TypedArena<$ty>
+    };
+    ([few $(, $attrs:ident)*][$ty:ty]) => {
+        ::std::marker::PhantomData<$ty>
+    };
+    ([$ignore:ident $(, $attrs:ident)*]$args:tt) => {
+        $crate::arena_for_type!([$($attrs),*]$args)
+    };
+}
+
+#[macro_export]
+macro_rules! which_arena_for_type {
+    ([][$arena:expr]) => {
+        ::std::option::Option::Some($arena)
+    };
+    ([few$(, $attrs:ident)*][$arena:expr]) => {
+        ::std::option::Option::None
+    };
+    ([$ignore:ident$(, $attrs:ident)*]$args:tt) => {
+        $crate::which_arena_for_type!([$($attrs),*]$args)
+    };
+}
+
+#[macro_export]
+macro_rules! declare_arena {
+    ([], [$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) => {
+        #[derive(Default)]
+        pub struct Arena<$tcx> {
+            pub dropless: $crate::DroplessArena,
+            drop: $crate::DropArena,
+            $($name: $crate::arena_for_type!($a[$ty]),)*
+        }
+
+        #[marker]
+        pub trait ArenaAllocatable {}
+
+        impl<T: Copy> ArenaAllocatable for T {}
+
+        unsafe trait ArenaField<'tcx>: Sized {
+            /// Returns a specific arena to allocate from.
+            /// If `None` is returned, the `DropArena` will be used.
+            fn arena<'a>(arena: &'a Arena<'tcx>) -> Option<&'a $crate::TypedArena<Self>>;
+        }
+
+        unsafe impl<'tcx, T> ArenaField<'tcx> for T {
+            #[inline]
+            default fn arena<'a>(_: &'a Arena<'tcx>) -> Option<&'a $crate::TypedArena<Self>> {
+                panic!()
+            }
+        }
+
+        $(
+            impl ArenaAllocatable for $ty {}
+            unsafe impl<$tcx> ArenaField<$tcx> for $ty {
+                #[inline]
+                fn arena<'a>(_arena: &'a Arena<$tcx>) -> Option<&'a $crate::TypedArena<Self>> {
+                    $crate::which_arena_for_type!($a[&_arena.$name])
+                }
+            }
+        )*
+
+        impl<'tcx> Arena<'tcx> {
+            #[inline]
+            pub fn alloc<T: ArenaAllocatable>(&self, value: T) -> &mut T {
+                if !::std::mem::needs_drop::<T>() {
+                    return self.dropless.alloc(value);
+                }
+                match <T as ArenaField<'tcx>>::arena(self) {
+                    ::std::option::Option::Some(arena) => arena.alloc(value),
+                    ::std::option::Option::None => unsafe { self.drop.alloc(value) },
+                }
+            }
+
+            #[inline]
+            pub fn alloc_slice<T: ::std::marker::Copy>(&self, value: &[T]) -> &mut [T] {
+                if value.is_empty() {
+                    return &mut [];
+                }
+                self.dropless.alloc_slice(value)
+            }
+
+            pub fn alloc_from_iter<T: ArenaAllocatable>(
+                &'a self,
+                iter: impl ::std::iter::IntoIterator<Item = T>,
+            ) -> &'a mut [T] {
+                if !::std::mem::needs_drop::<T>() {
+                    return self.dropless.alloc_from_iter(iter);
+                }
+                match <T as ArenaField<'tcx>>::arena(self) {
+                    ::std::option::Option::Some(arena) => arena.alloc_from_iter(iter),
+                    ::std::option::Option::None => unsafe { self.drop.alloc_from_iter(iter) },
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests;
