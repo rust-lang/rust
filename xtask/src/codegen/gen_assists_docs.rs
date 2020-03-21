@@ -4,7 +4,7 @@ use std::{fs, path::Path};
 
 use crate::{
     codegen::{self, extract_comment_blocks_with_empty_lines, Mode},
-    project_root, Result,
+    project_root, rust_files, Result,
 };
 
 pub fn generate_assists_docs(mode: Mode) -> Result<()> {
@@ -46,12 +46,8 @@ fn reveal_hash_comments(text: &str) -> String {
 
 fn collect_assists() -> Result<Vec<Assist>> {
     let mut res = Vec::new();
-    for entry in fs::read_dir(project_root().join(codegen::ASSISTS_DIR))? {
-        let entry = entry?;
-        let path = entry.path();
-        if path.is_file() {
-            collect_file(&mut res, path.as_path())?;
-        }
+    for path in rust_files(&project_root().join(codegen::ASSISTS_DIR)) {
+        collect_file(&mut res, path.as_path())?;
     }
     res.sort_by(|lhs, rhs| lhs.id.cmp(&rhs.id));
     return Ok(res);
