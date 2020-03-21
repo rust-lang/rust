@@ -1,4 +1,5 @@
 // error-pattern: the evaluated program aborted
+// ignore-windows (panics dont work on Windows)
 #![feature(unwind_attributes)]
 
 #[unwind(aborts)]
