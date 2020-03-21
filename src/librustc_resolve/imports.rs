@@ -874,6 +874,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// consolidate multiple unresolved import errors into a single diagnostic.
     fn finalize_import(&mut self, import: &'b Import<'b>) -> Option<UnresolvedImportError> {
         let orig_vis = import.vis.replace(ty::Visibility::Invisible);
+        let orig_blacklisted_binding = match &import.kind {
+            ImportKind::Single { target_bindings, .. } => {
+                Some(mem::replace(&mut self.r.blacklisted_binding, target_bindings[TypeNS].get()))
+            }
+            _ => None,
+        };
         let prev_ambiguity_errors_len = self.r.ambiguity_errors.len();
         let path_res = self.r.resolve_path(
             &import.module_path,
@@ -884,6 +890,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             import.crate_lint(),
         );
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
+        if let Some(orig_blacklisted_binding) = orig_blacklisted_binding {
+            self.r.blacklisted_binding = orig_blacklisted_binding;
+        }
         import.vis.set(orig_vis);
         if let PathResult::Failed { .. } | PathResult::NonModule(..) = path_res {
             // Consider erroneous imports used to avoid duplicate diagnostics.
