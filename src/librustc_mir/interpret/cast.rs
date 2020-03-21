@@ -228,17 +228,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match dest_ty.kind {
             // float -> uint
             Uint(t) => {
-                // FIXME: can we make `bit_width` return a type more compatible with `Size::bits`?
-                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits() as usize);
-                let v = f.to_u128(width).value;
+                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits());
+                let v = f.to_u128(usize::try_from(width).unwrap()).value;
                 // This should already fit the bit width
-                Ok(Scalar::from_uint(v, Size::from_bits(width as u64)))
+                Ok(Scalar::from_uint(v, Size::from_bits(width)))
             }
             // float -> int
             Int(t) => {
-                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits() as usize);
-                let v = f.to_i128(width).value;
-                Ok(Scalar::from_int(v, Size::from_bits(width as u64)))
+                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits());
+                let v = f.to_i128(usize::try_from(width).unwrap()).value;
+                Ok(Scalar::from_int(v, Size::from_bits(width)))
             }
             // float -> f32
             Float(FloatTy::F32) => Ok(Scalar::from_f32(f.convert(&mut false).value)),
