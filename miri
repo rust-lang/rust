@@ -11,6 +11,9 @@ working directory.
 ./miri build <flags>:
 Just build miri.  <flags> are passed to `cargo build`.
 
+./miri check <flags>:
+Just check miri.  <flags> are passed to `cargo check`.
+
 ./miri test <flags>:
 Build miri, set up a sysroot and then run the test suite. <flags> are passed
 to the final `cargo test` invocation.
@@ -98,6 +101,10 @@ install|install-debug)
     # "--locked" to respect the Cargo.lock file if it exists,
     # "--offline" to avoid querying the registry (for yanked packages).
     exec cargo install $CARGO_INSTALL_FLAGS --path "$(dirname "$0")" --force --locked --offline "$@"
+    ;;
+check|check-debug)
+    # Check, and let caller control flags.
+    exec cargo check $CARGO_BUILD_FLAGS "$@"
     ;;
 build|build-debug)
     # Build, and let caller control flags.
