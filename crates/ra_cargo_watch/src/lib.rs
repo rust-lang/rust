@@ -8,9 +8,10 @@ use lsp_types::{
     WorkDoneProgressEnd, WorkDoneProgressReport,
 };
 use std::{
+    error, fmt,
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
-    process::{Child, Command, Stdio},
+    process::{Command, Stdio},
     thread::JoinHandle,
     time::Instant,
 };
@@ -70,10 +71,10 @@ impl std::ops::Drop for CheckWatcher {
     fn drop(&mut self) {
         if let Some(handle) = self.handle.take() {
             // Take the sender out of the option
-            let recv = self.cmd_send.take();
+            let cmd_send = self.cmd_send.take();
 
             // Dropping the sender finishes the thread loop
-            drop(recv);
+            drop(cmd_send);
 
             // Join the thread, it should finish shortly. We don't really care
             // whether it panicked, so it is safe to ignore the result
@@ -246,11 +247,21 @@ enum CheckEvent {
     End,
 }
 
+#[derive(Debug)]
+pub struct CargoError(String);
+
+impl fmt::Display for CargoError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Cargo failed: {}", self.0)
+    }
+}
+impl error::Error for CargoError {}
+
 pub fn run_cargo(
     args: &[String],
     current_dir: Option<&Path>,
     on_message: &mut dyn FnMut(cargo_metadata::Message) -> bool,
-) -> Child {
+) -> Result<(), CargoError> {
     let mut command = Command::new("cargo");
     if let Some(current_dir) = current_dir {
         command.current_dir(current_dir);
@@ -259,7 +270,7 @@ pub fn run_cargo(
     let mut child = command
         .args(args)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::null())
         .stdin(Stdio::null())
         .spawn()
         .expect("couldn't launch cargo");
@@ -273,6 +284,8 @@ pub fn run_cargo(
     // simply skip a line if it doesn't parse, which just ignores any
     // erroneus output.
     let stdout = BufReader::new(child.stdout.take().unwrap());
+    let mut read_at_least_one_message = false;
+
     for line in stdout.lines() {
         let line = match line {
             Ok(line) => line,
@@ -291,12 +304,27 @@ pub fn run_cargo(
             }
         };
 
+        read_at_least_one_message = true;
+
         if !on_message(message) {
             break;
         }
     }
 
-    child
+    // It is okay to ignore the result, as it only errors if the process is already dead
+    let _ = child.kill();
+
+    let err_msg = match child.wait() {
+        Ok(exit_code) if !exit_code.success() && !read_at_least_one_message => {
+            // FIXME: Read the stderr to display the reason, see `read2()` reference in PR comment:
+            // https://github.com/rust-analyzer/rust-analyzer/pull/3632#discussion_r395605298
+            format!("the command produced no valid metadata:\n cargo {}", args.join(" "))
+        }
+        Err(err) => format!("io error: {:?}", err),
+        Ok(_) => return Ok(()),
+    };
+
+    Err(CargoError(err_msg))
 }
 
 impl WatchThread {
@@ -325,7 +353,7 @@ impl WatchThread {
                 // which will break out of the loop, and continue the shutdown
                 let _ = message_send.send(CheckEvent::Begin);
 
-                let mut child = run_cargo(&args, Some(&workspace_root), &mut |message| {
+                let res = run_cargo(&args, Some(&workspace_root), &mut |message| {
                     // Skip certain kinds of messages to only spend time on what's useful
                     match &message {
                         Message::CompilerArtifact(artifact) if artifact.fresh => return true,
@@ -334,39 +362,19 @@ impl WatchThread {
                         _ => {}
                     }
 
-                    match message_send.send(CheckEvent::Msg(message)) {
-                        Ok(()) => {}
-                        Err(_err) => {
-                            // The send channel was closed, so we want to shutdown
-                            return false;
-                        }
-                    };
-
-                    true
+                    // if the send channel was closed, so we want to shutdown
+                    message_send.send(CheckEvent::Msg(message)).is_ok()
                 });
+
+                if let Err(err) = res {
+                    // FIXME: make the `message_send` to be `Sender<Result<CheckEvent, CargoError>>`
+                    // to display user-caused misconfiguration errors instead of just logging them here
+                    log::error!("Cargo watcher failed {:?}", err);
+                }
 
                 // We can ignore any error here, as we are already in the progress
                 // of shutting down.
                 let _ = message_send.send(CheckEvent::End);
-
-                // It is okay to ignore the result, as it only errors if the process is already dead
-                let _ = child.kill();
-
-                // Again, we are resilient to errors, so we don't try to panic here
-                match child.wait_with_output() {
-                    Ok(output) => match output.status.code() {
-                        Some(0) | None => {}
-                        Some(exit_code) => {
-                            let output =
-                                std::str::from_utf8(&output.stderr).unwrap_or("<bad utf8 output>");
-
-                            if !output.contains("could not compile") {
-                                log::error!("Cargo failed with exit code {} {}", exit_code, output);
-                            }
-                        }
-                    },
-                    Err(err) => log::error!("Cargo io error: {:?}", err),
-                }
             }))
         } else {
             None
