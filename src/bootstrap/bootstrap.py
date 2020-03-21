@@ -664,6 +664,10 @@ class RustBuild(object):
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
         env = os.environ.copy()
+        # `CARGO_BUILD_TARGET` breaks bootstrap build.
+        # See also: <https://github.com/rust-lang/rust/issues/70208>.
+        if "CARGO_BUILD_TARGET" in env:
+            del env["CARGO_BUILD_TARGET"]
         env["RUSTC_BOOTSTRAP"] = '1'
         env["CARGO_TARGET_DIR"] = build_dir
         env["RUSTC"] = self.rustc()
