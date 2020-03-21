@@ -417,22 +417,19 @@ fn loop_turn(
                 if Some(resp.id) == loop_state.configuration_request_id {
                     loop_state.configuration_request_id = None;
                     if let Some(err) = resp.error {
-                        log::error!("failed fetch the server settings: {:?}", err)
-                    } else if resp.result.is_none() {
-                        log::error!("received empty server settings response from the client")
-                    } else {
-                        let new_config =
-                            serde_json::from_value::<Vec<ServerConfig>>(resp.result.unwrap())?
-                                .first()
-                                .expect(
-                                    "The client is expected to always send a non-empty config data",
-                                )
-                                .to_owned();
+                        log::error!("failed to fetch the server settings: {:?}", err)
+                    } else if let Some(result) = resp.result {
+                        let new_config = serde_json::from_value::<Vec<ServerConfig>>(result)?
+                            .first()
+                            .expect("The client is expected to always send a non-empty config data")
+                            .to_owned();
                         world_state.update_configuration(
                             new_config.lru_capacity,
                             get_options(&new_config, text_document_caps),
                             get_feature_flags(&new_config, connection),
                         );
+                    } else {
+                        log::error!("received empty server settings response from the client")
                     }
                 }
             }
@@ -673,7 +670,7 @@ fn on_notification(
                 ConfigurationParams::default(),
             );
             msg_sender.send(request.into())?;
-            loop_state.configuration_request_id.replace(request_id);
+            loop_state.configuration_request_id = Some(request_id);
 
             return Ok(());
         }

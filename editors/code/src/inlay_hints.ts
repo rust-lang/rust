@@ -17,9 +17,11 @@ export function activateInlayHints(ctx: Ctx) {
             ) {
                 return this.dispose();
             }
-            if (!this.updater) this.updater = new HintsUpdater(ctx);
-
-            this.updater.syncCacheAndRenderHints();
+            if (this.updater) {
+                this.updater.syncCacheAndRenderHints();
+            } else {
+                this.updater = new HintsUpdater(ctx);
+            }
         },
         dispose() {
             this.updater?.dispose();
@@ -126,7 +128,7 @@ class HintsUpdater implements Disposable {
         this.syncCacheAndRenderHints();
     }
 
-    public syncCacheAndRenderHints() {
+    syncCacheAndRenderHints() {
         // FIXME: make inlayHints request pass an array of files?
         this.sourceFiles.forEach((file, uri) => this.fetchHints(file).then(hints => {
             if (!hints) return;

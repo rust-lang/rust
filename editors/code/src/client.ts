@@ -5,7 +5,7 @@ import { Config } from './config';
 import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
 import { SemanticTokensFeature, DocumentSemanticsTokensSignature } from 'vscode-languageclient/lib/semanticTokens.proposed';
 
-export function configToServerOptions(config: Config): object {
+export function configToServerOptions(config: Config) {
     return {
         publishDecorations: !config.highlightingSemanticTokens,
         lruCapacity: config.lruCapacity,

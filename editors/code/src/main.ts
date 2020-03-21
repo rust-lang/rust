@@ -95,7 +95,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeConfiguration(
         _ => ctx?.client?.sendNotification('workspace/didChangeConfiguration', { settings: "" }),
         null,
-        ctx?.subscriptions,
+        ctx.subscriptions,
     );
 }
 

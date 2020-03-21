@@ -32,6 +32,7 @@ use ra_db::ExternSourceId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 fn create_watcher(workspaces: &[ProjectWorkspace], options: &Options) -> CheckWatcher {
+    // FIXME: Figure out the multi-workspace situation
     workspaces
         .iter()
         .find_map(|w| match w {
