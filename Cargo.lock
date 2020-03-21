@@ -3479,7 +3479,6 @@ version = "0.0.0"
 dependencies = [
  "arena",
  "log",
- "rustc",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
