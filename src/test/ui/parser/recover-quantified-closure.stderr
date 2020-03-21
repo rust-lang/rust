@@ -1,0 +1,16 @@
+error: cannot introduce explicit parameters for a closure
+  --> $DIR/recover-quantified-closure.rs:2:5
+   |
+LL |     for<'a> |x: &'a u8| *x + 1;
+   |     ^^^^^^^ ------------------ the parameters are attached to this closure
+   |     |
+   |     help: remove the parameters
+
+error: expected one of `move`, `static`, `|`, or `||`, found `::`
+  --> $DIR/recover-quantified-closure.rs:8:14
+   |
+LL |     for <Foo>::Bar in x {}
+   |              ^^ expected one of `move`, `static`, `|`, or `||`
+
+error: aborting due to 2 previous errors
+
