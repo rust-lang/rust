@@ -359,6 +359,9 @@ impl<F: Future> Future for AssertUnwindSafe<F> {
 /// aborting the process as well. This function *only* catches unwinding panics,
 /// not those that abort the process.
 ///
+/// Also note that unwinding into Rust code with a foreign exception (e.g. a
+/// an exception thrown from C++ code) is undefined behavior.
+///
 /// # Examples
 ///
 /// ```

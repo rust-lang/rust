@@ -309,15 +309,21 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
 
     extern "system" {
         #[unwind(allowed)]
-        pub fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8) -> !;
+        fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8) -> !;
     }
 
     _CxxThrowException(throw_ptr, &mut THROW_INFO as *mut _ as *mut _);
 }
 
 pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
-    let exception = &mut *(payload as *mut Exception);
-    exception.data.take().unwrap()
+    // A NULL payload here means that we got here from the catch (...) of
+    // __rust_try. This happens when a non-Rust foreign exception is caught.
+    if payload.is_null() {
+        super::__rust_foreign_exception();
+    } else {
+        let exception = &mut *(payload as *mut Exception);
+        exception.data.take().unwrap()
+    }
 }
 
 // This is required by the compiler to exist (e.g., it's a lang item), but

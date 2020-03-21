@@ -82,6 +82,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
+    eh_catch_typeinfo: Cell<Option<&'ll Value>>,
     pub rust_try_fn: Cell<Option<&'ll Value>>,
 
     intrinsics: RefCell<FxHashMap<&'static str, &'ll Value>>,
@@ -311,6 +312,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             coverage_cx,
             dbg_cx,
             eh_personality: Cell::new(None),
+            eh_catch_typeinfo: Cell::new(None),
             rust_try_fn: Cell::new(None),
             intrinsics: Default::default(),
             local_gen_sym_counter: Cell::new(0),
@@ -818,6 +820,25 @@ impl CodegenCx<'b, 'tcx> {
             ifn!("llvm.dbg.value", fn(self.type_metadata(), t_i64, self.type_metadata()) -> void);
         }
         None
+    }
+
+    crate fn eh_catch_typeinfo(&self) -> &'b Value {
+        if let Some(eh_catch_typeinfo) = self.eh_catch_typeinfo.get() {
+            return eh_catch_typeinfo;
+        }
+        let tcx = self.tcx;
+        assert!(self.sess().target.target.options.is_like_emscripten);
+        let eh_catch_typeinfo = match tcx.lang_items().eh_catch_typeinfo() {
+            Some(def_id) => self.get_static(def_id),
+            _ => {
+                let ty = self
+                    .type_struct(&[self.type_ptr_to(self.type_isize()), self.type_i8p()], false);
+                self.declare_global("rust_eh_catch_typeinfo", ty)
+            }
+        };
+        let eh_catch_typeinfo = self.const_bitcast(eh_catch_typeinfo, self.type_i8p());
+        self.eh_catch_typeinfo.set(Some(eh_catch_typeinfo));
+        eh_catch_typeinfo
     }
 }
 
