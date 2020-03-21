@@ -456,7 +456,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 (allocation, Some(def_id))
             }
         };
-        M::before_access_global(memory_extra, alloc, def_id, is_write)?;
+        M::before_access_global(memory_extra, id, alloc, def_id, is_write)?;
         let alloc = Cow::Borrowed(alloc);
         // We got tcx memory. Let the machine initialize its "extra" stuff.
         let (alloc, tag) = M::init_allocation_extra(

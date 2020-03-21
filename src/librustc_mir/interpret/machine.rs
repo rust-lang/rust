@@ -212,6 +212,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     #[inline]
     fn before_access_global(
         _memory_extra: &Self::MemoryExtra,
+        _alloc_id: AllocId,
         _allocation: &Allocation,
         _def_id: Option<DefId>,
         _is_write: bool,

@@ -8,6 +8,7 @@ use std::hash::Hash;
 use rustc_data_structures::fx::FxHashMap;
 
 use rustc::mir::AssertMessage;
+use rustc_ast::ast::Mutability;
 use rustc_span::symbol::Symbol;
 use rustc_span::{def_id::DefId, Span};
 
@@ -347,11 +348,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
 
     fn before_access_global(
         memory_extra: &MemoryExtra,
-        _allocation: &Allocation,
+        alloc_id: AllocId,
+        allocation: &Allocation,
         def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
-        if is_write {
+        if is_write && allocation.mutability == Mutability::Not {
+            Err(err_ub!(WriteToReadOnly(alloc_id)).into())
+        } else if is_write {
             Err(ConstEvalErrKind::ModifiedGlobal.into())
         } else if memory_extra.can_access_statics || def_id.is_none() {
             Ok(())

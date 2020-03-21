@@ -272,6 +272,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     fn before_access_global(
         _memory_extra: &(),
+        _alloc_id: AllocId,
         allocation: &Allocation<Self::PointerTag, Self::AllocExtra>,
         _def_id: Option<DefId>,
         is_write: bool,
