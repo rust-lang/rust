@@ -220,6 +220,18 @@ macro_rules! define_dep_nodes {
             /// single DefId/DefPathHash parameter.
             fn from_def_path_hash(def_path_hash: DefPathHash, kind: DepKind) -> Self;
 
+            /// Extracts the DefId corresponding to this DepNode. This will work
+            /// if two conditions are met:
+            ///
+            /// 1. The Fingerprint of the DepNode actually is a DefPathHash, and
+            /// 2. the item that the DefPath refers to exists in the current tcx.
+            ///
+            /// Condition (1) is determined by the DepKind variant of the
+            /// DepNode. Condition (2) might not be fulfilled if a DepNode
+            /// refers to something from the previous compilation session that
+            /// has been removed.
+            fn extract_def_id(&self, tcx: TyCtxt<'_>) -> Option<DefId>;
+
             /// Used in testing
             fn from_label_string(label: &str, def_path_hash: DefPathHash)
                 -> Result<Self, ()>;
@@ -250,6 +262,15 @@ macro_rules! define_dep_nodes {
             /// DepNode. Condition (2) might not be fulfilled if a DepNode
             /// refers to something from the previous compilation session that
             /// has been removed.
+            fn extract_def_id(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
+                if self.kind.can_reconstruct_query_key() {
+                    let def_path_hash = DefPathHash(self.hash);
+                    tcx.def_path_hash_to_def_id.as_ref()?.get(&def_path_hash).cloned()
+                } else {
+                    None
+                }
+            }
+
             /// Used in testing
             fn from_label_string(label: &str, def_path_hash: DefPathHash) -> Result<DepNode, ()> {
                 let kind = match label {
@@ -316,7 +337,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
     }
 
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
-        tcx.extract_def_id(dep_node)
+        dep_node.extract_def_id(tcx)
     }
 }
 
@@ -332,7 +353,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
     }
 
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
-        tcx.extract_def_id(dep_node).map(|id| id.expect_local())
+        dep_node.extract_def_id(tcx).map(|id| id.expect_local())
     }
 }
 
@@ -349,7 +370,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
     }
 
     fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
-        tcx.extract_def_id(dep_node).map(|id| id.krate)
+        dep_node.extract_def_id(tcx).map(|id| id.krate)
     }
 }
 

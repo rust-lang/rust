@@ -19,7 +19,6 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
-use rustc_hir::def_id::DefId;
 
 use std::fmt;
 use std::hash::Hash;
@@ -33,18 +32,6 @@ pub trait DepContext: Copy {
 
     /// Try to force a dep node to execute and see if it's green.
     fn try_force_previous_green(&self, node: &DepNode<Self::DepKind>) -> bool;
-
-    /// Extracts the DefId corresponding to this DepNode. This will work
-    /// if two conditions are met:
-    ///
-    /// 1. The Fingerprint of the DepNode actually is a DefPathHash, and
-    /// 2. the item that the DefPath refers to exists in the current tcx.
-    ///
-    /// Condition (1) is determined by the DepKind variant of the
-    /// DepNode. Condition (2) might not be fulfilled if a DepNode
-    /// refers to something from the previous compilation session that
-    /// has been removed.
-    fn extract_def_id(&self, node: &DepNode<Self::DepKind>) -> Option<DefId>;
 
     /// Return whether the current session is tainted by errors.
     fn has_errors_or_delayed_span_bugs(&self) -> bool;

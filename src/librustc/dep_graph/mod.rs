@@ -1,4 +1,3 @@
-use crate::hir::map::definitions::DefPathHash;
 use crate::ich::StableHashingContext;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -46,7 +45,7 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
 
         ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
-                if let Some(def_id) = tcx.extract_def_id(node) {
+                if let Some(def_id) = node.extract_def_id(tcx) {
                     write!(f, "{}", tcx.def_path_debug_str(def_id))?;
                 } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*node) {
                     write!(f, "{}", s)?;
@@ -92,32 +91,13 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         TyCtxt::create_stable_hashing_context(*self)
     }
 
-    /// Extracts the DefId corresponding to this DepNode. This will work
-    /// if two conditions are met:
-    ///
-    /// 1. The Fingerprint of the DepNode actually is a DefPathHash, and
-    /// 2. the item that the DefPath refers to exists in the current tcx.
-    ///
-    /// Condition (1) is determined by the DepKind variant of the
-    /// DepNode. Condition (2) might not be fulfilled if a DepNode
-    /// refers to something from the previous compilation session that
-    /// has been removed.
-    fn extract_def_id(&self, node: &DepNode) -> Option<DefId> {
-        if node.kind.can_reconstruct_query_key() {
-            let def_path_hash = DefPathHash(node.hash);
-            self.def_path_hash_to_def_id.as_ref()?.get(&def_path_hash).cloned()
-        } else {
-            None
-        }
-    }
-
     fn try_force_previous_green(&self, dep_dep_node: &DepNode) -> bool {
         // FIXME: This match is just a workaround for incremental bugs and should
         // be removed. https://github.com/rust-lang/rust/issues/62649 is one such
         // bug that must be fixed before removing this.
         match dep_dep_node.kind {
             DepKind::hir_owner | DepKind::hir_owner_nodes | DepKind::CrateMetadata => {
-                if let Some(def_id) = self.extract_def_id(dep_dep_node) {
+                if let Some(def_id) = dep_dep_node.extract_def_id(*self) {
                     if def_id_corresponds_to_hir_dep_node(*self, def_id) {
                         if dep_dep_node.kind == DepKind::CrateMetadata {
                             // The `DefPath` has corresponding node,
