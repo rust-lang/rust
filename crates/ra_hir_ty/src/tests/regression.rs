@@ -453,3 +453,34 @@ pub mod str {
     // should be Option<char>, but currently not because of Chalk ambiguity problem
     assert_eq!("(Option<{unknown}>, Option<{unknown}>)", super::type_at_pos(&db, pos));
 }
+
+#[test]
+fn issue_3642_bad_macro_stackover() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs
+#[macro_export]
+macro_rules! match_ast {
+    (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
+
+    (match ($node:expr) {
+        $( ast::$ast:ident($it:ident) => $res:expr, )*
+        _ => $catch_all:expr $(,)?
+    }) => {{
+        $( if let Some($it) = ast::$ast::cast($node.clone()) { $res } else )*
+        { $catch_all }
+    }};
+}
+
+fn main() {
+    let anchor<|> = match_ast! {
+        match parent {
+            as => {},
+            _ => return None
+        }
+    };
+}"#,
+    );
+
+    assert_eq!("()", super::type_at_pos(&db, pos));
+}
