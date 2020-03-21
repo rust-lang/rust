@@ -8,7 +8,7 @@ fn range_search<
 >(
     needle: u32,
     chunk_idx_map: &[u8; N],
-    (last_chunk_idx, last_chunk_mapping): (u16, u8),
+    last_chunk_idx: u16,
     bitset_chunk_idx: &[[u8; CHUNK_SIZE]; N1],
     bitset_canonical: &[u64; CANONICAL],
     bitset_canonicalized: &[(u8, u8); CANONICALIZED],
@@ -16,14 +16,14 @@ fn range_search<
     let bucket_idx = (needle / 64) as usize;
     let chunk_map_idx = bucket_idx / CHUNK_SIZE;
     let chunk_piece = bucket_idx % CHUNK_SIZE;
-    let chunk_idx = if chunk_map_idx >= N {
-        if chunk_map_idx == last_chunk_idx as usize {
-            last_chunk_mapping
-        } else {
-            return false;
-        }
-    } else {
+    // The last entry of `chunk_idx_map` actually should be at `last_chunk_idx`,
+    // so we need to remap it
+    let chunk_idx = if chunk_map_idx < (chunk_idx_map.len() - 1) {
         chunk_idx_map[chunk_map_idx]
+    } else if chunk_map_idx == last_chunk_idx as usize {
+        chunk_idx_map[chunk_idx_map.len() - 1]
+    } else {
+        return false;
     };
     let idx = bitset_chunk_idx[(chunk_idx as usize)][chunk_piece] as usize;
     let word = if idx < CANONICAL {

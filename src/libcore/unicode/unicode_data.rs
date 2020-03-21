@@ -10,7 +10,7 @@ fn range_search<
 >(
     needle: u32,
     chunk_idx_map: &[u8; N],
-    (last_chunk_idx, last_chunk_mapping): (u16, u8),
+    last_chunk_idx: u16,
     bitset_chunk_idx: &[[u8; CHUNK_SIZE]; N1],
     bitset_canonical: &[u64; CANONICAL],
     bitset_canonicalized: &[(u8, u8); CANONICALIZED],
@@ -18,14 +18,14 @@ fn range_search<
     let bucket_idx = (needle / 64) as usize;
     let chunk_map_idx = bucket_idx / CHUNK_SIZE;
     let chunk_piece = bucket_idx % CHUNK_SIZE;
-    let chunk_idx = if chunk_map_idx >= N {
-        if chunk_map_idx == last_chunk_idx as usize {
-            last_chunk_mapping
-        } else {
-            return false;
-        }
-    } else {
+    // The last entry of `chunk_idx_map` actually should be at `last_chunk_idx`,
+    // so we need to remap it
+    let chunk_idx = if chunk_map_idx < (chunk_idx_map.len() - 1) {
         chunk_idx_map[chunk_map_idx]
+    } else if chunk_map_idx == last_chunk_idx as usize {
+        chunk_idx_map[chunk_idx_map.len() - 1]
+    } else {
+        return false;
     };
     let idx = bitset_chunk_idx[(chunk_idx as usize)][chunk_piece] as usize;
     let word = if idx < CANONICAL {
@@ -54,8 +54,8 @@ pub const UNICODE_VERSION: (u32, u32, u32) = (13, 0, 0);
 
 #[rustfmt::skip]
 pub mod alphabetic {
-    static BITSET_LAST_CHUNK_MAP: (u16, u8) = (393, 13);
-    static BITSET_CHUNKS_MAP: [u8; 393] = [
+    const BITSET_LAST_CHUNK_MAP: u16 = 393;
+    static BITSET_CHUNKS_MAP: [u8; 394] = [
         61, 18, 2, 35, 46, 39, 38, 74, 37, 25, 70, 34, 36, 73, 66, 5, 52, 58, 54, 58, 58, 58, 69,
         64, 43, 58, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
         6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 10, 6, 6, 23,
@@ -70,7 +70,7 @@ pub mod alphabetic {
         6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
         6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 21, 6, 6, 6, 6,
         6, 6, 6, 15, 72, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 3, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8,
-        58, 58, 58, 58, 58, 58, 6, 62, 58, 58, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+        58, 58, 58, 58, 58, 58, 6, 62, 58, 58, 6, 6, 6, 6, 6, 6, 6, 6, 6, 13,
     ];
     static BITSET_INDEX_CHUNKS: [[u8; 8]; 75] = [
         [0, 252, 121, 172, 14, 172, 172, 172], [13, 51, 125, 172, 79, 35, 166, 172],
@@ -312,8 +312,8 @@ pub mod alphabetic {
 
 #[rustfmt::skip]
 pub mod case_ignorable {
-    static BITSET_LAST_CHUNK_MAP: (u16, u8) = (1792, 2);
-    static BITSET_CHUNKS_MAP: [u8; 250] = [
+    const BITSET_LAST_CHUNK_MAP: u16 = 1792;
+    static BITSET_CHUNKS_MAP: [u8; 251] = [
         14, 28, 47, 22, 19, 11, 4, 13, 9, 40, 39, 32, 49, 23, 15, 36, 18, 39, 39, 39, 39, 39, 27,
         26, 12, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39,
         39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39,
@@ -324,7 +324,7 @@ pub mod case_ignorable {
         39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 44, 39, 35, 39, 39,
         39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39,
         39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 39, 29, 39, 39, 39, 39, 39, 39, 39, 39, 39,
-        34, 48, 39, 39, 39, 0, 39, 39, 21, 43, 39, 39, 45, 39, 39, 39, 39, 37,
+        34, 48, 39, 39, 39, 0, 39, 39, 21, 43, 39, 39, 45, 39, 39, 39, 39, 37, 2,
     ];
     static BITSET_INDEX_CHUNKS: [[u8; 8]; 52] = [
         [3, 75, 88, 142, 142, 142, 142, 142], [5, 110, 38, 181, 142, 142, 12, 182],
@@ -503,14 +503,14 @@ pub mod case_ignorable {
 
 #[rustfmt::skip]
 pub mod cased {
-    static BITSET_LAST_CHUNK_MAP: (u16, u8) = (124, 12);
-    static BITSET_CHUNKS_MAP: [u8; 123] = [
+    const BITSET_LAST_CHUNK_MAP: u16 = 124;
+    static BITSET_CHUNKS_MAP: [u8; 124] = [
         4, 0, 18, 18, 6, 18, 18, 9, 5, 8, 18, 3, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18,
         18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 14, 15, 18, 18, 18, 18,
         18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 17, 16, 18, 1, 18, 10, 18, 18,
         7, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 13, 18,
         18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18,
-        18, 2, 18, 18, 18, 18, 11,
+        18, 2, 18, 18, 18, 18, 11, 12,
     ];
     static BITSET_INDEX_CHUNKS: [[u8; 16]; 19] = [
         [5, 5, 7, 5, 50, 10, 40, 58, 58, 58, 58, 58, 58, 58, 58, 58],
@@ -594,9 +594,9 @@ pub mod cased {
 
 #[rustfmt::skip]
 pub mod cc {
-    static BITSET_LAST_CHUNK_MAP: (u16, u8) = (2, 0);
-    static BITSET_CHUNKS_MAP: [u8; 2] = [
-        0, 1,
+    const BITSET_LAST_CHUNK_MAP: u16 = 2;
+    static BITSET_CHUNKS_MAP: [u8; 3] = [
+        0, 1, 0,
     ];
     static BITSET_INDEX_CHUNKS: [[u8; 1]; 3] = [
         [0], [1], [2],
@@ -623,8 +623,8 @@ pub mod cc {
 
 #[rustfmt::skip]
 pub mod grapheme_extend {
-    static BITSET_LAST_CHUNK_MAP: (u16, u8) = (1792, 3);
-    static BITSET_CHUNKS_MAP: [u8; 245] = [
+    const BITSET_LAST_CHUNK_MAP: u16 = 1792;
+    static BITSET_CHUNKS_MAP: [u8; 246] = [
         34, 30, 41, 44, 17, 11, 0, 12, 9, 36, 34, 29, 43, 20, 13, 34, 21, 34, 34, 34, 34, 34, 26,
         34, 16, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34,
         34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34,
@@ -635,7 +635,7 @@ pub mod grapheme_extend {
         34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 40, 34, 33, 34,
         34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34,
         34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 24, 34, 34, 34, 34, 34, 34, 34, 34,
-        34, 32, 42, 34, 34, 34, 1, 34, 34, 19, 38, 34, 34, 39,
+        34, 32, 42, 34, 34, 34, 1, 34, 34, 19, 38, 34, 34, 39, 3,
     ];
     static BITSET_INDEX_CHUNKS: [[u8; 8]; 45] = [
         [1, 85, 27, 86, 34, 84, 100, 88], [4, 60, 71, 120, 120, 120, 120, 120],
@@ -785,12 +785,12 @@ pub mod grapheme_extend {
 
 #[rustfmt::skip]
 pub mod lowercase {
-    static BITSET_LAST_CHUNK_MAP: (u16, u8) = (122, 5);
-    static BITSET_CHUNKS_MAP: [u8; 118] = [
+    const BITSET_LAST_CHUNK_MAP: u16 = 122;
+    static BITSET_CHUNKS_MAP: [u8; 119] = [
         16, 2, 9, 9, 4, 9, 9, 15, 3, 12, 9, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
         9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 11, 7, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
         9, 9, 9, 8, 10, 9, 0, 9, 14, 9, 9, 13, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-        9, 9, 6, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 17,
+        9, 9, 6, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 17, 5,
     ];
     static BITSET_INDEX_CHUNKS: [[u8; 16]; 18] = [
         [10, 55, 52, 6, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52],
@@ -886,8 +886,8 @@ pub mod lowercase {
 
 #[rustfmt::skip]
 pub mod n {
-    static BITSET_LAST_CHUNK_MAP: (u16, u8) = (253, 21);
-    static BITSET_CHUNKS_MAP: [u8; 249] = [
+    const BITSET_LAST_CHUNK_MAP: u16 = 253;
+    static BITSET_CHUNKS_MAP: [u8; 250] = [
         45, 19, 19, 39, 23, 40, 6, 37, 33, 17, 19, 12, 42, 32, 41, 19, 8, 19, 2, 16, 19, 19, 13,
         19, 1, 43, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
         19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
@@ -898,7 +898,7 @@ pub mod n {
         19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 38, 19, 30, 19,
         19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
         19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
-        19, 19, 27, 19, 18, 19, 19, 19, 19, 22, 26, 19, 19, 29, 19, 3, 19, 24,
+        19, 19, 27, 19, 18, 19, 19, 19, 19, 22, 26, 19, 19, 29, 19, 3, 19, 24, 21,
     ];
     static BITSET_INDEX_CHUNKS: [[u8; 8]; 47] = [
         [12, 52, 44, 44, 44, 44, 44, 44], [27, 44, 44, 44, 44, 44, 67, 44],
@@ -993,13 +993,13 @@ pub mod n {
 
 #[rustfmt::skip]
 pub mod uppercase {
-    static BITSET_LAST_CHUNK_MAP: (u16, u8) = (124, 3);
-    static BITSET_CHUNKS_MAP: [u8; 123] = [
+    const BITSET_LAST_CHUNK_MAP: u16 = 124;
+    static BITSET_CHUNKS_MAP: [u8; 124] = [
         12, 15, 5, 5, 0, 5, 5, 2, 4, 11, 5, 14, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
         5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
         5, 5, 5, 6, 5, 13, 5, 10, 5, 5, 1, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
         5, 7, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 16, 5, 5,
-        5, 5, 9,
+        5, 5, 9, 3,
     ];
     static BITSET_INDEX_CHUNKS: [[u8; 16]; 17] = [
         [41, 41, 5, 33, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 5, 0],
@@ -1083,9 +1083,9 @@ pub mod uppercase {
 
 #[rustfmt::skip]
 pub mod white_space {
-    static BITSET_LAST_CHUNK_MAP: (u16, u8) = (32, 3);
-    static BITSET_CHUNKS_MAP: [u8; 22] = [
-        0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 1,
+    const BITSET_LAST_CHUNK_MAP: u16 = 32;
+    static BITSET_CHUNKS_MAP: [u8; 23] = [
+        0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 1, 3,
     ];
     static BITSET_INDEX_CHUNKS: [[u8; 6]; 4] = [
         [1, 4, 2, 4, 4, 4], [4, 4, 0, 3, 4, 4], [4, 4, 4, 4, 4, 4], [5, 4, 4, 4, 4, 4],

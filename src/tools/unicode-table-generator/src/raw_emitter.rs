@@ -150,19 +150,22 @@ impl RawEmitter {
         while zero_chunk_idx.is_some() && chunk_indices.last().cloned() == zero_chunk_idx {
             chunk_indices.pop();
         }
+        // We do not count the LAST_CHUNK_MAP as adding bytes because it's a
+        // small constant whose values are inlined directly into the instruction
+        // stream.
         writeln!(
             &mut self.file,
-            "static BITSET_LAST_CHUNK_MAP: (u16, u8) = ({}, {});",
+            "const BITSET_LAST_CHUNK_MAP: u16 = {};",
             chunk_indices.len() - 1,
-            chunk_indices.pop().unwrap(),
         )
         .unwrap();
-        self.bytes_used += 3;
+        let nonzero = chunk_indices.pop().unwrap();
         // Try to pop again, now that we've recorded a non-zero pointing index
         // into the LAST_CHUNK_MAP.
         while zero_chunk_idx.is_some() && chunk_indices.last().cloned() == zero_chunk_idx {
             chunk_indices.pop();
         }
+        chunk_indices.push(nonzero);
         writeln!(
             &mut self.file,
             "static BITSET_CHUNKS_MAP: [u8; {}] = [{}];",
