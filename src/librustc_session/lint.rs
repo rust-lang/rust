@@ -1,6 +1,7 @@
 pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_span::edition::Edition;
 use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
 
@@ -366,4 +367,46 @@ macro_rules! declare_lint_pass {
         $(#[$m])* #[derive(Copy, Clone)] pub struct $name;
         $crate::impl_lint_pass!($name => [$($lint),*]);
     };
+}
+
+pub fn add_elided_lifetime_in_path_suggestion(
+    sess: &crate::Session,
+    db: &mut DiagnosticBuilder<'_>,
+    n: usize,
+    path_span: Span,
+    incl_angl_brckt: bool,
+    insertion_span: Span,
+    anon_lts: String,
+) {
+    let (replace_span, suggestion) = if incl_angl_brckt {
+        (insertion_span, anon_lts)
+    } else {
+        // When possible, prefer a suggestion that replaces the whole
+        // `Path<T>` expression with `Path<'_, T>`, rather than inserting `'_, `
+        // at a point (which makes for an ugly/confusing label)
+        if let Ok(snippet) = sess.source_map().span_to_snippet(path_span) {
+            // But our spans can get out of whack due to macros; if the place we think
+            // we want to insert `'_` isn't even within the path expression's span, we
+            // should bail out of making any suggestion rather than panicking on a
+            // subtract-with-overflow or string-slice-out-out-bounds (!)
+            // FIXME: can we do better?
+            if insertion_span.lo().0 < path_span.lo().0 {
+                return;
+            }
+            let insertion_index = (insertion_span.lo().0 - path_span.lo().0) as usize;
+            if insertion_index > snippet.len() {
+                return;
+            }
+            let (before, after) = snippet.split_at(insertion_index);
+            (path_span, format!("{}{}{}", before, anon_lts, after))
+        } else {
+            (insertion_span, anon_lts)
+        }
+    };
+    db.span_suggestion(
+        replace_span,
+        &format!("indicate the anonymous lifetime{}", pluralize!(n)),
+        suggestion,
+        Applicability::MachineApplicable,
+    );
 }

@@ -306,7 +306,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             E0726,
                             "implicit elided lifetime not allowed here"
                         );
-                        rustc::lint::add_elided_lifetime_in_path_suggestion(
+                        rustc_session::lint::add_elided_lifetime_in_path_suggestion(
                             &self.sess,
                             &mut err,
                             expected_lifetimes,
