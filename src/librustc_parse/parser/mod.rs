@@ -88,10 +88,6 @@ pub struct Parser<'a> {
     /// The previous token.
     pub prev_token: Token,
     restrictions: Restrictions,
-    /// Name of the root module this parser originated from. If `None`, then the
-    /// name is not known. This does not change while the parser is descending
-    /// into modules, and sub-parsers have new values for this name.
-    pub root_module_name: Option<String>,
     expected_tokens: Vec<TokenType>,
     token_cursor: TokenCursor,
     desugar_doc_comments: bool,
@@ -350,7 +346,6 @@ impl<'a> Parser<'a> {
             token: Token::dummy(),
             prev_token: Token::dummy(),
             restrictions: Restrictions::empty(),
-            root_module_name: None,
             expected_tokens: Vec::new(),
             token_cursor: TokenCursor {
                 frame: TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, &tokens),

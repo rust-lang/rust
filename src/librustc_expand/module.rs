@@ -59,9 +59,8 @@ crate fn parse_external_mod(
         *pop_mod_stack = true; // We have pushed, so notify caller.
         drop(included_mod_stack);
 
-        // Actually parse the external file as amodule.
-        let mut p0 = new_sub_parser_from_file(sess, &mp.path, Some(id.to_string()), span);
-        let mut module = p0.parse_mod(&token::Eof)?;
+        // Actually parse the external file as a module.
+        let mut module = new_sub_parser_from_file(sess, &mp.path, span).parse_mod(&token::Eof)?;
         module.0.inline = false;
         module
     };

@@ -120,18 +120,11 @@ pub fn maybe_new_parser_from_file<'a>(
     maybe_source_file_to_parser(sess, file)
 }
 
-/// Given a session, a crate config, a path, and a span, add
-/// the file at the given path to the `source_map`, and returns a parser.
+/// Given a session, a path, and a span,
+/// add the file at the given path to the `source_map`, and returns a parser.
 /// On an error, uses the given span as the source of the problem.
-pub fn new_sub_parser_from_file<'a>(
-    sess: &'a ParseSess,
-    path: &Path,
-    module_name: Option<String>,
-    sp: Span,
-) -> Parser<'a> {
-    let mut p = source_file_to_parser(sess, file_to_source_file(sess, path, Some(sp)));
-    p.root_module_name = module_name;
-    p
+pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Span) -> Parser<'a> {
+    source_file_to_parser(sess, file_to_source_file(sess, path, Some(sp)))
 }
 
 /// Given a `source_file` and config, returns a parser.

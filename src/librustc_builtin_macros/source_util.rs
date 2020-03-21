@@ -110,7 +110,7 @@ pub fn expand_include<'cx>(
             return DummyResult::any(sp);
         }
     };
-    let p = new_sub_parser_from_file(cx.parse_sess(), &file, None, sp);
+    let p = new_sub_parser_from_file(cx.parse_sess(), &file, sp);
 
     // If in the included file we have e.g., `mod bar;`,
     // then the path of `bar.rs` should be relative to the directory of `file`.
