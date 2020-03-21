@@ -318,7 +318,7 @@ pub fn run_cargo(
         Ok(exit_code) if !exit_code.success() && !read_at_least_one_message => {
             // FIXME: Read the stderr to display the reason, see `read2()` reference in PR comment:
             // https://github.com/rust-analyzer/rust-analyzer/pull/3632#discussion_r395605298
-            format!("the command produced no valid metadata:\n cargo {}", args.join(" "))
+            format!("the command produced no valid metadata: cargo {}", args.join(" "))
         }
         Err(err) => format!("io error: {:?}", err),
         Ok(_) => return Ok(()),
