@@ -1018,9 +1018,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Obtain the span for `param` and use it for a structured suggestion.
             let mut suggested = false;
             if let (Some(ref param), Some(ref table)) = (param_type, self.in_progress_tables) {
-                let table = table.borrow();
-                if let Some(did) = table.local_id_root {
-                    let generics = self.tcx.generics_of(did);
+                let table_owner = table.borrow().hir_owner;
+                if let Some(table_owner) = table_owner {
+                    let generics = self.tcx.generics_of(table_owner.to_def_id());
                     let type_param = generics.type_param(param, self.tcx);
                     let hir = &self.tcx.hir();
                     if let Some(id) = hir.as_local_hir_id(type_param.def_id) {

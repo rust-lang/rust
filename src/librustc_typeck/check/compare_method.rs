@@ -213,7 +213,7 @@ fn compare_predicate_entailment<'tcx>(
     );
 
     tcx.infer_ctxt().enter(|infcx| {
-        let inh = Inherited::new(infcx, impl_m.def_id);
+        let inh = Inherited::new(infcx, impl_m.def_id.expect_local());
         let infcx = &inh.infcx;
 
         debug!("compare_impl_method: caller_bounds={:?}", param_env.caller_bounds);
@@ -950,7 +950,7 @@ crate fn compare_const_impl<'tcx>(
 
     tcx.infer_ctxt().enter(|infcx| {
         let param_env = tcx.param_env(impl_c.def_id);
-        let inh = Inherited::new(infcx, impl_c.def_id);
+        let inh = Inherited::new(infcx, impl_c.def_id.expect_local());
         let infcx = &inh.infcx;
 
         // The below is for the most part highly similar to the procedure
@@ -1130,7 +1130,7 @@ fn compare_type_predicate_entailment(
         normalize_cause.clone(),
     );
     tcx.infer_ctxt().enter(|infcx| {
-        let inh = Inherited::new(infcx, impl_ty.def_id);
+        let inh = Inherited::new(infcx, impl_ty.def_id.expect_local());
         let infcx = &inh.infcx;
 
         debug!("compare_type_predicate_entailment: caller_bounds={:?}", param_env.caller_bounds);

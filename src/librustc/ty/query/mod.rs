@@ -56,13 +56,12 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
-use std::convert::TryFrom;
 use std::ops::Deref;
 use std::sync::Arc;
 
 #[macro_use]
 mod plumbing;
-pub use self::plumbing::CycleError;
+pub(crate) use self::plumbing::CycleError;
 use self::plumbing::*;
 
 mod stats;

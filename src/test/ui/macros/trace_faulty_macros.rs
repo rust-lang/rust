@@ -13,7 +13,7 @@ macro_rules! pat_macro {
         pat_macro!(A{a:a, b:0, c:_, ..});
     };
     ($a:pat) => {
-        $a
+        $a //~ ERROR expected expression
     };
 }
 
