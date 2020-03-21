@@ -1,7 +1,7 @@
 use super::{AnonymousLifetimeMode, LoweringContext, ParamMode};
 use super::{ImplTraitContext, ImplTraitPosition, ImplTraitTypeIdVisitor};
+use crate::Arena;
 
-use rustc::arena::Arena;
 use rustc::bug;
 use rustc_ast::ast::*;
 use rustc_ast::attr;

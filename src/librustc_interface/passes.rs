@@ -437,7 +437,7 @@ pub fn lower_to_hir<'res, 'tcx>(
     resolver: &'res mut Resolver<'_>,
     dep_graph: &'res DepGraph,
     krate: &'res ast::Crate,
-    arena: &'tcx Arena<'tcx>,
+    arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
 ) -> Crate<'tcx> {
     // Lower AST to HIR.
     let hir_crate = rustc_ast_lowering::lower_crate(

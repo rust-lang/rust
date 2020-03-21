@@ -624,7 +624,8 @@ macro_rules! declare_arena {
         }
 
         $(
-            impl ArenaAllocatable for $ty {}
+            #[allow(unused_lifetimes)]
+            impl<$tcx> ArenaAllocatable for $ty {}
             unsafe impl<$tcx> ArenaField<$tcx> for $ty {
                 #[inline]
                 fn arena<'a>(_arena: &'a Arena<$tcx>) -> Option<&'a $crate::TypedArena<Self>> {
@@ -653,7 +654,7 @@ macro_rules! declare_arena {
                 self.dropless.alloc_slice(value)
             }
 
-            pub fn alloc_from_iter<T: ArenaAllocatable>(
+            pub fn alloc_from_iter<'a, T: ArenaAllocatable>(
                 &'a self,
                 iter: impl ::std::iter::IntoIterator<Item = T>,
             ) -> &'a mut [T] {

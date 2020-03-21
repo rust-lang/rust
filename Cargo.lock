@@ -3477,6 +3477,7 @@ dependencies = [
 name = "rustc_ast_lowering"
 version = "0.0.0"
 dependencies = [
+ "arena",
  "log",
  "rustc",
  "rustc_ast",

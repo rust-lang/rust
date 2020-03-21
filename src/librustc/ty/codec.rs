@@ -396,6 +396,7 @@ macro_rules! implement_ty_decoder {
             // the caller to pick any lifetime for `'tcx`, including `'static`,
             // by using the unspecialized proxies to them.
 
+            rustc_hir::arena_types!(impl_arena_allocatable_decoders, [$DecoderName [$($typaram),*]], 'tcx);
             arena_types!(impl_arena_allocatable_decoders, [$DecoderName [$($typaram),*]], 'tcx);
 
             impl<$($typaram),*> SpecializedDecoder<CrateNum>

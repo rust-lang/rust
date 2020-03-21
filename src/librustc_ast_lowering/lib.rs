@@ -32,9 +32,10 @@
 
 #![feature(array_value_iter)]
 #![feature(crate_visibility_modifier)]
+#![feature(marker_trait_attr)]
+#![feature(specialization)]
 #![recursion_limit = "256"]
 
-use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
 use rustc::hir::map::definitions::{DefKey, DefPathData, Definitions};
 use rustc::{bug, span_bug};
@@ -84,6 +85,8 @@ mod pat;
 mod path;
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
+
+rustc_hir::arena_types!(::arena::declare_arena, [], 'tcx);
 
 struct LoweringContext<'a, 'hir: 'a> {
     crate_root: Option<Symbol>,

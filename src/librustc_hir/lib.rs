@@ -13,6 +13,7 @@
 #[macro_use]
 extern crate rustc_data_structures;
 
+mod arena;
 pub mod def;
 pub use rustc_span::def_id;
 mod hir;

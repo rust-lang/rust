@@ -68,6 +68,7 @@ pub struct Queries<'tcx> {
     gcx: Once<GlobalCtxt<'tcx>>,
 
     arena: WorkerLocal<Arena<'tcx>>,
+    hir_arena: WorkerLocal<rustc_ast_lowering::Arena<'tcx>>,
 
     dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
@@ -87,6 +88,7 @@ impl<'tcx> Queries<'tcx> {
             compiler,
             gcx: Once::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
+            hir_arena: WorkerLocal::new(|_| rustc_ast_lowering::Arena::default()),
             dep_graph_future: Default::default(),
             parse: Default::default(),
             crate_name: Default::default(),
@@ -218,10 +220,10 @@ impl<'tcx> Queries<'tcx> {
                     resolver,
                     &*self.dep_graph()?.peek(),
                     &krate,
-                    &self.arena,
+                    &self.hir_arena,
                 ))
             })?;
-            let hir = self.arena.alloc(hir);
+            let hir = self.hir_arena.alloc(hir);
             Ok((hir, Steal::new(BoxedResolver::to_resolver_outputs(resolver))))
         })
     }
