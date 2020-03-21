@@ -432,7 +432,6 @@ fn trans_stmt<'tcx>(
                         UnOp::Not => {
                             match layout.ty.kind {
                                 ty::Bool => {
-                                    let val = fx.bcx.ins().uextend(types::I32, val); // WORKAROUND for CraneStation/cranelift#466
                                     let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
                                     CValue::by_val(fx.bcx.ins().bint(types::I8, res), layout)
                                 }

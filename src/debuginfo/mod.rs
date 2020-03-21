@@ -50,7 +50,7 @@ impl<'tcx> DebugContext<'tcx> {
 
         // FIXME: how to get version when building out of tree?
         // Normally this would use option_env!("CFG_VERSION").
-        let producer = format!("cranelift fn (rustc version {})", "unknown version");
+        let producer = format!("cg_clif (rustc {})", "unknown version");
         let comp_dir = tcx.sess.working_dir.0.to_string_lossy().into_owned();
         let name = match tcx.sess.local_crate_source_file {
             Some(ref path) => path.to_string_lossy().into_owned(),

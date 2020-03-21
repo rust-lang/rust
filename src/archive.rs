@@ -184,15 +184,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                     let (ref src_archive_path, ref mut src_archive) =
                         self.src_archives[archive_index];
                     let entry = src_archive.jump_to_entry(entry_index).unwrap();
-                    let orig_header = entry.header();
-
-                    // FIXME implement clone for `ar::Archive`.
-                    let mut header =
-                        ar::Header::new(orig_header.identifier().to_vec(), orig_header.size());
-                    header.set_mtime(orig_header.mtime());
-                    header.set_uid(orig_header.uid());
-                    header.set_gid(orig_header.gid());
-                    header.set_mode(orig_header.mode());
+                    let header = entry.header().clone();
 
                     match builder {
                         BuilderKind::Bsd(ref mut builder) => {
