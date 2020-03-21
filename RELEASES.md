@@ -4838,7 +4838,6 @@ Version 1.11.0 (2016-08-18)
 Language
 --------
 
-* [`cfg_attr` works on `path` attributes](https://github.com/rust-lang/rust/pull/34546)
 * [Support nested `cfg_attr` attributes](https://github.com/rust-lang/rust/pull/34216)
 * [Allow statement-generating braced macro invocations at the end of blocks](https://github.com/rust-lang/rust/pull/34436)
 * [Macros can be expanded inside of trait definitions](https://github.com/rust-lang/rust/pull/34213)
