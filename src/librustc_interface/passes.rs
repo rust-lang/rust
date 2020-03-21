@@ -439,10 +439,14 @@ pub fn lower_to_hir<'res, 'tcx>(
     krate: &'res ast::Crate,
     arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
 ) -> Crate<'tcx> {
+    // We're constructing the HIR here; we don't care what we will
+    // read, since we haven't even constructed the *input* to
+    // incr. comp. yet.
+    dep_graph.assert_ignored();
+
     // Lower AST to HIR.
     let hir_crate = rustc_ast_lowering::lower_crate(
         sess,
-        &dep_graph,
         &krate,
         resolver,
         rustc_parse::nt_to_tokenstream,

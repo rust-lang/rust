@@ -36,7 +36,6 @@
 #![feature(specialization)]
 #![recursion_limit = "256"]
 
-use rustc::dep_graph::DepGraph;
 use rustc::hir::map::definitions::{DefKey, DefPathData, Definitions};
 use rustc_ast::ast;
 use rustc_ast::ast::*;
@@ -261,17 +260,11 @@ impl<'a> ImplTraitContext<'_, 'a> {
 
 pub fn lower_crate<'a, 'hir>(
     sess: &'a Session,
-    dep_graph: &'a DepGraph,
     krate: &'a Crate,
     resolver: &'a mut dyn Resolver,
     nt_to_tokenstream: NtToTokenstream,
     arena: &'hir Arena<'hir>,
 ) -> hir::Crate<'hir> {
-    // We're constructing the HIR here; we don't care what we will
-    // read, since we haven't even constructed the *input* to
-    // incr. comp. yet.
-    dep_graph.assert_ignored();
-
     let _prof_timer = sess.prof.verbose_generic_activity("hir_lowering");
 
     LoweringContext {
