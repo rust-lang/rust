@@ -989,11 +989,26 @@ mod tests {
         // s has been moved into the tsa call
     }
 
-    // FIXME: figure out why this fails on openbsd and fix it
     #[test]
-    #[cfg(not(any(windows, target_os = "openbsd")))]
-    fn to_socket_addr_str_bad() {
-        assert!(tsa("1200::AB00:1234::2552:7777:1313:34300").is_err());
+    fn bind_udp_socket_bad() {
+        // rust-lang/rust#53957: This is a regression test for a parsing problem
+        // discovered as part of issue rust-lang/rust#23076, where we were
+        // incorrectly parsing invalid input and then that would result in a
+        // successful `UdpSocket` binding when we would expect failure.
+        //
+        // At one time, this test was written as a call to `tsa` with
+        // INPUT_23076. However, that structure yields an unreliable test,
+        // because it ends up passing junk input to the DNS server, and some DNS
+        // servers will respond with `Ok` to such input, with the ip address of
+        // the DNS server itself.
+        //
+        // This form of the test is more robust: even when the DNS server
+        // returns its own address, it is still an error to bind a UDP socket to
+        // a non-local address, and so we still get an error here in that case.
+
+        const INPUT_23076: &'static str = "1200::AB00:1234::2552:7777:1313:34300";
+
+        assert!(crate::net::UdpSocket::bind(INPUT_23076).is_err())
     }
 
     #[test]
