@@ -1,3 +1,4 @@
+// normalize-stderr-test "pref: Align \{\n *pow2: [1-3],\n *\}" -> "pref: $$PREF_ALIGN"
 #![feature(never_type, rustc_attrs)]
 #![crate_type = "lib"]
 

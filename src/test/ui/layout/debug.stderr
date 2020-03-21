@@ -36,9 +36,7 @@ error: layout debugging: LayoutDetails {
                     abi: Align {
                         pow2: 0,
                     },
-                    pref: Align {
-                        pow2: 3,
-                    },
+                    pref: $PREF_ALIGN,
                 },
                 size: Size {
                     raw: 4,
@@ -72,9 +70,7 @@ error: layout debugging: LayoutDetails {
                     abi: Align {
                         pow2: 2,
                     },
-                    pref: Align {
-                        pow2: 3,
-                    },
+                    pref: $PREF_ALIGN,
                 },
                 size: Size {
                     raw: 12,
@@ -103,15 +99,13 @@ error: layout debugging: LayoutDetails {
         abi: Align {
             pow2: 2,
         },
-        pref: Align {
-            pow2: 3,
-        },
+        pref: $PREF_ALIGN,
     },
     size: Size {
         raw: 12,
     },
 }
-  --> $DIR/debug.rs:5:1
+  --> $DIR/debug.rs:6:1
    |
 LL | enum E { Foo, Bar(!, i32, i32) }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -159,15 +153,13 @@ error: layout debugging: LayoutDetails {
         abi: Align {
             pow2: 2,
         },
-        pref: Align {
-            pow2: 3,
-        },
+        pref: $PREF_ALIGN,
     },
     size: Size {
         raw: 8,
     },
 }
-  --> $DIR/debug.rs:8:1
+  --> $DIR/debug.rs:9:1
    |
 LL | struct S { f1: i32, f2: (), f3: i32 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -187,15 +179,13 @@ error: layout debugging: LayoutDetails {
         abi: Align {
             pow2: 2,
         },
-        pref: Align {
-            pow2: 3,
-        },
+        pref: $PREF_ALIGN,
     },
     size: Size {
         raw: 8,
     },
 }
-  --> $DIR/debug.rs:11:1
+  --> $DIR/debug.rs:12:1
    |
 LL | union U { f1: (i32, i32), f3: i32 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -244,9 +234,7 @@ error: layout debugging: LayoutDetails {
                     abi: Align {
                         pow2: 2,
                     },
-                    pref: Align {
-                        pow2: 3,
-                    },
+                    pref: $PREF_ALIGN,
                 },
                 size: Size {
                     raw: 8,
@@ -274,9 +262,7 @@ error: layout debugging: LayoutDetails {
                     abi: Align {
                         pow2: 2,
                     },
-                    pref: Align {
-                        pow2: 3,
-                    },
+                    pref: $PREF_ALIGN,
                 },
                 size: Size {
                     raw: 8,
@@ -318,15 +304,13 @@ error: layout debugging: LayoutDetails {
         abi: Align {
             pow2: 2,
         },
-        pref: Align {
-            pow2: 3,
-        },
+        pref: $PREF_ALIGN,
     },
     size: Size {
         raw: 8,
     },
 }
-  --> $DIR/debug.rs:14:1
+  --> $DIR/debug.rs:15:1
    |
 LL | type Test = Result<i32, i32>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
