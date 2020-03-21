@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 use rustc::mir;
 use rustc::mir::interpret::{InterpResult, PointerArithmetic};
 use rustc::ty;
-use rustc::ty::layout::{Align, LayoutOf, Size};
+use rustc::ty::layout::{Align, LayoutOf};
 use rustc_apfloat::Float;
 use rustc_span::source_map::Span;
 
@@ -226,11 +226,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             => {
                 let elem_ty = substs.type_at(0);
                 let elem_layout = this.layout_of(elem_ty)?;
-                let elem_size = elem_layout.size.bytes();
                 let count = this.read_scalar(args[2])?.to_machine_usize(this)?;
                 let elem_align = elem_layout.align.abi;
 
-                let size = Size::from_bytes(count) * elem_size;
+                let size = elem_layout.size.checked_mul(count, this)
+                    .ok_or_else(|| err_ub_format!("overflow computing total size of `{}`", intrinsic_name))?;
                 let src = this.read_scalar(args[0])?.not_undef()?;
                 let src = this.memory.check_ptr_access(src, size, elem_align)?;
                 let dest = this.read_scalar(args[1])?.not_undef()?;
@@ -493,7 +493,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let val_byte = this.read_scalar(args[1])?.to_u8()?;
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let count = this.read_scalar(args[2])?.to_machine_usize(this)?;
-                let byte_count = ty_layout.size * count;
+                let byte_count = ty_layout.size.checked_mul(count, this)
+                    .ok_or_else(|| err_ub_format!("overflow computing total size of `write_bytes`"))?;
                 this.memory
                     .write_bytes(ptr, iter::repeat(val_byte).take(byte_count.bytes() as usize))?;
             }
