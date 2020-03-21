@@ -415,7 +415,7 @@ fn loop_turn(
                 }
 
                 if Some(resp.id) == loop_state.configuration_request_id {
-                    loop_state.configuration_request_id.take();
+                    loop_state.configuration_request_id = None;
                     if let Some(err) = resp.error {
                         log::error!("failed fetch the server settings: {:?}", err)
                     } else if resp.result.is_none() {
