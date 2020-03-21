@@ -30,6 +30,7 @@ pub(crate) struct Expander {
     hygiene: Hygiene,
     ast_id_map: Arc<AstIdMap>,
     module: ModuleId,
+    recursive_limit: usize,
 }
 
 impl Expander {
@@ -41,7 +42,7 @@ impl Expander {
         let crate_def_map = db.crate_def_map(module.krate);
         let hygiene = Hygiene::new(db.upcast(), current_file_id);
         let ast_id_map = db.ast_id_map(current_file_id);
-        Expander { crate_def_map, current_file_id, hygiene, ast_id_map, module }
+        Expander { crate_def_map, current_file_id, hygiene, ast_id_map, module, recursive_limit: 0 }
     }
 
     pub(crate) fn enter_expand<T: ast::AstNode>(
@@ -50,6 +51,10 @@ impl Expander {
         local_scope: Option<&ItemScope>,
         macro_call: ast::MacroCall,
     ) -> Option<(Mark, T)> {
+        if self.recursive_limit > 1024 {
+            return None;
+        }
+
         let macro_call = InFile::new(self.current_file_id, &macro_call);
 
         if let Some(call_id) = macro_call.as_call_id(db, |path| {
@@ -73,6 +78,7 @@ impl Expander {
                     self.hygiene = Hygiene::new(db.upcast(), file_id);
                     self.current_file_id = file_id;
                     self.ast_id_map = db.ast_id_map(file_id);
+                    self.recursive_limit += 1;
 
                     return Some((mark, expr));
                 }
@@ -88,6 +94,7 @@ impl Expander {
         self.hygiene = Hygiene::new(db.upcast(), mark.file_id);
         self.current_file_id = mark.file_id;
         self.ast_id_map = mem::take(&mut mark.ast_id_map);
+        self.recursive_limit -= 1;
         mark.bomb.defuse();
     }
 
