@@ -95,6 +95,10 @@ impl TreeDiff {
             builder.replace(from.text_range(), to.to_string())
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.replacements.is_empty()
+    }
 }
 
 /// Finds minimal the diff, which, applied to `from`, will result in `to`.

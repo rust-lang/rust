@@ -6,7 +6,7 @@ use mbe::{ExpandResult, MacroRules};
 use ra_db::{salsa, SourceDatabase};
 use ra_parser::FragmentKind;
 use ra_prof::profile;
-use ra_syntax::{AstNode, Parse, SyntaxKind::*, SyntaxNode};
+use ra_syntax::{algo::diff, AstNode, Parse, SyntaxKind::*, SyntaxNode};
 
 use crate::{
     ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallLoc, EagerMacroId,
@@ -238,7 +238,7 @@ pub fn parse_macro_with_arg(
     } else {
         db.macro_expand(macro_call_id)
     };
-    if let Some(err) = err {
+    if let Some(err) = &err {
         // Note:
         // The final goal we would like to make all parse_macro success,
         // such that the following log will not call anyway.
@@ -272,7 +272,25 @@ pub fn parse_macro_with_arg(
     let fragment_kind = to_fragment_kind(db, macro_call_id);
 
     let (parse, rev_token_map) = mbe::token_tree_to_syntax_node(&tt, fragment_kind).ok()?;
-    Some((parse, Arc::new(rev_token_map)))
+
+    if err.is_none() {
+        Some((parse, Arc::new(rev_token_map)))
+    } else {
+        // FIXME:
+        // In future, we should propagate the actual error with recovery information
+        // instead of ignore the error here.
+
+        // Safe check for recurisve identity macro
+        let node = parse.syntax_node();
+        let file: HirFileId = macro_file.into();
+        let call_node = file.call_node(db)?;
+
+        if !diff(&node, &call_node.value).is_empty() {
+            Some((parse, Arc::new(rev_token_map)))
+        } else {
+            None
+        }
+    }
 }
 
 /// Given a `MacroCallId`, return what `FragmentKind` it belongs to.
