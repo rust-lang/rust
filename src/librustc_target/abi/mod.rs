@@ -751,7 +751,7 @@ impl Abi {
                 Primitive::Int(_, signed) => signed,
                 _ => false,
             },
-            _ => false,
+            _ => panic!("`is_signed` on non-scalar ABI {:?}", self),
         }
     }
 
