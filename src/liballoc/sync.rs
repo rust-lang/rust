@@ -40,6 +40,23 @@ mod tests;
 /// necessarily) at _exactly_ `MAX_REFCOUNT + 1` references.
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 
+#[cfg(not(sanitize = "thread"))]
+macro_rules! acquire {
+    ($x:expr) => {
+        atomic::fence(Acquire)
+    };
+}
+
+// ThreadSanitizer does not support memory fences. To avoid false positive
+// reports in Arc / Weak implementation use atomic loads for synchronization
+// instead.
+#[cfg(sanitize = "thread")]
+macro_rules! acquire {
+    ($x:expr) => {
+        $x.load(Acquire)
+    };
+}
+
 /// A thread-safe reference-counting pointer. 'Arc' stands for 'Atomically
 /// Reference Counted'.
 ///
@@ -402,7 +419,7 @@ impl<T> Arc<T> {
             return Err(this);
         }
 
-        atomic::fence(Acquire);
+        acquire!(this.inner().strong);
 
         unsafe {
             let elem = ptr::read(&this.ptr.as_ref().data);
@@ -739,7 +756,7 @@ impl<T: ?Sized> Arc<T> {
         ptr::drop_in_place(&mut self.ptr.as_mut().data);
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
-            atomic::fence(Acquire);
+            acquire!(self.inner().weak);
             Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()))
         }
     }
@@ -1243,7 +1260,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
         //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
         // [2]: (https://github.com/rust-lang/rust/pull/41714)
-        atomic::fence(Acquire);
+        acquire!(self.inner().strong);
 
         unsafe {
             self.drop_slow();
@@ -1701,7 +1718,7 @@ impl<T: ?Sized> Drop for Weak<T> {
         let inner = if let Some(inner) = self.inner() { inner } else { return };
 
         if inner.weak.fetch_sub(1, Release) == 1 {
-            atomic::fence(Acquire);
+            acquire!(inner.weak);
             unsafe { Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref())) }
         }
     }
