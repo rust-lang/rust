@@ -1,4 +1,3 @@
-//error-pattern: invalid use of NULL pointer
 #![feature(intrinsics)]
 
 // Directly call intrinsic to avoid debug assertions in libstd
@@ -10,5 +9,5 @@ fn main() {
     let mut data = [0u16; 4];
     let ptr = &mut data[0] as *mut u16;
     // Even copying 0 elements from NULL should error.
-    unsafe { copy_nonoverlapping(std::ptr::null(), ptr, 0); }
+    unsafe { copy_nonoverlapping(std::ptr::null(), ptr, 0); } //~ ERROR: invalid use of NULL pointer
 }
