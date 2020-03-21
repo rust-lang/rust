@@ -13,6 +13,15 @@ fn just_return(deref_str: &str) -> &str {
     deref_str
 }
 
+struct CustomVec(Vec<u8>);
+impl Deref for CustomVec {
+    type Target = Vec<u8>;
+
+    fn deref(&self) -> &Vec<u8> {
+        &self.0
+    }
+}
+
 fn main() {
     let a: &mut String = &mut String::from("foo");
 
@@ -44,6 +53,9 @@ fn main() {
     let b = opt_a.unwrap().deref();
 
     // following should not require linting
+
+    let cv = CustomVec(vec![0, 42]);
+    let c = cv.deref()[0];
 
     let b: &str = &*a.deref();
 

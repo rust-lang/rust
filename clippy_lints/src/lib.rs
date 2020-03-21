@@ -191,6 +191,7 @@ mod copies;
 mod copy_iterator;
 mod dbg_macro;
 mod default_trait_access;
+mod dereference;
 mod derive;
 mod doc;
 mod double_comparison;

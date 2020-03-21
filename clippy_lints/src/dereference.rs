@@ -1,6 +1,6 @@
 use crate::utils::{get_parent_expr, implements_trait, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
-use rustc_ast::util::parser::ExprPrecedence;
+use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX, PREC_PREFIX};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -51,9 +51,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Dereferencing {
                     if let ExprKind::MethodCall(..) = parent_expr.kind {
                         return;
                     }
-                    // Check for unary precedence
-                    if let ExprPrecedence::Unary = parent_expr.precedence() {
-                        return;
+                    // Check for Expr that we don't want to be linted
+                    let precedence = parent_expr.precedence();
+                    match precedence {
+                        // Lint a Call is ok though
+                        ExprPrecedence::Call | ExprPrecedence::AddrOf => (),
+                        _ => {
+                            if precedence.order() >= PREC_PREFIX && precedence.order() <= PREC_POSTFIX {
+                                return;
+                            }
+                        }
                     }
                 }
                 let name = method_name.ident.as_str();
