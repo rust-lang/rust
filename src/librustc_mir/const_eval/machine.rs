@@ -8,8 +8,8 @@ use std::hash::Hash;
 use rustc_data_structures::fx::FxHashMap;
 
 use rustc::mir::AssertMessage;
-use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
+use rustc_span::{def_id::DefId, Span};
 
 use crate::interpret::{
     self, AllocId, Allocation, GlobalId, ImmTy, InterpCx, InterpResult, Memory, MemoryKind, OpTy,
@@ -167,7 +167,7 @@ impl interpret::MayLeak for ! {
 }
 
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
-    type MemoryKinds = !;
+    type MemoryKind = !;
     type PointerTag = ();
     type ExtraFnVal = !;
 
@@ -177,7 +177,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
 
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
 
-    const STATIC_KIND: Option<!> = None; // no copying of statics allowed
+    const GLOBAL_KIND: Option<!> = None; // no copying of globals allowed
 
     // We do not check for alignment to avoid having to carry an `Align`
     // in `ConstValue::ByRef`.
@@ -317,7 +317,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
     }
 
     #[inline(always)]
-    fn tag_static_base_pointer(_memory_extra: &MemoryExtra, _id: AllocId) -> Self::PointerTag {}
+    fn tag_global_base_pointer(_memory_extra: &MemoryExtra, _id: AllocId) -> Self::PointerTag {}
 
     fn box_alloc(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -345,11 +345,15 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
         Ok(())
     }
 
-    fn before_access_static(
+    fn before_access_global(
         memory_extra: &MemoryExtra,
         _allocation: &Allocation,
+        def_id: Option<DefId>,
+        is_write: bool,
     ) -> InterpResult<'tcx> {
-        if memory_extra.can_access_statics {
+        if is_write {
+            Err(ConstEvalErrKind::ModifiedGlobal.into())
+        } else if memory_extra.can_access_statics || def_id.is_none() {
             Ok(())
         } else {
             Err(ConstEvalErrKind::ConstAccessesStatic.into())

@@ -253,8 +253,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// This represents a *direct* access to that memory, as opposed to access
     /// through a pointer that was created by the program.
     #[inline(always)]
-    pub fn tag_static_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
-        self.memory.tag_static_base_pointer(ptr)
+    pub fn tag_global_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
+        self.memory.tag_global_base_pointer(ptr)
     }
 
     #[inline(always)]
