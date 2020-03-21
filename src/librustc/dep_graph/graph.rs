@@ -659,7 +659,7 @@ impl DepGraph {
                         // bug that must be fixed before removing this.
                         match dep_dep_node.kind {
                             DepKind::hir_owner
-                            | DepKind::hir_owner_items
+                            | DepKind::hir_owner_nodes
                             | DepKind::CrateMetadata => {
                                 if let Some(def_id) = dep_dep_node.extract_def_id(tcx) {
                                     if def_id_corresponds_to_hir_dep_node(tcx, def_id) {

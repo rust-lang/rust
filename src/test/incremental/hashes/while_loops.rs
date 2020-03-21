@@ -25,7 +25,7 @@ pub fn change_loop_body() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_items, mir_built, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, mir_built, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_loop_body() {
     let mut _x = 0;
@@ -48,7 +48,7 @@ pub fn change_loop_condition() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_items, mir_built, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, mir_built, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_loop_condition() {
     let mut _x = 0;
@@ -70,7 +70,7 @@ pub fn add_break() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_items, mir_built, optimized_mir, typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, mir_built, optimized_mir, typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_break() {
     let mut _x = 0;
@@ -93,7 +93,7 @@ pub fn add_loop_label() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_items")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_loop_label() {
     let mut _x = 0;
@@ -116,7 +116,7 @@ pub fn add_loop_label_to_break() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_items")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_loop_label_to_break() {
     let mut _x = 0;
@@ -141,7 +141,7 @@ pub fn change_break_label() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_items, mir_built, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, mir_built, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_break_label() {
     let mut _x = 0;
@@ -166,7 +166,7 @@ pub fn add_loop_label_to_continue() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_items")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_loop_label_to_continue() {
     let mut _x = 0;
@@ -191,7 +191,7 @@ pub fn change_continue_label() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_items, mir_built")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, mir_built")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_continue_label() {
     let mut _x = 0;
@@ -216,7 +216,7 @@ pub fn change_continue_to_break() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_items, mir_built, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, mir_built, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_continue_to_break() {
     let mut _x = 0;
