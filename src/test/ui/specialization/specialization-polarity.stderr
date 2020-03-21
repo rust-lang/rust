@@ -1,19 +1,19 @@
-error[E0119]: conflicting implementations of trait `Foo` for type `u8`:
-  --> $DIR/specialization-polarity.rs:9:1
+error[E0748]: found both positive and negative implementation of trait `Foo` for type `u8`:
+  --> $DIR/specialization-polarity.rs:10:1
    |
 LL | impl<T> Foo for T {}
-   | ----------------- first implementation here
+   | ----------------- positive implementation here
 LL | impl !Foo for u8 {}
-   | ^^^^^^^^^^^^^^^^ conflicting implementation for `u8`
+   | ^^^^^^^^^^^^^^^^ negative implementation here
 
-error[E0119]: conflicting implementations of trait `Bar` for type `u8`:
-  --> $DIR/specialization-polarity.rs:14:1
+error[E0748]: found both positive and negative implementation of trait `Bar` for type `u8`:
+  --> $DIR/specialization-polarity.rs:15:1
    |
 LL | impl<T> !Bar for T {}
-   | ------------------ first implementation here
+   | ------------------ negative implementation here
 LL | impl Bar for u8 {}
-   | ^^^^^^^^^^^^^^^ conflicting implementation for `u8`
+   | ^^^^^^^^^^^^^^^ positive implementation here
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0119`.
+For more information about this error, try `rustc --explain E0748`.

@@ -3,7 +3,7 @@
 // Test that we do not consider associated types to be sendable without
 // some applicable trait bound (and we don't ICE).
 
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 extern crate tdticc_coherence_lib as lib;
 

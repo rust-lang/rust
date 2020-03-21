@@ -1,5 +1,6 @@
 #![feature(generators)]
 #![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 auto trait Foo {}
 

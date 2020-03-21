@@ -1,6 +1,6 @@
 // run-pass
 #![allow(unused_variables)]
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 use std::marker::Send;
 

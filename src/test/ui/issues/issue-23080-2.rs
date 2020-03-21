@@ -1,6 +1,7 @@
 //~ ERROR
 
 #![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 unsafe auto trait Trait {
     type Output; //~ ERROR E0380

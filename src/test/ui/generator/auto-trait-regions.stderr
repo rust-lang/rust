@@ -1,5 +1,5 @@
 error: implementation of `Foo` is not general enough
-  --> $DIR/auto-trait-regions.rs:30:5
+  --> $DIR/auto-trait-regions.rs:31:5
    |
 LL | auto trait Foo {}
    | ----------------- trait `Foo` defined here
@@ -11,7 +11,7 @@ LL |     assert_foo(gen);
    = note: ...but `Foo` is actually implemented for the type `&'1 OnlyFooIfStaticRef`, for some specific lifetime `'1`
 
 error: implementation of `Foo` is not general enough
-  --> $DIR/auto-trait-regions.rs:30:5
+  --> $DIR/auto-trait-regions.rs:31:5
    |
 LL | auto trait Foo {}
    | ----------------- trait `Foo` defined here
@@ -23,7 +23,7 @@ LL |     assert_foo(gen);
    = note: ...but `Foo` is actually implemented for the type `&'1 OnlyFooIfStaticRef`, for some specific lifetime `'1`
 
 error: implementation of `Foo` is not general enough
-  --> $DIR/auto-trait-regions.rs:49:5
+  --> $DIR/auto-trait-regions.rs:50:5
    |
 LL | auto trait Foo {}
    | ----------------- trait `Foo` defined here
@@ -35,7 +35,7 @@ LL |     assert_foo(gen);
    = note: ...but `Foo` is actually implemented for the type `A<'_, '2>`, for some specific lifetime `'2`
 
 error: implementation of `Foo` is not general enough
-  --> $DIR/auto-trait-regions.rs:49:5
+  --> $DIR/auto-trait-regions.rs:50:5
    |
 LL | auto trait Foo {}
    | ----------------- trait `Foo` defined here

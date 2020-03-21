@@ -1,4 +1,5 @@
 #![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 // Test for issue #56934 - that it is impossible to redundantly
 // implement an auto-trait for a trait object type that contains it.

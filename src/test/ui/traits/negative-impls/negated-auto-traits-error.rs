@@ -3,7 +3,7 @@
 // errors are not reported. This way, we make sure that, for each function, different
 // typeck phases are involved and all errors are reported.
 
-#![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 use std::marker::Send;
 

@@ -24,6 +24,7 @@
 #![feature(decl_macro)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
+#![cfg_attr(not(bootstrap), feature(negative_impls))]
 #![feature(optin_builtin_traits)]
 #![feature(rustc_attrs)]
 #![cfg_attr(bootstrap, feature(specialization))]

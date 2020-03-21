@@ -4,6 +4,7 @@
 // impls whose types unify.
 
 #![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 auto trait Defaulted { }
 impl<'a,T:Signed> Defaulted for &'a T { }
