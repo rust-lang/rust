@@ -1080,8 +1080,8 @@ pub trait Iterator {
     /// let iter = a.iter().map_while(|x| u32::try_from(*x).ok());
     /// let vec = iter.collect::<Vec<_>>();
     ///
-    /// // We have more elements which could fit in u32 (4, 5), but `map_while`
-    /// // has stopped on the first `None` from predicate (when working with `-3`)
+    /// // We have more elements which could fit in u32 (4, 5), but `map_while` returned `None` for `-3`
+    /// // (as the `predicate` returned `None`) and `collect` stops at the first `None` entcountered.
     /// assert_eq!(vec, vec![0, 1, 2]);
     /// ```
     ///
@@ -1110,18 +1110,8 @@ pub trait Iterator {
     /// The `-3` is no longer there, because it was consumed in order to see if
     /// the iteration should stop, but wasn't placed back into the iterator.
     ///
-    /// Note that unlike [`take_while`] this iterator is **not** fused:
-    ///
-    /// ```
-    /// #![feature(iter_map_while)]
-    /// use std::convert::identity;
-    ///
-    /// let mut iter = vec![Some(0), None, Some(1)].into_iter().map_while(identity);
-    /// assert_eq!(iter.next(), Some(0));
-    /// assert_eq!(iter.next(), None);
-    /// assert_eq!(iter.next(), Some(1));
-    /// ```
-    ///
+    /// Note that unlike [`take_while`] this iterator is **not** fused.
+    /// It is also not specified what this iterator returns after the first` None` is returned.
     /// If you need fused iterator, use [`fuse`].
     ///
     /// [`Some`]: ../../std/option/enum.Option.html#variant.Some
