@@ -132,12 +132,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // This matches calls to the foreign item `panic_impl`.
                 // The implementation is provided by the function with the `#[panic_handler]` attribute.
                 "panic_impl" => {
-                    // Make sure panicking actually works on this platform.
-                    match this.tcx.sess.target.target.target_os.as_str() {
-                        "linux" | "macos" => {},
-                        _ => throw_unsup_format!("panicking is not supported on this platform"),
-                    }
-
+                    this.check_panic_supported()?;
                     let panic_impl_id = this.tcx.lang_items().panic_impl().unwrap();
                     let panic_impl_instance = ty::Instance::mono(*this.tcx, panic_impl_id);
                     return Ok(Some(&*this.load_mir(panic_impl_instance.def, None)?));
