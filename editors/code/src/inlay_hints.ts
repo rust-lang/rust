@@ -134,8 +134,6 @@ class HintsUpdater implements Disposable {
 
             // No text documents changed, so we may try to use the cache
             if (!file.cachedDecorations) {
-                file.inlaysRequest?.cancel();
-
                 const hints = await this.fetchHints(file);
                 if (!hints) return;
 
