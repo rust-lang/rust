@@ -1105,15 +1105,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let generator_did_root = self.tcx.closure_base_def_id(generator_did);
         debug!(
             "maybe_note_obligation_cause_for_async_await: generator_did={:?} \
-             generator_did_root={:?} in_progress_tables.local_id_root={:?} span={:?}",
+             generator_did_root={:?} in_progress_tables.hir_owner={:?} span={:?}",
             generator_did,
             generator_did_root,
-            in_progress_tables.as_ref().map(|t| t.local_id_root),
+            in_progress_tables.as_ref().map(|t| t.hir_owner),
             span
         );
         let query_tables;
         let tables: &TypeckTables<'tcx> = match &in_progress_tables {
-            Some(t) if t.local_id_root == Some(generator_did_root) => t,
+            Some(t) if t.hir_owner.map(|owner| owner.to_def_id()) == Some(generator_did_root) => t,
             _ => {
                 query_tables = self.tcx.typeck_tables_of(generator_did);
                 &query_tables
