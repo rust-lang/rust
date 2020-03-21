@@ -59,8 +59,12 @@ pub(super) fn mangle(
         .print_def_path(def_id, &[])
         .unwrap();
 
-    if instance.is_vtable_shim() {
+    if let ty::InstanceDef::VtableShim(..) = instance.def {
         let _ = printer.write_str("{{vtable-shim}}");
+    }
+
+    if let ty::InstanceDef::ReifyShim(..) = instance.def {
+        let _ = printer.write_str("{{reify-shim}}");
     }
 
     printer.path.finish(hash)
@@ -123,7 +127,8 @@ fn get_symbol_hash<'tcx>(
         }
 
         // We want to avoid accidental collision between different types of instances.
-        // Especially, VtableShim may overlap with its original instance without this.
+        // Especially, `VtableShim`s and `ReifyShim`s may overlap with their original
+        // instances without this.
         discriminant(&instance.def).hash_stable(&mut hcx, &mut hasher);
     });
 

@@ -406,10 +406,6 @@ impl<'tcx> Instance<'tcx> {
             | InstanceDef::VtableShim(..) => Some(self.substs),
         }
     }
-
-    pub fn is_vtable_shim(&self) -> bool {
-        if let InstanceDef::VtableShim(..) = self.def { true } else { false }
-    }
 }
 
 fn needs_fn_once_adapter_shim(
