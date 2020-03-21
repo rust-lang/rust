@@ -73,6 +73,9 @@ pub struct FulfillmentContext<'tcx> {
 #[derive(Clone, Debug)]
 pub struct PendingPredicateObligation<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
+    // FIXME(eddyb) look into whether this could be a `SmallVec`.
+    // Judging by the comment in `process_obligation`, the 1-element case
+    // is common so this could be a `SmallVec<[TyOrConstInferVar<'tcx>; 1]>`.
     pub stalled_on: Vec<TyOrConstInferVar<'tcx>>,
 }
 
@@ -538,6 +541,8 @@ fn trait_ref_type_vars<'a, 'tcx>(
         // FIXME(eddyb) walk over `GenericArg` to support const infer vars.
         .input_types()
         .map(|ty| selcx.infcx().resolve_vars_if_possible(&ty))
+        // FIXME(eddyb) try using `maybe_walk` to skip *all* subtrees that
+        // don't contain inference variables, not just the outermost level.
         // FIXME(eddyb) use `has_infer_types_or_const`.
         .filter(|ty| ty.has_infer_types())
         .flat_map(|ty| ty.walk())
