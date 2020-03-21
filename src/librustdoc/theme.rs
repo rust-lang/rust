@@ -234,9 +234,7 @@ pub fn load_css_paths(v: &[u8]) -> CssPath {
 }
 
 pub fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) {
-    if against.name != other.name {
-        return;
-    } else {
+    if against.name == other.name {
         for child in &against.children {
             let mut found = false;
             let mut found_working = false;
