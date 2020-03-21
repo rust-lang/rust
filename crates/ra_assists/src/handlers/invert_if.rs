@@ -33,6 +33,11 @@ pub(crate) fn invert_if(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
+    // This assist should not apply for if-let.
+    if expr.condition()?.pat().is_some() {
+        return None;
+    }
+
     let cond = expr.condition()?.expr()?;
     let then_node = expr.then_branch()?.syntax().clone();
 
@@ -89,5 +94,13 @@ mod tests {
     #[test]
     fn invert_if_doesnt_apply_with_cursor_not_on_if() {
         check_assist_not_applicable(invert_if, "fn f() { if !<|>cond { 3 * 2 } else { 1 } }")
+    }
+
+    #[test]
+    fn invert_if_doesnt_apply_with_if_let() {
+        check_assist_not_applicable(
+            invert_if,
+            "fn f() { i<|>f let Some(_) = Some(1) { 1 } else { 0 } }",
+        )
     }
 }
