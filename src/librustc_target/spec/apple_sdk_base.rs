@@ -43,7 +43,7 @@ pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
     // to allow the SDK path to be set. (For clang, xcrun sets
     // SDKROOT; for rustc, the user or build system can set it, or we
     // can fall back to checking for xcrun on PATH.)
-    if let Some(sdkroot) = env::var("SDKROOT").ok() {
+    if let Ok(sdkroot) = env::var("SDKROOT") {
         let p = Path::new(&sdkroot);
         match sdk_name {
             // Ignore `SDKROOT` if it's clearly set for the wrong platform.
