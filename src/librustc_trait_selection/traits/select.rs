@@ -3349,9 +3349,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             "closure_trait_ref_unnormalized(obligation={:?}, closure_def_id={:?}, substs={:?})",
             obligation, closure_def_id, substs,
         );
-        let closure_type = self.infcx.closure_sig(closure_def_id, substs);
+        let closure_sig = substs.as_closure().sig(closure_def_id, self.tcx());
 
-        debug!("closure_trait_ref_unnormalized: closure_type = {:?}", closure_type);
+        debug!("closure_trait_ref_unnormalized: closure_sig = {:?}", closure_sig);
 
         // (1) Feels icky to skip the binder here, but OTOH we know
         // that the self-type is an unboxed closure type and hence is
@@ -3362,7 +3362,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.tcx(),
             obligation.predicate.def_id(),
             obligation.predicate.skip_binder().self_ty(), // (1)
-            closure_type,
+            closure_sig,
             util::TupleArgumentsFlag::No,
         )
         .map_bound(|(trait_ref, _)| trait_ref)

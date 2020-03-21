@@ -580,7 +580,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         match defining_ty {
             DefiningTy::Closure(def_id, substs) => {
                 assert_eq!(self.mir_def_id, def_id);
-                let closure_sig = substs.as_closure().sig_ty(def_id, tcx).fn_sig(tcx);
+                let closure_sig = substs.as_closure().sig(def_id, tcx);
                 let inputs_and_output = closure_sig.inputs_and_output();
                 let closure_ty = tcx.closure_env_ty(def_id, substs).unwrap();
                 ty::Binder::fuse(closure_ty, inputs_and_output, |closure_ty, inputs_and_output| {
