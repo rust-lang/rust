@@ -33,10 +33,10 @@ error[E0277]: the trait bound `[closure@$DIR/issue-62009-1.rs:16:5: 16:15]: std:
 LL |     (|_| 2333).await;
    |     ^^^^^^^^^^^^^^^^ the trait `std::future::Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:16:5: 16:15]`
    | 
-  ::: $SRC_DIR/libstd/future.rs:LL:COL
+  ::: $SRC_DIR/libcore/future/mod.rs:LL:COL
    |
 LL |     F: Future,
-   |        ------ required by this bound in `std::future::poll_with_tls_context`
+   |        ------ required by this bound in `std::future::poll_with_context`
 
 error: aborting due to 4 previous errors
 
