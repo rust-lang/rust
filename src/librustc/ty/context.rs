@@ -1447,11 +1447,11 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => return None,
         };
 
-        return Some(FreeRegionInfo {
+        Some(FreeRegionInfo {
             def_id: suitable_region_binding_scope,
             boundregion: bound_region,
             is_impl_item,
-        });
+        })
     }
 
     pub fn return_type_impl_trait(&self, scope_def_id: DefId) -> Option<(Ty<'tcx>, Span)> {

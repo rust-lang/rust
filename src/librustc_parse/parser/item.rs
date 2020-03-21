@@ -314,7 +314,7 @@ impl<'a> Parser<'a> {
                 " struct ".into(),
                 Applicability::MaybeIncorrect, // speculative
             );
-            return Err(err);
+            Err(err)
         } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
             let ident = self.parse_ident().unwrap();
             self.bump(); // `(`
@@ -362,7 +362,7 @@ impl<'a> Parser<'a> {
                     );
                 }
             }
-            return Err(err);
+            Err(err)
         } else if self.look_ahead(1, |t| *t == token::Lt) {
             let ident = self.parse_ident().unwrap();
             self.eat_to_tokens(&[&token::Gt]);
@@ -384,7 +384,7 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 );
             }
-            return Err(err);
+            Err(err)
         } else {
             Ok(())
         }
@@ -910,7 +910,7 @@ impl<'a> Parser<'a> {
         let span = self.sess.source_map().def_span(span);
         let msg = format!("{} is not supported in {}", kind.descr(), ctx);
         self.struct_span_err(span, &msg).emit();
-        return None;
+        None
     }
 
     fn error_on_foreign_const(&self, span: Span, ident: Ident) {
@@ -1509,7 +1509,7 @@ impl<'a> Parser<'a> {
                 })
             // `extern ABI fn`
             || self.check_keyword(kw::Extern)
-                && self.look_ahead(1, |t| t.can_begin_literal_or_bool())
+                && self.look_ahead(1, |t| t.can_begin_literal_maybe_minus())
                 && self.look_ahead(2, |t| t.is_keyword(kw::Fn))
     }
 

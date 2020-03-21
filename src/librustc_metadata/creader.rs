@@ -264,7 +264,7 @@ impl<'a> CrateLoader<'a> {
                 ret = Some(cnum);
             }
         });
-        return ret;
+        ret
     }
 
     fn verify_no_symbol_conflicts(&self, span: Span, root: &CrateRoot<'_>) {

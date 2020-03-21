@@ -290,7 +290,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                             DUMMY_SP,
                             &format!("unexpected const parent path {:?}", parent_node,),
                         );
-                        return tcx.types.err;
+                        tcx.types.err
                     }
                 }
 

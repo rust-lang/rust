@@ -380,7 +380,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 _ => (),
             }
         };
-        return has_self_arg;
+        has_self_arg
     }
 
     fn followed_by_brace(&self, span: Span) -> (bool, Option<(Span, String)>) {
@@ -430,7 +430,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 break;
             }
         }
-        return (followed_by_brace, closing_brace);
+        (followed_by_brace, closing_brace)
     }
 
     /// Provides context-dependent help for errors reported by the `smart_resolve_path_fragment`

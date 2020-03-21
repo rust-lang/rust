@@ -203,7 +203,7 @@ impl TypeMap<'ll, 'tcx> {
         let key = self.unique_id_interner.intern(&unique_type_id);
         self.type_to_unique_id.insert(type_, UniqueTypeId(key));
 
-        return UniqueTypeId(key);
+        UniqueTypeId(key)
     }
 
     /// Gets the `UniqueTypeId` for an enum variant. Enum variants are not really
@@ -314,7 +314,7 @@ impl RecursiveTypeDescription<'ll, 'tcx> {
                     member_holding_stub,
                     member_descriptions,
                 );
-                return MetadataCreationResult::new(metadata_stub, true);
+                MetadataCreationResult::new(metadata_stub, true)
             }
         }
     }
@@ -364,7 +364,7 @@ fn fixed_vec_metadata(
         )
     };
 
-    return MetadataCreationResult::new(metadata, false);
+    MetadataCreationResult::new(metadata, false)
 }
 
 fn vec_slice_metadata(
@@ -445,7 +445,7 @@ fn subroutine_type_metadata(
 
     return_if_metadata_created_in_meantime!(cx, unique_type_id);
 
-    return MetadataCreationResult::new(
+    MetadataCreationResult::new(
         unsafe {
             llvm::LLVMRustDIBuilderCreateSubroutineType(
                 DIB(cx),
@@ -454,7 +454,7 @@ fn subroutine_type_metadata(
             )
         },
         false,
-    );
+    )
 }
 
 // FIXME(1563): This is all a bit of a hack because 'trait pointer' is an ill-
@@ -781,7 +781,7 @@ fn file_metadata_raw(
     let key = (file_name, directory);
 
     match debug_context(cx).created_files.borrow_mut().entry(key) {
-        Entry::Occupied(o) => return o.get(),
+        Entry::Occupied(o) => o.get(),
         Entry::Vacant(v) => {
             let (file_name, directory) = v.key();
             debug!("file_metadata: file_name: {:?}, directory: {:?}", file_name, directory);
@@ -831,7 +831,7 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
         )
     };
 
-    return ty_metadata;
+    ty_metadata
 }
 
 fn foreign_type_metadata(
@@ -1273,11 +1273,11 @@ fn prepare_union_metadata(
 fn use_enum_fallback(cx: &CodegenCx<'_, '_>) -> bool {
     // On MSVC we have to use the fallback mode, because LLVM doesn't
     // lower variant parts to PDB.
-    return cx.sess().target.target.options.is_like_msvc
+    cx.sess().target.target.options.is_like_msvc
         // LLVM version 7 did not release with an important bug fix;
         // but the required patch is in the LLVM 8.  Rust LLVM reports
         // 8 as well.
-        || llvm_util::get_major_version() < 8;
+        || llvm_util::get_major_version() < 8
 }
 
 // FIXME(eddyb) maybe precompute this? Right now it's computed once
@@ -2075,7 +2075,7 @@ fn prepare_enum_metadata(
         }
     };
 
-    return create_and_register_recursive_type_forward_declaration(
+    create_and_register_recursive_type_forward_declaration(
         cx,
         enum_type,
         unique_type_id,
@@ -2088,7 +2088,7 @@ fn prepare_enum_metadata(
             containing_scope,
             span,
         }),
-    );
+    )
 }
 
 /// Creates debug information for a composite type, that is, anything that

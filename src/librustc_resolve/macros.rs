@@ -83,7 +83,7 @@ fn sub_namespace_match(candidate: Option<MacroKind>, requirement: Option<MacroKi
 // line-breaks and is slow.
 fn fast_print_path(path: &ast::Path) -> Symbol {
     if path.segments.len() == 1 {
-        return path.segments[0].ident.name;
+        path.segments[0].ident.name
     } else {
         let mut path_str = String::with_capacity(64);
         for (i, segment) in path.segments.iter().enumerate() {

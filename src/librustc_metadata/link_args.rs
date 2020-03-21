@@ -16,7 +16,7 @@ crate fn collect(tcx: TyCtxt<'_>) -> Vec<String> {
         }
     }
 
-    return collector.args;
+    collector.args
 }
 
 struct Collector {

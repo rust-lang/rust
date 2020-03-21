@@ -6,7 +6,7 @@ use rustc::middle::lang_items;
 use rustc::middle::region;
 use rustc::mir::*;
 use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_attr::{self as attr, UnwindAttr};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -43,8 +43,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
             ..
         })
         | Node::TraitItem(hir::TraitItem {
-            kind:
-                hir::TraitItemKind::Fn(hir::FnSig { decl, .. }, hir::TraitFn::Provided(body_id)),
+            kind: hir::TraitItemKind::Fn(hir::FnSig { decl, .. }, hir::TraitFn::Provided(body_id)),
             ..
         }) => (*body_id, decl.output.span()),
         Node::Item(hir::Item { kind: hir::ItemKind::Static(ty, _, body_id), .. })
@@ -128,12 +127,8 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
                 let ty = if fn_sig.c_variadic && index == fn_sig.inputs().len() {
                     let va_list_did =
                         tcx.require_lang_item(lang_items::VaListTypeLangItem, Some(arg.span));
-                    let region = tcx.mk_region(ty::ReScope(region::Scope {
-                        id: body.value.hir_id.local_id,
-                        data: region::ScopeData::CallSite,
-                    }));
 
-                    tcx.type_of(va_list_did).subst(tcx, &[region.into()])
+                    tcx.type_of(va_list_did).subst(tcx, &[tcx.lifetimes.re_erased.into()])
                 } else {
                     fn_sig.inputs()[index]
                 };
@@ -189,6 +184,20 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
 
         let mut body = BodyAndCache::new(body);
         body.ensure_predecessors();
+
+        // The borrow checker will replace all the regions here with its own
+        // inference variables. There's no point having non-erased regions here.
+        // The exception is `body.user_type_annotations`, which is used unmodified
+        // by borrow checking.
+        debug_assert!(
+            !(body.local_decls.has_free_regions()
+                || body.basic_blocks().has_free_regions()
+                || body.var_debug_info.has_free_regions()
+                || body.yield_ty.has_free_regions()),
+            "Unexpected free regions in MIR: {:?}",
+            body,
+        );
+
         body
     })
 }
@@ -209,7 +218,7 @@ fn liberated_closure_env_ty(
     };
 
     let closure_env_ty = tcx.closure_env_ty(closure_def_id, closure_substs).unwrap();
-    tcx.liberate_late_bound_regions(closure_def_id, &closure_env_ty)
+    tcx.erase_late_bound_regions(&closure_env_ty)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -368,7 +377,7 @@ impl BlockContext {
             }
         }
 
-        return None;
+        None
     }
 
     /// Looks at the topmost frame on the BlockContext and reports

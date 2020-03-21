@@ -85,7 +85,7 @@ impl LintLevelSets {
             level = cmp::min(*driver_level, level);
         }
 
-        return (level, src);
+        (level, src)
     }
 
     pub fn get_lint_id_level(

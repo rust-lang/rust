@@ -440,7 +440,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
                         (Some(sz_a_val), Some(sz_b_val)) => Err(TypeError::FixedArraySize(
                             expected_found(relation, &sz_a_val, &sz_b_val),
                         )),
-                        _ => return Err(err),
+                        _ => Err(err),
                     }
                 }
             }

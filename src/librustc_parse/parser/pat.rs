@@ -696,7 +696,7 @@ impl<'a> Parser<'a> {
         self.look_ahead(dist, |t| {
             t.is_path_start() // e.g. `MY_CONST`;
                 || t.kind == token::Dot // e.g. `.5` for recovery;
-                || t.can_begin_literal_or_bool() // e.g. `42`.
+                || t.can_begin_literal_maybe_minus() // e.g. `42`.
                 || t.is_whole_expr()
         })
     }
@@ -918,7 +918,7 @@ impl<'a> Parser<'a> {
             }
             err.emit();
         }
-        return Ok((fields, etc));
+        Ok((fields, etc))
     }
 
     /// Recover on `...` as if it were `..` to avoid further errors.

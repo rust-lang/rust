@@ -273,7 +273,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             assert_eq!(borrow_data.borrowed_place, *place);
         }
 
-        return self.super_rvalue(rvalue, location);
+        self.super_rvalue(rvalue, location)
     }
 }
 

@@ -15,7 +15,7 @@ crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
     let mut collector = Collector { tcx, libs: Vec::new() };
     tcx.hir().krate().visit_all_item_likes(&mut collector);
     collector.process_command_line();
-    return collector.libs;
+    collector.libs
 }
 
 crate fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {

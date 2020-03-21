@@ -240,7 +240,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
                 assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
-                return M::call_intrinsic(self, span, instance, args, ret, unwind);
+                M::call_intrinsic(self, span, instance, args, ret, unwind)
             }
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)

@@ -175,6 +175,6 @@ impl AssertModuleSource<'tcx> {
             return true;
         }
         debug!("check_config: no match found");
-        return false;
+        false
     }
 }

@@ -505,7 +505,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             self.undo_log.push(AddVar(vid));
         }
         debug!("created new region variable {:?} in {:?} with origin {:?}", vid, universe, origin);
-        return vid;
+        vid
     }
 
     /// Returns the universe for the given variable.

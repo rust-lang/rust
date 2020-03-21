@@ -527,10 +527,10 @@ impl Cursor<'_> {
         if self.first() == '\'' {
             self.bump();
             let kind = Char { terminated: true };
-            return Literal { kind, suffix_start: self.len_consumed() };
+            Literal { kind, suffix_start: self.len_consumed() }
+        } else {
+            Lifetime { starts_with_number }
         }
-
-        return Lifetime { starts_with_number };
     }
 
     fn single_quoted_string(&mut self) -> bool {

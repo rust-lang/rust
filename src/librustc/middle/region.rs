@@ -467,7 +467,7 @@ impl<'tcx> ScopeTree {
         }
 
         debug!("temporary_scope({:?}) = None", expr_id);
-        return None;
+        None
     }
 
     /// Returns the lifetime of the variable `id`.
@@ -498,7 +498,7 @@ impl<'tcx> ScopeTree {
 
         debug!("is_subscope_of({:?}, {:?})=true", subscope, superscope);
 
-        return true;
+        true
     }
 
     /// Returns the ID of the innermost containing body.
