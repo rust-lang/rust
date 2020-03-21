@@ -1306,47 +1306,67 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
     // Now create the real type and const parameters.
     let type_start = own_start - has_self as u32 + params.len() as u32;
     let mut i = 0;
-    params.extend(ast_generics.params.iter().filter_map(|param| {
-        let kind = match param.kind {
-            GenericParamKind::Type { ref default, synthetic, .. } => {
-                if !allow_defaults && default.is_some() {
-                    if !tcx.features().default_type_parameter_fallback {
-                        tcx.struct_span_lint_hir(
-                            lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
-                            param.hir_id,
-                            param.span,
-                            |lint| {
-                                lint.build(
-                                    "defaults for type parameters are only allowed in \
-                                            `struct`, `enum`, `type`, or `trait` definitions.",
-                                )
-                                .emit();
-                            },
-                        );
-                    }
-                }
 
-                ty::GenericParamDefKind::Type {
-                    has_default: default.is_some(),
-                    object_lifetime_default: object_lifetime_defaults
-                        .as_ref()
-                        .map_or(rl::Set1::Empty, |o| o[i]),
-                    synthetic,
+    // FIXME(const_generics): a few places in the compiler expect generic params
+    // to be in the order lifetimes, then type params, then const params.
+    //
+    // To prevent internal errors in case const parameters are supplied before
+    // type parameters we first add all type params, then all const params.
+    params.extend(ast_generics.params.iter().filter_map(|param| {
+        if let GenericParamKind::Type { ref default, synthetic, .. } = param.kind {
+            if !allow_defaults && default.is_some() {
+                if !tcx.features().default_type_parameter_fallback {
+                    tcx.struct_span_lint_hir(
+                        lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
+                        param.hir_id,
+                        param.span,
+                        |lint| {
+                            lint.build(
+                                "defaults for type parameters are only allowed in \
+                                        `struct`, `enum`, `type`, or `trait` definitions.",
+                            )
+                            .emit();
+                        },
+                    );
                 }
             }
-            GenericParamKind::Const { .. } => ty::GenericParamDefKind::Const,
-            _ => return None,
-        };
 
-        let param_def = ty::GenericParamDef {
-            index: type_start + i as u32,
-            name: param.name.ident().name,
-            def_id: tcx.hir().local_def_id(param.hir_id),
-            pure_wrt_drop: param.pure_wrt_drop,
-            kind,
-        };
-        i += 1;
-        Some(param_def)
+            let kind = ty::GenericParamDefKind::Type {
+                has_default: default.is_some(),
+                object_lifetime_default: object_lifetime_defaults
+                    .as_ref()
+                    .map_or(rl::Set1::Empty, |o| o[i]),
+                synthetic,
+            };
+
+            let param_def = ty::GenericParamDef {
+                index: type_start + i as u32,
+                name: param.name.ident().name,
+                def_id: tcx.hir().local_def_id(param.hir_id),
+                pure_wrt_drop: param.pure_wrt_drop,
+                kind,
+            };
+            i += 1;
+            Some(param_def)
+        } else {
+            None
+        }
+    }));
+
+    params.extend(ast_generics.params.iter().filter_map(|param| {
+        if let GenericParamKind::Const { .. } = param.kind {
+            let param_def = ty::GenericParamDef {
+                index: type_start + i as u32,
+                name: param.name.ident().name,
+                def_id: tcx.hir().local_def_id(param.hir_id),
+                pure_wrt_drop: param.pure_wrt_drop,
+                kind: ty::GenericParamDefKind::Const,
+            };
+            i += 1;
+            Some(param_def)
+        } else {
+            None
+        }
     }));
 
     // provide junk type parameter defs - the only place that

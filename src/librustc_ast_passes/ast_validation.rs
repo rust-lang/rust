@@ -645,6 +645,8 @@ impl<'a> AstValidator<'a> {
     }
 }
 
+/// Checks that generic parameters are in the correct order,
+/// which is lifetimes, then types and then consts. (`<'a, T, const N: usize>`)
 fn validate_generic_param_order<'a>(
     sess: &Session,
     handler: &rustc_errors::Handler,
