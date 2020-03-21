@@ -29,6 +29,8 @@
 
 #include "llvm/IR/InstVisitor.h"
 
+#include "llvm/IR/Dominators.h"
+
 enum class IntType {
     //integral type
     Integer,
@@ -406,11 +408,26 @@ public:
         if (found != mapping.end()) {
             return found->second;
         }
+        for(const auto& pair : mapping) {
+            if (pair.first.size() != v.size()) continue;
+            bool match = true;
+            for(unsigned i=0; i<pair.first.size(); i++) {
+                if (pair.first[i] == -1) continue;
+                if (pair.first[i] != v[i]) {
+                    match = false;
+                    break;
+                }
+            }
+            if (!match) continue;
+            return pair.second;
+        }
         return IntType::Unknown;
     }
 
     void insert(const std::vector<int> v, DataType d) {
         if (v.size() > 0) {
+            //check pointer abilities from before
+            {
             std::vector<int> tmp(v.begin(), v.end()-1);
             auto found = mapping.find(tmp);
             if (found != mapping.end()) {
@@ -418,6 +435,44 @@ public:
                     llvm::errs() << "FAILED dt: " << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
                 }
                 assert(found->second == IntType::Pointer || found->second== IntType::Anything);
+            }
+            }
+
+            //don't insert if there's an existing -1
+            {
+            std::vector<int> tmp(v.begin(), v.end()-1);
+            tmp.push_back(-1);
+            auto found = mapping.find(tmp);
+            if (found != mapping.end()) {
+                if (found->second != d) {
+                    llvm::errs() << "FAILED dt: " << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
+                }
+                return;
+            }
+            }
+
+            //if this is a -1, remove other -1's
+            if (v.back() == -1){
+                std::set<std::vector<int>> toremove;
+                for(const auto& pair : mapping) {
+                    if (pair.first.size() == v.size()) {
+                        bool matches = true;
+                        for(unsigned i=0; i<pair.first.size()-1; i++) {
+                            if (pair.first[i] != v[i]) {
+                                matches = true;
+                                break;
+                            }
+                        }
+                        if (!matches) continue;
+                        assert(pair.second == d);
+                        toremove.insert(pair.first);
+                    }
+                }
+
+                for(const auto & val : toremove) {
+                    mapping.erase(val);
+                }
+
             }
         }
         if (v.size() > 6) {
@@ -513,13 +568,34 @@ public:
         return dat;
     }
 
+    ValueData KeepMinusOne() const {
+        ValueData dat;
+
+        for(const auto &pair : mapping) {
+
+            if (pair.first.size() == 0) {
+                if (pair.second == IntType::Pointer || pair.second == IntType::Anything) continue;
+                llvm::errs() << "could not merge test  " << str() << "\n";
+            }
+            if (pair.first[0] == -1) {
+                dat.insert(pair.first, pair.second);
+            }
+        }
+
+        return dat;
+    }
+
     static std::vector<int> mergeIndices(int offset, const std::vector<int> &second) {
         assert(second.size() > 0);
+        assert(offset != -1);
 
         std::vector<int> next(second);
         //-1 represents all elements in that range
-        if (offset == -1 || next[0] == -1) {
+        if (offset == 0 && next[0] == -1) {
             next[0] = -1;
+        } else if (next[0] == -1) {
+            //TODO consider adding all possible ones after
+            next[0] = offset;
         } else {
             next[0] += offset;
         }
@@ -530,6 +606,7 @@ public:
 
     ValueData MergeIndices(int offset) const {
         ValueData dat;
+        assert(offset != -1);
 
         for(const auto &pair : mapping) {
             ValueData dat2;
@@ -659,7 +736,7 @@ public:
         for(auto &pair : v.mapping) {
             assert(pair.second != IntType::Unknown);
             DataType dt = operator[](pair.first);
-            //llvm::errs() << "merging @ " << to_string(pair.first) << " old " << dt.str() << pair.second.str() << "\n";
+            //llvm::errs() << "merging @ " << to_string(pair.first) << " old:" << dt.str() << " new:" << pair.second.str() << "\n";
             changed |= (dt.mergeIn(pair.second, pointerIntSame));
             insert(pair.first, dt);
         }
@@ -808,6 +885,8 @@ public:
 
 	std::map<llvm::Value*, ValueData> analysis;
 
+    llvm::DominatorTree DT;
+
     TypeAnalyzer(llvm::Function* function, const NewFnTypeInfo& fn, TypeAnalysis& TA);
 
     ValueData getAnalysis(llvm::Value* val);
@@ -884,7 +963,6 @@ public:
 
 class TypeAnalysis {
 public:
-
     std::map<NewFnTypeInfo, TypeAnalyzer > analyzedFunctions;
 
     TypeResults analyzeFunction(const NewFnTypeInfo& fn, llvm::Function* function);

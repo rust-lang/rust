@@ -102,6 +102,7 @@ cl::opt<bool> fast_tracking(
 
 // returns whether it found something
 bool trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& pointerUse, bool onlyFirst, std::vector<int> indices = {}) {
+#if 0
     if (seen.find(et) != seen.end()) return false;
     seen.insert(et);
 
@@ -167,7 +168,7 @@ bool trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& 
             }
         }
     }
-
+#endif
     return false;
 }
 

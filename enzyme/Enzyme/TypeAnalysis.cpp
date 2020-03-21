@@ -143,7 +143,7 @@ DataType parseTBAA(Instruction* inst) {
     }
 }
 
-TypeAnalyzer::TypeAnalyzer(Function* function, const NewFnTypeInfo& fn, TypeAnalysis& TA) : function(function), fntypeinfo(fn), interprocedural(TA) {
+TypeAnalyzer::TypeAnalyzer(Function* function, const NewFnTypeInfo& fn, TypeAnalysis& TA) : function(function), fntypeinfo(fn), interprocedural(TA), DT(*function) {
     for(auto &BB: *function) {
         for(auto &inst : BB) {
 	        workList.push_back(&inst);
@@ -352,32 +352,97 @@ void TypeAnalyzer::considerTBAA() {
 }
 
 
-bool couldBeZero(Value* val, std::map<Value*, bool>& intseen) {
+std::set<int64_t> couldBeZero(Value* val, std::map<Value*, std::set<int64_t>>& intseen, const NewFnTypeInfo& info, DominatorTree& DT) {
     if (intseen.find(val) != intseen.end()) return intseen[val];
     //todo what to insert to intseen
 
-    intseen[val] = false;
+    intseen[val] = {};
 
-    if (auto ci = dyn_cast<ConstantInt>(val)) {
-        return intseen[val] = (ci->getLimitedValue() == 0);
+    if (auto ci = info.isConstantInt(val)) {
+        return intseen[val] = { ci->getSExtValue() };
     }
 
     if (auto ci = dyn_cast<CastInst>(val)) {
-        return intseen[val] = couldBeZero(ci->getOperand(0), intseen);
+        return intseen[val] = couldBeZero(ci->getOperand(0), intseen, info, DT);
     }
 
     if (auto pn = dyn_cast<PHINode>(val)) {
-        for(auto &a : pn->incoming_values()) {
-            if (couldBeZero(a, intseen)) {
-                return intseen[val] = true;
+
+        for(unsigned i=0; i<pn->getNumIncomingValues(); i++) {
+            auto a = pn->getIncomingValue(i);
+            auto b = pn->getIncomingBlock(i);
+
+            //do not consider loop incoming edges
+            if (pn->getParent() == b || DT.dominates(pn, b)) {
+                continue;
             }
+
+            auto inset = couldBeZero(a, intseen, info, DT);
+            //TODO this here is not fully justified yet
+            for(auto pval : inset) {
+                if (pval < 20 && pval > -20) {
+                    intseen[val].insert(pval);
+                }
+            }
+
             // if we are an iteration variable, suppose that it could be zero in that range
             // TODO: could actually check the range intercepts 0
             if (auto bo = dyn_cast<BinaryOperator>(a)) {
                 if (bo->getOperand(0) == pn || bo->getOperand(1) == pn) {
                     if (bo->getOpcode() == BinaryOperator::Add || bo->getOpcode() == BinaryOperator::Sub) {
-                        return intseen[val] = true;
+                        intseen[val].insert(0);
                     }
+                }
+            }
+        }
+        return intseen[val];
+    }
+
+    if (auto bo = dyn_cast<BinaryOperator>(val)) {
+        if (bo->getOpcode() == BinaryOperator::Mul) {
+            auto inset0 = couldBeZero(bo->getOperand(0), intseen, info, DT);
+            auto inset1 = couldBeZero(bo->getOperand(1), intseen, info, DT);
+
+            if (auto ci = info.isConstantInt(bo->getOperand(0))) {
+                for(auto pval : inset1) {
+                    intseen[val].insert(ci->getSExtValue() * pval);
+                }
+            }
+            if (auto ci = info.isConstantInt(bo->getOperand(1))) {
+                for(auto pval : inset0) {
+                    intseen[val].insert(pval * ci->getSExtValue());
+                }
+            }
+            if (inset0.count(0) || inset1.count(0)) {
+                intseen[val].insert(0);
+            }
+        }
+
+        if (bo->getOpcode() == BinaryOperator::Add) {
+            if (auto ci = info.isConstantInt(bo->getOperand(0))) {
+                auto inset = couldBeZero(bo->getOperand(1), intseen, info, DT);
+                for(auto pval : inset) {
+                    intseen[val].insert(ci->getSExtValue() + pval);
+                }
+            }
+            if (auto ci = info.isConstantInt(bo->getOperand(1))) {
+                auto inset = couldBeZero(bo->getOperand(0), intseen, info, DT);
+                for(auto pval : inset) {
+                    intseen[val].insert(pval + ci->getSExtValue());
+                }
+            }
+        }
+        if (bo->getOpcode() == BinaryOperator::Sub) {
+            if (auto ci = info.isConstantInt(bo->getOperand(0))) {
+                auto inset = couldBeZero(bo->getOperand(1), intseen, info, DT);
+                for(auto pval : inset) {
+                    intseen[val].insert(ci->getSExtValue() - pval);
+                }
+            }
+            if (auto ci = info.isConstantInt(bo->getOperand(1))) {
+                auto inset = couldBeZero(bo->getOperand(0), intseen, info, DT);
+                for(auto pval : inset) {
+                    intseen[val].insert(pval - ci->getSExtValue());
                 }
             }
         }
@@ -617,40 +682,71 @@ void TypeAnalyzer::visitStoreInst(StoreInst &I) {
     updateAnalysis(I.getValueOperand(), getAnalysis(I.getPointerOperand()).Lookup({0}), &I);
 }
 
+template<typename T>
+std::set<std::vector<T>> getSet(const std::vector<std::set<T>> &todo, size_t idx) {
+    std::set<std::vector<T>> out;
+    if (idx == 0) {
+        for(auto val : todo[0]) {
+            out.insert({val});
+        }
+        return out;
+    }
+
+    auto old = getSet(todo, idx-1);
+    for(const auto& oldv : old) {
+        for(auto val : todo[idx]) {
+            auto nex = oldv;
+            nex.push_back(val);
+            out.insert(nex);
+        }
+    }
+    return out;
+}
+
 void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
 
     //for(auto& ind : gep.indices()) {
     //    updateAnalysis(ind, IntType::Integer, &gep);
     //}
 
-    llvm::Type *Int32Ty = llvm::Type::getInt32Ty(gep.getContext());
-    std::vector<Value*> idnext;
+    auto pointerAnalysis = getAnalysis(gep.getPointerOperand());
+    updateAnalysis(&gep, pointerAnalysis.KeepMinusOne(), &gep);
 
-    std::map<Value*, bool> intseen;
+    std::vector<std::set<Value*>> idnext;
+
+    std::map<Value*, std::set<int64_t>> intseen;
+
     for(auto& a : gep.indices()) {
-        if (auto ci = fntypeinfo.isConstantInt(a)) {
-            idnext.push_back(ci);//(int)ci->getLimitedValue());
-        } else if (couldBeZero(a, intseen)){
-            idnext.push_back(ConstantInt::get(Int32Ty, 0));
-        } else {
-            return;
+        auto iset = couldBeZero(a, intseen, fntypeinfo, DT);
+        std::set<Value*> vset;
+        for(auto i : iset) {
+            vset.insert(ConstantInt::get(a->getType(), i));
         }
+        idnext.push_back(vset);
+        if (idnext.back().size() == 0) return;
     }
 
-    auto g2 = GetElementPtrInst::Create(nullptr, gep.getOperand(0), idnext);
-    APInt ai(function->getParent()->getDataLayout().getIndexSizeInBits(gep.getPointerAddressSpace()), 0);
-    g2->accumulateConstantOffset(function->getParent()->getDataLayout(), ai);
-    delete g2;//->eraseFromParent();
+    for (auto vec : getSet(idnext, idnext.size()-1)) {
+        auto g2 = GetElementPtrInst::Create(nullptr, gep.getOperand(0), vec);
+        APInt ai(function->getParent()->getDataLayout().getIndexSizeInBits(gep.getPointerAddressSpace()), 0);
+        g2->accumulateConstantOffset(function->getParent()->getDataLayout(), ai);
+        delete g2;//->eraseFromParent();
 
-    int off = (int)ai.getLimitedValue();
+        int off = (int)ai.getLimitedValue();
 
-	//TODO GEP
-    updateAnalysis(&gep, getAnalysis(gep.getPointerOperand()).UnmergeIndices(off), &gep);
+        //TODO also allow negative offsets
+        if (off < 0) continue;
 
-    auto merged = getAnalysis(&gep).MergeIndices(off);
+        updateAnalysis(&gep, pointerAnalysis.UnmergeIndices(off), &gep);
 
-    //llvm::errs() << "GEP: " << gep << " analysis: " << getAnalysis(&gep).str() << " merged: " << merged.str() << "\n";
-    updateAnalysis(gep.getPointerOperand(), merged, &gep);
+        //llvm::errs() << "GEP: " << gep << " - " << getAnalysis(&gep).str() << " - off=" << off << "\n";
+        auto merged = getAnalysis(&gep).MergeIndices(off);
+
+        //llvm::errs()  << " + prevanalysis: " << getAnalysis(gep.getPointerOperand()).str() << " merged: " << merged.str() << " g2:[";
+        //for(auto v: vec) llvm::errs() << *v << ", ";
+        //llvm::errs() << "] " << "\n";
+        updateAnalysis(gep.getPointerOperand(), merged, &gep);
+    }
 }
 
 void TypeAnalyzer::visitPHINode(PHINode& phi) {
