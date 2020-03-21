@@ -396,9 +396,10 @@ where
         field: u64,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         // Not using the layout method because we want to compute on u64
-        let offset = match base.layout.fields {
+        let (offset, field_layout) = match base.layout.fields {
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
-                offsets[usize::try_from(field).unwrap()]
+                let field = usize::try_from(field).unwrap();
+                (offsets[field], base.layout.field(self, field)?)
             }
             layout::FieldPlacement::Array { stride, .. } => {
                 let len = base.len(self)?;
@@ -406,23 +407,22 @@ where
                     // This can only be reached in ConstProp and non-rustc-MIR.
                     throw_ub!(BoundsCheckFailed { len, index: field });
                 }
-                Size::mul(stride, field) // `Size` multiplication is checked
+                // All fields have the same layout.
+                (Size::mul(stride, field), base.layout.field(self, 9)?)
             }
             layout::FieldPlacement::Union(count) => {
+                let field = usize::try_from(field).unwrap();
                 assert!(
-                    field < u64::try_from(count).unwrap(),
+                    field < count,
                     "Tried to access field {} of union {:#?} with {} fields",
                     field,
                     base.layout,
                     count
                 );
                 // Offset is always 0
-                Size::from_bytes(0)
+                (Size::from_bytes(0), base.layout.field(self, field)?)
             }
         };
-        // the only way conversion can fail if is this is an array (otherwise we already panicked
-        // above). In that case, all fields have the same layout.
-        let field_layout = base.layout.field(self, usize::try_from(field).unwrap_or(0))?;
 
         // Offset may need adjustment for unsized fields.
         let (meta, offset) = if field_layout.is_unsized() {
