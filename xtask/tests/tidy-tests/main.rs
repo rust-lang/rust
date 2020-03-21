@@ -5,13 +5,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use walkdir::{DirEntry, WalkDir};
-use xtask::{not_bash::fs2, project_root};
+use xtask::{not_bash::fs2, project_root, rust_files};
 
 #[test]
 fn rust_files_are_tidy() {
     let mut tidy_docs = TidyDocs::default();
-    for path in rust_files() {
+    for path in rust_files(&project_root().join("crates")) {
         let text = fs2::read_to_string(&path).unwrap();
         check_todo(&path, &text);
         check_trailing_ws(&path, &text);
@@ -141,20 +140,4 @@ fn is_exclude_dir(p: &Path, dirs_to_exclude: &[&str]) -> bool {
     }
 
     false
-}
-
-fn rust_files() -> impl Iterator<Item = PathBuf> {
-    let crates = project_root().join("crates");
-    let iter = WalkDir::new(crates);
-    return iter
-        .into_iter()
-        .filter_entry(|e| !is_hidden(e))
-        .map(|e| e.unwrap())
-        .filter(|e| !e.file_type().is_dir())
-        .map(|e| e.into_path())
-        .filter(|path| path.extension().map(|it| it == "rs").unwrap_or(false));
-
-    fn is_hidden(entry: &DirEntry) -> bool {
-        entry.file_name().to_str().map(|s| s.starts_with('.')).unwrap_or(false)
-    }
 }

@@ -17,6 +17,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
+use walkdir::{DirEntry, WalkDir};
 
 use crate::{
     codegen::Mode,
@@ -35,6 +36,21 @@ pub fn project_root() -> PathBuf {
     .nth(1)
     .unwrap()
     .to_path_buf()
+}
+
+pub fn rust_files(path: &Path) -> impl Iterator<Item = PathBuf> {
+    let iter = WalkDir::new(path);
+    return iter
+        .into_iter()
+        .filter_entry(|e| !is_hidden(e))
+        .map(|e| e.unwrap())
+        .filter(|e| !e.file_type().is_dir())
+        .map(|e| e.into_path())
+        .filter(|path| path.extension().map(|it| it == "rs").unwrap_or(false));
+
+    fn is_hidden(entry: &DirEntry) -> bool {
+        entry.file_name().to_str().map(|s| s.starts_with('.')).unwrap_or(false)
+    }
 }
 
 pub fn run_rustfmt(mode: Mode) -> Result<()> {
