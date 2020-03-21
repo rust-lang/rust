@@ -133,7 +133,7 @@ impl RegionExt for Region {
 /// that it corresponds to.
 ///
 /// FIXME. This struct gets converted to a `ResolveLifetimes` for
-/// actual use. It has the same data, but indexed by `DefIndex`.  This
+/// actual use. It has the same data, but indexed by `LocalDefId`.  This
 /// is silly.
 #[derive(Default)]
 struct NamedRegionMap {
