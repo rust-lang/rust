@@ -778,7 +778,7 @@ fn may_begin_with(token: &Token, name: Name) -> bool {
         }
         sym::ty => token.can_begin_type(),
         sym::ident => get_macro_ident(token).is_some(),
-        sym::literal => token.can_begin_literal_or_bool(),
+        sym::literal => token.can_begin_literal_maybe_minus(),
         sym::vis => match token.kind {
             // The follow-set of :vis + "priv" keyword + interpolated
             token::Comma | token::Ident(..) | token::Interpolated(_) => true,
