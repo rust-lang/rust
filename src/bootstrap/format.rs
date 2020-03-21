@@ -4,7 +4,7 @@ use crate::Build;
 use build_helper::{output, t};
 use ignore::WalkBuilder;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 fn rustfmt(src: &Path, rustfmt: &Path, path: &Path, check: bool) {
     let mut cmd = Command::new(&rustfmt);
@@ -56,16 +56,48 @@ pub fn format(build: &Build, check: bool) {
     for ignore in rustfmt_config.ignore {
         ignore_fmt.add(&format!("!{}", ignore)).expect(&ignore);
     }
-    let untracked_paths_output = output(
-        Command::new("git").arg("status").arg("--porcelain").arg("--untracked-files=normal"),
-    );
-    let untracked_paths = untracked_paths_output
-        .lines()
-        .filter(|entry| entry.starts_with("??"))
-        .map(|entry| entry.split(" ").nth(1).expect("every git status entry should list a path"));
-    for untracked_path in untracked_paths {
-        eprintln!("skip untracked path {} during rustfmt invocations", untracked_path);
-        ignore_fmt.add(&format!("!{}", untracked_path)).expect(&untracked_path);
+    let git_available = match Command::new("git")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+    {
+        Ok(status) => status.success(),
+        Err(_) => false,
+    };
+    if git_available {
+        let in_working_tree = match Command::new("git")
+            .arg("rev-parse")
+            .arg("--is-inside-work-tree")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+        {
+            Ok(status) => status.success(),
+            Err(_) => false,
+        };
+        if in_working_tree {
+            let untracked_paths_output = output(
+                Command::new("git")
+                    .arg("status")
+                    .arg("--porcelain")
+                    .arg("--untracked-files=normal"),
+            );
+            let untracked_paths = untracked_paths_output
+                .lines()
+                .filter(|entry| entry.starts_with("??"))
+                .map(|entry| {
+                    entry.split(" ").nth(1).expect("every git status entry should list a path")
+                });
+            for untracked_path in untracked_paths {
+                eprintln!("skip untracked path {} during rustfmt invocations", untracked_path);
+                ignore_fmt.add(&format!("!{}", untracked_path)).expect(&untracked_path);
+            }
+        } else {
+            eprintln!("Not in git tree. Skipping git-aware format checks");
+        }
+    } else {
+        eprintln!("Could not find usable git. Skipping git-aware format checks");
     }
     let ignore_fmt = ignore_fmt.build().unwrap();
 
