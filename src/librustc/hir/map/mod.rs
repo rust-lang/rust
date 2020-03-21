@@ -1,7 +1,4 @@
 use self::collector::NodeCollector;
-pub use self::definitions::{
-    DefKey, DefPath, DefPathData, DefPathHash, Definitions, DisambiguatedDefPathData,
-};
 
 use crate::hir::{Owner, OwnerNodes};
 use crate::ty::query::Providers;
@@ -10,6 +7,9 @@ use rustc_ast::ast::{self, Name, NodeId};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+pub use rustc_hir::definitions;
+pub use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
+pub use rustc_hir::definitions::{Definitions, DisambiguatedDefPathData};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::print::Nested;
@@ -23,7 +23,6 @@ use rustc_target::spec::abi::Abi;
 
 pub mod blocks;
 mod collector;
-pub mod definitions;
 mod hir_id_validator;
 pub use hir_id_validator::check_crate;
 

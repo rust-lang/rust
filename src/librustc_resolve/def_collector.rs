@@ -1,10 +1,10 @@
 use log::debug;
-use rustc::hir::map::definitions::*;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, Token};
 use rustc_ast::visit::{self, FnKind};
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::definitions::*;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;

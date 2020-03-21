@@ -122,7 +122,7 @@ macro_rules! arena_types {
 
             // HIR query types
             [few] indexed_hir: rustc::hir::map::IndexedHir<$tcx>,
-            [few] hir_definitions: rustc::hir::map::definitions::Definitions,
+            [few] hir_definitions: rustc_hir::definitions::Definitions,
             [] hir_owner: rustc::hir::Owner<$tcx>,
             [] hir_owner_nodes: rustc::hir::OwnerNodes<$tcx>,
         ], $tcx);

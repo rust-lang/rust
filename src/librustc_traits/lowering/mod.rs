@@ -1,6 +1,5 @@
 mod environment;
 
-use rustc::hir::map::definitions::DefPathData;
 use rustc::hir::map::Map;
 use rustc::traits::{
     Clause, Clauses, DomainGoal, FromEnv, GoalKind, PolyDomainGoal, ProgramClause,
@@ -13,6 +12,7 @@ use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::symbol::sym;
 

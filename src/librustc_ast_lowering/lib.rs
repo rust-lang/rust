@@ -36,7 +36,6 @@
 #![feature(specialization)]
 #![recursion_limit = "256"]
 
-use rustc::hir::map::definitions::{DefKey, DefPathData, Definitions};
 use rustc_ast::ast;
 use rustc_ast::ast::*;
 use rustc_ast::attr;
@@ -53,6 +52,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, ParamName};
 use rustc_index::vec::IndexVec;
