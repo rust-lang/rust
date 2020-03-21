@@ -16,12 +16,12 @@ use rustc_ast::ast::{self, Attribute, NodeId, PatKind, DUMMY_NODE_ID};
 use rustc_ast::util::comments::strip_doc_comment_decoration;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast_pretty::pprust::{self, param_to_string, ty_to_string};
-use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind as HirDefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_session::config::{CrateType, Input, OutputType};
+use rustc_session::output::{filename_for_metadata, out_filename};
 use rustc_span::source_map::Spanned;
 use rustc_span::*;
 

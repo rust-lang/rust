@@ -16,6 +16,7 @@ use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_index::vec::IndexVec;
 use rustc_session::config;
+use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::edition::Edition;
@@ -852,11 +853,7 @@ impl<'a> CrateLoader<'a> {
                 );
                 let name = match orig_name {
                     Some(orig_name) => {
-                        crate::validate_crate_name(
-                            Some(self.sess),
-                            &orig_name.as_str(),
-                            Some(item.span),
-                        );
+                        validate_crate_name(Some(self.sess), &orig_name.as_str(), Some(item.span));
                         orig_name
                     }
                     None => item.ident.name,

@@ -64,6 +64,7 @@ rustc_queries! {
         }
 
         // The items in a module.
+        //
         // This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
         // Avoid calling this query directly.
         query hir_module_items(key: LocalDefId) -> &'tcx hir::ModuleItems {
@@ -71,20 +72,20 @@ rustc_queries! {
             desc { |tcx| "HIR module items in `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
-        // An HIR item with a `LocalDefId` that can own other HIR items which do
-        // not themselves have a `LocalDefId`.
+        // Gives access to the HIR node for the HIR owner `key`.
+        //
         // This can be conveniently accessed by methods on `tcx.hir()`.
         // Avoid calling this query directly.
-        query hir_owner(key: LocalDefId) -> &'tcx HirOwner<'tcx> {
+        query hir_owner(key: LocalDefId) -> &'tcx crate::hir::Owner<'tcx> {
             eval_always
             desc { |tcx| "HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
-        // The HIR items which do not themselves have a `LocalDefId` and are
-        // owned by another HIR item with a `LocalDefId`.
+        // Gives access to the HIR nodes and bodies inside the HIR owner `key`.
+        //
         // This can be conveniently accessed by methods on `tcx.hir()`.
         // Avoid calling this query directly.
-        query hir_owner_items(key: LocalDefId) -> &'tcx HirOwnerItems<'tcx> {
+        query hir_owner_nodes(key: LocalDefId) -> &'tcx crate::hir::OwnerNodes<'tcx> {
             eval_always
             desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
         }

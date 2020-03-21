@@ -4837,18 +4837,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir = self.tcx.hir();
         let (def_id, sig) = match found.kind {
             ty::FnDef(def_id, _) => (def_id, found.fn_sig(self.tcx)),
-            ty::Closure(def_id, substs) => {
-                // We don't use `closure_sig` to account for malformed closures like
-                // `|_: [_; continue]| {}` and instead we don't suggest anything.
-                let closure_sig_ty = substs.as_closure().sig_ty(def_id, self.tcx);
-                (
-                    def_id,
-                    match closure_sig_ty.kind {
-                        ty::FnPtr(sig) => sig,
-                        _ => return false,
-                    },
-                )
-            }
+            ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig(def_id, self.tcx)),
             _ => return false,
         };
 

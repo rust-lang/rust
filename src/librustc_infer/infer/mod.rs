@@ -1506,16 +1506,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         closure_kind_ty.to_opt_closure_kind()
     }
 
-    /// Obtains the signature of a closure. For closures, unlike
-    /// `tcx.fn_sig(def_id)`, this method will work during the
-    /// type-checking of the enclosing function and return the closure
-    /// signature in its partially inferred state.
-    pub fn closure_sig(&self, def_id: DefId, substs: SubstsRef<'tcx>) -> ty::PolyFnSig<'tcx> {
-        let closure_sig_ty = substs.as_closure().sig_ty(def_id, self.tcx);
-        let closure_sig_ty = self.shallow_resolve(closure_sig_ty);
-        closure_sig_ty.fn_sig(self.tcx)
-    }
-
     /// Clears the selection, evaluation, and projection caches. This is useful when
     /// repeatedly attempting to select an `Obligation` while changing only
     /// its `ParamEnv`, since `FulfillmentContext` doesn't use probing.

@@ -3,7 +3,7 @@ pub use self::definitions::{
     DefKey, DefPath, DefPathData, DefPathHash, Definitions, DisambiguatedDefPathData,
 };
 
-use crate::hir::{HirOwner, HirOwnerItems};
+use crate::hir::{Owner, OwnerNodes};
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
 use rustc_ast::ast::{self, Name, NodeId};
@@ -130,8 +130,8 @@ fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
 }
 
 pub(super) struct HirOwnerData<'hir> {
-    pub(super) signature: Option<&'hir HirOwner<'hir>>,
-    pub(super) with_bodies: Option<&'hir mut HirOwnerItems<'hir>>,
+    pub(super) signature: Option<&'hir Owner<'hir>>,
+    pub(super) with_bodies: Option<&'hir mut OwnerNodes<'hir>>,
 }
 
 pub struct IndexedHir<'hir> {
@@ -345,9 +345,12 @@ impl<'hir> Map<'hir> {
             let owner = self.tcx.hir_owner(id.owner);
             Entry { parent: owner.parent, node: owner.node }
         } else {
-            let owner = self.tcx.hir_owner_items(id.owner);
-            let item = owner.items[id.local_id].as_ref().unwrap();
-            Entry { parent: HirId { owner: id.owner, local_id: item.parent }, node: item.node }
+            let owner = self.tcx.hir_owner_nodes(id.owner);
+            let node = owner.nodes[id.local_id].as_ref().unwrap();
+            // FIXME(eddyb) use a single generic type insted of having both
+            // `Entry` and `ParentedNode`, which are effectively the same.
+            // Alternatively, rewrite code using `Entry` to use `ParentedNode`.
+            Entry { parent: HirId { owner: id.owner, local_id: node.parent }, node: node.node }
         }
     }
 
@@ -373,7 +376,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
-        self.tcx.hir_owner_items(id.hir_id.owner).bodies.get(&id.hir_id.local_id).unwrap()
+        self.tcx.hir_owner_nodes(id.hir_id.owner).bodies.get(&id.hir_id.local_id).unwrap()
     }
 
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
