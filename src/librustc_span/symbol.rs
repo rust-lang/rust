@@ -253,6 +253,7 @@ symbols! {
         debug_trait,
         declare_lint_pass,
         decl_macro,
+        debug,
         Debug,
         Decodable,
         Default,
