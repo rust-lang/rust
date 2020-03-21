@@ -254,12 +254,19 @@ fn generate_tests(data_path: &str, ranges: &[(&str, Vec<Range<u32>>)]) -> String
     s.push_str(
         "
 #[inline(always)]
-fn range_search<const N: usize, const CHUNK_SIZE: usize, const N1: usize, const N2: usize>(
+fn range_search<
+    const N: usize,
+    const CHUNK_SIZE: usize,
+    const N1: usize,
+    const CANONICAL: usize,
+    const CANONICALIZED: usize,
+>(
     needle: u32,
     chunk_idx_map: &[u8; N],
     (last_chunk_idx, last_chunk_mapping): (u16, u8),
     bitset_chunk_idx: &[[u8; CHUNK_SIZE]; N1],
-    bitset: &[u64; N2],
+    bitset_canonical: &[u64; CANONICAL],
+    bitset_canonicalized: &[(u8, u8); CANONICALIZED],
 ) -> bool {
     let bucket_idx = (needle / 64) as usize;
     let chunk_map_idx = bucket_idx / CHUNK_SIZE;
@@ -273,8 +280,21 @@ fn range_search<const N: usize, const CHUNK_SIZE: usize, const N1: usize, const 
     } else {
         chunk_idx_map[chunk_map_idx]
     };
-    let idx = bitset_chunk_idx[(chunk_idx as usize)][chunk_piece];
-    let word = bitset[(idx as usize)];
+    let idx = bitset_chunk_idx[(chunk_idx as usize)][chunk_piece] as usize;
+    let word = if idx < CANONICAL {
+        bitset_canonical[idx]
+    } else {
+        let (real_idx, mapping) = bitset_canonicalized[idx - CANONICAL];
+        let mut word = bitset_canonical[real_idx as usize];
+        let should_invert = mapping & (1 << 7) != 0;
+        if should_invert {
+            word = !word;
+        }
+        // Unset the inversion bit
+        let rotate_by = mapping & !(1 << 7);
+        word = word.rotate_left(rotate_by as u32);
+        word
+    };
     (word & (1 << (needle % 64) as u64)) != 0
 }
     ",
