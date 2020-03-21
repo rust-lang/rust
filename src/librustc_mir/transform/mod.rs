@@ -22,7 +22,6 @@ pub mod copy_prop;
 pub mod deaggregator;
 pub mod dump_mir;
 pub mod elaborate_drops;
-pub mod erase_regions;
 pub mod generator;
 pub mod inline;
 pub mod instcombine;
@@ -296,8 +295,6 @@ fn run_optimization_passes<'tcx>(
             &simplify::SimplifyCfg::new("elaborate-drops"),
             // No lifetime analysis based on borrowing can be done from here on out.
 
-            // From here on out, regions are gone.
-            &erase_regions::EraseRegions,
             // Optimizations begin.
             &unreachable_prop::UnreachablePropagation,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
@@ -341,6 +338,9 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &BodyAndCache<'_> {
     let mut body = body.steal();
     run_optimization_passes(tcx, &mut body, def_id, None);
     body.ensure_predecessors();
+
+    debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");
+
     tcx.arena.alloc(body)
 }
 
@@ -357,6 +357,8 @@ fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, BodyAndCa
         run_optimization_passes(tcx, &mut body, def_id, Some(p));
         body.ensure_predecessors();
     }
+
+    debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");
 
     tcx.intern_promoted(promoted)
 }
