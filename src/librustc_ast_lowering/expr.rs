@@ -470,6 +470,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    /// Lower an `async` construct to a generator that is then wrapped so it implements `Future`.
+    ///
+    /// This results in:
+    ///
+    /// ```text
+    /// std::future::from_generator(static move? |_task_context| -> <ret_ty> {
+    ///     <body>
+    /// })
+    /// ```
     pub(super) fn make_async_expr(
         &mut self,
         capture_clause: CaptureBy,
@@ -480,17 +489,42 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
         let output = match ret_ty {
-            Some(ty) => FnRetTy::Ty(ty),
-            None => FnRetTy::Default(span),
+            Some(ty) => hir::FnRetTy::Return(self.lower_ty(&ty, ImplTraitContext::disallowed())),
+            None => hir::FnRetTy::DefaultReturn(span),
         };
-        let ast_decl = FnDecl { inputs: vec![], output };
-        let decl = self.lower_fn_decl(&ast_decl, None, /* impl trait allowed */ false, None);
-        let body_id = self.lower_fn_body(&ast_decl, |this| {
-            this.generator_kind = Some(hir::GeneratorKind::Async(async_gen_kind));
-            body(this)
+
+        // Resume argument type. We let the compiler infer this to simplify the lowering. It is
+        // fully constrained by `future::from_generator`.
+        let input_ty = hir::Ty { hir_id: self.next_id(), kind: hir::TyKind::Infer, span };
+
+        // The closure/generator `FnDecl` takes a single (resume) argument of type `input_ty`.
+        let decl = self.arena.alloc(hir::FnDecl {
+            inputs: arena_vec![self; input_ty],
+            output,
+            c_variadic: false,
+            implicit_self: hir::ImplicitSelfKind::None,
         });
 
-        // `static || -> <ret_ty> { body }`:
+        // Lower the argument pattern/ident. The ident is used again in the `.await` lowering.
+        let (pat, task_context_hid) = self.pat_ident_binding_mode(
+            span,
+            Ident::with_dummy_span(sym::_task_context),
+            hir::BindingAnnotation::Mutable,
+        );
+        let param = hir::Param { attrs: &[], hir_id: self.next_id(), pat, span };
+        let params = arena_vec![self; param];
+
+        let body_id = self.lower_body(move |this| {
+            this.generator_kind = Some(hir::GeneratorKind::Async(async_gen_kind));
+
+            let old_ctx = this.task_context;
+            this.task_context = Some(task_context_hid);
+            let res = body(this);
+            this.task_context = old_ctx;
+            (params, res)
+        });
+
+        // `static |_task_context| -> <ret_ty> { body }`:
         let generator_kind = hir::ExprKind::Closure(
             capture_clause,
             decl,
@@ -523,13 +557,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// ```rust
     /// match <expr> {
     ///     mut pinned => loop {
-    ///         match ::std::future::poll_with_tls_context(unsafe {
-    ///             <::std::pin::Pin>::new_unchecked(&mut pinned)
-    ///         }) {
+    ///         match unsafe { ::std::future::poll_with_context(
+    ///             <::std::pin::Pin>::new_unchecked(&mut pinned),
+    ///             task_context,
+    ///         ) } {
     ///             ::std::task::Poll::Ready(result) => break result,
     ///             ::std::task::Poll::Pending => {}
     ///         }
-    ///         yield ();
+    ///         task_context = yield ();
     ///     }
     /// }
     /// ```
@@ -561,12 +596,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (pinned_pat, pinned_pat_hid) =
             self.pat_ident_binding_mode(span, pinned_ident, hir::BindingAnnotation::Mutable);
 
-        // ::std::future::poll_with_tls_context(unsafe {
-        //     ::std::pin::Pin::new_unchecked(&mut pinned)
-        // })`
+        let task_context_ident = Ident::with_dummy_span(sym::_task_context);
+
+        // unsafe {
+        //     ::std::future::poll_with_context(
+        //         ::std::pin::Pin::new_unchecked(&mut pinned),
+        //         task_context,
+        //     )
+        // }
         let poll_expr = {
             let pinned = self.expr_ident(span, pinned_ident, pinned_pat_hid);
             let ref_mut_pinned = self.expr_mut_addr_of(span, pinned);
+            let task_context = if let Some(task_context_hid) = self.task_context {
+                self.expr_ident_mut(span, task_context_ident, task_context_hid)
+            } else {
+                // Use of `await` outside of an async context, we cannot use `task_context` here.
+                self.expr_err(span)
+            };
             let pin_ty_id = self.next_id();
             let new_unchecked_expr_kind = self.expr_call_std_assoc_fn(
                 pin_ty_id,
@@ -575,14 +621,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 "new_unchecked",
                 arena_vec![self; ref_mut_pinned],
             );
-            let new_unchecked =
-                self.arena.alloc(self.expr(span, new_unchecked_expr_kind, ThinVec::new()));
-            let unsafe_expr = self.expr_unsafe(new_unchecked);
-            self.expr_call_std_path(
+            let new_unchecked = self.expr(span, new_unchecked_expr_kind, ThinVec::new());
+            let call = self.expr_call_std_path(
                 gen_future_span,
-                &[sym::future, sym::poll_with_tls_context],
-                arena_vec![self; unsafe_expr],
-            )
+                &[sym::future, sym::poll_with_context],
+                arena_vec![self; new_unchecked, task_context],
+            );
+            self.arena.alloc(self.expr_unsafe(call))
         };
 
         // `::std::task::Poll::Ready(result) => break result`
@@ -622,6 +667,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.stmt_expr(span, match_expr)
         };
 
+        // task_context = yield ();
         let yield_stmt = {
             let unit = self.expr_unit(span);
             let yield_expr = self.expr(
@@ -629,7 +675,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ExprKind::Yield(unit, hir::YieldSource::Await),
                 ThinVec::new(),
             );
-            self.stmt_expr(span, yield_expr)
+            let yield_expr = self.arena.alloc(yield_expr);
+
+            if let Some(task_context_hid) = self.task_context {
+                let lhs = self.expr_ident(span, task_context_ident, task_context_hid);
+                let assign =
+                    self.expr(span, hir::ExprKind::Assign(lhs, yield_expr, span), AttrVec::new());
+                self.stmt_expr(span, assign)
+            } else {
+                // Use of `await` outside of an async context. Return `yield_expr` so that we can
+                // proceed with type checking.
+                self.stmt(span, hir::StmtKind::Semi(yield_expr))
+            }
         };
 
         let loop_block = self.block_all(span, arena_vec![self; inner_match_stmt, yield_stmt], None);

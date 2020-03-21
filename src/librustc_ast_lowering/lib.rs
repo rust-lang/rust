@@ -116,6 +116,10 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     generator_kind: Option<hir::GeneratorKind>,
 
+    /// When inside an `async` context, this is the `HirId` of the
+    /// `task_context` local bound to the resume argument of the generator.
+    task_context: Option<hir::HirId>,
+
     /// Used to get the current `fn`'s def span to point to when using `await`
     /// outside of an `async fn`.
     current_item: Option<Span>,
@@ -294,6 +298,7 @@ pub fn lower_crate<'a, 'hir>(
         item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),
         generator_kind: None,
+        task_context: None,
         current_item: None,
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,

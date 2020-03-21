@@ -814,7 +814,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Construct `ExprKind::Err` for the given `span`.
-    fn expr_err(&mut self, span: Span) -> hir::Expr<'hir> {
+    crate fn expr_err(&mut self, span: Span) -> hir::Expr<'hir> {
         self.expr(span, hir::ExprKind::Err, AttrVec::new())
     }
 
@@ -960,7 +960,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id
     }
 
-    fn lower_body(
+    pub(super) fn lower_body(
         &mut self,
         f: impl FnOnce(&mut Self) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>),
     ) -> hir::BodyId {
