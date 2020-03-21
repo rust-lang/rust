@@ -1,4 +1,4 @@
-use crate::infer::{InferCtxt, ShallowResolver};
+use crate::infer::InferCtxt;
 use rustc::ty::error::ExpectedFound;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TypeFoldable};
 use rustc_data_structures::obligation_forest::ProcessResult;
@@ -267,7 +267,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             // code is so hot. 1 and 0 dominate; 2+ is fairly rare.
             1 => {
                 let infer = pending_obligation.stalled_on[0];
-                ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(infer)
+                self.selcx.infcx().infer_ty_changed(infer)
             }
             0 => {
                 // In this case we haven't changed, but wish to make a change.
@@ -278,7 +278,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 // form was a perf win. See #64545 for details.
                 (|| {
                     for &infer in &pending_obligation.stalled_on {
-                        if ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(infer) {
+                        if self.selcx.infcx().infer_ty_changed(infer) {
                             return true;
                         }
                     }
