@@ -301,7 +301,21 @@ impl Canonicalized {
             Canonicalized(usize),
         }
 
-        while let Some((&to, _)) = mappings.iter().max_by_key(|m| m.1.len()) {
+        // Map 0 first, so that it is the first canonical word.
+        // This is realistically not inefficient because 0 is not mapped to by
+        // anything else (a shift pattern could do it, but would be wasteful).
+        //
+        // However, 0s are quite common in the overall dataset, and it is quite
+        // wasteful to have to go through a mapping function to determine that
+        // we have a zero.
+        //
+        // FIXME: Experiment with choosing most common words in overall data set
+        // for canonical when possible.
+        while let Some((&to, _)) = mappings
+            .iter()
+            .find(|(&to, _)| to == 0)
+            .or_else(|| mappings.iter().max_by_key(|m| m.1.len()))
+        {
             // Get the mapping with the most entries. Currently, no mapping can
             // only exist transitively (i.e., there is no A, B, C such that A
             // does not map to C and but A maps to B maps to C), so this is
