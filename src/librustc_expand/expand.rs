@@ -17,7 +17,7 @@ use rustc_ast::util::map_in_place::MapInPlace;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
-use rustc_errors::{Applicability, FatalError, PResult};
+use rustc_errors::{Applicability, PResult};
 use rustc_feature::Features;
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
@@ -645,7 +645,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             ))
             .emit();
         self.cx.trace_macros_diag();
-        FatalError.raise();
     }
 
     /// A macro's expansion does not fit in this fragment kind.
@@ -665,8 +664,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         invoc: Invocation,
         ext: &SyntaxExtensionKind,
     ) -> ExpandResult<AstFragment, Invocation> {
-        if self.cx.current_expansion.depth > self.cx.ecfg.recursion_limit {
-            self.error_recursion_limit_reached();
+        let recursion_limit =
+            self.cx.reduced_recursion_limit.unwrap_or(self.cx.ecfg.recursion_limit);
+        if self.cx.current_expansion.depth > recursion_limit {
+            if self.cx.reduced_recursion_limit.is_none() {
+                self.error_recursion_limit_reached();
+            }
+
+            // Reduce the recursion limit by half each time it triggers.
+            self.cx.reduced_recursion_limit = Some(recursion_limit / 2);
+
+            return ExpandResult::Ready(invoc.fragment_kind.dummy(invoc.span()));
         }
 
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());

@@ -312,6 +312,8 @@ fn configure_and_expand_inner<'a>(
             ecx.parse_sess.missing_fragment_specifiers.borrow().iter().cloned().collect();
         missing_fragment_specifiers.sort();
 
+        let recursion_limit_hit = ecx.reduced_recursion_limit.is_some();
+
         for span in missing_fragment_specifiers {
             let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
             let msg = "missing fragment specifier";
@@ -320,8 +322,15 @@ fn configure_and_expand_inner<'a>(
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }
-        krate
-    });
+
+        if recursion_limit_hit {
+            // If we hit a recursion limit, exit early to avoid later passes getting overwhelmed
+            // with a large AST
+            Err(ErrorReported)
+        } else {
+            Ok(krate)
+        }
+    })?;
 
     sess.time("maybe_building_test_harness", || {
         rustc_builtin_macros::test_harness::inject(
