@@ -67,7 +67,7 @@ fn test_basic_large() {
 #[test]
 fn test_basic_small() {
     let mut map = BTreeMap::new();
-    // Empty, shared root:
+    // Empty, root is absent (None):
     assert_eq!(map.remove(&1), None);
     assert_eq!(map.len(), 0);
     assert_eq!(map.get(&1), None);
@@ -123,7 +123,7 @@ fn test_basic_small() {
     assert_eq!(map.values().collect::<Vec<_>>(), vec![&4]);
     assert_eq!(map.remove(&2), Some(4));
 
-    // Empty but private root:
+    // Empty but root is owned (Some(...)):
     assert_eq!(map.len(), 0);
     assert_eq!(map.get(&1), None);
     assert_eq!(map.get_mut(&1), None);
@@ -261,13 +261,6 @@ fn test_iter_mut_mutation() {
     do_test_iter_mut_mutation::<Align32>(1);
     do_test_iter_mut_mutation::<Align32>(12);
     do_test_iter_mut_mutation::<Align32>(144);
-}
-
-#[test]
-fn test_into_key_slice_with_shared_root_past_bounds() {
-    let mut map: BTreeMap<Align32, ()> = BTreeMap::new();
-    assert_eq!(map.get(&Align32(1)), None);
-    assert_eq!(map.get_mut(&Align32(1)), None);
 }
 
 #[test]
