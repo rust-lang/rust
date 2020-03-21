@@ -2,8 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const tools = require('../rustdoc-js-common/lib.js');
 
+
 function findFile(dir, name, extension) {
     var entries = fs.readdirSync(dir);
+    var matches = [];
     for (var i = 0; i < entries.length; ++i) {
         var entry = entries[i];
         var file_type = fs.statSync(dir + entry);
@@ -11,10 +13,28 @@ function findFile(dir, name, extension) {
             continue;
         }
         if (entry.startsWith(name) && entry.endsWith(extension)) {
-            return entry;
+            var version = entry.slice(name.length, entry.length - extension.length);
+            version = version.split(".").map(function(x) {
+                return parseInt(x);
+            });
+            var total = 0;
+            var mult = 1;
+            for (var j = version.length - 1; j >= 0; --j) {
+                total += version[j] * mult;
+                mult *= 1000;
+            }
+            matches.push([entry, total]);
         }
     }
-    return null;
+    if (matches.length === 0) {
+        return null;
+    }
+    // We make a reverse sort to have the "highest" file. Very useful in case you didn't clean up
+    // you std doc folder...
+    matches.sort(function(a, b) {
+        return b[1] - a[1];
+    });
+    return matches[0][0];
 }
 
 function readFileMatching(dir, name, extension) {
