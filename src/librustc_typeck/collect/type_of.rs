@@ -256,15 +256,18 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         // figure out which generic parameter it corresponds to and return
                         // the relevant type.
                         let generics = match path.res {
-                            Res::Def(DefKind::Ctor(..), def_id) => {
+                            Res::Def(DefKind::Ctor(..), def_id)
+                            | Res::Def(DefKind::AssocTy, def_id) => {
                                 tcx.generics_of(tcx.parent(def_id).unwrap())
                             }
                             Res::Def(_, def_id) => tcx.generics_of(def_id),
-                            Res::Err => return tcx.types.err,
                             res => {
                                 tcx.sess.delay_span_bug(
                                     DUMMY_SP,
-                                    &format!("unexpected const parent path def {:?}", res,),
+                                    &format!(
+                                        "unexpected const parent path def, parent: {:?}, def: {:?}",
+                                        parent_node, res
+                                    ),
                                 );
                                 return tcx.types.err;
                             }
@@ -284,7 +287,16 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                             .map(|param| tcx.type_of(param.def_id))
                             // This is no generic parameter associated with the arg. This is
                             // probably from an extra arg where one is not needed.
-                            .unwrap_or(tcx.types.err)
+                            .unwrap_or_else(|| {
+                                tcx.sess.delay_span_bug(
+                                    DUMMY_SP,
+                                    &format!(
+                                        "missing generic parameter for `AnonConst`, parent {:?}",
+                                        parent_node
+                                    ),
+                                );
+                                tcx.types.err
+                            })
                     } else {
                         tcx.sess.delay_span_bug(
                             DUMMY_SP,
