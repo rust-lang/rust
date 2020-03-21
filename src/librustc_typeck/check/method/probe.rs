@@ -400,7 +400,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .probe_instantiate_query_response(span, &orig_values, ty)
                     .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
                 let ty = self.structurally_resolved_type(span, ty.value);
-                assert_eq!(ty, self.tcx.types.err);
+                assert_eq!(ty, self.tcx.types.err());
                 return Err(MethodError::NoMatch(NoMatchData::new(
                     Vec::new(),
                     Vec::new(),

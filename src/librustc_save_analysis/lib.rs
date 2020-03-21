@@ -513,7 +513,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let expr_hir_id = self.tcx.hir().node_to_hir_id(expr.id);
         let hir_node = self.tcx.hir().expect_expr(expr_hir_id);
         let ty = self.tables.expr_ty_adjusted_opt(&hir_node);
-        if ty.is_none() || ty.unwrap().kind == ty::Error {
+        if ty.is_none() || ty.unwrap().kind.is_err() {
             return None;
         }
         match expr.kind {

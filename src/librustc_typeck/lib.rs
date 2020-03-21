@@ -380,7 +380,7 @@ pub fn hir_trait_to_predicates<'tcx>(
         hir_trait,
         DUMMY_SP,
         hir::Constness::NotConst,
-        tcx.types.err,
+        tcx.types.err(),
         &mut bounds,
         true,
     );

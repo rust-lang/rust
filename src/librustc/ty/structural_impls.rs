@@ -900,7 +900,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
-            | ty::Error
+            | ty::Error(..)
             | ty::Infer(_)
             | ty::Param(..)
             | ty::Bound(..)
@@ -943,7 +943,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
-            | ty::Error
+            | ty::Error(..)
             | ty::Infer(_)
             | ty::Bound(..)
             | ty::Placeholder(..)

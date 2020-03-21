@@ -851,7 +851,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let parent = self.parent_scope.module;
         let Export { ident, res, vis, span } = child;
         let expansion = ExpnId::root(); // FIXME(jseyfried) intercrate hygiene
-        // Record primary definitions.
+                                        // Record primary definitions.
         match res {
             Res::Def(kind @ DefKind::Mod, def_id)
             | Res::Def(kind @ DefKind::Enum, def_id)
@@ -957,8 +957,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             .emit();
                     }
                 }
-                let ill_formed =
-                    |span| struct_span_err!(self.r.session, span, E0466, "bad macro import").emit();
+                let ill_formed = |span| {
+                    struct_span_err!(self.r.session, span, E0466, "bad macro import").emit();
+                };
                 match attr.meta() {
                     Some(meta) => match meta.kind {
                         MetaItemKind::Word => {

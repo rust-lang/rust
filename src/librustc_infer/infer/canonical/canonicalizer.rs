@@ -408,7 +408,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::Float(..)
             | ty::Adt(..)
             | ty::Str
-            | ty::Error
+            | ty::Error(..)
             | ty::Array(..)
             | ty::Slice(..)
             | ty::RawPtr(..)

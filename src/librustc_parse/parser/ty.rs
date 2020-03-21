@@ -216,7 +216,7 @@ impl<'a> Parser<'a> {
         let lt_no_plus = self.check_lifetime() && !self.look_ahead(1, |t| t.is_like_plus());
         let bounds = self.parse_generic_bounds_common(allow_plus, None)?;
         if lt_no_plus {
-            self.struct_span_err(lo, "lifetime in trait object type must be followed by `+`").emit()
+            self.struct_span_err(lo, "lifetime in trait object type must be followed by `+`").emit();
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
     }

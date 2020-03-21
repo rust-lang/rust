@@ -772,7 +772,7 @@ struct Progress<'tcx> {
 
 impl<'tcx> Progress<'tcx> {
     fn error(tcx: TyCtxt<'tcx>) -> Self {
-        Progress { ty: tcx.types.err, obligations: vec![] }
+        Progress { ty: tcx.types.err(), obligations: vec![] }
     }
 
     fn with_addl_obligations(mut self, mut obligations: Vec<PredicateObligation<'tcx>>) -> Self {
@@ -1388,7 +1388,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
             );
             debug!("confirm_param_env_candidate: {}", msg);
             infcx.tcx.sess.delay_span_bug(obligation.cause.span, &msg);
-            Progress { ty: infcx.tcx.types.err, obligations: vec![] }
+            Progress { ty: infcx.tcx.types.err(), obligations: vec![] }
         }
     }
 }
@@ -1407,7 +1407,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let param_env = obligation.param_env;
     let assoc_ty = match assoc_ty_def(selcx, impl_def_id, assoc_item_id) {
         Ok(assoc_ty) => assoc_ty,
-        Err(ErrorReported) => return Progress { ty: tcx.types.err, obligations: nested },
+        Err(ErrorReported) => return Progress { ty: tcx.types.err(), obligations: nested },
     };
 
     if !assoc_ty.item.defaultness.has_value() {
@@ -1419,7 +1419,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
             "confirm_impl_candidate: no associated type {:?} for {:?}",
             assoc_ty.item.ident, obligation.predicate
         );
-        return Progress { ty: tcx.types.err, obligations: nested };
+        return Progress { ty: tcx.types.err(), obligations: nested };
     }
     let substs = obligation.predicate.substs.rebase_onto(tcx, trait_def_id, substs);
     let substs = translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.node);
@@ -1432,7 +1432,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     if substs.len() != tcx.generics_of(assoc_ty.item.def_id).count() {
         tcx.sess
             .delay_span_bug(DUMMY_SP, "impl item and trait item have different parameter counts");
-        Progress { ty: tcx.types.err, obligations: nested }
+        Progress { ty: tcx.types.err(), obligations: nested }
     } else {
         Progress { ty: ty.subst(tcx, substs), obligations: nested }
     }

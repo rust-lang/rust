@@ -283,23 +283,13 @@ impl Session {
     pub fn abort_if_errors(&self) {
         self.diagnostic().abort_if_errors();
     }
-    pub fn compile_status(&self) -> Result<(), ErrorReported> {
+    pub fn compile_status(&self) -> Result<(), ()> {
         if self.has_errors() {
             self.diagnostic().emit_stashed_diagnostics();
-            Err(ErrorReported)
+            Err(())
         } else {
             Ok(())
         }
-    }
-    // FIXME(matthewjasper) Remove this method, it should never be needed.
-    pub fn track_errors<F, T>(&self, f: F) -> Result<T, ErrorReported>
-    where
-        F: FnOnce() -> T,
-    {
-        let old_count = self.err_count();
-        let result = f();
-        let errors = self.err_count() - old_count;
-        if errors == 0 { Ok(result) } else { Err(ErrorReported) }
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_warn(sp, msg)

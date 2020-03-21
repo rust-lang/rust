@@ -176,7 +176,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if let ty::Adt(def, substs) = ty.kind {
             for field in def.all_fields() {
                 let field_ty = field.ty(self, substs);
-                if let Error = field_ty.kind {
+                if let Error(..) = field_ty.kind {
                     return true;
                 }
             }
@@ -727,7 +727,7 @@ impl<'tcx> ty::TyS<'tcx> {
             | ty::Ref(..)
             | ty::RawPtr(_)
             | ty::FnDef(..)
-            | ty::Error
+            | ty::Error(..)
             | ty::FnPtr(_) => true,
             ty::Tuple(_) => self.tuple_fields().all(Self::is_trivially_freeze),
             ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_freeze(),
@@ -1050,7 +1050,7 @@ pub fn needs_drop_components(
         // Pessimistically assume that all generators will require destructors
         // as we don't know if a destructor is a noop or not until after the MIR
         // state transformation pass.
-        ty::Generator(..) | ty::Dynamic(..) | ty::Error => Err(AlwaysRequiresDrop),
+        ty::Generator(..) | ty::Dynamic(..) | ty::Error(..) => Err(AlwaysRequiresDrop),
 
         ty::Slice(ty) => needs_drop_components(ty, target_layout),
         ty::Array(elem_ty, size) => {

@@ -321,7 +321,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
         self.tcx().sess.delay_span_bug(span, "bad placeholder type");
-        self.tcx().types.err
+        self.tcx().types.err()
     }
 
     fn ct_infer(
@@ -430,7 +430,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                 _ => {}
             }
             err.emit();
-            self.tcx().types.err
+            self.tcx().types.err()
         }
     }
 
@@ -1486,7 +1486,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     visitor.visit_ty(ty);
                     let mut diag = bad_placeholder_type(tcx, visitor.0);
                     let ret_ty = fn_sig.output();
-                    if ret_ty != tcx.types.err {
+                    if ret_ty != tcx.types.err() {
                         diag.span_suggestion(
                             ty.span,
                             "replace with the correct return type",
@@ -2045,7 +2045,7 @@ fn associated_item_predicates(
             // once they are handled by the trait system.
             ty::GenericParamDefKind::Type { .. } => {
                 unimplemented_error("type");
-                tcx.types.err.into()
+                tcx.types.err().into()
             }
             ty::GenericParamDefKind::Const => {
                 unimplemented_error("const");

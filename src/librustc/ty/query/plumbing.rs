@@ -804,8 +804,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
 macro_rules! handle_cycle_error {
     ([][$tcx: expr, $error:expr]) => {{
-        $tcx.report_cycle($error).emit();
-        Value::from_cycle_error($tcx)
+        let proof = $tcx.report_cycle($error).emit().proof();
+        Value::from_cycle_error($tcx, proof)
     }};
     ([fatal_cycle $($rest:tt)*][$tcx:expr, $error:expr]) => {{
         $tcx.report_cycle($error).emit();
@@ -813,8 +813,8 @@ macro_rules! handle_cycle_error {
         unreachable!()
     }};
     ([cycle_delay_bug $($rest:tt)*][$tcx:expr, $error:expr]) => {{
-        $tcx.report_cycle($error).delay_as_bug();
-        Value::from_cycle_error($tcx)
+        let proof = $tcx.report_cycle($error).delay_as_bug();
+        Value::from_cycle_error($tcx, proof)
     }};
     ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
         handle_cycle_error!([$($($modifiers)*)*][$($args)*])

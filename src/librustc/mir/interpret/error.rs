@@ -89,7 +89,9 @@ impl<'tcx> ConstEvalErr<'tcx> {
     }
 
     pub fn report_as_error(&self, tcx: TyCtxtAt<'tcx>, message: &str) -> ErrorHandled {
-        match self.struct_error(tcx, message, |mut e| e.emit()) {
+        match self.struct_error(tcx, message, |mut e| {
+            e.emit();
+        }) {
             Ok(_) => ErrorHandled::Reported,
             Err(x) => x,
         }

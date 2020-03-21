@@ -441,7 +441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // There exists a side that didn't meet our criteria that the end-point
             // be of a numeric or char type, as checked in `calc_side` above.
             self.emit_err_pat_range(span, lhs, rhs);
-            return self.tcx.types.err;
+            return self.tcx.types.err();
         }
 
         // Now that we know the types can be unified we find the unified type
@@ -674,9 +674,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             for field in fields {
                 let ti = TopInfo { parent_pat: Some(&pat), ..ti };
-                self.check_pat(&field.pat, self.tcx.types.err, def_bm, ti);
+                self.check_pat(&field.pat, self.tcx.types.err(), def_bm, ti);
             }
-            return self.tcx.types.err;
+            return self.tcx.types.err();
         };
 
         // Type-check the path.
@@ -686,7 +686,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.check_struct_pat_fields(pat_ty, &pat, variant, fields, etc, def_bm, ti) {
             pat_ty
         } else {
-            self.tcx.types.err
+            self.tcx.types.err()
         }
     }
 
@@ -705,13 +705,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match res {
             Res::Err => {
                 self.set_tainted_by_errors();
-                return tcx.types.err;
+                return tcx.types.err();
             }
             Res::Def(DefKind::AssocFn, _)
             | Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _)
             | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
                 report_unexpected_variant_res(tcx, res, pat.span, qpath);
-                return tcx.types.err;
+                return tcx.types.err();
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Const), _)
             | Res::SelfCtor(..)
@@ -783,7 +783,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let on_error = || {
             let parent_pat = Some(pat);
             for pat in subpats {
-                self.check_pat(&pat, tcx.types.err, def_bm, TopInfo { parent_pat, ..ti });
+                self.check_pat(&pat, tcx.types.err(), def_bm, TopInfo { parent_pat, ..ti });
             }
         };
         let report_unexpected_res = |res: Res| {
@@ -814,7 +814,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if res == Res::Err {
             self.set_tainted_by_errors();
             on_error();
-            return self.tcx.types.err;
+            return self.tcx.types.err();
         }
 
         // Type-check the path.
@@ -822,18 +822,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.hir_id);
         if !pat_ty.is_fn() {
             report_unexpected_res(res);
-            return tcx.types.err;
+            return tcx.types.err();
         }
 
         let variant = match res {
             Res::Err => {
                 self.set_tainted_by_errors();
                 on_error();
-                return tcx.types.err;
+                return tcx.types.err();
             }
             Res::Def(DefKind::AssocConst, _) | Res::Def(DefKind::AssocFn, _) => {
                 report_unexpected_res(res);
-                return tcx.types.err;
+                return tcx.types.err();
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),
             _ => bug!("unexpected pattern resolution: {:?}", res),
@@ -866,7 +866,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Pattern has wrong number of fields.
             self.e0023(pat.span, res, qpath, subpats, &variant.fields, expected, had_err);
             on_error();
-            return tcx.types.err;
+            return tcx.types.err();
         }
         pat_ty
     }
@@ -987,9 +987,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
-            let element_tys_iter = (0..max_len).map(|_| tcx.types.err);
+            let element_tys_iter = (0..max_len).map(|_| tcx.types.err());
             for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat(elem, &tcx.types.err, def_bm, ti);
+                self.check_pat(elem, &tcx.types.err(), def_bm, ti);
             }
             tcx.mk_tup(element_tys_iter)
         } else {
@@ -1039,7 +1039,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Occupied(occupied) => {
                     self.error_field_already_bound(span, field.ident, *occupied.get());
                     no_field_errors = false;
-                    tcx.types.err
+                    tcx.types.err()
                 }
                 Vacant(vacant) => {
                     vacant.insert(span);
@@ -1053,7 +1053,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .unwrap_or_else(|| {
                             inexistent_fields.push(field.ident);
                             no_field_errors = false;
-                            tcx.types.err
+                            tcx.types.err()
                         })
                 }
             };
@@ -1252,7 +1252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.demand_eqtype_pat(span, expected, box_ty, ti);
             (box_ty, inner_ty)
         } else {
-            (tcx.types.err, tcx.types.err)
+            (tcx.types.err(), tcx.types.err())
         };
         self.check_pat(&inner, inner_ty, def_bm, ti);
         box_ty
@@ -1298,7 +1298,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         } else {
-            (tcx.types.err, tcx.types.err)
+            (tcx.types.err(), tcx.types.err())
         };
         self.check_pat(&inner, inner_ty, def_bm, TopInfo { parent_pat: Some(&pat), ..ti });
         rptr_ty
@@ -1331,7 +1331,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
-        let err = self.tcx.types.err;
+        let err = self.tcx.types.err();
         let expected = self.structurally_resolved_type(span, expected);
         let (inner_ty, slice_ty, expected) = match expected.kind {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.

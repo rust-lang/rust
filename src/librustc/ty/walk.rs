@@ -76,7 +76,7 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         | ty::Infer(_)
         | ty::Param(_)
         | ty::Never
-        | ty::Error
+        | ty::Error(..)
         | ty::Placeholder(..)
         | ty::Bound(..)
         | ty::Foreign(..) => {}

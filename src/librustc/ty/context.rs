@@ -164,7 +164,6 @@ pub struct CommonTypes<'tcx> {
     pub f64: Ty<'tcx>,
     pub never: Ty<'tcx>,
     pub self_param: Ty<'tcx>,
-    pub err: Ty<'tcx>,
 
     /// Dummy type used for the `Self` of a `TraitRef` created for converting
     /// a trait object, and which gets removed in `ExistentialTraitRef`.
@@ -181,10 +180,6 @@ pub struct CommonLifetimes<'tcx> {
 
     /// Erased region, used after type-checking
     pub re_erased: Region<'tcx>,
-}
-
-pub struct CommonConsts<'tcx> {
-    pub err: &'tcx Const<'tcx>,
 }
 
 pub struct LocalTableInContext<'a, V> {
@@ -821,7 +816,6 @@ impl<'tcx> CommonTypes<'tcx> {
             bool: mk(Bool),
             char: mk(Char),
             never: mk(Never),
-            err: mk(Error),
             isize: mk(Int(ast::IntTy::Isize)),
             i8: mk(Int(ast::IntTy::I8)),
             i16: mk(Int(ast::IntTy::I16)),
@@ -851,19 +845,6 @@ impl<'tcx> CommonLifetimes<'tcx> {
             re_root_empty: mk(RegionKind::ReEmpty(ty::UniverseIndex::ROOT)),
             re_static: mk(RegionKind::ReStatic),
             re_erased: mk(RegionKind::ReErased),
-        }
-    }
-}
-
-impl<'tcx> CommonConsts<'tcx> {
-    fn new(interners: &CtxtInterners<'tcx>, types: &CommonTypes<'tcx>) -> CommonConsts<'tcx> {
-        let mk_const = |c| interners.const_.intern(c, |c| Interned(interners.arena.alloc(c))).0;
-
-        CommonConsts {
-            err: mk_const(ty::Const {
-                val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::zst())),
-                ty: types.err,
-            }),
         }
     }
 }
@@ -924,9 +905,6 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Common lifetimes, pre-interned for your convenience.
     pub lifetimes: CommonLifetimes<'tcx>,
-
-    /// Common consts, pre-interned for your convenience.
-    pub consts: CommonConsts<'tcx>,
 
     /// Resolutions of `extern crate` items produced by resolver.
     extern_crate_map: NodeMap<CrateNum>,
@@ -992,6 +970,34 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    /// Construct an `Error` type. This requires proof that an error has already been emited or
+    /// will be emited.
+    #[track_caller]
+    #[inline]
+    pub fn err(self, proof: rustc_errors::ErrorProof) -> Ty<'tcx> {
+        self.sess.diagnostic().delay_span_bug(
+            rustc_span::DUMMY_SP,
+            &format!("Error constructed but not emited {}", std::panic::Location::caller()),
+        );
+        self.mk_ty(Error(proof))
+    }
+
+    /// Construct an error `const`. This requires proof that an error has already been emited or
+    /// will be emited.
+    #[track_caller]
+    #[inline]
+    pub fn const_err(self, proof: rustc_errors::ErrorProof) -> Const<'tcx> {
+        self.sess.diagnostic().delay_span_bug(
+            rustc_span::DUMMY_SP,
+            &format!("Error `const` constructed but not emited {}", std::panic::Location::caller()),
+        );
+
+        *self.mk_const(ty::Const {
+            val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::zst())),
+            ty: self.err(proof),
+        })
+    }
+
     pub fn alloc_steal_mir(self, mir: BodyAndCache<'tcx>) -> &'tcx Steal<BodyAndCache<'tcx>> {
         self.arena.alloc(Steal::new(mir))
     }
@@ -1096,7 +1102,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
-        let common_consts = CommonConsts::new(&interners, &common_types);
         let cstore = resolutions.cstore;
         let crates = cstore.crates_untracked();
         let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
@@ -1146,7 +1151,6 @@ impl<'tcx> TyCtxt<'tcx> {
             prof: s.prof.clone(),
             types: common_types,
             lifetimes: common_lifetimes,
-            consts: common_consts,
             extern_crate_map: resolutions.extern_crate_map,
             trait_map,
             export_map: resolutions
@@ -1840,7 +1844,7 @@ macro_rules! sty_debug_print {
                     let variant = match t.kind {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                             ty::Float(..) | ty::Str | ty::Never => continue,
-                        ty::Error => /* unimportant */ continue,
+                        ty::Error(..) => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
                     let lt = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);

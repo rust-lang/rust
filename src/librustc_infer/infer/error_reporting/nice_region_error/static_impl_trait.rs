@@ -64,8 +64,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             );
                         }
                     }
-                    err.emit();
-                    return Some(ErrorReported);
+                    Some(err.emit());
                 }
             }
         }

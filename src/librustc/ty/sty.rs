@@ -251,12 +251,27 @@ pub enum TyKind<'tcx> {
 
     /// A placeholder for a type which could not be computed; this is
     /// propagated to avoid useless error messages.
-    Error,
+    ///
+    /// An important invariant is that one should never return this type
+    /// unless an error will be emited to the user. Otherwise, we could
+    /// accidentally allow code to compile that shouldn't. For this reason,
+    /// one must always pass an `ErrorProof` to be able to constuct such
+    /// a `TyKind::Error`.
+    Error(rustc_errors::ErrorProof),
 }
 
 // `TyKind` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(TyKind<'_>, 24);
+
+impl TyKind<'_> {
+    pub fn is_err(&self) -> bool {
+        match self {
+            Error(..) => true,
+            _ => false,
+        }
+    }
+}
 
 /// A closure can be modeled as a struct that looks like:
 ///
@@ -2158,7 +2173,7 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn has_concrete_skeleton(&self) -> bool {
         match self.kind {
-            Param(_) | Infer(_) | Error => false,
+            Param(_) | Infer(_) | Error(..) => false,
             _ => true,
         }
     }
@@ -2190,7 +2205,7 @@ impl<'tcx> TyS<'tcx> {
         match self.kind {
             FnDef(def_id, substs) => tcx.fn_sig(def_id).subst(tcx, substs),
             FnPtr(f) => f,
-            Error => {
+            Error(..) => {
                 // ignore errors (#54954)
                 ty::Binder::dummy(FnSig::fake())
             }
@@ -2296,7 +2311,7 @@ impl<'tcx> TyS<'tcx> {
             }
             FnDef(..) | FnPtr(_) | GeneratorWitness(..) | Bool | Char | Int(_) | Uint(_)
             | Float(_) | Str | Array(..) | Slice(_) | RawPtr(_) | Never | Tuple(..)
-            | Foreign(..) | Param(_) | Bound(..) | Placeholder(..) | Infer(_) | Error => {}
+            | Foreign(..) | Param(_) | Bound(..) | Placeholder(..) | Infer(_) | Error(..) => {}
         }
     }
 
@@ -2325,7 +2340,7 @@ impl<'tcx> TyS<'tcx> {
             // closure type is not yet known
             Bound(..) | Infer(_) => None,
 
-            Error => Some(ty::ClosureKind::Fn),
+            Error(..) => Some(ty::ClosureKind::Fn),
 
             _ => bug!("cannot convert type `{:?}` to a closure kind", self),
         }
@@ -2353,7 +2368,7 @@ impl<'tcx> TyS<'tcx> {
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
-            | ty::Error => true,
+            | ty::Error(..) => true,
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
 

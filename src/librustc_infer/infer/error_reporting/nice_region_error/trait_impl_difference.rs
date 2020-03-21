@@ -31,13 +31,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         ) = (&sub_trace.values, &sup_trace.values, &sub_trace.cause.code)
                         {
                             if sup_expected_found == sub_expected_found {
-                                self.emit_err(
+                                return Some(self.emit_err(
                                     var_origin.span(),
                                     sub_expected_found.expected,
                                     sub_expected_found.found,
                                     self.tcx().def_span(*trait_item_def_id),
-                                );
-                                return Some(ErrorReported);
+                                ));
                             }
                         }
                     }
@@ -48,7 +47,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         None
     }
 
-    fn emit_err(&self, sp: Span, expected: Ty<'tcx>, found: Ty<'tcx>, impl_sp: Span) {
+    fn emit_err(
+        &self,
+        sp: Span,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+        impl_sp: Span,
+    ) -> ErrorReported {
         let mut err = self
             .tcx()
             .sess
@@ -56,6 +61,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         err.note(&format!("expected `{:?}`\n   found `{:?}`", expected, found));
         err.span_label(sp, &format!("found {:?}", found));
         err.span_label(impl_sp, &format!("expected {:?}", expected));
-        err.emit();
+        err.emit()
     }
 }

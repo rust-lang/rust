@@ -358,7 +358,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (
                     ty::Binder::bind(self.tcx.mk_fn_sig(
                         self.err_args(arg_exprs.len()).into_iter(),
-                        self.tcx.types.err,
+                        self.tcx.types.err(),
                         false,
                         hir::Unsafety::Normal,
                         abi::Abi::Rust,

@@ -283,7 +283,7 @@ impl<'a> CrateLoader<'a> {
                          will result in symbol conflicts between the two.",
                 root.name()
             )
-            .emit()
+            .emit();
         }
 
         // Check for conflicts with any crate loaded so far

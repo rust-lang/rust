@@ -30,7 +30,11 @@ pub enum StabilityLevel {
 
 impl StabilityLevel {
     pub fn from_attr_level(level: &attr::StabilityLevel) -> Self {
-        if level.is_stable() { Stable } else { Unstable }
+        if level.is_stable() {
+            Stable
+        } else {
+            Unstable
+        }
     }
 }
 
@@ -110,7 +114,11 @@ pub fn report_unstable(
     let span_key = msp.primary_span().and_then(|sp: Span| {
         if !sp.is_dummy() {
             let file = sm.lookup_char_pos(sp.lo()).file;
-            if file.is_imported() { None } else { Some(span) }
+            if file.is_imported() {
+                None
+            } else {
+                Some(span)
+            }
         } else {
             None
         }
@@ -227,7 +235,7 @@ fn late_report_deprecation(
         if let hir::Node::Expr(_) = tcx.hir().get(hir_id) {
             deprecation_suggestion(&mut diag, suggestion, span);
         }
-        diag.emit()
+        diag.emit();
     });
     if hir_id == hir::DUMMY_HIR_ID {
         span_bug!(span, "emitted a {} lint with dummy HIR id: {:?}", lint.name, def_id);
@@ -391,7 +399,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
         let soft_handler = |lint, span, msg: &_| {
             self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
-                lint.build(msg).emit()
+                lint.build(msg).emit();
             })
         };
         match self.eval_stability(def_id, id, span) {

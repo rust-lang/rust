@@ -471,7 +471,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                self.tcx.types.err
+                self.tcx.types.err()
             }
         };
 
@@ -705,7 +705,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     err.emit();
                 }
-                self.tcx.types.err
+                self.tcx.types.err()
             }
         }
     }

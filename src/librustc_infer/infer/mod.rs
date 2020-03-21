@@ -1691,7 +1691,7 @@ impl<'tcx> TypeTrace<'tcx> {
     pub fn dummy(tcx: TyCtxt<'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: ObligationCause::dummy(),
-            values: Types(ExpectedFound { expected: tcx.types.err, found: tcx.types.err }),
+            values: Types(ExpectedFound { expected: tcx.err(), found: tcx.err() }),
         }
     }
 }

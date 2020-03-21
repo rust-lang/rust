@@ -3084,7 +3084,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let params = substs_a
                     .iter()
                     .enumerate()
-                    .map(|(i, &k)| if ty_params.contains(i) { tcx.types.err.into() } else { k });
+                    .map(|(i, &k)| if ty_params.contains(i) { tcx.types.err().into() } else { k });
                 let substs = tcx.mk_substs(params);
                 for &ty in fields.split_last().unwrap().1 {
                     if ty.subst(tcx, substs).references_error() {

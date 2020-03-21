@@ -145,7 +145,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     rustc_span::DUMMY_SP,
                     &format!("failed autoderef {}", pick.autoderefs),
                 );
-                return self.tcx.types.err;
+                return self.tcx.types.err();
             }
         };
         assert_eq!(n, pick.autoderefs);

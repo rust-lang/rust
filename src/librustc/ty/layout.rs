@@ -1249,7 +1249,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             | ty::GeneratorWitness(..)
             | ty::Infer(_) => bug!("LayoutDetails::compute: unexpected type `{}`", ty),
 
-            ty::Param(_) | ty::Error => {
+            ty::Param(_) | ty::Error(..) => {
                 return Err(LayoutError::Unknown(ty));
             }
         })
@@ -2144,7 +2144,7 @@ where
             | ty::Opaque(..)
             | ty::Param(_)
             | ty::Infer(_)
-            | ty::Error => bug!("TyLayout::field_type: unexpected type `{}`", this.ty),
+            | ty::Error(..) => bug!("TyLayout::field_type: unexpected type `{}`", this.ty),
         })
     }
 

@@ -105,8 +105,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                                 "borrowed data cannot outlive this closure",
                             );
                         }
-                        err.emit();
-                        return Some(ErrorReported);
+                        return Some(err.emit());
                     }
                 }
             }

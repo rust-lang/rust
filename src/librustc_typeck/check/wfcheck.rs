@@ -693,7 +693,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                     }
                 }
                 // Mark unwanted params as error.
-                fcx.tcx.types.err.into()
+                fcx.tcx.types.err().into()
             }
 
             GenericParamDefKind::Const => {

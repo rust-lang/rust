@@ -32,12 +32,12 @@ pub struct Graph {
     pub children: DefIdMap<Children>,
 
     /// Whether an error was emitted while constructing the graph.
-    pub has_errored: bool,
+    pub error_reported: Option<ErrorReported>,
 }
 
 impl Graph {
     pub fn new() -> Graph {
-        Graph { parent: Default::default(), children: Default::default(), has_errored: false }
+        Graph { parent: Default::default(), children: Default::default(), error_reported: None }
     }
 
     /// The parent of a given impl, which is the `DefId` of the trait when the
@@ -191,8 +191,8 @@ pub fn ancestors(
     start_from_impl: DefId,
 ) -> Result<Ancestors<'tcx>, ErrorReported> {
     let specialization_graph = tcx.specialization_graph_of(trait_def_id);
-    if specialization_graph.has_errored {
-        Err(ErrorReported)
+    if let Some(error_reported) = specialization_graph.error_reported {
+        Err(error_reported)
     } else {
         Ok(Ancestors {
             trait_def_id,

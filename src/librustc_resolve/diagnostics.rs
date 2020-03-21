@@ -454,7 +454,7 @@ impl<'a> Resolver<'a> {
                 self.session.struct_span_err(span, "visibility must resolve to a module")
             }
         }
-        .emit()
+        .emit();
     }
 
     /// Lookup typo candidate in scope for a macro or import.
@@ -1047,7 +1047,11 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         path[0].ident.name = kw::SelfLower;
         let result = self.r.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
-        if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
+        if let PathResult::Module(..) = result {
+            Some((path, Vec::new()))
+        } else {
+            None
+        }
     }
 
     /// Suggests a missing `crate::` if that resolves to an correct module.
@@ -1070,12 +1074,10 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         if let PathResult::Module(..) = result {
             Some((
                 path,
-                vec![
-                    "`use` statements changed in Rust 2018; read more at \
+                vec!["`use` statements changed in Rust 2018; read more at \
                      <https://doc.rust-lang.org/edition-guide/rust-2018/module-system/path-\
                      clarity.html>"
-                        .to_string(),
-                ],
+                    .to_string()],
             ))
         } else {
             None
@@ -1099,7 +1101,11 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         path[0].ident.name = kw::Super;
         let result = self.r.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
-        if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
+        if let PathResult::Module(..) = result {
+            Some((path, Vec::new()))
+        } else {
+            None
+        }
     }
 
     /// Suggests a missing external crate name if that resolves to an correct module.

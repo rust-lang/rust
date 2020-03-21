@@ -245,7 +245,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.types.never
                 } else {
                     // There was an error; make type-check fail.
-                    tcx.types.err
+                    tcx.types.err()
                 }
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
@@ -281,7 +281,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Field(ref base, field) => self.check_field(expr, needs, &base, field),
             ExprKind::Index(ref base, ref idx) => self.check_expr_index(base, idx, needs, expr),
             ExprKind::Yield(ref value, ref src) => self.check_expr_yield(value, expr, src),
-            hir::ExprKind::Err => tcx.types.err,
+            hir::ExprKind::Err => tcx.types.err(),
         }
     }
 
@@ -357,7 +357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             tcx.sess.parse_sess.expr_parentheses_needed(&mut err, *sp, None);
                         }
                         err.emit();
-                        oprnd_t = tcx.types.err;
+                        oprnd_t = tcx.types.err();
                     }
                 }
                 hir::UnOp::UnNot => {
@@ -407,7 +407,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tm = ty::TypeAndMut { ty, mutbl };
         match kind {
-            _ if tm.ty.references_error() => self.tcx.types.err,
+            _ if tm.ty.references_error() => self.tcx.types.err(),
             hir::BorrowKind::Raw => {
                 self.check_named_place_expr(oprnd);
                 self.tcx.mk_ptr(tm)
@@ -473,11 +473,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = match res {
             Res::Err => {
                 self.set_tainted_by_errors();
-                tcx.types.err
+                tcx.types.err()
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
                 report_unexpected_variant_res(tcx, res, expr.span, qpath);
-                tcx.types.err
+                tcx.types.err()
             }
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
         };
@@ -561,7 +561,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 expr.span,
                                 "break was outside loop, but no error was emitted",
                             );
-                            return tcx.types.err;
+                            return tcx.types.err();
                         }
                     }
                 };
@@ -569,7 +569,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // If the loop context is not a `loop { }`, then break with
                 // a value is illegal, and `opt_coerce_to` will be `None`.
                 // Just set expectation to error in that case.
-                let coerce_to = opt_coerce_to.unwrap_or(tcx.types.err);
+                let coerce_to = opt_coerce_to.unwrap_or(tcx.types.err());
 
                 // Recurse without `enclosing_breakables` borrowed.
                 e_ty = self.check_expr_with_hint(e, coerce_to);
@@ -593,7 +593,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         expr.span,
                         "break was outside loop, but no error was emitted",
                     );
-                    return tcx.types.err;
+                    return tcx.types.err();
                 }
             };
 
@@ -653,7 +653,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We still need to assign a type to the inner expression to
             // prevent the ICE in #43162.
             if let Some(ref e) = expr_opt {
-                self.check_expr_with_hint(e, tcx.types.err);
+                self.check_expr_with_hint(e, tcx.types.err());
 
                 // ... except when we try to 'break rust;'.
                 // ICE this expression in particular (see #43162).
@@ -664,7 +664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             // There was an error; make type-check fail.
-            tcx.types.err
+            tcx.types.err()
         }
     }
 
@@ -797,7 +797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 
         if lhs_ty.references_error() || rhs_ty.references_error() {
-            self.tcx.types.err
+            self.tcx.types.err()
         } else {
             self.tcx.mk_unit()
         }
@@ -951,7 +951,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Eagerly check for some obvious errors.
         if t_expr.references_error() || t_cast.references_error() {
-            self.tcx.types.err
+            self.tcx.types.err()
         } else {
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
@@ -960,7 +960,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     deferred_cast_checks.push(cast_check);
                     t_cast
                 }
-                Err(ErrorReported) => self.tcx.types.err,
+                Err(ErrorReported) => self.tcx.types.err(),
             }
         }
     }
@@ -1040,7 +1040,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if element_ty.references_error() {
-            return tcx.types.err;
+            return tcx.types.err();
         }
         match count {
             Ok(count) => tcx.mk_ty(ty::Array(t, count)),
@@ -1049,9 +1049,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.def_span(count_def_id),
                     "array lengths can't depend on generic parameters",
                 );
-                tcx.types.err
+                tcx.types.err()
             }
-            Err(ErrorHandled::Reported) => tcx.types.err,
+            Err(ErrorHandled::Reported) => tcx.types.err(),
         }
     }
 
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         let tuple = self.tcx.mk_tup(elt_ts_iter);
         if tuple.references_error() {
-            self.tcx.types.err
+            self.tcx.types.err()
         } else {
             self.require_type_is_sized(tuple, expr.span, traits::TupleInitializerSized);
             tuple
@@ -1103,7 +1103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             variant_ty
         } else {
             self.check_struct_fields_on_error(fields, base_expr);
-            return self.tcx.types.err;
+            return self.tcx.types.err();
         };
 
         let path_span = match *qpath {
@@ -1244,7 +1244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.report_unknown_field(adt_ty, variant, field, ast_fields, kind_name, span);
                 }
 
-                tcx.types.err
+                tcx.types.err()
             };
 
             // Make sure to give a type to the field even if there's
@@ -1530,7 +1530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .emit();
         }
 
-        self.tcx().types.err
+        self.tcx().types.err()
     }
 
     fn ban_nonexisting_field(
@@ -1796,7 +1796,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     err.emit();
-                    self.tcx.types.err
+                    self.tcx.types.err()
                 }
             }
         }

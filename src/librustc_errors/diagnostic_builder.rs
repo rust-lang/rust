@@ -1,5 +1,7 @@
-use crate::{Applicability, Handler, Level, StashKey};
-use crate::{Diagnostic, DiagnosticId, DiagnosticStyledString};
+use crate::{
+    Applicability, Diagnostic, DiagnosticId, DiagnosticStyledString, ErrorReported, Handler, Level,
+    StashKey,
+};
 
 use log::debug;
 use rustc_span::{MultiSpan, Span};
@@ -28,6 +30,18 @@ struct DiagnosticBuilderInner<'a> {
     diagnostic: Diagnostic,
     allow_suggestions: bool,
 }
+
+/// A type that can only be constructed by emiting a compiler error that will fail compilation.
+/// This is useful for making sure that certain things can't happen without an error being emitted
+/// (e.g. constructing a `TyKind::Error`).
+#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ErrorProof(ErrorProofPrivateInner);
+
+// Make it impossible to construct `ErrorProof` elsewhere.
+#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, Hash, PartialEq, Eq, PartialOrd, Ord)]
+struct ErrorProofPrivateInner;
+
+rustc_data_structures::impl_stable_hash_via_hash!(ErrorProof);
 
 /// In general, the `DiagnosticBuilder` uses deref to allow access to
 /// the fields and methods of the embedded `diagnostic` in a
@@ -96,20 +110,26 @@ impl<'a> DerefMut for DiagnosticBuilder<'a> {
 
 impl<'a> DiagnosticBuilder<'a> {
     /// Emit the diagnostic.
-    pub fn emit(&mut self) {
+    pub fn emit(&mut self) -> ErrorReported {
         self.0.handler.emit_diagnostic(&self);
         self.cancel();
+
+        if self.is_error() {
+            ErrorReported::Error(ErrorProof(ErrorProofPrivateInner))
+        } else {
+            ErrorReported::NonError
+        }
     }
 
     /// Emit the diagnostic unless `delay` is true,
     /// in which case the emission will be delayed as a bug.
     ///
     /// See `emit` and `delay_as_bug` for details.
-    pub fn emit_unless(&mut self, delay: bool) {
+    pub fn emit_unless(&mut self, delay: bool) -> ErrorReported {
         if delay {
-            self.delay_as_bug();
+            ErrorReported::Error(self.delay_as_bug())
         } else {
-            self.emit();
+            self.emit()
         }
     }
 
@@ -177,10 +197,12 @@ impl<'a> DiagnosticBuilder<'a> {
     ///
     /// In the meantime, though, callsites are required to deal with the "bug"
     /// locally in whichever way makes the most sense.
-    pub fn delay_as_bug(&mut self) {
+    pub fn delay_as_bug(&mut self) -> ErrorProof {
         self.level = Level::Bug;
         self.0.handler.delay_as_bug(self.0.diagnostic.clone());
         self.cancel();
+
+        ErrorProof(ErrorProofPrivateInner)
     }
 
     /// Adds a span/label to be included in the resulting snippet.
@@ -417,5 +439,7 @@ macro_rules! struct_span_err {
 
 #[macro_export]
 macro_rules! error_code {
-    ($code:ident) => {{ $crate::DiagnosticId::Error(stringify!($code).to_owned()) }};
+    ($code:ident) => {{
+        $crate::DiagnosticId::Error(stringify!($code).to_owned())
+    }};
 }

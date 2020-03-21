@@ -77,7 +77,7 @@ impl FlagComputation {
             // But doing so caused sporadic memory corruption, and
             // neither I (tjc) nor nmatsakis could figure out why,
             // so we're doing it this way.
-            &ty::Error => self.add_flags(TypeFlags::HAS_TY_ERR),
+            &ty::Error(..) => self.add_flags(TypeFlags::HAS_TY_ERR),
 
             &ty::Param(_) => {
                 self.add_flags(TypeFlags::HAS_TY_PARAM);

@@ -161,7 +161,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Just ignore error types.
         if a.references_error() || b.references_error() {
-            return success(vec![], self.fcx.tcx.types.err, vec![]);
+            return success(vec![], self.fcx.tcx.types.err(), vec![]);
         }
 
         if a.is_never() {
@@ -820,7 +820,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let (adjustments, _) = self.register_infer_ok_obligations(ok);
         self.apply_adjustments(expr, adjustments);
-        Ok(if expr_ty.references_error() { self.tcx.types.err } else { target })
+        Ok(if expr_ty.references_error() { self.tcx.types.err() } else { target })
     }
 
     /// Same as `try_coerce()`, but without side-effects.
@@ -1137,7 +1137,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         // If we see any error types, just propagate that error
         // upwards.
         if expression_ty.references_error() || self.merged_ty().references_error() {
-            self.final_ty = Some(fcx.tcx.types.err);
+            self.final_ty = Some(fcx.tcx.types.err());
             return;
         }
 
@@ -1294,7 +1294,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
                 err.emit_unless(assign_to_bool || unsized_return);
 
-                self.final_ty = Some(fcx.tcx.types.err);
+                self.final_ty = Some(fcx.tcx.types.err());
             }
         }
     }

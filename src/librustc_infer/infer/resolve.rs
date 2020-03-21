@@ -183,22 +183,21 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if !t.needs_infer() && !ty::keep_local(&t) {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
-        // ^ we need to have the `keep_local` check to un-default
-        // defaulted tuples.
+              // we need to have the `keep_local` check to un-default defaulted tuples.
         } else {
             let t = self.infcx.shallow_resolve(t);
             match t.kind {
                 ty::Infer(ty::TyVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedTy(vid));
-                    self.tcx().types.err
+                    self.tcx().err()
                 }
                 ty::Infer(ty::IntVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedIntTy(vid));
-                    self.tcx().types.err
+                    self.tcx().err()
                 }
                 ty::Infer(ty::FloatVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedFloatTy(vid));
-                    self.tcx().types.err
+                    self.tcx().err()
                 }
                 ty::Infer(_) => {
                     bug!("Unexpected type in full type resolver: {:?}", t);
@@ -224,14 +223,14 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
     fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         if !c.needs_infer() && !ty::keep_local(&c) {
             c // micro-optimize -- if there is nothing in this const that this fold affects...
-        // ^ we need to have the `keep_local` check to un-default
-        // defaulted tuples.
+              // ^ we need to have the `keep_local` check to un-default
+              // defaulted tuples.
         } else {
             let c = self.infcx.shallow_resolve(c);
             match c.val {
                 ty::ConstKind::Infer(InferConst::Var(vid)) => {
                     self.err = Some(FixupError::UnresolvedConst(vid));
-                    return self.tcx().consts.err;
+                    return &self.tcx().const_err();
                 }
                 ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                     bug!("Unexpected const in full const resolver: {:?}", c);

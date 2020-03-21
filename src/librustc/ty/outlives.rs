@@ -147,7 +147,7 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
             ty::Dynamic(..) |       // OutlivesObject, OutlivesFragment (*)
             ty::Placeholder(..) |
             ty::Bound(..) |
-            ty::Error => {
+            ty::Error(..) => {
                 // (*) Bare functions and traits are both binders. In the
                 // RFC, this means we would add the bound regions to the
                 // "bound regions list".  In our representation, no such
