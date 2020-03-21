@@ -370,12 +370,17 @@ class RustStdBTreeSetPrinter(object):
                 ("(len: %i)" % self.__val.get_wrapped_value()['map']['length']))
 
     def children(self):
-        root = self.__val.get_wrapped_value()['map']['root']
-        node_ptr = root['node']
-        i = 0
-        for child in children_of_node(node_ptr, root['height'], False):
-            yield (str(i), child)
-            i = i + 1
+        prev_idx = None
+        innermap = GdbValue(self.__val.get_wrapped_value()['map'])
+        if innermap.get_wrapped_value()['length'] > 0:
+            root = GdbValue(innermap.get_wrapped_value()['root'])
+            type_name = str(root.type.ty.name).replace('core::option::Option<', '')[:-1]
+            root = root.get_wrapped_value().cast(gdb.lookup_type(type_name))
+            node_ptr = root['node']
+            i = 0
+            for child in children_of_node(node_ptr, root['height'], False):
+                yield (str(i), child)
+                i = i + 1
 
 
 class RustStdBTreeMapPrinter(object):
@@ -391,13 +396,16 @@ class RustStdBTreeMapPrinter(object):
                 ("(len: %i)" % self.__val.get_wrapped_value()['length']))
 
     def children(self):
-        root = self.__val.get_wrapped_value()['root']
-        node_ptr = root['node']
-        i = 0
-        for child in children_of_node(node_ptr, root['height'], True):
-            yield (str(i), child[0])
-            yield (str(i), child[1])
-            i = i + 1
+        if self.__val.get_wrapped_value()['length'] > 0:
+            root = GdbValue(self.__val.get_wrapped_value()['root'])
+            type_name = str(root.type.ty.name).replace('core::option::Option<', '')[:-1]
+            root = root.get_wrapped_value().cast(gdb.lookup_type(type_name))
+            node_ptr = root['node']
+            i = 0
+            for child in children_of_node(node_ptr, root['height'], True):
+                yield (str(i), child[0])
+                yield (str(i), child[1])
+                i = i + 1
 
 
 class RustStdStringPrinter(object):

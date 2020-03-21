@@ -44,34 +44,7 @@ const B: usize = 6;
 pub const MIN_LEN: usize = B - 1;
 pub const CAPACITY: usize = 2 * B - 1;
 
-/// The underlying representation of leaf nodes. Note that it is often unsafe to actually store
-/// these, since only the first `len` keys and values are assumed to be initialized. As such,
-/// these should always be put behind pointers, and specifically behind `BoxedNode` in the owned
-/// case.
-///
-/// We have a separate type for the header and rely on it matching the prefix of `LeafNode`, in
-/// order to statically allocate a single dummy node to avoid allocations. This struct is
-/// `repr(C)` to prevent them from being reordered. `LeafNode` does not just contain a
-/// `NodeHeader` because we do not want unnecessary padding between `len` and the keys.
-/// Crucially, `NodeHeader` can be safely transmuted to different K and V. (This is exploited
-/// by `as_header`.)
-#[repr(C)]
-struct NodeHeader<K, V> {
-    /// We use `*const` as opposed to `*mut` so as to be covariant in `K` and `V`.
-    /// This either points to an actual node or is null.
-    parent: *const InternalNode<K, V>,
-
-    /// This node's index into the parent node's `edges` array.
-    /// `*node.parent.edges[node.parent_idx]` should be the same thing as `node`.
-    /// This is only guaranteed to be initialized when `parent` is non-null.
-    parent_idx: MaybeUninit<u16>,
-
-    /// The number of keys and values this node stores.
-    ///
-    /// This next to `parent_idx` to encourage the compiler to join `len` and
-    /// `parent_idx` into the same 32-bit word, reducing space overhead.
-    len: u16,
-}
+/// The underlying representation of leaf nodes.
 #[repr(C)]
 struct LeafNode<K, V> {
     /// We use `*const` as opposed to `*mut` so as to be covariant in `K` and `V`.
@@ -111,21 +84,6 @@ impl<K, V> LeafNode<K, V> {
     }
 }
 
-impl<K, V> NodeHeader<K, V> {
-    fn is_shared_root(&self) -> bool {
-        ptr::eq(self, &EMPTY_ROOT_NODE as *const _ as *const _)
-    }
-}
-
-// We need to implement Sync here in order to make a static instance.
-unsafe impl Sync for NodeHeader<(), ()> {}
-
-// An empty node used as a placeholder for the root node, to avoid allocations.
-// We use just a header in order to save space, since no operation on an empty tree will
-// ever take a pointer past the first key.
-static EMPTY_ROOT_NODE: NodeHeader<(), ()> =
-    NodeHeader { parent: ptr::null(), parent_idx: MaybeUninit::uninit(), len: 0 };
-
 /// The underlying representation of internal nodes. As with `LeafNode`s, these should be hidden
 /// behind `BoxedNode`s to prevent dropping uninitialized keys and values. Any pointer to an
 /// `InternalNode` can be directly casted to a pointer to the underlying `LeafNode` portion of the
@@ -154,12 +112,9 @@ impl<K, V> InternalNode<K, V> {
 }
 
 /// A managed, non-null pointer to a node. This is either an owned pointer to
-/// `LeafNode<K, V>`, an owned pointer to `InternalNode<K, V>`, or a (not owned)
-/// pointer to `NodeHeader<(), ()` (more specifically, the pointer to EMPTY_ROOT_NODE).
-/// All of these types have a `NodeHeader<K, V>` prefix, meaning that they have at
-/// least the same size as `NodeHeader<K, V>` and store the same kinds of data at the same
-/// offsets; and they have a pointer alignment at least as large as `NodeHeader<K, V>`'s.
-/// However, `BoxedNode` contains no information as to which of the three types
+/// `LeafNode<K, V>` or an owned pointer to `InternalNode<K, V>`.
+///
+/// However, `BoxedNode` contains no information as to which of the two types
 /// of nodes it actually contains, and, partially due to this lack of information,
 /// has no destructor.
 struct BoxedNode<K, V> {
@@ -184,8 +139,9 @@ impl<K, V> BoxedNode<K, V> {
     }
 }
 
-/// Either an owned tree or a shared, empty tree.  Note that this does not have a destructor,
-/// and must be cleaned up manually if it is an owned tree.
+/// An owned tree.
+///
+/// Note that this does not have a destructor, and must be cleaned up manually.
 pub struct Root<K, V> {
     node: BoxedNode<K, V>,
     /// The number of levels below the root node.
@@ -196,20 +152,6 @@ unsafe impl<K: Sync, V: Sync> Sync for Root<K, V> {}
 unsafe impl<K: Send, V: Send> Send for Root<K, V> {}
 
 impl<K, V> Root<K, V> {
-    /// Whether the instance of `Root` wraps a shared, empty root node. If not,
-    /// the entire tree is uniquely owned by the owner of the `Root` instance.
-    pub fn is_shared_root(&self) -> bool {
-        self.as_ref().is_shared_root()
-    }
-
-    /// Returns a shared tree, wrapping a shared root node that is eternally empty.
-    pub fn shared_empty_root() -> Self {
-        Root {
-            node: unsafe { BoxedNode::from_ptr(NonNull::from(&EMPTY_ROOT_NODE).cast()) },
-            height: 0,
-        }
-    }
-
     /// Returns a new owned tree, with its own root node that is initially empty.
     pub fn new_leaf() -> Self {
         Root { node: BoxedNode::from_leaf(Box::new(unsafe { LeafNode::new() })), height: 0 }
@@ -245,7 +187,6 @@ impl<K, V> Root<K, V> {
     /// Adds a new internal node with a single edge, pointing to the previous root, and make that
     /// new node the root. This increases the height by 1 and is the opposite of `pop_level`.
     pub fn push_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
-        debug_assert!(!self.is_shared_root());
         let mut new_node = Box::new(unsafe { InternalNode::new() });
         new_node.edges[0].write(unsafe { BoxedNode::from_ptr(self.node.as_ptr()) });
 
@@ -308,11 +249,6 @@ impl<K, V> Root<K, V> {
 ///   `Leaf`, the `NodeRef` points to a leaf node, when this is `Internal` the
 ///   `NodeRef` points to an internal node, and when this is `LeafOrInternal` the
 ///   `NodeRef` could be pointing to either type of node.
-///   Note that in case of a leaf node, this might still be the shared root!
-///   Only turn this into a `LeafNode` reference if you know it is not the shared root!
-///   Shared references must be dereferenceable *for the entire size of their pointee*,
-///   so '&LeafNode` or `&InternalNode` pointing to the shared root is undefined behavior.
-///   Turning this into a `NodeHeader` reference is always safe.
 pub struct NodeRef<BorrowType, K, V, Type> {
     /// The number of levels below the node.
     height: usize,
@@ -354,7 +290,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// Note that, despite being safe, calling this function can have the side effect
     /// of invalidating mutable references that unsafe code has created.
     pub fn len(&self) -> usize {
-        self.as_header().len as usize
+        self.as_leaf().len as usize
     }
 
     /// Returns the height of this node in the whole tree. Zero height denotes the
@@ -374,35 +310,24 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
     }
 
-    /// Exposes the leaf "portion" of any leaf or internal node that is not the shared root.
+    /// Exposes the leaf "portion" of any leaf or internal node.
     /// If the node is a leaf, this function simply opens up its data.
     /// If the node is an internal node, so not a leaf, it does have all the data a leaf has
     /// (header, keys and values), and this function exposes that.
-    /// Unsafe because the node must not be the shared root. For more information,
-    /// see the `NodeRef` comments.
-    unsafe fn as_leaf(&self) -> &LeafNode<K, V> {
-        debug_assert!(!self.is_shared_root());
-        self.node.as_ref()
-    }
-
-    fn as_header(&self) -> &NodeHeader<K, V> {
-        unsafe { &*(self.node.as_ptr() as *const NodeHeader<K, V>) }
-    }
-
-    /// Returns whether the node is the shared, empty root.
-    pub fn is_shared_root(&self) -> bool {
-        self.as_header().is_shared_root()
+    fn as_leaf(&self) -> &LeafNode<K, V> {
+        // The node must be valid for at least the LeafNode portion.
+        // This is not a reference in the NodeRef type because we don't know if
+        // it should be unique or shared.
+        unsafe { self.node.as_ref() }
     }
 
     /// Borrows a view into the keys stored in the node.
-    /// Unsafe because the caller must ensure that the node is not the shared root.
-    pub unsafe fn keys(&self) -> &[K] {
+    pub fn keys(&self) -> &[K] {
         self.reborrow().into_key_slice()
     }
 
     /// Borrows a view into the values stored in the node.
-    /// Unsafe because the caller must ensure that the node is not the shared root.
-    unsafe fn vals(&self) -> &[V] {
+    fn vals(&self) -> &[V] {
         self.reborrow().into_val_slice()
     }
 
@@ -416,7 +341,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     pub fn ascend(
         self,
     ) -> Result<Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge>, Self> {
-        let parent_as_leaf = self.as_header().parent as *const LeafNode<K, V>;
+        let parent_as_leaf = self.as_leaf().parent as *const LeafNode<K, V>;
         if let Some(non_zero) = NonNull::new(parent_as_leaf as *mut _) {
             Ok(Handle {
                 node: NodeRef {
@@ -425,7 +350,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
                     root: self.root,
                     _marker: PhantomData,
                 },
-                idx: unsafe { usize::from(*self.as_header().parent_idx.as_ptr()) },
+                idx: unsafe { usize::from(*self.as_leaf().parent_idx.as_ptr()) },
                 _marker: PhantomData,
             })
         } else {
@@ -464,7 +389,6 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     pub unsafe fn deallocate_and_ascend(
         self,
     ) -> Option<Handle<NodeRef<marker::Owned, K, V, marker::Internal>, marker::Edge>> {
-        assert!(!self.is_shared_root());
         let height = self.height;
         let node = self.node;
         let ret = self.ascend().ok();
@@ -507,41 +431,37 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// (header, keys and values), and this function exposes that.
     ///
     /// Returns a raw ptr to avoid asserting exclusive access to the entire node.
-    /// This also implies you can invoke this member on the shared root, but the resulting pointer
-    /// might not be properly aligned and definitely would not allow accessing keys and values.
     fn as_leaf_mut(&mut self) -> *mut LeafNode<K, V> {
         self.node.as_ptr()
     }
 
-    /// Unsafe because the caller must ensure that the node is not the shared root.
-    unsafe fn keys_mut(&mut self) -> &mut [K] {
-        self.reborrow_mut().into_key_slice_mut()
+    fn keys_mut(&mut self) -> &mut [K] {
+        // SAFETY: the caller will not be able to call further methods on self
+        // until the key slice reference is dropped, as we have unique access
+        // for the lifetime of the borrow.
+        unsafe { self.reborrow_mut().into_key_slice_mut() }
     }
 
-    /// Unsafe because the caller must ensure that the node is not the shared root.
-    unsafe fn vals_mut(&mut self) -> &mut [V] {
-        self.reborrow_mut().into_val_slice_mut()
+    fn vals_mut(&mut self) -> &mut [V] {
+        // SAFETY: the caller will not be able to call further methods on self
+        // until the value slice reference is dropped, as we have unique access
+        // for the lifetime of the borrow.
+        unsafe { self.reborrow_mut().into_val_slice_mut() }
     }
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
-    /// Unsafe because the caller must ensure that the node is not the shared root.
-    unsafe fn into_key_slice(self) -> &'a [K] {
-        debug_assert!(!self.is_shared_root());
-        // We cannot be the shared root, so `as_leaf` is okay.
-        slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().keys), self.len())
+    fn into_key_slice(self) -> &'a [K] {
+        unsafe { slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().keys), self.len()) }
     }
 
-    /// Unsafe because the caller must ensure that the node is not the shared root.
-    unsafe fn into_val_slice(self) -> &'a [V] {
-        debug_assert!(!self.is_shared_root());
-        // We cannot be the shared root, so `as_leaf` is okay.
-        slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().vals), self.len())
+    fn into_val_slice(self) -> &'a [V] {
+        unsafe { slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().vals), self.len()) }
     }
 
-    /// Unsafe because the caller must ensure that the node is not the shared root.
-    unsafe fn into_slices(self) -> (&'a [K], &'a [V]) {
-        let k = ptr::read(&self);
+    fn into_slices(self) -> (&'a [K], &'a [V]) {
+        // SAFETY: equivalent to reborrow() except not requiring Type: 'a
+        let k = unsafe { ptr::read(&self) };
         (k.into_key_slice(), self.into_val_slice())
     }
 }
@@ -553,28 +473,27 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         unsafe { &mut *(self.root as *mut Root<K, V>) }
     }
 
-    /// Unsafe because the caller must ensure that the node is not the shared root.
-    unsafe fn into_key_slice_mut(mut self) -> &'a mut [K] {
-        debug_assert!(!self.is_shared_root());
-        // We cannot be the shared root, so `as_leaf_mut` is okay.
-        slice::from_raw_parts_mut(
-            MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).keys),
-            self.len(),
-        )
+    fn into_key_slice_mut(mut self) -> &'a mut [K] {
+        // SAFETY: The keys of a node must always be initialized up to length.
+        unsafe {
+            slice::from_raw_parts_mut(
+                MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).keys),
+                self.len(),
+            )
+        }
     }
 
-    /// Unsafe because the caller must ensure that the node is not the shared root.
-    unsafe fn into_val_slice_mut(mut self) -> &'a mut [V] {
-        debug_assert!(!self.is_shared_root());
-        slice::from_raw_parts_mut(
-            MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).vals),
-            self.len(),
-        )
+    fn into_val_slice_mut(mut self) -> &'a mut [V] {
+        // SAFETY: The values of a node must always be initialized up to length.
+        unsafe {
+            slice::from_raw_parts_mut(
+                MaybeUninit::first_ptr_mut(&mut (*self.as_leaf_mut()).vals),
+                self.len(),
+            )
+        }
     }
 
-    /// Unsafe because the caller must ensure that the node is not the shared root.
-    unsafe fn into_slices_mut(mut self) -> (&'a mut [K], &'a mut [V]) {
-        debug_assert!(!self.is_shared_root());
+    fn into_slices_mut(mut self) -> (&'a mut [K], &'a mut [V]) {
         // We cannot use the getters here, because calling the second one
         // invalidates the reference returned by the first.
         // More precisely, it is the call to `len` that is the culprit,
@@ -582,8 +501,13 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         // overlap with the keys (and even the values, for ZST keys).
         let len = self.len();
         let leaf = self.as_leaf_mut();
-        let keys = slice::from_raw_parts_mut(MaybeUninit::first_ptr_mut(&mut (*leaf).keys), len);
-        let vals = slice::from_raw_parts_mut(MaybeUninit::first_ptr_mut(&mut (*leaf).vals), len);
+        // SAFETY: The keys and values of a node must always be initialized up to length.
+        let keys = unsafe {
+            slice::from_raw_parts_mut(MaybeUninit::first_ptr_mut(&mut (*leaf).keys), len)
+        };
+        let vals = unsafe {
+            slice::from_raw_parts_mut(MaybeUninit::first_ptr_mut(&mut (*leaf).vals), len)
+        };
         (keys, vals)
     }
 }
@@ -592,7 +516,6 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     /// Adds a key/value pair the end of the node.
     pub fn push(&mut self, key: K, val: V) {
         assert!(self.len() < CAPACITY);
-        debug_assert!(!self.is_shared_root());
 
         let idx = self.len();
 
@@ -607,7 +530,6 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     /// Adds a key/value pair to the beginning of the node.
     pub fn push_front(&mut self, key: K, val: V) {
         assert!(self.len() < CAPACITY);
-        debug_assert!(!self.is_shared_root());
 
         unsafe {
             slice_insert(self.keys_mut(), 0, key);
@@ -624,7 +546,6 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     pub fn push(&mut self, key: K, val: V, edge: Root<K, V>) {
         assert!(edge.height == self.height - 1);
         assert!(self.len() < CAPACITY);
-        debug_assert!(!self.is_shared_root());
 
         let idx = self.len();
 
@@ -658,7 +579,6 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     pub fn push_front(&mut self, key: K, val: V, edge: Root<K, V>) {
         assert!(edge.height == self.height - 1);
         assert!(self.len() < CAPACITY);
-        debug_assert!(!self.is_shared_root());
 
         unsafe {
             slice_insert(self.keys_mut(), 0, key);
@@ -744,8 +664,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
         }
     }
 
-    /// Unsafe because the caller must ensure that the node is not the shared root.
-    unsafe fn into_kv_pointers_mut(mut self) -> (*mut K, *mut V) {
+    fn into_kv_pointers_mut(mut self) -> (*mut K, *mut V) {
         (self.keys_mut().as_mut_ptr(), self.vals_mut().as_mut_ptr())
     }
 }
@@ -904,7 +823,6 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
     fn insert_fit(&mut self, key: K, val: V) -> *mut V {
         // Necessary for correctness, but in a private module
         debug_assert!(self.node.len() < CAPACITY);
-        debug_assert!(!self.node.is_shared_root());
 
         unsafe {
             slice_insert(self.node.keys_mut(), self.idx, key);
@@ -1081,7 +999,6 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
     /// - All the key/value pairs to the right of this handle are put into a newly
     ///   allocated node.
     pub fn split(mut self) -> (NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, K, V, Root<K, V>) {
-        assert!(!self.node.is_shared_root());
         unsafe {
             let mut new_node = Box::new(LeafNode::new());
 
@@ -1113,7 +1030,6 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
     pub fn remove(
         mut self,
     ) -> (Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>, K, V) {
-        assert!(!self.node.is_shared_root());
         unsafe {
             let k = slice_remove(self.node.keys_mut(), self.idx);
             let v = slice_remove(self.node.vals_mut(), self.idx);
