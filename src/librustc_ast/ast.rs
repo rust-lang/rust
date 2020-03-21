@@ -31,7 +31,6 @@ use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{self, Decoder, Encoder};
 use rustc_span::source_map::{respan, Spanned};
@@ -2251,27 +2250,22 @@ pub enum AttrStyle {
     Inner,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Copy)]
-pub struct AttrId(pub usize);
-
-impl Idx for AttrId {
-    fn new(idx: usize) -> Self {
-        AttrId(idx)
-    }
-    fn index(self) -> usize {
-        self.0
+rustc_index::newtype_index! {
+    pub struct AttrId {
+        ENCODABLE = custom
+        DEBUG_FORMAT = "AttrId({})"
     }
 }
 
 impl rustc_serialize::Encodable for AttrId {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_unit()
+    fn encode<S: Encoder>(&self, _: &mut S) -> Result<(), S::Error> {
+        Ok(())
     }
 }
 
 impl rustc_serialize::Decodable for AttrId {
-    fn decode<D: Decoder>(d: &mut D) -> Result<AttrId, D::Error> {
-        d.read_nil().map(|_| crate::attr::mk_attr_id())
+    fn decode<D: Decoder>(_: &mut D) -> Result<AttrId, D::Error> {
+        Ok(crate::attr::mk_attr_id())
     }
 }
 

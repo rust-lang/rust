@@ -337,21 +337,26 @@ impl<'hir> Map<'hir> {
     }
 
     fn find_entry(&self, id: HirId) -> Option<Entry<'hir>> {
-        Some(self.get_entry(id))
+        if id.local_id == ItemLocalId::from_u32(0) {
+            let owner = self.tcx.hir_owner(id.owner);
+            owner.map(|owner| Entry { parent: owner.parent, node: owner.node })
+        } else {
+            let owner = self.tcx.hir_owner_nodes(id.owner);
+            owner.and_then(|owner| {
+                let node = owner.nodes[id.local_id].as_ref();
+                // FIXME(eddyb) use a single generic type insted of having both
+                // `Entry` and `ParentedNode`, which are effectively the same.
+                // Alternatively, rewrite code using `Entry` to use `ParentedNode`.
+                node.map(|node| Entry {
+                    parent: HirId { owner: id.owner, local_id: node.parent },
+                    node: node.node,
+                })
+            })
+        }
     }
 
     fn get_entry(&self, id: HirId) -> Entry<'hir> {
-        if id.local_id == ItemLocalId::from_u32(0) {
-            let owner = self.tcx.hir_owner(id.owner);
-            Entry { parent: owner.parent, node: owner.node }
-        } else {
-            let owner = self.tcx.hir_owner_nodes(id.owner);
-            let node = owner.nodes[id.local_id].as_ref().unwrap();
-            // FIXME(eddyb) use a single generic type insted of having both
-            // `Entry` and `ParentedNode`, which are effectively the same.
-            // Alternatively, rewrite code using `Entry` to use `ParentedNode`.
-            Entry { parent: HirId { owner: id.owner, local_id: node.parent }, node: node.node }
-        }
+        self.find_entry(id).unwrap()
     }
 
     pub fn item(&self, id: HirId) -> &'hir Item<'hir> {
@@ -376,7 +381,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
-        self.tcx.hir_owner_nodes(id.hir_id.owner).bodies.get(&id.hir_id.local_id).unwrap()
+        self.tcx.hir_owner_nodes(id.hir_id.owner).unwrap().bodies.get(&id.hir_id.local_id).unwrap()
     }
 
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
@@ -536,8 +541,9 @@ impl<'hir> Map<'hir> {
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
     pub fn find(&self, hir_id: HirId) -> Option<Node<'hir>> {
-        let node = self.get_entry(hir_id).node;
-        if let Node::Crate(..) = node { None } else { Some(node) }
+        self.find_entry(hir_id).and_then(|entry| {
+            if let Node::Crate(..) = entry.node { None } else { Some(entry.node) }
+        })
     }
 
     /// Similar to `get_parent`; returns the parent HIR Id, or just `hir_id` if there

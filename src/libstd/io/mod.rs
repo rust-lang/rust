@@ -502,7 +502,7 @@ pub trait Read {
     /// how many bytes were read.
     ///
     /// This function does not provide any guarantees about whether it blocks
-    /// waiting for data, but if an object needs to block for a read but cannot
+    /// waiting for data, but if an object needs to block for a read and cannot,
     /// it will typically signal this via an [`Err`] return value.
     ///
     /// If the return value of this method is [`Ok(n)`], then it must be
