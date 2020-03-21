@@ -233,6 +233,7 @@ impl Canonicalized {
             Rotate(u32),
             Invert,
             RotateAndInvert(u32),
+            ShiftRight(u32),
         }
 
         // key is the word being mapped to
@@ -266,6 +267,18 @@ impl Canonicalized {
                             .entry(b)
                             .or_default()
                             .push((a, Mapping::RotateAndInvert(rotation)));
+                        // We're not interested in further mappings between a and b
+                        continue 'b;
+                    }
+                }
+
+                // All possible shifts
+                for shift_by in 1..64 {
+                    if a == (b >> shift_by) {
+                        mappings
+                            .entry(b)
+                            .or_default()
+                            .push((a, Mapping::ShiftRight(shift_by as u32)));
                         // We're not interested in further mappings between a and b
                         continue 'b;
                     }
@@ -384,6 +397,8 @@ impl Canonicalized {
             assert!(distinct_indices.insert(idx));
         }
 
+        const LOWER_6: u32 = (1 << 6) - 1;
+
         let canonicalized_words = canonicalized_words
             .into_iter()
             .map(|v| {
@@ -391,14 +406,18 @@ impl Canonicalized {
                     u8::try_from(v.0).unwrap(),
                     match v.1 {
                         Mapping::RotateAndInvert(amount) => {
-                            assert!(amount < (1 << 7));
-                            1 << 7 | (amount as u8)
+                            assert_eq!(amount, amount & LOWER_6);
+                            1 << 6 | (amount as u8)
                         }
                         Mapping::Rotate(amount) => {
-                            assert!(amount < (1 << 7));
+                            assert_eq!(amount, amount & LOWER_6);
                             amount as u8
                         }
-                        Mapping::Invert => 1 << 7,
+                        Mapping::Invert => 1 << 6,
+                        Mapping::ShiftRight(shift_by) => {
+                            assert_eq!(shift_by, shift_by & LOWER_6);
+                            1 << 7 | (shift_by as u8)
+                        }
                     },
                 )
             })

@@ -66,12 +66,12 @@ fn range_search<
     } else {
         let (real_idx, mapping) = bitset_canonicalized[idx - CANONICAL];
         let mut word = bitset_canonical[real_idx as usize];
-        let should_invert = mapping & (1 << 7) != 0;
+        let should_invert = mapping & (1 << 6) != 0;
         if should_invert {
             word = !word;
         }
         // Unset the inversion bit
-        let rotate_by = mapping & !(1 << 7);
+        let rotate_by = mapping & !(1 << 6);
         word = word.rotate_left(rotate_by as u32);
         word
     };

@@ -286,13 +286,18 @@ fn range_search<
     } else {
         let (real_idx, mapping) = bitset_canonicalized[idx - CANONICAL];
         let mut word = bitset_canonical[real_idx as usize];
-        let should_invert = mapping & (1 << 7) != 0;
+        let should_invert = mapping & (1 << 6) != 0;
         if should_invert {
             word = !word;
         }
-        // Unset the inversion bit
-        let rotate_by = mapping & !(1 << 7);
-        word = word.rotate_left(rotate_by as u32);
+        // Lower 6 bits
+        let quantity = mapping & ((1 << 6) - 1);
+        if mapping & (1 << 7) != 0 {
+            // shift
+            word >>= quantity as u64;
+        } else {
+            word = word.rotate_left(quantity as u32);
+        }
         word
     };
     (word & (1 << (needle % 64) as u64)) != 0
