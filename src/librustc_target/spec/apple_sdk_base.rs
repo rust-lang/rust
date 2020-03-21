@@ -49,34 +49,20 @@ pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
             // Ignore `SDKROOT` if it's clearly set for the wrong platform.
             "appletvos"
                 if sdkroot.contains("TVSimulator.platform")
-                    || sdkroot.contains("MacOSX.platform") =>
-            {
-                ()
-            }
+                    || sdkroot.contains("MacOSX.platform") => {}
             "appletvsimulator"
-                if sdkroot.contains("TVOS.platform") || sdkroot.contains("MacOSX.platform") =>
-            {
-                ()
-            }
+                if sdkroot.contains("TVOS.platform") || sdkroot.contains("MacOSX.platform") => {}
             "iphoneos"
                 if sdkroot.contains("iPhoneSimulator.platform")
-                    || sdkroot.contains("MacOSX.platform") =>
-            {
-                ()
-            }
+                    || sdkroot.contains("MacOSX.platform") => {}
             "iphonesimulator"
-                if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("MacOSX.platform") =>
-            {
-                ()
+                if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("MacOSX.platform") => {
             }
             "macosx10.15"
                 if sdkroot.contains("iPhoneOS.platform")
-                    || sdkroot.contains("iPhoneSimulator.platform") =>
-            {
-                ()
-            }
+                    || sdkroot.contains("iPhoneSimulator.platform") => {}
             // Ignore `SDKROOT` if it's not a valid path.
-            _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => (),
+            _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}
             _ => return Ok(sdkroot),
         }
     }
