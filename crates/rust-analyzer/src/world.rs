@@ -184,7 +184,6 @@ impl WorldState {
             });
         change.set_crate_graph(crate_graph);
 
-        // FIXME: Figure out the multi-workspace situation
         let check_watcher = create_watcher(&workspaces, &options);
 
         let mut analysis_host = AnalysisHost::new(lru_capacity);
