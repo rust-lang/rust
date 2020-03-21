@@ -19,7 +19,7 @@ use rustc::traits::select;
 use rustc::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::relate::RelateResult;
-use rustc::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
+use rustc::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 pub use rustc::ty::IntVarValue;
 use rustc::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc::ty::{ConstVid, FloatVid, IntVid, TyVid};
@@ -501,6 +501,7 @@ impl NLLRegionVariableOrigin {
     }
 }
 
+// FIXME(eddyb) investigate overlap between this and `TyOrConstInferVar`.
 #[derive(Copy, Clone, Debug)]
 pub enum FixupError<'tcx> {
     UnresolvedIntTy(IntVid),
@@ -1608,14 +1609,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    /// `infer_ty_changed(infer_ty)` is equivalent to `shallow_resolve(ty) != ty`
-    /// (where `ty.kind = ty::Infer(infer_ty)`), but more efficient. It's always
+    /// `ty_or_const_infer_var_changed` is equivalent to one of these two:
+    ///   * `shallow_resolve(ty) != ty` (where `ty.kind = ty::Infer(_)`)
+    ///   * `shallow_resolve(ct) != ct` (where `ct.kind = ty::ConstKind::Infer(_)`)
+    ///
+    /// However, `ty_or_const_infer_var_changed` is more efficient. It's always
     /// inlined, despite being large, because it has only two call sites that
-    /// are extremely hot.
+    /// are extremely hot (both in `traits::fulfill`'s checking of `stalled_on`
+    /// inference variables), and it handles both `Ty` and `ty::Const` without
+    /// having to resort to storing full `GenericArg`s in `stalled_on`.
     #[inline(always)]
-    pub fn infer_ty_changed(&self, infer_ty: ty::InferTy) -> bool {
-        match infer_ty {
-            ty::TyVar(v) => {
+    pub fn ty_or_const_infer_var_changed(&self, infer_var: TyOrConstInferVar<'tcx>) -> bool {
+        match infer_var {
+            TyOrConstInferVar::Ty(v) => {
                 use self::type_variable::TypeVariableValue;
 
                 // If `inlined_probe` returns a `Known` value, it never equals
@@ -1626,22 +1632,79 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
 
-            ty::IntVar(v) => {
+            TyOrConstInferVar::TyInt(v) => {
                 // If `inlined_probe_value` returns a value it's always a
                 // `ty::Int(_)` or `ty::UInt(_)`, which never matches a
                 // `ty::Infer(_)`.
                 self.inner.borrow_mut().int_unification_table.inlined_probe_value(v).is_some()
             }
 
-            ty::FloatVar(v) => {
-                // If `inlined_probe_value` returns a value it's always a
+            TyOrConstInferVar::TyFloat(v) => {
+                // If `probe_value` returns a value it's always a
                 // `ty::Float(_)`, which never matches a `ty::Infer(_)`.
                 //
                 // Not `inlined_probe_value(v)` because this call site is colder.
                 self.inner.borrow_mut().float_unification_table.probe_value(v).is_some()
             }
 
-            _ => unreachable!(),
+            TyOrConstInferVar::Const(v) => {
+                // If `probe_value` returns a `Known` value, it never equals
+                // `ty::ConstKind::Infer(ty::InferConst::Var(v))`.
+                //
+                // Not `inlined_probe_value(v)` because this call site is colder.
+                match self.inner.borrow_mut().const_unification_table.probe_value(v).val {
+                    ConstVariableValue::Unknown { .. } => false,
+                    ConstVariableValue::Known { .. } => true,
+                }
+            }
+        }
+    }
+}
+
+/// Helper for `ty_or_const_infer_var_changed` (see comment on that), currently
+/// used only for `traits::fulfill`'s list of `stalled_on` inference variables.
+#[derive(Copy, Clone, Debug)]
+pub enum TyOrConstInferVar<'tcx> {
+    /// Equivalent to `ty::Infer(ty::TyVar(_))`.
+    Ty(TyVid),
+    /// Equivalent to `ty::Infer(ty::IntVar(_))`.
+    TyInt(IntVid),
+    /// Equivalent to `ty::Infer(ty::FloatVar(_))`.
+    TyFloat(FloatVid),
+
+    /// Equivalent to `ty::ConstKind::Infer(ty::InferConst::Var(_))`.
+    Const(ConstVid<'tcx>),
+}
+
+impl TyOrConstInferVar<'tcx> {
+    /// Tries to extract an inference variable from a type or a constant, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    pub fn maybe_from_generic_arg(arg: GenericArg<'tcx>) -> Option<Self> {
+        match arg.unpack() {
+            GenericArgKind::Type(ty) => Self::maybe_from_ty(ty),
+            GenericArgKind::Const(ct) => Self::maybe_from_const(ct),
+            GenericArgKind::Lifetime(_) => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a type, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`).
+    pub fn maybe_from_ty(ty: Ty<'tcx>) -> Option<Self> {
+        match ty.kind {
+            ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
+            ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
+            ty::Infer(ty::FloatVar(v)) => Some(TyOrConstInferVar::TyFloat(v)),
+            _ => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a constant, returns `None`
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    pub fn maybe_from_const(ct: &'tcx ty::Const<'tcx>) -> Option<Self> {
+        match ct.val {
+            ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
+            _ => None,
         }
     }
 }
