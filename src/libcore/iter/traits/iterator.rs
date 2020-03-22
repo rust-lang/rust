@@ -1037,9 +1037,6 @@ pub trait Iterator {
     /// closure on each element of the iterator, and yield elements
     /// while it returns [`Some(_)`][`Some`].
     ///
-    /// After [`None`] is returned, `map_while()`'s job is over, and the
-    /// rest of the elements are ignored.
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1079,15 +1076,14 @@ pub trait Iterator {
     /// #![feature(iter_map_while)]
     /// use std::convert::TryFrom;
     ///
-    /// let a = [0, -1, 1, -2];
+    /// let a = [0, 1, 2, -3, 4, 5, -6];
     ///
-    /// let mut iter = a.iter().map_while(|x| u32::try_from(*x).ok());
+    /// let iter = a.iter().map_while(|x| u32::try_from(*x).ok());
+    /// let vec = iter.collect::<Vec<_>>();
     ///
-    /// assert_eq!(iter.next(), Some(0u32));
-    ///
-    /// // We have more elements that are fit in u32, but since we already
-    /// // got a None, map_while() isn't used any more
-    /// assert_eq!(iter.next(), None);
+    /// // We have more elements which could fit in u32 (4, 5), but `map_while` returned `None` for `-3`
+    /// // (as the `predicate` returned `None`) and `collect` stops at the first `None` entcountered.
+    /// assert_eq!(vec, vec![0, 1, 2]);
     /// ```
     ///
     /// Because `map_while()` needs to look at the value in order to see if it
@@ -1115,8 +1111,13 @@ pub trait Iterator {
     /// The `-3` is no longer there, because it was consumed in order to see if
     /// the iteration should stop, but wasn't placed back into the iterator.
     ///
+    /// Note that unlike [`take_while`] this iterator is **not** fused.
+    /// It is also not specified what this iterator returns after the first` None` is returned.
+    /// If you need fused iterator, use [`fuse`].
+    ///
     /// [`Some`]: ../../std/option/enum.Option.html#variant.Some
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`fuse`]: #method.fuse
     #[inline]
     #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
     fn map_while<B, P>(self, predicate: P) -> MapWhile<Self, P>
