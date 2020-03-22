@@ -358,6 +358,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
         } else if is_write {
             Err(ConstEvalErrKind::ModifiedGlobal.into())
         } else if memory_extra.can_access_statics || def_id.is_none() {
+            // `def_id.is_none()` indicates this is not a static, but a const or so.
             Ok(())
         } else {
             Err(ConstEvalErrKind::ConstAccessesStatic.into())

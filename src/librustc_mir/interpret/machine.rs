@@ -209,6 +209,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     }
 
     /// Called before a global allocation is accessed.
+    /// `def_id` is `Some` if this is the "lazy" allocation of a static.
     #[inline]
     fn before_access_global(
         _memory_extra: &Self::MemoryExtra,

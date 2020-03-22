@@ -416,7 +416,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
         let alloc = tcx.alloc_map.lock().get(id);
         let (alloc, def_id) = match alloc {
-            Some(GlobalAlloc::Memory(mem)) => (mem, None),
+            Some(GlobalAlloc::Memory(mem)) => {
+                // Memory of a constant or promoted or anonymous memory referenced by a static.
+                (mem, None)
+            }
             Some(GlobalAlloc::Function(..)) => throw_ub!(DerefFunctionPointer(id)),
             None => throw_ub!(PointerUseAfterFree(id)),
             Some(GlobalAlloc::Static(def_id)) => {

@@ -274,7 +274,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _memory_extra: &(),
         _alloc_id: AllocId,
         allocation: &Allocation<Self::PointerTag, Self::AllocExtra>,
-        _def_id: Option<DefId>,
+        def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
         if is_write {
@@ -282,7 +282,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         }
         // If the static allocation is mutable or if it has relocations (it may be legal to mutate
         // the memory behind that in the future), then we can't const prop it.
-        if allocation.mutability == Mutability::Mut || allocation.relocations().len() > 0 {
+        // FIXME: we only check statics here (that have a `DefId`), not other mutable allocations.
+        // Why that?
+        if def_id.is_some()
+            && (allocation.mutability == Mutability::Mut || allocation.relocations().len() > 0)
+        {
             throw_machine_stop_str!("can't eval mutable statics in ConstProp");
         }
 
