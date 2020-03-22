@@ -4,7 +4,7 @@ use hir::{
     AsAssocItem, AssocItemContainer, ModPath, Module, ModuleDef, PathResolution, Semantics, Trait,
     Type,
 };
-use ra_ide_db::{imports_locator::ImportsLocator, RootDatabase};
+use ra_ide_db::{defs::Definition, imports_locator::ImportsLocator, RootDatabase};
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode},
@@ -127,14 +127,16 @@ impl AutoImportAssets {
         ImportsLocator::new(db)
             .find_imports(&self.get_search_query())
             .into_iter()
-            .filter_map(|module_def| match &self.import_candidate {
+            .filter_map(|definition| match &self.import_candidate {
                 ImportCandidate::TraitAssocItem(assoc_item_type, _) => {
-                    let located_assoc_item = match module_def {
-                        ModuleDef::Function(located_function) => located_function
-                            .as_assoc_item(db)
-                            .map(|assoc| assoc.container(db))
-                            .and_then(Self::assoc_to_trait),
-                        ModuleDef::Const(located_const) => located_const
+                    let located_assoc_item = match definition {
+                        Definition::ModuleDef(ModuleDef::Function(located_function)) => {
+                            located_function
+                                .as_assoc_item(db)
+                                .map(|assoc| assoc.container(db))
+                                .and_then(Self::assoc_to_trait)
+                        }
+                        Definition::ModuleDef(ModuleDef::Const(located_const)) => located_const
                             .as_assoc_item(db)
                             .map(|assoc| assoc.container(db))
                             .and_then(Self::assoc_to_trait),
@@ -152,11 +154,13 @@ impl AutoImportAssets {
                             None,
                             |_, assoc| Self::assoc_to_trait(assoc.container(db)),
                         )
-                        .map(ModuleDef::from)
+                        .map(|located_trait| ModuleDef::from(located_trait).into())
                 }
                 ImportCandidate::TraitMethod(function_callee, _) => {
                     let located_assoc_item =
-                        if let ModuleDef::Function(located_function) = module_def {
+                        if let Definition::ModuleDef(ModuleDef::Function(located_function)) =
+                            definition
+                        {
                             located_function
                                 .as_assoc_item(db)
                                 .map(|assoc| assoc.container(db))
@@ -178,11 +182,15 @@ impl AutoImportAssets {
                                 Self::assoc_to_trait(function.as_assoc_item(db)?.container(db))
                             },
                         )
-                        .map(ModuleDef::from)
+                        .map(|located_trait| ModuleDef::from(located_trait).into())
                 }
-                _ => Some(module_def),
+                _ => match definition {
+                    Definition::ModuleDef(module_def) => Some(module_def.into()),
+                    Definition::Macro(macro_def) => Some(macro_def.into()),
+                    _ => None,
+                },
             })
-            .filter_map(|module_def| self.module_with_name_to_import.find_use_path(db, module_def))
+            .filter_map(|item| self.module_with_name_to_import.find_use_path(db, item))
             .filter(|use_path| !use_path.segments.is_empty())
             .take(20)
             .collect::<BTreeSet<_>>()

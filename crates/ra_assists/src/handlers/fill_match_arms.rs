@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use hir::{Adt, HasSource, Semantics};
+use hir::{Adt, HasSource, ModuleDef, Semantics};
 use itertools::Itertools;
 use ra_ide_db::RootDatabase;
 
@@ -154,7 +154,8 @@ fn resolve_tuple_of_enum_def(
 }
 
 fn build_pat(db: &RootDatabase, module: hir::Module, var: hir::EnumVariant) -> Option<ast::Pat> {
-    let path = crate::ast_transform::path_to_ast(module.find_use_path(db, var.into())?);
+    let path =
+        crate::ast_transform::path_to_ast(module.find_use_path(db, ModuleDef::from(var).into())?);
 
     // FIXME: use HIR for this; it doesn't currently expose struct vs. tuple vs. unit variants though
     let pat: ast::Pat = match var.source(db).value.kind() {

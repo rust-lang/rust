@@ -129,7 +129,7 @@ impl<'a> QualifyPaths<'a> {
         let resolution = self.source_scope.resolve_hir_path(&hir_path?)?;
         match resolution {
             PathResolution::Def(def) => {
-                let found_path = from.find_use_path(self.source_scope.db, def)?;
+                let found_path = from.find_use_path(self.source_scope.db, def.into())?;
                 let mut path = path_to_ast(found_path);
 
                 let type_args = p
