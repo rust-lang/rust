@@ -51,12 +51,6 @@ impl Default for MiriConfig {
     }
 }
 
-/// Details of premature program termination.
-pub enum TerminationInfo {
-    Exit(i64),
-    Abort(Option<String>),
-}
-
 /// Returns a freshly created `InterpCx`, along with an `MPlaceTy` representing
 /// the location where the return value of the `start` lang item will be
 /// written to.
@@ -229,6 +223,6 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
             }
             Some(return_code)
         }
-        Err(e) => report_diagnostic(&ecx, e),
+        Err(e) => report_error(&ecx, e),
     }
 }

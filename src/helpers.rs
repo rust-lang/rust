@@ -367,10 +367,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// case.
     fn check_no_isolation(&self, name: &str) -> InterpResult<'tcx> {
         if !self.eval_context_ref().machine.communicate {
-            throw_unsup_format!(
-                "`{}` not available when isolation is enabled (pass the flag `-Zmiri-disable-isolation` to disable isolation)",
+            throw_machine_stop!(TerminationInfo::UnsupportedInIsolation(format!(
+                "`{}` not available when isolation is enabled",
                 name,
-            )
+            )))
         }
         Ok(())
     }

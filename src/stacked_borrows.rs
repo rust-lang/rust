@@ -192,6 +192,15 @@ impl GlobalState {
     }
 }
 
+/// Error reporting
+fn err_sb_ub(msg: String) -> InterpError<'static> {
+    // FIXME: use `err_machine_stop!` macro, once that exists.
+    InterpError::MachineStop(Box::new(TerminationInfo::ExperimentalUb {
+        msg,
+        url: format!("https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md"),
+    }))
+}
+
 // # Stacked Borrows Core Begin
 
 /// We need to make at least the following things true:
@@ -272,15 +281,15 @@ impl<'tcx> Stack {
         if let Some(call) = item.protector {
             if global.is_active(call) {
                 if let Some(tag) = tag {
-                    throw_ub!(UbExperimental(format!(
+                    Err(err_sb_ub(format!(
                         "not granting access to tag {:?} because incompatible item is protected: {:?}",
                         tag, item
-                    )));
+                    )))?
                 } else {
-                    throw_ub!(UbExperimental(format!(
+                    Err(err_sb_ub(format!(
                         "deallocating while item is protected: {:?}",
                         item
-                    )));
+                    )))?
                 }
             }
         }
@@ -294,10 +303,10 @@ impl<'tcx> Stack {
 
         // Step 1: Find granting item.
         let granting_idx = self.find_granting(access, tag).ok_or_else(|| {
-            err_ub!(UbExperimental(format!(
+            err_sb_ub(format!(
                 "no item granting {} to tag {:?} found in borrow stack.",
                 access, tag
-            ),))
+            ))
         })?;
 
         // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
@@ -338,10 +347,10 @@ impl<'tcx> Stack {
     fn dealloc(&mut self, tag: Tag, global: &GlobalState) -> InterpResult<'tcx> {
         // Step 1: Find granting item.
         self.find_granting(AccessKind::Write, tag).ok_or_else(|| {
-            err_ub!(UbExperimental(format!(
+            err_sb_ub(format!(
                 "no item granting write access for deallocation to tag {:?} found in borrow stack",
                 tag,
-            )))
+            ))
         })?;
 
         // Step 2: Remove all items.  Also checks for protectors.
@@ -363,10 +372,10 @@ impl<'tcx> Stack {
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
         let granting_idx = self.find_granting(access, derived_from)
-            .ok_or_else(|| err_ub!(UbExperimental(format!(
+            .ok_or_else(|| err_sb_ub(format!(
                 "trying to reborrow for {:?}, but parent tag {:?} does not have an appropriate item in the borrow stack",
                 new.perm, derived_from,
-            ))))?;
+            )))?;
 
         // Compute where to put the new item.
         // Either way, we ensure that we insert the new item in a way such that between

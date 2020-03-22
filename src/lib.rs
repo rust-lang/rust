@@ -45,10 +45,10 @@ pub use crate::shims::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 pub use crate::shims::EvalContextExt as ShimsEvalContextExt;
 
 pub use crate::diagnostics::{
-    register_diagnostic, report_diagnostic, EvalContextExt as DiagnosticsEvalContextExt,
-    NonHaltingDiagnostic,
+    register_diagnostic, report_error, EvalContextExt as DiagnosticsEvalContextExt,
+    TerminationInfo, NonHaltingDiagnostic,
 };
-pub use crate::eval::{create_ecx, eval_main, MiriConfig, TerminationInfo};
+pub use crate::eval::{create_ecx, eval_main, MiriConfig};
 pub use crate::helpers::EvalContextExt as HelpersEvalContextExt;
 pub use crate::machine::{
     AllocExtra, Evaluator, FrameData, MemoryExtra, MiriEvalContext, MiriEvalContextExt,
