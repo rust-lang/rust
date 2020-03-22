@@ -94,12 +94,16 @@ pub(crate) fn find_all_refs(
     let sema = Semantics::new(db);
     let syntax = sema.parse(position.file_id).syntax().clone();
 
-    let (opt_name, search_kind) =
-        if let Some(name) = get_struct_def_name_for_struct_literal_search(&syntax, position) {
-            (Some(name), ReferenceKind::StructLiteral)
-        } else {
-            (find_node_at_offset::<ast::Name>(&syntax, position.offset), ReferenceKind::Other)
-        };
+    let (opt_name, search_kind) = if let Some(name) =
+        get_struct_def_name_for_struct_literal_search(&sema, &syntax, position)
+    {
+        (Some(name), ReferenceKind::StructLiteral)
+    } else {
+        (
+            sema.find_node_at_offset_with_descend::<ast::Name>(&syntax, position.offset),
+            ReferenceKind::Other,
+        )
+    };
 
     let RangeInfo { range, info: def } = find_name(&sema, &syntax, position, opt_name)?;
 
@@ -131,7 +135,8 @@ fn find_name(
         let range = name.syntax().text_range();
         return Some(RangeInfo::new(range, def));
     }
-    let name_ref = find_node_at_offset::<ast::NameRef>(&syntax, position.offset)?;
+    let name_ref =
+        sema.find_node_at_offset_with_descend::<ast::NameRef>(&syntax, position.offset)?;
     let def = classify_name_ref(sema, &name_ref)?.definition();
     let range = name_ref.syntax().text_range();
     Some(RangeInfo::new(range, def))
@@ -157,6 +162,7 @@ fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Optio
 }
 
 fn get_struct_def_name_for_struct_literal_search(
+    sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     position: FilePosition,
 ) -> Option<ast::Name> {
@@ -164,10 +170,18 @@ fn get_struct_def_name_for_struct_literal_search(
         if right.kind() != SyntaxKind::L_CURLY && right.kind() != SyntaxKind::L_PAREN {
             return None;
         }
-        if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, left.text_range().start()) {
+        if let Some(name) =
+            sema.find_node_at_offset_with_descend::<ast::Name>(&syntax, left.text_range().start())
+        {
             return name.syntax().ancestors().find_map(ast::StructDef::cast).and_then(|l| l.name());
         }
-        if find_node_at_offset::<ast::TypeParamList>(&syntax, left.text_range().start()).is_some() {
+        if sema
+            .find_node_at_offset_with_descend::<ast::TypeParamList>(
+                &syntax,
+                left.text_range().start(),
+            )
+            .is_some()
+        {
             return left.ancestors().find_map(ast::StructDef::cast).and_then(|l| l.name());
         }
     }
