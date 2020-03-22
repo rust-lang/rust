@@ -581,7 +581,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// If `target` is `None`, that indicates the function cannot return, so we raise UB.
     pub fn return_to_block(&mut self, target: Option<mir::BasicBlock>) -> InterpResult<'tcx> {
         if let Some(target) = target {
-            Ok(self.go_to_block(target))
+            self.go_to_block(target);
+            Ok(())
         } else {
             throw_ub!(Unreachable)
         }

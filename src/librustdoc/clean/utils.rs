@@ -507,7 +507,7 @@ pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
 }
 
 pub fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<String> {
-    let value = cx.tcx.const_eval_poly(def_id).ok().and_then(|val| {
+    cx.tcx.const_eval_poly(def_id).ok().and_then(|val| {
         let ty = cx.tcx.type_of(def_id);
         match (val, &ty.kind) {
             (_, &ty::Ref(..)) => None,
@@ -518,9 +518,7 @@ pub fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<Strin
             }
             _ => None,
         }
-    });
-
-    value
+    })
 }
 
 fn format_integer_with_underscore_sep(num: &str) -> String {

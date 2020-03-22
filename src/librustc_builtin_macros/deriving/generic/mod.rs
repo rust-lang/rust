@@ -1056,8 +1056,9 @@ impl<'a> MethodDef<'a> {
                     self_: field,
                     other: other_fields
                         .iter_mut()
-                        .map(|l| match l.next().unwrap() {
-                            (.., ex, _) => ex,
+                        .map(|l| {
+                            let (.., ex, _) = l.next().unwrap();
+                            ex
                         })
                         .collect(),
                     attrs,

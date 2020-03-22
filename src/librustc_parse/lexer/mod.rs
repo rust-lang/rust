@@ -46,12 +46,20 @@ impl<'a> StringReader<'a> {
         source_file: Lrc<rustc_span::SourceFile>,
         override_span: Option<Span>,
     ) -> Self {
-        if source_file.src.is_none() {
+        // Make sure external source is loaded first, before accessing it.
+        // While this can't show up during normal parsing, `retokenize` may
+        // be called with a source file from an external crate.
+        sess.source_map().ensure_source_file_source_present(source_file.clone());
+
+        // FIXME(eddyb) use `Lrc<str>` or similar to avoid cloning the `String`.
+        let src = if let Some(src) = &source_file.src {
+            src.clone()
+        } else if let Some(src) = source_file.external_src.borrow().get_source() {
+            src.clone()
+        } else {
             sess.span_diagnostic
                 .bug(&format!("cannot lex `source_file` without source: {}", source_file.name));
-        }
-
-        let src = (*source_file.src.as_ref().unwrap()).clone();
+        };
 
         StringReader {
             sess,
@@ -179,14 +187,12 @@ impl<'a> StringReader<'a> {
             rustc_lexer::TokenKind::LineComment => {
                 let string = self.str_from(start);
                 // comments with only more "/"s are not doc comments
-                let tok = if comments::is_line_doc_comment(string) {
+                if comments::is_line_doc_comment(string) {
                     self.forbid_bare_cr(start, string, "bare CR not allowed in doc-comment");
                     token::DocComment(Symbol::intern(string))
                 } else {
                     token::Comment
-                };
-
-                tok
+                }
             }
             rustc_lexer::TokenKind::BlockComment { terminated } => {
                 let string = self.str_from(start);
@@ -204,14 +210,12 @@ impl<'a> StringReader<'a> {
                     self.fatal_span_(start, last_bpos, msg).raise();
                 }
 
-                let tok = if is_doc_comment {
+                if is_doc_comment {
                     self.forbid_bare_cr(start, string, "bare CR not allowed in block doc-comment");
                     token::DocComment(Symbol::intern(string))
                 } else {
                     token::Comment
-                };
-
-                tok
+                }
             }
             rustc_lexer::TokenKind::Whitespace => token::Whitespace,
             rustc_lexer::TokenKind::Ident | rustc_lexer::TokenKind::RawIdent => {

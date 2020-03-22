@@ -1044,9 +1044,7 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx Indexe
         collector.finalize_and_compute_crate_hash(crate_disambiguator, &*tcx.cstore, cmdline_args)
     };
 
-    let map = tcx.arena.alloc(IndexedHir { crate_hash, map });
-
-    map
+    tcx.arena.alloc(IndexedHir { crate_hash, map })
 }
 
 /// Identical to the `PpAnn` implementation for `hir::Crate`,

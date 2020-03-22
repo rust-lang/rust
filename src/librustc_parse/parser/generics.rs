@@ -181,7 +181,7 @@ impl<'a> Parser<'a> {
         // We are considering adding generics to the `where` keyword as an alternative higher-rank
         // parameter syntax (as in `where<'a>` or `where<T>`. To avoid that being a breaking
         // change we parse those generics now, but report an error.
-        if self.choose_generics_over_qpath() {
+        if self.choose_generics_over_qpath(0) {
             let generics = self.parse_generics()?;
             self.struct_span_err(
                 generics.span,
@@ -257,7 +257,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn choose_generics_over_qpath(&self) -> bool {
+    pub(super) fn choose_generics_over_qpath(&self, start: usize) -> bool {
         // There's an ambiguity between generic parameters and qualified paths in impls.
         // If we see `<` it may start both, so we have to inspect some following tokens.
         // The following combinations can only start generics,
@@ -274,15 +274,12 @@ impl<'a> Parser<'a> {
         // we disambiguate it in favor of generics (`impl<T> ::absolute::Path<T> { ... }`)
         // because this is what almost always expected in practice, qualified paths in impls
         // (`impl <Type>::AssocTy { ... }`) aren't even allowed by type checker at the moment.
-        self.token == token::Lt
-            && (self.look_ahead(1, |t| t == &token::Pound || t == &token::Gt)
-                || self.look_ahead(1, |t| t.is_lifetime() || t.is_ident())
-                    && self.look_ahead(2, |t| {
-                        t == &token::Gt
-                            || t == &token::Comma
-                            || t == &token::Colon
-                            || t == &token::Eq
+        self.look_ahead(start, |t| t == &token::Lt)
+            && (self.look_ahead(start + 1, |t| t == &token::Pound || t == &token::Gt)
+                || self.look_ahead(start + 1, |t| t.is_lifetime() || t.is_ident())
+                    && self.look_ahead(start + 2, |t| {
+                        matches!(t.kind, token::Gt | token::Comma | token::Colon | token::Eq)
                     })
-                || self.is_keyword_ahead(1, &[kw::Const]))
+                || self.is_keyword_ahead(start + 1, &[kw::Const]))
     }
 }

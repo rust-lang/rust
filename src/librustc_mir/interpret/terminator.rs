@@ -370,7 +370,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         self.stack.pop();
                         Err(err)
                     }
-                    Ok(v) => Ok(v),
+                    Ok(()) => Ok(()),
                 }
             }
             // cannot use the shim here, because that will only result in infinite recursion

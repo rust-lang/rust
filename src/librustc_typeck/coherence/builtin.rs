@@ -178,10 +178,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
             use ty::TyKind::*;
             match (&source.kind, &target.kind) {
                 (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
-                    if infcx.at(&cause, param_env).eq(r_a, r_b).is_ok() && mutbl_a == *mutbl_b =>
-                {
-                    ()
-                }
+                    if infcx.at(&cause, param_env).eq(r_a, r_b).is_ok() && mutbl_a == *mutbl_b => {}
                 (&RawPtr(tm_a), &RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
                 (&Adt(def_a, substs_a), &Adt(def_b, substs_b))
                     if def_a.is_struct() && def_b.is_struct() =>
