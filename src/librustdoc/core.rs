@@ -249,7 +249,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     let missing_docs = rustc_lint::builtin::MISSING_DOCS.name;
     let missing_doc_example = rustc_lint::builtin::MISSING_DOC_CODE_EXAMPLES.name;
     let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
-    let no_crate_level_doc = rustc_lint::builtin::MISSING_CRATE_LEVEL_DOC.name;
+    let no_crate_level_docs = rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS.name;
 
     // In addition to those specific lints, we also need to whitelist those given through
     // command line, otherwise they'll get ignored and we don't want that.
@@ -259,7 +259,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         missing_docs.to_owned(),
         missing_doc_example.to_owned(),
         private_doc_tests.to_owned(),
-        no_crate_level_doc.to_owned(),
+        no_crate_level_docs.to_owned(),
     ];
 
     whitelisted_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
@@ -419,7 +419,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                              https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation\
                              .html";
                         tcx.struct_lint_node(
-                            rustc_lint::builtin::MISSING_CRATE_LEVEL_DOC,
+                            rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS,
                             ctxt.as_local_hir_id(m.def_id).unwrap(),
                             |lint| {
                                 let mut diag = lint.build(
