@@ -399,10 +399,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a single argument in the angle arguments `<...>` of a path segment.
     fn parse_angle_arg(&mut self) -> PResult<'a, Option<AngleBracketedArg>> {
-        let arg = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
-            // Parse lifetime argument.
-            AngleBracketedArg::Arg(GenericArg::Lifetime(self.expect_lifetime()))
-        } else if self.check_ident()
+        let arg = if self.check_ident()
             && self.look_ahead(1, |t| matches!(t.kind, token::Eq | token::Colon))
         {
             // Parse associated type constraint.
@@ -426,6 +423,9 @@ impl<'a> Parser<'a> {
 
             let constraint = AssocTyConstraint { id: ast::DUMMY_NODE_ID, ident, kind, span };
             AngleBracketedArg::Constraint(constraint)
+        } else if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
+            // Parse lifetime argument.
+            AngleBracketedArg::Arg(GenericArg::Lifetime(self.expect_lifetime()))
         } else if self.check_const_arg() {
             // Parse const argument.
             let expr = if let token::OpenDelim(token::Brace) = self.token.kind {
