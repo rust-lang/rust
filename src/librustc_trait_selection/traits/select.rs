@@ -2792,7 +2792,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 trait_def_id, trait_obligations
             );
 
-            VtableTraitAliasData { alias_def_id, substs: substs, nested: trait_obligations }
+            VtableTraitAliasData { alias_def_id, substs, nested: trait_obligations }
         })
     }
 

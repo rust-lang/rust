@@ -368,11 +368,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let fn_sig = tcx.fn_sig(def_id);
         let fn_sig = self.replace_bound_vars_with_fresh_vars(span, infer::FnCall, &fn_sig).0;
         let fn_sig = fn_sig.subst(self.tcx, substs);
-        let fn_sig = match self.normalize_associated_types_in_as_infer_ok(span, &fn_sig) {
-            InferOk { value, obligations: o } => {
-                obligations.extend(o);
-                value
-            }
+
+        let InferOk { value, obligations: o } =
+            self.normalize_associated_types_in_as_infer_ok(span, &fn_sig);
+        let fn_sig = {
+            obligations.extend(o);
+            value
         };
 
         // Register obligations for the parameters. This will include the
@@ -384,12 +385,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Note that as the method comes from a trait, it should not have
         // any late-bound regions appearing in its bounds.
         let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
-        let bounds = match self.normalize_associated_types_in_as_infer_ok(span, &bounds) {
-            InferOk { value, obligations: o } => {
-                obligations.extend(o);
-                value
-            }
+
+        let InferOk { value, obligations: o } =
+            self.normalize_associated_types_in_as_infer_ok(span, &bounds);
+        let bounds = {
+            obligations.extend(o);
+            value
         };
+
         assert!(!bounds.has_escaping_bound_vars());
 
         let cause = traits::ObligationCause::misc(span, self.body_id);
