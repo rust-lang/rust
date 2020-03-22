@@ -259,6 +259,10 @@ use crate::vec::Vec;
 #[cfg(test)]
 mod tests;
 
+// This is repr(C) to future-proof against possible field-reordering, which
+// would interfere with otherwise safe [into|from]_raw() of transmutable
+// inner types.
+#[repr(C)]
 struct RcBox<T: ?Sized> {
     strong: Cell<usize>,
     weak: Cell<usize>,
@@ -580,15 +584,24 @@ impl<T: ?Sized> Rc<T> {
         }
     }
 
-    /// Constructs an `Rc` from a raw pointer.
+    /// Constructs an `Rc<T>` from a raw pointer.
     ///
-    /// The raw pointer must have been previously returned by a call to a
-    /// [`Rc::into_raw`][into_raw].
+    /// The raw pointer must have been previously returned by a call to
+    /// [`Rc<U>::into_raw`][into_raw] where `U` must have the same size
+    /// and alignment as `T`. This is trivially true if `U` is `T`.
+    /// Note that if `U` is not `T` but has the same size and alignment, this is
+    /// basically like transmuting references of different types. See
+    /// [`mem::transmute`][transmute] for more information on what
+    /// restrictions apply in this case.
     ///
-    /// This function is unsafe because improper use may lead to memory problems. For example, a
-    /// double-free may occur if the function is called twice on the same raw pointer.
+    /// The user of `from_raw` has to make sure a specific value of `T` is only
+    /// dropped once.
+    ///
+    /// This function is unsafe because improper use may lead to memory unsafety,
+    /// even if the returned `Rc<T>` is never accessed.
     ///
     /// [into_raw]: struct.Rc.html#method.into_raw
+    /// [transmute]: ../../std/mem/fn.transmute.html
     ///
     /// # Examples
     ///
