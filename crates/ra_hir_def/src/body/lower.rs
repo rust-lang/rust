@@ -453,7 +453,7 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Expr::MacroCall(e) => {
-                if let Some(name) = is_macro_rules(&e) {
+                if let Some(name) = e.is_macro_rules().map(|it| it.as_name()) {
                     let mac = MacroDefId {
                         krate: Some(self.expander.module.krate),
                         ast_id: Some(self.expander.ast_id(&e)),
@@ -694,16 +694,6 @@ impl ExprCollector<'_> {
         } else {
             self.missing_pat()
         }
-    }
-}
-
-fn is_macro_rules(m: &ast::MacroCall) -> Option<Name> {
-    let name = m.path()?.segment()?.name_ref()?.as_name();
-
-    if name == name![macro_rules] {
-        Some(m.name()?.as_name())
-    } else {
-        None
     }
 }
 
