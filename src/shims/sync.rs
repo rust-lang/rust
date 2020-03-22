@@ -110,8 +110,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.eval_libc_i32("EDEADLK")
             }
         } else if kind == this.eval_libc("PTHREAD_MUTEX_RECURSIVE")? {
-            mutex_set_locked_count(this, mutex_op, Scalar::from_u32(locked_count + 1))?;
-            Ok(0)
+            match locked_count.checked_add(1) {
+                Some(new_count) => {
+                    mutex_set_locked_count(this, mutex_op, Scalar::from_u32(new_count))?;
+                    Ok(0)
+                }
+                None => this.eval_libc_i32("EAGAIN"),
+            }
         } else {
             this.eval_libc_i32("EINVAL")
         }
@@ -138,8 +143,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.eval_libc_i32("EBUSY")
             }
         } else if kind == this.eval_libc("PTHREAD_MUTEX_RECURSIVE")? {
-            mutex_set_locked_count(this, mutex_op, Scalar::from_u32(locked_count + 1))?;
-            Ok(0)
+            match locked_count.checked_add(1) {
+                Some(new_count) => {
+                    mutex_set_locked_count(this, mutex_op, Scalar::from_u32(new_count))?;
+                    Ok(0)
+                }
+                None => this.eval_libc_i32("EAGAIN"),
+            }
         } else {
             this.eval_libc_i32("EINVAL")
         }
@@ -173,11 +183,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.eval_libc_i32("EPERM")
             }
         } else if kind == this.eval_libc("PTHREAD_MUTEX_RECURSIVE")? {
-            if locked_count > 0 {
-                mutex_set_locked_count(this, mutex_op, Scalar::from_u32(locked_count - 1))?;
-                Ok(0)
-            } else {
-                this.eval_libc_i32("EPERM")
+            match locked_count.checked_sub(1) {
+                Some(new_count) => {
+                    mutex_set_locked_count(this, mutex_op, Scalar::from_u32(new_count))?;
+                    Ok(0)
+                }
+                None => {
+                    // locked_count was already zero
+                    this.eval_libc_i32("EPERM")
+                }
             }
         } else {
             this.eval_libc_i32("EINVAL")
@@ -217,8 +231,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 "Deadlock due to read-locking a pthreads read-write lock while it is already write-locked"
             );
         } else {
-            rwlock_set_readers(this, rwlock_op, Scalar::from_u32(readers + 1))?;
-            Ok(0)
+            match readers.checked_add(1) {
+                Some(new_readers) => {
+                    rwlock_set_readers(this, rwlock_op, Scalar::from_u32(new_readers))?;
+                    Ok(0)
+                }
+                None => this.eval_libc_i32("EAGAIN"),
+            }
         }
     }
 
@@ -235,8 +254,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if writers != 0 {
             this.eval_libc_i32("EBUSY")
         } else {
-            rwlock_set_readers(this, rwlock_op, Scalar::from_u32(readers + 1))?;
-            Ok(0)
+            match readers.checked_add(1) {
+                Some(new_readers) => {
+                    rwlock_set_readers(this, rwlock_op, Scalar::from_u32(new_readers))?;
+                    Ok(0)
+                }
+                None => this.eval_libc_i32("EAGAIN"),
+            }
         }
     }
 
@@ -292,8 +316,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let readers = rwlock_get_readers(this, rwlock_op)?.to_u32()?;
         let writers = rwlock_get_writers(this, rwlock_op)?.to_u32()?;
-        if readers != 0 {
-            rwlock_set_readers(this, rwlock_op, Scalar::from_u32(readers - 1))?;
+        if let Some(new_readers) = readers.checked_sub(1) {
+            rwlock_set_readers(this, rwlock_op, Scalar::from_u32(new_readers))?;
             Ok(0)
         } else if writers != 0 {
             rwlock_set_writers(this, rwlock_op, Scalar::from_u32(0))?;
