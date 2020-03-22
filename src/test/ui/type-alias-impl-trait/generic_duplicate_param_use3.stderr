@@ -7,14 +7,14 @@ LL | |     t
 LL | | }
    | |_^
 
-error: concrete type's generic parameters differ from previous defining use
+error: concrete type differs from previous defining opaque type use
   --> $DIR/generic_duplicate_param_use3.rs:19:1
    |
 LL | / fn three<T, U: Debug>(_: T, u: U) -> Two<T, U> {
 LL | |
 LL | |     u
 LL | | }
-   | |_^ expected [`T`], got [`U`]
+   | |_^ expected `T`, got `U`
    |
 note: previous use here
   --> $DIR/generic_duplicate_param_use3.rs:15:1

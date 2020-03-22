@@ -17,6 +17,6 @@ fn two<T: Debug, U>(t: T, _: U) -> Two<T, U> {
 }
 
 fn three<T, U: Debug>(_: T, u: U) -> Two<T, U> {
-//~^ concrete type's generic parameters differ from previous defining use
+//~^ concrete type differs from previous defining opaque type use
     u
 }
