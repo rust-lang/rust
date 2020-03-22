@@ -988,12 +988,9 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
     }
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
-        match ii.kind {
-            hir::ImplItemKind::Fn(hir::FnSig { .. }, _) => {
-                let def_id = self.tcx.hir().local_def_id(ii.hir_id);
-                self.push_if_root(def_id);
-            }
-            _ => { /* nothing to do here */ }
+        if let hir::ImplItemKind::Fn(hir::FnSig { .. }, _) = ii.kind {
+            let def_id = self.tcx.hir().local_def_id(ii.hir_id);
+            self.push_if_root(def_id);
         }
     }
 }

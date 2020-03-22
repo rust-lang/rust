@@ -549,14 +549,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         place: &Place<'tcx>,
         borrowed_place: &Place<'tcx>,
     ) {
-        match (&place.projection[..], &borrowed_place.projection[..]) {
-            ([ProjectionElem::Index(_)], [ProjectionElem::Index(_)]) => {
-                err.help(
-                    "consider using `.split_at_mut(position)` or similar method to obtain \
+        if let ([ProjectionElem::Index(_)], [ProjectionElem::Index(_)]) =
+            (&place.projection[..], &borrowed_place.projection[..])
+        {
+            err.help(
+                "consider using `.split_at_mut(position)` or similar method to obtain \
                      two mutable non-overlapping sub-slices",
-                );
-            }
-            _ => {}
+            );
         }
     }
 

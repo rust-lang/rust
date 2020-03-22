@@ -318,18 +318,15 @@ pub trait PrettyPrinter<'tcx>:
         debug!("try_print_visible_def_path: cur_def_key={:?}", cur_def_key);
 
         // For a constructor, we want the name of its parent rather than <unnamed>.
-        match cur_def_key.disambiguated_data.data {
-            DefPathData::Ctor => {
-                let parent = DefId {
-                    krate: def_id.krate,
-                    index: cur_def_key
-                        .parent
-                        .expect("`DefPathData::Ctor` / `VariantData` missing a parent"),
-                };
+        if let DefPathData::Ctor = cur_def_key.disambiguated_data.data {
+            let parent = DefId {
+                krate: def_id.krate,
+                index: cur_def_key
+                    .parent
+                    .expect("`DefPathData::Ctor` / `VariantData` missing a parent"),
+            };
 
-                cur_def_key = self.tcx().def_key(parent);
-            }
-            _ => {}
+            cur_def_key = self.tcx().def_key(parent);
         }
 
         let visible_parent = match visible_parent_map.get(&def_id).cloned() {
@@ -1420,9 +1417,8 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
         self = print_prefix(self)?;
 
         // Skip `::{{constructor}}` on tuple/unit structs.
-        match disambiguated_data.data {
-            DefPathData::Ctor => return Ok(self),
-            _ => {}
+        if let DefPathData::Ctor = disambiguated_data.data {
+            return Ok(self);
         }
 
         // FIXME(eddyb) `name` should never be empty, but it
@@ -1784,11 +1780,8 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         struct LateBoundRegionNameCollector<'a>(&'a mut FxHashSet<Symbol>);
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_> {
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
-                match *r {
-                    ty::ReLateBound(_, ty::BrNamed(_, name)) => {
-                        self.0.insert(name);
-                    }
-                    _ => {}
+                if let ty::ReLateBound(_, ty::BrNamed(_, name)) = *r {
+                    self.0.insert(name);
                 }
                 r.super_visit_with(self)
             }

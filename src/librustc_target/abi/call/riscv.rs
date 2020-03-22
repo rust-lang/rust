@@ -300,23 +300,18 @@ fn classify_arg<'a, Ty, C>(
 }
 
 fn extend_integer_width<'a, Ty>(arg: &mut ArgAbi<'a, Ty>, xlen: u64) {
-    match arg.layout.abi {
-        Abi::Scalar(ref scalar) => {
-            match scalar.value {
-                abi::Int(i, _) => {
-                    // 32-bit integers are always sign-extended
-                    if i.size().bits() == 32 && xlen > 32 {
-                        if let PassMode::Direct(ref mut attrs) = arg.mode {
-                            attrs.set(ArgAttribute::SExt);
-                            return;
-                        }
-                    }
+    if let Abi::Scalar(ref scalar) = arg.layout.abi {
+        if let abi::Int(i, _) = scalar.value {
+            // 32-bit integers are always sign-extended
+            if i.size().bits() == 32 && xlen > 32 {
+                if let PassMode::Direct(ref mut attrs) = arg.mode {
+                    attrs.set(ArgAttribute::SExt);
+                    return;
                 }
-                _ => (),
             }
         }
-        _ => (),
     }
+
     arg.extend_integer_width_to(xlen);
 }
 

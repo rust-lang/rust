@@ -391,8 +391,8 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
-        match rvalue {
-            Rvalue::Aggregate(kind, _) => match **kind {
+        if let Rvalue::Aggregate(kind, _) = rvalue {
+            match **kind {
                 AggregateKind::Closure(def_id, substs) => {
                     self.push("closure");
                     self.push(&format!("+ def_id: {:?}", def_id));
@@ -412,9 +412,7 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
                 }
 
                 _ => {}
-            },
-
-            _ => {}
+            }
         }
     }
 }

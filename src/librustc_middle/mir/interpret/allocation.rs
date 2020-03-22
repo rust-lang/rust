@@ -379,12 +379,9 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
             // *Now*, we better make sure that the inside is free of relocations too.
             self.check_relocations(cx, ptr, size)?;
         } else {
-            match self.relocations.get(&ptr.offset) {
-                Some(&(tag, alloc_id)) => {
-                    let ptr = Pointer::new_with_tag(alloc_id, Size::from_bytes(bits), tag);
-                    return Ok(ScalarMaybeUndef::Scalar(ptr.into()));
-                }
-                None => {}
+            if let Some(&(tag, alloc_id)) = self.relocations.get(&ptr.offset) {
+                let ptr = Pointer::new_with_tag(alloc_id, Size::from_bytes(bits), tag);
+                return Ok(ScalarMaybeUndef::Scalar(ptr.into()));
             }
         }
         // We don't. Just return the bits.
@@ -437,11 +434,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         write_target_uint(endian, dst, bytes).unwrap();
 
         // See if we have to also write a relocation.
-        match val {
-            Scalar::Ptr(val) => {
-                self.relocations.insert(ptr.offset, (val.tag, val.alloc_id));
-            }
-            _ => {}
+        if let Scalar::Ptr(val) = val {
+            self.relocations.insert(ptr.offset, (val.tag, val.alloc_id));
         }
 
         Ok(())

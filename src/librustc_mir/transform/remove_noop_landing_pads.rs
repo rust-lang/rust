@@ -107,16 +107,13 @@ impl RemoveNoopLandingPads {
                 }
             }
 
-            match body[bb].terminator_mut().unwind_mut() {
-                Some(unwind) => {
-                    if *unwind == Some(resume_block) {
-                        debug!("    removing noop landing pad");
-                        jumps_folded -= 1;
-                        landing_pads_removed += 1;
-                        *unwind = None;
-                    }
+            if let Some(unwind) = body[bb].terminator_mut().unwind_mut() {
+                if *unwind == Some(resume_block) {
+                    debug!("    removing noop landing pad");
+                    jumps_folded -= 1;
+                    landing_pads_removed += 1;
+                    *unwind = None;
                 }
-                _ => {}
             }
 
             let is_nop_landing_pad = self.is_nop_landing_pad(bb, body, &nop_landing_pads);

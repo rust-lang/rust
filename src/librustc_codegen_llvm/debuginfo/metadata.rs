@@ -1869,16 +1869,14 @@ fn prepare_enum_metadata(
 
     let layout = cx.layout_of(enum_type);
 
-    match (&layout.abi, &layout.variants) {
-        (
-            &layout::Abi::Scalar(_),
-            &layout::Variants::Multiple {
-                discr_kind: layout::DiscriminantKind::Tag,
-                ref discr,
-                ..
-            },
-        ) => return FinalMetadata(discriminant_type_metadata(discr.value)),
-        _ => {}
+    if let (
+        &layout::Abi::Scalar(_),
+        &layout::Variants::Multiple {
+            discr_kind: layout::DiscriminantKind::Tag, ref discr, ..
+        },
+    ) = (&layout.abi, &layout.variants)
+    {
+        return FinalMetadata(discriminant_type_metadata(discr.value));
     }
 
     if use_enum_fallback(cx) {

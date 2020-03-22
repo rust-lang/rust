@@ -213,18 +213,17 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
                     tables.adjustments_mut().get_mut(base.hir_id).map(|a| {
                         // Discard the need for a mutable borrow
-                        match a.pop() {
-                            // Extra adjustment made when indexing causes a drop
-                            // of size information - we need to get rid of it
-                            // Since this is "after" the other adjustment to be
-                            // discarded, we do an extra `pop()`
-                            Some(Adjustment {
-                                kind: Adjust::Pointer(PointerCast::Unsize), ..
-                            }) => {
-                                // So the borrow discard actually happens here
-                                a.pop();
-                            }
-                            _ => {}
+
+                        // Extra adjustment made when indexing causes a drop
+                        // of size information - we need to get rid of it
+                        // Since this is "after" the other adjustment to be
+                        // discarded, we do an extra `pop()`
+                        if let Some(Adjustment {
+                            kind: Adjust::Pointer(PointerCast::Unsize), ..
+                        }) = a.pop()
+                        {
+                            // So the borrow discard actually happens here
+                            a.pop();
                         }
                     });
                 }

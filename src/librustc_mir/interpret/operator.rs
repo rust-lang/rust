@@ -198,13 +198,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // We need a special check for overflowing remainder:
                 // "int_min % -1" overflows and returns 0, but after casting things to a larger int
                 // type it does *not* overflow nor give an unrepresentable result!
-                match bin_op {
-                    Rem => {
-                        if r == -1 && l == (1 << (size.bits() - 1)) {
-                            return Ok((Scalar::from_int(0, size), true, left_layout.ty));
-                        }
+                if bin_op == Rem {
+                    if r == -1 && l == (1 << (size.bits() - 1)) {
+                        return Ok((Scalar::from_int(0, size), true, left_layout.ty));
                     }
-                    _ => {}
                 }
                 let l = self.sign_extend(l, left_layout) as i128;
 

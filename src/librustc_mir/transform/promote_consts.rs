@@ -1064,16 +1064,15 @@ pub fn promote_candidates<'tcx>(
         match candidate {
             Candidate::Repeat(Location { block, statement_index })
             | Candidate::Ref(Location { block, statement_index }) => {
-                match &body[block].statements[statement_index].kind {
-                    StatementKind::Assign(box (place, _)) => {
-                        if let Some(local) = place.as_local() {
-                            if temps[local] == TempState::PromotedOut {
-                                // Already promoted.
-                                continue;
-                            }
+                if let StatementKind::Assign(box (place, _)) =
+                    &body[block].statements[statement_index].kind
+                {
+                    if let Some(local) = place.as_local() {
+                        if temps[local] == TempState::PromotedOut {
+                            // Already promoted.
+                            continue;
                         }
                     }
-                    _ => {}
                 }
             }
             Candidate::Argument { .. } => {}
@@ -1137,15 +1136,12 @@ pub fn promote_candidates<'tcx>(
             _ => true,
         });
         let terminator = block.terminator_mut();
-        match &terminator.kind {
-            TerminatorKind::Drop { location: place, target, .. } => {
-                if let Some(index) = place.as_local() {
-                    if promoted(index) {
-                        terminator.kind = TerminatorKind::Goto { target: *target };
-                    }
+        if let TerminatorKind::Drop { location: place, target, .. } = &terminator.kind {
+            if let Some(index) = place.as_local() {
+                if promoted(index) {
+                    terminator.kind = TerminatorKind::Goto { target: *target };
                 }
             }
-            _ => {}
         }
     }
 

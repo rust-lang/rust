@@ -22,26 +22,25 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 _sup,
             ) = error.clone()
             {
-                match (&sup_origin, &sub_origin) {
-                    (&Subtype(ref sup_trace), &Subtype(ref sub_trace)) => {
-                        if let (
-                            ValuePairs::Types(sub_expected_found),
-                            ValuePairs::Types(sup_expected_found),
-                            CompareImplMethodObligation { trait_item_def_id, .. },
-                        ) = (&sub_trace.values, &sup_trace.values, &sub_trace.cause.code)
-                        {
-                            if sup_expected_found == sub_expected_found {
-                                self.emit_err(
-                                    var_origin.span(),
-                                    sub_expected_found.expected,
-                                    sub_expected_found.found,
-                                    self.tcx().def_span(*trait_item_def_id),
-                                );
-                                return Some(ErrorReported);
-                            }
+                if let (&Subtype(ref sup_trace), &Subtype(ref sub_trace)) =
+                    (&sup_origin, &sub_origin)
+                {
+                    if let (
+                        ValuePairs::Types(sub_expected_found),
+                        ValuePairs::Types(sup_expected_found),
+                        CompareImplMethodObligation { trait_item_def_id, .. },
+                    ) = (&sub_trace.values, &sup_trace.values, &sub_trace.cause.code)
+                    {
+                        if sup_expected_found == sub_expected_found {
+                            self.emit_err(
+                                var_origin.span(),
+                                sub_expected_found.expected,
+                                sub_expected_found.found,
+                                self.tcx().def_span(*trait_item_def_id),
+                            );
+                            return Some(ErrorReported);
                         }
                     }
-                    _ => {}
                 }
             }
         }

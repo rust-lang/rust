@@ -227,29 +227,26 @@ impl BorrowExplanation {
         span: Span,
         region_name: &RegionName,
     ) {
-        match category {
-            ConstraintCategory::OpaqueType => {
-                if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
-                    let suggestable_name = if region_name.was_named() {
-                        region_name.to_string()
-                    } else {
-                        "'_".to_string()
-                    };
+        if let ConstraintCategory::OpaqueType = category {
+            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
+                let suggestable_name = if region_name.was_named() {
+                    region_name.to_string()
+                } else {
+                    "'_".to_string()
+                };
 
-                    err.span_suggestion(
-                        span,
-                        &format!(
-                            "you can add a bound to the {}to make it last less than \
+                err.span_suggestion(
+                    span,
+                    &format!(
+                        "you can add a bound to the {}to make it last less than \
                              `'static` and match `{}`",
-                            category.description(),
-                            region_name,
-                        ),
-                        format!("{} + {}", snippet, suggestable_name),
-                        Applicability::Unspecified,
-                    );
-                }
+                        category.description(),
+                        region_name,
+                    ),
+                    format!("{} + {}", snippet, suggestable_name),
+                    Applicability::Unspecified,
+                );
             }
-            _ => {}
         }
     }
 }

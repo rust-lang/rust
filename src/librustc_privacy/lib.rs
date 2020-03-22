@@ -1096,52 +1096,46 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        match expr.kind {
-            hir::ExprKind::Struct(ref qpath, fields, ref base) => {
-                let res = self.tables.qpath_res(qpath, expr.hir_id);
-                let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
-                let variant = adt.variant_of_res(res);
-                if let Some(ref base) = *base {
-                    // If the expression uses FRU we need to make sure all the unmentioned fields
-                    // are checked for privacy (RFC 736). Rather than computing the set of
-                    // unmentioned fields, just check them all.
-                    for (vf_index, variant_field) in variant.fields.iter().enumerate() {
-                        let field = fields
-                            .iter()
-                            .find(|f| self.tcx.field_index(f.hir_id, self.tables) == vf_index);
-                        let (use_ctxt, span) = match field {
-                            Some(field) => (field.ident.span, field.span),
-                            None => (base.span, base.span),
-                        };
-                        self.check_field(use_ctxt, span, adt, variant_field, true);
-                    }
-                } else {
-                    for field in fields {
-                        let use_ctxt = field.ident.span;
-                        let index = self.tcx.field_index(field.hir_id, self.tables);
-                        self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
-                    }
+        if let hir::ExprKind::Struct(ref qpath, fields, ref base) = expr.kind {
+            let res = self.tables.qpath_res(qpath, expr.hir_id);
+            let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
+            let variant = adt.variant_of_res(res);
+            if let Some(ref base) = *base {
+                // If the expression uses FRU we need to make sure all the unmentioned fields
+                // are checked for privacy (RFC 736). Rather than computing the set of
+                // unmentioned fields, just check them all.
+                for (vf_index, variant_field) in variant.fields.iter().enumerate() {
+                    let field = fields
+                        .iter()
+                        .find(|f| self.tcx.field_index(f.hir_id, self.tables) == vf_index);
+                    let (use_ctxt, span) = match field {
+                        Some(field) => (field.ident.span, field.span),
+                        None => (base.span, base.span),
+                    };
+                    self.check_field(use_ctxt, span, adt, variant_field, true);
                 }
-            }
-            _ => {}
-        }
-
-        intravisit::walk_expr(self, expr);
-    }
-
-    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
-        match pat.kind {
-            PatKind::Struct(ref qpath, fields, _) => {
-                let res = self.tables.qpath_res(qpath, pat.hir_id);
-                let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
-                let variant = adt.variant_of_res(res);
+            } else {
                 for field in fields {
                     let use_ctxt = field.ident.span;
                     let index = self.tcx.field_index(field.hir_id, self.tables);
                     self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
                 }
             }
-            _ => {}
+        }
+
+        intravisit::walk_expr(self, expr);
+    }
+
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
+        if let PatKind::Struct(ref qpath, fields, _) = pat.kind {
+            let res = self.tables.qpath_res(qpath, pat.hir_id);
+            let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
+            let variant = adt.variant_of_res(res);
+            for field in fields {
+                let use_ctxt = field.ident.span;
+                let index = self.tcx.field_index(field.hir_id, self.tables);
+                self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
+            }
         }
 
         intravisit::walk_pat(self, pat);

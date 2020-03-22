@@ -396,42 +396,40 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 ProjectionElem::Field(..) => {
                     let ty =
                         Place::ty_from(place.local, proj_base, &self.body.local_decls, self.tcx).ty;
-                    match ty.kind {
-                        ty::Adt(def, _) => match self.tcx.layout_scalar_valid_range(def.did) {
-                            (Bound::Unbounded, Bound::Unbounded) => {}
-                            _ => {
-                                let (description, details) = if is_mut_use {
-                                    (
-                                        "mutation of layout constrained field",
-                                        "mutating layout constrained fields cannot statically be \
+                    if let ty::Adt(def, _) = ty.kind {
+                        if self.tcx.layout_scalar_valid_range(def.did)
+                            != (Bound::Unbounded, Bound::Unbounded)
+                        {
+                            let (description, details) = if is_mut_use {
+                                (
+                                    "mutation of layout constrained field",
+                                    "mutating layout constrained fields cannot statically be \
                                         checked for valid values",
-                                    )
+                                )
 
-                                // Check `is_freeze` as late as possible to avoid cycle errors
-                                // with opaque types.
-                                } else if !place.ty(self.body, self.tcx).ty.is_freeze(
-                                    self.tcx,
-                                    self.param_env,
-                                    self.source_info.span,
-                                ) {
-                                    (
-                                        "borrow of layout constrained field with interior \
+                            // Check `is_freeze` as late as possible to avoid cycle errors
+                            // with opaque types.
+                            } else if !place.ty(self.body, self.tcx).ty.is_freeze(
+                                self.tcx,
+                                self.param_env,
+                                self.source_info.span,
+                            ) {
+                                (
+                                    "borrow of layout constrained field with interior \
                                         mutability",
-                                        "references to fields of layout constrained fields \
+                                    "references to fields of layout constrained fields \
                                         lose the constraints. Coupled with interior mutability, \
                                         the field can be changed to invalid values",
-                                    )
-                                } else {
-                                    continue;
-                                };
-                                self.require_unsafe(
-                                    description,
-                                    details,
-                                    UnsafetyViolationKind::GeneralAndConstFn,
-                                );
-                            }
-                        },
-                        _ => {}
+                                )
+                            } else {
+                                continue;
+                            };
+                            self.require_unsafe(
+                                description,
+                                details,
+                                UnsafetyViolationKind::GeneralAndConstFn,
+                            );
+                        }
                     }
                 }
                 _ => {}

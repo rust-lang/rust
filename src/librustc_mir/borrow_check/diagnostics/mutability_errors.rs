@@ -497,62 +497,60 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut look_at_return = true;
         // If we can detect the expression to be an `fn` call where the closure was an argument,
         // we point at the `fn` definition argument...
-        match node {
-            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Call(func, args), .. }) => {
-                let arg_pos = args
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, arg)| arg.span == self.body.span)
-                    .map(|(pos, _)| pos)
-                    .next();
-                let def_id = hir.local_def_id(item_id);
-                let tables = self.infcx.tcx.typeck_tables_of(def_id);
-                if let Some(ty::FnDef(def_id, _)) =
-                    tables.node_type_opt(func.hir_id).as_ref().map(|ty| &ty.kind)
-                {
-                    let arg = match hir.get_if_local(*def_id) {
-                        Some(hir::Node::Item(hir::Item {
-                            ident,
-                            kind: hir::ItemKind::Fn(sig, ..),
-                            ..
-                        }))
-                        | Some(hir::Node::TraitItem(hir::TraitItem {
-                            ident,
-                            kind: hir::TraitItemKind::Fn(sig, _),
-                            ..
-                        }))
-                        | Some(hir::Node::ImplItem(hir::ImplItem {
-                            ident,
-                            kind: hir::ImplItemKind::Fn(sig, _),
-                            ..
-                        })) => Some(
-                            arg_pos
-                                .and_then(|pos| {
-                                    sig.decl.inputs.get(
-                                        pos + if sig.decl.implicit_self.has_implicit_self() {
-                                            1
-                                        } else {
-                                            0
-                                        },
-                                    )
-                                })
-                                .map(|arg| arg.span)
-                                .unwrap_or(ident.span),
-                        ),
-                        _ => None,
-                    };
-                    if let Some(span) = arg {
-                        err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
-                        err.span_label(func.span, "expects `Fn` instead of `FnMut`");
-                        if self.infcx.tcx.sess.source_map().is_multiline(self.body.span) {
-                            err.span_label(self.body.span, "in this closure");
-                        }
-                        look_at_return = false;
+        if let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Call(func, args), .. }) = node {
+            let arg_pos = args
+                .iter()
+                .enumerate()
+                .filter(|(_, arg)| arg.span == self.body.span)
+                .map(|(pos, _)| pos)
+                .next();
+            let def_id = hir.local_def_id(item_id);
+            let tables = self.infcx.tcx.typeck_tables_of(def_id);
+            if let Some(ty::FnDef(def_id, _)) =
+                tables.node_type_opt(func.hir_id).as_ref().map(|ty| &ty.kind)
+            {
+                let arg = match hir.get_if_local(*def_id) {
+                    Some(hir::Node::Item(hir::Item {
+                        ident,
+                        kind: hir::ItemKind::Fn(sig, ..),
+                        ..
+                    }))
+                    | Some(hir::Node::TraitItem(hir::TraitItem {
+                        ident,
+                        kind: hir::TraitItemKind::Fn(sig, _),
+                        ..
+                    }))
+                    | Some(hir::Node::ImplItem(hir::ImplItem {
+                        ident,
+                        kind: hir::ImplItemKind::Fn(sig, _),
+                        ..
+                    })) => Some(
+                        arg_pos
+                            .and_then(|pos| {
+                                sig.decl.inputs.get(
+                                    pos + if sig.decl.implicit_self.has_implicit_self() {
+                                        1
+                                    } else {
+                                        0
+                                    },
+                                )
+                            })
+                            .map(|arg| arg.span)
+                            .unwrap_or(ident.span),
+                    ),
+                    _ => None,
+                };
+                if let Some(span) = arg {
+                    err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
+                    err.span_label(func.span, "expects `Fn` instead of `FnMut`");
+                    if self.infcx.tcx.sess.source_map().is_multiline(self.body.span) {
+                        err.span_label(self.body.span, "in this closure");
                     }
+                    look_at_return = false;
                 }
             }
-            _ => {}
         }
+
         if look_at_return && hir.get_return_block(closure_id).is_some() {
             // ...otherwise we are probably in the tail expression of the function, point at the
             // return type.

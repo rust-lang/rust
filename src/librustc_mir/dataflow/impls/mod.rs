@@ -544,18 +544,15 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         );
         trans.gen_all(init_loc_map[location].iter().copied());
 
-        match stmt.kind {
-            mir::StatementKind::StorageDead(local) => {
-                // End inits for StorageDead, so that an immutable variable can
-                // be reinitialized on the next iteration of the loop.
-                let move_path_index = rev_lookup.find_local(local);
-                debug!(
-                    "stmt {:?} at loc {:?} clears the ever initialized status of {:?}",
-                    stmt, location, &init_path_map[move_path_index]
-                );
-                trans.kill_all(init_path_map[move_path_index].iter().copied());
-            }
-            _ => {}
+        if let mir::StatementKind::StorageDead(local) = stmt.kind {
+            // End inits for StorageDead, so that an immutable variable can
+            // be reinitialized on the next iteration of the loop.
+            let move_path_index = rev_lookup.find_local(local);
+            debug!(
+                "stmt {:?} at loc {:?} clears the ever initialized status of {:?}",
+                stmt, location, &init_path_map[move_path_index]
+            );
+            trans.kill_all(init_path_map[move_path_index].iter().copied());
         }
     }
 

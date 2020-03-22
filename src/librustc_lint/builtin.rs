@@ -645,41 +645,35 @@ declare_lint_pass!(
 
 impl EarlyLintPass for AnonymousParameters {
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
-        match it.kind {
-            ast::AssocItemKind::Fn(_, ref sig, _, _) => {
-                for arg in sig.decl.inputs.iter() {
-                    match arg.pat.kind {
-                        ast::PatKind::Ident(_, ident, None) => {
-                            if ident.name == kw::Invalid {
-                                cx.struct_span_lint(ANONYMOUS_PARAMETERS, arg.pat.span, |lint| {
-                                    let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
+        if let ast::AssocItemKind::Fn(_, ref sig, _, _) = it.kind {
+            for arg in sig.decl.inputs.iter() {
+                if let ast::PatKind::Ident(_, ident, None) = arg.pat.kind {
+                    if ident.name == kw::Invalid {
+                        cx.struct_span_lint(ANONYMOUS_PARAMETERS, arg.pat.span, |lint| {
+                            let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
 
-                                    let (ty_snip, appl) = if let Ok(ref snip) = ty_snip {
-                                        (snip.as_str(), Applicability::MachineApplicable)
-                                    } else {
-                                        ("<type>", Applicability::HasPlaceholders)
-                                    };
+                            let (ty_snip, appl) = if let Ok(ref snip) = ty_snip {
+                                (snip.as_str(), Applicability::MachineApplicable)
+                            } else {
+                                ("<type>", Applicability::HasPlaceholders)
+                            };
 
-                                    lint.build(
-                                        "anonymous parameters are deprecated and will be \
+                            lint.build(
+                                "anonymous parameters are deprecated and will be \
                                      removed in the next edition.",
-                                    )
-                                    .span_suggestion(
-                                        arg.pat.span,
-                                        "try naming the parameter or explicitly \
+                            )
+                            .span_suggestion(
+                                arg.pat.span,
+                                "try naming the parameter or explicitly \
                                             ignoring it",
-                                        format!("_: {}", ty_snip),
-                                        appl,
-                                    )
-                                    .emit();
-                                })
-                            }
-                        }
-                        _ => (),
+                                format!("_: {}", ty_snip),
+                                appl,
+                            )
+                            .emit();
+                        })
                     }
                 }
             }
-            _ => (),
         }
     }
 }
@@ -887,18 +881,14 @@ declare_lint_pass!(MutableTransmutes => [MUTABLE_TRANSMUTES]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
         use rustc_target::spec::abi::Abi::RustIntrinsic;
-
-        match get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (&ty1.kind, &ty2.kind)) {
-            Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) => {
-                if to_mt == hir::Mutability::Mut && from_mt == hir::Mutability::Not {
-                    let msg = "mutating transmuted &mut T from &T may cause undefined behavior, \
+        if let Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) =
+            get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (&ty1.kind, &ty2.kind))
+        {
+            if to_mt == hir::Mutability::Mut && from_mt == hir::Mutability::Not {
+                let msg = "mutating transmuted &mut T from &T may cause undefined behavior, \
                                consider instead using an UnsafeCell";
-                    cx.struct_span_lint(MUTABLE_TRANSMUTES, expr.span, |lint| {
-                        lint.build(msg).emit()
-                    });
-                }
+                cx.struct_span_lint(MUTABLE_TRANSMUTES, expr.span, |lint| lint.build(msg).emit());
             }
-            _ => (),
         }
 
         fn get_transmute_from_to<'a, 'tcx>(
