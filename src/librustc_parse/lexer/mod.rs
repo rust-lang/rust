@@ -46,12 +46,20 @@ impl<'a> StringReader<'a> {
         source_file: Lrc<rustc_span::SourceFile>,
         override_span: Option<Span>,
     ) -> Self {
-        if source_file.src.is_none() {
+        // Make sure external source is loaded first, before accessing it.
+        // While this can't show up during normal parsing, `retokenize` may
+        // be called with a source file from an external crate.
+        sess.source_map().ensure_source_file_source_present(source_file.clone());
+
+        // FIXME(eddyb) use `Lrc<str>` or similar to avoid cloning the `String`.
+        let src = if let Some(src) = &source_file.src {
+            src.clone()
+        } else if let Some(src) = source_file.external_src.borrow().get_source() {
+            src.clone()
+        } else {
             sess.span_diagnostic
                 .bug(&format!("cannot lex `source_file` without source: {}", source_file.name));
-        }
-
-        let src = (*source_file.src.as_ref().unwrap()).clone();
+        };
 
         StringReader {
             sess,
