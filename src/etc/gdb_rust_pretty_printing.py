@@ -335,7 +335,7 @@ class RustStdVecDequePrinter(object):
 def children_of_node(boxed_node, height, want_values):
     node_ptr = boxed_node['ptr']['pointer']
     if height > 0:
-        type_name = str(node_ptr.type.target()).replace('LeafNode', 'InternalNode')
+        type_name = str(node_ptr.type.target()).replace('LeafNode', 'InternalNode', 1)
         node_type = gdb.lookup_type(type_name)
         node_ptr = node_ptr.cast(node_type.pointer())
         leaf = node_ptr['data']
