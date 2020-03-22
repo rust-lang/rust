@@ -2,7 +2,6 @@ environment:
     global:
         PROJECT_NAME: miri
     matrix:
-        - TARGET: x86_64-pc-windows-msvc
         - TARGET: i686-pc-windows-msvc
 
 # branches to build
@@ -43,18 +42,33 @@ build_script:
     # Build and install miri
     - cargo build --release --all-features --all-targets --locked
     - cargo install --all-features --force --path . --locked --offline
-    # Get ourselves a MIR-full libstd, and use it henceforth
-    - cargo miri setup
-    - set MIRI_SYSROOT=%USERPROFILE%\AppData\Local\rust-lang\miri\cache\HOST
 
 test_script:
     - set RUST_TEST_NOCAPTURE=1
     - set RUST_BACKTRACE=1
-    # Test miri
+    # Test host miri: 32bit Windows
+    - cargo miri setup
+    - set MIRI_SYSROOT=%USERPROFILE%\AppData\Local\rust-lang\miri\cache\HOST
     - cargo test --release --all-features --locked
-    # Test cargo integration
     - cd test-cargo-miri
     - '"C:\msys64\mingw64\bin\python3.exe" run-test.py'
+    - cd ..
+    # Test foreign miri: 64bit Linux
+    - cargo miri setup --target x86_64-unknown-linux-gnu
+    - set MIRI_SYSROOT=%USERPROFILE%\AppData\Local\rust-lang\miri\cache
+    - set MIRI_TEST_TARGET=x86_64-unknown-linux-gnu
+    - cargo test --release --all-features --locked
+    - cd test-cargo-miri
+    - '"C:\msys64\mingw64\bin\python3.exe" run-test.py'
+    - cd ..
+    # Test foreign miri: 64bit macOS
+    - cargo miri setup --target x86_64-apple-darwin
+    - set MIRI_SYSROOT=%USERPROFILE%\AppData\Local\rust-lang\miri\cache
+    - set MIRI_TEST_TARGET=x86_64-apple-darwin
+    - cargo test --release --all-features --locked
+    - cd test-cargo-miri
+    - '"C:\msys64\mingw64\bin\python3.exe" run-test.py'
+    - cd ..
 
 after_test:
     # Don't cache "master" toolchain, it's a waste
