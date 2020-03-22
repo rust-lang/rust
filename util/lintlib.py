@@ -14,7 +14,7 @@ lintname_re = re.compile(r'''pub\s+([A-Z_][A-Z_0-9]*)''')
 group_re = re.compile(r'''\s*([a-z_][a-z_0-9]+)''')
 conf_re = re.compile(r'''define_Conf! {\n([^}]*)\n}''', re.MULTILINE)
 confvar_re = re.compile(
-    r'''/// Lint: (\w+). (.*).*\n\s*\([^,]+,\s+"([^"]+)",\s+([^=\)]+)=>\s+(.*)\),''', re.MULTILINE)
+    r'''/// Lint: (\w+)\. (.*)\n\s*\([^,]+,\s+"([^"]+)":\s+([^,]+),\s+([^\.\)]+).*\),''', re.MULTILINE)
 comment_re = re.compile(r'''\s*/// ?(.*)''')
 
 lint_levels = {
@@ -93,7 +93,7 @@ def parse_configs(path):
     match = re.search(conf_re, contents)
     confvars = re.findall(confvar_re, match.group(1))
 
-    for (lint, doc, name, default, ty) in confvars:
+    for (lint, doc, name, ty, default) in confvars:
         configs[lint.lower()] = Config(name.replace("_", "-"), ty, doc, default)
 
     return configs
