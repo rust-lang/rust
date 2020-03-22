@@ -30,7 +30,10 @@ use crate::ty::{self, DefIdTree, Ty, TypeAndMut};
 use crate::ty::{AdtDef, AdtKind, Const, Region};
 use crate::ty::{BindingMode, BoundVar};
 use crate::ty::{ConstVid, FloatVar, FloatVid, IntVar, IntVid, TyVar, TyVid};
-use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, ProjectionTy};
+use crate::ty::{
+    ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, ProjectionTy,
+    RegionOutlivesPredicate,
+};
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use rustc_ast::ast;
@@ -91,6 +94,7 @@ pub struct CtxtInterners<'tcx> {
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo>>,
     region: InternedSet<'tcx, RegionKind>,
     existential_predicates: InternedSet<'tcx, List<ExistentialPredicate<'tcx>>>,
+    region_outlives_predicates: InternedSet<'tcx, List<RegionOutlivesPredicate<'tcx>>>,
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
     clauses: InternedSet<'tcx, List<Clause<'tcx>>>,
     goal: InternedSet<'tcx, GoalKind<'tcx>>,
@@ -109,6 +113,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             substs: Default::default(),
             region: Default::default(),
             existential_predicates: Default::default(),
+            region_outlives_predicates: Default::default(),
             canonical_var_infos: Default::default(),
             predicates: Default::default(),
             clauses: Default::default(),
@@ -1588,6 +1593,7 @@ nop_list_lift! {goal_list; Goal<'a> => Goal<'tcx>}
 nop_list_lift! {clauses; Clause<'a> => Clause<'tcx>}
 nop_list_lift! {type_list; Ty<'a> => Ty<'tcx>}
 nop_list_lift! {existential_predicates; ExistentialPredicate<'a> => ExistentialPredicate<'tcx>}
+nop_list_lift! {region_outlives_predicates; RegionOutlivesPredicate<'a> => RegionOutlivesPredicate<'tcx>}
 nop_list_lift! {predicates; Predicate<'a> => Predicate<'tcx>}
 nop_list_lift! {canonical_var_infos; CanonicalVarInfo => CanonicalVarInfo}
 nop_list_lift! {projs; ProjectionKind => ProjectionKind}
@@ -2010,6 +2016,14 @@ impl<'tcx> Borrow<[ExistentialPredicate<'tcx>]>
     }
 }
 
+impl<'tcx> Borrow<[RegionOutlivesPredicate<'tcx>]>
+    for Interned<'tcx, List<RegionOutlivesPredicate<'tcx>>>
+{
+    fn borrow<'a>(&'a self) -> &'a [RegionOutlivesPredicate<'tcx>] {
+        &self.0[..]
+    }
+}
+
 impl<'tcx> Borrow<[Predicate<'tcx>]> for Interned<'tcx, List<Predicate<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a [Predicate<'tcx>] {
         &self.0[..]
@@ -2083,6 +2097,7 @@ slice_interners!(
     substs: _intern_substs(GenericArg<'tcx>),
     canonical_var_infos: _intern_canonical_var_infos(CanonicalVarInfo),
     existential_predicates: _intern_existential_predicates(ExistentialPredicate<'tcx>),
+    region_outlives_predicates: _intern_region_outlive_predicates(RegionOutlivesPredicate<'tcx>),
     predicates: _intern_predicates(Predicate<'tcx>),
     clauses: _intern_clauses(Clause<'tcx>),
     goal_list: _intern_goals(Goal<'tcx>),
@@ -2332,7 +2347,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_generator_witness(
         self,
         types: ty::Binder<&'tcx List<Ty<'tcx>>>,
-        region_outlives: ty::Binder<&'tcx List<Predicate<'tcx>>>,
+        region_outlives: ty::Binder<&'tcx List<RegionOutlivesPredicate<'tcx>>>,
     ) -> Ty<'tcx> {
         self.mk_ty(GeneratorWitness(types, region_outlives))
     }
@@ -2445,6 +2460,16 @@ impl<'tcx> TyCtxt<'tcx> {
         self._intern_existential_predicates(eps)
     }
 
+    pub fn intern_region_outlives_predicates(
+        self,
+        predicates: &[RegionOutlivesPredicate<'tcx>],
+    ) -> &'tcx List<RegionOutlivesPredicate<'tcx>> {
+        if predicates.is_empty() {
+            List::empty()
+        } else {
+            self._intern_region_outlive_predicates(predicates)
+        }
+    }
     pub fn intern_predicates(self, preds: &[Predicate<'tcx>]) -> &'tcx List<Predicate<'tcx>> {
         // FIXME consider asking the input slice to be sorted to avoid
         // re-interning permutations, in which case that would be asserted
@@ -2511,6 +2536,15 @@ impl<'tcx> TyCtxt<'tcx> {
         iter: I,
     ) -> I::Output {
         iter.intern_with(|xs| self.intern_existential_predicates(xs))
+    }
+
+    pub fn mk_region_outlives_predicates<
+        I: InternAs<[RegionOutlivesPredicate<'tcx>], &'tcx List<RegionOutlivesPredicate<'tcx>>>,
+    >(
+        self,
+        iter: I,
+    ) -> I::Output {
+        iter.intern_with(|xs| self.intern_region_outlives_predicates(xs))
     }
 
     pub fn mk_predicates<I: InternAs<[Predicate<'tcx>], &'tcx List<Predicate<'tcx>>>>(

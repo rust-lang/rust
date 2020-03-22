@@ -308,19 +308,38 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
     }
 }
 
+impl<'tcx> Relate<'tcx> for ty::RegionOutlivesPredicate<'tcx> {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: &Self,
+        b: &Self,
+    ) -> RelateResult<'tcx, Self> {
+        let a_region = relation.relate(&a.0, &b.0)?;
+        let b_region = relation.relate(&a.1, &b.1)?;
+        Ok(ty::OutlivesPredicate(a_region, b_region))
+    }
+}
+
 #[derive(Debug, Clone, TypeFoldable)]
-struct GeneratorWitness<'tcx>(&'tcx ty::List<Ty<'tcx>>);
+struct GeneratorWitness<'tcx>(
+    &'tcx ty::List<Ty<'tcx>>,
+    &'tcx ty::List<ty::RegionOutlivesPredicate<'tcx>>,
+);
 
 impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: &GeneratorWitness<'tcx>,
-        b: &GeneratorWitness<'tcx>,
-    ) -> RelateResult<'tcx, GeneratorWitness<'tcx>> {
+        a: &Self,
+        b: &Self,
+    ) -> RelateResult<'tcx, Self> {
         assert_eq!(a.0.len(), b.0.len());
+        assert_eq!(a.1.len(), b.1.len());
         let tcx = relation.tcx();
         let types = tcx.mk_type_list(a.0.iter().zip(b.0).map(|(a, b)| relation.relate(a, b)))?;
-        Ok(GeneratorWitness(types))
+        let predicates = tcx.mk_region_outlives_predicates(
+            a.1.iter().zip(b.1).map(|(a, b)| relation.relate(a, b)),
+        )?;
+        Ok(GeneratorWitness(types, predicates))
     }
 }
 
@@ -396,14 +415,19 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
             Ok(tcx.mk_generator(a_id, substs, movability))
         }
 
-        (&ty::GeneratorWitness(a_types, _), &ty::GeneratorWitness(b_types, _)) => {
+        (
+            &ty::GeneratorWitness(a_types, a_outlive_predicates),
+            &ty::GeneratorWitness(b_types, b_outlive_predicates),
+        ) => {
             // Wrap our types with a temporary GeneratorWitness struct
             // inside the binder so we can related them
-            let a_types = a_types.map_bound(GeneratorWitness);
-            let b_types = b_types.map_bound(GeneratorWitness);
+            let a_witness = a_types.fuse(a_outlive_predicates, GeneratorWitness);
+            let b_witness = b_types.fuse(b_outlive_predicates, GeneratorWitness);
             // Then remove the GeneratorWitness for the result
-            let types = relation.relate(&a_types, &b_types)?.map_bound(|witness| witness.0);
-            Ok(tcx.mk_generator_witness(types, ty::Binder::dummy()))
+            let types = relation.relate(&a_witness, &b_witness)?.map_bound(|witness| witness.0);
+            let predicates =
+                relation.relate(&a_witness, &b_witness)?.map_bound(|witness| witness.1);
+            Ok(tcx.mk_generator_witness(types, predicates))
         }
 
         (&ty::Closure(a_id, a_substs), &ty::Closure(b_id, b_substs)) if a_id == b_id => {

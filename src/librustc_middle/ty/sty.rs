@@ -168,7 +168,10 @@ pub enum TyKind<'tcx> {
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
-    GeneratorWitness(Binder<&'tcx List<Ty<'tcx>>>, Binder<&'tcx List<ty::Predicate<'tcx>>>),
+    GeneratorWitness(
+        Binder<&'tcx List<Ty<'tcx>>>,
+        Binder<&'tcx List<ty::RegionOutlivesPredicate<'tcx>>>,
+    ),
 
     /// The never type `!`
     Never,

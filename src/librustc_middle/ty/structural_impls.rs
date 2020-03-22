@@ -800,6 +800,16 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>>
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::RegionOutlivesPredicate<'tcx>> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        fold_list(*self, folder, |tcx, v| tcx.intern_region_outlives_predicates(v))
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.iter().any(|p| p.visit_with(visitor))
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         fold_list(*self, folder, |tcx, v| tcx.intern_type_list(v))

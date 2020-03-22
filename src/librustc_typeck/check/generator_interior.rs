@@ -192,14 +192,12 @@ pub fn resolve_interior<'a, 'tcx>(
         constraints_data
             .constraints
             .keys()
-            .map(|constraints| {
-                ty::Binder::bind(constraints.to_region_outlives_predicate(fcx.tcx)).to_predicate()
-            })
+            .map(|constraints| constraints.to_region_outlives_predicate(fcx.tcx))
             .collect::<Vec<_>>()
     });
     debug!("region outlives inside generator: {:?}", region_constraints);
 
-    let region_outlives_list = fcx.tcx.mk_predicates(region_constraints.iter());
+    let region_outlives_list = fcx.tcx.mk_region_outlives_predicates(region_constraints.iter());
 
     let witness = fcx
         .tcx
