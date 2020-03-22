@@ -2947,13 +2947,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let existential_predicates = data_a.map_bound(|data_a| {
                     let iter = data_a
                         .principal()
-                        .map(|x| ty::ExistentialPredicate::Trait(x))
+                        .map(ty::ExistentialPredicate::Trait)
                         .into_iter()
-                        .chain(
-                            data_a
-                                .projection_bounds()
-                                .map(|x| ty::ExistentialPredicate::Projection(x)),
-                        )
+                        .chain(data_a.projection_bounds().map(ty::ExistentialPredicate::Projection))
                         .chain(data_b.auto_traits().map(ty::ExistentialPredicate::AutoTrait));
                     tcx.mk_existential_predicates(iter)
                 });

@@ -327,7 +327,7 @@ impl<'a> CrateLocator<'a> {
                     .into_iter()
                     .filter_map(|entry| entry.files())
                     .flatten()
-                    .map(|location| PathBuf::from(location))
+                    .map(PathBuf::from)
                     .collect()
             } else {
                 // SVH being specified means this is a transitive dependency,
