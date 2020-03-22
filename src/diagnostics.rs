@@ -9,6 +9,7 @@ pub enum TerminationInfo {
     Exit(i64),
     Abort(Option<String>),
     UnsupportedInIsolation(String),
+    ExperimentalUb { msg: String, url: String }
 }
 
 /// Miri specific diagnostics
@@ -25,7 +26,7 @@ pub fn report_error<'tcx, 'mir>(
     use InterpError::*;
 
     e.print_backtrace();
-    let (title, msg, help) = match e.kind {
+    let (title, msg, helps) = match e.kind {
         MachineStop(info) => {
             let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
             use TerminationInfo::*;
@@ -37,13 +38,20 @@ pub fn report_error<'tcx, 'mir>(
                     ("abnormal termination", format!("the evaluated program aborted execution: {}", msg)),
                 UnsupportedInIsolation(msg) =>
                     ("unsupported operation", format!("{}", msg)),
+                ExperimentalUb { msg, .. } =>
+                    ("Undefined Behavior", format!("{}", msg)),
             };
-            let help = match info {
+            let helps = match info {
                 UnsupportedInIsolation(_) =>
-                    Some("pass the flag `-Zmiri-disable-isolation` to disable isolation"),
-                _ => None,
+                    vec![format!("pass the flag `-Zmiri-disable-isolation` to disable isolation")],
+                ExperimentalUb { url, .. } =>
+                    vec![
+                        format!("this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental"),
+                        format!("see {} for further information", url),
+                    ],
+                _ => vec![],
             };
-            (title, msg, help)
+            (title, msg, helps)
         }
         _ => {
             let (title, msg) = match e.kind {
@@ -56,21 +64,22 @@ pub fn report_error<'tcx, 'mir>(
                 _ =>
                     bug!("This error should be impossible in Miri: {}", e),
             };
-            let help = match e.kind {
+            let helps = match e.kind {
                 Unsupported(UnsupportedOpInfo::NoMirFor(..)) =>
-                    Some("make sure to use a Miri sysroot, which you can prepare with `cargo miri setup`"),
+                    vec![format!("make sure to use a Miri sysroot, which you can prepare with `cargo miri setup`")],
                 Unsupported(_) =>
-                    Some("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"),
-                UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_)) =>
-                    Some("this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental"),
+                    vec![format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support")],
                 UndefinedBehavior(_) =>
-                    Some("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior"),
-                _ => None,
+                    vec![
+                        format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior"),
+                        format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information"),
+                    ],
+                _ => vec![],
             };
-            (title, msg, help)
+            (title, msg, helps)
         }
     };
-    report_msg(ecx, &format!("{}: {}", title, msg), msg, help, true)
+    report_msg(ecx, &format!("{}: {}", title, msg), msg, &helps, true)
 }
 
 /// Report an error or note (depending on the `error` argument) at the current frame's current statement.
@@ -79,7 +88,7 @@ fn report_msg<'tcx, 'mir>(
     ecx: &InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
     title: &str,
     span_msg: String,
-    help: Option<&str>,
+    helps: &[String],
     error: bool,
 ) -> Option<i64> {
     let span = if let Some(frame) = ecx.stack().last() {
@@ -93,7 +102,7 @@ fn report_msg<'tcx, 'mir>(
         ecx.tcx.sess.diagnostic().span_note_diag(span, title)
     };
     err.span_label(span, span_msg);
-    if let Some(help) = help {
+    for help in helps {
         err.help(help);
     }
     // Add backtrace
@@ -149,7 +158,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     CreatedAlloc(AllocId(id)) =>
                         format!("created allocation with id {}", id),
                 };
-                report_msg(this, "tracking was triggered", msg, None, false);
+                report_msg(this, "tracking was triggered", msg, &[], false);
             }
         });
     }
