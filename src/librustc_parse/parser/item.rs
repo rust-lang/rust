@@ -458,7 +458,7 @@ impl<'a> Parser<'a> {
         self.expect_keyword(kw::Impl)?;
 
         // First, parse generic parameters if necessary.
-        let mut generics = if self.choose_generics_over_qpath() {
+        let mut generics = if self.choose_generics_over_qpath(0) {
             self.parse_generics()?
         } else {
             let mut generics = Generics::default();
