@@ -2,7 +2,7 @@ error[E0624]: associated function `foo` is private
   --> $DIR/private-impl-method.rs:20:7
    |
 LL |     s.foo();
-   |       ^^^
+   |       ^^^ private associated function
 
 error: aborting due to previous error
 

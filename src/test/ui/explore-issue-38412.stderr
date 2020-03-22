@@ -17,22 +17,22 @@ LL |     r.a_unstable_undeclared_pub;
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0616]: field `b_crate` of struct `pub_and_stability::Record` is private
-  --> $DIR/explore-issue-38412.rs:31:5
+  --> $DIR/explore-issue-38412.rs:31:7
    |
 LL |     r.b_crate;
-   |     ^^^^^^^^^
+   |       ^^^^^^^ private field
 
 error[E0616]: field `c_mod` of struct `pub_and_stability::Record` is private
-  --> $DIR/explore-issue-38412.rs:32:5
+  --> $DIR/explore-issue-38412.rs:32:7
    |
 LL |     r.c_mod;
-   |     ^^^^^^^
+   |       ^^^^^ private field
 
 error[E0616]: field `d_priv` of struct `pub_and_stability::Record` is private
-  --> $DIR/explore-issue-38412.rs:33:5
+  --> $DIR/explore-issue-38412.rs:33:7
    |
 LL |     r.d_priv;
-   |     ^^^^^^^^
+   |       ^^^^^^ private field
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
   --> $DIR/explore-issue-38412.rs:37:5
@@ -44,22 +44,22 @@ LL |     t.2;
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0616]: field `3` of struct `pub_and_stability::Tuple` is private
-  --> $DIR/explore-issue-38412.rs:38:5
+  --> $DIR/explore-issue-38412.rs:38:7
    |
 LL |     t.3;
-   |     ^^^
+   |       ^ private field
 
 error[E0616]: field `4` of struct `pub_and_stability::Tuple` is private
-  --> $DIR/explore-issue-38412.rs:39:5
+  --> $DIR/explore-issue-38412.rs:39:7
    |
 LL |     t.4;
-   |     ^^^
+   |       ^ private field
 
 error[E0616]: field `5` of struct `pub_and_stability::Tuple` is private
-  --> $DIR/explore-issue-38412.rs:40:5
+  --> $DIR/explore-issue-38412.rs:40:7
    |
 LL |     t.5;
-   |     ^^^
+   |       ^ private field
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
   --> $DIR/explore-issue-38412.rs:44:7
@@ -83,19 +83,19 @@ error[E0624]: associated function `pub_crate` is private
   --> $DIR/explore-issue-38412.rs:50:7
    |
 LL |     r.pub_crate();
-   |       ^^^^^^^^^
+   |       ^^^^^^^^^ private associated function
 
 error[E0624]: associated function `pub_mod` is private
   --> $DIR/explore-issue-38412.rs:51:7
    |
 LL |     r.pub_mod();
-   |       ^^^^^^^
+   |       ^^^^^^^ private associated function
 
 error[E0624]: associated function `private` is private
   --> $DIR/explore-issue-38412.rs:52:7
    |
 LL |     r.private();
-   |       ^^^^^^^
+   |       ^^^^^^^ private associated function
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
   --> $DIR/explore-issue-38412.rs:57:7
@@ -119,19 +119,19 @@ error[E0624]: associated function `pub_crate` is private
   --> $DIR/explore-issue-38412.rs:63:7
    |
 LL |     t.pub_crate();
-   |       ^^^^^^^^^
+   |       ^^^^^^^^^ private associated function
 
 error[E0624]: associated function `pub_mod` is private
   --> $DIR/explore-issue-38412.rs:64:7
    |
 LL |     t.pub_mod();
-   |       ^^^^^^^
+   |       ^^^^^^^ private associated function
 
 error[E0624]: associated function `private` is private
   --> $DIR/explore-issue-38412.rs:65:7
    |
 LL |     t.private();
-   |       ^^^^^^^
+   |       ^^^^^^^ private associated function
 
 error: aborting due to 19 previous errors
 

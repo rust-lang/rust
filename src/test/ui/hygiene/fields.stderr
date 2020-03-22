@@ -2,7 +2,7 @@ error: type `foo::S` is private
   --> $DIR/fields.rs:15:17
    |
 LL |         let s = S { x: 0 };
-   |                 ^^^^^^^^^^
+   |                 ^^^^^^^^^^ private type
 ...
 LL |     let s = foo::m!(S, x);
    |             ------------- in this macro invocation
@@ -13,7 +13,7 @@ error: type `foo::S` is private
   --> $DIR/fields.rs:16:17
    |
 LL |         let _ = s.x;
-   |                 ^
+   |                 ^ private type
 ...
 LL |     let s = foo::m!(S, x);
    |             ------------- in this macro invocation
@@ -24,7 +24,7 @@ error: type `foo::T` is private
   --> $DIR/fields.rs:18:17
    |
 LL |         let t = T(0);
-   |                 ^^^^
+   |                 ^^^^ private type
 ...
 LL |     let s = foo::m!(S, x);
    |             ------------- in this macro invocation
@@ -35,7 +35,7 @@ error: type `foo::T` is private
   --> $DIR/fields.rs:19:17
    |
 LL |         let _ = t.0;
-   |                 ^
+   |                 ^ private type
 ...
 LL |     let s = foo::m!(S, x);
    |             ------------- in this macro invocation

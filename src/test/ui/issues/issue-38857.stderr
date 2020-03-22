@@ -8,7 +8,7 @@ error[E0603]: module `sys` is private
   --> $DIR/issue-38857.rs:7:18
    |
 LL |     let a = std::sys::imp::process::process_common::StdioPipes { ..panic!() };
-   |                  ^^^ this module is private
+   |                  ^^^ private module
    |
 note: the module `sys` is defined here
   --> $SRC_DIR/libstd/lib.rs:LL:COL

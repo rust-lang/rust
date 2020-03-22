@@ -2,7 +2,7 @@ error[E0603]: static `j` is private
   --> $DIR/xcrate-private-by-default.rs:23:29
    |
 LL |     static_priv_by_default::j;
-   |                             ^ this static is private
+   |                             ^ private static
    |
 note: the static `j` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:47:1
@@ -14,7 +14,7 @@ error[E0603]: function `k` is private
   --> $DIR/xcrate-private-by-default.rs:25:29
    |
 LL |     static_priv_by_default::k;
-   |                             ^ this function is private
+   |                             ^ private function
    |
 note: the function `k` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:48:1
@@ -26,7 +26,7 @@ error[E0603]: unit struct `l` is private
   --> $DIR/xcrate-private-by-default.rs:27:29
    |
 LL |     static_priv_by_default::l;
-   |                             ^ this unit struct is private
+   |                             ^ private unit struct
    |
 note: the unit struct `l` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:49:1
@@ -38,7 +38,7 @@ error[E0603]: enum `m` is private
   --> $DIR/xcrate-private-by-default.rs:29:35
    |
 LL |     foo::<static_priv_by_default::m>();
-   |                                   ^ this enum is private
+   |                                   ^ private enum
    |
 note: the enum `m` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:50:1
@@ -50,7 +50,7 @@ error[E0603]: type alias `n` is private
   --> $DIR/xcrate-private-by-default.rs:31:35
    |
 LL |     foo::<static_priv_by_default::n>();
-   |                                   ^ this type alias is private
+   |                                   ^ private type alias
    |
 note: the type alias `n` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:51:1
@@ -62,7 +62,7 @@ error[E0603]: module `foo` is private
   --> $DIR/xcrate-private-by-default.rs:35:29
    |
 LL |     static_priv_by_default::foo::a;
-   |                             ^^^ this module is private
+   |                             ^^^ private module
    |
 note: the module `foo` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:12:1
@@ -74,7 +74,7 @@ error[E0603]: module `foo` is private
   --> $DIR/xcrate-private-by-default.rs:37:29
    |
 LL |     static_priv_by_default::foo::b;
-   |                             ^^^ this module is private
+   |                             ^^^ private module
    |
 note: the module `foo` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:12:1
@@ -86,7 +86,7 @@ error[E0603]: module `foo` is private
   --> $DIR/xcrate-private-by-default.rs:39:29
    |
 LL |     static_priv_by_default::foo::c;
-   |                             ^^^ this module is private
+   |                             ^^^ private module
    |
 note: the module `foo` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:12:1
@@ -98,7 +98,7 @@ error[E0603]: module `foo` is private
   --> $DIR/xcrate-private-by-default.rs:41:35
    |
 LL |     foo::<static_priv_by_default::foo::d>();
-   |                                   ^^^ this module is private
+   |                                   ^^^ private module
    |
 note: the module `foo` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:12:1
@@ -110,7 +110,7 @@ error[E0603]: module `foo` is private
   --> $DIR/xcrate-private-by-default.rs:43:35
    |
 LL |     foo::<static_priv_by_default::foo::e>();
-   |                                   ^^^ this module is private
+   |                                   ^^^ private module
    |
 note: the module `foo` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:12:1

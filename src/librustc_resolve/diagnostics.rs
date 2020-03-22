@@ -951,7 +951,7 @@ impl<'a> Resolver<'a> {
         let descr = get_descr(binding);
         let mut err =
             struct_span_err!(self.session, ident.span, E0603, "{} `{}` is private", descr, ident);
-        err.span_label(ident.span, &format!("this {} is private", descr));
+        err.span_label(ident.span, &format!("private {}", descr));
         if let Some(span) = ctor_fields_span {
             err.span_label(span, "a constructor is private if any of the fields is private");
         }

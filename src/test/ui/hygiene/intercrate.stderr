@@ -2,7 +2,7 @@ error: type `fn() -> u32 {intercrate::foo::bar::f}` is private
   --> $DIR/intercrate.rs:10:16
    |
 LL |     assert_eq!(intercrate::foo::m!(), 1);
-   |                ^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^^^^^^^^^^^^^^^^^ private type
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

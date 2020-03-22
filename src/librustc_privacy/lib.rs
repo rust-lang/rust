@@ -1038,7 +1038,7 @@ impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
                 def.variant_descr(),
                 self.tcx.def_path_str(def.did)
             )
-            .span_label(span, format!("field `{}` is private", field.ident))
+            .span_label(span, "private field")
             .emit();
         }
     }
@@ -1180,7 +1180,11 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
-            self.tcx.sess.span_err(self.span, &format!("{} `{}` is private", kind, descr));
+            self.tcx
+                .sess
+                .struct_span_err(self.span, &format!("{} `{}` is private", kind, descr))
+                .span_label(self.span, &format!("private {}", kind))
+                .emit();
         }
         is_error
     }
@@ -1313,8 +1317,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                     hir::QPath::Resolved(_, ref path) => path.to_string(),
                     hir::QPath::TypeRelative(_, ref segment) => segment.ident.to_string(),
                 };
-                let msg = format!("{} `{}` is private", kind.descr(def_id), name);
-                self.tcx.sess.span_err(span, &msg);
+                let kind = kind.descr(def_id);
+                self.tcx
+                    .sess
+                    .struct_span_err(span, &format!("{} `{}` is private", kind, name))
+                    .span_label(span, &format!("private {}", kind))
+                    .emit();
                 return;
             }
         }
