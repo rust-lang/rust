@@ -2054,7 +2054,9 @@ impl<T> VecDeque<T> {
     /// This method does not allocate and does not change the order of the inserted elements.
     /// As it returns a mutable slice, this can be used to sort or binary search a deque.
     ///
-    /// In case `self` is already contiguous, [`as_slices`](#method.as_slices) can be used to get immutable access.
+    /// Once the internal storage is contiguous, the [`as_slices`](#method.as_slices) and
+    /// [`as_slices_mut`](#method.as_slices_mut) methods will return the entire contents of the
+    /// `VecDeque` in a single slice.
     ///
     /// # Examples
     ///
