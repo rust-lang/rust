@@ -336,6 +336,54 @@ pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
     intrinsics::size_of_val(val)
 }
 
+/// Returns the size of the pointed-to value in bytes.
+///
+/// This is usually the same as `size_of::<T>()`. However, when `T` *has* no
+/// statically-known size, e.g., a slice [`[T]`][slice] or a [trait object],
+/// then `size_of_val_raw` can be used to get the dynamically-known size.
+///
+/// # Safety
+///
+/// This function is only safe to call if the following conditions hold:
+///
+/// - If `T` is `Sized`, this function is always safe to call.
+/// - If the unsized tail of `T` is:
+///     - a [slice], then the length of the slice tail must be an intialized
+///       integer, and the size of the *entire value*
+///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+///     - a [trait object], then the vtable part of the pointer must point
+///       to a valid vtable acquired by an unsizing coersion, and the size
+///       of the *entire value* (dynamic tail length + statically sized prefix)
+///       must fit in `isize`.
+///     - an (unstable) [extern type], then this function is always safe to
+///       call, but may panic or otherwise return the wrong value, as the
+///       extern type's layout is not known. This is the same behavior as
+///       [`size_of_val`] on a reference to an extern type tail.
+///     - otherwise, it is conservatively not allowed to call this function.
+///
+/// [slice]: ../../std/primitive.slice.html
+/// [trait object]: ../../book/ch17-02-trait-objects.html
+/// [extern type]: ../../unstable-book/language-features/extern-types.html
+///
+/// # Examples
+///
+/// ```
+/// #![feature(layout_for_ptr)]
+/// use std::mem;
+///
+/// assert_eq!(4, mem::size_of_val(&5i32));
+///
+/// let x: [u8; 13] = [0; 13];
+/// let y: &[u8] = &x;
+/// assert_eq!(13, unsafe { mem::size_of_val_raw(y) });
+/// ```
+#[inline]
+#[cfg(not(bootstrap))]
+#[unstable(feature = "layout_for_ptr", issue = "69835")]
+pub unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
+    intrinsics::size_of_val(val)
+}
+
 /// Returns the [ABI]-required minimum alignment of a type.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
@@ -421,6 +469,50 @@ pub const fn align_of<T>() -> usize {
 #[allow(deprecated)]
 pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
     min_align_of_val(val)
+}
+
+/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
+///
+/// Every reference to a value of the type `T` must be a multiple of this number.
+///
+/// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
+///
+/// # Safety
+///
+/// This function is only safe to call if the following conditions hold:
+///
+/// - If `T` is `Sized`, this function is always safe to call.
+/// - If the unsized tail of `T` is:
+///     - a [slice], then the length of the slice tail must be an intialized
+///       integer, and the size of the *entire value*
+///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+///     - a [trait object], then the vtable part of the pointer must point
+///       to a valid vtable acquired by an unsizing coersion, and the size
+///       of the *entire value* (dynamic tail length + statically sized prefix)
+///       must fit in `isize`.
+///     - an (unstable) [extern type], then this function is always safe to
+///       call, but may panic or otherwise return the wrong value, as the
+///       extern type's layout is not known. This is the same behavior as
+///       [`align_of_val`] on a reference to an extern type tail.
+///     - otherwise, it is conservatively not allowed to call this function.
+///
+/// [slice]: ../../std/primitive.slice.html
+/// [trait object]: ../../book/ch17-02-trait-objects.html
+/// [extern type]: ../../unstable-book/language-features/extern-types.html
+///
+/// # Examples
+///
+/// ```
+/// #![feature(layout_for_ptr)]
+/// use std::mem;
+///
+/// assert_eq!(4, unsafe { mem::align_of_val_raw(&5i32) });
+/// ```
+#[inline]
+#[cfg(not(bootstrap))]
+#[unstable(feature = "layout_for_ptr", issue = "69835")]
+pub unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
+    intrinsics::min_align_of_val(val)
 }
 
 /// Returns `true` if dropping values of type `T` matters.
