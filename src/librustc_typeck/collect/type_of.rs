@@ -424,7 +424,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                             }
                         } else {
                             let param = opaque_generics.param_at(i, self.tcx);
-                            self.tcx.sess.span_err(
+                            self.tcx.sess.delay_span_bug(
                                 span,
                                 &format!(
                                     "defining opaque type use does not fully define opaque type: \

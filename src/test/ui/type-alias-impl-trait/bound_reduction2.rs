@@ -14,6 +14,6 @@ trait Trait<U> {}
 
 impl<W> Trait<W> for () {}
 
-fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> { //~ ERROR does not fully define
+fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
     ()
 }

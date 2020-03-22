@@ -864,13 +864,15 @@ fn check_opaque_types<'fcx, 'tcx>(
                 trace!("check_opaque_types: opaque_ty, {:?}, {:?}", def_id, substs);
                 let generics = tcx.generics_of(def_id);
                 // Only check named `impl Trait` types defined in this crate.
+                // FIXME(eddyb) is  `generics.parent.is_none()` correct? It seems
+                // potentially risky wrt associated types in `impl`s.
                 if generics.parent.is_none() && def_id.is_local() {
                     let opaque_hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
                     if may_define_opaque_type(tcx, fn_def_id, opaque_hir_id) {
                         trace!("check_opaque_types: may define, generics={:#?}", generics);
                         let mut seen: FxHashMap<_, Vec<_>> = FxHashMap::default();
-                        for (subst, param) in substs.iter().zip(&generics.params) {
-                            match subst.unpack() {
+                        for (i, &arg) in substs.iter().enumerate() {
+                            match arg.unpack() {
                                 ty::subst::GenericArgKind::Type(ty) => match ty.kind {
                                     ty::Param(..) => {}
                                     // Prevent `fn foo() -> Foo<u32>` from being defining.
@@ -882,9 +884,9 @@ fn check_opaque_types<'fcx, 'tcx>(
                                                  in defining scope",
                                             )
                                             .span_note(
-                                                tcx.def_span(param.def_id),
+                                                tcx.def_span(generics.param_at(i, tcx).def_id),
                                                 &format!(
-                                                    "used non-generic type {} for \
+                                                    "used non-generic type `{}` for \
                                                      generic parameter",
                                                     ty,
                                                 ),
@@ -894,7 +896,6 @@ fn check_opaque_types<'fcx, 'tcx>(
                                 },
 
                                 ty::subst::GenericArgKind::Lifetime(region) => {
-                                    let param_span = tcx.def_span(param.def_id);
                                     if let ty::ReStatic = region {
                                         tcx.sess
                                             .struct_span_err(
@@ -903,14 +904,14 @@ fn check_opaque_types<'fcx, 'tcx>(
                                                  in defining scope",
                                             )
                                             .span_label(
-                                                param_span,
+                                                tcx.def_span(generics.param_at(i, tcx).def_id),
                                                 "cannot use static lifetime; use a bound lifetime \
                                                  instead or remove the lifetime parameter from the \
                                                  opaque type",
                                             )
                                             .emit();
                                     } else {
-                                        seen.entry(region).or_default().push(param_span);
+                                        seen.entry(region).or_default().push(i);
                                     }
                                 }
 
@@ -924,20 +925,24 @@ fn check_opaque_types<'fcx, 'tcx>(
                                                  in defining scope",
                                             )
                                             .span_note(
-                                                tcx.def_span(param.def_id),
+                                                tcx.def_span(generics.param_at(i, tcx).def_id),
                                                 &format!(
-                                                    "used non-generic const {} for \
+                                                    "used non-generic const `{}` for \
                                                      generic parameter",
-                                                    ty,
+                                                    ct,
                                                 ),
                                             )
                                             .emit();
                                     }
                                 },
-                            } // match subst
-                        } // for (subst, param)
-                        for (_, spans) in seen {
-                            if spans.len() > 1 {
+                            } // match arg
+                        } // for (arg, param)
+                        for (_, indices) in seen {
+                            if indices.len() > 1 {
+                                let spans: Vec<_> = indices
+                                    .into_iter()
+                                    .map(|i| tcx.def_span(generics.param_at(i, tcx).def_id))
+                                    .collect();
                                 tcx.sess
                                     .struct_span_err(
                                         span,

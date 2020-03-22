@@ -4,13 +4,17 @@ error: at least one trait must be specified
 LL | type Cmp<T> = impl 'static;
    |               ^^^^^^^^^^^^
 
-error: defining opaque type use does not fully define opaque type: generic parameter `T` is specified as concrete type `u32`
-  --> $DIR/generic_nondefining_use.rs:10:1
+error: non-defining opaque type use in defining scope
+  --> $DIR/generic_nondefining_use.rs:10:13
    |
-LL | / fn cmp() -> Cmp<u32> {
-LL | |     5u32
-LL | | }
-   | |_^
+LL | fn cmp() -> Cmp<u32> {
+   |             ^^^^^^^^
+   |
+note: used non-generic type `u32` for generic parameter
+  --> $DIR/generic_nondefining_use.rs:5:10
+   |
+LL | type Cmp<T> = impl 'static;
+   |          ^
 
 error: aborting due to 2 previous errors
 

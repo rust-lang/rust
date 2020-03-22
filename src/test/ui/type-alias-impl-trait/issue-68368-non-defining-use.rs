@@ -6,7 +6,7 @@
 trait Trait<T> {}
 type Alias<'a, U> = impl Trait<U>;
 fn f<'a>() -> Alias<'a, ()> {}
-//~^ ERROR defining opaque type use does not fully define opaque type: generic parameter `U`
+//~^ ERROR non-defining opaque type use in defining scope
 
 fn main() {}
 
