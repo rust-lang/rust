@@ -142,7 +142,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     }
 
     /// Find a AstNode by offset inside SyntaxNode, if it is inside *Macrofile*,
-    /// search up until it is target AstNode type
+    /// search up until it is of the target AstNode type
     pub fn find_node_at_offset_with_macros<N: AstNode>(
         &self,
         node: &SyntaxNode,
