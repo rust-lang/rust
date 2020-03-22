@@ -40,17 +40,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         constant: &mir::Constant<'tcx>,
     ) -> Result<ConstValue<'tcx>, ErrorHandled> {
-        let const_ = match constant.literal.val {
-            ty::ConstKind::Unevaluated(def_id, substs, promoted) => {
-                let substs = self.monomorphize(&substs);
-                ty::ConstKind::Unevaluated(def_id, substs, promoted)
-            }
-            ty::ConstKind::Value(value) => ty::ConstKind::Value(value),
-            ty::ConstKind::Param(_) => self.monomorphize(&constant.literal).val,
-            _ => span_bug!(constant.span, "encountered bad Const in codegen: {:?}", constant),
-        };
-
-        match const_ {
+        match self.monomorphize(&constant.literal).val {
             ty::ConstKind::Unevaluated(def_id, substs, promoted) => self
                 .cx
                 .tcx()
@@ -65,10 +55,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     err
                 }),
             ty::ConstKind::Value(value) => Ok(value),
-            _ => span_bug!(
+            err => span_bug!(
                 constant.span,
                 "encountered bad ConstKind after monomorphizing: {:?}",
-                const_
+                err
             ),
         }
     }
