@@ -895,7 +895,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
                     .unwrap()
                 })
                 .filter(|&instance| should_monomorphize_locally(tcx, &instance))
-                .map(|instance| create_fn_mono_item(instance));
+                .map(create_fn_mono_item);
             output.extend(methods);
         }
 

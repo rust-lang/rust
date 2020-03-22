@@ -326,7 +326,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                                     .as_ref()
                                     .and_then(|t| self.lookup_def_id(t.ref_id))
                                     .map(id_from_def_id)
-                                    .unwrap_or_else(|| null_id()),
+                                    .unwrap_or_else(null_id),
                             },
                             Impl {
                                 id: impl_id,
@@ -487,9 +487,9 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             qualname,
             // FIXME you get better data here by using the visitor.
             value: String::new(),
-            parent: parent_scope.map(|id| id_from_def_id(id)),
+            parent: parent_scope.map(id_from_def_id),
             children: vec![],
-            decl_id: decl_id.map(|id| id_from_def_id(id)),
+            decl_id: decl_id.map(id_from_def_id),
             docs,
             sig: None,
             attributes: lower_attributes(attributes, self),
@@ -541,7 +541,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                                 .tcx
                                 .find_field_index(ident, variant)
                                 .map(|index| id_from_def_id(variant.fields[index].did))
-                                .unwrap_or_else(|| null_id()),
+                                .unwrap_or_else(null_id),
                         }))
                     }
                     ty::Tuple(..) => None,
@@ -590,14 +590,11 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 Some(Data::RefData(Ref {
                     kind: RefKind::Function,
                     span,
-                    ref_id: def_id
-                        .or(decl_id)
-                        .map(|id| id_from_def_id(id))
-                        .unwrap_or_else(|| null_id()),
+                    ref_id: def_id.or(decl_id).map(id_from_def_id).unwrap_or_else(|| null_id()),
                 }))
             }
             ast::ExprKind::Path(_, ref path) => {
-                self.get_path_data(expr.id, path).map(|d| Data::RefData(d))
+                self.get_path_data(expr.id, path).map(Data::RefData)
             }
             _ => {
                 // FIXME
@@ -1075,7 +1072,7 @@ fn id_from_def_id(id: DefId) -> rls_data::Id {
 
 fn id_from_node_id(id: NodeId, scx: &SaveContext<'_, '_>) -> rls_data::Id {
     let def_id = scx.tcx.hir().opt_local_def_id_from_node_id(id);
-    def_id.map(|id| id_from_def_id(id)).unwrap_or_else(|| {
+    def_id.map(id_from_def_id).unwrap_or_else(|| {
         // Create a *fake* `DefId` out of a `NodeId` by subtracting the `NodeId`
         // out of the maximum u32 value. This will work unless you have *billions*
         // of definitions in a single crate (very unlikely to actually happen).

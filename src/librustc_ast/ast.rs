@@ -250,7 +250,7 @@ impl ParenthesizedArgs {
     pub fn as_angle_bracketed_args(&self) -> AngleBracketedArgs {
         AngleBracketedArgs {
             span: self.span,
-            args: self.inputs.iter().cloned().map(|input| GenericArg::Type(input)).collect(),
+            args: self.inputs.iter().cloned().map(GenericArg::Type).collect(),
             constraints: vec![],
         }
     }

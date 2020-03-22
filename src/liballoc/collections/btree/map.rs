@@ -196,7 +196,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
                                 (root, length)
                             };
 
-                            out_node.push(k, v, subroot.unwrap_or_else(|| node::Root::new_leaf()));
+                            out_node.push(k, v, subroot.unwrap_or_else(node::Root::new_leaf));
                             out_tree.length += 1 + sublength;
                         }
                     }
@@ -2147,7 +2147,7 @@ impl<K, V> BTreeMap<K, V> {
     /// If the root node is the empty (non-allocated) root node, allocate our
     /// own node.
     fn ensure_root_is_owned(&mut self) -> &mut node::Root<K, V> {
-        self.root.get_or_insert_with(|| node::Root::new_leaf())
+        self.root.get_or_insert_with(node::Root::new_leaf)
     }
 }
 

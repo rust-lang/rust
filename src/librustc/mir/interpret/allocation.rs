@@ -796,7 +796,7 @@ impl UndefMask {
         }
 
         // FIXME(oli-obk): optimize this for allocations larger than a block.
-        let idx = (start.bytes()..end.bytes()).map(|i| Size::from_bytes(i)).find(|&i| !self.get(i));
+        let idx = (start.bytes()..end.bytes()).map(Size::from_bytes).find(|&i| !self.get(i));
 
         match idx {
             Some(idx) => Err(idx),

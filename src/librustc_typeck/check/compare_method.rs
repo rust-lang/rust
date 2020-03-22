@@ -677,7 +677,7 @@ fn compare_number_of_generics<'tcx>(
                         impl_count,
                         kind,
                         pluralize!(impl_count),
-                        suffix.unwrap_or_else(|| String::new()),
+                        suffix.unwrap_or_else(String::new),
                     ),
                 );
             }

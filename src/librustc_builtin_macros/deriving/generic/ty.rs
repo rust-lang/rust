@@ -76,8 +76,8 @@ impl<'a> Path<'a> {
             self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
         let params = lt
             .into_iter()
-            .map(|lt| GenericArg::Lifetime(lt))
-            .chain(tys.into_iter().map(|ty| GenericArg::Type(ty)))
+            .map(GenericArg::Lifetime)
+            .chain(tys.into_iter().map(GenericArg::Type))
             .collect();
 
         match self.kind {

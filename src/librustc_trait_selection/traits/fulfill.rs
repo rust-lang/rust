@@ -131,7 +131,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             // FIXME: if we kept the original cache key, we could mark projection
             // obligations as complete for the projection cache here.
 
-            errors.extend(outcome.errors.into_iter().map(|e| to_fulfillment_error(e)));
+            errors.extend(outcome.errors.into_iter().map(to_fulfillment_error));
 
             // If nothing new was added, no need to keep looping.
             if outcome.stalled {
@@ -214,7 +214,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             .predicates
             .to_errors(CodeAmbiguity)
             .into_iter()
-            .map(|e| to_fulfillment_error(e))
+            .map(to_fulfillment_error)
             .collect();
         if errors.is_empty() { Ok(()) } else { Err(errors) }
     }

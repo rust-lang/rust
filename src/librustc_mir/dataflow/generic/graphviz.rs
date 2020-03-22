@@ -577,7 +577,7 @@ fn write_diff<A: Analysis<'tcx>>(
     let mut clear = HybridBitSet::new_empty(len);
 
     // FIXME: Implement a lazy iterator over the symmetric difference of two bitsets.
-    for i in (0..len).map(|i| A::Idx::new(i)) {
+    for i in (0..len).map(A::Idx::new) {
         match (from.contains(i), to.contains(i)) {
             (false, true) => set.insert(i),
             (true, false) => clear.insert(i),
