@@ -59,10 +59,10 @@ LL |     S::default().f();
    |                  ^ private associated function
 
 error[E0624]: associated function `g` is private
-  --> $DIR/test.rs:33:5
+  --> $DIR/test.rs:33:8
    |
 LL |     S::g();
-   |     ^^^^ private associated function
+   |        ^ private associated function
 
 error[E0616]: field `y` of struct `pub_restricted::Universe` is private
   --> $DIR/test.rs:42:15

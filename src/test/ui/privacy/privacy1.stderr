@@ -155,28 +155,28 @@ LL |     trait B {
    |     ^^^^^^^
 
 error[E0624]: associated function `bar` is private
-  --> $DIR/privacy1.rs:77:9
+  --> $DIR/privacy1.rs:77:23
    |
 LL |         self::baz::A::bar();
-   |         ^^^^^^^^^^^^^^^^^ private associated function
+   |                       ^^^ private associated function
 
 error[E0624]: associated function `bar` is private
-  --> $DIR/privacy1.rs:95:5
+  --> $DIR/privacy1.rs:95:13
    |
 LL |     bar::A::bar();
-   |     ^^^^^^^^^^^ private associated function
+   |             ^^^ private associated function
 
 error[E0624]: associated function `bar` is private
-  --> $DIR/privacy1.rs:102:9
+  --> $DIR/privacy1.rs:102:19
    |
 LL |         ::bar::A::bar();
-   |         ^^^^^^^^^^^^^ private associated function
+   |                   ^^^ private associated function
 
 error[E0624]: associated function `bar` is private
-  --> $DIR/privacy1.rs:105:9
+  --> $DIR/privacy1.rs:105:24
    |
 LL |         ::bar::baz::A::bar();
-   |         ^^^^^^^^^^^^^^^^^^ private associated function
+   |                        ^^^ private associated function
 
 error[E0624]: associated function `bar2` is private
   --> $DIR/privacy1.rs:108:23
