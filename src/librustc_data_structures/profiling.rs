@@ -345,7 +345,7 @@ impl SelfProfilerRef {
     ) {
         drop(self.exec(event_filter, |profiler| {
             let event_id = StringId::new_virtual(query_invocation_id.0);
-            let thread_id = std::thread::current().id().as_u64() as u32;
+            let thread_id = std::thread::current().id().as_u64().get() as u32;
 
             profiler.profiler.record_instant_event(
                 event_kind(profiler),
@@ -522,7 +522,7 @@ impl<'a> TimingGuard<'a> {
         event_kind: StringId,
         event_id: EventId,
     ) -> TimingGuard<'a> {
-        let thread_id = std::thread::current().id().as_u64() as u32;
+        let thread_id = std::thread::current().id().as_u64().get() as u32;
         let raw_profiler = &profiler.profiler;
         let timing_guard =
             raw_profiler.start_recording_interval_event(event_kind, event_id, thread_id);
