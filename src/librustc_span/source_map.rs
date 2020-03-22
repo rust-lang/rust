@@ -370,11 +370,11 @@ impl SourceMap {
     pub fn doctest_offset_line(&self, file: &FileName, orig: usize) -> usize {
         match file {
             FileName::DocTest(_, offset) => {
-                return if *offset >= 0 {
-                    orig + *offset as usize
-                } else {
+                if *offset < 0 {
                     orig - (-(*offset)) as usize
-                };
+                } else {
+                    orig + *offset as usize
+                }
             }
             _ => orig,
         }

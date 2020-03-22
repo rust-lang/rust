@@ -94,14 +94,12 @@ mod dl {
             let result = f();
 
             let last_error = libc::dlerror() as *const _;
-            let ret = if ptr::null() == last_error {
+            if ptr::null() == last_error {
                 Ok(result)
             } else {
                 let s = CStr::from_ptr(last_error).to_bytes();
                 Err(str::from_utf8(s).unwrap().to_owned())
-            };
-
-            ret
+            }
         }
     }
 

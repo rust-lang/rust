@@ -490,17 +490,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 {
                     if pat_snippet.starts_with('&') {
                         let pat_snippet = pat_snippet[1..].trim_start();
-                        let suggestion;
-                        let to_remove;
-                        if pat_snippet.starts_with("mut")
+                        let (suggestion, to_remove) = if pat_snippet.starts_with("mut")
                             && pat_snippet["mut".len()..].starts_with(rustc_lexer::is_whitespace)
                         {
-                            suggestion = pat_snippet["mut".len()..].trim_start();
-                            to_remove = "&mut";
+                            (pat_snippet["mut".len()..].trim_start(), "&mut")
                         } else {
-                            suggestion = pat_snippet;
-                            to_remove = "&";
-                        }
+                            (pat_snippet, "&")
+                        };
                         suggestions.push((pat_span, to_remove, suggestion.to_owned()));
                     }
                 }

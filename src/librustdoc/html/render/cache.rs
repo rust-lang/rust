@@ -666,13 +666,12 @@ fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
 }
 
 fn get_index_type(clean_type: &clean::Type) -> RenderType {
-    let t = RenderType {
+    RenderType {
         ty: clean_type.def_id(),
         idx: None,
         name: get_index_type_name(clean_type, true).map(|s| s.to_ascii_lowercase()),
         generics: get_generics(clean_type),
-    };
-    t
+    }
 }
 
 fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option<String> {

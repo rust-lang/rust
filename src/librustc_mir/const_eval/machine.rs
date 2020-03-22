@@ -335,9 +335,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     #[inline(always)]
-    fn tag_static_base_pointer(_memory_extra: &MemoryExtra, _id: AllocId) -> Self::PointerTag {
-        ()
-    }
+    fn tag_static_base_pointer(_memory_extra: &MemoryExtra, _id: AllocId) -> Self::PointerTag {}
 
     fn box_alloc(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,

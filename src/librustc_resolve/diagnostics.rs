@@ -59,8 +59,7 @@ crate struct ImportSuggestion {
 /// `source_map` functions and this function to something more robust.
 fn reduce_impl_span_to_impl_keyword(sm: &SourceMap, impl_span: Span) -> Span {
     let impl_span = sm.span_until_char(impl_span, '<');
-    let impl_span = sm.span_until_whitespace(impl_span);
-    impl_span
+    sm.span_until_whitespace(impl_span)
 }
 
 impl<'a> Resolver<'a> {

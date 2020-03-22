@@ -145,8 +145,7 @@ mod hack {
         unsafe {
             let len = b.len();
             let b = Box::into_raw(b);
-            let xs = Vec::from_raw_parts(b as *mut T, len, len);
-            xs
+            Vec::from_raw_parts(b as *mut T, len, len)
         }
     }
 

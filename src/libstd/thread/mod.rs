@@ -1082,8 +1082,8 @@ impl ThreadId {
     /// it is not guaranteed which values new threads will return, and this may
     /// change across Rust versions.
     #[unstable(feature = "thread_id_value", issue = "67939")]
-    pub fn as_u64(&self) -> u64 {
-        self.0.get()
+    pub fn as_u64(&self) -> NonZeroU64 {
+        self.0
     }
 }
 

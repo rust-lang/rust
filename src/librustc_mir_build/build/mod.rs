@@ -637,11 +637,12 @@ where
     );
     assert_eq!(block, builder.return_block());
 
-    let mut spread_arg = None;
-    if abi == Abi::RustCall {
+    let spread_arg = if abi == Abi::RustCall {
         // RustCall pseudo-ABI untuples the last argument.
-        spread_arg = Some(Local::new(arguments.len()));
-    }
+        Some(Local::new(arguments.len()))
+    } else {
+        None
+    };
     debug!("fn_id {:?} has attrs {:?}", fn_def_id, tcx.get_attrs(fn_def_id));
 
     let mut body = builder.finish();

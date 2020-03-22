@@ -4838,7 +4838,6 @@ Version 1.11.0 (2016-08-18)
 Language
 --------
 
-* [`cfg_attr` works on `path` attributes](https://github.com/rust-lang/rust/pull/34546)
 * [Support nested `cfg_attr` attributes](https://github.com/rust-lang/rust/pull/34216)
 * [Allow statement-generating braced macro invocations at the end of blocks](https://github.com/rust-lang/rust/pull/34436)
 * [Macros can be expanded inside of trait definitions](https://github.com/rust-lang/rust/pull/34213)
@@ -4957,8 +4956,6 @@ Version 1.10.0 (2016-07-07)
 Language
 --------
 
-* [Allow `concat_idents!` in type positions as well as in expression
-  positions](https://github.com/rust-lang/rust/pull/33735).
 * [`Copy` types are required to have a trivial implementation of `Clone`](https://github.com/rust-lang/rust/pull/33420).
   [RFC 1521](https://github.com/rust-lang/rfcs/blob/master/text/1521-copy-clone-semantics.md).
 * [Single-variant enums support the `#[repr(..)]` attribute](https://github.com/rust-lang/rust/pull/33355).

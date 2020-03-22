@@ -232,9 +232,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     #[inline(always)]
-    fn tag_static_base_pointer(_memory_extra: &(), _id: AllocId) -> Self::PointerTag {
-        ()
-    }
+    fn tag_static_base_pointer(_memory_extra: &(), _id: AllocId) -> Self::PointerTag {}
 
     fn box_alloc(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -400,7 +398,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     where
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
-        let r = match f(self) {
+        match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
                 // Some errors shouldn't come up because creating them causes
@@ -414,8 +412,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 );
                 None
             }
-        };
-        r
+        }
     }
 
     fn eval_constant(&mut self, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {

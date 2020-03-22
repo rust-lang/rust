@@ -288,7 +288,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
         B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules).unwrap_or_else(|e| e.raise())
     };
 
-    let result = lto_modules
+    lto_modules
         .into_iter()
         .map(|module| {
             let cost = module.cost();
@@ -303,9 +303,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
                 0,
             )
         }))
-        .collect();
-
-    result
+        .collect()
 }
 
 pub struct CompiledModules {

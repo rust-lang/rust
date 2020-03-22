@@ -73,10 +73,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // they are never assigned.
             ExprKind::Break { .. } | ExprKind::Continue { .. } | ExprKind::Return { .. } => (),
             ExprKind::Block { body: hir::Block { expr: None, targeted_by_break: false, .. } }
-                if expr_ty.is_never() =>
-            {
-                ()
-            }
+                if expr_ty.is_never() => {}
             _ => {
                 this.cfg
                     .push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });
