@@ -17,22 +17,22 @@ LL |     r.a_unstable_undeclared_pub;
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0616]: field `b_crate` of struct `pub_and_stability::Record` is private
-  --> $DIR/explore-issue-38412.rs:31:5
+  --> $DIR/explore-issue-38412.rs:31:7
    |
 LL |     r.b_crate;
-   |     ^^^^^^^^^
+   |       ^^^^^^^ private field
 
 error[E0616]: field `c_mod` of struct `pub_and_stability::Record` is private
-  --> $DIR/explore-issue-38412.rs:32:5
+  --> $DIR/explore-issue-38412.rs:32:7
    |
 LL |     r.c_mod;
-   |     ^^^^^^^
+   |       ^^^^^ private field
 
 error[E0616]: field `d_priv` of struct `pub_and_stability::Record` is private
-  --> $DIR/explore-issue-38412.rs:33:5
+  --> $DIR/explore-issue-38412.rs:33:7
    |
 LL |     r.d_priv;
-   |     ^^^^^^^^
+   |       ^^^^^^ private field
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
   --> $DIR/explore-issue-38412.rs:37:5
@@ -44,22 +44,22 @@ LL |     t.2;
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0616]: field `3` of struct `pub_and_stability::Tuple` is private
-  --> $DIR/explore-issue-38412.rs:38:5
+  --> $DIR/explore-issue-38412.rs:38:7
    |
 LL |     t.3;
-   |     ^^^
+   |       ^ private field
 
 error[E0616]: field `4` of struct `pub_and_stability::Tuple` is private
-  --> $DIR/explore-issue-38412.rs:39:5
+  --> $DIR/explore-issue-38412.rs:39:7
    |
 LL |     t.4;
-   |     ^^^
+   |       ^ private field
 
 error[E0616]: field `5` of struct `pub_and_stability::Tuple` is private
-  --> $DIR/explore-issue-38412.rs:40:5
+  --> $DIR/explore-issue-38412.rs:40:7
    |
 LL |     t.5;
-   |     ^^^
+   |       ^ private field
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
   --> $DIR/explore-issue-38412.rs:44:7

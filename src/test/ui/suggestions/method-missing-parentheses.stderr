@@ -8,7 +8,7 @@ error[E0615]: attempted to take value of method `collect` on type `std::vec::Int
   --> $DIR/method-missing-parentheses.rs:2:32
    |
 LL |     let _ = vec![].into_iter().collect::<usize>;
-   |                                ^^^^^^^
+   |                                ^^^^^^^ method, not a field
    |
 help: use parentheses to call the method
    |

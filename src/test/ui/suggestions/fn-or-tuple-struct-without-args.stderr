@@ -250,7 +250,7 @@ error[E0615]: attempted to take value of method `ban` on type `X`
   --> $DIR/fn-or-tuple-struct-without-args.rs:43:22
    |
 LL |     let _: usize = X.ban;
-   |                      ^^^
+   |                      ^^^ method, not a field
    |
 help: use parentheses to call the method
    |
@@ -261,7 +261,7 @@ error[E0615]: attempted to take value of method `bal` on type `X`
   --> $DIR/fn-or-tuple-struct-without-args.rs:44:22
    |
 LL |     let _: usize = X.bal;
-   |                      ^^^
+   |                      ^^^ method, not a field
    |
 help: use parentheses to call the method
    |

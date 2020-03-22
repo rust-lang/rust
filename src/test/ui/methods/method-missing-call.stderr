@@ -2,7 +2,7 @@ error[E0615]: attempted to take value of method `get_x` on type `Point`
   --> $DIR/method-missing-call.rs:22:26
    |
 LL |                         .get_x;
-   |                          ^^^^^
+   |                          ^^^^^ method, not a field
    |
 help: use parentheses to call the method
    |
@@ -13,7 +13,7 @@ error[E0615]: attempted to take value of method `filter_map` on type `std::iter:
   --> $DIR/method-missing-call.rs:29:16
    |
 LL |               .filter_map;
-   |                ^^^^^^^^^^
+   |                ^^^^^^^^^^ method, not a field
    |
 help: use parentheses to call the method
    |
