@@ -58,44 +58,26 @@ expression: diag
                         },
                         message: "lint level defined here",
                     },
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: "file:///test/compiler/mir/tagset.rs",
+                            range: Range {
+                                start: Position {
+                                    line: 41,
+                                    character: 23,
+                                },
+                                end: Position {
+                                    line: 41,
+                                    character: 28,
+                                },
+                            },
+                        },
+                        message: "consider passing by value instead",
+                    },
                 ],
             ),
             tags: None,
         },
-        fixes: [
-            CodeAction {
-                title: "consider passing by value instead",
-                kind: Some(
-                    "quickfix",
-                ),
-                diagnostics: None,
-                edit: Some(
-                    WorkspaceEdit {
-                        changes: Some(
-                            {
-                                "file:///test/compiler/mir/tagset.rs": [
-                                    TextEdit {
-                                        range: Range {
-                                            start: Position {
-                                                line: 41,
-                                                character: 23,
-                                            },
-                                            end: Position {
-                                                line: 41,
-                                                character: 28,
-                                            },
-                                        },
-                                        new_text: "self",
-                                    },
-                                ],
-                            },
-                        ),
-                        document_changes: None,
-                    },
-                ),
-                command: None,
-                is_preferred: None,
-            },
-        ],
+        fixes: [],
     },
 ]

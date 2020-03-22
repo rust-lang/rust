@@ -1,7 +1,8 @@
 //! This module provides the functionality needed to convert diagnostics from
 //! `cargo check` json format to the LSP diagnostic format.
 use cargo_metadata::diagnostic::{
-    Diagnostic as RustDiagnostic, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion,
+    Applicability, Diagnostic as RustDiagnostic, DiagnosticLevel, DiagnosticSpan,
+    DiagnosticSpanMacroExpansion,
 };
 use lsp_types::{
     CodeAction, Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DiagnosticTag,
@@ -136,10 +137,13 @@ fn map_rust_child_diagnostic(
 
     let mut edit_map: HashMap<Url, Vec<TextEdit>> = HashMap::new();
     for &span in &spans {
-        if let Some(suggested_replacement) = &span.suggested_replacement {
-            let location = map_span_to_location(span, workspace_root);
-            let edit = TextEdit::new(location.range, suggested_replacement.clone());
-            edit_map.entry(location.uri).or_default().push(edit);
+        match (&span.suggestion_applicability, &span.suggested_replacement) {
+            (Some(Applicability::MachineApplicable), Some(suggested_replacement)) => {
+                let location = map_span_to_location(span, workspace_root);
+                let edit = TextEdit::new(location.range, suggested_replacement.clone());
+                edit_map.entry(location.uri).or_default().push(edit);
+            }
+            _ => {}
         }
     }
 
