@@ -568,7 +568,7 @@ pub enum ResourceExhaustionInfo {
     /// The program ran for too long.
     ///
     /// The exact limit is set by the `const_eval_limit` attribute.
-    TimeLimitReached,
+    StepLimitReached,
 }
 
 impl fmt::Debug for ResourceExhaustionInfo {
@@ -578,7 +578,9 @@ impl fmt::Debug for ResourceExhaustionInfo {
             StackFrameLimitReached => {
                 write!(f, "reached the configured maximum number of stack frames")
             }
-            TimeLimitReached => write!(f, "exceeded interpreter time limit"),
+            StepLimitReached => {
+                write!(f, "exceeded interpreter step limit (see `#[const_eval_limit]`)")
+            }
         }
     }
 }

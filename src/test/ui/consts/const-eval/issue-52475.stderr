@@ -16,7 +16,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/issue-52475.rs:7:17
    |
 LL |             n = (n + 1) % 5;
-   |                 ^^^^^^^^^^^ exceeded interpreter time limit
+   |                 ^^^^^^^^^^^ exceeded interpreter step limit (see `#[const_eval_limit]`)
 
 error: aborting due to 2 previous errors
 

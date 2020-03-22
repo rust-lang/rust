@@ -335,7 +335,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
 
         ecx.machine.steps_remaining -= 1;
         if ecx.machine.steps_remaining == 0 {
-            throw_exhaust!(TimeLimitReached)
+            throw_exhaust!(StepLimitReached)
         }
 
         Ok(())

@@ -4,7 +4,7 @@ error: any use of this value will cause an error
 LL | / const X: usize = {
 LL | |     let mut x = 0;
 LL | |     while x != 1000 {
-   | |           ^^^^^^^^^ exceeded interpreter time limit
+   | |           ^^^^^^^^^ exceeded interpreter step limit (see `#[const_eval_limit]`)
 LL | |
 ...  |
 LL | |     x
