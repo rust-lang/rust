@@ -1042,30 +1042,18 @@ impl Type {
     }
 
     pub fn is_bool(&self) -> bool {
-        match &self.ty.value {
-            Ty::Apply(a_ty) => match a_ty.ctor {
-                TypeCtor::Bool => true,
-                _ => false,
-            },
-            _ => false,
-        }
+        matches!(self.ty.value, Ty::Apply(ApplicationTy { ctor: TypeCtor::Bool, .. }))
     }
 
     pub fn is_mutable_reference(&self) -> bool {
-        match &self.ty.value {
-            Ty::Apply(a_ty) => match a_ty.ctor {
-                TypeCtor::Ref(Mutability::Mut) => true,
-                _ => false,
-            },
-            _ => false,
-        }
+        matches!(
+            self.ty.value,
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(Mutability::Mut), .. })
+        )
     }
 
     pub fn is_unknown(&self) -> bool {
-        match &self.ty.value {
-            Ty::Unknown => true,
-            _ => false,
-        }
+        matches!(self.ty.value, Ty::Unknown)
     }
 
     /// Checks that particular type `ty` implements `std::future::Future`.
