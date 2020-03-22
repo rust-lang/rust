@@ -28,6 +28,6 @@ fn parse() {
 
     let path = Path::new(file!());
     let path = path.canonicalize().unwrap();
-    let mut parser = new_parser_from_file(&parse_session, &path);
+    let mut parser = new_parser_from_file(&parse_session, &path, None);
     let _ = parser.parse_crate_mod();
 }
