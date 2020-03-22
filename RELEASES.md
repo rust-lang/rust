@@ -4957,8 +4957,6 @@ Version 1.10.0 (2016-07-07)
 Language
 --------
 
-* [Allow `concat_idents!` in type positions as well as in expression
-  positions](https://github.com/rust-lang/rust/pull/33735).
 * [`Copy` types are required to have a trivial implementation of `Clone`](https://github.com/rust-lang/rust/pull/33420).
   [RFC 1521](https://github.com/rust-lang/rfcs/blob/master/text/1521-copy-clone-semantics.md).
 * [Single-variant enums support the `#[repr(..)]` attribute](https://github.com/rust-lang/rust/pull/33355).
