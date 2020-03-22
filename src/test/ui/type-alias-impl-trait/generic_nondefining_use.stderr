@@ -1,20 +1,35 @@
-error: at least one trait must be specified
-  --> $DIR/generic_nondefining_use.rs:5:15
-   |
-LL | type Cmp<T> = impl 'static;
-   |               ^^^^^^^^^^^^
-
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_nondefining_use.rs:10:13
+  --> $DIR/generic_nondefining_use.rs:14:21
    |
-LL | fn cmp() -> Cmp<u32> {
-   |             ^^^^^^^^
+LL | fn concrete_ty() -> OneTy<u32> {
+   |                     ^^^^^^^^^^
    |
 note: used non-generic type `u32` for generic parameter
-  --> $DIR/generic_nondefining_use.rs:5:10
+  --> $DIR/generic_nondefining_use.rs:8:12
    |
-LL | type Cmp<T> = impl 'static;
-   |          ^
+LL | type OneTy<T> = impl Debug;
+   |            ^
 
-error: aborting due to 2 previous errors
+error: non-defining opaque type use in defining scope
+  --> $DIR/generic_nondefining_use.rs:19:27
+   |
+LL | type OneLifetime<'a> = impl Debug;
+   |                  -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+...
+LL | fn concrete_lifetime() -> OneLifetime<'static> {
+   |                           ^^^^^^^^^^^^^^^^^^^^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/generic_nondefining_use.rs:24:24
+   |
+LL | fn concrete_const() -> OneConst<{123}> {
+   |                        ^^^^^^^^^^^^^^^
+   |
+note: used non-generic constant `123usize` for generic parameter
+  --> $DIR/generic_nondefining_use.rs:10:21
+   |
+LL | type OneConst<const X: usize> = impl Debug;
+   |                     ^
+
+error: aborting due to 3 previous errors
 
