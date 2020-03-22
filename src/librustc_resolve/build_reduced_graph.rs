@@ -750,14 +750,16 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
                 if let Some(ctor_node_id) = vdata.ctor_id() {
-                    let mut ctor_vis = vis;
                     // If the structure is marked as non_exhaustive then lower the visibility
                     // to within the crate.
-                    if vis == ty::Visibility::Public
+                    let mut ctor_vis = if vis == ty::Visibility::Public
                         && attr::contains_name(&item.attrs, sym::non_exhaustive)
                     {
-                        ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
-                    }
+                        ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
+                    } else {
+                        vis
+                    };
+
                     for field in vdata.fields() {
                         // NOTE: The field may be an expansion placeholder, but expansion sets
                         // correct visibilities for unnamed field placeholders specifically, so the
@@ -1166,7 +1168,7 @@ macro_rules! method {
                 visit::$walk(self, node);
             }
         }
-    }
+    };
 }
 
 impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {

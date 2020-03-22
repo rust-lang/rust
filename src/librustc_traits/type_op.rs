@@ -80,11 +80,11 @@ impl AscribeUserTypeCx<'me, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        Ok(self
-            .infcx
+        self.infcx
             .at(&ObligationCause::dummy(), self.param_env)
             .relate(a, variance, b)?
-            .into_value_registering_obligations(self.infcx, self.fulfill_cx))
+            .into_value_registering_obligations(self.infcx, self.fulfill_cx);
+        Ok(())
     }
 
     fn prove_predicate(&mut self, predicate: Predicate<'tcx>) {
@@ -165,10 +165,11 @@ fn type_op_eq<'tcx>(
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
         let (param_env, Eq { a, b }) = key.into_parts();
-        Ok(infcx
+        infcx
             .at(&ObligationCause::dummy(), param_env)
             .eq(a, b)?
-            .into_value_registering_obligations(infcx, fulfill_cx))
+            .into_value_registering_obligations(infcx, fulfill_cx);
+        Ok(())
     })
 }
 
@@ -221,10 +222,11 @@ fn type_op_subtype<'tcx>(
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
         let (param_env, Subtype { sub, sup }) = key.into_parts();
-        Ok(infcx
+        infcx
             .at(&ObligationCause::dummy(), param_env)
             .sup(sup, sub)?
-            .into_value_registering_obligations(infcx, fulfill_cx))
+            .into_value_registering_obligations(infcx, fulfill_cx);
+        Ok(())
     })
 }
 

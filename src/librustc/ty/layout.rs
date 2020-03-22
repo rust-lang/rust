@@ -381,12 +381,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // Field 5 would be the first element, so memory_index is i:
         // Note: if we didn't optimize, it's already right.
 
-        let memory_index;
-        if optimize {
-            memory_index = invert_mapping(&inverse_memory_index);
-        } else {
-            memory_index = inverse_memory_index;
-        }
+        let memory_index =
+            if optimize { invert_mapping(&inverse_memory_index) } else { inverse_memory_index };
 
         let size = min_size.align_to(align.abi);
         let mut abi = Abi::Aggregate { sized };
@@ -944,32 +940,32 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             let offset = st[i].fields.offset(field_index) + niche.offset;
                             let size = st[i].size;
 
-                            let mut abi = match st[i].abi {
-                                Abi::Scalar(_) => Abi::Scalar(niche_scalar.clone()),
-                                Abi::ScalarPair(ref first, ref second) => {
-                                    // We need to use scalar_unit to reset the
-                                    // valid range to the maximal one for that
-                                    // primitive, because only the niche is
-                                    // guaranteed to be initialised, not the
-                                    // other primitive.
-                                    if offset.bytes() == 0 {
-                                        Abi::ScalarPair(
-                                            niche_scalar.clone(),
-                                            scalar_unit(second.value),
-                                        )
-                                    } else {
-                                        Abi::ScalarPair(
-                                            scalar_unit(first.value),
-                                            niche_scalar.clone(),
-                                        )
+                            let abi = if st.iter().all(|v| v.abi.is_uninhabited()) {
+                                Abi::Uninhabited
+                            } else {
+                                match st[i].abi {
+                                    Abi::Scalar(_) => Abi::Scalar(niche_scalar.clone()),
+                                    Abi::ScalarPair(ref first, ref second) => {
+                                        // We need to use scalar_unit to reset the
+                                        // valid range to the maximal one for that
+                                        // primitive, because only the niche is
+                                        // guaranteed to be initialised, not the
+                                        // other primitive.
+                                        if offset.bytes() == 0 {
+                                            Abi::ScalarPair(
+                                                niche_scalar.clone(),
+                                                scalar_unit(second.value),
+                                            )
+                                        } else {
+                                            Abi::ScalarPair(
+                                                scalar_unit(first.value),
+                                                niche_scalar.clone(),
+                                            )
+                                        }
                                     }
+                                    _ => Abi::Aggregate { sized: true },
                                 }
-                                _ => Abi::Aggregate { sized: true },
                             };
-
-                            if st.iter().all(|v| v.abi.is_uninhabited()) {
-                                abi = Abi::Uninhabited;
-                            }
 
                             let largest_niche =
                                 Niche::from_scalar(dl, offset, niche_scalar.clone());
