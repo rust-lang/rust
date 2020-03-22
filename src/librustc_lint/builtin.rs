@@ -349,7 +349,8 @@ impl MissingDoc {
         id: Option<hir::HirId>,
         attrs: &[ast::Attribute],
         sp: Span,
-        desc: &str,
+        article: &'static str,
+        desc: &'static str,
     ) {
         // If we're building a test harness, then warning about
         // documentation is probably not really relevant right now.
@@ -374,7 +375,7 @@ impl MissingDoc {
         let has_doc = attrs.iter().any(|a| has_doc(a));
         if !has_doc {
             cx.struct_span_lint(MISSING_DOCS, cx.tcx.sess.source_map().def_span(sp), |lint| {
-                lint.build(&format!("missing documentation for {}", desc)).emit()
+                lint.build(&format!("missing documentation for {} {}", article, desc)).emit()
             });
         }
     }
@@ -398,7 +399,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &LateContext<'_, '_>, krate: &hir::Crate<'_>) {
-        self.check_missing_docs_attrs(cx, None, &krate.item.attrs, krate.item.span, "crate");
+        self.check_missing_docs_attrs(cx, None, &krate.item.attrs, krate.item.span, "a", "crate");
 
         for macro_def in krate.exported_macros {
             let has_doc = macro_def.attrs.iter().any(|a| has_doc(a));
@@ -455,13 +456,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         let def_id = cx.tcx.hir().local_def_id(it.hir_id);
         let (article, desc) = cx.tcx.article_and_description(def_id);
 
-        self.check_missing_docs_attrs(
-            cx,
-            Some(it.hir_id),
-            &it.attrs,
-            it.span,
-            &format!("{} {}", article, desc),
-        );
+        self.check_missing_docs_attrs(cx, Some(it.hir_id), &it.attrs, it.span, article, desc);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, trait_item: &hir::TraitItem<'_>) {
@@ -477,7 +472,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             Some(trait_item.hir_id),
             &trait_item.attrs,
             trait_item.span,
-            &format!("{} {}", article, desc),
+            article,
+            desc,
         );
     }
 
@@ -494,18 +490,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             Some(impl_item.hir_id),
             &impl_item.attrs,
             impl_item.span,
-            &format!("{} {}", article, desc),
+            article,
+            desc,
         );
     }
 
     fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, sf: &hir::StructField<'_>) {
         if !sf.is_positional() {
-            self.check_missing_docs_attrs(cx, Some(sf.hir_id), &sf.attrs, sf.span, "a struct field")
+            self.check_missing_docs_attrs(
+                cx,
+                Some(sf.hir_id),
+                &sf.attrs,
+                sf.span,
+                "a",
+                "struct field",
+            )
         }
     }
 
     fn check_variant(&mut self, cx: &LateContext<'_, '_>, v: &hir::Variant<'_>) {
-        self.check_missing_docs_attrs(cx, Some(v.id), &v.attrs, v.span, "a variant");
+        self.check_missing_docs_attrs(cx, Some(v.id), &v.attrs, v.span, "a", "variant");
     }
 }
 
