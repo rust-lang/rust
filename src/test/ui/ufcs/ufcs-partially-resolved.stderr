@@ -35,7 +35,7 @@ error[E0576]: cannot find method or associated constant `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:22:17
    |
 LL |     fn Y() {}
-   |     --------- similarly named associated function `Y` defined here
+   |     ------ similarly named associated function `Y` defined here
 ...
 LL |     <u8 as Tr>::N;
    |                 ^ help: an associated function with a similar name exists: `Y`
@@ -181,7 +181,7 @@ error[E0575]: expected method or associated constant, found associated type `Dr:
   --> $DIR/ufcs-partially-resolved.rs:53:5
    |
 LL |     fn Z() {}
-   |     --------- similarly named associated function `Z` defined here
+   |     ------ similarly named associated function `Z` defined here
 ...
 LL |     <u8 as Dr>::X;
    |     ^^^^^^^^^^^^-
