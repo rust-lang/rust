@@ -58,7 +58,7 @@ pub fn report_error<'tcx, 'mir>(
             };
             let help = match e.kind {
                 Unsupported(UnsupportedOpInfo::NoMirFor(..)) =>
-                    Some("set `MIRI_SYSROOT` to a Miri sysroot, which you can prepare with `cargo miri setup`"),
+                    Some("make sure to use a Miri sysroot, which you can prepare with `cargo miri setup`"),
                 Unsupported(_) =>
                     Some("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"),
                 UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_)) =>
