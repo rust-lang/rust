@@ -8,7 +8,7 @@ use rustc_ast::token::{self, NtTT, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::pluralize;
+use rustc_errors::{pluralize, PResult};
 use rustc_span::hygiene::{ExpnId, Transparency};
 use rustc_span::symbol::MacroRulesNormalizedIdent;
 use rustc_span::Span;
@@ -80,15 +80,15 @@ impl Iterator for Frame {
 /// `transcribe` would return a `TokenStream` containing `println!("{}", stringify!(bar));`.
 ///
 /// Along the way, we do some additional error checking.
-pub(super) fn transcribe(
-    cx: &ExtCtxt<'_>,
+pub(super) fn transcribe<'a>(
+    cx: &ExtCtxt<'a>,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     src: Vec<mbe::TokenTree>,
     transparency: Transparency,
-) -> TokenStream {
+) -> PResult<'a, TokenStream> {
     // Nothing for us to transcribe...
     if src.is_empty() {
-        return TokenStream::default();
+        return Ok(TokenStream::default());
     }
 
     // We descend into the RHS (`src`), expanding things as we go. This stack contains the things
@@ -152,7 +152,7 @@ pub(super) fn transcribe(
                 Frame::Delimited { forest, span, .. } => {
                     if result_stack.is_empty() {
                         // No results left to compute! We are back at the top-level.
-                        return TokenStream::new(result);
+                        return Ok(TokenStream::new(result));
                     }
 
                     // Step back into the parent Delimited.
@@ -173,11 +173,11 @@ pub(super) fn transcribe(
             seq @ mbe::TokenTree::Sequence(..) => {
                 match lockstep_iter_size(&seq, interp, &repeats) {
                     LockstepIterSize::Unconstrained => {
-                        cx.span_fatal(
+                        return Err(cx.struct_span_err(
                             seq.span(), /* blame macro writer */
                             "attempted to repeat an expression containing no syntax variables \
                              matched as repeating at this depth",
-                        );
+                        ));
                     }
 
                     LockstepIterSize::Contradiction(ref msg) => {
@@ -185,7 +185,7 @@ pub(super) fn transcribe(
                         // happens when two meta-variables are used in the same repetition in a
                         // sequence, but they come from different sequence matchers and repeat
                         // different amounts.
-                        cx.span_fatal(seq.span(), &msg[..]);
+                        return Err(cx.struct_span_err(seq.span(), &msg[..]));
                     }
 
                     LockstepIterSize::Constraint(len, _) => {
@@ -203,7 +203,10 @@ pub(super) fn transcribe(
                                 // FIXME: this really ought to be caught at macro definition
                                 // time... It happens when the Kleene operator in the matcher and
                                 // the body for the same meta-variable do not match.
-                                cx.span_fatal(sp.entire(), "this must repeat at least once");
+                                return Err(cx.struct_span_err(
+                                    sp.entire(),
+                                    "this must repeat at least once",
+                                ));
                             }
                         } else {
                             // 0 is the initial counter (we have done 0 repretitions so far). `len`
@@ -242,10 +245,10 @@ pub(super) fn transcribe(
                         }
                     } else {
                         // We were unable to descend far enough. This is an error.
-                        cx.span_fatal(
+                        return Err(cx.struct_span_err(
                             sp, /* blame the macro writer */
                             &format!("variable '{}' is still repeating at this depth", ident),
-                        );
+                        ));
                     }
                 } else {
                     // If we aren't able to match the meta-var, we push it back into the result but
