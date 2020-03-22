@@ -1871,7 +1871,7 @@ impl<'a> Resolver<'a> {
                 // No adjustments
             }
         }
-        let result = self.resolve_ident_in_module_unadjusted_ext(
+        self.resolve_ident_in_module_unadjusted_ext(
             module,
             ident,
             ns,
@@ -1879,8 +1879,7 @@ impl<'a> Resolver<'a> {
             false,
             record_used,
             path_span,
-        );
-        result
+        )
     }
 
     fn resolve_crate_root(&mut self, ident: Ident) -> Module<'a> {

@@ -217,13 +217,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the RHS of a local variable declaration (e.g., '= 14;').
     fn parse_initializer(&mut self, skip_eq: bool) -> PResult<'a, Option<P<Expr>>> {
-        if self.eat(&token::Eq) {
-            Ok(Some(self.parse_expr()?))
-        } else if skip_eq {
-            Ok(Some(self.parse_expr()?))
-        } else {
-            Ok(None)
-        }
+        if self.eat(&token::Eq) || skip_eq { Ok(Some(self.parse_expr()?)) } else { Ok(None) }
     }
 
     /// Parses a block. No inner attributes are allowed.
