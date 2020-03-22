@@ -686,8 +686,8 @@ pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> 
         data.get_bytes(
             cx,
             // invent a pointer, only the offset is relevant anyway
-            Pointer::new(AllocId(0), Size::from_bytes(u64::try_from(start).unwrap())),
-            Size::from_bytes(u64::try_from(len).unwrap()),
+            Pointer::new(AllocId(0), Size::from_bytes(start)),
+            Size::from_bytes(len),
         )
         .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
     } else {

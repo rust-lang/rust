@@ -836,7 +836,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         src: impl IntoIterator<Item = u8>,
     ) -> InterpResult<'tcx> {
         let src = src.into_iter();
-        let size = Size::from_bytes(src.size_hint().0 as u64);
+        let size = Size::from_bytes(src.size_hint().0);
         // `write_bytes` checks that this lower bound `size` matches the upper bound and reality.
         let ptr = match self.check_ptr_access(ptr, size, Align::from_bytes(1).unwrap())? {
             Some(ptr) => ptr,

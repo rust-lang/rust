@@ -1,7 +1,7 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 
 use super::{InterpCx, MPlaceTy, Machine, MemPlace, Place, PlaceTy};
 pub use rustc::mir::interpret::ScalarMaybeUndef;
@@ -570,7 +570,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // where none should happen.
                 let ptr = Pointer::new(
                     self.tcx.alloc_map.lock().create_memory_alloc(data),
-                    Size::from_bytes(start.try_into().unwrap()), // offset: `start`
+                    Size::from_bytes(start), // offset: `start`
                 );
                 Operand::Immediate(Immediate::new_slice(
                     self.tag_global_base_pointer(ptr).into(),

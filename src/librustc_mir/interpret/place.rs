@@ -739,7 +739,7 @@ where
                 ),
                 Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Raw { size, .. })) => {
                     assert_eq!(
-                        Size::from_bytes(size.into()),
+                        Size::from_bytes(size),
                         dest.layout.size,
                         "Size mismatch when writing bits"
                     )

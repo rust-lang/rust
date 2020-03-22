@@ -3,7 +3,7 @@ pub use Primitive::*;
 
 use crate::spec::Target;
 
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, AddAssign, Deref, Mul, Range, RangeInclusive, Sub};
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -241,17 +241,18 @@ pub struct Size {
 }
 
 impl Size {
-    pub const ZERO: Size = Self::from_bytes(0);
+    pub const ZERO: Size = Size { raw: 0 };
 
     #[inline]
-    pub fn from_bits(bits: u64) -> Size {
+    pub fn from_bits(bits: impl TryInto<u64>) -> Size {
+        let bits = bits.try_into().ok().unwrap();
         // Avoid potential overflow from `bits + 7`.
         Size::from_bytes(bits / 8 + ((bits % 8) + 7) / 8)
     }
 
     #[inline]
-    pub const fn from_bytes(bytes: u64) -> Size {
-        Size { raw: bytes }
+    pub fn from_bytes(bytes: impl TryInto<u64>) -> Size {
+        Size { raw: bytes.try_into().ok().unwrap() }
     }
 
     #[inline]

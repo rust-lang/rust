@@ -92,7 +92,7 @@ impl<Tag> Allocation<Tag> {
     /// Creates a read-only allocation initialized by the given bytes
     pub fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, align: Align) -> Self {
         let bytes = slice.into().into_owned();
-        let size = Size::from_bytes(u64::try_from(bytes.len()).unwrap());
+        let size = Size::from_bytes(bytes.len());
         Self {
             bytes,
             relocations: Relocations::new(),
@@ -293,8 +293,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         let offset = usize::try_from(ptr.offset.bytes()).unwrap();
         Ok(match self.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
-                let size_with_null =
-                    Size::from_bytes(u64::try_from(size.checked_add(1).unwrap()).unwrap());
+                let size_with_null = Size::from_bytes(size.checked_add(1).unwrap());
                 // Go through `get_bytes` for checks and AllocationExtra hooks.
                 // We read the null, so we include it in the request, but we want it removed
                 // from the result, so we do subslicing.
@@ -339,7 +338,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         let (lower, upper) = src.size_hint();
         let len = upper.expect("can only write bounded iterators");
         assert_eq!(lower, len, "can only write iterators with a precise length");
-        let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(u64::try_from(len).unwrap()))?;
+        let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(len))?;
         // `zip` would stop when the first iterator ends; we want to definitely
         // cover all of `bytes`.
         for dest in bytes {
@@ -382,11 +381,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         } else {
             match self.relocations.get(&ptr.offset) {
                 Some(&(tag, alloc_id)) => {
-                    let ptr = Pointer::new_with_tag(
-                        alloc_id,
-                        Size::from_bytes(u64::try_from(bits).unwrap()),
-                        tag,
-                    );
+                    let ptr = Pointer::new_with_tag(alloc_id, Size::from_bytes(bits), tag);
                     return Ok(ScalarMaybeUndef::Scalar(ptr.into()));
                 }
                 None => {}
