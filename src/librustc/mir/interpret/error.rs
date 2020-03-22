@@ -14,10 +14,7 @@ use rustc_hir as hir;
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::{def_id::DefId, Pos, Span};
-use std::{
-    any::{Any, TypeId},
-    fmt, mem,
-};
+use std::{any::Any, fmt, mem};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
@@ -513,32 +510,26 @@ impl fmt::Debug for ResourceExhaustionInfo {
     }
 }
 
+/// A trait to work around not having trait object upcasting.
+pub trait AsAny: Any {
+    fn as_any(&self) -> &dyn Any;
+}
+
+impl<T: Any> AsAny for T {
+    #[inline(always)]
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
 /// A trait for machine-specific errors (or other "machine stop" conditions).
-pub trait MachineStopType: Any + fmt::Debug + Send {}
+pub trait MachineStopType: AsAny + fmt::Debug + Send {}
 impl MachineStopType for String {}
 
-// Copy-pasted from `any.rs`; there does not seem to be a way to re-use that.
 impl dyn MachineStopType {
-    pub fn is<T: Any>(&self) -> bool {
-        // Get `TypeId` of the type this function is instantiated with.
-        let t = TypeId::of::<T>();
-
-        // Get `TypeId` of the type in the trait object (`self`).
-        let concrete = self.type_id();
-
-        // Compare both `TypeId`s on equality.
-        t == concrete
-    }
-
+    #[inline(always)]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        if self.is::<T>() {
-            // SAFETY: just checked whether we are pointing to the correct type, and we can rely on
-            // that check for memory safety because `Any` is implemented for all types; no other
-            // impls can exist as they would conflict with our impl.
-            unsafe { Some(&*(self as *const dyn MachineStopType as *const T)) }
-        } else {
-            None
-        }
+        self.as_any().downcast_ref()
     }
 }
 
