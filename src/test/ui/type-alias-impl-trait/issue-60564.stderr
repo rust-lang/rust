@@ -1,5 +1,5 @@
 error: defining opaque type use does not fully define opaque type: generic parameter `I` is specified as concrete type `u8`
-  --> $DIR/issue-60564.rs:20:5
+  --> $DIR/issue-60564.rs:19:5
    |
 LL | /     fn iter_bits(self, n: u8) -> Self::BitsIter {
 LL | |
@@ -9,11 +9,5 @@ LL | |             .map(move |shift| ((self >> T::from(shift)) & T::from(1)).try
 LL | |     }
    | |_____^
 
-error: could not find defining uses
-  --> $DIR/issue-60564.rs:8:1
-   |
-LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

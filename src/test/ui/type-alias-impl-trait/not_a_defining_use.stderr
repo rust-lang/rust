@@ -16,10 +16,11 @@ LL | | }
    | |_^ expected `(T, i8)`, got `(T, <U as Bar>::Blub)`
    |
 note: previous use here
-  --> $DIR/not_a_defining_use.rs:14:1
+  --> $DIR/not_a_defining_use.rs:9:1
    |
-LL | / fn three<T: Debug, U>(t: T) -> Two<T, U> {
-LL | |     (t, 5i8)
+LL | / fn two<T: Debug>(t: T) -> Two<T, u32> {
+LL | |
+LL | |     (t, 4i8)
 LL | | }
    | |_^
 

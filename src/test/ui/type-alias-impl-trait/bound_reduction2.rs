@@ -8,8 +8,7 @@ trait TraitWithAssoc {
 }
 
 type Foo<V> = impl Trait<V>;
-//~^ ERROR could not find defining uses
-//~| ERROR the trait bound `T: TraitWithAssoc` is not satisfied
+//~^ ERROR the trait bound `T: TraitWithAssoc` is not satisfied
 
 trait Trait<U> {}
 

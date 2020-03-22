@@ -405,12 +405,12 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
                 let opaque_generics = self.tcx.generics_of(self.def_id);
                 let mut used_params: FxHashSet<ty::ParamTy> = FxHashSet::default();
-                let mut has_errors = false;
+                let mut duplicate_params: FxHashSet<ty::ParamTy> = FxHashSet::default();
                 for (i, arg) in substs.iter().enumerate() {
                     // FIXME(eddyb) enforce lifetime and const param 1:1 mapping.
                     if let GenericArgKind::Type(ty) = arg.unpack() {
                         if let ty::Param(p) = ty.kind {
-                            if !used_params.insert(p) {
+                            if !used_params.insert(p) && duplicate_params.insert(p) {
                                 // There was already an entry for `p`, meaning a generic parameter
                                 // was used twice.
                                 self.tcx.sess.span_err(
@@ -421,7 +421,6 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                         p,
                                     ),
                                 );
-                                return;
                             }
                         } else {
                             let param = opaque_generics.param_at(i, self.tcx);
@@ -435,13 +434,8 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                     arg,
                                 ),
                             );
-                            has_errors = true;
                         }
                     }
-                }
-
-                if has_errors {
-                    return;
                 }
 
                 if let Some((prev_span, prev_ty)) = self.found {

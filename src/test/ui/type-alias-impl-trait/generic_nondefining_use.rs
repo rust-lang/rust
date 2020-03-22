@@ -3,8 +3,7 @@
 fn main() {}
 
 type Cmp<T> = impl 'static;
-//~^ ERROR could not find defining uses
-//~^^ ERROR: at least one trait must be specified
+//~^ ERROR: at least one trait must be specified
 
 
 // not a defining use, because it doesn't define *all* possible generics
