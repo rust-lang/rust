@@ -66,9 +66,9 @@ impl FileHandler {
 
 impl<'mir, 'tcx> EvalContextExtPrivate<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    /// Emulate `stat` or `lstat` on the `macos` platform. This function is not intended to be
+    /// Emulate `stat` or `lstat` on `macos`. This function is not intended to be
     /// called directly from `emulate_foreign_item_by_name`, so it does not check if isolation is
-    /// disabled or if the target platform is the correct one. Please use `macos_stat` or
+    /// disabled or if the target OS is the correct one. Please use `macos_stat` or
     /// `macos_lstat` instead.
     fn macos_stat_or_lstat(
         &mut self,
@@ -114,7 +114,7 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
         let blksize_t_layout = this.libc_ty_layout("blksize_t")?;
         let uint32_t_layout = this.libc_ty_layout("uint32_t")?;
 
-        // We need to add 32 bits of padding after `st_rdev` if we are on a 64-bit platform.
+        // We need to add 32 bits of padding after `st_rdev` if we are on a 64-bit target.
         let pad_layout = if this.tcx.sess.target.ptr_width == 64 {
             uint32_t_layout
         } else {
@@ -258,10 +258,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let o_wronly = this.eval_libc_i32("O_WRONLY")?;
         let o_rdwr = this.eval_libc_i32("O_RDWR")?;
         // The first two bits of the flag correspond to the access mode in linux, macOS and
-        // windows. We need to check that in fact the access mode flags for the current platform
-        // only use these two bits, otherwise we are in an unsupported platform and should error.
+        // windows. We need to check that in fact the access mode flags for the current target
+        // only use these two bits, otherwise we are in an unsupported target and should error.
         if (o_rdonly | o_wronly | o_rdwr) & !0b11 != 0 {
-            throw_unsup_format!("access mode flags on this platform are unsupported");
+            throw_unsup_format!("access mode flags on this target are unsupported");
         }
         let mut writable = true;
 
@@ -574,7 +574,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         buf_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-        this.assert_platform("macos", "stat");
+        this.assert_target_os("macos", "stat");
         this.check_no_isolation("stat")?;
         // `stat` always follows symlinks.
         this.macos_stat_or_lstat(true, path_op, buf_op)
@@ -587,7 +587,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         buf_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-        this.assert_platform("macos", "lstat");
+        this.assert_target_os("macos", "lstat");
         this.check_no_isolation("lstat")?;
         this.macos_stat_or_lstat(false, path_op, buf_op)
     }
@@ -599,7 +599,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        this.assert_platform("macos", "fstat");
+        this.assert_target_os("macos", "fstat");
         this.check_no_isolation("fstat")?;
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -621,7 +621,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        this.assert_platform("linux", "statx");
+        this.assert_target_os("linux", "statx");
         this.check_no_isolation("statx")?;
 
         let statxbuf_scalar = this.read_scalar(statxbuf_op)?.not_undef()?;
@@ -685,7 +685,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // the `_mask_op` paramter specifies the file information that the caller requested.
         // However `statx` is allowed to return information that was not requested or to not
         // return information that was requested. This `mask` represents the information we can
-        // actually provide in any host platform.
+        // actually provide for any target.
         let mut mask =
             this.eval_libc("STATX_TYPE")?.to_u32()? | this.eval_libc("STATX_SIZE")?.to_u32()?;
 
@@ -880,7 +880,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        this.assert_platform("linux", "readdir64_r");
+        this.assert_target_os("linux", "readdir64_r");
         this.check_no_isolation("readdir64_r")?;
 
         let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
@@ -967,7 +967,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        this.assert_platform("macos", "readdir_r");
+        this.assert_target_os("macos", "readdir_r");
         this.check_no_isolation("readdir_r")?;
 
         let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;

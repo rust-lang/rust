@@ -190,7 +190,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 /// Returns `Some(return_code)` if program executed completed.
 /// Returns `None` if an evaluation error occured.
 pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) -> Option<i64> {
-    // FIXME: We always ignore leaks on some platforms where we do not
+    // FIXME: We always ignore leaks on some OSs where we do not
     // correctly implement TLS destructors.
     let target_os = tcx.sess.target.target.target_os.as_str();
     let ignore_leaks = config.ignore_leaks || target_os == "windows" || target_os == "macos";

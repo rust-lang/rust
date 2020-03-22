@@ -32,11 +32,11 @@ pub struct CatchUnwindData<'tcx> {
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    /// Check if panicking is supported on this platform, and give a good error otherwise.
+    /// Check if panicking is supported on this target, and give a good error otherwise.
     fn check_panic_supported(&self) -> InterpResult<'tcx> {
         match self.eval_context_ref().tcx.sess.target.target.target_os.as_str() {
             "linux" | "macos" => Ok(()),
-            _ => throw_unsup_format!("panicking is not supported on this platform"),
+            _ => throw_unsup_format!("panicking is not supported on this target"),
         }
     }
 

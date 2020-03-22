@@ -20,7 +20,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        this.assert_platform("linux", "clock_gettime");
+        this.assert_target_os("linux", "clock_gettime");
         this.check_no_isolation("clock_gettime")?;
 
         let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
@@ -58,7 +58,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        this.assert_platform("macos", "gettimeofday");
+        this.assert_target_os("macos", "gettimeofday");
         this.check_no_isolation("gettimeofday")?;
 
         // Using tz is obsolete and should always be null
@@ -88,7 +88,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn mach_absolute_time(&self) -> InterpResult<'tcx, u64> {
         let this = self.eval_context_ref();
 
-        this.assert_platform("macos", "mach_absolute_time");
+        this.assert_target_os("macos", "mach_absolute_time");
         this.check_no_isolation("mach_absolute_time")?;
 
         // This returns a u64, with time units determined dynamically by `mach_timebase_info`.

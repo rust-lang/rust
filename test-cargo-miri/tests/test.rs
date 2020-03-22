@@ -45,7 +45,7 @@ fn num_cpus() {
 
 // FIXME: Remove this `cfg` once we fix https://github.com/rust-lang/miri/issues/1059.
 // We cfg-gate the `should_panic` attribute and the `panic!` itself, so that the test
-// stdout does not depend on the platform.
+// stdout does not depend on the target.
 #[test]
 #[cfg_attr(not(windows), should_panic(expected="Explicit panic"))]
 fn do_panic() { // In large, friendly letters :)

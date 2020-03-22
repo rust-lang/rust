@@ -33,5 +33,5 @@ fn is_u64_aligned(u: &Tag<u64>) -> bool {
 
 pub fn main() {
     let x = mk_rec();
-    is_u64_aligned(&x.t); // the result of this is non-deterministic (even with a fixed seed, results vary between platforms)
+    is_u64_aligned(&x.t); // the result of this is non-deterministic (even with a fixed seed, results vary between targets)
 }
