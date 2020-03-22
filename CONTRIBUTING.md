@@ -52,18 +52,19 @@ all the same flags as `rustc` (though the ones only affecting code generation
 and linking obviously will have no effect) [and more][miri-flags].
 
 Running the Miri driver requires some fiddling with environment variables, so
-the `miri` script helps you do that.  For example, you can run the driver on a
-particular file by doing
+the `miri` script helps you do that.  For example, you can (cross-)run the
+driver on a particular file by doing
 
 ```sh
 ./miri run tests/run-pass/format.rs
 ./miri run tests/run-pass/hello.rs --target i686-unknown-linux-gnu
 ```
 
-and you can run the test suite using:
+and you can (cross-)run the test suite using:
 
 ```
 ./miri test
+MIRI_TEST_TARGET=i686-unknown-linux-gnu ./miri test
 ```
 
 `./miri test FILTER` only runs those tests that contain `FILTER` in their
@@ -104,7 +105,8 @@ and then you can use it as if it was installed by `rustup`.  Make sure you use
 the same toolchain when calling `cargo miri` that you used when installing Miri!
 
 There's a test for the cargo wrapper in the `test-cargo-miri` directory; run
-`./run-test.py` in there to execute it.
+`./run-test.py` in there to execute it. Like `./miri test`, this respects the
+`MIRI_TEST_TARGET` environment variable to execute the test for another target.
 
 ## Building Miri with a locally built rustc
 

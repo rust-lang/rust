@@ -126,7 +126,7 @@ impl MemoryExtra {
                     .insert(Symbol::intern("environ"), this.machine.env_vars.environ.unwrap().ptr.assert_ptr().alloc_id)
                     .unwrap_none();
             }
-            _ => {} // No "extern statics" supported on this platform
+            _ => {} // No "extern statics" supported on this target
         }
         Ok(())
     }

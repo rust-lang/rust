@@ -2,7 +2,7 @@
 
 use core::slice::memchr::{memchr, memrchr};
 
-// test fallback implementations on all platforms
+// test fallback implementations on all targets
 fn matches_one() {
     assert_eq!(Some(0), memchr(b'a', b"a"));
 }

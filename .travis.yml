@@ -21,8 +21,6 @@ env:
   - RUST_BACKTRACE=1
 
 before_script:
-# Linux: install extra stuff for cross-compilation
-- if [[ "$TRAVIS_OS_NAME" == linux ]]; then sudo apt update && sudo apt install gcc-multilib; fi
 # Compute the rust version we use. We do not use "language: rust" to have more control here.
 - |
   if [[ "$TRAVIS_EVENT_TYPE" == cron ]]; then

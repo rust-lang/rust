@@ -374,16 +374,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         Ok(())
     }
-    /// Helper function used inside the shims of foreign functions to assert that the target
-    /// platform is `platform`. It panics showing a message with the `name` of the foreign function
+    /// Helper function used inside the shims of foreign functions to assert that the target OS
+    /// is `target_os`. It panics showing a message with the `name` of the foreign function
     /// if this is not the case.
-    fn assert_platform(&self, platform: &str, name: &str) {
+    fn assert_target_os(&self, target_os: &str, name: &str) {
         assert_eq!(
             self.eval_context_ref().tcx.sess.target.target.target_os,
-            platform,
-            "`{}` is only available on the `{}` platform",
+            target_os,
+            "`{}` is only available on the `{}` target OS",
             name,
-            platform,
+            target_os,
         )
     }
 
