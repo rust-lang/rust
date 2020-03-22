@@ -4,6 +4,13 @@ use rustc_span::DUMMY_SP;
 
 use crate::*;
 
+/// Details of premature program termination.
+pub enum TerminationInfo {
+    Exit(i64),
+    Abort(Option<String>),
+    UnsupportedInIsolation(String),
+}
+
 /// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {
     PoppedTrackedPointerTag(Item),
@@ -11,47 +18,64 @@ pub enum NonHaltingDiagnostic {
 }
 
 /// Emit a custom diagnostic without going through the miri-engine machinery
-pub fn report_diagnostic<'tcx, 'mir>(
+pub fn report_error<'tcx, 'mir>(
     ecx: &InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
     mut e: InterpErrorInfo<'tcx>,
 ) -> Option<i64> {
     use InterpError::*;
-    let title = match e.kind {
-        Unsupported(_) => "unsupported operation",
-        UndefinedBehavior(_) => "Undefined Behavior",
-        InvalidProgram(_) => bug!("This error should be impossible in Miri: {}", e),
-        ResourceExhaustion(_) => "resource exhaustion",
-        MachineStop(_) => "program stopped",
-    };
-    let msg = match e.kind {
-        MachineStop(ref info) => {
-            let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
-            match info {
-                TerminationInfo::Exit(code) => return Some(*code),
-                TerminationInfo::Abort(None) => format!("the evaluated program aborted execution"),
-                TerminationInfo::Abort(Some(msg)) => format!("the evaluated program aborted execution: {}", msg),
-            }
-        }
-        _ => e.to_string(),
-    };
-    let help = match e.kind {
-        Unsupported(UnsupportedOpInfo::NoMirFor(..)) =>
-            Some("set `MIRI_SYSROOT` to a Miri sysroot, which you can prepare with `cargo miri setup`"),
-        Unsupported(_) =>
-            Some("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"),
-        UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_)) =>
-            Some("this indicates a potential bug in the program: it violated *experimental* rules, and caused Undefined Behavior"),
-        UndefinedBehavior(_) =>
-            Some("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior"),
-        _ => None,
-    };
+
     e.print_backtrace();
+    let (title, msg, help) = match e.kind {
+        MachineStop(info) => {
+            let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
+            use TerminationInfo::*;
+            let (title, msg) = match info {
+                Exit(code) => return Some(*code),
+                Abort(None) =>
+                    ("abnormal termination", format!("the evaluated program aborted execution")),
+                Abort(Some(msg)) =>
+                    ("abnormal termination", format!("the evaluated program aborted execution: {}", msg)),
+                UnsupportedInIsolation(msg) =>
+                    ("unsupported operation", format!("{}", msg)),
+            };
+            let help = match info {
+                UnsupportedInIsolation(_) =>
+                    Some("pass the flag `-Zmiri-disable-isolation` to disable isolation"),
+                _ => None,
+            };
+            (title, msg, help)
+        }
+        _ => {
+            let (title, msg) = match e.kind {
+                Unsupported(_) =>
+                    ("unsupported operation", e.to_string()),
+                UndefinedBehavior(_) =>
+                    ("Undefined Behavior", e.to_string()),
+                ResourceExhaustion(_) =>
+                    ("resource exhaustion", e.to_string()),
+                _ =>
+                    bug!("This error should be impossible in Miri: {}", e),
+            };
+            let help = match e.kind {
+                Unsupported(UnsupportedOpInfo::NoMirFor(..)) =>
+                    Some("set `MIRI_SYSROOT` to a Miri sysroot, which you can prepare with `cargo miri setup`"),
+                Unsupported(_) =>
+                    Some("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"),
+                UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_)) =>
+                    Some("this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental"),
+                UndefinedBehavior(_) =>
+                    Some("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior"),
+                _ => None,
+            };
+            (title, msg, help)
+        }
+    };
     report_msg(ecx, &format!("{}: {}", title, msg), msg, help, true)
 }
 
 /// Report an error or note (depending on the `error` argument) at the current frame's current statement.
 /// Also emits a full stacktrace of the interpreter stack.
-pub fn report_msg<'tcx, 'mir>(
+fn report_msg<'tcx, 'mir>(
     ecx: &InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
     title: &str,
     span_msg: String,
