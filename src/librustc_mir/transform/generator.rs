@@ -490,21 +490,16 @@ fn locals_live_across_suspend_points(
                 // If a borrow is converted to a raw reference, we must also assume that it lives
                 // forever. Note that the final liveness is still bounded by the storage liveness
                 // of the local, which happens using the `intersect` operation below.
-                borrowed_locals_cursor.seek_before(loc);
+                borrowed_locals_cursor.seek_before_primary_effect(loc);
                 liveness.outs[block].union(borrowed_locals_cursor.get());
             }
 
-            storage_live.seek_before(loc);
-            let mut storage_liveness = storage_live.get().clone();
-
-            // Later passes handle the generator's `self` argument separately.
-            storage_liveness.remove(SELF_ARG);
-
             // Store the storage liveness for later use so we can restore the state
             // after a suspension point
-            storage_liveness_map[block] = Some(storage_liveness);
+            storage_live.seek_before_primary_effect(loc);
+            storage_liveness_map[block] = Some(storage_live.get().clone());
 
-            requires_storage_cursor.seek_before(loc);
+            requires_storage_cursor.seek_before_primary_effect(loc);
             let storage_required = requires_storage_cursor.get().clone();
 
             // Locals live are live at this point only if they are used across

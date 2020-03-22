@@ -518,7 +518,7 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
 impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx> {
     type FlowState = Flows<'cx, 'tcx>;
 
-    fn visit_statement(
+    fn visit_statement_before_primary_effect(
         &mut self,
         flow_state: &Flows<'cx, 'tcx>,
         stmt: &'cx Statement<'tcx>,
@@ -607,7 +607,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
         }
     }
 
-    fn visit_terminator(
+    fn visit_terminator_before_primary_effect(
         &mut self,
         flow_state: &Flows<'cx, 'tcx>,
         term: &'cx Terminator<'tcx>,
@@ -701,7 +701,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
         }
     }
 
-    fn visit_terminator_exit(
+    fn visit_terminator_after_primary_effect(
         &mut self,
         flow_state: &Flows<'cx, 'tcx>,
         term: &'cx Terminator<'tcx>,

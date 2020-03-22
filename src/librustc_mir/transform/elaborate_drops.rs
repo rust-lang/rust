@@ -101,7 +101,7 @@ fn find_dead_unwinds<'tcx>(
             }
         };
 
-        flow_inits.seek_before(body.terminator_loc(bb));
+        flow_inits.seek_before_primary_effect(body.terminator_loc(bb));
         debug!(
             "find_dead_unwinds @ {:?}: path({:?})={:?}; init_data={:?}",
             bb,
@@ -131,8 +131,8 @@ struct InitializationData<'mir, 'tcx> {
 
 impl InitializationData<'_, '_> {
     fn seek_before(&mut self, loc: Location) {
-        self.inits.seek_before(loc);
-        self.uninits.seek_before(loc);
+        self.inits.seek_before_primary_effect(loc);
+        self.uninits.seek_before_primary_effect(loc);
     }
 
     fn maybe_live_dead(&self, path: MovePathIndex) -> (bool, bool) {

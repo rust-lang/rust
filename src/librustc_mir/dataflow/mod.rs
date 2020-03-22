@@ -4,8 +4,9 @@ use rustc_span::symbol::{sym, Symbol};
 
 pub(crate) use self::drop_flag_effects::*;
 pub use self::framework::{
-    visit_results, Analysis, AnalysisDomain, BorrowckFlowState, BorrowckResults, BottomValue,
-    Engine, GenKill, GenKillAnalysis, Results, ResultsCursor, ResultsRefCursor, ResultsVisitor,
+    visit_results, Analysis, AnalysisDomain, Backward, BorrowckFlowState, BorrowckResults,
+    BottomValue, Engine, Forward, GenKill, GenKillAnalysis, Results, ResultsCursor,
+    ResultsRefCursor, ResultsVisitor,
 };
 pub use self::impls::{
     borrows::Borrows, DefinitelyInitializedPlaces, EverInitializedPlaces, MaybeBorrowedLocals,

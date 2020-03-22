@@ -250,7 +250,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
 
     fn yield_resume_effect(
         &self,
-        trans: &mut BitSet<Self::Idx>,
+        trans: &mut impl GenKill<Self::Idx>,
         _resume_block: BasicBlock,
         resume_place: mir::Place<'tcx>,
     ) {
@@ -283,7 +283,7 @@ where
     fn visit_local(&mut self, local: &Local, context: PlaceContext, loc: Location) {
         if PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) == context {
             let mut borrowed_locals = self.borrowed_locals.borrow_mut();
-            borrowed_locals.seek_before(loc);
+            borrowed_locals.seek_before_primary_effect(loc);
             if !borrowed_locals.contains(*local) {
                 self.trans.kill(*local);
             }

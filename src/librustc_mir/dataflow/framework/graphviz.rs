@@ -8,7 +8,7 @@ use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::{self, BasicBlock, Body, Location};
 
-use super::{Analysis, GenKillSet, Results, ResultsRefCursor};
+use super::{Analysis, Direction, GenKillSet, Results, ResultsRefCursor};
 use crate::util::graphviz_safe_def_name;
 
 pub struct Formatter<'a, 'tcx, A>
@@ -49,7 +49,7 @@ pub struct CfgEdge {
     index: usize,
 }
 
-fn outgoing_edges(body: &Body<'_>, bb: BasicBlock) -> Vec<CfgEdge> {
+fn dataflow_successors(body: &Body<'tcx>, bb: BasicBlock) -> Vec<CfgEdge> {
     body[bb]
         .terminator()
         .successors()
@@ -105,7 +105,7 @@ where
         self.body
             .basic_blocks()
             .indices()
-            .flat_map(|bb| outgoing_edges(self.body, bb))
+            .flat_map(|bb| dataflow_successors(self.body, bb))
             .collect::<Vec<_>>()
             .into()
     }
@@ -192,12 +192,12 @@ where
             self.write_block_header_with_state_columns(w, block)?;
         }
 
-        // C: Entry state
+        // C: State at start of block
         self.bg = Background::Light;
         self.results.seek_to_block_start(block);
         let block_entry_state = self.results.get().clone();
 
-        self.write_row_with_full_state(w, "", "(on entry)")?;
+        self.write_row_with_full_state(w, "", "(on start)")?;
 
         // D: Statement transfer functions
         for (i, statement) in body[block].statements.iter().enumerate() {
@@ -214,37 +214,72 @@ where
 
         self.write_row_for_location(w, "T", &terminator_str, terminator_loc)?;
 
-        // F: Exit state
+        // F: State at end of block
 
         // Write the full dataflow state immediately after the terminator if it differs from the
         // state at block entry.
-        self.results.seek_after(terminator_loc);
-        if self.results.get() != &block_entry_state {
+        self.results.seek_to_block_end(block);
+        if self.results.get() != &block_entry_state || A::Direction::is_backward() {
             let after_terminator_name = match terminator.kind {
                 mir::TerminatorKind::Call { destination: Some(_), .. } => "(on unwind)",
-                _ => "(on exit)",
+                _ => "(on end)",
             };
 
             self.write_row_with_full_state(w, "", after_terminator_name)?;
         }
 
         // Write any changes caused by terminator-specific effects
-        if let mir::TerminatorKind::Call { destination: Some(_), .. } = terminator.kind {
-            let num_state_columns = self.num_state_columns();
-            self.write_row(w, "", "(on successful return)", |this, w, fmt| {
-                write!(
-                    w,
-                    r#"<td balign="left" colspan="{colspan}" {fmt} align="left">"#,
-                    colspan = num_state_columns,
-                    fmt = fmt,
-                )?;
+        let num_state_columns = self.num_state_columns();
+        match terminator.kind {
+            mir::TerminatorKind::Call {
+                destination: Some((return_place, _)),
+                ref func,
+                ref args,
+                ..
+            } => {
+                self.write_row(w, "", "(on successful return)", |this, w, fmt| {
+                    write!(
+                        w,
+                        r#"<td balign="left" colspan="{colspan}" {fmt} align="left">"#,
+                        colspan = num_state_columns,
+                        fmt = fmt,
+                    )?;
 
-                let state_on_unwind = this.results.get().clone();
-                this.results.seek_after_assume_success(terminator_loc);
-                write_diff(w, this.results.analysis(), &state_on_unwind, this.results.get())?;
+                    let state_on_unwind = this.results.get().clone();
+                    this.results.apply_custom_effect(|analysis, state| {
+                        analysis.apply_call_return_effect(state, block, func, args, return_place);
+                    });
 
-                write!(w, "</td>")
-            })?;
+                    write_diff(w, this.results.analysis(), &state_on_unwind, this.results.get())?;
+                    write!(w, "</td>")
+                })?;
+            }
+
+            mir::TerminatorKind::Yield { resume, resume_arg, .. } => {
+                self.write_row(w, "", "(on yield resume)", |this, w, fmt| {
+                    write!(
+                        w,
+                        r#"<td balign="left" colspan="{colspan}" {fmt} align="left">"#,
+                        colspan = num_state_columns,
+                        fmt = fmt,
+                    )?;
+
+                    let state_on_generator_drop = this.results.get().clone();
+                    this.results.apply_custom_effect(|analysis, state| {
+                        analysis.apply_yield_resume_effect(state, resume, resume_arg);
+                    });
+
+                    write_diff(
+                        w,
+                        this.results.analysis(),
+                        &state_on_generator_drop,
+                        this.results.get(),
+                    )?;
+                    write!(w, "</td>")
+                })?;
+            }
+
+            _ => {}
         };
 
         write!(w, "</table>")
@@ -403,18 +438,23 @@ where
 }
 
 /// Prints a single column containing the state vector immediately *after* each statement.
-pub struct SimpleDiff<T: Idx> {
-    prev_state: BitSet<T>,
-    prev_loc: Location,
+pub struct SimpleDiff<'a, 'tcx, A>
+where
+    A: Analysis<'tcx>,
+{
+    prev_state: ResultsRefCursor<'a, 'a, 'tcx, A>,
 }
 
-impl<T: Idx> SimpleDiff<T> {
-    pub fn new(bits_per_block: usize) -> Self {
-        SimpleDiff { prev_state: BitSet::new_empty(bits_per_block), prev_loc: Location::START }
+impl<A> SimpleDiff<'a, 'tcx, A>
+where
+    A: Analysis<'tcx>,
+{
+    pub fn new(body: &'a Body<'tcx>, results: &'a Results<'tcx, A>) -> Self {
+        SimpleDiff { prev_state: ResultsRefCursor::new(body, results) }
     }
 }
 
-impl<A> StateFormatter<'tcx, A> for SimpleDiff<A::Idx>
+impl<A> StateFormatter<'tcx, A> for SimpleDiff<'_, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
@@ -429,20 +469,27 @@ where
         results: &mut ResultsRefCursor<'_, '_, 'tcx, A>,
         location: Location,
     ) -> io::Result<()> {
-        if location.statement_index == 0 {
-            results.seek_to_block_start(location.block);
-            self.prev_state.overwrite(results.get());
+        if A::Direction::is_forward() {
+            if location.statement_index == 0 {
+                self.prev_state.seek_to_block_start(location.block);
+            } else {
+                self.prev_state.seek_after_primary_effect(Location {
+                    statement_index: location.statement_index - 1,
+                    ..location
+                });
+            }
         } else {
-            // Ensure that we are visiting statements in order, so `prev_state` is correct.
-            assert_eq!(self.prev_loc.successor_within_block(), location);
+            if location == results.body().terminator_loc(location.block) {
+                self.prev_state.seek_to_block_end(location.block);
+            } else {
+                self.prev_state.seek_after_primary_effect(location.successor_within_block());
+            }
         }
 
-        self.prev_loc = location;
         write!(w, r#"<td {fmt} balign="left" align="left">"#, fmt = fmt)?;
-        results.seek_after(location);
+        results.seek_after_primary_effect(location);
         let curr_state = results.get();
-        write_diff(&mut w, results.analysis(), &self.prev_state, curr_state)?;
-        self.prev_state.overwrite(curr_state);
+        write_diff(&mut w, results.analysis(), self.prev_state.get(), curr_state)?;
         write!(w, "</td>")
     }
 }
@@ -476,7 +523,7 @@ where
         location: Location,
     ) -> io::Result<()> {
         if location.statement_index == 0 {
-            results.seek_to_block_start(location.block);
+            results.seek_to_block_entry(location.block);
             self.prev_state.overwrite(results.get());
         } else {
             // Ensure that we are visiting statements in order, so `prev_state` is correct.
@@ -488,7 +535,7 @@ where
         // Before
 
         write!(w, r#"<td {fmt} align="left">"#, fmt = fmt)?;
-        results.seek_before(location);
+        results.seek_before_primary_effect(location);
         let curr_state = results.get();
         write_diff(&mut w, results.analysis(), &self.prev_state, curr_state)?;
         self.prev_state.overwrite(curr_state);
@@ -497,7 +544,7 @@ where
         // After
 
         write!(w, r#"<td {fmt} align="left">"#, fmt = fmt)?;
-        results.seek_after(location);
+        results.seek_after_primary_effect(location);
         let curr_state = results.get();
         write_diff(&mut w, results.analysis(), &self.prev_state, curr_state)?;
         self.prev_state.overwrite(curr_state);
