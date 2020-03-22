@@ -8,7 +8,6 @@ fn main() {}
 type Two<T, U> = impl Debug;
 
 fn one<T: Debug>(t: T) -> Two<T, T> {
-//~^ ERROR defining opaque type use restricts opaque type
     t
 }
 

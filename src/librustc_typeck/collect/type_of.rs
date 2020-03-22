@@ -403,38 +403,43 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 // FIXME(oli-obk): trace the actual span from inference to improve errors.
                 let span = self.tcx.def_span(def_id);
 
+                // HACK(eddyb) this check shouldn't be needed, as `wfcheck`
+                // performs the same checks, in theory, but I've kept it here
+                // using `delay_span_bug`, just in case `wfcheck` slips up.
                 let opaque_generics = self.tcx.generics_of(self.def_id);
-                let mut used_params: FxHashSet<ty::ParamTy> = FxHashSet::default();
-                let mut duplicate_params: FxHashSet<ty::ParamTy> = FxHashSet::default();
+                let mut used_params: FxHashSet<_> = FxHashSet::default();
                 for (i, arg) in substs.iter().enumerate() {
-                    // FIXME(eddyb) enforce lifetime and const param 1:1 mapping.
-                    if let GenericArgKind::Type(ty) = arg.unpack() {
-                        if let ty::Param(p) = ty.kind {
-                            if !used_params.insert(p) && duplicate_params.insert(p) {
-                                // There was already an entry for `p`, meaning a generic parameter
-                                // was used twice.
-                                self.tcx.sess.span_err(
-                                    span,
-                                    &format!(
-                                        "defining opaque type use restricts opaque \
-                                         type by using the generic parameter `{}` twice",
-                                        p,
-                                    ),
-                                );
-                            }
-                        } else {
-                            let param = opaque_generics.param_at(i, self.tcx);
+                    let arg_is_param = match arg.unpack() {
+                        GenericArgKind::Type(ty) => matches!(ty.kind, ty::Param(_)),
+                        GenericArgKind::Lifetime(lt) => !matches!(lt, ty::ReStatic),
+                        GenericArgKind::Const(ct) => matches!(ct.val, ty::ConstKind::Param(_)),
+                    };
+
+                    if arg_is_param {
+                        if !used_params.insert(arg) {
+                            // There was already an entry for `arg`, meaning a generic parameter
+                            // was used twice.
                             self.tcx.sess.delay_span_bug(
                                 span,
                                 &format!(
-                                    "defining opaque type use does not fully define opaque type: \
-                                     generic parameter `{}` is specified as concrete {} `{}`",
-                                    param.name,
-                                    param.kind.descr(),
+                                    "defining opaque type use restricts opaque \
+                                     type by using the generic parameter `{}` twice",
                                     arg,
                                 ),
                             );
                         }
+                    } else {
+                        let param = opaque_generics.param_at(i, self.tcx);
+                        self.tcx.sess.delay_span_bug(
+                            span,
+                            &format!(
+                                "defining opaque type use does not fully define opaque type: \
+                                 generic parameter `{}` is specified as concrete {} `{}`",
+                                param.name,
+                                param.kind.descr(),
+                                arg,
+                            ),
+                        );
                     }
                 }
 

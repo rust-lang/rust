@@ -1,14 +1,5 @@
-error: defining opaque type use restricts opaque type by using the generic parameter `T` twice
-  --> $DIR/generic_duplicate_param_use2.rs:10:1
-   |
-LL | / fn one<T: Debug>(t: T) -> Two<T, T> {
-LL | |
-LL | |     t
-LL | | }
-   | |_^
-
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/generic_duplicate_param_use2.rs:15:1
+  --> $DIR/generic_duplicate_param_use2.rs:14:1
    |
 LL | / fn two<T: Debug, U>(t: T, _: U) -> Two<T, U> {
 LL | |
@@ -20,10 +11,9 @@ note: previous use here
   --> $DIR/generic_duplicate_param_use2.rs:10:1
    |
 LL | / fn one<T: Debug>(t: T) -> Two<T, T> {
-LL | |
 LL | |     t
 LL | | }
    | |_^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
