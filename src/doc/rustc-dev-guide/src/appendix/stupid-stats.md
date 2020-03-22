@@ -94,7 +94,7 @@ translation).
 > NOTE: `librustc_trans` and `librustc_back` no longer exist, and we don't
 > translate AST or HIR directly to LLVM IR anymore.  Instead, see
 > [`librustc_codegen_llvm`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/index.html)
-> and [`librustc_codegen_utils`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_utils/index.html).
+> and [`librustc_codegen_ssa`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/index.html).
 
 All these phases are coordinated by the driver. To see the exact sequence, look
 at the `compile_input` function in `librustc_driver`.
