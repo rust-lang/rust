@@ -18,6 +18,6 @@ impl TextSized for &'_ str {
 impl TextSized for char {
     #[inline]
     fn text_size(self) -> TextSize {
-        TextSize(self.len_utf8() as u32)
+        (self.len_utf8() as u32).into()
     }
 }

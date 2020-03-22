@@ -33,11 +33,6 @@ pub struct TextSize {
     pub(crate) raw: u32,
 }
 
-#[allow(non_snake_case)]
-pub(crate) const fn TextSize(raw: u32) -> TextSize {
-    TextSize { raw }
-}
-
 impl fmt::Debug for TextSize {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.raw)
@@ -57,7 +52,7 @@ impl TextSize {
     /// but is more explicit on intent.
     #[inline]
     pub const fn zero() -> TextSize {
-        TextSize(0)
+        TextSize { raw: 0 }
     }
 }
 
@@ -65,27 +60,27 @@ impl TextSize {
 //  Last updated for parity with Rust 1.42.0.
 impl TextSize {
     /// The smallest representable text size. (`u32::MIN`)
-    pub const MIN: TextSize = TextSize(u32::MIN);
+    pub const MIN: TextSize = TextSize { raw: u32::MIN };
     /// The largest representable text size. (`u32::MAX`)
-    pub const MAX: TextSize = TextSize(u32::MAX);
+    pub const MAX: TextSize = TextSize { raw: u32::MAX };
 
     /// Checked addition. Returns `None` if overflow occurred.
     #[inline]
     pub fn checked_add(self, rhs: TextSize) -> Option<TextSize> {
-        self.raw.checked_add(rhs.raw).map(TextSize)
+        self.raw.checked_add(rhs.raw).map(|raw| TextSize { raw })
     }
 
     /// Checked subtraction. Returns `None` if overflow occurred.
     #[inline]
     pub fn checked_sub(self, rhs: TextSize) -> Option<TextSize> {
-        self.raw.checked_sub(rhs.raw).map(TextSize)
+        self.raw.checked_sub(rhs.raw).map(|raw| TextSize { raw })
     }
 }
 
 impl From<u32> for TextSize {
     #[inline]
     fn from(raw: u32) -> Self {
-        TextSize(raw)
+        TextSize { raw }
     }
 }
 
@@ -117,7 +112,7 @@ macro_rules! ops {
             type Output = TextSize;
             #[inline]
             fn $f(self, other: TextSize) -> TextSize {
-                TextSize(self.raw $op other.raw)
+                TextSize { raw: self.raw $op other.raw }
             }
         }
         impl $Op<&TextSize> for TextSize {
