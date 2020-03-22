@@ -9,7 +9,7 @@ for running code at particular times during the compilation process, allowing
 third parties to effectively use `rustc`'s internals as a library for
 analysing a crate or emulating the compiler in-process (e.g. the RLS or rustdoc).
 
-For those using `rustc` as a library, the [`rustc_interface::interface::run_compiler()`][i_rc]
+For those using `rustc` as a library, the [`rustc_interface::run_compiler()`][i_rc]
 function is the main entrypoint to the compiler. It takes a configuration for the compiler
 and a closure that takes a [`Compiler`]. `run_compiler` creates a `Compiler` from the 
 configuration and passes it to the closure. Inside the closure, you can use the `Compiler`
@@ -19,7 +19,7 @@ You can see a minimal example of how to use `rustc_interface` [here][example].
 You can see what queries are currently available through the rustdocs for [`Compiler`].
 You can see an example of how to use them by looking at the `rustc_driver` implementation,
 specifically the [`rustc_driver::run_compiler` function][rd_rc] (not to be confused with
-[`rustc_interface::interface::run_compiler`][i_rc]). The `rustc_driver::run_compiler` function 
+[`rustc_interface::run_compiler`][i_rc]). The `rustc_driver::run_compiler` function 
 takes a bunch of command-line args and some other configurations and
 drives the compilation to completion.
 

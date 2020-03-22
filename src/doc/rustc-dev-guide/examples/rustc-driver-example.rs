@@ -12,7 +12,6 @@ use rustc::session;
 use rustc::session::config;
 use rustc_errors::registry;
 use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_interface::interface;
 use rustc_span::source_map;
 use std::path;
 use std::process;
@@ -28,7 +27,7 @@ fn main() {
     let filename = "main.rs";
     let contents = "static HELLO: &str = \"Hello, world!\"; fn main() { println!(\"{}\", HELLO); }";
     let errors = registry::Registry::new(&rustc_error_codes::DIAGNOSTICS);
-    let config = interface::Config {
+    let config = rustc_interface::Config {
         // Command line options
         opts: config::Options {
             maybe_sysroot: Some(path::PathBuf::from(sysroot)),
@@ -80,7 +79,7 @@ fn main() {
         // Registry of diagnostics codes.
         registry: errors,
     };
-    interface::run_compiler(config, |compiler| {
+    rustc_interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
             // Parse the program and print the syntax tree.
             let parse = queries.parse().unwrap().take();
