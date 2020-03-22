@@ -411,7 +411,9 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 for (i, arg) in substs.iter().enumerate() {
                     let arg_is_param = match arg.unpack() {
                         GenericArgKind::Type(ty) => matches!(ty.kind, ty::Param(_)),
-                        GenericArgKind::Lifetime(lt) => !matches!(lt, ty::ReStatic),
+                        GenericArgKind::Lifetime(lt) => {
+                            matches!(lt, ty::ReEarlyBound(_) | ty::ReFree(_))
+                        }
                         GenericArgKind::Const(ct) => matches!(ct.val, ty::ConstKind::Param(_)),
                     };
 
