@@ -14,6 +14,7 @@ function is the main entrypoint to the compiler. It takes a configuration for th
 and a closure that takes a [`Compiler`]. `run_compiler` creates a `Compiler` from the 
 configuration and passes it to the closure. Inside the closure, you can use the `Compiler`
 to drive queries to compile a crate and get the results. This is what the `rustc_driver` does too.
+You can see a minimal example of how to use `rustc_interface` [here][example].
 
 You can see what queries are currently available through the rustdocs for [`Compiler`].
 You can see an example of how to use them by looking at the `rustc_driver` implementation,
@@ -36,6 +37,7 @@ replaces this functionality.
 [cb]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/trait.Callbacks.html
 [rd_rc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/fn.run_compiler.html
 [i_rc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/fn.run_compiler.html
+[example]: https://github.com/rust-lang/rustc-dev-guide/blob/master/src/rustc-driver-example.rs
 [`rustc_interface`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/index.html
 [`rustc_driver`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/
 [`Compiler`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Compiler.html
