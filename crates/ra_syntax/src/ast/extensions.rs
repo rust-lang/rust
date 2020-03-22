@@ -4,7 +4,7 @@
 use itertools::Itertools;
 
 use crate::{
-    ast::{self, child_opt, children, AstNode, AttrInput, SyntaxNode},
+    ast::{self, child_opt, children, AstNode, AttrInput, NameOwner, SyntaxNode},
     SmolStr, SyntaxElement,
     SyntaxKind::*,
     SyntaxToken, T,
@@ -512,5 +512,16 @@ impl ast::Visibility {
 
     fn is_pub_super(&self) -> bool {
         self.syntax().children_with_tokens().any(|it| it.kind() == T![super])
+    }
+}
+
+impl ast::MacroCall {
+    pub fn is_macro_rules(&self) -> Option<ast::Name> {
+        let name_ref = self.path()?.segment()?.name_ref()?;
+        if name_ref.text() == "macro_rules" {
+            self.name()
+        } else {
+            None
+        }
     }
 }

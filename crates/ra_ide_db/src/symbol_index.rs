@@ -362,6 +362,13 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
             ast::TypeAliasDef(it) => { decl(it) },
             ast::ConstDef(it) => { decl(it) },
             ast::StaticDef(it) => { decl(it) },
+            ast::MacroCall(it) => {
+                if it.is_macro_rules().is_some() {
+                    decl(it)
+                } else {
+                    None
+                }
+            },
             _ => None,
         }
     }
