@@ -388,73 +388,77 @@ impl<'a> Parser<'a> {
     /// possibly including trailing comma.
     fn parse_angle_args(&mut self) -> PResult<'a, Vec<AngleBracketedArg>> {
         let mut args = Vec::new();
-        loop {
-            if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
-                // Parse lifetime argument.
-                args.push(AngleBracketedArg::Arg(GenericArg::Lifetime(self.expect_lifetime())));
-            } else if self.check_ident()
-                && self.look_ahead(1, |t| matches!(t.kind, token::Eq | token::Colon))
-            {
-                // Parse associated type constraint.
-                let lo = self.token.span;
-                let ident = self.parse_ident()?;
-                let kind = if self.eat(&token::Eq) {
-                    AssocTyConstraintKind::Equality { ty: self.parse_ty()? }
-                } else if self.eat(&token::Colon) {
-                    let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
-                    AssocTyConstraintKind::Bound { bounds }
-                } else {
-                    unreachable!();
-                };
-
-                let span = lo.to(self.prev_token.span);
-
-                // Gate associated type bounds, e.g., `Iterator<Item: Ord>`.
-                if let AssocTyConstraintKind::Bound { .. } = kind {
-                    self.sess.gated_spans.gate(sym::associated_type_bounds, span);
-                }
-
-                let constraint = AssocTyConstraint { id: ast::DUMMY_NODE_ID, ident, kind, span };
-                args.push(AngleBracketedArg::Constraint(constraint));
-            } else if self.check_const_arg() {
-                // Parse const argument.
-                let expr = if let token::OpenDelim(token::Brace) = self.token.kind {
-                    self.parse_block_expr(
-                        None,
-                        self.token.span,
-                        BlockCheckMode::Default,
-                        ast::AttrVec::new(),
-                    )?
-                } else if self.token.is_ident() {
-                    // FIXME(const_generics): to distinguish between idents for types and consts,
-                    // we should introduce a GenericArg::Ident in the AST and distinguish when
-                    // lowering to the HIR. For now, idents for const args are not permitted.
-                    if self.token.is_bool_lit() {
-                        self.parse_literal_maybe_minus()?
-                    } else {
-                        let span = self.token.span;
-                        let msg = "identifiers may currently not be used for const generics";
-                        self.struct_span_err(span, msg).emit();
-                        let block = self.mk_block_err(span);
-                        self.mk_expr(span, ast::ExprKind::Block(block, None), ast::AttrVec::new())
-                    }
-                } else {
-                    self.parse_literal_maybe_minus()?
-                };
-                let value = AnonConst { id: ast::DUMMY_NODE_ID, value: expr };
-                args.push(AngleBracketedArg::Arg(GenericArg::Const(value)));
-            } else if self.check_type() {
-                // Parse type argument.
-                args.push(AngleBracketedArg::Arg(GenericArg::Type(self.parse_ty()?)));
-            } else {
-                break;
-            }
-
+        while let Some(arg) = self.parse_angle_arg()? {
+            args.push(arg);
             if !self.eat(&token::Comma) {
                 break;
             }
         }
-
         Ok(args)
+    }
+
+    /// Parses a single argument in the angle arguments `<...>` of a path segment.
+    fn parse_angle_arg(&mut self) -> PResult<'a, Option<AngleBracketedArg>> {
+        let arg = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
+            // Parse lifetime argument.
+            AngleBracketedArg::Arg(GenericArg::Lifetime(self.expect_lifetime()))
+        } else if self.check_ident()
+            && self.look_ahead(1, |t| matches!(t.kind, token::Eq | token::Colon))
+        {
+            // Parse associated type constraint.
+            let lo = self.token.span;
+            let ident = self.parse_ident()?;
+            let kind = if self.eat(&token::Eq) {
+                AssocTyConstraintKind::Equality { ty: self.parse_ty()? }
+            } else if self.eat(&token::Colon) {
+                let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
+                AssocTyConstraintKind::Bound { bounds }
+            } else {
+                unreachable!();
+            };
+
+            let span = lo.to(self.prev_token.span);
+
+            // Gate associated type bounds, e.g., `Iterator<Item: Ord>`.
+            if let AssocTyConstraintKind::Bound { .. } = kind {
+                self.sess.gated_spans.gate(sym::associated_type_bounds, span);
+            }
+
+            let constraint = AssocTyConstraint { id: ast::DUMMY_NODE_ID, ident, kind, span };
+            AngleBracketedArg::Constraint(constraint)
+        } else if self.check_const_arg() {
+            // Parse const argument.
+            let expr = if let token::OpenDelim(token::Brace) = self.token.kind {
+                self.parse_block_expr(
+                    None,
+                    self.token.span,
+                    BlockCheckMode::Default,
+                    ast::AttrVec::new(),
+                )?
+            } else if self.token.is_ident() {
+                // FIXME(const_generics): to distinguish between idents for types and consts,
+                // we should introduce a GenericArg::Ident in the AST and distinguish when
+                // lowering to the HIR. For now, idents for const args are not permitted.
+                if self.token.is_bool_lit() {
+                    self.parse_literal_maybe_minus()?
+                } else {
+                    let span = self.token.span;
+                    let msg = "identifiers may currently not be used for const generics";
+                    self.struct_span_err(span, msg).emit();
+                    let block = self.mk_block_err(span);
+                    self.mk_expr(span, ast::ExprKind::Block(block, None), ast::AttrVec::new())
+                }
+            } else {
+                self.parse_literal_maybe_minus()?
+            };
+            let value = AnonConst { id: ast::DUMMY_NODE_ID, value: expr };
+            AngleBracketedArg::Arg(GenericArg::Const(value))
+        } else if self.check_type() {
+            // Parse type argument.
+            AngleBracketedArg::Arg(GenericArg::Type(self.parse_ty()?))
+        } else {
+            return Ok(None);
+        };
+        Ok(Some(arg))
     }
 }
