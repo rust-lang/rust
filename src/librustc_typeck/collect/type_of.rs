@@ -256,10 +256,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         // figure out which generic parameter it corresponds to and return
                         // the relevant type.
                         let generics = match path.res {
-                            Res::Def(DefKind::Ctor(..), def_id)
-                            | Res::Def(DefKind::AssocTy, def_id) => {
-                                tcx.generics_of(tcx.parent(def_id).unwrap())
-                            }
+                            Res::Def(
+                                DefKind::Ctor(..) | DefKind::AssocTy | DefKind::AssocFn,
+                                def_id,
+                            ) => tcx.generics_of(tcx.parent(def_id).unwrap()),
                             Res::Def(_, def_id) => tcx.generics_of(def_id),
                             res => {
                                 tcx.sess.delay_span_bug(
@@ -291,8 +291,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 tcx.sess.delay_span_bug(
                                     DUMMY_SP,
                                     &format!(
-                                        "missing generic parameter for `AnonConst`, parent {:?}",
-                                        parent_node
+                                        "missing generic parameter for `AnonConst`, parent: {:?}, path.res: {:?}",
+                                        parent_node, path.res
                                     ),
                                 );
                                 tcx.types.err
