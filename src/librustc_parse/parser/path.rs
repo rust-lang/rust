@@ -1,12 +1,9 @@
 use super::ty::{AllowPlus, RecoverQPath};
 use super::{Parser, TokenType};
 use crate::maybe_whole;
-use rustc_ast::ast::{
-    self, AngleBracketedArgs, Ident, ParenthesizedArgs, Path, PathSegment, QSelf,
-};
-use rustc_ast::ast::{
-    AnonConst, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode, GenericArg,
-};
+use rustc_ast::ast::{self, AngleBracketedArg, AngleBracketedArgs, GenericArg, ParenthesizedArgs};
+use rustc_ast::ast::{AnonConst, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
+use rustc_ast::ast::{Ident, Path, PathSegment, QSelf};
 use rustc_ast::token::{self, Token};
 use rustc_errors::{pluralize, Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
@@ -218,11 +215,11 @@ impl<'a> Parser<'a> {
                 let lo = self.token.span;
                 let args = if self.eat_lt() {
                     // `<'a, T, A = U>`
-                    let (args, constraints) =
-                        self.parse_generic_args_with_leading_angle_bracket_recovery(style, lo)?;
+                    let args =
+                        self.parse_angle_args_with_leading_angle_bracket_recovery(style, lo)?;
                     self.expect_gt()?;
                     let span = lo.to(self.prev_token.span);
-                    AngleBracketedArgs { args, constraints, span }.into()
+                    AngleBracketedArgs { args, span }.into()
                 } else {
                     // `(T, U) -> R`
                     let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
@@ -251,18 +248,18 @@ impl<'a> Parser<'a> {
 
     /// Parses generic args (within a path segment) with recovery for extra leading angle brackets.
     /// For the purposes of understanding the parsing logic of generic arguments, this function
-    /// can be thought of being the same as just calling `self.parse_generic_args()` if the source
+    /// can be thought of being the same as just calling `self.parse_angle_args()` if the source
     /// had the correct amount of leading angle brackets.
     ///
     /// ```ignore (diagnostics)
     /// bar::<<<<T as Foo>::Output>();
     ///      ^^ help: remove extra angle brackets
     /// ```
-    fn parse_generic_args_with_leading_angle_bracket_recovery(
+    fn parse_angle_args_with_leading_angle_bracket_recovery(
         &mut self,
         style: PathStyle,
         lo: Span,
-    ) -> PResult<'a, (Vec<GenericArg>, Vec<AssocTyConstraint>)> {
+    ) -> PResult<'a, Vec<AngleBracketedArg>> {
         // We need to detect whether there are extra leading left angle brackets and produce an
         // appropriate error and suggestion. This cannot be implemented by looking ahead at
         // upcoming tokens for a matching `>` character - if there are unmatched `<` tokens
@@ -337,8 +334,8 @@ impl<'a> Parser<'a> {
         let snapshot = if is_first_invocation { Some(self.clone()) } else { None };
 
         debug!("parse_generic_args_with_leading_angle_bracket_recovery: (snapshotting)");
-        match self.parse_generic_args() {
-            Ok(value) => Ok(value),
+        match self.parse_angle_args() {
+            Ok(args) => Ok(args),
             Err(ref mut e) if is_first_invocation && self.unmatched_angle_bracket_count > 0 => {
                 // Cancel error from being unable to find `>`. We know the error
                 // must have been this due to a non-zero unmatched angle bracket
@@ -381,29 +378,22 @@ impl<'a> Parser<'a> {
                 .emit();
 
                 // Try again without unmatched angle bracket characters.
-                self.parse_generic_args()
+                self.parse_angle_args()
             }
             Err(e) => Err(e),
         }
     }
 
-    /// Parses (possibly empty) list of lifetime and type arguments and associated type bindings,
+    /// Parses (possibly empty) list of generic arguments / associated item constraints,
     /// possibly including trailing comma.
-    fn parse_generic_args(&mut self) -> PResult<'a, (Vec<GenericArg>, Vec<AssocTyConstraint>)> {
+    fn parse_angle_args(&mut self) -> PResult<'a, Vec<AngleBracketedArg>> {
         let mut args = Vec::new();
-        let mut constraints = Vec::new();
-        let mut misplaced_assoc_ty_constraints: Vec<Span> = Vec::new();
-        let mut assoc_ty_constraints: Vec<Span> = Vec::new();
-
-        let args_lo = self.token.span;
-
         loop {
             if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 // Parse lifetime argument.
-                args.push(GenericArg::Lifetime(self.expect_lifetime()));
-                misplaced_assoc_ty_constraints.append(&mut assoc_ty_constraints);
+                args.push(AngleBracketedArg::Arg(GenericArg::Lifetime(self.expect_lifetime())));
             } else if self.check_ident()
-                && self.look_ahead(1, |t| t == &token::Eq || t == &token::Colon)
+                && self.look_ahead(1, |t| matches!(t.kind, token::Eq | token::Colon))
             {
                 // Parse associated type constraint.
                 let lo = self.token.span;
@@ -411,9 +401,8 @@ impl<'a> Parser<'a> {
                 let kind = if self.eat(&token::Eq) {
                     AssocTyConstraintKind::Equality { ty: self.parse_ty()? }
                 } else if self.eat(&token::Colon) {
-                    AssocTyConstraintKind::Bound {
-                        bounds: self.parse_generic_bounds(Some(self.prev_token.span))?,
-                    }
+                    let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
+                    AssocTyConstraintKind::Bound { bounds }
                 } else {
                     unreachable!();
                 };
@@ -425,8 +414,8 @@ impl<'a> Parser<'a> {
                     self.sess.gated_spans.gate(sym::associated_type_bounds, span);
                 }
 
-                constraints.push(AssocTyConstraint { id: ast::DUMMY_NODE_ID, ident, kind, span });
-                assoc_ty_constraints.push(span);
+                let constraint = AssocTyConstraint { id: ast::DUMMY_NODE_ID, ident, kind, span };
+                args.push(AngleBracketedArg::Constraint(constraint));
             } else if self.check_const_arg() {
                 // Parse const argument.
                 let expr = if let token::OpenDelim(token::Brace) = self.token.kind {
@@ -453,12 +442,10 @@ impl<'a> Parser<'a> {
                     self.parse_literal_maybe_minus()?
                 };
                 let value = AnonConst { id: ast::DUMMY_NODE_ID, value: expr };
-                args.push(GenericArg::Const(value));
-                misplaced_assoc_ty_constraints.append(&mut assoc_ty_constraints);
+                args.push(AngleBracketedArg::Arg(GenericArg::Const(value)));
             } else if self.check_type() {
                 // Parse type argument.
-                args.push(GenericArg::Type(self.parse_ty()?));
-                misplaced_assoc_ty_constraints.append(&mut assoc_ty_constraints);
+                args.push(AngleBracketedArg::Arg(GenericArg::Type(self.parse_ty()?)));
             } else {
                 break;
             }
@@ -468,23 +455,6 @@ impl<'a> Parser<'a> {
             }
         }
 
-        // FIXME: we would like to report this in ast_validation instead, but we currently do not
-        // preserve ordering of generic parameters with respect to associated type binding, so we
-        // lose that information after parsing.
-        if !misplaced_assoc_ty_constraints.is_empty() {
-            let mut err = self.struct_span_err(
-                args_lo.to(self.prev_token.span),
-                "associated type bindings must be declared after generic parameters",
-            );
-            for span in misplaced_assoc_ty_constraints {
-                err.span_label(
-                    span,
-                    "this associated type binding should be moved after the generic parameters",
-                );
-            }
-            err.emit();
-        }
-
-        Ok((args, constraints))
+        Ok(args)
     }
 }

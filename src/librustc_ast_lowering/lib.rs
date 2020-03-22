@@ -34,6 +34,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(marker_trait_attr)]
 #![feature(specialization)]
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 use rustc_ast::ast;

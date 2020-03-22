@@ -546,9 +546,11 @@ pub fn noop_visit_angle_bracketed_parameter_data<T: MutVisitor>(
     data: &mut AngleBracketedArgs,
     vis: &mut T,
 ) {
-    let AngleBracketedArgs { args, constraints, span } = data;
-    visit_vec(args, |arg| vis.visit_generic_arg(arg));
-    visit_vec(constraints, |constraint| vis.visit_ty_constraint(constraint));
+    let AngleBracketedArgs { args, span } = data;
+    visit_vec(args, |arg| match arg {
+        AngleBracketedArg::Arg(arg) => vis.visit_generic_arg(arg),
+        AngleBracketedArg::Constraint(constraint) => vis.visit_ty_constraint(constraint),
+    });
     vis.visit_span(span);
 }
 

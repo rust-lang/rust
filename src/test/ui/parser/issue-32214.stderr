@@ -1,10 +1,11 @@
-error: associated type bindings must be declared after generic parameters
-  --> $DIR/issue-32214.rs:3:25
+error: constraints in a path segment must come after generic arguments
+  --> $DIR/issue-32214.rs:3:24
    |
 LL | pub fn test<W, I: Trait<Item=(), W> >() {}
-   |                         -------^^^
-   |                         |
-   |                         this associated type binding should be moved after the generic parameters
+   |                        ^-------^^-^
+   |                         |        |
+   |                         |        this generic argument must come before the first constraint
+   |                         the first constraint is provided here
 
 error: aborting due to previous error
 

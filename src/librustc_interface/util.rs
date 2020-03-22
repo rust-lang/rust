@@ -634,17 +634,19 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
                         match seg.args.as_ref().map(|generic_arg| &**generic_arg) {
                             None => false,
                             Some(&ast::GenericArgs::AngleBracketed(ref data)) => {
-                                let types = data.args.iter().filter_map(|arg| match arg {
-                                    ast::GenericArg::Type(ty) => Some(ty),
-                                    _ => None,
-                                });
-                                any_involves_impl_trait(types)
-                                    || data.constraints.iter().any(|c| match c.kind {
+                                data.args.iter().any(|arg| match arg {
+                                    ast::AngleBracketedArg::Arg(arg) => match arg {
+                                        ast::GenericArg::Type(ty) => involves_impl_trait(ty),
+                                        ast::GenericArg::Lifetime(_)
+                                        | ast::GenericArg::Const(_) => false,
+                                    },
+                                    ast::AngleBracketedArg::Constraint(c) => match c.kind {
                                         ast::AssocTyConstraintKind::Bound { .. } => true,
                                         ast::AssocTyConstraintKind::Equality { ref ty } => {
                                             involves_impl_trait(ty)
                                         }
-                                    })
+                                    },
+                                })
                             }
                             Some(&ast::GenericArgs::Parenthesized(ref data)) => {
                                 any_involves_impl_trait(data.inputs.iter())
