@@ -469,18 +469,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             return;
         }
 
-        let desc = match trait_item.kind {
-            hir::TraitItemKind::Const(..) => "an associated constant",
-            hir::TraitItemKind::Fn(..) => "a trait method",
-            hir::TraitItemKind::Type(..) => "an associated type",
-        };
+        let def_id = cx.tcx.hir().local_def_id(trait_item.hir_id);
+        let (article, desc) = cx.tcx.article_and_description(def_id);
 
         self.check_missing_docs_attrs(
             cx,
             Some(trait_item.hir_id),
             &trait_item.attrs,
             trait_item.span,
-            desc,
+            &format!("{} {}", article, desc),
         );
     }
 
@@ -490,18 +487,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             return;
         }
 
-        let desc = match impl_item.kind {
-            hir::ImplItemKind::Const(..) => "an associated constant",
-            hir::ImplItemKind::Fn(..) => "a method",
-            hir::ImplItemKind::TyAlias(_) => "an associated type",
-            hir::ImplItemKind::OpaqueTy(_) => "an associated `impl Trait` type",
-        };
+        let def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
+        let (article, desc) = cx.tcx.article_and_description(def_id);
         self.check_missing_docs_attrs(
             cx,
             Some(impl_item.hir_id),
             &impl_item.attrs,
             impl_item.span,
-            desc,
+            &format!("{} {}", article, desc),
         );
     }
 
