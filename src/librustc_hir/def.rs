@@ -159,6 +159,7 @@ impl DefKind {
     }
 }
 
+/// The resolution of a path or export.
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum Res<Id = hir::HirId> {
