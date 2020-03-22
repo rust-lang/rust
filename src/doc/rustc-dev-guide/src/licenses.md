@@ -1,4 +1,4 @@
-# Rustc Licenses
+# `rust-lang/rust` Licenses
 
 The `rustc` compiler source and standard library is dual licensed under the [Apache License v2.0](https://github.com/rust-lang/rust/blob/master/LICENSE-APACHE) and the [MIT License](https://github.com/rust-lang/rust/blob/master/LICENSE-MIT) unless otherwise specified.
 
