@@ -555,7 +555,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         // avoid allocations in those cases. We also don't use `indices` to
         // determine if a kind has been seen before until the limit of 8 has
         // been exceeded, to also avoid allocations for `indices`.
-        let var = if !var_values.spilled() {
+        if !var_values.spilled() {
             // `var_values` is stack-allocated. `indices` isn't used yet. Do a
             // direct linear search of `var_values`.
             if let Some(idx) = var_values.iter().position(|&k| k == kind) {
@@ -589,9 +589,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
                 assert_eq!(variables.len(), var_values.len());
                 BoundVar::new(variables.len() - 1)
             })
-        };
-
-        var
+        }
     }
 
     /// Shorthand helper that creates a canonical region variable for

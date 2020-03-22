@@ -1069,16 +1069,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         });
 
-        let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| {
-            let t = match flds {
-                Some(ref fs) if i < fs.len() => {
-                    let ety = fs[i].expect_ty();
-                    self.check_expr_coercable_to_type(&e, ety);
-                    ety
-                }
-                _ => self.check_expr_with_expectation(&e, NoExpectation),
-            };
-            t
+        let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| match flds {
+            Some(ref fs) if i < fs.len() => {
+                let ety = fs[i].expect_ty();
+                self.check_expr_coercable_to_type(&e, ety);
+                ety
+            }
+            _ => self.check_expr_with_expectation(&e, NoExpectation),
         });
         let tuple = self.tcx.mk_tup(elt_ts_iter);
         if tuple.references_error() {

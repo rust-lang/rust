@@ -184,14 +184,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             ..
         } = self.builder;
         *rev_lookup.projections.entry((base, elem.lift())).or_insert_with(move || {
-            let path = MoveDataBuilder::new_move_path(
+            MoveDataBuilder::new_move_path(
                 move_paths,
                 path_map,
                 init_path_map,
                 Some(base),
                 mk_place(*tcx),
-            );
-            path
+            )
         })
     }
 
