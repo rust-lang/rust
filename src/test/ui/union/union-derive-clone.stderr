@@ -21,6 +21,14 @@ LL | struct CloneNoCopy;
 ...
 LL |     let w = u.clone();
    |               ^^^^^ method not found in `U5<CloneNoCopy>`
+   | 
+  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+   |
+LL |     fn clone(&self) -> Self;
+   |        -----
+   |        |
+   |        the method is available for `std::sync::Arc<U5<CloneNoCopy>>` here
+   |        the method is available for `std::rc::Rc<U5<CloneNoCopy>>` here
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
            `CloneNoCopy: std::marker::Copy`
