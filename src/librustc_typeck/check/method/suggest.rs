@@ -769,14 +769,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             MethodError::PrivateMatch(kind, def_id, out_of_scope_traits) => {
+                let kind = kind.descr(def_id);
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
                     E0624,
                     "{} `{}` is private",
-                    kind.descr(def_id),
+                    kind,
                     item_name
                 );
+                err.span_label(span, &format!("private {}", kind));
                 self.suggest_valid_traits(&mut err, out_of_scope_traits);
                 err.emit();
             }

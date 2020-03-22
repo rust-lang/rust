@@ -38,7 +38,7 @@ error[E0603]: function `quz` is private
   --> $DIR/unresolved-imports-used.rs:9:10
    |
 LL | use qux::quz;
-   |          ^^^ this function is private
+   |          ^^^ private function
    |
 note: the function `quz` is defined here
   --> $DIR/unresolved-imports-used.rs:5:4

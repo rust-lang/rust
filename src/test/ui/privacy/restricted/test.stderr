@@ -26,7 +26,7 @@ error[E0603]: struct `Crate` is private
   --> $DIR/test.rs:38:25
    |
 LL |     use pub_restricted::Crate;
-   |                         ^^^^^ this struct is private
+   |                         ^^^^^ private struct
    |
 note: the struct `Crate` is defined here
   --> $DIR/auxiliary/pub_restricted.rs:3:1
@@ -38,7 +38,7 @@ error[E0603]: function `f` is private
   --> $DIR/test.rs:30:19
    |
 LL |     use foo::bar::f;
-   |                   ^ this function is private
+   |                   ^ private function
    |
 note: the function `f` is defined here
   --> $DIR/test.rs:8:9
@@ -56,13 +56,13 @@ error[E0624]: associated function `f` is private
   --> $DIR/test.rs:32:18
    |
 LL |     S::default().f();
-   |                  ^
+   |                  ^ private associated function
 
 error[E0624]: associated function `g` is private
   --> $DIR/test.rs:33:5
    |
 LL |     S::g();
-   |     ^^^^
+   |     ^^^^ private associated function
 
 error[E0616]: field `y` of struct `pub_restricted::Universe` is private
   --> $DIR/test.rs:42:15
@@ -80,13 +80,13 @@ error[E0624]: associated function `g` is private
   --> $DIR/test.rs:45:7
    |
 LL |     u.g();
-   |       ^
+   |       ^ private associated function
 
 error[E0624]: associated function `h` is private
   --> $DIR/test.rs:46:7
    |
 LL |     u.h();
-   |       ^
+   |       ^ private associated function
 
 error: aborting due to 12 previous errors
 
