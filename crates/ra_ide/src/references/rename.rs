@@ -250,6 +250,63 @@ mod tests {
     }
 
     #[test]
+    fn test_rename_for_macro_args_rev() {
+        test_rename(
+            r#"
+    macro_rules! foo {($i:ident) => {$i} }
+    fn main() {
+        let a = "test";
+        foo!(a<|>);
+    }"#,
+            "b",
+            r#"
+    macro_rules! foo {($i:ident) => {$i} }
+    fn main() {
+        let b = "test";
+        foo!(b);
+    }"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_for_macro_define_fn() {
+        test_rename(
+            r#"
+    macro_rules! define_fn {($id:ident) => { fn $id{} }}
+    define_fn!(foo);
+    fn main() {
+        fo<|>o();
+    }"#,
+            "bar",
+            r#"
+    macro_rules! define_fn {($id:ident) => { fn $id{} }}
+    define_fn!(bar);
+    fn main() {
+        bar();
+    }"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_for_macro_define_fn_rev() {
+        test_rename(
+            r#"
+    macro_rules! define_fn {($id:ident) => { fn $id{} }}
+    define_fn!(fo<|>o);
+    fn main() {
+        foo();
+    }"#,
+            "bar",
+            r#"
+    macro_rules! define_fn {($id:ident) => { fn $id{} }}
+    define_fn!(bar);
+    fn main() {
+        bar();
+    }"#,
+        );
+    }
+
+    #[test]
     fn test_rename_for_param_inside() {
         test_rename(
             r#"
