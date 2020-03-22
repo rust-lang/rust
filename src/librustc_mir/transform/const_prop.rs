@@ -4,7 +4,7 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 
-use rustc::mir::interpret::{InterpResult, Scalar};
+use rustc::mir::interpret::{InterpResult, MachineStopType, Scalar};
 use rustc::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
@@ -192,7 +192,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
         _unwind: Option<BasicBlock>,
     ) -> InterpResult<'tcx> {
-        throw_unsup!(ConstPropUnsupported("calling intrinsics isn't supported in ConstProp"))
+        #[derive(Debug)]
+        struct ConstPropIntrinsic;
+        impl MachineStopType for ConstPropIntrinsic {}
+        throw_machine_stop!(ConstPropIntrinsic)
     }
 
     fn assert_panic(
@@ -204,7 +207,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     fn ptr_to_int(_mem: &Memory<'mir, 'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx, u64> {
-        throw_unsup!(ConstPropUnsupported("ptr-to-int casts aren't supported in ConstProp"))
+        throw_unsup!(ReadPointerAsBytes)
     }
 
     fn binary_ptr_op(
@@ -213,11 +216,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
+        #[derive(Debug)]
+        struct ConstPropPtrOp;
+        impl MachineStopType for ConstPropPtrOp {}
         // We can't do this because aliasing of memory can differ between const eval and llvm
-        throw_unsup!(ConstPropUnsupported(
-            "pointer arithmetic or comparisons aren't supported \
-            in ConstProp"
-        ))
+        throw_machine_stop!(ConstPropPtrOp)
     }
 
     #[inline(always)]
@@ -240,7 +243,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        throw_unsup!(ConstPropUnsupported("can't const prop `box` keyword"))
+        #[derive(Debug)]
+        struct ConstPropBox;
+        impl MachineStopType for ConstPropBox {}
+        throw_machine_stop!(ConstPropBox)
     }
 
     fn access_local(
@@ -251,7 +257,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         let l = &frame.locals[local];
 
         if l.value == LocalValue::Uninitialized {
-            throw_unsup!(ConstPropUnsupported("tried to access an uninitialized local"));
+            #[derive(Debug)]
+            struct ConstPropUninitLocal;
+            impl MachineStopType for ConstPropUninitLocal {}
+            throw_machine_stop!(ConstPropUninitLocal)
         }
 
         l.access()
@@ -261,10 +270,13 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _memory_extra: &(),
         allocation: &Allocation<Self::PointerTag, Self::AllocExtra>,
     ) -> InterpResult<'tcx> {
+        #[derive(Debug)]
+        struct ConstPropGlobalMem;
+        impl MachineStopType for ConstPropGlobalMem {}
         // if the static allocation is mutable or if it has relocations (it may be legal to mutate
         // the memory behind that in the future), then we can't const prop it
         if allocation.mutability == Mutability::Mut || allocation.relocations().len() > 0 {
-            throw_unsup!(ConstPropUnsupported("can't eval mutable statics in ConstProp"));
+            throw_machine_stop!(ConstPropGlobalMem)
         }
 
         Ok(())

@@ -14,7 +14,10 @@ use rustc_hir as hir;
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::{def_id::DefId, Pos, Span};
-use std::{any::Any, fmt};
+use std::{
+    any::{Any, TypeId},
+    fmt, mem,
+};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
@@ -451,9 +454,6 @@ impl fmt::Debug for UndefinedBehaviorInfo {
 pub enum UnsupportedOpInfo {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
-    /// When const-prop encounters a situation it does not support, it raises this error.
-    /// This must not allocate for performance reasons (hence `str`, not `String`).
-    ConstPropUnsupported(&'static str),
     /// Accessing an unsupported foreign static.
     ReadForeignStatic(DefId),
     /// Could not find MIR for a function.
@@ -472,9 +472,6 @@ impl fmt::Debug for UnsupportedOpInfo {
         use UnsupportedOpInfo::*;
         match self {
             Unsupported(ref msg) => write!(f, "{}", msg),
-            ConstPropUnsupported(ref msg) => {
-                write!(f, "Constant propagation encountered an unsupported situation: {}", msg)
-            }
             ReadForeignStatic(did) => {
                 write!(f, "tried to read from foreign (extern) static {:?}", did)
             }
@@ -516,6 +513,35 @@ impl fmt::Debug for ResourceExhaustionInfo {
     }
 }
 
+/// A trait for machine-specific errors (or other "machine stop" conditions).
+pub trait MachineStopType: Any + fmt::Debug + Send {}
+impl MachineStopType for String {}
+
+// Copy-pasted from `any.rs`; there does not seem to be a way to re-use that.
+impl dyn MachineStopType {
+    pub fn is<T: Any>(&self) -> bool {
+        // Get `TypeId` of the type this function is instantiated with.
+        let t = TypeId::of::<T>();
+
+        // Get `TypeId` of the type in the trait object (`self`).
+        let concrete = self.type_id();
+
+        // Compare both `TypeId`s on equality.
+        t == concrete
+    }
+
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        if self.is::<T>() {
+            // SAFETY: just checked whether we are pointing to the correct type, and we can rely on
+            // that check for memory safety because `Any` is implemented for all types; no other
+            // impls can exist as they would conflict with our impl.
+            unsafe { Some(&*(self as *const dyn MachineStopType as *const T)) }
+        } else {
+            None
+        }
+    }
+}
+
 pub enum InterpError<'tcx> {
     /// The program caused undefined behavior.
     UndefinedBehavior(UndefinedBehaviorInfo),
@@ -529,7 +555,7 @@ pub enum InterpError<'tcx> {
     ResourceExhaustion(ResourceExhaustionInfo),
     /// Stop execution for a machine-controlled reason. This is never raised by
     /// the core engine itself.
-    MachineStop(Box<dyn Any + Send>),
+    MachineStop(Box<dyn MachineStopType>),
 }
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
@@ -549,7 +575,7 @@ impl fmt::Debug for InterpError<'_> {
             InvalidProgram(ref msg) => write!(f, "{:?}", msg),
             UndefinedBehavior(ref msg) => write!(f, "{:?}", msg),
             ResourceExhaustion(ref msg) => write!(f, "{:?}", msg),
-            MachineStop(_) => bug!("unhandled MachineStop"),
+            MachineStop(ref msg) => write!(f, "{:?}", msg),
         }
     }
 }
@@ -560,8 +586,9 @@ impl InterpError<'_> {
     /// waste of resources.
     pub fn allocates(&self) -> bool {
         match self {
-            InterpError::MachineStop(_)
-            | InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
+            // Zero-sized boxes to not allocate.
+            InterpError::MachineStop(b) => mem::size_of_val(&**b) > 0,
+            InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
             | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationFailure(_))
             | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
             | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_)) => true,

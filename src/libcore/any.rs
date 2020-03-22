@@ -164,7 +164,7 @@ impl dyn Any {
         // Get `TypeId` of the type this function is instantiated with.
         let t = TypeId::of::<T>();
 
-        // Get `TypeId` of the type in the trait object.
+        // Get `TypeId` of the type in the trait object (`self`).
         let concrete = self.type_id();
 
         // Compare both `TypeId`s on equality.
