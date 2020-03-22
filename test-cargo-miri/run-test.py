@@ -7,6 +7,10 @@ and the working directory to contain the cargo-miri-test project.
 
 import sys, subprocess, os
 
+CGREEN  = '\33[32m'
+CBOLD   = '\33[1m'
+CEND    = '\33[0m'
+
 def fail(msg):
     print("\nTEST FAIL: {}".format(msg))
     sys.exit(1)
@@ -66,6 +70,9 @@ def test_cargo_miri_test():
     )
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
+target_str = " for target {}".format(os.environ['MIRI_TEST_TARGET']) if 'MIRI_TEST_TARGET' in os.environ else ""
+print(CGREEN + CBOLD + "## Running `cargo miri` tests{}".format(target_str) + CEND)
 
 if not 'MIRI_SYSROOT' in os.environ:
     # Make sure we got a working sysroot.
