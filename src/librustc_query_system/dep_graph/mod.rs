@@ -31,7 +31,7 @@ pub trait DepContext: Copy {
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext;
 
     /// Try to force a dep node to execute and see if it's green.
-    fn try_force_previous_green(&self, node: &DepNode<Self::DepKind>) -> bool;
+    fn try_force_from_dep_node(&self, dep_node: &DepNode<Self::DepKind>) -> bool;
 
     /// Return whether the current session is tainted by errors.
     fn has_errors_or_delayed_span_bugs(&self) -> bool;

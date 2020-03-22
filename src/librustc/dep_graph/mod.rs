@@ -91,22 +91,22 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         TyCtxt::create_stable_hashing_context(*self)
     }
 
-    fn try_force_previous_green(&self, dep_dep_node: &DepNode) -> bool {
+    fn try_force_from_dep_node(&self, dep_node: &DepNode) -> bool {
         // FIXME: This match is just a workaround for incremental bugs and should
         // be removed. https://github.com/rust-lang/rust/issues/62649 is one such
         // bug that must be fixed before removing this.
-        match dep_dep_node.kind {
+        match dep_node.kind {
             DepKind::hir_owner | DepKind::hir_owner_nodes | DepKind::CrateMetadata => {
-                if let Some(def_id) = dep_dep_node.extract_def_id(*self) {
+                if let Some(def_id) = dep_node.extract_def_id(*self) {
                     if def_id_corresponds_to_hir_dep_node(*self, def_id) {
-                        if dep_dep_node.kind == DepKind::CrateMetadata {
+                        if dep_node.kind == DepKind::CrateMetadata {
                             // The `DefPath` has corresponding node,
                             // and that node should have been marked
                             // either red or green in `data.colors`.
                             bug!(
                                 "DepNode {:?} should have been \
                              pre-marked as red or green but wasn't.",
-                                dep_dep_node
+                                dep_node
                             );
                         }
                     } else {
@@ -134,8 +134,8 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
             }
         }
 
-        debug!("try_force_previous_green({:?}) --- trying to force", dep_dep_node);
-        ty::query::force_from_dep_node(*self, dep_dep_node)
+        debug!("try_force_from_dep_node({:?}) --- trying to force", dep_node);
+        ty::query::force_from_dep_node(*self, dep_node)
     }
 
     fn has_errors_or_delayed_span_bugs(&self) -> bool {
@@ -148,10 +148,8 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
 
     // Interactions with on_disk_cache
     fn try_load_from_on_disk_cache(&self, dep_node: &DepNode) {
-        use crate::mir::interpret::GlobalId;
-        use crate::ty::query::queries;
-        use crate::ty::query::QueryDescription;
-        rustc_dep_node_try_load_from_on_disk_cache!(dep_node, *self)
+        use crate::ty::query::try_load_from_on_disk_cache;
+        try_load_from_on_disk_cache(*self, dep_node)
     }
 
     fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic> {

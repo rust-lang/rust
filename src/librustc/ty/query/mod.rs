@@ -191,3 +191,9 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
 
     false
 }
+
+pub(crate) fn try_load_from_on_disk_cache<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
+    use crate::dep_graph::DepKind;
+
+    rustc_dep_node_try_load_from_on_disk_cache!(dep_node, tcx)
+}

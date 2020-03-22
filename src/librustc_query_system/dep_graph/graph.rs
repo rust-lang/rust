@@ -13,8 +13,8 @@ use smallvec::{smallvec, SmallVec};
 use std::collections::hash_map::Entry;
 use std::env;
 use std::hash::Hash;
+use std::marker::PhantomData;
 use std::mem;
-use std::panic as bug;
 use std::sync::atomic::Ordering::Relaxed;
 
 use super::debug::EdgeFilter;
@@ -215,7 +215,7 @@ impl<K: DepKind> DepGraph<K> {
                     node: Some(_key),
                     reads: SmallVec::new(),
                     read_set: Default::default(),
-                    phantom_data: std::marker::PhantomData,
+                    phantom_data: PhantomData,
                 })
             },
             |data, key, fingerprint, task| data.complete_task(key, task.unwrap(), fingerprint),
@@ -367,7 +367,7 @@ impl<K: DepKind> DepGraph<K> {
                 std::mem::drop(map);
                 data.read_index(dep_node_index);
             } else {
-                bug!("DepKind {:?} should be pre-allocated but isn't.", v.kind)
+                panic!("DepKind {:?} should be pre-allocated but isn't.", v.kind)
             }
         }
     }
@@ -645,7 +645,7 @@ impl<K: DepKind> DepGraph<K> {
                             dependency {:?}",
                         dep_node, dep_dep_node
                     );
-                    if tcx.try_force_previous_green(dep_dep_node) {
+                    if tcx.try_force_from_dep_node(dep_dep_node) {
                         let dep_dep_node_color = data.colors.get(dep_dep_node_index);
 
                         match dep_dep_node_color {
@@ -667,7 +667,7 @@ impl<K: DepKind> DepGraph<K> {
                             }
                             None => {
                                 if !tcx.has_errors_or_delayed_span_bugs() {
-                                    bug!(
+                                    panic!(
                                         "try_mark_previous_green() - Forcing the DepNode \
                                           should have set its color"
                                     )
@@ -948,7 +948,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
                 Ok(s) => match EdgeFilter::new(&s) {
                     Ok(f) => Some(f),
-                    Err(err) => bug!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
+                    Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
                 },
                 Err(_) => None,
             }
@@ -1074,7 +1074,7 @@ impl<K: DepKind> DepGraphData<K> {
                             if let Some(ref forbidden_edge) = self.current.forbidden_edge {
                                 let source = data[source].node;
                                 if forbidden_edge.test(&source, &target) {
-                                    bug!("forbidden edge {:?} -> {:?} created", source, target)
+                                    panic!("forbidden edge {:?} -> {:?} created", source, target)
                                 }
                             }
                         }
@@ -1096,7 +1096,7 @@ pub struct TaskDeps<K> {
     node: Option<DepNode<K>>,
     reads: EdgesVec,
     read_set: FxHashSet<DepNodeIndex>,
-    phantom_data: std::marker::PhantomData<DepNode<K>>,
+    phantom_data: PhantomData<DepNode<K>>,
 }
 
 impl<K> Default for TaskDeps<K> {
@@ -1106,7 +1106,7 @@ impl<K> Default for TaskDeps<K> {
             node: None,
             reads: EdgesVec::new(),
             read_set: FxHashSet::default(),
-            phantom_data: std::marker::PhantomData,
+            phantom_data: PhantomData,
         }
     }
 }
