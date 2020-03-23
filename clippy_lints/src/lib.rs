@@ -285,6 +285,7 @@ pub mod ranges;
 pub mod redundant_clone;
 pub mod redundant_field_names;
 pub mod redundant_pattern_matching;
+pub mod redundant_pub_crate;
 pub mod redundant_static_lifetimes;
 pub mod reference;
 pub mod regex;
@@ -323,7 +324,7 @@ pub mod zero_div_zero;
 pub use crate::utils::conf::Conf;
 
 mod reexport {
-    crate use rustc_ast::ast::Name;
+    pub use rustc_ast::ast::Name;
 }
 
 /// Register all pre expansion lints
@@ -745,6 +746,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &redundant_clone::REDUNDANT_CLONE,
         &redundant_field_names::REDUNDANT_FIELD_NAMES,
         &redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING,
+        &redundant_pub_crate::REDUNDANT_PUB_CRATE,
         &redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES,
         &reference::DEREF_ADDROF,
         &reference::REF_IN_DEREF,
@@ -1021,6 +1023,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box wildcard_imports::WildcardImports);
     store.register_early_pass(|| box macro_use::MacroUseImports);
     store.register_late_pass(|| box verbose_file_reads::VerboseFileReads);
+    store.register_late_pass(|| box redundant_pub_crate::RedundantPubCrate::default());
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1322,6 +1325,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&redundant_clone::REDUNDANT_CLONE),
         LintId::of(&redundant_field_names::REDUNDANT_FIELD_NAMES),
         LintId::of(&redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING),
+        LintId::of(&redundant_pub_crate::REDUNDANT_PUB_CRATE),
         LintId::of(&redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
         LintId::of(&reference::DEREF_ADDROF),
         LintId::of(&reference::REF_IN_DEREF),
@@ -1463,6 +1467,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&question_mark::QUESTION_MARK),
         LintId::of(&redundant_field_names::REDUNDANT_FIELD_NAMES),
         LintId::of(&redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING),
+        LintId::of(&redundant_pub_crate::REDUNDANT_PUB_CRATE),
         LintId::of(&redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
         LintId::of(&regex::REGEX_MACRO),
         LintId::of(&regex::TRIVIAL_REGEX),

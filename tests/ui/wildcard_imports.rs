@@ -2,6 +2,7 @@
 // aux-build:wildcard_imports_helper.rs
 
 #![warn(clippy::wildcard_imports)]
+#![allow(clippy::redundant_pub_crate)]
 #![allow(unused)]
 #![warn(unused_imports)]
 

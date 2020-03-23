@@ -1,7 +1,7 @@
 use rustc_ast::ast::{Lit, LitFloatType, LitIntType, LitKind};
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum Radix {
+pub enum Radix {
     Binary,
     Octal,
     Decimal,
@@ -26,7 +26,7 @@ pub fn format(lit: &str, type_suffix: Option<&str>, float: bool) -> String {
 }
 
 #[derive(Debug)]
-pub(crate) struct NumericLiteral<'a> {
+pub struct NumericLiteral<'a> {
     /// Which radix the literal was represented in.
     pub radix: Radix,
     /// The radix prefix, if present.
