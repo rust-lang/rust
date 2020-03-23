@@ -30,7 +30,7 @@ use std::cell::Cell;
 use std::{cmp, iter, mem};
 
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
-use crate::transform::check_consts::{is_lang_panic_fn, qualifs, ConstKind, Item};
+use crate::transform::check_consts::{is_lang_panic_fn, qualifs, ConstCx, ConstKind};
 use crate::transform::{MirPass, MirSource};
 
 /// A `MirPass` for promotion.
@@ -264,7 +264,7 @@ pub fn collect_temps_and_candidates(
 ///
 /// This wraps an `Item`, and has access to all fields of that `Item` via `Deref` coercion.
 struct Validator<'a, 'tcx> {
-    item: Item<'a, 'tcx>,
+    ccx: ConstCx<'a, 'tcx>,
     temps: &'a IndexVec<Local, TempState>,
 
     /// Explicit promotion happens e.g. for constant arguments declared via
@@ -277,10 +277,10 @@ struct Validator<'a, 'tcx> {
 }
 
 impl std::ops::Deref for Validator<'a, 'tcx> {
-    type Target = Item<'a, 'tcx>;
+    type Target = ConstCx<'a, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &self.item
+        &self.ccx
     }
 }
 
@@ -413,7 +413,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
                     StatementKind::Assign(box (_, rhs)) => qualifs::in_rvalue::<Q, _>(
-                        &self.item,
+                        &self.ccx,
                         &mut |l| self.qualif_local::<Q>(l),
                         rhs,
                     ),
@@ -430,7 +430,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 match &terminator.kind {
                     TerminatorKind::Call { .. } => {
                         let return_ty = self.body.local_decls[local].ty;
-                        Q::in_any_value_of_ty(&self.item, return_ty)
+                        Q::in_any_value_of_ty(&self.ccx, return_ty)
                     }
                     kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
@@ -723,7 +723,7 @@ pub fn validate_candidates(
     temps: &IndexVec<Local, TempState>,
     candidates: &[Candidate],
 ) -> Vec<Candidate> {
-    let mut validator = Validator { item: Item::new(tcx, def_id, body), temps, explicit: false };
+    let mut validator = Validator { ccx: ConstCx::new(tcx, def_id, body), temps, explicit: false };
 
     candidates
         .iter()
@@ -1155,7 +1155,7 @@ crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
     let mut rpo = traversal::reverse_postorder(&body);
     let (temps, _) = collect_temps_and_candidates(tcx, &body, &mut rpo);
     let validator =
-        Validator { item: Item::new(tcx, mir_def_id, body), temps: &temps, explicit: false };
+        Validator { ccx: ConstCx::new(tcx, mir_def_id, body), temps: &temps, explicit: false };
 
     let should_promote = validator.validate_operand(operand).is_ok();
     let feature_flag = tcx.features().const_in_array_repeat_expressions;

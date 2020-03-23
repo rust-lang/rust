@@ -194,10 +194,10 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
         return Default::default();
     }
 
-    let item =
-        check_consts::Item { body, tcx, def_id, const_kind, param_env: tcx.param_env(def_id) };
+    let ccx =
+        check_consts::ConstCx { body, tcx, def_id, const_kind, param_env: tcx.param_env(def_id) };
 
-    let mut validator = check_consts::validation::Validator::new(&item);
+    let mut validator = check_consts::validation::Validator::new(&ccx);
     validator.check_body();
 
     // We return the qualifs in the return place for every MIR body, even though it is only used

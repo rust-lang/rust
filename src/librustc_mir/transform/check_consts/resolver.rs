@@ -8,7 +8,7 @@ use rustc_middle::mir::{self, BasicBlock, Local, Location};
 
 use std::marker::PhantomData;
 
-use super::{qualifs, Item, Qualif};
+use super::{qualifs, ConstCx, Qualif};
 use crate::dataflow;
 
 /// A `Visitor` that propagates qualifs between locals. This defines the transfer function of
@@ -18,7 +18,7 @@ use crate::dataflow;
 /// the `MaybeMutBorrowedLocals` dataflow pass to see if a `Local` may have become qualified via
 /// an indirect assignment or function call.
 struct TransferFunction<'a, 'mir, 'tcx, Q> {
-    item: &'a Item<'mir, 'tcx>,
+    ccx: &'a ConstCx<'mir, 'tcx>,
     qualifs_per_local: &'a mut BitSet<Local>,
 
     _qualif: PhantomData<Q>,
@@ -28,16 +28,16 @@ impl<Q> TransferFunction<'a, 'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    fn new(item: &'a Item<'mir, 'tcx>, qualifs_per_local: &'a mut BitSet<Local>) -> Self {
-        TransferFunction { item, qualifs_per_local, _qualif: PhantomData }
+    fn new(ccx: &'a ConstCx<'mir, 'tcx>, qualifs_per_local: &'a mut BitSet<Local>) -> Self {
+        TransferFunction { ccx, qualifs_per_local, _qualif: PhantomData }
     }
 
     fn initialize_state(&mut self) {
         self.qualifs_per_local.clear();
 
-        for arg in self.item.body.args_iter() {
-            let arg_ty = self.item.body.local_decls[arg].ty;
-            if Q::in_any_value_of_ty(self.item, arg_ty) {
+        for arg in self.ccx.body.args_iter() {
+            let arg_ty = self.ccx.body.local_decls[arg].ty;
+            if Q::in_any_value_of_ty(self.ccx, arg_ty) {
                 self.qualifs_per_local.insert(arg);
             }
         }
@@ -72,8 +72,8 @@ where
     ) {
         // We cannot reason about another function's internals, so use conservative type-based
         // qualification for the result of a function call.
-        let return_ty = return_place.ty(self.item.body, self.item.tcx).ty;
-        let qualif = Q::in_any_value_of_ty(self.item, return_ty);
+        let return_ty = return_place.ty(self.ccx.body, self.ccx.tcx).ty;
+        let qualif = Q::in_any_value_of_ty(self.ccx, return_ty);
 
         if !return_place.is_indirect() {
             self.assign_qualif_direct(&return_place, qualif);
@@ -108,7 +108,7 @@ where
         location: Location,
     ) {
         let qualif = qualifs::in_rvalue::<Q, _>(
-            self.item,
+            self.ccx,
             &mut |l| self.qualifs_per_local.contains(l),
             rvalue,
         );
@@ -127,7 +127,7 @@ where
 
         if let mir::TerminatorKind::DropAndReplace { value, location: dest, .. } = kind {
             let qualif = qualifs::in_operand::<Q, _>(
-                self.item,
+                self.ccx,
                 &mut |l| self.qualifs_per_local.contains(l),
                 value,
             );
@@ -145,7 +145,7 @@ where
 
 /// The dataflow analysis used to propagate qualifs on arbitrary CFGs.
 pub(super) struct FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q> {
-    item: &'a Item<'mir, 'tcx>,
+    ccx: &'a ConstCx<'mir, 'tcx>,
     _qualif: PhantomData<Q>,
 }
 
@@ -153,15 +153,15 @@ impl<'a, 'mir, 'tcx, Q> FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    pub(super) fn new(_: Q, item: &'a Item<'mir, 'tcx>) -> Self {
-        FlowSensitiveAnalysis { item, _qualif: PhantomData }
+    pub(super) fn new(_: Q, ccx: &'a ConstCx<'mir, 'tcx>) -> Self {
+        FlowSensitiveAnalysis { ccx, _qualif: PhantomData }
     }
 
     fn transfer_function(
         &self,
         state: &'a mut BitSet<Local>,
     ) -> TransferFunction<'a, 'mir, 'tcx, Q> {
-        TransferFunction::<Q>::new(self.item, state)
+        TransferFunction::<Q>::new(self.ccx, state)
     }
 }
 
