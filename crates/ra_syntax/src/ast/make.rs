@@ -136,8 +136,13 @@ pub fn placeholder_pat() -> ast::PlaceholderPat {
     }
 }
 
+/// Creates a tuple of patterns from an interator of patterns.
+///
+/// Invariant: `pats` must be length > 1
+///
+/// FIXME handle `pats` length == 1
 pub fn tuple_pat(pats: impl IntoIterator<Item = ast::Pat>) -> ast::TuplePat {
-    let pats_str = pats.into_iter().map(|p| p.syntax().to_string()).join(", ");
+    let pats_str = pats.into_iter().map(|p| p.to_string()).join(", ");
     return from_text(&format!("({})", pats_str));
 
     fn from_text(text: &str) -> ast::TuplePat {
