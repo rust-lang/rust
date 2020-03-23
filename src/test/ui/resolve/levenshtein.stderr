@@ -8,7 +8,7 @@ error[E0412]: cannot find type `Baz` in this scope
   --> $DIR/levenshtein.rs:14:10
    |
 LL | enum Bar { }
-   | ------------ similarly named enum `Bar` defined here
+   | -------- similarly named enum `Bar` defined here
 LL | 
 LL | type A = Baz; // Misspelled type name.
    |          ^^^ help: an enum with a similar name exists: `Bar`
@@ -43,7 +43,7 @@ error[E0425]: cannot find function `foobar` in this scope
   --> $DIR/levenshtein.rs:30:5
    |
 LL | fn foo_bar() {}
-   | --------------- similarly named function `foo_bar` defined here
+   | ------------ similarly named function `foo_bar` defined here
 ...
 LL |     foobar(); // Misspelled function name.
    |     ^^^^^^ help: a function with a similar name exists: `foo_bar`
