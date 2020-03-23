@@ -267,7 +267,7 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("display-warnings", |o| {
             o.optflag("", "display-warnings", "to print code warnings when testing doc")
         }),
-        unstable("crate-version", |o| {
+        stable("crate-version", |o| {
             o.optopt("", "crate-version", "crate version to print into documentation", "VERSION")
         }),
         unstable("sort-modules-by-appearance", |o| {
