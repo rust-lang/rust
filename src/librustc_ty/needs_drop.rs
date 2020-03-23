@@ -99,13 +99,13 @@ where
                         }
                     }
 
-                    ty::Generator(def_id, substs, _) => {
+                    ty::Generator(_, substs, _) => {
                         let substs = substs.as_generator();
-                        for upvar_ty in substs.upvar_tys(def_id, tcx) {
+                        for upvar_ty in substs.upvar_tys() {
                             queue_type(self, upvar_ty);
                         }
 
-                        let witness = substs.witness(def_id, tcx);
+                        let witness = substs.witness();
                         let interior_tys = match &witness.kind {
                             ty::GeneratorWitness(tys) => tcx.erase_late_bound_regions(tys),
                             _ => bug!(),
