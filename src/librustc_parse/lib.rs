@@ -50,7 +50,7 @@ macro_rules! panictry_buffer {
 }
 
 pub fn parse_crate_from_file<'a>(input: &Path, sess: &'a ParseSess) -> PResult<'a, ast::Crate> {
-    let mut parser = new_parser_from_file(sess, input);
+    let mut parser = new_parser_from_file(sess, input, None);
     parser.parse_crate_mod()
 }
 
@@ -58,7 +58,7 @@ pub fn parse_crate_attrs_from_file<'a>(
     input: &Path,
     sess: &'a ParseSess,
 ) -> PResult<'a, Vec<ast::Attribute>> {
-    let mut parser = new_parser_from_file(sess, input);
+    let mut parser = new_parser_from_file(sess, input, None);
     parser.parse_inner_attributes()
 }
 
@@ -106,8 +106,9 @@ pub fn maybe_new_parser_from_source_str(
 }
 
 /// Creates a new parser, handling errors as appropriate if the file doesn't exist.
-pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path) -> Parser<'a> {
-    source_file_to_parser(sess, file_to_source_file(sess, path, None))
+/// If a span is given, that is used on an error as the as the source of the problem.
+pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Span>) -> Parser<'a> {
+    source_file_to_parser(sess, file_to_source_file(sess, path, sp))
 }
 
 /// Creates a new parser, returning buffered diagnostics if the file doesn't exist,
@@ -118,20 +119,6 @@ pub fn maybe_new_parser_from_file<'a>(
 ) -> Result<Parser<'a>, Vec<Diagnostic>> {
     let file = try_file_to_source_file(sess, path, None).map_err(|db| vec![db])?;
     maybe_source_file_to_parser(sess, file)
-}
-
-/// Given a session, a crate config, a path, and a span, add
-/// the file at the given path to the `source_map`, and returns a parser.
-/// On an error, uses the given span as the source of the problem.
-pub fn new_sub_parser_from_file<'a>(
-    sess: &'a ParseSess,
-    path: &Path,
-    module_name: Option<String>,
-    sp: Span,
-) -> Parser<'a> {
-    let mut p = source_file_to_parser(sess, file_to_source_file(sess, path, Some(sp)));
-    p.root_module_name = module_name;
-    p
 }
 
 /// Given a `source_file` and config, returns a parser.
