@@ -255,7 +255,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 bug!("no arg matching AnonConst in path");
                             });
 
-                        // try to use the segment resolution if it is valid, otherwise we
+                        // Try to use the segment resolution if it is valid, otherwise we
                         // default to the path resolution.
                         let res = segment.res.filter(|&r| r != Res::Err).unwrap_or(path.res);
                         let generics = match res {
