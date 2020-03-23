@@ -142,7 +142,10 @@ fn test_symlink() {
     let symlink_path = prepare("miri_test_fs_symlink.txt");
 
     // Creating a symbolic link should succeed.
+    #[cfg(unix)]
     std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_file(&path, &symlink_path).unwrap();
     // Test that the symbolic link has the same contents as the file.
     let mut symlink_file = File::open(&symlink_path).unwrap();
     let mut contents = Vec::new();
