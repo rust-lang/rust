@@ -707,7 +707,7 @@ impl<'tcx> QueryContext<'tcx> {
     where
         F: FnOnce(TyCtxt<'tcx>) -> R,
     {
-        ty::tls::enter_global(self.0, |tcx| f(tcx))
+        ty::tls::enter_global(self.0, f)
     }
 
     pub fn print_stats(&mut self) {

@@ -796,7 +796,7 @@ impl<'a> Resolver<'a> {
             });
             if let Some(span) = def_span {
                 err.span_label(
-                    span,
+                    self.session.source_map().def_span(span),
                     &format!(
                         "similarly named {} `{}` defined here",
                         suggestion.res.descr(),

@@ -40,31 +40,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         constant: &mir::Constant<'tcx>,
     ) -> Result<ConstValue<'tcx>, ErrorHandled> {
-        match constant.literal.val {
-            ty::ConstKind::Unevaluated(def_id, substs, promoted) => {
-                let substs = self.monomorphize(&substs);
-                self.cx
-                    .tcx()
-                    .const_eval_resolve(ty::ParamEnv::reveal_all(), def_id, substs, promoted, None)
-                    .map_err(|err| {
-                        if promoted.is_none() {
-                            self.cx
-                                .tcx()
-                                .sess
-                                .span_err(constant.span, "erroneous constant encountered");
-                        }
-                        err
-                    })
-            }
+        match self.monomorphize(&constant.literal).val {
+            ty::ConstKind::Unevaluated(def_id, substs, promoted) => self
+                .cx
+                .tcx()
+                .const_eval_resolve(ty::ParamEnv::reveal_all(), def_id, substs, promoted, None)
+                .map_err(|err| {
+                    if promoted.is_none() {
+                        self.cx
+                            .tcx()
+                            .sess
+                            .span_err(constant.span, "erroneous constant encountered");
+                    }
+                    err
+                }),
             ty::ConstKind::Value(value) => Ok(value),
-            _ => {
-                let const_ = self.monomorphize(&constant.literal);
-                if let ty::ConstKind::Value(value) = const_.val {
-                    Ok(value)
-                } else {
-                    span_bug!(constant.span, "encountered bad ConstKind in codegen: {:?}", const_);
-                }
-            }
+            err => span_bug!(
+                constant.span,
+                "encountered bad ConstKind after monomorphizing: {:?}",
+                err
+            ),
         }
     }
 

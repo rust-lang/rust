@@ -35,7 +35,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, par_iter, Lrc, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::{Constness, GlobMap, Node, TraitMap};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
@@ -2875,8 +2875,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 _ => false,
             }
         } else {
-            match self.def_kind(def_id).expect("no def for `DefId`") {
-                DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => true,
+            match self.def_kind(def_id) {
+                Some(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy) => true,
                 _ => false,
             }
         };
@@ -3054,17 +3054,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// If the given defid describes a method belonging to an impl, returns the
     /// `DefId` of the impl that the method belongs to; otherwise, returns `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
-        let item = if def_id.krate != LOCAL_CRATE {
-            if let Some(DefKind::AssocFn) = self.def_kind(def_id) {
-                Some(self.associated_item(def_id))
-            } else {
-                None
-            }
-        } else {
-            self.opt_associated_item(def_id)
-        };
-
-        item.and_then(|trait_item| match trait_item.container {
+        self.opt_associated_item(def_id).and_then(|trait_item| match trait_item.container {
             TraitContainer(_) => None,
             ImplContainer(def_id) => Some(def_id),
         })

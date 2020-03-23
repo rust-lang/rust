@@ -404,8 +404,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 // Some errors shouldn't come up because creating them causes
                 // an allocation, which we should avoid. When that happens,
                 // dedicated error variants should be introduced instead.
-                // Only test this in debug builds though to avoid disruptions.
-                debug_assert!(
+                assert!(
                     !error.kind.allocates(),
                     "const-prop encountered allocating error: {}",
                     error

@@ -1148,7 +1148,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
                 let sub_span = path.segments.last().unwrap().ident.span;
                 if !self.span.filter_generated(sub_span) {
-                    let ref_id = self.lookup_def_id(id).map(|id| id_from_def_id(id));
+                    let ref_id = self.lookup_def_id(id).map(id_from_def_id);
                     let alias_span = alias.map(|i| self.span_from_span(i.span));
                     let span = self.span_from_span(sub_span);
                     self.dumper.import(

@@ -1,9 +1,0 @@
-error[E0738]: `#[track_caller]` may not be used on trait methods
-  --> $DIR/error-with-trait-fn-impl.rs:10:5
-   |
-LL |     #[track_caller]
-   |     ^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0738`.

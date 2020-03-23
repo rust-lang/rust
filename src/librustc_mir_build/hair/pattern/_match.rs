@@ -2066,7 +2066,7 @@ fn split_grouped_constructors<'p, 'tcx>(
                         }
                         intersection
                     })
-                    .flat_map(|range| range_borders(range));
+                    .flat_map(range_borders);
                 let ctor_borders = range_borders(ctor_range.clone());
                 let mut borders: Vec<_> = row_borders.chain(ctor_borders).collect();
                 borders.sort_unstable();

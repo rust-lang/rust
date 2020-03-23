@@ -245,7 +245,7 @@ impl DepGraph {
         C: DepGraphSafe + StableHashingContextProvider<'a>,
     {
         if let Some(ref data) = self.data {
-            let task_deps = create_task(key).map(|deps| Lock::new(deps));
+            let task_deps = create_task(key).map(Lock::new);
 
             // In incremental mode, hash the result of the task. We don't
             // do anything with the hash yet, but we are computing it

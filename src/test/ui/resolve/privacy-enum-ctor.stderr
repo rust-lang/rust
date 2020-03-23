@@ -16,15 +16,11 @@ LL |         m::Z::Unit;
 error[E0423]: expected value, found enum `Z`
   --> $DIR/privacy-enum-ctor.rs:25:9
    |
-LL | /     fn f() {
-LL | |         n::Z;
-LL | |
-LL | |         Z;
-   | |         ^
-...  |
-LL | |         // This is ok, it is equivalent to not having braces
-LL | |     }
-   | |_____- similarly named function `f` defined here
+LL |     fn f() {
+   |     ------ similarly named function `f` defined here
+...
+LL |         Z;
+   |         ^
    |
 help: a function with a similar name exists
    |
@@ -53,17 +49,11 @@ LL |           let _: Z = Z::Struct;
 error[E0423]: expected value, found enum `m::E`
   --> $DIR/privacy-enum-ctor.rs:41:16
    |
-LL | /     fn f() {
-LL | |         n::Z;
-LL | |
-LL | |         Z;
-...  |
-LL | |         // This is ok, it is equivalent to not having braces
-LL | |     }
-   | |_____- similarly named function `f` defined here
+LL |     fn f() {
+   |     ------ similarly named function `f` defined here
 ...
-LL |       let _: E = m::E;
-   |                  ^^^^
+LL |     let _: E = m::E;
+   |                ^^^^
    |
 help: a function with a similar name exists
    |
@@ -130,17 +120,11 @@ LL |       let _: E = E::Struct;
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:57:12
    |
-LL | /     pub enum E {
-LL | |         Fn(u8),
-LL | |         Struct {
-LL | |             s: u8,
-LL | |         },
-LL | |         Unit,
-LL | |     }
-   | |_____- similarly named enum `E` defined here
+LL |     pub enum E {
+   |     ---------- similarly named enum `E` defined here
 ...
-LL |       let _: Z = m::n::Z;
-   |              ^
+LL |     let _: Z = m::n::Z;
+   |            ^
    |
 help: an enum with a similar name exists
    |
@@ -169,17 +153,11 @@ LL |     let _: Z = m::Z::Unit;
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:61:12
    |
-LL | /     pub enum E {
-LL | |         Fn(u8),
-LL | |         Struct {
-LL | |             s: u8,
-LL | |         },
-LL | |         Unit,
-LL | |     }
-   | |_____- similarly named enum `E` defined here
+LL |     pub enum E {
+   |     ---------- similarly named enum `E` defined here
 ...
-LL |       let _: Z = m::n::Z::Fn;
-   |              ^
+LL |     let _: Z = m::n::Z::Fn;
+   |            ^
    |
 help: an enum with a similar name exists
    |
@@ -193,17 +171,11 @@ LL | use m::n::Z;
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:64:12
    |
-LL | /     pub enum E {
-LL | |         Fn(u8),
-LL | |         Struct {
-LL | |             s: u8,
-LL | |         },
-LL | |         Unit,
-LL | |     }
-   | |_____- similarly named enum `E` defined here
+LL |     pub enum E {
+   |     ---------- similarly named enum `E` defined here
 ...
-LL |       let _: Z = m::n::Z::Struct;
-   |              ^
+LL |     let _: Z = m::n::Z::Struct;
+   |            ^
    |
 help: an enum with a similar name exists
    |
@@ -228,17 +200,11 @@ LL |       let _: Z = m::n::Z::Struct;
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:68:12
    |
-LL | /     pub enum E {
-LL | |         Fn(u8),
-LL | |         Struct {
-LL | |             s: u8,
-LL | |         },
-LL | |         Unit,
-LL | |     }
-   | |_____- similarly named enum `E` defined here
+LL |     pub enum E {
+   |     ---------- similarly named enum `E` defined here
 ...
-LL |       let _: Z = m::n::Z::Unit {};
-   |              ^
+LL |     let _: Z = m::n::Z::Unit {};
+   |            ^
    |
 help: an enum with a similar name exists
    |

@@ -6,7 +6,7 @@ use rustc_ast_pretty::pprust;
 use rustc_expand::base::{self, *};
 use rustc_expand::module::DirectoryOwnership;
 use rustc_expand::panictry;
-use rustc_parse::{self, new_sub_parser_from_file, parser::Parser};
+use rustc_parse::{self, new_parser_from_file, parser::Parser};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_span::symbol::Symbol;
 use rustc_span::{self, Pos, Span};
@@ -110,7 +110,7 @@ pub fn expand_include<'cx>(
             return DummyResult::any(sp);
         }
     };
-    let p = new_sub_parser_from_file(cx.parse_sess(), &file, None, sp);
+    let p = new_parser_from_file(cx.parse_sess(), &file, Some(sp));
 
     // If in the included file we have e.g., `mod bar;`,
     // then the path of `bar.rs` should be relative to the directory of `file`.

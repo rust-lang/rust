@@ -274,7 +274,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         if !generic_args.parenthesized && !has_lifetimes {
             generic_args.args = self
                 .elided_path_lifetimes(path_span, expected_lifetimes)
-                .map(|lt| GenericArg::Lifetime(lt))
+                .map(GenericArg::Lifetime)
                 .chain(generic_args.args.into_iter())
                 .collect();
             if expected_lifetimes > 0 && param_mode == ParamMode::Explicit {

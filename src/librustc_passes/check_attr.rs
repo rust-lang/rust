@@ -151,17 +151,17 @@ impl CheckAttrVisitor<'tcx> {
                 .emit();
                 false
             }
-            Target::Fn | Target::Method(MethodKind::Inherent) => true,
-            Target::Method(_) => {
+            Target::ForeignFn => {
                 struct_span_err!(
                     self.tcx.sess,
                     *attr_span,
                     E0738,
-                    "`#[track_caller]` may not be used on trait methods",
+                    "`#[track_caller]` is not supported on foreign functions",
                 )
                 .emit();
                 false
             }
+            Target::Fn | Target::Method(..) => true,
             _ => {
                 struct_span_err!(
                     self.tcx.sess,
