@@ -17,7 +17,7 @@ anyhow = "1.0.26"
 crossbeam-channel = "0.4.0"
 env_logger = { version = "0.7.1", default-features = false }
 globset = "0.4.4"
-itertools = "0.8.2"
+itertools = "0.9.0"
 jod-thread = "0.1.0"
 log = "0.4.8"
 lsp-types = { version = "0.73.0", features = ["proposed"] }
