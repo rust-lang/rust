@@ -8,7 +8,7 @@ LL | pub fn leak_dyn_nonprincipal() -> Box<dyn PubPrincipal + PrivNonPrincipal> 
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
-error: missing documentation for a method
+error: missing documentation for an associated function
   --> $DIR/private-in-public-non-principal.rs:13:9
    |
 LL |         pub fn check_doc_lint() {}
