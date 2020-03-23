@@ -463,11 +463,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         'tcx: 'a,
         'mir: 'a,
     {
-        #[cfg(target_os = "unix")]
+        #[cfg(unix)]
         fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
-            Ok(std::os::unix::ffi::OsStringExt::from_bytes(bytes))
+            Ok(std::os::unix::ffi::OsStrExt::from_bytes(bytes))
         }
-        #[cfg(not(target_os = "unix"))]
+        #[cfg(not(unix))]
         fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
             let s = std::str::from_utf8(bytes)
                 .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
@@ -490,11 +490,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         scalar: Scalar<Tag>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
-        #[cfg(target_os = "unix")]
+        #[cfg(unix)]
         fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
-            std::os::unix::ffi::OsStringExt::into_bytes(os_str)
+            Ok(std::os::unix::ffi::OsStrExt::as_bytes(os_str))
         }
-        #[cfg(not(target_os = "unix"))]
+        #[cfg(not(unix))]
         fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
             // On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
             // intermediate transformation into strings. Which invalidates non-utf8 paths that are actually
