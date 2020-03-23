@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use cargo_metadata::{CargoOpt, Message, MetadataCommand, PackageId};
+use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
 use ra_arena::{Arena, Idx};
 use ra_cargo_watch::run_cargo;
 use ra_db::Edition;
@@ -254,7 +254,7 @@ pub fn load_out_dirs(
         "check".to_string(),
         "--message-format=json".to_string(),
         "--manifest-path".to_string(),
-        format!("{}", cargo_toml.display()),
+        cargo_toml.display().to_string(),
     ];
 
     if cargo_features.all_features {
@@ -263,19 +263,15 @@ pub fn load_out_dirs(
         // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
         // https://github.com/oli-obk/cargo_metadata/issues/79
         args.push("--no-default-features".to_string());
-    } else if !cargo_features.features.is_empty() {
-        for feature in &cargo_features.features {
-            args.push(feature.clone());
-        }
+    } else {
+        args.extend(cargo_features.features.iter().cloned());
     }
 
-    let mut res = FxHashMap::default();
-    let mut child = run_cargo(&args, cargo_toml.parent(), &mut |message| {
+    let mut acc = FxHashMap::default();
+    let res = run_cargo(&args, cargo_toml.parent(), &mut |message| {
         match message {
-            Message::BuildScriptExecuted(message) => {
-                let package_id = message.package_id;
-                let out_dir = message.out_dir;
-                res.insert(package_id, out_dir);
+            Message::BuildScriptExecuted(BuildScript { package_id, out_dir, .. }) => {
+                acc.insert(package_id, out_dir);
             }
 
             Message::CompilerArtifact(_) => (),
@@ -285,6 +281,9 @@ pub fn load_out_dirs(
         true
     });
 
-    let _ = child.wait();
-    res
+    if let Err(err) = res {
+        log::error!("Failed to load outdirs: {:?}", err);
+    }
+
+    acc
 }
