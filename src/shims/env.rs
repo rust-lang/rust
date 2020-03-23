@@ -13,7 +13,7 @@ use rustc_mir::interpret::Pointer;
 #[derive(Default)]
 pub struct EnvVars<'tcx> {
     /// Stores pointers to the environment variables. These variables must be stored as
-    /// null-terminated C strings with the `"{name}={value}"` format.
+    /// null-terminated target strings (c_str or wide_str) with the `"{name}={value}"` format.
     map: FxHashMap<OsString, Pointer<Tag>>,
 
     /// Place where the `environ` static is stored. Lazily initialized, but then never changes.
@@ -29,7 +29,7 @@ impl<'tcx> EnvVars<'tcx> {
             for (name, value) in env::vars() {
                 if !excluded_env_vars.contains(&name) {
                     let var_ptr =
-                        alloc_env_var_as_c_str(name.as_ref(), value.as_ref(), ecx);
+                        alloc_env_var_as_target_str(name.as_ref(), value.as_ref(), ecx)?;
                     ecx.machine.env_vars.map.insert(OsString::from(name), var_ptr);
                 }
             }
@@ -38,21 +38,23 @@ impl<'tcx> EnvVars<'tcx> {
     }
 }
 
-fn alloc_env_var_as_c_str<'mir, 'tcx>(
+fn alloc_env_var_as_target_str<'mir, 'tcx>(
     name: &OsStr,
     value: &OsStr,
     ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
-) -> Pointer<Tag> {
+) -> InterpResult<'tcx, Pointer<Tag>> {
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
     name_osstring.push(value);
-    ecx.alloc_os_str_as_c_str(name_osstring.as_os_str(), MiriMemoryKind::Machine.into())
+    Ok(ecx.alloc_os_str_as_target_str(name_osstring.as_os_str(), MiriMemoryKind::Machine.into())?)
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn getenv(&mut self, name_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
+        let target_os = this.tcx.sess.target.target.target_os.as_str();
+        assert!(target_os == "linux" || target_os == "macos", "`{}` is only available for the UNIX target family");
 
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
         let name = this.read_os_str_from_c_str(name_ptr)?;
@@ -74,17 +76,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
         let value_ptr = this.read_scalar(value_op)?.not_undef()?;
-        let value = this.read_os_str_from_c_str(value_ptr)?;
+        let value = this.read_os_str_from_target_str(value_ptr)?;
         let mut new = None;
         if !this.is_null(name_ptr)? {
-            let name = this.read_os_str_from_c_str(name_ptr)?;
+            let name = this.read_os_str_from_target_str(name_ptr)?;
             if !name.is_empty() && !name.to_string_lossy().contains('=') {
                 new = Some((name.to_owned(), value.to_owned()));
             }
         }
         if let Some((name, value)) = new {
-            let var_ptr = alloc_env_var_as_c_str(&name, &value, &mut this);
-            if let Some(var) = this.machine.env_vars.map.insert(name.to_owned(), var_ptr) {
+            let var_ptr = alloc_env_var_as_target_str(&name, &value, &mut this)?;
+            if let Some(var) = this.machine.env_vars.map.insert(name, var_ptr) {
                 this.memory
                     .deallocate(var, None, MiriMemoryKind::Machine.into())?;
             }
