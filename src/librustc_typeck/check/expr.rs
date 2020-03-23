@@ -696,10 +696,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self,
                     &cause,
                     &mut |db| {
-                        db.span_label(
-                            fn_decl.output.span(),
-                            format!("expected `{}` because of this return type", fn_decl.output,),
-                        );
+                        let span = fn_decl.output.span();
+                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                            db.span_label(
+                                span,
+                                format!("expected `{}` because of this return type", snippet),
+                            );
+                        }
                     },
                     true,
                 );

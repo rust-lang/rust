@@ -1006,10 +1006,10 @@ impl<'a> State<'a> {
         close_box: bool,
     ) {
         match blk.rules {
-            hir::UnsafeBlock(..) => self.word_space("unsafe"),
-            hir::PushUnsafeBlock(..) => self.word_space("push_unsafe"),
-            hir::PopUnsafeBlock(..) => self.word_space("pop_unsafe"),
-            hir::DefaultBlock => (),
+            hir::BlockCheckMode::UnsafeBlock(..) => self.word_space("unsafe"),
+            hir::BlockCheckMode::PushUnsafeBlock(..) => self.word_space("push_unsafe"),
+            hir::BlockCheckMode::PopUnsafeBlock(..) => self.word_space("pop_unsafe"),
+            hir::BlockCheckMode::DefaultBlock => (),
         }
         self.maybe_print_comment(blk.span.lo());
         self.ann.pre(self, AnnNode::Block(blk));
@@ -1848,7 +1848,8 @@ impl<'a> State<'a> {
                 self.print_block_unclosed(&blk);
 
                 // If it is a user-provided unsafe block, print a comma after it
-                if let hir::UnsafeBlock(hir::UserProvided) = blk.rules {
+                if let hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::UserProvided) = blk.rules
+                {
                     self.s.word(",");
                 }
             }
@@ -1928,18 +1929,18 @@ impl<'a> State<'a> {
         });
         self.s.word("|");
 
-        if let hir::DefaultReturn(..) = decl.output {
+        if let hir::FnRetTy::DefaultReturn(..) = decl.output {
             return;
         }
 
         self.space_if_not_bol();
         self.word_space("->");
         match decl.output {
-            hir::Return(ref ty) => {
+            hir::FnRetTy::Return(ref ty) => {
                 self.print_type(&ty);
                 self.maybe_print_comment(ty.span.lo())
             }
-            hir::DefaultReturn(..) => unreachable!(),
+            hir::FnRetTy::DefaultReturn(..) => unreachable!(),
         }
     }
 
@@ -2112,7 +2113,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_output(&mut self, decl: &hir::FnDecl<'_>) {
-        if let hir::DefaultReturn(..) = decl.output {
+        if let hir::FnRetTy::DefaultReturn(..) = decl.output {
             return;
         }
 
@@ -2120,13 +2121,13 @@ impl<'a> State<'a> {
         self.ibox(INDENT_UNIT);
         self.word_space("->");
         match decl.output {
-            hir::DefaultReturn(..) => unreachable!(),
-            hir::Return(ref ty) => self.print_type(&ty),
+            hir::FnRetTy::DefaultReturn(..) => unreachable!(),
+            hir::FnRetTy::Return(ref ty) => self.print_type(&ty),
         }
         self.end();
 
         match decl.output {
-            hir::Return(ref output) => self.maybe_print_comment(output.span.lo()),
+            hir::FnRetTy::Return(ref output) => self.maybe_print_comment(output.span.lo()),
             _ => {}
         }
     }
