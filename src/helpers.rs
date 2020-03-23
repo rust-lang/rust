@@ -1,6 +1,8 @@
 use std::ffi::{OsStr, OsString};
+use std::path::Path;
 use std::{iter, mem};
 use std::convert::TryFrom;
+use std::borrow::Cow;
 
 use rustc::mir;
 use rustc::ty::{
@@ -491,6 +493,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         bytes_to_os_str(bytes)
     }
 
+    /// Read a null-terminated sequence of bytes, and perform path separator conversion if needed.
+    fn read_path_from_c_str<'a>(&'a self, scalar: Scalar<Tag>) -> InterpResult<'tcx, Cow<'a, Path>>
+    where
+        'tcx: 'a,
+        'mir: 'a,
+    {
+        let os_str = self.read_os_str_from_c_str(scalar)?;
+        Ok(Cow::Borrowed(Path::new(os_str)))
+    }
+
     /// Helper function to read an OsString from a 0x0000-terminated sequence of u16,
     /// which is what the Windows APIs usually handle.
     fn read_os_str_from_wide_str<'a>(&'a self, scalar: Scalar<Tag>) -> InterpResult<'tcx, OsString>
@@ -512,7 +524,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let u16_vec = self.eval_context_ref().memory.read_wide_str(scalar)?;
         u16vec_to_osstring(u16_vec)
     }
-
 
     /// Helper function to write an OsStr as a null-terminated sequence of bytes, which is what
     /// the Unix APIs usually handle. This function returns `Ok((false, length))` without trying
@@ -551,6 +562,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .memory
             .write_bytes(scalar, bytes.iter().copied().chain(iter::once(0u8)))?;
         Ok((true, string_length))
+    }
+
+    /// Write a Path to the machine memory, adjusting path separators if needed.
+    fn write_path_to_c_str(
+        &mut self,
+        path: &Path,
+        scalar: Scalar<Tag>,
+        size: u64,
+    ) -> InterpResult<'tcx, (bool, u64)> {
+        let os_str = path.as_os_str();
+        self.write_os_str_to_c_str(os_str, scalar, size)
     }
 
     /// Helper function to write an OsStr as a 0x0000-terminated u16-sequence, which is what

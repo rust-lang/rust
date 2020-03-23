@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::convert::{TryFrom, TryInto};
 use std::fs::{read_dir, remove_dir, remove_file, rename, DirBuilder, File, FileType, OpenOptions, ReadDir};
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::path::PathBuf;
+use std::path::Path;
 use std::time::SystemTime;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -79,9 +79,9 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
         let this = self.eval_context_mut();
 
         let path_scalar = this.read_scalar(path_op)?.not_undef()?;
-        let path: PathBuf = this.read_os_str_from_c_str(path_scalar)?.into();
+        let path = this.read_path_from_c_str(path_scalar)?.into_owned();
 
-        let metadata = match FileMetadata::from_path(this, path, follow_symlink)? {
+        let metadata = match FileMetadata::from_path(this, &path, follow_symlink)? {
             Some(metadata) => metadata,
             None => return Ok(-1),
         };
@@ -303,7 +303,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_unsup_format!("unsupported flags {:#x}", flag & !mirror);
         }
 
-        let path = this.read_os_str_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
+        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
 
         let fd = options.open(&path).map(|file| {
             let fh = &mut this.machine.file_handler;
@@ -524,10 +524,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("unlink")?;
 
-        let path = this.read_os_str_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
+        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
 
         let result = remove_file(path).map(|_| 0);
-
         this.try_unwrap_io_result(result)
     }
 
@@ -537,12 +536,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         linkpath_op: OpTy<'tcx, Tag>
     ) -> InterpResult<'tcx, i32> {
         #[cfg(target_family = "unix")]
-        fn create_link(src: PathBuf, dst: PathBuf) -> std::io::Result<()> {
+        fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
             std::os::unix::fs::symlink(src, dst)
         }
 
         #[cfg(target_family = "windows")]
-        fn create_link(src: PathBuf, dst: PathBuf) -> std::io::Result<()> {
+        fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
             use std::os::windows::fs;
             if src.is_dir() {
                 fs::symlink_dir(src, dst)
@@ -555,10 +554,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("symlink")?;
 
-        let target = this.read_os_str_from_c_str(this.read_scalar(target_op)?.not_undef()?)?.into();
-        let linkpath = this.read_os_str_from_c_str(this.read_scalar(linkpath_op)?.not_undef()?)?.into();
+        let target = this.read_path_from_c_str(this.read_scalar(target_op)?.not_undef()?)?;
+        let linkpath = this.read_path_from_c_str(this.read_scalar(linkpath_op)?.not_undef()?)?;
 
-        this.try_unwrap_io_result(create_link(target, linkpath).map(|_| 0))
+        let result = create_link(&target, &linkpath).map(|_| 0);
+        this.try_unwrap_io_result(result)
     }
 
     fn macos_stat(
@@ -644,7 +644,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.ref_to_mplace(statxbuf_imm)?
         };
 
-        let path: PathBuf = this.read_os_str_from_c_str(pathname_scalar)?.into();
+        let path = this.read_path_from_c_str(pathname_scalar)?.into_owned();
         // `flags` should be a `c_int` but the `syscall` function provides an `isize`.
         let flags: i32 =
             this.read_scalar(flags_op)?.to_machine_isize(&*this.tcx)?.try_into().map_err(|e| {
@@ -691,7 +691,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let metadata = if path.as_os_str().is_empty() && empty_path_flag {
             FileMetadata::from_fd(this, dirfd)?
         } else {
-            FileMetadata::from_path(this, path, follow_symlink)?
+            FileMetadata::from_path(this, &path, follow_symlink)?
         };
         let metadata = match metadata {
             Some(metadata) => metadata,
@@ -785,8 +785,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(-1);
         }
 
-        let oldpath = this.read_os_str_from_c_str(oldpath_scalar)?;
-        let newpath = this.read_os_str_from_c_str(newpath_scalar)?;
+        let oldpath = this.read_path_from_c_str(oldpath_scalar)?;
+        let newpath = this.read_path_from_c_str(newpath_scalar)?;
 
         let result = rename(oldpath, newpath).map(|_| 0);
 
@@ -808,7 +808,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.read_scalar(mode_op)?.to_u32()?
         };
 
-        let path = this.read_os_str_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
+        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
 
         let mut builder = DirBuilder::new();
 
@@ -833,7 +833,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("rmdir")?;
 
-        let path = this.read_os_str_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
+        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
 
         let result = remove_dir(path).map(|_| 0i32);
 
@@ -845,7 +845,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("opendir")?;
 
-        let name = this.read_os_str_from_c_str(this.read_scalar(name_op)?.not_undef()?)?;
+        let name = this.read_path_from_c_str(this.read_scalar(name_op)?.not_undef()?)?;
 
         let result = read_dir(name);
 
@@ -899,7 +899,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let entry_place = this.deref_operand(entry_op)?;
                 let name_place = this.mplace_field(entry_place, 4)?;
 
-                let file_name = dir_entry.file_name();
+                let file_name = dir_entry.file_name(); // not a Path as there are no separators!
                 let (name_fits, _) = this.write_os_str_to_c_str(
                     &file_name,
                     name_place.ptr,
@@ -987,7 +987,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let entry_place = this.deref_operand(entry_op)?;
                 let name_place = this.mplace_field(entry_place, 5)?;
 
-                let file_name = dir_entry.file_name();
+                let file_name = dir_entry.file_name(); // not a Path as there are no separators!
                 let (name_fits, file_name_len) = this.write_os_str_to_c_str(
                     &file_name,
                     name_place.ptr,
@@ -1082,7 +1082,7 @@ struct FileMetadata {
 impl FileMetadata {
     fn from_path<'tcx, 'mir>(
         ecx: &mut MiriEvalContext<'mir, 'tcx>,
-        path: PathBuf,
+        path: &Path,
         follow_symlink: bool
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let metadata = if follow_symlink {
