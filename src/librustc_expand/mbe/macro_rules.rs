@@ -259,8 +259,6 @@ fn generic_extension<'cx>(
                 }
 
                 let mut p = Parser::new(sess, tts, false, None);
-                p.root_module_name =
-                    cx.current_expansion.module.mod_path.last().map(|id| id.to_string());
                 p.last_type_ascription = cx.current_expansion.prior_type_ascription;
 
                 // Let the context choose how to interpret the result.
