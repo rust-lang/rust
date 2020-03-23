@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
-// We specify -Z incremental here because we want to test the partitioning for
+// We specify -C incremental here because we want to test the partitioning for
 // incremental compilation
-// compile-flags:-Zprint-mono-items=lazy -Zincremental=tmp/partitioning-tests/inlining-from-extern-crate
+// compile-flags:-Zprint-mono-items=lazy -Cincremental=tmp/partitioning-tests/inlining-from-extern-crate
 // compile-flags:-Zinline-in-all-cgus
 
 #![crate_type="lib"]
