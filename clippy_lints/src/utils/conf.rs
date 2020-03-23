@@ -80,7 +80,7 @@ macro_rules! define_Conf {
             $(
                 mod $config {
                     use serde::Deserialize;
-                    crate fn deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<$Ty, D::Error> {
+                    pub fn deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<$Ty, D::Error> {
                         use super::super::{ERRORS, Error};
                         Ok(
                             <$Ty>::deserialize(deserializer).unwrap_or_else(|e| {

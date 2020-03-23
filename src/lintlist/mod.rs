@@ -1766,7 +1766,7 @@ pub const ALL_LINTS: [Lint; 362] = [
     },
     Lint {
         name: "redundant_pub_crate",
-        group: "nursery",
+        group: "style",
         desc: "Using `pub(crate)` visibility on items that are not crate visible due to the visibility of the module that contains them.",
         deprecation: None,
         module: "redundant_pub_crate",
