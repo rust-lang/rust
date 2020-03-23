@@ -257,8 +257,8 @@ fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
 /// is a ZST, then we instead track the index of the element in the table so
 /// that `erase` works properly.
 pub struct Bucket<T> {
-    // Using *const for variance
-    ptr: *const T,
+    // Using `NonNull` for variance and niche layout
+    ptr: NonNull<T>,
 }
 
 // This Send impl is needed for rayon support. This is safe since Bucket is
@@ -274,13 +274,24 @@ impl<T> Clone for Bucket<T> {
 
 impl<T> Bucket<T> {
     #[cfg_attr(feature = "inline-more", inline)]
-    unsafe fn from_base_index(base: *const T, index: usize) -> Self {
+    unsafe fn from_base_index(base: NonNull<T>, index: usize) -> Self {
         let ptr = if mem::size_of::<T>() == 0 {
-            index as *const T
+            // won't overflow because index must be less than length
+            (index + 1) as *mut T
         } else {
-            base.add(index)
+            base.as_ptr().add(index)
         };
-        Self { ptr }
+        Self {
+            ptr: NonNull::new_unchecked(ptr),
+        }
+    }
+    #[cfg_attr(feature = "inline-more", inline)]
+    unsafe fn to_base_index(&self, base: NonNull<T>) -> usize {
+        if mem::size_of::<T>() == 0 {
+            self.ptr.as_ptr() as usize - 1
+        } else {
+            offset_from(self.ptr.as_ptr(), base.as_ptr())
+        }
     }
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn as_ptr(&self) -> *mut T {
@@ -288,17 +299,19 @@ impl<T> Bucket<T> {
             // Just return an arbitrary ZST pointer which is properly aligned
             mem::align_of::<T>() as *mut T
         } else {
-            self.ptr as *mut T
+            self.ptr.as_ptr()
         }
     }
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn add(&self, offset: usize) -> Self {
         let ptr = if mem::size_of::<T>() == 0 {
-            (self.ptr as usize + offset) as *const T
+            (self.ptr.as_ptr() as usize + offset) as *mut T
         } else {
-            self.ptr.add(offset)
+            self.ptr.as_ptr().add(offset)
         };
-        Self { ptr }
+        Self {
+            ptr: NonNull::new_unchecked(ptr),
+        }
     }
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn drop(&self) {
@@ -428,11 +441,7 @@ impl<T> RawTable<T> {
     /// Returns the index of a bucket from a `Bucket`.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn bucket_index(&self, bucket: &Bucket<T>) -> usize {
-        if mem::size_of::<T>() == 0 {
-            bucket.ptr as usize
-        } else {
-            offset_from(bucket.ptr, self.data.as_ptr())
-        }
+        bucket.to_base_index(self.data)
     }
 
     /// Returns a pointer to a control byte.
@@ -447,7 +456,7 @@ impl<T> RawTable<T> {
     pub unsafe fn bucket(&self, index: usize) -> Bucket<T> {
         debug_assert_ne!(self.bucket_mask, 0);
         debug_assert!(index < self.buckets());
-        Bucket::from_base_index(self.data.as_ptr(), index)
+        Bucket::from_base_index(self.data, index)
     }
 
     /// Erases an element from the table without dropping it.
@@ -936,7 +945,7 @@ impl<T> RawTable<T> {
     /// struct, we have to make the `iter` method unsafe.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn iter(&self) -> RawIter<T> {
-        let data = Bucket::from_base_index(self.data.as_ptr(), 0);
+        let data = Bucket::from_base_index(self.data, 0);
         RawIter {
             iter: RawIterRange::new(self.ctrl.as_ptr(), data, self.buckets()),
             items: self.items,
