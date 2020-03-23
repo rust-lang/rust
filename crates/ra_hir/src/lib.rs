@@ -11,7 +11,7 @@
 //!
 //! `ra_hir_*` crates are the implementation of the compiler logic.
 //! They are written in "ECS" style, with relatively little abstractions.
-//! Many types are not self-contained, and explicitelly use local indexes, arenas, etc.
+//! Many types are not self-contained, and explicitly use local indexes, arenas, etc.
 //!
 //! `ra_hir` is what insulates the "we don't know how to actually write an incremental compiler"
 //! from the ide with completions, hovers, etc. It is a (soft, internal) boundary:
