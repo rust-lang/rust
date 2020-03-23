@@ -20,9 +20,8 @@ use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, Fata
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{walk_generics, Visitor};
+use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{Constness, GenericArg, GenericArgs};
-use rustc_hir_pretty::{to_string, NO_ANN};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, LATE_BOUND_LIFETIME_ARGUMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -1118,6 +1117,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if !self.tcx().features().unboxed_closures
             && trait_segment.generic_args().parenthesized != trait_def.paren_sugar
         {
+            let sess = &self.tcx().sess.parse_sess;
             // For now, require that parenthetical notation be used only with `Fn()` etc.
             let (msg, sugg) = if trait_def.paren_sugar {
                 (
@@ -1132,7 +1132,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .and_then(|args| args.args.get(0))
                             .and_then(|arg| match arg {
                                 hir::GenericArg::Type(ty) => {
-                                    Some(to_string(NO_ANN, |s| s.print_type(ty)))
+                                    sess.source_map().span_to_snippet(ty.span).ok()
                                 }
                                 _ => None,
                             })
@@ -1143,7 +1143,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .iter()
                             .filter_map(|b| match (b.ident.as_str() == "Output", &b.kind) {
                                 (true, hir::TypeBindingKind::Equality { ty }) => {
-                                    Some(to_string(NO_ANN, |s| s.print_type(ty)))
+                                    sess.source_map().span_to_snippet(ty.span).ok()
                                 }
                                 _ => None,
                             })
@@ -1154,7 +1154,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             } else {
                 ("parenthetical notation is only stable when used with `Fn`-family traits", None)
             };
-            let sess = &self.tcx().sess.parse_sess;
             let mut err = feature_err(sess, sym::unboxed_closures, span, msg);
             if let Some(sugg) = sugg {
                 let msg = "use parenthetical notation instead";

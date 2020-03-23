@@ -10,7 +10,6 @@ use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Node};
-use rustc_hir_pretty::{to_string, NO_ANN};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -199,15 +198,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .peekable();
 
             if compatible_variants.peek().is_some() {
-                let expr_text = self
-                    .tcx
-                    .sess
-                    .source_map()
-                    .span_to_snippet(expr.span)
-                    .unwrap_or_else(|_| to_string(NO_ANN, |s| s.print_expr(expr)));
-                let suggestions = compatible_variants.map(|v| format!("{}({})", v, expr_text));
-                let msg = "try using a variant of the expected enum";
-                err.span_suggestions(expr.span, msg, suggestions, Applicability::MaybeIncorrect);
+                if let Ok(expr_text) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
+                    let suggestions = compatible_variants.map(|v| format!("{}({})", v, expr_text));
+                    let msg = "try using a variant of the expected enum";
+                    err.span_suggestions(
+                        expr.span,
+                        msg,
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
         }
     }
