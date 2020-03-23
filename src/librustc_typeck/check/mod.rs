@@ -1003,7 +1003,14 @@ fn typeck_tables_of_with_fallback<'tcx>(
         let fcx = if let (Some(header), Some(decl)) = (fn_header, fn_decl) {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
                 let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
-                AstConv::ty_of_fn(&fcx, header.unsafety, header.abi, decl, &[], None)
+                AstConv::ty_of_fn(
+                    &fcx,
+                    header.unsafety,
+                    header.abi,
+                    decl,
+                    &hir::Generics::empty(),
+                    None,
+                )
             } else {
                 tcx.fn_sig(def_id)
             };
