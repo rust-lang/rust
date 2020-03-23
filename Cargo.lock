@@ -876,6 +876,7 @@ name = "ra_assists"
 version = "0.1.0"
 dependencies = [
  "format-buf",
+ "itertools",
  "join_to_string",
  "ra_db",
  "ra_fmt",

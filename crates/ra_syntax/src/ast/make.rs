@@ -136,6 +136,15 @@ pub fn placeholder_pat() -> ast::PlaceholderPat {
     }
 }
 
+pub fn tuple_pat(pats: impl IntoIterator<Item = ast::Pat>) -> ast::TuplePat {
+    let pats_str = pats.into_iter().map(|p| p.syntax().to_string()).join(", ");
+    return from_text(&format!("({})", pats_str));
+
+    fn from_text(text: &str) -> ast::TuplePat {
+        ast_from_text(&format!("fn f({}: ())", text))
+    }
+}
+
 pub fn tuple_struct_pat(
     path: ast::Path,
     pats: impl IntoIterator<Item = ast::Pat>,

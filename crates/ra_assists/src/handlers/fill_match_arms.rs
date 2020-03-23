@@ -2,6 +2,8 @@
 
 use std::iter;
 
+use itertools::Itertools;
+
 use hir::{Adt, HasSource, Semantics};
 use ra_ide_db::RootDatabase;
 
@@ -39,13 +41,6 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
     let match_arm_list = match_expr.match_arm_list()?;
 
     let expr = match_expr.expr()?;
-    let enum_def = resolve_enum_def(&ctx.sema, &expr)?;
-    let module = ctx.sema.scope(expr.syntax()).module()?;
-
-    let variants = enum_def.variants(ctx.db);
-    if variants.is_empty() {
-        return None;
-    }
 
     let mut arms: Vec<MatchArm> = match_arm_list.arms().collect();
     if arms.len() == 1 {
@@ -54,13 +49,40 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
         }
     }
 
-    let db = ctx.db;
-    let missing_arms: Vec<MatchArm> = variants
-        .into_iter()
-        .filter_map(|variant| build_pat(db, module, variant))
-        .filter(|variant_pat| is_variant_missing(&mut arms, variant_pat))
-        .map(|pat| make::match_arm(iter::once(pat), make::expr_unit()))
-        .collect();
+    let module = ctx.sema.scope(expr.syntax()).module()?;
+
+    let missing_arms: Vec<MatchArm> = if let Some(enum_def) = resolve_enum_def(&ctx.sema, &expr) {
+        let variants = enum_def.variants(ctx.db);
+
+        variants
+            .into_iter()
+            .filter_map(|variant| build_pat(ctx.db, module, variant))
+            .filter(|variant_pat| is_variant_missing(&mut arms, variant_pat))
+            .map(|pat| make::match_arm(iter::once(pat), make::expr_unit()))
+            .collect()
+    } else if let Some(enum_defs) = resolve_tuple_of_enum_def(&ctx.sema, &expr) {
+        // partial fill not currently supported for tuple of enums
+        if !arms.is_empty() {
+            return None;
+        }
+
+        enum_defs
+            .into_iter()
+            .map(|enum_def| enum_def.variants(ctx.db))
+            .multi_cartesian_product()
+            .map(|variants| {
+                let patterns = variants
+                    .into_iter()
+                    .filter_map(|variant| build_pat(ctx.db, module, variant))
+                    .collect::<Vec<_>>();
+                ast::Pat::from(make::tuple_pat(patterns))
+            })
+            .filter(|variant_pat| is_variant_missing(&mut arms, variant_pat))
+            .map(|pat| make::match_arm(iter::once(pat), make::expr_unit()))
+            .collect()
+    } else {
+        return None;
+    };
 
     if missing_arms.is_empty() {
         return None;
@@ -102,6 +124,22 @@ fn resolve_enum_def(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<
         Some(Adt::Enum(e)) => Some(e),
         _ => None,
     })
+}
+
+fn resolve_tuple_of_enum_def(
+    sema: &Semantics<RootDatabase>,
+    expr: &ast::Expr,
+) -> Option<Vec<hir::Enum>> {
+    Some(
+        sema.type_of_expr(&expr)?
+            .tuple_fields(sema.db)
+            .iter()
+            .map(|ty| match ty.as_adt() {
+                Some(Adt::Enum(e)) => e,
+                _ => panic!("handle the case of tuple containing non-enum"),
+            })
+            .collect(),
+    )
 }
 
 fn build_pat(db: &RootDatabase, module: hir::Module, var: hir::EnumVariant) -> Option<ast::Pat> {
@@ -301,6 +339,103 @@ mod tests {
                     A::Cs(_) => (),
                     A::Ds(_, _) => (),
                     A::Es { x, y } => (),
+                }
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn fill_match_arms_tuple_of_enum() {
+        check_assist(
+            fill_match_arms,
+            r#"
+            enum A {
+                One,
+                Two,
+            }
+            enum B {
+                One,
+                Two,
+            }
+
+            fn main() {
+                let a = A::One;
+                let b = B::One;
+                match (a<|>, b) {}
+            }
+            "#,
+            r#"
+            enum A {
+                One,
+                Two,
+            }
+            enum B {
+                One,
+                Two,
+            }
+
+            fn main() {
+                let a = A::One;
+                let b = B::One;
+                match <|>(a, b) {
+                    (A::One, B::One) => (),
+                    (A::One, B::Two) => (),
+                    (A::Two, B::One) => (),
+                    (A::Two, B::Two) => (),
+                }
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn fill_match_arms_tuple_of_enum_partial() {
+        check_assist_not_applicable(
+            fill_match_arms,
+            r#"
+            enum A {
+                One,
+                Two,
+            }
+            enum B {
+                One,
+                Two,
+            }
+
+            fn main() {
+                let a = A::One;
+                let b = B::One;
+                match (a<|>, b) {
+                    (A::Two, B::One) => (),
+                }
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn fill_match_arms_tuple_of_enum_not_applicable() {
+        check_assist_not_applicable(
+            fill_match_arms,
+            r#"
+            enum A {
+                One,
+                Two,
+            }
+            enum B {
+                One,
+                Two,
+            }
+
+            fn main() {
+                let a = A::One;
+                let b = B::One;
+                match (a<|>, b) {
+                    (A::Two, B::One) => (),
+                    (A::One, B::One) => (),
+                    (A::One, B::Two) => (),
+                    (A::Two, B::Two) => (),
                 }
             }
             "#,
