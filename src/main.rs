@@ -59,6 +59,11 @@ where
     let mut args = vec!["check".to_owned()];
 
     for arg in old_args.by_ref() {
+        if arg == "--fix" {
+            args[0] = "fix".to_owned();
+            continue;
+        }
+
         if arg == "--" {
             break;
         }
@@ -96,7 +101,7 @@ where
 
     let exit_status = std::process::Command::new("cargo")
         .args(&args)
-        .env("RUSTC_WRAPPER", path)
+        .env("RUSTC_WORKSPACE_WRAPPER", path)
         .env("CLIPPY_ARGS", clippy_args)
         .envs(target_dir)
         .spawn()
