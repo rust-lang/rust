@@ -17,6 +17,7 @@ serde = { version = "1.0", optional = true, default_features = false }
 
 [dev-dependencies]
 serde_test = "1.0"
+static_assertions = "1.1"
 
 [[test]]
 name = "serde"
