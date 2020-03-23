@@ -1,48 +1,53 @@
-error: attribute must be of the form `#[doc(hidden|inline|...)]` or `#[doc = "string"]`
+error: malformed `doc` attribute input
   --> $DIR/malformed-regressions.rs:1:1
    |
 LL | #[doc]
    | ^^^^^^
    |
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+help: the following are the possible correct uses
+   |
+LL | #[doc(hidden|inline|...)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[doc = "string"]
+   | ^^^^^^^^^^^^^^^^^
 
-error: attribute must be of the form `#[ignore]` or `#[ignore = "reason"]`
+error: malformed `ignore` attribute input
   --> $DIR/malformed-regressions.rs:3:1
    |
 LL | #[ignore()]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+help: the following are the possible correct uses
+   |
+LL | #[ignore]
+   | ^^^^^^^^^
+LL | #[ignore = "reason"]
+   | ^^^^^^^^^^^^^^^^^^^^
 
-error: attribute must be of the form `#[inline]` or `#[inline(always|never)]`
+error: malformed `inline` attribute input
   --> $DIR/malformed-regressions.rs:5:1
    |
 LL | #[inline = ""]
    | ^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+help: the following are the possible correct uses
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+LL | #[inline(always|never)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ cfg = "...")]`
+error: malformed `link` attribute input
   --> $DIR/malformed-regressions.rs:7:1
    |
 LL | #[link]
-   | ^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   | ^^^^^^^ help: must be of the form: `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ cfg = "...")]`
 
-error: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ cfg = "...")]`
+error: malformed `link` attribute input
   --> $DIR/malformed-regressions.rs:9:1
    |
 LL | #[link = ""]
-   | ^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   | ^^^^^^^^^^^^ help: must be of the form: `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ cfg = "...")]`
 
 error: aborting due to 5 previous errors
 

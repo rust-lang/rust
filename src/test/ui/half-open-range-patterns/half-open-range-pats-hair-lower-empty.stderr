@@ -58,11 +58,23 @@ error[E0579]: lower range bound must be less than upper
 LL |     m!(0, ..core::i128::MIN);
    |           ^^^^^^^^^^^^^^^^^
 
+error: floating-point types cannot be used in patterns
+  --> $DIR/half-open-range-pats-hair-lower-empty.rs:44:16
+   |
+LL |     m!(0f32, ..core::f32::NEG_INFINITY);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0579]: lower range bound must be less than upper
   --> $DIR/half-open-range-pats-hair-lower-empty.rs:44:14
    |
 LL |     m!(0f32, ..core::f32::NEG_INFINITY);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/half-open-range-pats-hair-lower-empty.rs:47:16
+   |
+LL |     m!(0f64, ..core::f64::NEG_INFINITY);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
   --> $DIR/half-open-range-pats-hair-lower-empty.rs:47:14
@@ -136,11 +148,23 @@ error[E0579]: lower range bound must be less than upper
 LL |     m!(0, ..core::i128::MIN);
    |           ^^^^^^^^^^^^^^^^^
 
+error: floating-point types cannot be used in patterns
+  --> $DIR/half-open-range-pats-hair-lower-empty.rs:44:16
+   |
+LL |     m!(0f32, ..core::f32::NEG_INFINITY);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0579]: lower range bound must be less than upper
   --> $DIR/half-open-range-pats-hair-lower-empty.rs:44:14
    |
 LL |     m!(0f32, ..core::f32::NEG_INFINITY);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/half-open-range-pats-hair-lower-empty.rs:47:16
+   |
+LL |     m!(0f64, ..core::f64::NEG_INFINITY);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
   --> $DIR/half-open-range-pats-hair-lower-empty.rs:47:14
@@ -154,6 +178,6 @@ error[E0579]: lower range bound must be less than upper
 LL |     m!('a', ..'\u{0}');
    |             ^^^^^^^^^
 
-error: aborting due to 26 previous errors
+error: aborting due to 30 previous errors
 
 For more information about this error, try `rustc --explain E0579`.

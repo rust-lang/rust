@@ -18,8 +18,8 @@ use rustc_hir::{def_id::DefId, HirId, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_session::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT, UNUSED_MUT};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_session::lint::builtin::UNUSED_MUT;
+use rustc_span::Span;
 
 use either::Either;
 use smallvec::SmallVec;
@@ -308,9 +308,11 @@ fn do_mir_borrowck<'a, 'tcx>(
     // Convert any reservation warnings into lints.
     let reservation_warnings = mem::take(&mut mbcx.reservation_warnings);
     for (_, (place, span, location, bk, borrow)) in reservation_warnings {
-        let mut initial_diag =
-            mbcx.report_conflicting_borrow(location, (&place, span), bk, &borrow);
+        let initial_diag = mbcx.report_conflicting_borrow(location, (&place, span), bk, &borrow);
 
+        initial_diag.buffer(&mut mbcx.errors_buffer);
+
+        /*
         let scope = mbcx.body.source_info(location).scope;
         let lint_root = match &mbcx.body.source_scopes[scope].local_data {
             ClearCrossCrate::Set(data) => data.lint_root,
@@ -332,6 +334,7 @@ fn do_mir_borrowck<'a, 'tcx>(
             },
         );
         initial_diag.cancel();
+        */
     }
 
     // For each non-user used mutable variable, check if it's been assigned from

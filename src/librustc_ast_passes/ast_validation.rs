@@ -1204,7 +1204,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         "pattern not allowed in function without body",
                     ),
                 };
-                if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
+                if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) && false {
                     self.lint_buffer.buffer_lint(PATTERNS_IN_FNS_WITHOUT_BODY, id, span, msg);
                 } else {
                     self.err_handler()

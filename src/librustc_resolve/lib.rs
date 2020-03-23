@@ -1715,7 +1715,14 @@ impl<'a> Resolver<'a> {
 
             match result {
                 Ok(binding) => {
-                    if let Some(node_id) = poisoned {
+                    if let Some(_) = poisoned {
+                        self.session
+                            .struct_span_err(
+                                ident.span,
+                                &format!("cannot find {} `{}` in this scope", ns.descr(), ident),
+                            )
+                            .emit();
+                        /*
                         self.lint_buffer.buffer_lint_with_diagnostic(
                             lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                             node_id,
@@ -1723,6 +1730,7 @@ impl<'a> Resolver<'a> {
                             &format!("cannot find {} `{}` in this scope", ns.descr(), ident),
                             BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(ident.span),
                         );
+                        */
                     }
                     return Some(LexicalScopeBinding::Item(binding));
                 }
@@ -2448,9 +2456,11 @@ impl<'a> Resolver<'a> {
     fn report_errors(&mut self, krate: &Crate) {
         self.report_with_use_injections(krate);
 
-        for &(span_use, span_def) in &self.macro_expanded_macro_export_errors {
+        for &(span_use, _) in &self.macro_expanded_macro_export_errors {
             let msg = "macro-expanded `macro_export` macros from the current crate \
                        cannot be referred to by absolute paths";
+            self.session.struct_span_err(span_use, msg).emit();
+            /*
             self.lint_buffer.buffer_lint_with_diagnostic(
                 lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
                 CRATE_NODE_ID,
@@ -2458,6 +2468,7 @@ impl<'a> Resolver<'a> {
                 msg,
                 BuiltinLintDiagnostics::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def),
             );
+            */
         }
 
         for ambiguity_error in &self.ambiguity_errors {

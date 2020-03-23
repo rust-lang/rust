@@ -1,3 +1,9 @@
+error: floating-point types cannot be used in patterns
+  --> $DIR/half-open-range-pats-exhaustive-fail.rs:16:14
+   |
+LL |     m!(0f32, core::f32::NEG_INFINITY..);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:16:8
    |
@@ -5,6 +11,12 @@ LL |     m!(0f32, core::f32::NEG_INFINITY..);
    |        ^^^^ pattern `_` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/half-open-range-pats-exhaustive-fail.rs:17:16
+   |
+LL |     m!(0f32, ..core::f32::INFINITY);
+   |                ^^^^^^^^^^^^^^^^^^^
 
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:17:8
@@ -542,6 +554,18 @@ LL |         m!(0, ..VAL_1 | VAL_2..);
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error: aborting due to 68 previous errors
+error: floating-point types cannot be used in patterns
+  --> $DIR/half-open-range-pats-exhaustive-fail.rs:16:14
+   |
+LL |     m!(0f32, core::f32::NEG_INFINITY..);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/half-open-range-pats-exhaustive-fail.rs:17:16
+   |
+LL |     m!(0f32, ..core::f32::INFINITY);
+   |                ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 72 previous errors
 
 For more information about this error, try `rustc --explain E0004`.

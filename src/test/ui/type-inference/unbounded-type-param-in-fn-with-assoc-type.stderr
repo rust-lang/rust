@@ -1,9 +1,8 @@
-error[E0282]: type annotations needed
-  --> $DIR/unbounded-type-param-in-fn-with-assoc-type.rs:8:5
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions.
+  --> $DIR/unbounded-type-param-in-fn-with-assoc-type.rs:3:11
    |
-LL |     foo();
-   |     ^^^ cannot infer type for type parameter `T` declared on the function `foo`
+LL | fn foo<T, U = u64>() -> (T, U) {
+   |           ^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0282`.

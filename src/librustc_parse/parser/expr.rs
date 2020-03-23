@@ -1358,7 +1358,7 @@ impl<'a> Parser<'a> {
                 let mut err = self
                     .sess
                     .span_diagnostic
-                    .struct_span_warn(sp, &format!("suffixes on {} are invalid", kind));
+                    .struct_span_err(sp, &format!("suffixes on {} are invalid", kind));
                 err.note(&format!(
                     "`{}` is *temporarily* accepted on tuple index fields as it was \
                         incorrectly accepted on stable for a few releases",

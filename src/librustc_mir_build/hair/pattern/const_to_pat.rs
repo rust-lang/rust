@@ -162,7 +162,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
     fn recur(&self, cv: &'tcx ty::Const<'tcx>) -> Pat<'tcx> {
-        let id = self.id;
+        //let id = self.id;
         let span = self.span;
         let tcx = self.tcx();
         let param_env = self.param_env;
@@ -179,12 +179,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
         let kind = match cv.ty.kind {
             ty::Float(_) => {
-                tcx.struct_span_lint_hir(
-                    lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-                    id,
-                    span,
-                    |lint| lint.build("floating-point types cannot be used in patterns").emit(),
-                );
+                tcx.sess
+                    .struct_span_err(span, "floating-point types cannot be used in patterns")
+                    .emit();
                 PatKind::Constant { value: cv }
             }
             ty::Adt(adt_def, _) if adt_def.is_union() => {

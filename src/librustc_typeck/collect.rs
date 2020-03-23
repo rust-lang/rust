@@ -1316,18 +1316,13 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
         if let GenericParamKind::Type { ref default, synthetic, .. } = param.kind {
             if !allow_defaults && default.is_some() {
                 if !tcx.features().default_type_parameter_fallback {
-                    tcx.struct_span_lint_hir(
-                        lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
-                        param.hir_id,
-                        param.span,
-                        |lint| {
-                            lint.build(
-                                "defaults for type parameters are only allowed in \
-                                        `struct`, `enum`, `type`, or `trait` definitions.",
-                            )
-                            .emit();
-                        },
-                    );
+                    tcx.sess
+                        .struct_span_err(
+                            param.span,
+                            "defaults for type parameters are only allowed in \
+                            `struct`, `enum`, `type`, or `trait` definitions.",
+                        )
+                        .emit();
                 }
             }
 

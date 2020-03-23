@@ -6,7 +6,6 @@ use rustc_ast::ast::{self, Attribute, MacArgs, MacDelimiter, MetaItem, MetaItemK
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_errors::{Applicability, PResult};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
-use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Symbol};
 
@@ -91,16 +90,6 @@ pub fn check_builtin_attribute(
     // Some special attributes like `cfg` must be checked
     // before the generic check, so we skip them here.
     let should_skip = |name| name == sym::cfg;
-    // Some of previously accepted forms were used in practice,
-    // report them as warnings for now.
-    let should_warn = |name| {
-        name == sym::doc
-            || name == sym::ignore
-            || name == sym::inline
-            || name == sym::link
-            || name == sym::test
-            || name == sym::bench
-    };
 
     match parse_meta(sess, attr) {
         Ok(meta) => {
@@ -132,28 +121,19 @@ pub fn check_builtin_attribute(
                     msg.push_str(&format!("`{}`", &code));
                     suggestions.push(code);
                 }
-                if should_warn(name) {
-                    sess.buffer_lint(
-                        &ILL_FORMED_ATTRIBUTE_INPUT,
+                sess.span_diagnostic
+                    .struct_span_err(meta.span, &error_msg)
+                    .span_suggestions(
                         meta.span,
-                        ast::CRATE_NODE_ID,
-                        &msg,
-                    );
-                } else {
-                    sess.span_diagnostic
-                        .struct_span_err(meta.span, &error_msg)
-                        .span_suggestions(
-                            meta.span,
-                            if suggestions.len() == 1 {
-                                "must be of the form"
-                            } else {
-                                "the following are the possible correct uses"
-                            },
-                            suggestions.into_iter(),
-                            Applicability::HasPlaceholders,
-                        )
-                        .emit();
-                }
+                        if suggestions.len() == 1 {
+                            "must be of the form"
+                        } else {
+                            "the following are the possible correct uses"
+                        },
+                        suggestions.into_iter(),
+                        Applicability::HasPlaceholders,
+                    )
+                    .emit();
             }
         }
         Err(mut err) => {

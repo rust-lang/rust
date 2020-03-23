@@ -31,7 +31,7 @@ use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{
     self, CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode,
 };
-use rustc_session::lint;
+//use rustc_session::lint;
 use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
@@ -315,9 +315,7 @@ fn configure_and_expand_inner<'a>(
         let recursion_limit_hit = ecx.reduced_recursion_limit.is_some();
 
         for span in missing_fragment_specifiers {
-            let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
-            let msg = "missing fragment specifier";
-            resolver.lint_buffer().buffer_lint(lint, ast::CRATE_NODE_ID, span, msg);
+            sess.struct_span_err(span, "missing fragment specifier").emit();
         }
         if cfg!(windows) {
             env::set_var("PATH", &old_path);

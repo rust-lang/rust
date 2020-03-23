@@ -1,12 +1,15 @@
-error: attribute must be of the form `#[inline]` or `#[inline(always|never)]`
+error: malformed `inline` attribute input
   --> $DIR/issue-43106-gating-of-inline.rs:17:5
    |
 LL |     #[inline = "2100"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+help: the following are the possible correct uses
+   |
+LL |     #[inline] fn f() { }
+   |     ^^^^^^^^^
+LL |     #[inline(always|never)] fn f() { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/issue-43106-gating-of-inline.rs:11:1

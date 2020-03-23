@@ -66,6 +66,42 @@ LL |     match *vec {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
+error: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-match.rs:47:10
+   |
+LL |         [0.1, 0.2, 0.3] => (),
+   |          ^^^
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-match.rs:47:15
+   |
+LL |         [0.1, 0.2, 0.3] => (),
+   |               ^^^
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-match.rs:47:20
+   |
+LL |         [0.1, 0.2, 0.3] => (),
+   |                    ^^^
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-match.rs:48:10
+   |
+LL |         [0.1, 0.2] => (),
+   |          ^^^
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-match.rs:48:15
+   |
+LL |         [0.1, 0.2] => (),
+   |               ^^^
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-match.rs:49:10
+   |
+LL |         [0.1] => (),
+   |          ^^^
+
 error[E0004]: non-exhaustive patterns: `[_, _, _, _, ..]` not covered
   --> $DIR/non-exhaustive-match.rs:46:11
    |
@@ -74,6 +110,42 @@ LL |     match *vec {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error: aborting due to 8 previous errors
+error: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-match.rs:47:10
+   |
+LL |         [0.1, 0.2, 0.3] => (),
+   |          ^^^
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-match.rs:47:15
+   |
+LL |         [0.1, 0.2, 0.3] => (),
+   |               ^^^
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-match.rs:47:20
+   |
+LL |         [0.1, 0.2, 0.3] => (),
+   |                    ^^^
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-match.rs:48:10
+   |
+LL |         [0.1, 0.2] => (),
+   |          ^^^
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-match.rs:48:15
+   |
+LL |         [0.1, 0.2] => (),
+   |               ^^^
+
+error: floating-point types cannot be used in patterns
+  --> $DIR/non-exhaustive-match.rs:49:10
+   |
+LL |         [0.1] => (),
+   |          ^^^
+
+error: aborting due to 20 previous errors
 
 For more information about this error, try `rustc --explain E0004`.

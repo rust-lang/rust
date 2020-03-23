@@ -9,16 +9,6 @@ use crate::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
 
 declare_lint! {
-    pub ILL_FORMED_ATTRIBUTE_INPUT,
-    Deny,
-    "ill-formed attribute inputs that were previously accepted and used in practice",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
-        edition: None,
-    };
-}
-
-declare_lint! {
     pub CONFLICTING_REPR_HINTS,
     Deny,
     "conflicts between `#[repr(..)]` hints that were previously accepted and used in practice",
@@ -553,7 +543,6 @@ declare_lint_pass! {
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         MACRO_USE_EXTERN_CRATE,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-        ILL_FORMED_ATTRIBUTE_INPUT,
         CONFLICTING_REPR_HINTS,
         META_VARIABLE_MISUSE,
         DEPRECATED_IN_FUTURE,
