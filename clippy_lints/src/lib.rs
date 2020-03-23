@@ -231,6 +231,7 @@ mod inline_fn_without_body;
 mod int_plus_one;
 mod integer_division;
 mod items_after_statements;
+mod large_const_arrays;
 mod large_enum_variant;
 mod large_stack_arrays;
 mod len_zero;

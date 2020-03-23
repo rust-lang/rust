@@ -150,7 +150,7 @@ define_Conf! {
     (trivial_copy_size_limit, "trivial_copy_size_limit": Option<u64>, None),
     /// Lint: TOO_MANY_LINES. The maximum number of lines a function or method can have
     (too_many_lines_threshold, "too_many_lines_threshold": u64, 100),
-    /// Lint: LARGE_STACK_ARRAYS. The maximum allowed size for arrays on the stack
+    /// Lint: LARGE_STACK_ARRAYS, LARGE_CONST_ARRAYS. The maximum allowed size for arrays on the stack
     (array_size_threshold, "array_size_threshold": u64, 512_000),
     /// Lint: VEC_BOX. The size of the boxed type in bytes, where boxing in a `Vec` is allowed
     (vec_box_size_threshold, "vec_box_size_threshold": u64, 4096),
