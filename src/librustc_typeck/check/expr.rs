@@ -1007,8 +1007,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         _expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let count_def_id = tcx.hir().local_def_id(count.hir_id);
-        let count = self.to_const(count, tcx.type_of(count_def_id));
+        let count = self.to_const(count);
 
         let uty = match expected {
             ExpectHasType(uty) => match uty.kind {

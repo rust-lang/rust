@@ -20,7 +20,7 @@ use polonius_engine::Atom;
 use rustc_ast::ast::{self, Ident};
 use rustc_data_structures::captures::Captures;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, Symbol};
@@ -2404,14 +2404,16 @@ static_assert_size!(Const<'_>, 48);
 impl<'tcx> Const<'tcx> {
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
-    pub fn from_hir_anon_const(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Ty<'tcx>) -> &'tcx Self {
-        debug!("Const::from_hir_anon_const(id={:?})", def_id);
+    pub fn from_anon_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Self {
+        debug!("Const::from_anon_const(id={:?})", def_id);
 
-        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
         let body_id = tcx.hir().body_owned_by(hir_id);
 
         let expr = &tcx.hir().body(body_id).value;
+
+        let ty = tcx.type_of(def_id.to_def_id());
 
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
@@ -2457,8 +2459,8 @@ impl<'tcx> Const<'tcx> {
                 ty::ConstKind::Param(ty::ParamConst::new(index, name))
             }
             _ => ty::ConstKind::Unevaluated(
-                def_id,
-                InternalSubsts::identity_for_item(tcx, def_id),
+                def_id.to_def_id(),
+                InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
                 None,
             ),
         };
