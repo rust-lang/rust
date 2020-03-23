@@ -2411,7 +2411,10 @@ impl<'tcx> Const<'tcx> {
 
         let body_id = match tcx.hir().get(hir_id) {
             hir::Node::AnonConst(ac) => ac.body,
-            _ => span_bug!(tcx.def_span(def_id.to_def_id()), "from_anon_const can only process anonymous constants"),
+            _ => span_bug!(
+                tcx.def_span(def_id.to_def_id()),
+                "from_anon_const can only process anonymous constants"
+            ),
         };
 
         let expr = &tcx.hir().body(body_id).value;
