@@ -71,6 +71,26 @@ fn vec_reallocate() -> Vec<u8> {
     v
 }
 
+fn vec_push_ptr_stable() {
+    let mut v = Vec::with_capacity(10);
+    v.push(0);
+    let v0 = unsafe { &*(&v[0] as *const _) }; // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
+    v.push(1);
+    let _val = *v0;
+}
+
+fn vec_extend_ptr_stable() {
+    let mut v = Vec::with_capacity(10);
+    v.push(0);
+    let v0 = unsafe { &*(&v[0] as *const _) }; // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
+    v.extend(&[1]);
+    let _val = *v0;
+    v.extend(vec![2]);
+    let _val = *v0;
+    v.extend(std::iter::once(3));
+    let _val = *v0;
+}
+
 fn main() {
     assert_eq!(vec_reallocate().len(), 5);
 
@@ -89,4 +109,7 @@ fn main() {
     // Test interesting empty slice comparison
     // (one is a real pointer, one an integer pointer).
     assert_eq!((200..-5).step_by(1).collect::<Vec<isize>>(), []);
+
+    vec_push_ptr_stable();
+    vec_extend_ptr_stable();
 }
