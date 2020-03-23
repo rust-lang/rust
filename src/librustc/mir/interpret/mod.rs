@@ -151,7 +151,7 @@ pub struct LitToConstInput<'tcx> {
 pub enum LitToConstError {
     /// The literal's inferred type did not match the expected `ty` in the input.
     /// This is used for graceful error handling (`delay_span_bug`) in
-    /// type checking (`AstConv::ast_const_to_const`).
+    /// type checking (`Const::from_anon_const`).
     TypeError,
     UnparseableFloat,
     Reported,
