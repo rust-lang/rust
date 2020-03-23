@@ -310,6 +310,7 @@
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(vec_into_raw_parts)]
+#![feature(wake_trait)]
 // NB: the above list is sorted to minimize merge conflicts.
 #![default_lib_allocator]
 
@@ -463,9 +464,14 @@ pub mod time;
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {
     //! Types and Traits for working with asynchronous tasks.
+
     #[doc(inline)]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub use core::task::*;
+
+    #[doc(inline)]
+    #[unstable(feature = "wake_trait", issue = "69912")]
+    pub use alloc::task::*;
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
