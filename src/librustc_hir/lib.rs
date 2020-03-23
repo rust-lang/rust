@@ -24,7 +24,6 @@ pub mod intravisit;
 pub mod itemlikevisit;
 pub mod lang_items;
 pub mod pat_util;
-pub mod print;
 mod stable_hash_impls;
 mod target;
 pub mod weak_lang_items;

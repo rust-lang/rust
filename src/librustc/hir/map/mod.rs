@@ -12,8 +12,8 @@ pub use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 pub use rustc_hir::definitions::{Definitions, DisambiguatedDefPathData};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::print::Nested;
 use rustc_hir::*;
+use rustc_hir_pretty::Nested;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
@@ -963,7 +963,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn hir_to_pretty_string(&self, id: HirId) -> String {
-        print::to_string(self, |s| s.print_node(self.get(id)))
+        rustc_hir_pretty::to_string(self, |s| s.print_node(self.get(id)))
     }
 }
 
@@ -1048,8 +1048,8 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx Indexe
 
 /// Identical to the `PpAnn` implementation for `hir::Crate`,
 /// except it avoids creating a dependency on the whole crate.
-impl<'hir> print::PpAnn for Map<'hir> {
-    fn nested(&self, state: &mut print::State<'_>, nested: print::Nested) {
+impl<'hir> rustc_hir_pretty::PpAnn for Map<'hir> {
+    fn nested(&self, state: &mut rustc_hir_pretty::State<'_>, nested: rustc_hir_pretty::Nested) {
         match nested {
             Nested::Item(id) => state.print_item(self.expect_item(id.id)),
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),

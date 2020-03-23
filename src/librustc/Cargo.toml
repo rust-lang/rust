@@ -22,6 +22,7 @@ rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_attr = { path = "../librustc_attr" }
 rustc_feature = { path = "../librustc_feature" }
 rustc_hir = { path = "../librustc_hir" }
+rustc_hir_pretty = { path = "../librustc_hir_pretty" }
 rustc_target = { path = "../librustc_target" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_data_structures = { path = "../librustc_data_structures" }

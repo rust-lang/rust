@@ -21,8 +21,8 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_generics, Visitor};
-use rustc_hir::print;
 use rustc_hir::{Constness, GenericArg, GenericArgs};
+use rustc_hir_pretty::{to_string, NO_ANN};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, LATE_BOUND_LIFETIME_ARGUMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -1132,7 +1132,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .and_then(|args| args.args.get(0))
                             .and_then(|arg| match arg {
                                 hir::GenericArg::Type(ty) => {
-                                    Some(print::to_string(print::NO_ANN, |s| s.print_type(ty)))
+                                    Some(to_string(NO_ANN, |s| s.print_type(ty)))
                                 }
                                 _ => None,
                             })
@@ -1143,7 +1143,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .iter()
                             .filter_map(|b| match (b.ident.as_str() == "Output", &b.kind) {
                                 (true, hir::TypeBindingKind::Equality { ty }) => {
-                                    Some(print::to_string(print::NO_ANN, |s| s.print_type(ty)))
+                                    Some(to_string(NO_ANN, |s| s.print_type(ty)))
                                 }
                                 _ => None,
                             })

@@ -7,7 +7,7 @@ use rustc_ast::ast;
 use rustc_ast_pretty::pprust;
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::print as pprust_hir;
+use rustc_hir_pretty as pprust_hir;
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
 use rustc_session::config::{Input, PpMode, PpSourceMode};
 use rustc_session::Session;

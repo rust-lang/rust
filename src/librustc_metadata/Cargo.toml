@@ -19,6 +19,7 @@ rustc_attr = { path = "../librustc_attr" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_hir = { path = "../librustc_hir" }
+rustc_hir_pretty = { path = "../librustc_hir_pretty" }
 rustc_target = { path = "../librustc_target" }
 rustc_index = { path = "../librustc_index" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }

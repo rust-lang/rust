@@ -21,6 +21,7 @@ rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_feature = { path = "../librustc_feature" }
 rustc_hir = { path = "../librustc_hir" }
+rustc_hir_pretty = { path = "../librustc_hir_pretty" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_mir = { path = "../librustc_mir" }
 rustc_parse = { path = "../librustc_parse" }

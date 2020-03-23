@@ -3,14 +3,13 @@ use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
+use rustc_hir as hir;
+use rustc_hir::{GenericArg, GenericParam, GenericParamKind, Node};
+use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, IdentPrinter};
 use rustc_span::{self, BytePos, FileName};
 use rustc_target::spec::abi::Abi;
-
-use crate::hir;
-use crate::hir::{GenericArg, GenericParam, GenericParamKind, Node};
-use crate::hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -47,7 +46,7 @@ pub struct NoAnn;
 impl PpAnn for NoAnn {}
 pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
-impl PpAnn for hir::Crate<'a> {
+impl PpAnn for hir::Crate<'_> {
     fn try_fetch_item(&self, item: hir::HirId) -> Option<&hir::Item<'_>> {
         Some(self.item(item))
     }
@@ -1092,7 +1091,7 @@ impl<'a> State<'a> {
         &mut self,
         qpath: &hir::QPath<'_>,
         fields: &[hir::Field<'_>],
-        wth: &Option<&'hir hir::Expr<'_>>,
+        wth: &Option<&hir::Expr<'_>>,
     ) {
         self.print_qpath(qpath, true);
         self.s.word("{");
