@@ -170,7 +170,7 @@ dependencies = [
  "chalk-macros",
  "chalk-rust-ir",
  "ena",
- "itertools",
+ "itertools 0.8.2",
  "petgraph",
  "rustc-hash",
 ]
@@ -516,6 +516,15 @@ name = "itertools"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f56a2d0bc861f9165be4eb3442afd3c236d8a98afd426f65d92324ae1091a484"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
 dependencies = [
  "either",
 ]
@@ -876,7 +885,7 @@ name = "ra_assists"
 version = "0.1.0"
 dependencies = [
  "format-buf",
- "itertools",
+ "itertools 0.9.0",
  "join_to_string",
  "ra_db",
  "ra_fmt",
@@ -928,7 +937,7 @@ dependencies = [
 name = "ra_fmt"
 version = "0.1.0"
 dependencies = [
- "itertools",
+ "itertools 0.9.0",
  "ra_syntax",
 ]
 
@@ -938,7 +947,7 @@ version = "0.1.0"
 dependencies = [
  "arrayvec",
  "either",
- "itertools",
+ "itertools 0.9.0",
  "log",
  "ra_db",
  "ra_hir_def",
@@ -1015,7 +1024,7 @@ dependencies = [
  "format-buf",
  "indexmap",
  "insta",
- "itertools",
+ "itertools 0.9.0",
  "join_to_string",
  "log",
  "ra_assists",
@@ -1101,7 +1110,7 @@ name = "ra_syntax"
 version = "0.1.0"
 dependencies = [
  "arrayvec",
- "itertools",
+ "itertools 0.9.0",
  "once_cell",
  "ra_parser",
  "ra_text_edit",
@@ -1278,7 +1287,7 @@ dependencies = [
  "crossbeam-channel",
  "env_logger",
  "globset",
- "itertools",
+ "itertools 0.9.0",
  "jod-thread",
  "log",
  "lsp-server",

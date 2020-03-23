@@ -11,7 +11,7 @@ doctest = false
 format-buf = "1.0.0"
 join_to_string = "0.1.3"
 rustc-hash = "1.1.0"
-itertools = "0.8.2"
+itertools = "0.9.0"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }

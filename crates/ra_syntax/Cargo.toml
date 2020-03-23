@@ -11,7 +11,7 @@ repository = "https://github.com/rust-analyzer/rust-analyzer"
 doctest = false
 
 [dependencies]
-itertools = "0.8.2"
+itertools = "0.9.0"
 rowan = "0.9.1"
 rustc_lexer = "0.1.0"
 rustc-hash = "1.1.0"
