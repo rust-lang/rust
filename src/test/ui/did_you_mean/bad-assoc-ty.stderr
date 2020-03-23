@@ -57,6 +57,19 @@ LL | type J = ty!(u8);
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error[E0658]: unions with non-`Copy` fields are unstable
+  --> $DIR/bad-assoc-ty.rs:69:1
+   |
+LL | / union O<F> where F: Fn() -> _ {
+LL | |
+LL | |
+LL | |     foo: F,
+LL | | }
+   | |_^
+   |
+   = note: see issue #55149 <https://github.com/rust-lang/rust/issues/55149> for more information
+   = help: add `#![feature(untagged_unions)]` to the crate attributes to enable
+
 error[E0223]: ambiguous associated type
   --> $DIR/bad-assoc-ty.rs:1:10
    |
@@ -129,8 +142,101 @@ LL | fn foo<X: K<_, _>>(x: X) {}
    |             ^  ^ not allowed in type signatures
    |             |
    |             not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL | fn foo<X, T: K<T, T>>(x: X) {}
+   |         ^^^    ^  ^
 
-error: aborting due to 20 previous errors
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/bad-assoc-ty.rs:52:34
+   |
+LL | fn bar<F>(_: F) where F: Fn() -> _ {}
+   |                                  ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL | fn bar<F, T>(_: F) where F: Fn() -> T {}
+   |         ^^^                         ^
 
-Some errors have detailed explanations: E0121, E0223.
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/bad-assoc-ty.rs:55:19
+   |
+LL | fn baz<F: Fn() -> _>(_: F) {}
+   |                   ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL | fn baz<F, T: Fn() -> T>(_: F) {}
+   |         ^^^          ^
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/bad-assoc-ty.rs:58:33
+   |
+LL | struct L<F>(F) where F: Fn() -> _;
+   |                                 ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL | struct L<F, T>(F) where F: Fn() -> T;
+   |           ^^^                      ^
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/bad-assoc-ty.rs:60:30
+   |
+LL | struct M<F> where F: Fn() -> _ {
+   |                              ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL | struct M<F, T> where F: Fn() -> T {
+   |           ^^^                   ^
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/bad-assoc-ty.rs:64:28
+   |
+LL | enum N<F> where F: Fn() -> _ {
+   |                            ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL | enum N<F, T> where F: Fn() -> T {
+   |         ^^^                   ^
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/bad-assoc-ty.rs:69:29
+   |
+LL | union O<F> where F: Fn() -> _ {
+   |                             ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL | union O<F, T> where F: Fn() -> T {
+   |          ^^^                   ^
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/bad-assoc-ty.rs:75:29
+   |
+LL | trait P<F> where F: Fn() -> _ {
+   |                             ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL | trait P<F, T> where F: Fn() -> T {
+   |          ^^^                   ^
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/bad-assoc-ty.rs:80:38
+   |
+LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
+   |                                      ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL |     fn foo<F, T>(_: F) where F: Fn() -> T {}
+   |             ^^^                         ^
+
+error: aborting due to 29 previous errors
+
+Some errors have detailed explanations: E0121, E0223, E0658.
 For more information about an error, try `rustc --explain E0121`.

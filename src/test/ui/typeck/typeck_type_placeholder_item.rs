@@ -158,12 +158,9 @@ trait BadTrait<_> {}
 //~^ ERROR expected identifier, found reserved identifier `_`
 impl BadTrait<_> for BadStruct<_> {}
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
-//~| ERROR the type placeholder `_` is not allowed within types on item signatures
-//~| ERROR the type placeholder `_` is not allowed within types on item signatures
 
 fn impl_trait() -> impl BadTrait<_> {
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
-//~| ERROR the type placeholder `_` is not allowed within types on item signatures
     unimplemented!()
 }
 
@@ -178,14 +175,12 @@ struct BadStruct2<_, T>(_, T);
 
 type X = Box<_>;
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
-//~| ERROR the type placeholder `_` is not allowed within types on item signatures
 
 struct Struct;
 trait Trait<T> {}
 impl Trait<usize> for Struct {}
 type Y = impl Trait<_>;
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
-//~| ERROR the type placeholder `_` is not allowed within types on item signatures
 fn foo() -> Y {
     Struct
 }
