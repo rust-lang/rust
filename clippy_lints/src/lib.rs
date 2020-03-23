@@ -1355,7 +1355,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&transmute::TRANSMUTE_PTR_TO_PTR),
         LintId::of(&transmute::TRANSMUTE_PTR_TO_REF),
         LintId::of(&transmute::UNSOUND_COLLECTION_TRANSMUTE),
-        LintId::of(&transmute::USELESS_TRANSMUTE),
         LintId::of(&transmute::WRONG_TRANSMUTE),
         LintId::of(&transmuting_null::TRANSMUTING_NULL),
         LintId::of(&trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF),
@@ -1558,7 +1557,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&transmute::TRANSMUTE_INT_TO_FLOAT),
         LintId::of(&transmute::TRANSMUTE_PTR_TO_PTR),
         LintId::of(&transmute::TRANSMUTE_PTR_TO_REF),
-        LintId::of(&transmute::USELESS_TRANSMUTE),
         LintId::of(&types::BORROWED_BOX),
         LintId::of(&types::CHAR_LIT_AS_U8),
         LintId::of(&types::OPTION_OPTION),
@@ -1675,6 +1673,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&mutex_atomic::MUTEX_INTEGER),
         LintId::of(&needless_borrow::NEEDLESS_BORROW),
         LintId::of(&path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE),
+        LintId::of(&transmute::USELESS_TRANSMUTE),
         LintId::of(&use_self::USE_SELF),
     ]);
 }

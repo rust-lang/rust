@@ -28,6 +28,7 @@ declare_clippy_lint! {
     "transmutes that are confusing at best, undefined behaviour at worst and always useless"
 }
 
+// FIXME: Move this to `complexity` again, after #5343 is fixed
 declare_clippy_lint! {
     /// **What it does:** Checks for transmutes to the original type of the object
     /// and transmutes that could be a cast.
@@ -42,7 +43,7 @@ declare_clippy_lint! {
     /// core::intrinsics::transmute(t); // where the result type is the same as `t`'s
     /// ```
     pub USELESS_TRANSMUTE,
-    complexity,
+    nursery,
     "transmutes that have the same to and from types or could be a cast/coercion"
 }
 
