@@ -11,8 +11,24 @@ pub(super) fn complete_record_literal(acc: &mut Completions, ctx: &CompletionCon
         _ => return,
     };
 
+    let already_present_names: Vec<String> = ctx
+        .record_lit_syntax
+        .as_ref()
+        .and_then(|record_literal| record_literal.record_field_list())
+        .map(|field_list| field_list.fields())
+        .map(|fields| {
+            fields
+                .into_iter()
+                .filter_map(|field| field.name_ref())
+                .map(|name_ref| name_ref.to_string())
+                .collect()
+        })
+        .unwrap_or_default();
+
     for (field, field_ty) in ty.variant_fields(ctx.db, variant) {
-        acc.add_field(ctx, field, &field_ty);
+        if !already_present_names.contains(&field.name(ctx.db).to_string()) {
+            acc.add_field(ctx, field, &field_ty);
+        }
     }
 }
 
@@ -172,6 +188,49 @@ mod tests {
                 source_range: [137; 140),
                 delete: [137; 140),
                 insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###);
+    }
+
+    #[test]
+    fn only_missing_fields_are_completed() {
+        let completions = complete(
+            r"
+            struct S {
+                foo1: u32,
+                foo2: u32,
+                bar: u32,
+                baz: u32,
+            }
+
+            fn main() {
+                let foo1 = 1;
+                let s = S {
+                    foo1,
+                    foo2: 5,
+                    <|>
+                }
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "bar",
+                source_range: [302; 302),
+                delete: [302; 302),
+                insert: "bar",
+                kind: Field,
+                detail: "u32",
+            },
+            CompletionItem {
+                label: "baz",
+                source_range: [302; 302),
+                delete: [302; 302),
+                insert: "baz",
                 kind: Field,
                 detail: "u32",
             },
