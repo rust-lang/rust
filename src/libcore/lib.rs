@@ -88,6 +88,7 @@
 #![feature(const_ptr_offset_from)]
 #![feature(const_result)]
 #![feature(const_type_name)]
+#![feature(const_unreachable_unchecked)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
