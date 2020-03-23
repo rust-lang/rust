@@ -1,5 +1,7 @@
 // Regression test for #67739
 
+// check-pass
+
 #![allow(incomplete_features)]
 #![feature(const_generics)]
 
@@ -10,7 +12,6 @@ pub trait Trait {
 
     fn associated_size(&self) -> usize {
         [0u8; mem::size_of::<Self::Associated>()];
-        //~^ ERROR: array lengths can't depend on generic parameters
         0
     }
 }

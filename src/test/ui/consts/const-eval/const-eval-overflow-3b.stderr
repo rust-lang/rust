@@ -12,7 +12,16 @@ LL |     = [0; (i8::MAX + 1u8) as usize];
    |
    = help: the trait `std::ops::Add<u8>` is not implemented for `i8`
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/const-eval-overflow-3b.rs:18:7
+   |
+LL |     = [0; (i8::MAX + 1u8) as usize];
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `128usize`, found `(i8::MAX + 1u8) as usize`
+   |
+   = note: expected array `[u32; 128]`
+              found array `[u32; _]`
+
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

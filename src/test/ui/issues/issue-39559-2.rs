@@ -17,4 +17,5 @@ fn main() {
         = [0; Dim3::dim()];
         //~^ ERROR E0015
         //~| ERROR E0080
+        //~| ERROR mismatched types
 }

@@ -28,7 +28,30 @@ error[E0080]: evaluation of constant value failed
 LL |         match &1 as *const i32 as usize {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^ "pointer-to-integer cast" needs an rfc before being allowed inside constants
 
-error: aborting due to 3 previous errors
+error[E0308]: mismatched types
+  --> $DIR/match-test-ptr-null.rs:5:22
+   |
+LL |       let _: [u8; 0] = [4; {
+   |  ____________-------___^
+   | |            |
+   | |            expected due to this
+LL | |         match &1 as *const i32 as usize {
+LL | |
+LL | |
+...  |
+LL | |         }
+LL | |     }];
+   | |______^ expected `0usize`, found `{
+        match &1 as *const i32 as usize {
+            0 => 42,
+            n => n,
+        }
+    }`
+   |
+   = note: expected array `[u8; 0]`
+              found array `[u8; _]`
 
-Some errors have detailed explanations: E0080, E0658.
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0080, E0308, E0658.
 For more information about an error, try `rustc --explain E0080`.
