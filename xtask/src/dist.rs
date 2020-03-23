@@ -17,7 +17,7 @@ pub fn run_dist(client_opts: Option<ClientOpts>) -> Result<()> {
     rm_rf(&dist)?;
     fs2::create_dir_all(&dist)?;
 
-    if let Some(ClientOpts { version, release_tag}) = client_opts {
+    if let Some(ClientOpts { version, release_tag }) = client_opts {
         dist_client(&version, &release_tag)?;
     }
     dist_server()?;

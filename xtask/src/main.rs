@@ -13,7 +13,7 @@ use std::env;
 use pico_args::Arguments;
 use xtask::{
     codegen::{self, Mode},
-    dist::{ClientOpts, run_dist},
+    dist::{run_dist, ClientOpts},
     install::{ClientOpt, InstallCmd, ServerOpt},
     not_bash::pushd,
     pre_commit, project_root, run_clippy, run_fuzzer, run_pre_cache, run_release, run_rustfmt,
