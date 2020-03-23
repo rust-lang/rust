@@ -16,10 +16,13 @@ fn main() {
     test_directory();
 }
 
+fn tmp() -> PathBuf {
+    std::env::var("MIRI_TEMP").map(PathBuf::from).unwrap_or_else(|_| std::env::temp_dir())
+}
+
 /// Prepare: compute filename and make sure the file does not exist.
 fn prepare(filename: &str) -> PathBuf {
-    let tmp = std::env::temp_dir();
-    let path = tmp.join(filename);
+    let path = tmp().join(filename);
     // Clean the paths for robustness.
     remove_file(&path).ok();
     path
@@ -27,8 +30,7 @@ fn prepare(filename: &str) -> PathBuf {
 
 /// Prepare directory: compute directory name and make sure it does not exist.
 fn prepare_dir(dirname: &str) -> PathBuf {
-    let tmp = std::env::temp_dir();
-    let path = tmp.join(&dirname);
+    let path = tmp().join(&dirname);
     // Clean the directory for robustness.
     remove_dir_all(&path).ok();
     path
