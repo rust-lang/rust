@@ -36,6 +36,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{GenericParamKind, PatKind};
 use rustc_hir::{HirIdSet, Node};
 use rustc_middle::lint::LintDiagnosticBuilder;
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_span::edition::Edition;
@@ -104,11 +105,13 @@ declare_lint_pass!(BoxPointers => [BOX_POINTERS]);
 
 impl BoxPointers {
     fn check_heap_type(&self, cx: &LateContext<'_, '_>, span: Span, ty: Ty<'_>) {
-        for leaf_ty in ty.walk() {
-            if leaf_ty.is_box() {
-                cx.struct_span_lint(BOX_POINTERS, span, |lint| {
-                    lint.build(&format!("type uses owned (Box type) pointers: {}", ty)).emit()
-                });
+        for leaf in ty.walk() {
+            if let GenericArgKind::Type(leaf_ty) = leaf.unpack() {
+                if leaf_ty.is_box() {
+                    cx.struct_span_lint(BOX_POINTERS, span, |lint| {
+                        lint.build(&format!("type uses owned (Box type) pointers: {}", ty)).emit()
+                    });
+                }
             }
         }
     }

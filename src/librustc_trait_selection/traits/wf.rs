@@ -4,7 +4,7 @@ use crate::traits::{self, AssocTypeBoundData};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items;
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
@@ -391,9 +391,21 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     /// is WF. Returns false if `ty0` is an unresolved type variable,
     /// in which case we are not able to simplify at all.
     fn compute(&mut self, ty0: Ty<'tcx>) -> bool {
-        let mut subtys = ty0.walk();
+        let mut walker = ty0.walk();
         let param_env = self.param_env;
-        while let Some(ty) = subtys.next() {
+        while let Some(arg) = walker.next() {
+            let ty = match arg.unpack() {
+                GenericArgKind::Type(ty) => ty,
+
+                // No WF constraints for lifetimes being present, any outlives
+                // obligations are handled by the parent (e.g. `ty::Ref`).
+                GenericArgKind::Lifetime(_) => continue,
+
+                // FIXME(eddyb) this is wrong and needs to be replaced
+                // (see https://github.com/rust-lang/rust/pull/70107).
+                GenericArgKind::Const(_) => continue,
+            };
+
             match ty.kind {
                 ty::Bool
                 | ty::Char
@@ -417,6 +429,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
                 ty::Array(subty, len) => {
                     self.require_sized(subty, traits::SliceOrArrayElem);
+                    // FIXME(eddyb) handle `GenericArgKind::Const` above instead.
                     self.compute_array_len(*len);
                 }
 
@@ -433,7 +446,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 }
 
                 ty::Projection(data) => {
-                    subtys.skip_current_subtree(); // subtree handled by compute_projection
+                    walker.skip_current_subtree(); // subtree handled by compute_projection
                     self.compute_projection(data);
                 }
 
@@ -504,7 +517,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // are not directly inspecting closure types
                     // anyway, except via auto trait matching (which
                     // only inspects the upvar types).
-                    subtys.skip_current_subtree(); // subtree handled by compute_projection
+                    walker.skip_current_subtree(); // subtree handled by compute_projection
                     for upvar_ty in substs.as_closure().upvar_tys() {
                         self.compute(upvar_ty);
                     }

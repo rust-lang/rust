@@ -536,18 +536,17 @@ fn trait_ref_type_vars<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> Vec<TyOrConstInferVar<'tcx>> {
-    trait_ref
+    selcx
+        .infcx()
+        .resolve_vars_if_possible(&trait_ref)
         .skip_binder() // ok b/c this check doesn't care about regions
-        // FIXME(eddyb) walk over `GenericArg` to support const infer vars.
-        .input_types()
-        .map(|ty| selcx.infcx().resolve_vars_if_possible(&ty))
-        // FIXME(eddyb) try using `maybe_walk` to skip *all* subtrees that
-        // don't contain inference variables, not just the outermost level.
-        // FIXME(eddyb) use `has_infer_types_or_const`.
-        .filter(|ty| ty.has_infer_types())
-        .flat_map(|ty| ty.walk())
-        // FIXME(eddyb) use `TyOrConstInferVar::maybe_from_generic_arg`.
-        .filter_map(TyOrConstInferVar::maybe_from_ty)
+        .substs
+        .iter()
+        // FIXME(eddyb) try using `skip_current_subtree` to skip everything that
+        // doesn't contain inference variables, not just the outermost level.
+        .filter(|arg| arg.has_infer_types_or_consts())
+        .flat_map(|arg| arg.walk())
+        .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
         .collect()
 }
 

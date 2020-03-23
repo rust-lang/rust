@@ -102,6 +102,7 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items;
 use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, QPath};
+use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
@@ -1767,7 +1768,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             let def_id = tcx.hir().local_def_id(it.hir_id);
             let pty_ty = tcx.type_of(def_id);
             let generics = tcx.generics_of(def_id);
-            check_bounds_are_used(tcx, &generics, pty_ty);
+            check_type_params_are_used(tcx, &generics, pty_ty);
         }
         hir::ItemKind::ForeignMod(ref m) => {
             check_abi(tcx, it.span, m.abi);
@@ -4139,20 +4140,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // `FulfillmentError`.
                 let mut referenced_in = final_arg_types
                     .iter()
-                    .map(|(i, checked_ty, _)| (i, checked_ty))
-                    .chain(final_arg_types.iter().map(|(i, _, coerced_ty)| (i, coerced_ty)))
+                    .map(|&(i, checked_ty, _)| (i, checked_ty))
+                    .chain(final_arg_types.iter().map(|&(i, _, coerced_ty)| (i, coerced_ty)))
                     .flat_map(|(i, ty)| {
-                        let ty = self.resolve_vars_if_possible(ty);
+                        let ty = self.resolve_vars_if_possible(&ty);
                         // We walk the argument type because the argument's type could have
                         // been `Option<T>`, but the `FulfillmentError` references `T`.
-                        ty.walk()
-                            .filter(|&ty| ty == predicate.skip_binder().self_ty())
-                            .map(move |_| *i)
+                        if ty.walk().any(|arg| arg == predicate.skip_binder().self_ty().into()) {
+                            Some(i)
+                        } else {
+                            None
+                        }
                     })
                     .collect::<Vec<_>>();
 
                 // Both checked and coerced types could have matched, thus we need to remove
                 // duplicates.
+                referenced_in.sort();
                 referenced_in.dedup();
 
                 if let (Some(ref_in), None) = (referenced_in.pop(), referenced_in.pop()) {
@@ -5744,43 +5748,47 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-pub fn check_bounds_are_used<'tcx>(tcx: TyCtxt<'tcx>, generics: &ty::Generics, ty: Ty<'tcx>) {
-    let own_counts = generics.own_counts();
-    debug!(
-        "check_bounds_are_used(n_tys={}, n_cts={}, ty={:?})",
-        own_counts.types, own_counts.consts, ty
-    );
+fn check_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, generics: &ty::Generics, ty: Ty<'tcx>) {
+    debug!("check_type_params_are_used(generics={:?}, ty={:?})", generics, ty);
 
-    if own_counts.types == 0 {
+    assert_eq!(generics.parent, None);
+
+    if generics.own_counts().types == 0 {
         return;
     }
 
-    // Make a vector of booleans initially `false`; set to `true` when used.
-    let mut types_used = vec![false; own_counts.types];
+    let mut params_used = BitSet::new_empty(generics.params.len());
 
-    for leaf_ty in ty.walk() {
-        if let ty::Param(ty::ParamTy { index, .. }) = leaf_ty.kind {
-            debug!("found use of ty param num {}", index);
-            types_used[index as usize - own_counts.lifetimes] = true;
-        } else if let ty::Error = leaf_ty.kind {
-            // If there is already another error, do not emit
-            // an error for not using a type parameter.
-            assert!(tcx.sess.has_errors());
-            return;
+    if ty.references_error() {
+        // If there is already another error, do not emit
+        // an error for not using a type parameter.
+        assert!(tcx.sess.has_errors());
+        return;
+    }
+
+    for leaf in ty.walk() {
+        if let GenericArgKind::Type(leaf_ty) = leaf.unpack() {
+            if let ty::Param(param) = leaf_ty.kind {
+                debug!("found use of ty param {:?}", param);
+                params_used.insert(param.index);
+            }
         }
     }
 
-    let types = generics.params.iter().filter(|param| match param.kind {
-        ty::GenericParamDefKind::Type { .. } => true,
-        _ => false,
-    });
-    for (&used, param) in types_used.iter().zip(types) {
-        if !used {
-            let id = tcx.hir().as_local_hir_id(param.def_id).unwrap();
-            let span = tcx.hir().span(id);
-            struct_span_err!(tcx.sess, span, E0091, "type parameter `{}` is unused", param.name)
+    for param in &generics.params {
+        if !params_used.contains(param.index) {
+            if let ty::GenericParamDefKind::Type { .. } = param.kind {
+                let span = tcx.def_span(param.def_id);
+                struct_span_err!(
+                    tcx.sess,
+                    span,
+                    E0091,
+                    "type parameter `{}` is unused",
+                    param.name,
+                )
                 .span_label(span, "unused type parameter")
                 .emit();
+            }
         }
     }
 }

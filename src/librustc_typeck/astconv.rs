@@ -737,8 +737,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let default_needs_object_self = |param: &ty::GenericParamDef| {
             if let GenericParamDefKind::Type { has_default, .. } = param.kind {
                 if is_object && has_default {
+                    let default_ty = tcx.at(span).type_of(param.def_id);
                     let self_param = tcx.types.self_param;
-                    if tcx.at(span).type_of(param.def_id).walk().any(|ty| ty == self_param) {
+                    if default_ty.walk().any(|arg| arg == self_param.into()) {
                         // There is no suitable inference default for a type parameter
                         // that references self, in an object type.
                         return true;
@@ -1617,7 +1618,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ty::Predicate::Projection(pred) => {
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
-                        let references_self = pred.skip_binder().ty.walk().any(|t| t == dummy_self);
+                        let references_self =
+                            pred.skip_binder().ty.walk().any(|arg| arg == dummy_self.into());
 
                         // If the projection output contains `Self`, force the user to
                         // elaborate it explicitly to avoid a lot of complexity.

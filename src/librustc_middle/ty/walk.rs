@@ -1,8 +1,8 @@
 //! An iterator over the type substructure.
 //! WARNING: this does not keep track of the region depth.
 
+use crate::ty;
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::{self, Ty};
 use smallvec::{self, SmallVec};
 
 // The TypeWalker's stack is hot enough that it's worth going to some effort to
@@ -37,27 +37,33 @@ impl<'tcx> TypeWalker<'tcx> {
 }
 
 impl<'tcx> Iterator for TypeWalker<'tcx> {
-    type Item = Ty<'tcx>;
+    type Item = GenericArg<'tcx>;
 
-    fn next(&mut self) -> Option<Ty<'tcx>> {
+    fn next(&mut self) -> Option<GenericArg<'tcx>> {
         debug!("next(): stack={:?}", self.stack);
-        while let Some(next) = self.stack.pop() {
-            self.last_subtree = self.stack.len();
-            push_inner(&mut self.stack, next);
-            debug!("next: stack={:?}", self.stack);
-
-            // FIXME(eddyb) remove this filter and expose all `GenericArg`s.
-            match next.unpack() {
-                GenericArgKind::Type(ty) => return Some(ty),
-                GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => {}
-            }
-        }
-
-        None
+        let next = self.stack.pop()?;
+        self.last_subtree = self.stack.len();
+        push_inner(&mut self.stack, next);
+        debug!("next: stack={:?}", self.stack);
+        Some(next)
     }
 }
 
 impl GenericArg<'tcx> {
+    /// Iterator that walks `self` and any types reachable from
+    /// `self`, in depth-first order. Note that just walks the types
+    /// that appear in `self`, it does not descend into the fields of
+    /// structs or variants. For example:
+    ///
+    /// ```notrust
+    /// isize => { isize }
+    /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
+    /// [isize] => { [isize], isize }
+    /// ```
+    pub fn walk(self) -> TypeWalker<'tcx> {
+        TypeWalker::new(self)
+    }
+
     /// Iterator that walks the immediate children of `self`. Hence
     /// `Foo<Bar<i32>, u32>` yields the sequence `[Bar<i32>, u32]`
     /// (but not `i32`, like `walk`).
@@ -65,6 +71,22 @@ impl GenericArg<'tcx> {
         let mut stack = SmallVec::new();
         push_inner(&mut stack, self);
         stack.into_iter()
+    }
+}
+
+impl<'tcx> super::TyS<'tcx> {
+    /// Iterator that walks `self` and any types reachable from
+    /// `self`, in depth-first order. Note that just walks the types
+    /// that appear in `self`, it does not descend into the fields of
+    /// structs or variants. For example:
+    ///
+    /// ```notrust
+    /// isize => { isize }
+    /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
+    /// [isize] => { [isize], isize }
+    /// ```
+    pub fn walk(&'tcx self) -> TypeWalker<'tcx> {
+        TypeWalker::new(self.into())
     }
 }
 

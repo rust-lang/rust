@@ -19,7 +19,6 @@ use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
-use crate::ty::walk::TypeWalker;
 use rustc_ast::ast::{self, Ident, Name};
 use rustc_ast::node_id::{NodeId, NodeMap, NodeSet};
 use rustc_attr as attr;
@@ -2682,39 +2681,6 @@ impl<'tcx> ClosureKind {
             ty::ClosureKind::Fn => tcx.types.i8,
             ty::ClosureKind::FnMut => tcx.types.i16,
             ty::ClosureKind::FnOnce => tcx.types.i32,
-        }
-    }
-}
-
-impl<'tcx> TyS<'tcx> {
-    /// Iterator that walks `self` and any types reachable from
-    /// `self`, in depth-first order. Note that just walks the types
-    /// that appear in `self`, it does not descend into the fields of
-    /// structs or variants. For example:
-    ///
-    /// ```notrust
-    /// isize => { isize }
-    /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
-    /// [isize] => { [isize], isize }
-    /// ```
-    pub fn walk(&'tcx self) -> TypeWalker<'tcx> {
-        TypeWalker::new(self.into())
-    }
-
-    /// Walks `ty` and any types appearing within `ty`, invoking the
-    /// callback `f` on each type. If the callback returns `false`, then the
-    /// children of the current type are ignored.
-    ///
-    /// Note: prefer `ty.walk()` where possible.
-    pub fn maybe_walk<F>(&'tcx self, mut f: F)
-    where
-        F: FnMut(Ty<'tcx>) -> bool,
-    {
-        let mut walker = self.walk();
-        while let Some(ty) = walker.next() {
-            if !f(ty) {
-                walker.skip_current_subtree();
-            }
         }
     }
 }

@@ -3,6 +3,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::traits::{
     Clause, Clauses, DomainGoal, Environment, FromEnv, ProgramClause, ProgramClauseCategory,
 };
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
 struct ClauseVisitor<'a, 'tcx> {
@@ -210,7 +211,8 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
         _ => NodeKind::Other,
     };
 
-    let mut input_tys = FxHashSet::default();
+    // FIXME(eddyb) isn't the unordered nature of this a hazard?
+    let mut inputs = FxHashSet::default();
 
     match node_kind {
         // In a trait impl, we assume that the header trait ref and all its
@@ -218,14 +220,14 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
         NodeKind::TraitImpl => {
             let trait_ref = tcx.impl_trait_ref(def_id).expect("not an impl");
 
-            input_tys.extend(trait_ref.input_types().flat_map(|ty| ty.walk()));
+            inputs.extend(trait_ref.substs.iter().flat_map(|&arg| arg.walk()));
         }
 
         // In an inherent impl, we assume that the receiver type and all its
         // constituents are well-formed.
         NodeKind::InherentImpl => {
             let self_ty = tcx.type_of(def_id);
-            input_tys.extend(self_ty.walk());
+            inputs.extend(self_ty.walk());
         }
 
         // In an fn, we assume that the arguments and all their constituents are
@@ -234,16 +236,27 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
             let fn_sig = tcx.fn_sig(def_id);
             let fn_sig = tcx.liberate_late_bound_regions(def_id, &fn_sig);
 
-            input_tys.extend(fn_sig.inputs().iter().flat_map(|ty| ty.walk()));
+            inputs.extend(fn_sig.inputs().iter().flat_map(|ty| ty.walk()));
         }
 
         NodeKind::Other => (),
     }
 
     let clauses = clauses.chain(
-        input_tys
+        inputs
             .into_iter()
-            .map(|ty| DomainGoal::FromEnv(FromEnv::Ty(ty)))
+            .filter_map(|arg| {
+                match arg.unpack() {
+                    GenericArgKind::Type(ty) => Some(FromEnv::Ty(ty)),
+
+                    // FIXME(eddyb) no WF conditions from lifetimes?
+                    GenericArgKind::Lifetime(_) => None,
+
+                    // FIXME(eddyb) support const generics in Chalk
+                    GenericArgKind::Const(_) => None,
+                }
+            })
+            .map(DomainGoal::FromEnv)
             .map(|domain_goal| domain_goal.into_program_clause())
             .map(Clause::Implies),
     );
