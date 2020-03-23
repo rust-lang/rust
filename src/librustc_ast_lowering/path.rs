@@ -1,7 +1,6 @@
 use super::{AnonymousLifetimeMode, ImplTraitContext, LoweringContext, ParamMode};
 use super::{GenericArgsCtor, ParenthesizedGenericArgs};
 
-use rustc::span_bug;
 use rustc_ast::ast::{self, *};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
@@ -163,12 +162,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         // We should've returned in the for loop above.
-        span_bug!(
+
+        self.sess.diagnostic().span_bug(
             p.span,
-            "lower_qpath: no final extension segment in {}..{}",
-            proj_start,
-            p.segments.len()
-        )
+            &format!(
+                "lower_qpath: no final extension segment in {}..{}",
+                proj_start,
+                p.segments.len()
+            ),
+        );
     }
 
     crate fn lower_path_extra(
@@ -304,7 +306,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             E0726,
                             "implicit elided lifetime not allowed here"
                         );
-                        rustc::lint::add_elided_lifetime_in_path_suggestion(
+                        rustc_session::lint::add_elided_lifetime_in_path_suggestion(
                             &self.sess,
                             &mut err,
                             expected_lifetimes,

@@ -3477,8 +3477,8 @@ dependencies = [
 name = "rustc_ast_lowering"
 version = "0.0.0"
 dependencies = [
+ "arena",
  "log",
- "rustc",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
@@ -3725,6 +3725,7 @@ name = "rustc_hir"
 version = "0.0.0"
 dependencies = [
  "lazy_static 1.4.0",
+ "log",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",

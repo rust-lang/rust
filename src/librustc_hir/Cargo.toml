@@ -20,4 +20,5 @@ rustc_errors = { path = "../librustc_errors" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 rustc_ast = { path = "../librustc_ast" }
 lazy_static = "1"
+log = { version = "0.4", features = ["release_max_level_info", "std"] }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }

@@ -10,8 +10,8 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
+arena = { path = "../libarena" }
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
-rustc = { path = "../librustc" }
 rustc_ast_pretty = { path = "../librustc_ast_pretty" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_target = { path = "../librustc_target" }

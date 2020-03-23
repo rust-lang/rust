@@ -1,8 +1,7 @@
 use super::{AnonymousLifetimeMode, LoweringContext, ParamMode};
 use super::{ImplTraitContext, ImplTraitPosition, ImplTraitTypeIdVisitor};
+use crate::Arena;
 
-use rustc::arena::Arena;
-use rustc::bug;
 use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::node_id::NodeMap;
@@ -432,7 +431,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
             ),
             ItemKind::MacroDef(..) | ItemKind::MacCall(..) => {
-                bug!("`TyMac` should have been expanded by now")
+                panic!("`TyMac` should have been expanded by now")
             }
         }
 
@@ -784,7 +783,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (generics, kind)
             }
-            AssocItemKind::MacCall(..) => bug!("macro item shouldn't exist at this point"),
+            AssocItemKind::MacCall(..) => panic!("macro item shouldn't exist at this point"),
         };
 
         hir::TraitItem {
@@ -865,7 +864,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 };
                 (generics, kind)
             }
-            AssocItemKind::MacCall(..) => bug!("`TyMac` should have been expanded by now"),
+            AssocItemKind::MacCall(..) => panic!("`TyMac` should have been expanded by now"),
         };
 
         hir::ImplItem {

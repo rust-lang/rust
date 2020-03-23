@@ -18,8 +18,6 @@ use self::TargetLint::*;
 
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
-use rustc::hir::map::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc::lint::add_elided_lifetime_in_path_suggestion;
 use rustc::lint::LintDiagnosticBuilder;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
@@ -32,7 +30,8 @@ use rustc_data_structures::sync;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_session::lint::{add_elided_lifetime_in_path_suggestion, BuiltinLintDiagnostics};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};

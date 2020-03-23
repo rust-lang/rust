@@ -3,7 +3,7 @@ use std::cmp;
 use crate::ich::StableHashingContext;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_errors::{pluralize, Applicability, DiagnosticBuilder, DiagnosticId};
+use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_hir::HirId;
 use rustc_session::lint::{builtin, Level, Lint, LintId};
 use rustc_session::{DiagnosticMessageId, Session};
@@ -349,46 +349,4 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
         }
         ExpnKind::Macro(..) => true, // definitely a plugin
     }
-}
-
-pub fn add_elided_lifetime_in_path_suggestion(
-    sess: &Session,
-    db: &mut DiagnosticBuilder<'_>,
-    n: usize,
-    path_span: Span,
-    incl_angl_brckt: bool,
-    insertion_span: Span,
-    anon_lts: String,
-) {
-    let (replace_span, suggestion) = if incl_angl_brckt {
-        (insertion_span, anon_lts)
-    } else {
-        // When possible, prefer a suggestion that replaces the whole
-        // `Path<T>` expression with `Path<'_, T>`, rather than inserting `'_, `
-        // at a point (which makes for an ugly/confusing label)
-        if let Ok(snippet) = sess.source_map().span_to_snippet(path_span) {
-            // But our spans can get out of whack due to macros; if the place we think
-            // we want to insert `'_` isn't even within the path expression's span, we
-            // should bail out of making any suggestion rather than panicking on a
-            // subtract-with-overflow or string-slice-out-out-bounds (!)
-            // FIXME: can we do better?
-            if insertion_span.lo().0 < path_span.lo().0 {
-                return;
-            }
-            let insertion_index = (insertion_span.lo().0 - path_span.lo().0) as usize;
-            if insertion_index > snippet.len() {
-                return;
-            }
-            let (before, after) = snippet.split_at(insertion_index);
-            (path_span, format!("{}{}{}", before, anon_lts, after))
-        } else {
-            (insertion_span, anon_lts)
-        }
-    };
-    db.span_suggestion(
-        replace_span,
-        &format!("indicate the anonymous lifetime{}", pluralize!(n)),
-        suggestion,
-        Applicability::MachineApplicable,
-    );
 }

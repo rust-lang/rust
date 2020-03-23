@@ -488,5 +488,187 @@ impl DroplessArena {
     }
 }
 
+/// Calls the destructor for an object when dropped.
+struct DropType {
+    drop_fn: unsafe fn(*mut u8),
+    obj: *mut u8,
+}
+
+unsafe fn drop_for_type<T>(to_drop: *mut u8) {
+    std::ptr::drop_in_place(to_drop as *mut T)
+}
+
+impl Drop for DropType {
+    fn drop(&mut self) {
+        unsafe { (self.drop_fn)(self.obj) }
+    }
+}
+
+/// An arena which can be used to allocate any type.
+/// Allocating in this arena is unsafe since the type system
+/// doesn't know which types it contains. In order to
+/// allocate safely, you must store a PhantomData<T>
+/// alongside this arena for each type T you allocate.
+#[derive(Default)]
+pub struct DropArena {
+    /// A list of destructors to run when the arena drops.
+    /// Ordered so `destructors` gets dropped before the arena
+    /// since its destructor can reference memory in the arena.
+    destructors: RefCell<Vec<DropType>>,
+    arena: DroplessArena,
+}
+
+impl DropArena {
+    #[inline]
+    pub unsafe fn alloc<T>(&self, object: T) -> &mut T {
+        let mem =
+            self.arena.alloc_raw(mem::size_of::<T>(), mem::align_of::<T>()) as *mut _ as *mut T;
+        // Write into uninitialized memory.
+        ptr::write(mem, object);
+        let result = &mut *mem;
+        // Record the destructor after doing the allocation as that may panic
+        // and would cause `object`'s destuctor to run twice if it was recorded before
+        self.destructors
+            .borrow_mut()
+            .push(DropType { drop_fn: drop_for_type::<T>, obj: result as *mut T as *mut u8 });
+        result
+    }
+
+    #[inline]
+    pub unsafe fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+        let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
+        if vec.is_empty() {
+            return &mut [];
+        }
+        let len = vec.len();
+
+        let start_ptr = self
+            .arena
+            .alloc_raw(len.checked_mul(mem::size_of::<T>()).unwrap(), mem::align_of::<T>())
+            as *mut _ as *mut T;
+
+        let mut destructors = self.destructors.borrow_mut();
+        // Reserve space for the destructors so we can't panic while adding them
+        destructors.reserve(len);
+
+        // Move the content to the arena by copying it and then forgetting
+        // the content of the SmallVec
+        vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+        mem::forget(vec.drain(..));
+
+        // Record the destructors after doing the allocation as that may panic
+        // and would cause `object`'s destuctor to run twice if it was recorded before
+        for i in 0..len {
+            destructors.push(DropType {
+                drop_fn: drop_for_type::<T>,
+                obj: start_ptr.offset(i as isize) as *mut u8,
+            });
+        }
+
+        slice::from_raw_parts_mut(start_ptr, len)
+    }
+}
+
+#[macro_export]
+macro_rules! arena_for_type {
+    ([][$ty:ty]) => {
+        $crate::TypedArena<$ty>
+    };
+    ([few $(, $attrs:ident)*][$ty:ty]) => {
+        ::std::marker::PhantomData<$ty>
+    };
+    ([$ignore:ident $(, $attrs:ident)*]$args:tt) => {
+        $crate::arena_for_type!([$($attrs),*]$args)
+    };
+}
+
+#[macro_export]
+macro_rules! which_arena_for_type {
+    ([][$arena:expr]) => {
+        ::std::option::Option::Some($arena)
+    };
+    ([few$(, $attrs:ident)*][$arena:expr]) => {
+        ::std::option::Option::None
+    };
+    ([$ignore:ident$(, $attrs:ident)*]$args:tt) => {
+        $crate::which_arena_for_type!([$($attrs),*]$args)
+    };
+}
+
+#[macro_export]
+macro_rules! declare_arena {
+    ([], [$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) => {
+        #[derive(Default)]
+        pub struct Arena<$tcx> {
+            pub dropless: $crate::DroplessArena,
+            drop: $crate::DropArena,
+            $($name: $crate::arena_for_type!($a[$ty]),)*
+        }
+
+        #[marker]
+        pub trait ArenaAllocatable {}
+
+        impl<T: Copy> ArenaAllocatable for T {}
+
+        unsafe trait ArenaField<'tcx>: Sized {
+            /// Returns a specific arena to allocate from.
+            /// If `None` is returned, the `DropArena` will be used.
+            fn arena<'a>(arena: &'a Arena<'tcx>) -> Option<&'a $crate::TypedArena<Self>>;
+        }
+
+        unsafe impl<'tcx, T> ArenaField<'tcx> for T {
+            #[inline]
+            default fn arena<'a>(_: &'a Arena<'tcx>) -> Option<&'a $crate::TypedArena<Self>> {
+                panic!()
+            }
+        }
+
+        $(
+            #[allow(unused_lifetimes)]
+            impl<$tcx> ArenaAllocatable for $ty {}
+            unsafe impl<$tcx> ArenaField<$tcx> for $ty {
+                #[inline]
+                fn arena<'a>(_arena: &'a Arena<$tcx>) -> Option<&'a $crate::TypedArena<Self>> {
+                    $crate::which_arena_for_type!($a[&_arena.$name])
+                }
+            }
+        )*
+
+        impl<'tcx> Arena<'tcx> {
+            #[inline]
+            pub fn alloc<T: ArenaAllocatable>(&self, value: T) -> &mut T {
+                if !::std::mem::needs_drop::<T>() {
+                    return self.dropless.alloc(value);
+                }
+                match <T as ArenaField<'tcx>>::arena(self) {
+                    ::std::option::Option::Some(arena) => arena.alloc(value),
+                    ::std::option::Option::None => unsafe { self.drop.alloc(value) },
+                }
+            }
+
+            #[inline]
+            pub fn alloc_slice<T: ::std::marker::Copy>(&self, value: &[T]) -> &mut [T] {
+                if value.is_empty() {
+                    return &mut [];
+                }
+                self.dropless.alloc_slice(value)
+            }
+
+            pub fn alloc_from_iter<'a, T: ArenaAllocatable>(
+                &'a self,
+                iter: impl ::std::iter::IntoIterator<Item = T>,
+            ) -> &'a mut [T] {
+                if !::std::mem::needs_drop::<T>() {
+                    return self.dropless.alloc_from_iter(iter);
+                }
+                match <T as ArenaField<'tcx>>::arena(self) {
+                    ::std::option::Option::Some(arena) => arena.alloc_from_iter(iter),
+                    ::std::option::Option::None => unsafe { self.drop.alloc_from_iter(iter) },
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests;

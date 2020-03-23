@@ -4,21 +4,23 @@
 //! There are also some rather random cases (like const initializer
 //! expressions) that are mostly just leftovers.
 
+pub use crate::def_id::DefPathHash;
+use crate::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::hir;
+use crate::hir_id::DUMMY_HIR_ID;
+
 use rustc_ast::ast;
+use rustc_ast::crate_disambiguator::CrateDisambiguator;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::IndexVec;
-use rustc_session::CrateDisambiguator;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
+use log::debug;
 use std::fmt::Write;
 use std::hash::Hash;
-
-pub use rustc_hir::def_id::DefPathHash;
 
 /// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.
 /// Internally the `DefPathTable` holds a tree of `DefKey`s, where each `DefKey`
@@ -345,7 +347,7 @@ impl Definitions {
     pub fn as_local_hir_id(&self, def_id: DefId) -> Option<hir::HirId> {
         if let Some(def_id) = def_id.as_local() {
             let hir_id = self.local_def_id_to_hir_id(def_id);
-            if hir_id != hir::DUMMY_HIR_ID { Some(hir_id) } else { None }
+            if hir_id != DUMMY_HIR_ID { Some(hir_id) } else { None }
         } else {
             None
         }

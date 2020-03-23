@@ -6,8 +6,6 @@ use crate::rmeta::*;
 
 use rustc::dep_graph::{self, DepNode, DepNodeIndex};
 use rustc::hir::exports::Export;
-use rustc::hir::map::definitions::DefPathTable;
-use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::middle::cstore::{CrateSource, ExternCrate};
 use rustc::middle::cstore::{ForeignModule, LinkagePreference, NativeLibrary};
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
@@ -29,6 +27,8 @@ use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::definitions::DefPathTable;
+use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
 use rustc_session::Session;
