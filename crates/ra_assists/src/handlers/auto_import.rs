@@ -59,6 +59,7 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
     group.finish()
 }
 
+#[derive(Debug)]
 struct AutoImportAssets {
     import_candidate: ImportCandidate,
     module_with_name_to_import: Module,
@@ -446,6 +447,30 @@ mod tests {
                 pub fn test_function() {};
             }
             ",
+        );
+    }
+
+    #[test]
+    fn macro_import() {
+        check_assist(
+            auto_import,
+            r"
+                    //- /lib.rs crate:crate_with_macro
+                    #[macro_export]
+                    macro_rules! foo {
+                        () => ()
+                    }
+
+                    //- /main.rs crate:main deps:crate_with_macro
+                    fn main() {
+                        foo<|>
+                    }",
+            r"use crate_with_macro::foo;
+
+fn main() {
+    foo<|>
+}
+",
         );
     }
 
