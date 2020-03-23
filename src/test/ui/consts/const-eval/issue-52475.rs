@@ -1,6 +1,5 @@
 fn main() {
     let _ = [(); {
-        //~^ WARNING Constant evaluating a complex constant, this might take some time
         let mut x = &0;
         let mut n = 0;
         while n < 5 {

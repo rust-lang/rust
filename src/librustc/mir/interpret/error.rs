@@ -494,8 +494,10 @@ impl fmt::Debug for UnsupportedOpInfo {
 pub enum ResourceExhaustionInfo {
     /// The stack grew too big.
     StackFrameLimitReached,
-    /// The program ran into an infinite loop.
-    InfiniteLoop,
+    /// The program ran for too long.
+    ///
+    /// The exact limit is set by the `const_eval_limit` attribute.
+    StepLimitReached,
 }
 
 impl fmt::Debug for ResourceExhaustionInfo {
@@ -505,11 +507,9 @@ impl fmt::Debug for ResourceExhaustionInfo {
             StackFrameLimitReached => {
                 write!(f, "reached the configured maximum number of stack frames")
             }
-            InfiniteLoop => write!(
-                f,
-                "duplicate interpreter state observed here, const evaluation will never \
-                    terminate"
-            ),
+            StepLimitReached => {
+                write!(f, "exceeded interpreter step limit (see `#[const_eval_limit]`)")
+            }
         }
     }
 }
