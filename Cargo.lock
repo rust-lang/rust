@@ -1082,14 +1082,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_proc_macro"
-version = "0.1.0"
-dependencies = [
- "ra_mbe",
- "ra_tt",
-]
-
-[[package]]
 name = "ra_prof"
 version = "0.1.0"
 dependencies = [

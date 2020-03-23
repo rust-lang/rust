@@ -229,7 +229,7 @@ fn partial_ord_expand(
 mod tests {
     use super::*;
     use crate::{test_db::TestDB, AstId, MacroCallId, MacroCallKind, MacroCallLoc};
-    use name::Name;
+    use name::{known, Name};
     use ra_db::{fixture::WithFixture, SourceDatabase};
 
     fn expand_builtin_derive(s: &str, name: Name) -> String {
@@ -261,7 +261,7 @@ mod tests {
         #[derive(Copy)]
         struct Foo;
 "#,
-            name::known::Copy,
+            known::Copy,
         );
 
         assert_eq!(expanded, "impl< >std::marker::CopyforFoo< >{}");
@@ -274,7 +274,7 @@ mod tests {
         #[derive(Copy)]
         struct Foo<A, B>;
 "#,
-            name::known::Copy,
+            known::Copy,
         );
 
         assert_eq!(
@@ -290,7 +290,7 @@ mod tests {
         #[derive(Copy)]
         struct Foo<A, B, 'a, 'b>;
 "#,
-            name::known::Copy,
+            known::Copy,
         );
 
         // We currently just ignore lifetimes
@@ -308,7 +308,7 @@ mod tests {
         #[derive(Clone)]
         struct Foo<A, B>;
 "#,
-            name::known::Clone,
+            known::Clone,
         );
 
         assert_eq!(

@@ -476,8 +476,11 @@ impl AsMacroCall for AstIdWithPath<ast::ModuleItem> {
     ) -> Option<MacroCallId> {
         let def = resolver(self.path.clone())?;
         Some(
-            def.as_lazy_macro(db.upcast(), MacroCallKind::Attr(self.ast_id, self.path.to_string()))
-                .into(),
+            def.as_lazy_macro(
+                db.upcast(),
+                MacroCallKind::Attr(self.ast_id, self.path.segments.last()?.to_string()),
+            )
+            .into(),
         )
     }
 }
