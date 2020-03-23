@@ -1,4 +1,4 @@
-#![unstable(feature = "wake_trait", issue = "0")]
+#![unstable(feature = "wake_trait", issue = "69912")]
 //! Types and Traits for working with asynchronous tasks.
 use core::mem::{self, ManuallyDrop};
 use core::task::{RawWaker, RawWakerVTable, Waker};
