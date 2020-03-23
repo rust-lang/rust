@@ -632,6 +632,7 @@ impl<'a> State<'a> {
                 polarity,
                 defaultness,
                 constness,
+                defaultness_span: _,
                 ref generics,
                 ref of_trait,
                 ref self_ty,

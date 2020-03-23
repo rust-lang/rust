@@ -590,6 +590,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             defaultness: _,
             polarity: _,
             constness: _,
+            defaultness_span: _,
             ref generics,
             ref of_trait,
             ref self_ty,

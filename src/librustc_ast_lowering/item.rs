@@ -402,10 +402,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )
                     });
 
+                // `defaultness.has_value()` is never called for an `impl`, always `true` in order
+                // to not cause an assertion failure inside the `lower_defaultness` function.
+                let has_val = true;
+                let (defaultness, defaultness_span) = self.lower_defaultness(defaultness, has_val);
                 hir::ItemKind::Impl {
                     unsafety: self.lower_unsafety(unsafety),
                     polarity,
-                    defaultness: self.lower_defaultness(defaultness, true /* [1] */),
+                    defaultness,
+                    defaultness_span,
                     constness: self.lower_constness(constness),
                     generics,
                     of_trait: trait_ref,
@@ -434,9 +439,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 panic!("`TyMac` should have been expanded by now")
             }
         }
-
-        // [1] `defaultness.has_value()` is never called for an `impl`, always `true` in order to
-        //     not cause an assertion failure inside the `lower_defaultness` function.
     }
 
     fn lower_const_item(
@@ -867,27 +869,31 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::MacCall(..) => panic!("`TyMac` should have been expanded by now"),
         };
 
+        // Since `default impl` is not yet implemented, this is always true in impls.
+        let has_value = true;
+        let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         hir::ImplItem {
             hir_id: self.lower_node_id(i.id),
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             generics,
             vis: self.lower_visibility(&i.vis, None),
-            defaultness: self.lower_defaultness(i.kind.defaultness(), true /* [1] */),
+            defaultness,
             kind,
             span: i.span,
         }
-
-        // [1] since `default impl` is not yet implemented, this is always true in impls
     }
 
     fn lower_impl_item_ref(&mut self, i: &AssocItem) -> hir::ImplItemRef<'hir> {
+        // Since `default impl` is not yet implemented, this is always true in impls.
+        let has_value = true;
+        let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         hir::ImplItemRef {
             id: hir::ImplItemId { hir_id: self.lower_node_id(i.id) },
             ident: i.ident,
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
-            defaultness: self.lower_defaultness(i.kind.defaultness(), true /* [1] */),
+            defaultness,
             kind: match &i.kind {
                 AssocItemKind::Const(..) => hir::AssocItemKind::Const,
                 AssocItemKind::TyAlias(.., ty) => {
@@ -902,8 +908,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 AssocItemKind::MacCall(..) => unimplemented!(),
             },
         }
-
-        // [1] since `default impl` is not yet implemented, this is always true in impls
     }
 
     /// If an `explicit_owner` is given, this method allocates the `HirId` in
@@ -938,12 +942,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         respan(v.span, node)
     }
 
-    fn lower_defaultness(&self, d: Defaultness, has_value: bool) -> hir::Defaultness {
+    fn lower_defaultness(
+        &self,
+        d: Defaultness,
+        has_value: bool,
+    ) -> (hir::Defaultness, Option<Span>) {
         match d {
-            Defaultness::Default(_) => hir::Defaultness::Default { has_value },
+            Defaultness::Default(sp) => (hir::Defaultness::Default { has_value }, Some(sp)),
             Defaultness::Final => {
                 assert!(has_value);
-                hir::Defaultness::Final
+                (hir::Defaultness::Final, None)
             }
         }
     }

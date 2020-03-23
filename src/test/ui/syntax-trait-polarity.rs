@@ -12,7 +12,7 @@ trait TestTrait {}
 unsafe impl !Send for TestType {}
 //~^ ERROR negative impls cannot be unsafe
 impl !TestTrait for TestType {}
-//~^ ERROR negative impls are only allowed for auto traits
+//~^ ERROR invalid negative impl
 
 struct TestType2<T>(T);
 
@@ -22,6 +22,6 @@ impl<T> !TestType2<T> {}
 unsafe impl<T> !Send for TestType2<T> {}
 //~^ ERROR negative impls cannot be unsafe
 impl<T> !TestTrait for TestType2<T> {}
-//~^ ERROR negative impls are only allowed for auto traits
+//~^ ERROR invalid negative impl
 
 fn main() {}

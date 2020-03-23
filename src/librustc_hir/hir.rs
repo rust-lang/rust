@@ -2153,7 +2153,7 @@ pub enum Defaultness {
 impl Defaultness {
     pub fn has_value(&self) -> bool {
         match *self {
-            Defaultness::Default { has_value, .. } => has_value,
+            Defaultness::Default { has_value } => has_value,
             Defaultness::Final => true,
         }
     }
@@ -2502,6 +2502,9 @@ pub enum ItemKind<'hir> {
         unsafety: Unsafety,
         polarity: ImplPolarity,
         defaultness: Defaultness,
+        // We do not put a `Span` in `Defaultness` because it breaks foreign crate metadata
+        // decoding as `Span`s cannot be decoded when a `Session` is not available.
+        defaultness_span: Option<Span>,
         constness: Constness,
         generics: Generics<'hir>,
 
