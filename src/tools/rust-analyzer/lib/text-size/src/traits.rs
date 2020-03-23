@@ -34,23 +34,3 @@ impl TextSized for char {
         (self.len_utf8() as u32).into()
     }
 }
-
-// assertion shape from static_assertions::assert_impl_all!
-const _: fn() = || {
-    use std::borrow::Cow;
-
-    fn assert_impl<T: TextSized>() {}
-
-    assert_impl::<&String>();
-    assert_impl::<&Cow<str>>();
-
-    struct StringLike {}
-    impl Deref for StringLike {
-        type Target = str;
-        fn deref(&self) -> &str {
-            unreachable!()
-        }
-    }
-
-    assert_impl::<&StringLike>();
-};
