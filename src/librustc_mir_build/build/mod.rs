@@ -140,9 +140,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
 
             let (yield_ty, return_ty) = if body.generator_kind.is_some() {
                 let gen_sig = match ty.kind {
-                    ty::Generator(gen_def_id, gen_substs, ..) => {
-                        gen_substs.as_generator().sig(gen_def_id, tcx)
-                    }
+                    ty::Generator(_, gen_substs, ..) => gen_substs.as_generator().sig(),
                     _ => span_bug!(tcx.hir().span(id), "generator w/o generator type: {:?}", ty),
                 };
                 (Some(gen_sig.yield_ty), gen_sig.return_ty)
@@ -849,12 +847,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 closure_env_projs.push(ProjectionElem::Deref);
                 closure_ty = ty;
             }
-            let (def_id, upvar_substs) = match closure_ty.kind {
-                ty::Closure(def_id, substs) => (def_id, ty::UpvarSubsts::Closure(substs)),
-                ty::Generator(def_id, substs, _) => (def_id, ty::UpvarSubsts::Generator(substs)),
+            let upvar_substs = match closure_ty.kind {
+                ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
+                ty::Generator(_, substs, _) => ty::UpvarSubsts::Generator(substs),
                 _ => span_bug!(self.fn_span, "upvars with non-closure env ty {:?}", closure_ty),
             };
-            let upvar_tys = upvar_substs.upvar_tys(def_id, tcx);
+            let upvar_tys = upvar_substs.upvar_tys();
             let upvars_with_tys = upvars.iter().zip(upvar_tys);
             self.upvar_mutbls = upvars_with_tys
                 .enumerate()

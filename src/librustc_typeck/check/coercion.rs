@@ -62,7 +62,6 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TypeAndMut};
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
 use rustc_session::parse::feature_err;
@@ -236,11 +235,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // unsafe qualifier.
                 self.coerce_from_fn_pointer(a, a_f, b)
             }
-            ty::Closure(def_id_a, substs_a) => {
+            ty::Closure(_, substs_a) => {
                 // Non-capturing closures are coercible to
                 // function pointers or unsafe function pointers.
                 // It cannot convert closures that require unsafe.
-                self.coerce_closure_to_fn(a, def_id_a, substs_a, b)
+                self.coerce_closure_to_fn(a, substs_a, b)
             }
             _ => {
                 // Otherwise, just use unification rules.
@@ -732,7 +731,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn coerce_closure_to_fn(
         &self,
         a: Ty<'tcx>,
-        def_id_a: DefId,
         substs_a: SubstsRef<'tcx>,
         b: Ty<'tcx>,
     ) -> CoerceResult<'tcx> {
@@ -743,14 +741,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let b = self.shallow_resolve(b);
 
         match b.kind {
-            ty::FnPtr(fn_ty) if self.tcx.upvars(def_id_a).map_or(true, |v| v.is_empty()) => {
+            ty::FnPtr(fn_ty) if substs_a.as_closure().upvar_tys().next().is_none() => {
                 // We coerce the closure, which has fn type
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
                 // to
                 //     `fn(arg0,arg1,...) -> _`
                 // or
                 //     `unsafe fn(arg0,arg1,...) -> _`
-                let closure_sig = substs_a.as_closure().sig(def_id_a, self.tcx);
+                let closure_sig = substs_a.as_closure().sig();
                 let unsafety = fn_ty.unsafety();
                 let pointer_ty = self.tcx.coerce_closure_fn_ty(closure_sig, unsafety);
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})", a, b, pointer_ty);

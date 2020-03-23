@@ -617,8 +617,6 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Str => p!(write("str")),
             ty::Generator(did, substs, movability) => {
-                let upvar_tys = substs.as_generator().upvar_tys(did, self.tcx());
-                let witness = substs.as_generator().witness(did, self.tcx());
                 match movability {
                     hir::Movability::Movable => p!(write("[generator")),
                     hir::Movability::Static => p!(write("[static generator")),
@@ -627,31 +625,47 @@ pub trait PrettyPrinter<'tcx>:
                 // FIXME(eddyb) should use `def_span`.
                 if let Some(hir_id) = self.tcx().hir().as_local_hir_id(did) {
                     p!(write("@{:?}", self.tcx().hir().span(hir_id)));
-                    let mut sep = " ";
-                    for (&var_id, upvar_ty) in
-                        self.tcx().upvars(did).as_ref().iter().flat_map(|v| v.keys()).zip(upvar_tys)
-                    {
-                        p!(write("{}{}:", sep, self.tcx().hir().name(var_id)), print(upvar_ty));
-                        sep = ", ";
+
+                    if substs.as_generator().is_valid() {
+                        let upvar_tys = substs.as_generator().upvar_tys();
+                        let mut sep = " ";
+                        for (&var_id, upvar_ty) in self
+                            .tcx()
+                            .upvars(did)
+                            .as_ref()
+                            .iter()
+                            .flat_map(|v| v.keys())
+                            .zip(upvar_tys)
+                        {
+                            p!(write("{}{}:", sep, self.tcx().hir().name(var_id)), print(upvar_ty));
+                            sep = ", ";
+                        }
                     }
                 } else {
                     // Cross-crate closure types should only be
                     // visible in codegen bug reports, I imagine.
                     p!(write("@{:?}", did));
-                    let mut sep = " ";
-                    for (index, upvar_ty) in upvar_tys.enumerate() {
-                        p!(write("{}{}:", sep, index), print(upvar_ty));
-                        sep = ", ";
+
+                    if substs.as_generator().is_valid() {
+                        let upvar_tys = substs.as_generator().upvar_tys();
+                        let mut sep = " ";
+                        for (index, upvar_ty) in upvar_tys.enumerate() {
+                            p!(write("{}{}:", sep, index), print(upvar_ty));
+                            sep = ", ";
+                        }
                     }
                 }
 
-                p!(write(" "), print(witness), write("]"))
+                if substs.as_generator().is_valid() {
+                    p!(write(" "), print(substs.as_generator().witness()));
+                }
+
+                p!(write("]"))
             }
             ty::GeneratorWitness(types) => {
                 p!(in_binder(&types));
             }
             ty::Closure(did, substs) => {
-                let upvar_tys = substs.as_closure().upvar_tys(did, self.tcx());
                 p!(write("[closure"));
 
                 // FIXME(eddyb) should use `def_span`.
@@ -661,30 +675,43 @@ pub trait PrettyPrinter<'tcx>:
                     } else {
                         p!(write("@{:?}", self.tcx().hir().span(hir_id)));
                     }
-                    let mut sep = " ";
-                    for (&var_id, upvar_ty) in
-                        self.tcx().upvars(did).as_ref().iter().flat_map(|v| v.keys()).zip(upvar_tys)
-                    {
-                        p!(write("{}{}:", sep, self.tcx().hir().name(var_id)), print(upvar_ty));
-                        sep = ", ";
+
+                    if substs.as_closure().is_valid() {
+                        let upvar_tys = substs.as_closure().upvar_tys();
+                        let mut sep = " ";
+                        for (&var_id, upvar_ty) in self
+                            .tcx()
+                            .upvars(did)
+                            .as_ref()
+                            .iter()
+                            .flat_map(|v| v.keys())
+                            .zip(upvar_tys)
+                        {
+                            p!(write("{}{}:", sep, self.tcx().hir().name(var_id)), print(upvar_ty));
+                            sep = ", ";
+                        }
                     }
                 } else {
                     // Cross-crate closure types should only be
                     // visible in codegen bug reports, I imagine.
                     p!(write("@{:?}", did));
-                    let mut sep = " ";
-                    for (index, upvar_ty) in upvar_tys.enumerate() {
-                        p!(write("{}{}:", sep, index), print(upvar_ty));
-                        sep = ", ";
+
+                    if substs.as_closure().is_valid() {
+                        let upvar_tys = substs.as_closure().upvar_tys();
+                        let mut sep = " ";
+                        for (index, upvar_ty) in upvar_tys.enumerate() {
+                            p!(write("{}{}:", sep, index), print(upvar_ty));
+                            sep = ", ";
+                        }
                     }
                 }
 
-                if self.tcx().sess.verbose() {
-                    p!(write(
-                        " closure_kind_ty={:?} closure_sig_as_fn_ptr_ty={:?}",
-                        substs.as_closure().kind_ty(did, self.tcx()),
-                        substs.as_closure().sig_as_fn_ptr_ty(did, self.tcx())
-                    ));
+                if self.tcx().sess.verbose() && substs.as_closure().is_valid() {
+                    p!(write(" closure_kind_ty="), print(substs.as_closure().kind_ty()));
+                    p!(
+                        write(" closure_sig_as_fn_ptr_ty="),
+                        print(substs.as_closure().sig_as_fn_ptr_ty())
+                    );
                 }
 
                 p!(write("]"))

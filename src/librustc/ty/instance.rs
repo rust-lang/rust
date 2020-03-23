@@ -341,7 +341,7 @@ impl<'tcx> Instance<'tcx> {
         substs: ty::SubstsRef<'tcx>,
         requested_kind: ty::ClosureKind,
     ) -> Instance<'tcx> {
-        let actual_kind = substs.as_closure().kind(def_id, tcx);
+        let actual_kind = substs.as_closure().kind();
 
         match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
             Ok(true) => Instance::fn_once_adapter_instance(tcx, def_id, substs),
@@ -372,7 +372,7 @@ impl<'tcx> Instance<'tcx> {
 
         let self_ty = tcx.mk_closure(closure_did, substs);
 
-        let sig = substs.as_closure().sig(closure_did, tcx);
+        let sig = substs.as_closure().sig();
         let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         assert_eq!(sig.inputs().len(), 1);
         let substs = tcx.mk_substs_trait(self_ty, &[sig.inputs()[0].into()]);

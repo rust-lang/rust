@@ -35,7 +35,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Search the upvars (if any) to find one that references fr. Return its index.
     crate fn get_upvar_index_for_region(&self, tcx: TyCtxt<'tcx>, fr: RegionVid) -> Option<usize> {
         let upvar_index =
-            self.universal_regions().defining_ty.upvar_tys(tcx).position(|upvar_ty| {
+            self.universal_regions().defining_ty.upvar_tys().position(|upvar_ty| {
                 debug!("get_upvar_index_for_region: upvar_ty={:?}", upvar_ty);
                 tcx.any_free_region_meets(&upvar_ty, |r| {
                     let r = r.to_region_vid();
@@ -44,7 +44,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 })
             })?;
 
-        let upvar_ty = self.universal_regions().defining_ty.upvar_tys(tcx).nth(upvar_index);
+        let upvar_ty = self.universal_regions().defining_ty.upvar_tys().nth(upvar_index);
 
         debug!(
             "get_upvar_index_for_region: found {:?} in upvar {} which has type {:?}",

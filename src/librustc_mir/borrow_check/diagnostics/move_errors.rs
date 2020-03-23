@@ -333,7 +333,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             ty::Closure(def_id, closure_substs)
                 if def_id == self.mir_def_id && upvar_field.is_some() =>
             {
-                let closure_kind_ty = closure_substs.as_closure().kind_ty(def_id, self.infcx.tcx);
+                let closure_kind_ty = closure_substs.as_closure().kind_ty();
                 let closure_kind = closure_kind_ty.to_opt_closure_kind();
                 let capture_description = match closure_kind {
                     Some(ty::ClosureKind::Fn) => "captured variable in an `Fn` closure",

@@ -11,7 +11,7 @@ use crate::mir::interpret::ConstValue;
 use crate::mir::interpret::Scalar;
 use crate::mir::Promoted;
 use crate::ty::layout::VariantIdx;
-use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
+use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::{
     self, AdtDef, DefIdTree, Discr, Ty, TyCtxt, TypeFlags, TypeFoldable, WithConstness,
 };
@@ -260,15 +260,11 @@ static_assert_size!(TyKind<'_>, 24);
 
 /// A closure can be modeled as a struct that looks like:
 ///
-///     struct Closure<'l0...'li, T0...Tj, CK, CS, U0...Uk> {
-///         upvar0: U0,
-///         ...
-///         upvark: Uk
-///     }
+///     struct Closure<'l0...'li, T0...Tj, CK, CS, U>(...U);
 ///
 /// where:
 ///
-/// - 'l0...'li and T0...Tj are the lifetime and type parameters
+/// - 'l0...'li and T0...Tj are the generic parameters
 ///   in scope on the function that defined the closure,
 /// - CK represents the *closure kind* (Fn vs FnMut vs FnOnce). This
 ///   is rather hackily encoded via a scalar type. See
@@ -277,9 +273,9 @@ static_assert_size!(TyKind<'_>, 24);
 ///   type. For example, `fn(u32, u32) -> u32` would mean that the closure
 ///   implements `CK<(u32, u32), Output = u32>`, where `CK` is the trait
 ///   specified above.
-/// - U0...Uk are type parameters representing the types of its upvars
-///   (borrowed, if appropriate; that is, if Ui represents a by-ref upvar,
-///    and the up-var has the type `Foo`, then `Ui = &Foo`).
+/// - U is a type parameter representing the types of its upvars, tupled up
+///   (borrowed, if appropriate; that is, if an U field represents a by-ref upvar,
+///    and the up-var has the type `Foo`, then that field of U will be `&Foo`).
 ///
 /// So, for example, given this function:
 ///
@@ -289,9 +285,7 @@ static_assert_size!(TyKind<'_>, 24);
 ///
 /// the type of the closure would be something like:
 ///
-///     struct Closure<'a, T, U0> {
-///         data: U0
-///     }
+///     struct Closure<'a, T, U>(...U);
 ///
 /// Note that the type of the upvar is not specified in the struct.
 /// You may wonder how the impl would then be able to use the upvar,
@@ -299,7 +293,7 @@ static_assert_size!(TyKind<'_>, 24);
 /// (conceptually) not fully generic over Closure but rather tied to
 /// instances with the expected upvar types:
 ///
-///     impl<'b, 'a, T> FnMut() for Closure<'a, T, &'b mut &'a mut T> {
+///     impl<'b, 'a, T> FnMut() for Closure<'a, T, (&'b mut &'a mut T,)> {
 ///         ...
 ///     }
 ///
@@ -308,7 +302,7 @@ static_assert_size!(TyKind<'_>, 24);
 /// (Here, I am assuming that `data` is mut-borrowed.)
 ///
 /// Now, the last question you may ask is: Why include the upvar types
-/// as extra type parameters? The reason for this design is that the
+/// in an extra type parameter? The reason for this design is that the
 /// upvar types can reference lifetimes that are internal to the
 /// creating function. In my example above, for example, the lifetime
 /// `'b` represents the scope of the closure itself; this is some
@@ -360,7 +354,7 @@ static_assert_size!(TyKind<'_>, 24);
 #[derive(Copy, Clone, Debug, TypeFoldable)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
-    /// concatenated with the types of the upvars.
+    /// concatenated with a tuple containing the types of the upvars.
     ///
     /// These are separated out because codegen wants to pass them around
     /// when monomorphizing.
@@ -370,52 +364,52 @@ pub struct ClosureSubsts<'tcx> {
 /// Struct returned by `split()`. Note that these are subslices of the
 /// parent slice and not canonical substs themselves.
 struct SplitClosureSubsts<'tcx> {
-    closure_kind_ty: Ty<'tcx>,
-    closure_sig_as_fn_ptr_ty: Ty<'tcx>,
-    upvar_kinds: &'tcx [GenericArg<'tcx>],
+    closure_kind_ty: GenericArg<'tcx>,
+    closure_sig_as_fn_ptr_ty: GenericArg<'tcx>,
+    tupled_upvars_ty: GenericArg<'tcx>,
 }
 
 impl<'tcx> ClosureSubsts<'tcx> {
     /// Divides the closure substs into their respective
     /// components. Single source of truth with respect to the
     /// ordering.
-    fn split(self, def_id: DefId, tcx: TyCtxt<'_>) -> SplitClosureSubsts<'tcx> {
-        let generics = tcx.generics_of(def_id);
-        let parent_len = generics.parent_count;
-        SplitClosureSubsts {
-            closure_kind_ty: self.substs.type_at(parent_len),
-            closure_sig_as_fn_ptr_ty: self.substs.type_at(parent_len + 1),
-            upvar_kinds: &self.substs[parent_len + 2..],
+    fn split(self) -> SplitClosureSubsts<'tcx> {
+        match self.substs[..] {
+            [.., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
+                SplitClosureSubsts { closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty }
+            }
+            _ => bug!("closure substs missing synthetics"),
         }
     }
 
+    /// Returns `true` only if enough of the synthetic types are known to
+    /// allow using all of the methods on `ClosureSubsts` without panicking.
+    ///
+    /// Used primarily by `ty::print::pretty` to be able to handle closure
+    /// types that haven't had their synthetic types substituted in.
+    pub fn is_valid(self) -> bool {
+        self.substs.len() >= 3 && matches!(self.split().tupled_upvars_ty.expect_ty().kind, Tuple(_))
+    }
+
     #[inline]
-    pub fn upvar_tys(
-        self,
-        def_id: DefId,
-        tcx: TyCtxt<'_>,
-    ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
-        let SplitClosureSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
-        upvar_kinds.iter().map(|t| {
-            if let GenericArgKind::Type(ty) = t.unpack() {
-                ty
-            } else {
-                bug!("upvar should be type")
-            }
-        })
+    pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
+        self.split().tupled_upvars_ty.expect_ty().tuple_fields()
     }
 
     /// Returns the closure kind for this closure; may return a type
     /// variable during inference. To get the closure kind during
-    /// inference, use `infcx.closure_kind(def_id, substs)`.
-    pub fn kind_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
-        self.split(def_id, tcx).closure_kind_ty
+    /// inference, use `infcx.closure_kind(substs)`.
+    pub fn kind_ty(self) -> Ty<'tcx> {
+        self.split().closure_kind_ty.expect_ty()
     }
 
     /// Returns the `fn` pointer type representing the closure signature for this
     /// closure.
-    pub fn sig_as_fn_ptr_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
-        self.split(def_id, tcx).closure_sig_as_fn_ptr_ty
+    // FIXME(eddyb) this should be unnecessary, as the shallowly resolved
+    // type is known at the time of the creation of `ClosureSubsts`,
+    // see `rustc_typeck::check::closure`.
+    pub fn sig_as_fn_ptr_ty(self) -> Ty<'tcx> {
+        self.split().closure_sig_as_fn_ptr_ty.expect_ty()
     }
 
     /// Returns the closure kind for this closure; only usable outside
@@ -423,13 +417,13 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// there are no type variables.
     ///
     /// If you have an inference context, use `infcx.closure_kind()`.
-    pub fn kind(self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::ClosureKind {
-        self.split(def_id, tcx).closure_kind_ty.to_opt_closure_kind().unwrap()
+    pub fn kind(self) -> ty::ClosureKind {
+        self.kind_ty().to_opt_closure_kind().unwrap()
     }
 
     /// Extracts the signature from the closure.
-    pub fn sig(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
-        let ty = self.sig_as_fn_ptr_ty(def_id, tcx);
+    pub fn sig(self) -> ty::PolyFnSig<'tcx> {
+        let ty = self.sig_as_fn_ptr_ty();
         match ty.kind {
             ty::FnPtr(sig) => sig,
             _ => bug!("closure_sig_as_fn_ptr_ty is not a fn-ptr: {:?}", ty.kind),
@@ -444,24 +438,30 @@ pub struct GeneratorSubsts<'tcx> {
 }
 
 struct SplitGeneratorSubsts<'tcx> {
-    resume_ty: Ty<'tcx>,
-    yield_ty: Ty<'tcx>,
-    return_ty: Ty<'tcx>,
-    witness: Ty<'tcx>,
-    upvar_kinds: &'tcx [GenericArg<'tcx>],
+    resume_ty: GenericArg<'tcx>,
+    yield_ty: GenericArg<'tcx>,
+    return_ty: GenericArg<'tcx>,
+    witness: GenericArg<'tcx>,
+    tupled_upvars_ty: GenericArg<'tcx>,
 }
 
 impl<'tcx> GeneratorSubsts<'tcx> {
-    fn split(self, def_id: DefId, tcx: TyCtxt<'_>) -> SplitGeneratorSubsts<'tcx> {
-        let generics = tcx.generics_of(def_id);
-        let parent_len = generics.parent_count;
-        SplitGeneratorSubsts {
-            resume_ty: self.substs.type_at(parent_len),
-            yield_ty: self.substs.type_at(parent_len + 1),
-            return_ty: self.substs.type_at(parent_len + 2),
-            witness: self.substs.type_at(parent_len + 3),
-            upvar_kinds: &self.substs[parent_len + 4..],
+    fn split(self) -> SplitGeneratorSubsts<'tcx> {
+        match self.substs[..] {
+            [.., resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty] => {
+                SplitGeneratorSubsts { resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty }
+            }
+            _ => bug!("generator substs missing synthetics"),
         }
+    }
+
+    /// Returns `true` only if enough of the synthetic types are known to
+    /// allow using all of the methods on `GeneratorSubsts` without panicking.
+    ///
+    /// Used primarily by `ty::print::pretty` to be able to handle generator
+    /// types that haven't had their synthetic types substituted in.
+    pub fn is_valid(self) -> bool {
+        self.substs.len() >= 5 && matches!(self.split().tupled_upvars_ty.expect_ty().kind, Tuple(_))
     }
 
     /// This describes the types that can be contained in a generator.
@@ -469,39 +469,28 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// It contains a tuple of all the types that could end up on a generator frame.
     /// The state transformation MIR pass may only produce layouts which mention types
     /// in this tuple. Upvars are not counted here.
-    pub fn witness(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
-        self.split(def_id, tcx).witness
+    pub fn witness(self) -> Ty<'tcx> {
+        self.split().witness.expect_ty()
     }
 
     #[inline]
-    pub fn upvar_tys(
-        self,
-        def_id: DefId,
-        tcx: TyCtxt<'_>,
-    ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
-        let SplitGeneratorSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
-        upvar_kinds.iter().map(|t| {
-            if let GenericArgKind::Type(ty) = t.unpack() {
-                ty
-            } else {
-                bug!("upvar should be type")
-            }
-        })
+    pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
+        self.split().tupled_upvars_ty.expect_ty().tuple_fields()
     }
 
     /// Returns the type representing the resume type of the generator.
-    pub fn resume_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
-        self.split(def_id, tcx).resume_ty
+    pub fn resume_ty(self) -> Ty<'tcx> {
+        self.split().resume_ty.expect_ty()
     }
 
     /// Returns the type representing the yield type of the generator.
-    pub fn yield_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
-        self.split(def_id, tcx).yield_ty
+    pub fn yield_ty(self) -> Ty<'tcx> {
+        self.split().yield_ty.expect_ty()
     }
 
     /// Returns the type representing the return type of the generator.
-    pub fn return_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
-        self.split(def_id, tcx).return_ty
+    pub fn return_ty(self) -> Ty<'tcx> {
+        self.split().return_ty.expect_ty()
     }
 
     /// Returns the "generator signature", which consists of its yield
@@ -510,17 +499,17 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// N.B., some bits of the code prefers to see this wrapped in a
     /// binder, but it never contains bound regions. Probably this
     /// function should be removed.
-    pub fn poly_sig(self, def_id: DefId, tcx: TyCtxt<'_>) -> PolyGenSig<'tcx> {
-        ty::Binder::dummy(self.sig(def_id, tcx))
+    pub fn poly_sig(self) -> PolyGenSig<'tcx> {
+        ty::Binder::dummy(self.sig())
     }
 
     /// Returns the "generator signature", which consists of its resume, yield
     /// and return types.
-    pub fn sig(self, def_id: DefId, tcx: TyCtxt<'_>) -> GenSig<'tcx> {
+    pub fn sig(self) -> GenSig<'tcx> {
         ty::GenSig {
-            resume_ty: self.resume_ty(def_id, tcx),
-            yield_ty: self.yield_ty(def_id, tcx),
-            return_ty: self.return_ty(def_id, tcx),
+            resume_ty: self.resume_ty(),
+            yield_ty: self.yield_ty(),
+            return_ty: self.return_ty(),
         }
     }
 }
@@ -612,8 +601,8 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// This is the types of the fields of a generator which are not stored in a
     /// variant.
     #[inline]
-    pub fn prefix_tys(self, def_id: DefId, tcx: TyCtxt<'tcx>) -> impl Iterator<Item = Ty<'tcx>> {
-        self.upvar_tys(def_id, tcx)
+    pub fn prefix_tys(self) -> impl Iterator<Item = Ty<'tcx>> {
+        self.upvar_tys()
     }
 }
 
@@ -625,22 +614,12 @@ pub enum UpvarSubsts<'tcx> {
 
 impl<'tcx> UpvarSubsts<'tcx> {
     #[inline]
-    pub fn upvar_tys(
-        self,
-        def_id: DefId,
-        tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
-        let upvar_kinds = match self {
-            UpvarSubsts::Closure(substs) => substs.as_closure().split(def_id, tcx).upvar_kinds,
-            UpvarSubsts::Generator(substs) => substs.as_generator().split(def_id, tcx).upvar_kinds,
+    pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
+        let tupled_upvars_ty = match self {
+            UpvarSubsts::Closure(substs) => substs.as_closure().split().tupled_upvars_ty,
+            UpvarSubsts::Generator(substs) => substs.as_generator().split().tupled_upvars_ty,
         };
-        upvar_kinds.iter().map(|t| {
-            if let GenericArgKind::Type(ty) = t.unpack() {
-                ty
-            } else {
-                bug!("upvar should be type")
-            }
-        })
+        tupled_upvars_ty.expect_ty().tuple_fields()
     }
 }
 

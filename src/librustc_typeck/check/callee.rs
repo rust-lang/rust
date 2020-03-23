@@ -104,8 +104,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check whether this is a call to a closure where we
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
-                if self.closure_kind(def_id, substs).is_none() {
-                    let closure_sig = substs.as_closure().sig(def_id, self.tcx);
+                if self.closure_kind(substs).is_none() {
+                    let closure_sig = substs.as_closure().sig();
                     let closure_sig = self
                         .replace_bound_vars_with_fresh_vars(
                             call_expr.span,
@@ -122,7 +122,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             adjusted_ty,
                             adjustments,
                             fn_sig: closure_sig,
-                            closure_def_id: def_id,
                             closure_substs: substs,
                         },
                     );
@@ -459,7 +458,6 @@ pub struct DeferredCallResolution<'tcx> {
     adjusted_ty: Ty<'tcx>,
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
-    closure_def_id: DefId,
     closure_substs: SubstsRef<'tcx>,
 }
 
@@ -469,7 +467,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
 
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
-        assert!(fcx.closure_kind(self.closure_def_id, self.closure_substs).is_some());
+        assert!(fcx.closure_kind(self.closure_substs).is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.
         match fcx.try_overloaded_call_traits(self.call_expr, self.adjusted_ty, None) {

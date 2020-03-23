@@ -445,8 +445,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
-                match self.selcx.infcx().closure_kind(closure_def_id, closure_substs) {
+            ty::Predicate::ClosureKind(_, closure_substs, kind) => {
+                match self.selcx.infcx().closure_kind(closure_substs) {
                     Some(closure_kind) => {
                         if closure_kind.extends(kind) {
                             ProcessResult::Changed(vec![])
