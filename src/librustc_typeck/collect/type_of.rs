@@ -259,7 +259,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         // default to the path resolution.
                         let res = segment.res.filter(|&r| r != Res::Err).unwrap_or(path.res);
                         let generics = match res {
-                            Res::Def(DefKind::Ctor(..) | DefKind::AssocTy, def_id) => {
+                            Res::Def(DefKind::Ctor(..), def_id) => {
                                 tcx.generics_of(tcx.parent(def_id).unwrap())
                             }
                             Res::Def(_, def_id) => tcx.generics_of(def_id),
