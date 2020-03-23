@@ -34,6 +34,8 @@ pub struct ServerConfig {
     pub inlay_hints_type: bool,
     #[serde(deserialize_with = "nullable_bool_true")]
     pub inlay_hints_parameter: bool,
+    #[serde(deserialize_with = "nullable_bool_true")]
+    pub inlay_hints_chaining: bool,
     pub inlay_hints_max_length: Option<usize>,
 
     pub cargo_watch_enable: bool,
@@ -66,6 +68,7 @@ impl Default for ServerConfig {
             lru_capacity: None,
             inlay_hints_type: true,
             inlay_hints_parameter: true,
+            inlay_hints_chaining: true,
             inlay_hints_max_length: None,
             cargo_watch_enable: true,
             cargo_watch_args: Vec::new(),

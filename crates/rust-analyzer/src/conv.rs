@@ -332,6 +332,7 @@ impl ConvWith<&LineIndex> for InlayHint {
             kind: match self.kind {
                 InlayKind::ParameterHint => req::InlayKind::ParameterHint,
                 InlayKind::TypeHint => req::InlayKind::TypeHint,
+                InlayKind::ChainingHint => req::InlayKind::ChainingHint,
             },
         }
     }

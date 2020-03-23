@@ -200,6 +200,7 @@ pub struct InlayHintsParams {
 pub enum InlayKind {
     TypeHint,
     ParameterHint,
+    ChainingHint,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

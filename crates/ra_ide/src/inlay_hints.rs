@@ -5,7 +5,7 @@ use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
-    match_ast, SmolStr, TextRange,
+    match_ast, SmolStr, TextRange, NodeOrToken, SyntaxKind, Direction
 };
 
 use crate::{FileId, FunctionSignature};
@@ -14,12 +14,18 @@ use crate::{FileId, FunctionSignature};
 pub struct InlayHintsOptions {
     pub type_hints: bool,
     pub parameter_hints: bool,
+    pub chaining_hints: bool,
     pub max_length: Option<usize>,
 }
 
 impl Default for InlayHintsOptions {
     fn default() -> Self {
-        Self { type_hints: true, parameter_hints: true, max_length: None }
+        Self { 
+            type_hints: true, 
+            parameter_hints: true, 
+            chaining_hints: true,
+            max_length: None 
+        }
     }
 }
 
@@ -27,6 +33,7 @@ impl Default for InlayHintsOptions {
 pub enum InlayKind {
     TypeHint,
     ParameterHint,
+    ChainingHint,
 }
 
 #[derive(Debug)]
@@ -47,6 +54,10 @@ pub(crate) fn inlay_hints(
 
     let mut res = Vec::new();
     for node in file.syntax().descendants() {
+        if let Some(expr) = ast::Expr::cast(node.clone()) {
+            get_chaining_hints(&mut res, &sema, options, expr);
+        }
+
         match_ast! {
             match node {
                 ast::CallExpr(it) => { get_param_name_hints(&mut res, &sema, options, ast::Expr::from(it)); },
@@ -222,12 +233,88 @@ fn get_fn_signature(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<
     }
 }
 
+fn get_chaining_hints(
+    acc: &mut Vec<InlayHint>,
+    sema: &Semantics<RootDatabase>,
+    options: &InlayHintsOptions,
+    expr: ast::Expr,
+) -> Option<()> {
+    if !options.chaining_hints {
+        return None;
+    }
+
+    let ty = sema.type_of_expr(&expr)?;
+    let label = ty.display_truncated(sema.db, options.max_length).to_string();
+    if ty.is_unknown() {
+        return None;
+    }
+
+    let mut tokens = expr.syntax()
+        .siblings_with_tokens(Direction::Next)
+        .filter_map(NodeOrToken::into_token)
+        .filter(|t| match t.kind() {
+            SyntaxKind::WHITESPACE if !t.text().contains('\n') => false,
+            SyntaxKind::COMMENT => false,
+            _ => true,
+        });
+
+    // Chaining can be defined as an expression whose next sibling tokens are newline and dot
+    // Ignoring extra whitespace and comments
+    let next = tokens.next()?.kind();
+    let next_next = tokens.next()?.kind();
+    if next == SyntaxKind::WHITESPACE && next_next == SyntaxKind::DOT { 
+        acc.push(InlayHint {
+            range: expr.syntax().text_range(),
+            kind: InlayKind::ChainingHint,
+            label: label.into(),
+        });
+    }
+    Some(())
+}
+
 #[cfg(test)]
 mod tests {
     use crate::inlay_hints::InlayHintsOptions;
     use insta::assert_debug_snapshot;
 
     use crate::mock_analysis::single_file;
+
+    #[test]
+    fn generic_chaining_hints() {
+        let (analysis, file_id) = single_file(
+            r#"
+            struct A<T>(T); 
+            struct B<T>(T);
+            struct C<T>(T);
+            struct X<T,R>(T, R);
+            
+            impl<T> A<T> {
+                fn new(t: T) -> Self { A(t) }
+                fn into_b(self) -> B<T> { B(self.0) }
+            }
+            impl<T> B<T> {
+                fn into_c(self) -> C<T> { C(self.0) }
+            }
+            fn test() {
+                let c = A::new(X(42, true))
+                    .into_b() // All the from A -> B -> C
+                    .into_c();
+            }"#,
+        );
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
+        [
+            InlayHint {
+                range: [416; 465),
+                kind: ChainingHint,
+                label: "B<X<i32, bool>>",
+            },
+            InlayHint {
+                range: [416; 435),
+                kind: ChainingHint,
+                label: "A<X<i32, bool>>",
+            },
+        ]"###);
+    }
 
     #[test]
     fn param_hints_only() {
@@ -238,7 +325,7 @@ mod tests {
                 let _x = foo(4, 4);
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ parameter_hints: true, type_hints: false, max_length: None}).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ parameter_hints: true, type_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
                 range: [106; 107),
@@ -262,7 +349,7 @@ mod tests {
                 let _x = foo(4, 4);
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ type_hints: false, parameter_hints: false, max_length: None}).unwrap(), @r###"[]"###);
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ type_hints: false, parameter_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"[]"###);
     }
 
     #[test]
@@ -274,7 +361,7 @@ mod tests {
                 let _x = foo(4, 4);
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ type_hints: true, parameter_hints: false, max_length: None}).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ type_hints: true, parameter_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
                 range: [97; 99),

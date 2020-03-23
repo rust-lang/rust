@@ -183,6 +183,7 @@ pub fn main_loop(
                 inlay_hints: InlayHintsOptions {
                     type_hints: config.inlay_hints_type,
                     parameter_hints: config.inlay_hints_parameter,
+                    chaining_hints: config.inlay_hints_chaining,
                     max_length: config.inlay_hints_max_length,
                 },
                 cargo_watch: CheckOptions {
