@@ -1,3 +1,8 @@
+// FIXME: missing sysroot spans (#53081)
+// ignore-i586-unknown-linux-gnu
+// ignore-i586-unknown-linux-musl
+// ignore-i686-unknown-linux-musl
+
 #![allow(illegal_floating_point_literal_pattern)]
 
 enum T { A, B }
