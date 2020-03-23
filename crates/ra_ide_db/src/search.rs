@@ -10,9 +10,7 @@ use hir::{DefWithBody, HasSource, ModuleSource, Semantics};
 use once_cell::unsync::Lazy;
 use ra_db::{FileId, FileRange, SourceDatabaseExt};
 use ra_prof::profile;
-use ra_syntax::{
-    algo::find_node_at_offset, ast, match_ast, AstNode, TextRange, TextUnit, TokenAtOffset,
-};
+use ra_syntax::{ast, match_ast, AstNode, TextRange, TextUnit};
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
@@ -219,21 +217,11 @@ impl Definition {
                     continue;
                 }
 
-                let name_ref =
-                    if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&tree, offset) {
+                let name_ref: ast::NameRef =
+                    if let Some(name_ref) = sema.find_node_at_offset_with_descend(&tree, offset) {
                         name_ref
                     } else {
-                        // Handle macro token cases
-                        let token = match tree.token_at_offset(offset) {
-                            TokenAtOffset::None => continue,
-                            TokenAtOffset::Single(t) => t,
-                            TokenAtOffset::Between(_, t) => t,
-                        };
-                        let expanded = sema.descend_into_macros(token);
-                        match ast::NameRef::cast(expanded.parent()) {
-                            Some(name_ref) => name_ref,
-                            _ => continue,
-                        }
+                        continue;
                     };
 
                 // FIXME: reuse sb

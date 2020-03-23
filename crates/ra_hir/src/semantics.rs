@@ -12,7 +12,8 @@ use hir_expand::ExpansionInfo;
 use ra_db::{FileId, FileRange};
 use ra_prof::profile;
 use ra_syntax::{
-    algo::skip_trivia_token, ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextUnit,
+    algo::{find_node_at_offset, skip_trivia_token},
+    ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextUnit,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -108,6 +109,17 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         token.value
     }
 
+    pub fn descend_node_at_offset<N: ast::AstNode>(
+        &self,
+        node: &SyntaxNode,
+        offset: TextUnit,
+    ) -> Option<N> {
+        // Handle macro token cases
+        node.token_at_offset(offset)
+            .map(|token| self.descend_into_macros(token))
+            .find_map(|it| self.ancestors_with_macros(it.parent()).find_map(N::cast))
+    }
+
     pub fn original_range(&self, node: &SyntaxNode) -> FileRange {
         let node = self.find_file(node.clone());
         original_range(self.db, node.as_ref())
@@ -129,12 +141,27 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
             .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
     }
 
+    /// Find a AstNode by offset inside SyntaxNode, if it is inside *Macrofile*,
+    /// search up until it is of the target AstNode type
     pub fn find_node_at_offset_with_macros<N: AstNode>(
         &self,
         node: &SyntaxNode,
         offset: TextUnit,
     ) -> Option<N> {
         self.ancestors_at_offset_with_macros(node, offset).find_map(N::cast)
+    }
+
+    /// Find a AstNode by offset inside SyntaxNode, if it is inside *MacroCall*,
+    /// descend it and find again
+    pub fn find_node_at_offset_with_descend<N: AstNode>(
+        &self,
+        node: &SyntaxNode,
+        offset: TextUnit,
+    ) -> Option<N> {
+        if let Some(it) = find_node_at_offset(&node, offset) {
+            return Some(it);
+        }
+        self.descend_node_at_offset(&node, offset)
     }
 
     pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {
