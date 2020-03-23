@@ -551,7 +551,7 @@ impl SourceMap {
         // lines.
         //
         // FIXME: now that we handle DUMMY_SP up above, we should consider
-        // aseerting the line numbers here are all indeed 1-based.
+        // asserting that the line numbers here are all indeed 1-based.
         let hi_line = hi.line.saturating_sub(1);
         for line_index in lo.line.saturating_sub(1)..hi_line {
             let line_len = lo.file.get_line(line_index).map(|s| s.chars().count()).unwrap_or(0);
