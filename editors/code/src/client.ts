@@ -32,6 +32,7 @@ export async function createClient(config: Config, serverPath: string): Promise<
 
             inlayHintsType: config.inlayHints.typeHints,
             inlayHintsParameter: config.inlayHints.parameterHints,
+            inlayHintsChaining: config.inlayHints.chainingHints,
             inlayHintsMaxLength: config.inlayHints.maxLength,
 
             cargoWatchEnable: cargoWatchOpts.enable,

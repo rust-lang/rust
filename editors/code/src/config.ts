@@ -88,6 +88,7 @@ export class Config {
         return {
             typeHints: this.cfg.get<boolean>("inlayHints.typeHints")!,
             parameterHints: this.cfg.get<boolean>("inlayHints.parameterHints")!,
+            chainingHints: this.cfg.get<boolean>("inlayHints.chainingHints")!,
             maxLength: this.cfg.get<null | number>("inlayHints.maxLength")!,
         };
     }
