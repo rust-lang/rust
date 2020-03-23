@@ -39,7 +39,7 @@ pub fn astconv_object_safety_violations(
     let violations = traits::supertrait_def_ids(tcx, trait_def_id)
         .map(|def_id| predicates_reference_self(tcx, def_id, true))
         .filter(|spans| !spans.is_empty())
-        .map(|spans| ObjectSafetyViolation::SupertraitSelf(spans))
+        .map(ObjectSafetyViolation::SupertraitSelf)
         .collect();
 
     debug!("astconv_object_safety_violations(trait_def_id={:?}) = {:?}", trait_def_id, violations);

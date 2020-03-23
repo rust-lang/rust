@@ -51,7 +51,7 @@ pub struct Feature {
 
 impl Feature {
     fn issue(&self) -> Option<NonZeroU32> {
-        self.issue.and_then(|i| NonZeroU32::new(i))
+        self.issue.and_then(NonZeroU32::new)
     }
 }
 

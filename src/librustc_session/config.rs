@@ -1310,7 +1310,7 @@ fn select_incremental_path(
         (None, Some(path)) => Some(path),
         (None, None) => None,
     }
-    .map(|m| PathBuf::from(m))
+    .map(PathBuf::from)
 }
 
 fn collect_print_requests(
