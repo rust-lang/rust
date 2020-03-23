@@ -470,7 +470,7 @@ pub mod task {
     pub use core::task::*;
 
     #[doc(inline)]
-    #[unstable(feature = "wake_trait", issue = "0")]
+    #[unstable(feature = "wake_trait", issue = "69912")]
     pub use alloc::task::*;
 }
 
