@@ -206,6 +206,7 @@ void TypeAnalyzer::updateAnalysis(Value* val, IntType data, Value* origin) {
 
 void TypeAnalyzer::addToWorkList(Value* val) {
 	if (!isa<Instruction>(val) && !isa<Argument>(val) && !isa<ConstantExpr>(val)) return;
+    //llvm::errs() << " - adding to work list: " << *val << "\n";
     if (std::find(workList.begin(), workList.end(), val) != workList.end()) return;
 
     if (auto inst = dyn_cast<Instruction>(val)) {
@@ -219,6 +220,7 @@ void TypeAnalyzer::addToWorkList(Value* val) {
     if (auto arg = dyn_cast<Argument>(val))
         assert(function == arg->getParent());
 
+    //llvm::errs() << " - - true add : " << *val << "\n";
 	workList.push_back(val);
 }
 
@@ -320,17 +322,23 @@ void TypeAnalyzer::considerTBAA() {
             auto dt = parseTBAA(&inst);
             if (!dt.isKnown()) continue;
 
+            ValueData vdptr = ValueData(dt).Only({0});
+            vdptr |= ValueData(IntType::Pointer);
+
             if (auto call = dyn_cast<CallInst>(&inst)) {
                 if (call->getCalledFunction() && (call->getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy || call->getCalledFunction()->getIntrinsicID() == Intrinsic::memmove)) {
                     if (auto ci = fntypeinfo.isConstantInt(call->getOperand(2))) {
                         for(int i=0; i<(int)ci->getLimitedValue(); i++) {
-                            updateAnalysis(call->getOperand(0), ValueData(dt).Only({i}), call);
-                            updateAnalysis(call->getOperand(1), ValueData(dt).Only({i}), call);
+                            ValueData iptr = ValueData(dt).Only({i});
+                            iptr |= ValueData(IntType::Pointer);
+
+                            updateAnalysis(call->getOperand(0), iptr, call);
+                            updateAnalysis(call->getOperand(1), iptr, call);
                         }
                         continue;
                     }
-                    updateAnalysis(call->getOperand(0), ValueData(dt).Only({0}), call);
-                    updateAnalysis(call->getOperand(1), ValueData(dt).Only({0}), call);
+                    updateAnalysis(call->getOperand(0), vdptr, call);
+                    updateAnalysis(call->getOperand(1), vdptr, call);
                 } else if (call->getType()->isPointerTy()) {
                     updateAnalysis(call, ValueData(dt).Only({-1}), call);
                 } else {
@@ -339,10 +347,10 @@ void TypeAnalyzer::considerTBAA() {
             } else if (auto si = dyn_cast<StoreInst>(&inst)) {
                 //TODO why?
                 if (dt == IntType::Pointer) continue;
-                updateAnalysis(si->getPointerOperand(), ValueData(dt).Only({0}), si);
+                updateAnalysis(si->getPointerOperand(), vdptr, si);
                 updateAnalysis(si->getValueOperand(), ValueData(dt), si);
             } else if (auto li = dyn_cast<LoadInst>(&inst)) {
-                updateAnalysis(li->getPointerOperand(), ValueData(dt).Only({0}), li);
+                updateAnalysis(li->getPointerOperand(), vdptr, li);
                 updateAnalysis(li, ValueData(dt), li);
             } else {
                 assert(0 && "unknown tbaa instruction user");
@@ -700,6 +708,8 @@ bool TypeAnalyzer::runUnusedChecks() {
 void TypeAnalyzer::run() {
 	std::deque<CallInst*> pendingCalls;
 
+    llvm::errs() << "begin analysis\n";
+
 	do {
 
     while (workList.size()) {
@@ -721,7 +731,9 @@ void TypeAnalyzer::run() {
 
 	}while(1);
 
+    llvm::errs() << "running unused checks\n";
     runUnusedChecks();
+    llvm::errs() << "end running unused checks\n";
 
     do {
 
@@ -743,6 +755,7 @@ void TypeAnalyzer::run() {
     } else break;
 
     }while(1);
+    llvm::errs() << "end analysis\n";
 }
 
 void TypeAnalyzer::visitValue(Value& val) {
@@ -792,7 +805,7 @@ void TypeAnalyzer::visitStoreInst(StoreInst &I) {
     auto ptr = ValueData(IntType::Pointer);
 
     auto storeSize = I.getParent()->getParent()->getParent()->getDataLayout().getTypeSizeInBits(I.getValueOperand()->getType()) / 8;
-
+    storeSize = 1;
     for(unsigned i=0; i<storeSize; i++) {
         ptr |= purged.Only({(int)i});
     }
@@ -1281,7 +1294,12 @@ TypeResults TypeAnalysis::analyzeFunction(const NewFnTypeInfo& fn, Function* fun
 	if (printtype) {
 	    llvm::errs() << "analyzing function " << function->getName() << "\n";
 	    for(auto &pair : fn.first) {
-	        llvm::errs() << " + knowndata: " << *pair.first << " : " << pair.second.str() << "\n";
+	        llvm::errs() << " + knowndata: " << *pair.first << " : " << pair.second.str();
+            auto found = fn.third.find(pair.first);
+            if (found != fn.third.end() && found->second) {
+                llvm::errs() << " - " << *found->second;
+            }
+            llvm::errs() << "\n";
 	    }
         llvm::errs() << " + retdata: " << fn.second.str() << "\n";
 	}

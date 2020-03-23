@@ -628,6 +628,7 @@ public:
             }
             dat2.insert(mergeIndices(offset, pair.first), pair.second);
             dat |= dat2;
+            dat |= DataType(IntType::Pointer);
         }
 
         return dat;
@@ -672,7 +673,6 @@ public:
         ValueData dat;
 
         for(const auto &pair : mapping) {
-            ValueData dat2;
             std::vector<int> next;
 
             if (pair.first.size() == 0) {
@@ -683,10 +683,12 @@ public:
             assert(pair.first.size() > 0);
 
             if (unmergeIndices(next, offset, pair.first)) {
+                ValueData dat2;
                 //llvm::errs() << "next: " << to_string(next) << " indices: " << to_string(indices) << " pair.first: " << to_string(pair.first) << "\n";
                 dat2.insert(next, pair.second);
+                dat |= dat2;
+                dat |= DataType(IntType::Pointer);
             }
-            dat |= dat2;
         }
 
         return dat;
