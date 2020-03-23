@@ -17,7 +17,7 @@ use hir_def::{
     AsMacroCall, DefWithBodyId,
 };
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
-use hir_ty::{InEnvironment, InferenceResult, TraitEnvironment};
+use hir_ty::InferenceResult;
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxNode, SyntaxNodePtr, TextUnit,
@@ -103,10 +103,6 @@ impl SourceAnalyzer {
         Some(res)
     }
 
-    fn trait_env(&self, db: &dyn HirDatabase) -> Arc<TraitEnvironment> {
-        TraitEnvironment::lower(db, &self.resolver)
-    }
-
     pub(crate) fn type_of(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<Type> {
         let expr_id = match expr {
             ast::Expr::MacroCall(call) => {
@@ -117,15 +113,13 @@ impl SourceAnalyzer {
         }?;
 
         let ty = self.infer.as_ref()?[expr_id].clone();
-        let environment = self.trait_env(db);
-        Some(Type { krate: self.resolver.krate()?, ty: InEnvironment { value: ty, environment } })
+        Type::new_with_resolver(db, &self.resolver, ty)
     }
 
     pub(crate) fn type_of_pat(&self, db: &dyn HirDatabase, pat: &ast::Pat) -> Option<Type> {
         let pat_id = self.pat_id(pat)?;
         let ty = self.infer.as_ref()?[pat_id].clone();
-        let environment = self.trait_env(db);
-        Some(Type { krate: self.resolver.krate()?, ty: InEnvironment { value: ty, environment } })
+        Type::new_with_resolver(db, &self.resolver, ty)
     }
 
     pub(crate) fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
