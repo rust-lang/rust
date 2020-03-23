@@ -578,7 +578,7 @@ impl InterpError<'_> {
     pub fn allocates(&self) -> bool {
         match self {
             // Zero-sized boxes do not allocate.
-            InterpError::MachineStop(b) => mem::size_of_val(&**b) > 0,
+            InterpError::MachineStop(b) => mem::size_of_val::<dyn MachineStopType>(&**b) > 0,
             InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
             | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationFailure(_))
             | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
