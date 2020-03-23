@@ -1,4 +1,5 @@
 use crate::ich::StableHashingContext;
+use crate::ty::query::try_load_from_on_disk_cache;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
@@ -148,7 +149,6 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
 
     // Interactions with on_disk_cache
     fn try_load_from_on_disk_cache(&self, dep_node: &DepNode) {
-        use crate::ty::query::try_load_from_on_disk_cache;
         try_load_from_on_disk_cache(*self, dep_node)
     }
 
