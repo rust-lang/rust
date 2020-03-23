@@ -1565,7 +1565,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                             }
                         } else {
                             err.multipart_suggestion(
-                                "consider prefixing with an underscore",
+                                "if this is intentional, prefix it with an underscore",
                                 spans.iter().map(|span| (*span, format!("_{}", name))).collect(),
                                 Applicability::MachineApplicable,
                             );

@@ -2,7 +2,7 @@ warning: unused variable: `theOtherTwo`
   --> $DIR/issue-24690.rs:13:9
    |
 LL |     let theOtherTwo = 2;
-   |         ^^^^^^^^^^^ help: consider prefixing with an underscore: `_theOtherTwo`
+   |         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_theOtherTwo`
    |
 note: the lint level is defined here
   --> $DIR/issue-24690.rs:8:9

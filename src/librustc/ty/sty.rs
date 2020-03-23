@@ -31,38 +31,15 @@ use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-#[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Debug,
-    RustcEncodable,
-    RustcDecodable,
-    HashStable,
-    TypeFoldable,
-    Lift
-)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable, Lift)]
 pub struct TypeAndMut<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: hir::Mutability,
 }
 
-#[derive(
-    Clone,
-    PartialEq,
-    PartialOrd,
-    Eq,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    Copy,
-    HashStable
-)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable, RustcDecodable, Copy)]
+#[derive(HashStable)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
@@ -70,18 +47,8 @@ pub struct FreeRegion {
     pub bound_region: BoundRegion,
 }
 
-#[derive(
-    Clone,
-    PartialEq,
-    PartialOrd,
-    Eq,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    Copy,
-    HashStable
-)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable, RustcDecodable, Copy)]
+#[derive(HashStable)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(u32),
@@ -119,18 +86,8 @@ impl BoundRegion {
 
 /// N.B., if you change this, you'll probably want to change the corresponding
 /// AST structure in `librustc_ast/ast.rs` as well.
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    HashStable,
-    Debug
-)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable)]
 #[rustc_diagnostic_item = "TyKind"]
 pub enum TyKind<'tcx> {
     /// The primitive boolean type. Written as `bool`.
@@ -1147,18 +1104,8 @@ impl<'tcx> PolyFnSig<'tcx> {
 
 pub type CanonicalPolyFnSig<'tcx> = Canonical<'tcx, Binder<FnSig<'tcx>>>;
 
-#[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    HashStable
-)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable)]
 pub struct ParamTy {
     pub index: u32,
     pub name: Symbol,
@@ -1182,18 +1129,8 @@ impl<'tcx> ParamTy {
     }
 }
 
-#[derive(
-    Copy,
-    Clone,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    HashStable
-)]
+#[derive(Copy, Clone, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(HashStable)]
 pub struct ParamConst {
     pub index: u32,
     pub name: Symbol,
@@ -1465,18 +1402,8 @@ impl Atom for RegionVid {
     }
 }
 
-#[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    HashStable
-)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable)]
 pub enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
@@ -1494,37 +1421,15 @@ rustc_index::newtype_index! {
     pub struct BoundVar { .. }
 }
 
-#[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Debug,
-    RustcEncodable,
-    RustcDecodable,
-    HashStable
-)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable)]
 pub struct BoundTy {
     pub var: BoundVar,
     pub kind: BoundTyKind,
 }
 
-#[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Debug,
-    RustcEncodable,
-    RustcDecodable,
-    HashStable
-)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable)]
 pub enum BoundTyKind {
     Anon,
     Param(Symbol),
@@ -2358,19 +2263,8 @@ impl<'tcx> TyS<'tcx> {
 }
 
 /// Typed constant value.
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    HashStable
-)]
+#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(HashStable)]
 pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,
 
@@ -2499,19 +2393,8 @@ impl<'tcx> Const<'tcx> {
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}
 
 /// Represents a constant in Rust.
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    Eq,
-    PartialEq,
-    PartialOrd,
-    Ord,
-    RustcEncodable,
-    RustcDecodable,
-    Hash,
-    HashStable
-)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
+#[derive(HashStable)]
 pub enum ConstKind<'tcx> {
     /// A const generic parameter.
     Param(ParamConst),
@@ -2549,19 +2432,8 @@ impl<'tcx> ConstKind<'tcx> {
 }
 
 /// An inference variable for a const, for use in const generics.
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    Eq,
-    PartialEq,
-    PartialOrd,
-    Ord,
-    RustcEncodable,
-    RustcDecodable,
-    Hash,
-    HashStable
-)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
+#[derive(HashStable)]
 pub enum InferConst<'tcx> {
     /// Infer the value of the const.
     Var(ConstVid<'tcx>),
