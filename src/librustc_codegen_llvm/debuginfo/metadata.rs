@@ -2299,6 +2299,11 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
         return;
     }
 
+    // Only create type information if full debuginfo is enabled
+    if cx.sess().opts.debuginfo != DebugInfo::Full {
+        return;
+    }
+
     let tcx = cx.tcx;
     let attrs = tcx.codegen_fn_attrs(def_id);
 
@@ -2355,6 +2360,11 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &'ll Value) {
     if cx.dbg_cx.is_none() {
+        return;
+    }
+
+    // Only create type information if full debuginfo is enabled
+    if cx.sess().opts.debuginfo != DebugInfo::Full {
         return;
     }
 
