@@ -315,25 +315,28 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         pred: ty::Predicate<'tcx>,
     ) -> FxHashSet<GenericParamDef> {
-        pred.walk_tys()
-            .flat_map(|t| {
-                let mut regions = FxHashSet::default();
-                tcx.collect_regions(&t, &mut regions);
+        let regions = match pred {
+            ty::Predicate::Trait(poly_trait_pred, _) => {
+                tcx.collect_referenced_late_bound_regions(&poly_trait_pred)
+            }
+            ty::Predicate::Projection(poly_proj_pred) => {
+                tcx.collect_referenced_late_bound_regions(&poly_proj_pred)
+            }
+            _ => return FxHashSet::default(),
+        };
 
-                regions.into_iter().flat_map(|r| {
-                    match r {
-                        // We only care about late bound regions, as we need to add them
-                        // to the 'for<>' section
-                        &ty::ReLateBound(_, ty::BoundRegion::BrNamed(_, name)) => {
-                            Some(GenericParamDef {
-                                name: name.to_string(),
-                                kind: GenericParamDefKind::Lifetime,
-                            })
-                        }
-                        &ty::ReVar(_) | &ty::ReEarlyBound(_) | &ty::ReStatic => None,
-                        _ => panic!("Unexpected region type {:?}", r),
-                    }
-                })
+        regions
+            .into_iter()
+            .filter_map(|br| {
+                match br {
+                    // We only care about named late bound regions, as we need to add them
+                    // to the 'for<>' section
+                    ty::BrNamed(_, name) => Some(GenericParamDef {
+                        name: name.to_string(),
+                        kind: GenericParamDefKind::Lifetime,
+                    }),
+                    _ => None,
+                }
             })
             .collect()
     }
