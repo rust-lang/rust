@@ -3730,7 +3730,6 @@ dependencies = [
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
- "rustc_errors",
  "rustc_index",
  "rustc_macros",
  "rustc_span",

@@ -7,6 +7,7 @@
 #![feature(const_fn)] // For the unsizing cast on `&[]`
 #![feature(const_panic)]
 #![feature(in_band_lifetimes)]
+#![feature(or_patterns)]
 #![feature(specialization)]
 #![recursion_limit = "256"]
 

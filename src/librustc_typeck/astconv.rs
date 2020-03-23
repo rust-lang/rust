@@ -16,7 +16,7 @@ use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
@@ -991,7 +991,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         self.ast_path_to_mono_trait_ref(
             trait_ref.path.span,
-            trait_ref.trait_def_id(),
+            trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise()),
             self_ty,
             trait_ref.path.segments.last().unwrap(),
         )
@@ -1007,7 +1007,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
     ) -> Result<(), GenericArgCountMismatch> {
-        let trait_def_id = trait_ref.trait_def_id();
+        let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
 
         debug!("instantiate_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
 

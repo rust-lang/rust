@@ -1402,9 +1402,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     {
                         // Are of this `impl Trait`'s traits object safe?
                         is_object_safe = bounds.iter().all(|bound| {
-                            bound.trait_def_id().map_or(false, |def_id| {
-                                fcx.tcx.object_safety_violations(def_id).is_empty()
-                            })
+                            bound
+                                .trait_ref()
+                                .and_then(|t| t.trait_def_id())
+                                .map_or(false, |def_id| {
+                                    fcx.tcx.object_safety_violations(def_id).is_empty()
+                                })
                         })
                     }
                 }

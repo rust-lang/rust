@@ -11,7 +11,6 @@ use rustc_ast::node_id::NodeMap;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
-use rustc_errors::FatalError;
 use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -366,9 +365,9 @@ pub enum GenericBound<'hir> {
 }
 
 impl GenericBound<'_> {
-    pub fn trait_def_id(&self) -> Option<DefId> {
+    pub fn trait_ref(&self) -> Option<&TraitRef<'_>> {
         match self {
-            GenericBound::Trait(data, _) => Some(data.trait_ref.trait_def_id()),
+            GenericBound::Trait(data, _) => Some(&data.trait_ref),
             _ => None,
         }
     }
@@ -2204,13 +2203,10 @@ pub struct TraitRef<'hir> {
 
 impl TraitRef<'_> {
     /// Gets the `DefId` of the referenced trait. It _must_ actually be a trait or trait alias.
-    pub fn trait_def_id(&self) -> DefId {
+    pub fn trait_def_id(&self) -> Option<DefId> {
         match self.path.res {
-            Res::Def(DefKind::Trait, did) => did,
-            Res::Def(DefKind::TraitAlias, did) => did,
-            Res::Err => {
-                FatalError.raise();
-            }
+            Res::Def(DefKind::Trait | DefKind::TraitAlias, did) => Some(did),
+            Res::Err => None,
             _ => unreachable!(),
         }
     }
