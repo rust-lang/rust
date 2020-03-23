@@ -3,7 +3,7 @@ use crate::infer::InferCtxt;
 use rustc::hir::map::Map;
 use rustc::ty::print::Print;
 use rustc::ty::{self, DefIdTree, Infer, Ty, TyVar};
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -277,8 +277,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let ty_msg = match local_visitor.found_ty {
-            Some(ty::TyS { kind: ty::Closure(def_id, substs), .. }) => {
-                let fn_sig = substs.as_closure().sig(*def_id, self.tcx);
+            Some(ty::TyS { kind: ty::Closure(_, substs), .. }) => {
+                let fn_sig = substs.as_closure().sig();
                 let args = closure_args(&fn_sig);
                 let ret = fn_sig.output().skip_binder().to_string();
                 format!(" for the closure `fn({}) -> {}`", args, ret)
@@ -311,8 +311,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         );
 
         let suffix = match local_visitor.found_ty {
-            Some(ty::TyS { kind: ty::Closure(def_id, substs), .. }) => {
-                let fn_sig = substs.as_closure().sig(*def_id, self.tcx);
+            Some(ty::TyS { kind: ty::Closure(_, substs), .. }) => {
+                let fn_sig = substs.as_closure().sig();
                 let ret = fn_sig.output().skip_binder().to_string();
 
                 if let Some(ExprKind::Closure(_, decl, body_id, ..)) = local_visitor.found_closure {
@@ -462,24 +462,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         e: &Expr<'_>,
         err: &mut DiagnosticBuilder<'_>,
     ) {
-        if let (Ok(snippet), Some(tables), None) = (
-            self.tcx.sess.source_map().span_to_snippet(segment.ident.span),
-            self.in_progress_tables,
-            &segment.args,
-        ) {
+        if let (Some(tables), None) = (self.in_progress_tables, &segment.args) {
             let borrow = tables.borrow();
             if let Some((DefKind::AssocFn, did)) = borrow.type_dependent_def(e.hir_id) {
                 let generics = self.tcx.generics_of(did);
                 if !generics.params.is_empty() {
-                    err.span_suggestion(
-                        segment.ident.span,
+                    err.span_suggestion_verbose(
+                        segment.ident.span.shrink_to_hi(),
                         &format!(
                             "consider specifying the type argument{} in the method call",
-                            if generics.params.len() > 1 { "s" } else { "" },
+                            pluralize!(generics.params.len()),
                         ),
                         format!(
-                            "{}::<{}>",
-                            snippet,
+                            "::<{}>",
                             generics
                                 .params
                                 .iter()

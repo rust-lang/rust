@@ -478,8 +478,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
-                match self.infcx.closure_kind(closure_def_id, closure_substs) {
+            ty::Predicate::ClosureKind(_, closure_substs, kind) => {
+                match self.infcx.closure_kind(closure_substs) {
                     Some(closure_kind) => {
                         if closure_kind.extends(kind) {
                             Ok(EvaluatedToOk)
@@ -1600,9 +1600,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         match obligation.self_ty().skip_binder().kind {
-            ty::Closure(closure_def_id, closure_substs) => {
+            ty::Closure(_, closure_substs) => {
                 debug!("assemble_unboxed_candidates: kind={:?} obligation={:?}", kind, obligation);
-                match self.infcx.closure_kind(closure_def_id, closure_substs) {
+                match self.infcx.closure_kind(closure_substs) {
                     Some(closure_kind) => {
                         debug!("assemble_unboxed_candidates: closure_kind = {:?}", closure_kind);
                         if closure_kind.extends(kind) {
@@ -2234,9 +2234,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Where(ty::Binder::bind(tys.iter().map(|k| k.expect_ty()).collect()))
             }
 
-            ty::Closure(def_id, substs) => {
+            ty::Closure(_, substs) => {
                 // (*) binder moved here
-                Where(ty::Binder::bind(substs.as_closure().upvar_tys(def_id, self.tcx()).collect()))
+                Where(ty::Binder::bind(substs.as_closure().upvar_tys().collect()))
             }
 
             ty::Adt(..) | ty::Projection(..) | ty::Param(..) | ty::Opaque(..) => {
@@ -2313,17 +2313,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 tys.iter().map(|k| k.expect_ty()).collect()
             }
 
-            ty::Closure(def_id, ref substs) => {
-                substs.as_closure().upvar_tys(def_id, self.tcx()).collect()
-            }
+            ty::Closure(_, ref substs) => substs.as_closure().upvar_tys().collect(),
 
-            ty::Generator(def_id, ref substs, _) => {
-                let witness = substs.as_generator().witness(def_id, self.tcx());
-                substs
-                    .as_generator()
-                    .upvar_tys(def_id, self.tcx())
-                    .chain(iter::once(witness))
-                    .collect()
+            ty::Generator(_, ref substs, _) => {
+                let witness = substs.as_generator().witness();
+                substs.as_generator().upvar_tys().chain(iter::once(witness)).collect()
             }
 
             ty::GeneratorWitness(types) => {
@@ -2811,7 +2805,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!("confirm_generator_candidate({:?},{:?},{:?})", obligation, generator_def_id, substs);
 
-        let trait_ref = self.generator_trait_ref_unnormalized(obligation, generator_def_id, substs);
+        let trait_ref = self.generator_trait_ref_unnormalized(obligation, substs);
         let Normalized { value: trait_ref, mut obligations } = normalize_with_depth(
             self,
             obligation.param_env,
@@ -2856,7 +2850,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
 
-        let trait_ref = self.closure_trait_ref_unnormalized(obligation, closure_def_id, substs);
+        let trait_ref = self.closure_trait_ref_unnormalized(obligation, substs);
         let Normalized { value: trait_ref, mut obligations } = normalize_with_depth(
             self,
             obligation.param_env,
@@ -3338,14 +3332,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn closure_trait_ref_unnormalized(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        closure_def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
-        debug!(
-            "closure_trait_ref_unnormalized(obligation={:?}, closure_def_id={:?}, substs={:?})",
-            obligation, closure_def_id, substs,
-        );
-        let closure_sig = substs.as_closure().sig(closure_def_id, self.tcx());
+        debug!("closure_trait_ref_unnormalized(obligation={:?}, substs={:?})", obligation, substs);
+        let closure_sig = substs.as_closure().sig();
 
         debug!("closure_trait_ref_unnormalized: closure_sig = {:?}", closure_sig);
 
@@ -3367,10 +3357,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn generator_trait_ref_unnormalized(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        closure_def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
-        let gen_sig = substs.as_generator().poly_sig(closure_def_id, self.tcx());
+        let gen_sig = substs.as_generator().poly_sig();
 
         // (1) Feels icky to skip the binder here, but OTOH we know
         // that the self-type is an generator type and hence is

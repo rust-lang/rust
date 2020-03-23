@@ -628,8 +628,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
             ty::Generator(def_id, substs, _) => self.generator_layout(ty, def_id, substs)?,
 
-            ty::Closure(def_id, ref substs) => {
-                let tys = substs.as_closure().upvar_tys(def_id, tcx);
+            ty::Closure(_, ref substs) => {
+                let tys = substs.as_closure().upvar_tys();
                 univariant(
                     &tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
                     &ReprOptions::default(),
@@ -1402,7 +1402,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // Build a prefix layout, including "promoting" all ineligible
         // locals as part of the prefix. We compute the layout of all of
         // these fields at once to get optimal packing.
-        let discr_index = substs.as_generator().prefix_tys(def_id, tcx).count();
+        let discr_index = substs.as_generator().prefix_tys().count();
 
         // `info.variant_fields` already accounts for the reserved variants, so no need to add them.
         let max_discr = (info.variant_fields.len() - 1) as u128;
@@ -1419,7 +1419,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             .map(|ty| self.layout_of(ty));
         let prefix_layouts = substs
             .as_generator()
-            .prefix_tys(def_id, tcx)
+            .prefix_tys()
             .map(|ty| self.layout_of(ty))
             .chain(iter::once(Ok(discr_layout)))
             .chain(promoted_layouts)
@@ -2095,9 +2095,7 @@ where
             ty::Str => tcx.types.u8,
 
             // Tuples, generators and closures.
-            ty::Closure(def_id, ref substs) => {
-                substs.as_closure().upvar_tys(def_id, tcx).nth(i).unwrap()
-            }
+            ty::Closure(_, ref substs) => substs.as_closure().upvar_tys().nth(i).unwrap(),
 
             ty::Generator(def_id, ref substs, _) => match this.variants {
                 Variants::Single { index } => substs
@@ -2111,7 +2109,7 @@ where
                     if i == discr_index {
                         return discr_layout(discr);
                     }
-                    substs.as_generator().prefix_tys(def_id, tcx).nth(i).unwrap()
+                    substs.as_generator().prefix_tys().nth(i).unwrap()
                 }
             },
 
@@ -2298,7 +2296,7 @@ impl<'tcx> ty::Instance<'tcx> {
                 sig
             }
             ty::Closure(def_id, substs) => {
-                let sig = substs.as_closure().sig(def_id, tcx);
+                let sig = substs.as_closure().sig();
 
                 let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
                 sig.map_bound(|sig| tcx.mk_fn_sig(
@@ -2309,8 +2307,8 @@ impl<'tcx> ty::Instance<'tcx> {
                     sig.abi
                 ))
             }
-            ty::Generator(def_id, substs, _) => {
-                let sig = substs.as_generator().poly_sig(def_id, tcx);
+            ty::Generator(_, substs, _) => {
+                let sig = substs.as_generator().poly_sig();
 
                 let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
                 let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);

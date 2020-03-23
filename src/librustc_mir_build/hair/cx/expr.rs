@@ -387,7 +387,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 .upvars(def_id)
                 .iter()
                 .flat_map(|upvars| upvars.iter())
-                .zip(substs.upvar_tys(def_id, cx.tcx))
+                .zip(substs.upvar_tys())
                 .map(|((&var_hir_id, _), ty)| capture_upvar(cx, expr, var_hir_id, ty))
                 .collect();
             ExprKind::Closure { closure_id: def_id, substs, upvars, movability }
@@ -830,7 +830,7 @@ fn convert_var<'tcx>(
             let region = cx.tcx.mk_region(region);
 
             let self_expr = if let ty::Closure(_, closure_substs) = closure_ty.kind {
-                match cx.infcx.closure_kind(closure_def_id, closure_substs).unwrap() {
+                match cx.infcx.closure_kind(closure_substs).unwrap() {
                     ty::ClosureKind::Fn => {
                         let ref_closure_ty = cx.tcx.mk_ref(
                             region,

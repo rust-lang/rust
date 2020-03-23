@@ -2,7 +2,7 @@ error[E0603]: tuple variant `Tuple` is private
   --> $DIR/variant.rs:11:48
    |
 LL |     let variant_tuple = NonExhaustiveVariants::Tuple(640);
-   |                                                ^^^^^ this tuple variant is private
+   |                                                ^^^^^ private tuple variant
    |
 note: the tuple variant `Tuple` is defined here
   --> $DIR/auxiliary/variants.rs:5:23
@@ -14,7 +14,7 @@ error[E0603]: unit variant `Unit` is private
   --> $DIR/variant.rs:14:47
    |
 LL |     let variant_unit = NonExhaustiveVariants::Unit;
-   |                                               ^^^^ this unit variant is private
+   |                                               ^^^^ private unit variant
    |
 note: the unit variant `Unit` is defined here
   --> $DIR/auxiliary/variants.rs:4:23
@@ -26,7 +26,7 @@ error[E0603]: unit variant `Unit` is private
   --> $DIR/variant.rs:18:32
    |
 LL |         NonExhaustiveVariants::Unit => "",
-   |                                ^^^^ this unit variant is private
+   |                                ^^^^ private unit variant
    |
 note: the unit variant `Unit` is defined here
   --> $DIR/auxiliary/variants.rs:4:23
@@ -38,7 +38,7 @@ error[E0603]: tuple variant `Tuple` is private
   --> $DIR/variant.rs:20:32
    |
 LL |         NonExhaustiveVariants::Tuple(fe_tpl) => "",
-   |                                ^^^^^ this tuple variant is private
+   |                                ^^^^^ private tuple variant
    |
 note: the tuple variant `Tuple` is defined here
   --> $DIR/auxiliary/variants.rs:5:23
@@ -50,7 +50,7 @@ error[E0603]: tuple variant `Tuple` is private
   --> $DIR/variant.rs:26:35
    |
 LL |     if let NonExhaustiveVariants::Tuple(fe_tpl) = variant_struct {
-   |                                   ^^^^^ this tuple variant is private
+   |                                   ^^^^^ private tuple variant
    |
 note: the tuple variant `Tuple` is defined here
   --> $DIR/auxiliary/variants.rs:5:23

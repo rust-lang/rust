@@ -1580,13 +1580,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let mut err = struct_span_err!(
             self.tcx().sess,
-            expr.span,
+            field.span,
             E0616,
             "field `{}` of {} `{}` is private",
             field,
             kind_name,
             struct_path
         );
+        err.span_label(field.span, "private field");
         // Also check if an accessible method exists, which is often what is meant.
         if self.method_exists(field, expr_t, expr.hir_id, false) && !self.expr_in_place(expr.hir_id)
         {
@@ -1611,7 +1612,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             field,
             expr_t
         );
-
+        err.span_label(field.span, "method, not a field");
         if !self.expr_in_place(expr.hir_id) {
             self.suggest_method_call(
                 &mut err,

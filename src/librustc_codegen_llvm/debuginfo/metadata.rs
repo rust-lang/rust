@@ -663,7 +663,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
             MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
         }
         ty::Closure(def_id, substs) => {
-            let upvar_tys: Vec<_> = substs.as_closure().upvar_tys(def_id, cx.tcx).collect();
+            let upvar_tys: Vec<_> = substs.as_closure().upvar_tys().collect();
             let containing_scope = get_namespace_for_item(cx, def_id);
             prepare_tuple_metadata(
                 cx,
@@ -678,7 +678,7 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
         ty::Generator(def_id, substs, _) => {
             let upvar_tys: Vec<_> = substs
                 .as_generator()
-                .prefix_tys(def_id, cx.tcx)
+                .prefix_tys()
                 .map(|t| cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t))
                 .collect();
             prepare_enum_metadata(cx, t, def_id, unique_type_id, usage_site_span, upvar_tys)
@@ -2299,6 +2299,11 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
         return;
     }
 
+    // Only create type information if full debuginfo is enabled
+    if cx.sess().opts.debuginfo != DebugInfo::Full {
+        return;
+    }
+
     let tcx = cx.tcx;
     let attrs = tcx.codegen_fn_attrs(def_id);
 
@@ -2355,6 +2360,11 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &'ll Value) {
     if cx.dbg_cx.is_none() {
+        return;
+    }
+
+    // Only create type information if full debuginfo is enabled
+    if cx.sess().opts.debuginfo != DebugInfo::Full {
         return;
     }
 

@@ -4831,7 +4831,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir = self.tcx.hir();
         let (def_id, sig) = match found.kind {
             ty::FnDef(def_id, _) => (def_id, found.fn_sig(self.tcx)),
-            ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig(def_id, self.tcx)),
+            ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig()),
             _ => return false,
         };
 
@@ -4939,15 +4939,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => {}
             }
-            if let Ok(code) = self.sess().source_map().span_to_snippet(expr.span) {
-                err.span_suggestion(
-                    expr.span,
-                    &format!("use parentheses to {}", msg),
-                    format!("{}({})", code, sugg_call),
-                    applicability,
-                );
-                return true;
-            }
+            err.span_suggestion_verbose(
+                expr.span.shrink_to_hi(),
+                &format!("use parentheses to {}", msg),
+                format!("({})", sugg_call),
+                applicability,
+            );
+            return true;
         }
         false
     }

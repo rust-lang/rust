@@ -1,11 +1,13 @@
 use super::metadata::{file_metadata, UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
 use super::utils::DIB;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
+use rustc_codegen_ssa::traits::*;
 
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DIScope, DISubprogram};
 use rustc::mir::{Body, SourceScope};
+use rustc_session::config::DebugInfo;
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
@@ -19,10 +21,17 @@ pub fn compute_mir_scopes(
 ) {
     // Find all the scopes with variables defined in them.
     let mut has_variables = BitSet::new_empty(mir.source_scopes.len());
-    // FIXME(eddyb) take into account that arguments always have debuginfo,
-    // irrespective of their name (assuming full debuginfo is enabled).
-    for var_debug_info in &mir.var_debug_info {
-        has_variables.insert(var_debug_info.source_info.scope);
+
+    // Only consider variables when they're going to be emitted.
+    // FIXME(eddyb) don't even allocate `has_variables` otherwise.
+    if cx.sess().opts.debuginfo == DebugInfo::Full {
+        // FIXME(eddyb) take into account that arguments always have debuginfo,
+        // irrespective of their name (assuming full debuginfo is enabled).
+        // NOTE(eddyb) actually, on second thought, those are always in the
+        // function scope, which always exists.
+        for var_debug_info in &mir.var_debug_info {
+            has_variables.insert(var_debug_info.source_info.scope);
+        }
     }
 
     // Instantiate all scopes.

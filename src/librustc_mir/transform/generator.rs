@@ -1236,8 +1236,8 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             ty::Generator(_, substs, movability) => {
                 let substs = substs.as_generator();
                 (
-                    substs.upvar_tys(def_id, tcx).collect(),
-                    substs.witness(def_id, tcx),
+                    substs.upvar_tys().collect(),
+                    substs.witness(),
                     substs.discr_ty(tcx),
                     movability == hir::Movability::Movable,
                 )

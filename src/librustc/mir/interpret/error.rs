@@ -319,8 +319,6 @@ impl fmt::Debug for InvalidProgramInfo<'_> {
 pub enum UndefinedBehaviorInfo {
     /// Free-form case. Only for errors that are never caught!
     Ub(String),
-    /// Free-form case for experimental UB. Only for errors that are never caught!
-    UbExperimental(String),
     /// Unreachable code was executed.
     Unreachable,
     /// An enum discriminant was set to a value which was outside the range of valid values.
@@ -381,7 +379,7 @@ impl fmt::Debug for UndefinedBehaviorInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UndefinedBehaviorInfo::*;
         match self {
-            Ub(msg) | UbExperimental(msg) => write!(f, "{}", msg),
+            Ub(msg) => write!(f, "{}", msg),
             Unreachable => write!(f, "entering unreachable code"),
             InvalidDiscriminant(val) => write!(f, "encountering invalid enum discriminant {}", val),
             BoundsCheckFailed { ref len, ref index } => write!(
@@ -563,8 +561,7 @@ impl InterpError<'_> {
             InterpError::MachineStop(_)
             | InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
             | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationFailure(_))
-            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
-            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_)) => true,
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_)) => true,
             _ => false,
         }
     }

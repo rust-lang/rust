@@ -475,7 +475,12 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     // so avoid methods on other types (e.g., `<*mut T>::null`).
                     match impl_self_ty.kind {
                         ty::Adt(def, ..) if !def.is_box() => {
-                            Some(type_metadata(cx, impl_self_ty, rustc_span::DUMMY_SP))
+                            // Again, only create type information if full debuginfo is enabled
+                            if cx.sess().opts.debuginfo == DebugInfo::Full {
+                                Some(type_metadata(cx, impl_self_ty, rustc_span::DUMMY_SP))
+                            } else {
+                                Some(namespace::item_namespace(cx, def.did))
+                            }
                         }
                         _ => None,
                     }

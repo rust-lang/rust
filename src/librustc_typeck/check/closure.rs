@@ -77,45 +77,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let generator_types =
             check_fn(self, self.param_env, liberated_sig, decl, expr.hir_id, body, gen).1;
 
-        // Create type variables (for now) to represent the transformed
-        // types of upvars. These will be unified during the upvar
-        // inference phase (`upvar.rs`).
         let base_substs =
             InternalSubsts::identity_for_item(self.tcx, self.tcx.closure_base_def_id(expr_def_id));
+        // HACK(eddyb) this hardcodes indices into substs but it should rely on
+        // `ClosureSubsts` and `GeneratorSubsts` providing constructors, instead.
+        // That would also remove the need for most of the inference variables,
+        // as they immediately unified with the actual type below, including
+        // the `InferCtxt::closure_sig` and `ClosureSubsts::sig_ty` methods.
+        let tupled_upvars_idx = base_substs.len() + if generator_types.is_some() { 4 } else { 2 };
         let substs = base_substs.extend_to(self.tcx, expr_def_id, |param, _| match param.kind {
             GenericParamDefKind::Lifetime => span_bug!(expr.span, "closure has lifetime param"),
-            GenericParamDefKind::Type { .. } => self
-                .infcx
-                .next_ty_var(TypeVariableOrigin {
+            GenericParamDefKind::Type { .. } => if param.index as usize == tupled_upvars_idx {
+                self.tcx.mk_tup(self.tcx.upvars(expr_def_id).iter().flat_map(|upvars| {
+                    upvars.iter().map(|(&var_hir_id, _)| {
+                        // Create type variables (for now) to represent the transformed
+                        // types of upvars. These will be unified during the upvar
+                        // inference phase (`upvar.rs`).
+                        self.infcx.next_ty_var(TypeVariableOrigin {
+                            // FIXME(eddyb) distinguish upvar inference variables from the rest.
+                            kind: TypeVariableOriginKind::ClosureSynthetic,
+                            span: self.tcx.hir().span(var_hir_id),
+                        })
+                    })
+                }))
+            } else {
+                // Create type variables (for now) to represent the various
+                // pieces of information kept in `{Closure,Generic}Substs`.
+                // They will either be unified below, or later during the upvar
+                // inference phase (`upvar.rs`)
+                self.infcx.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::ClosureSynthetic,
                     span: expr.span,
                 })
-                .into(),
+            }
+            .into(),
             GenericParamDefKind::Const => span_bug!(expr.span, "closure has const param"),
         });
         if let Some(GeneratorTypes { resume_ty, yield_ty, interior, movability }) = generator_types
         {
             let generator_substs = substs.as_generator();
-            self.demand_eqtype(
-                expr.span,
-                resume_ty,
-                generator_substs.resume_ty(expr_def_id, self.tcx),
-            );
-            self.demand_eqtype(
-                expr.span,
-                yield_ty,
-                generator_substs.yield_ty(expr_def_id, self.tcx),
-            );
-            self.demand_eqtype(
-                expr.span,
-                liberated_sig.output(),
-                generator_substs.return_ty(expr_def_id, self.tcx),
-            );
-            self.demand_eqtype(
-                expr.span,
-                interior,
-                generator_substs.witness(expr_def_id, self.tcx),
-            );
+            self.demand_eqtype(expr.span, resume_ty, generator_substs.resume_ty());
+            self.demand_eqtype(expr.span, yield_ty, generator_substs.yield_ty());
+            self.demand_eqtype(expr.span, liberated_sig.output(), generator_substs.return_ty());
+            self.demand_eqtype(expr.span, interior, generator_substs.witness());
 
             // HACK(eddyb) this forces the types equated above into `substs` but
             // it should rely on `GeneratorSubsts` providing a constructor, instead.
@@ -142,18 +146,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let sig_fn_ptr_ty = self.tcx.mk_fn_ptr(sig);
-        self.demand_eqtype(
-            expr.span,
-            sig_fn_ptr_ty,
-            substs.as_closure().sig_as_fn_ptr_ty(expr_def_id, self.tcx),
-        );
+        self.demand_eqtype(expr.span, sig_fn_ptr_ty, substs.as_closure().sig_as_fn_ptr_ty());
 
         if let Some(kind) = opt_kind {
-            self.demand_eqtype(
-                expr.span,
-                kind.to_ty(self.tcx),
-                substs.as_closure().kind_ty(expr_def_id, self.tcx),
-            );
+            self.demand_eqtype(expr.span, kind.to_ty(self.tcx), substs.as_closure().kind_ty());
         }
 
         // HACK(eddyb) this forces the types equated above into `substs` but

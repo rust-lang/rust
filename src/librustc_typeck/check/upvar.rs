@@ -107,7 +107,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let infer_kind = if let UpvarSubsts::Closure(closure_substs) = substs {
-            self.closure_kind(closure_def_id, closure_substs).is_none().then_some(closure_substs)
+            self.closure_kind(closure_substs).is_none().then_some(closure_substs)
         } else {
             None
         };
@@ -168,7 +168,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Unify the (as yet unbound) type variable in the closure
             // substs with the kind we inferred.
             let inferred_kind = delegate.current_closure_kind;
-            let closure_kind_ty = closure_substs.as_closure().kind_ty(closure_def_id, self.tcx);
+            let closure_kind_ty = closure_substs.as_closure().kind_ty();
             self.demand_eqtype(span, inferred_kind.to_ty(self.tcx), closure_kind_ty);
 
             // If we have an origin, store it.
@@ -197,9 +197,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "analyze_closure: id={:?} substs={:?} final_upvar_tys={:?}",
             closure_hir_id, substs, final_upvar_tys
         );
-        for (upvar_ty, final_upvar_ty) in
-            substs.upvar_tys(closure_def_id, self.tcx).zip(final_upvar_tys)
-        {
+        for (upvar_ty, final_upvar_ty) in substs.upvar_tys().zip(final_upvar_tys) {
             self.demand_suptype(span, upvar_ty, final_upvar_ty);
         }
 

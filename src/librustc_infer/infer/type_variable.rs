@@ -54,6 +54,7 @@ pub enum TypeVariableOriginKind {
 
     /// One of the upvars or closure kind parameters in a `ClosureSubsts`
     /// (before it has been determined).
+    // FIXME(eddyb) distinguish upvar inference variables from the rest.
     ClosureSynthetic,
     SubstitutionPlaceholder,
     AutoDeref,

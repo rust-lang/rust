@@ -367,9 +367,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         let self_ty = trait_ref.self_ty();
         let (def_id, output_ty, callable) = match self_ty.kind {
-            ty::Closure(def_id, substs) => {
-                (def_id, substs.as_closure().sig(def_id, self.tcx).output(), "closure")
-            }
+            ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig().output(), "closure"),
             ty::FnDef(def_id, _) => (def_id, self_ty.fn_sig(self.tcx).output(), "function"),
             _ => return,
         };
@@ -390,7 +388,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
         let hir = self.tcx.hir();
         // Get the name of the callable and the arguments to be used in the suggestion.
-        let snippet = match hir.get_if_local(def_id) {
+        let (snippet, sugg) = match hir.get_if_local(def_id) {
             Some(hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(_, decl, _, span, ..),
                 ..
@@ -401,7 +399,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     None => return,
                 };
                 let args = decl.inputs.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
-                format!("{}({})", name, args)
+                let sugg = format!("({})", args);
+                (format!("{}{}", name, sugg), sugg)
             }
             Some(hir::Node::Item(hir::Item {
                 ident,
@@ -422,7 +421,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     })
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("{}({})", ident, args)
+                let sugg = format!("({})", args);
+                (format!("{}{}", ident, sugg), sugg)
             }
             _ => return,
         };
@@ -431,10 +431,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // an argument, the `obligation.cause.span` points at the expression
             // of the argument, so we can provide a suggestion. This is signaled
             // by `points_at_arg`. Otherwise, we give a more general note.
-            err.span_suggestion(
-                obligation.cause.span,
+            err.span_suggestion_verbose(
+                obligation.cause.span.shrink_to_hi(),
                 &msg,
-                snippet,
+                sugg,
                 Applicability::HasPlaceholders,
             );
         } else {
@@ -619,7 +619,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         .source_map()
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
                     if points_at_arg && mutability == hir::Mutability::Not && refs_number > 0 {
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             sp,
                             "consider changing this borrow's mutability",
                             "&mut ".to_string(),
