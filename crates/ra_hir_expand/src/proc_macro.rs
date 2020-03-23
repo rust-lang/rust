@@ -25,8 +25,9 @@ impl ProcMacroExpander {
             MacroCallKind::Attr(_, name) => name,
         };
 
-        dbg!(name);
+        log::debug!("Proc-macro-expanding name = {}", name);
 
-        unimplemented!()
+        // Return nothing for now
+        return Ok(tt::Subtree::default());
     }
 }
