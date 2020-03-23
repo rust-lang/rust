@@ -1,23 +1,24 @@
 use rustc::traits::query::NoSolution;
 use rustc::ty::query::Providers;
-use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use rustc::ty::subst::GenericArg;
+use rustc::ty::{self, ParamEnvAnd, TyCtxt};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
 use std::sync::atomic::Ordering;
 
 crate fn provide(p: &mut Providers<'_>) {
-    *p = Providers { normalize_ty_after_erasing_regions, ..*p };
+    *p = Providers { normalize_generic_arg_after_erasing_regions, ..*p };
 }
 
-fn normalize_ty_after_erasing_regions<'tcx>(
+fn normalize_generic_arg_after_erasing_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
-    goal: ParamEnvAnd<'tcx, Ty<'tcx>>,
-) -> Ty<'tcx> {
-    debug!("normalize_ty_after_erasing_regions(goal={:#?})", goal);
+    goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>,
+) -> GenericArg<'tcx> {
+    debug!("normalize_generic_arg_after_erasing_regions(goal={:#?})", goal);
 
     let ParamEnvAnd { param_env, value } = goal;
-    tcx.sess.perf_stats.normalize_ty_after_erasing_regions.fetch_add(1, Ordering::Relaxed);
+    tcx.sess.perf_stats.normalize_generic_arg_after_erasing_regions.fetch_add(1, Ordering::Relaxed);
     tcx.infer_ctxt().enter(|infcx| {
         let cause = ObligationCause::dummy();
         match infcx.at(&cause, param_env).normalize(&value) {
