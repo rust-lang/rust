@@ -648,7 +648,7 @@ public:
 
     // given previous [0, 1, 2], index[0, 1] we should get back [0, 2]
     // we should also have type dependent [2], index[1], if index.type[1] cast to index.type[2] permits
-    static bool unmergeIndices(std::vector<int>& next, int offset, const std::vector<int> &previous) {
+    static bool unmergeIndices(std::vector<int>& next, int offset, const std::vector<int> &previous, int maxSize) {
         assert(next.size() == 0);
 
         assert(previous.size() > 0);
@@ -664,12 +664,17 @@ public:
         }
 
         next[0] -= offset;
+
+        if (maxSize != -1) {
+            if (next[0] >= maxSize) return false;
+        }
+
         return true;
     }
 
     //We want all the data from this value, given that we are indexing with indices
     // E.g. we might have a { [0, 1, 2]: Int, [5, 10, 30]: Pointer}, we may index [0, 1] and should get back [0, 2]:Int
-    ValueData UnmergeIndices(int offset) const {
+    ValueData UnmergeIndices(int offset, int maxSize) const {
         ValueData dat;
 
         for(const auto &pair : mapping) {
@@ -682,7 +687,7 @@ public:
             }
             assert(pair.first.size() > 0);
 
-            if (unmergeIndices(next, offset, pair.first)) {
+            if (unmergeIndices(next, offset, pair.first, maxSize)) {
                 ValueData dat2;
                 //llvm::errs() << "next: " << to_string(next) << " indices: " << to_string(indices) << " pair.first: " << to_string(pair.first) << "\n";
                 dat2.insert(next, pair.second);

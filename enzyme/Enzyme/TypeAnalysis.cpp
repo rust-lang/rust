@@ -708,8 +708,6 @@ bool TypeAnalyzer::runUnusedChecks() {
 void TypeAnalyzer::run() {
 	std::deque<CallInst*> pendingCalls;
 
-    llvm::errs() << "begin analysis\n";
-
 	do {
 
     while (workList.size()) {
@@ -731,9 +729,7 @@ void TypeAnalyzer::run() {
 
 	}while(1);
 
-    llvm::errs() << "running unused checks\n";
     runUnusedChecks();
-    llvm::errs() << "end running unused checks\n";
 
     do {
 
@@ -755,7 +751,6 @@ void TypeAnalyzer::run() {
     } else break;
 
     }while(1);
-    llvm::errs() << "end analysis\n";
 }
 
 void TypeAnalyzer::visitValue(Value& val) {
@@ -886,14 +881,33 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
         //TODO also allow negative offsets
         if (off < 0) continue;
 
-        updateAnalysis(&gep, pointerAnalysis.UnmergeIndices(off), &gep);
+        int maxSize = -1;
+        if (cast<ConstantInt>(vec[0])->getLimitedValue() == 0) {
+            maxSize = function->getParent()->getDataLayout().getTypeAllocSizeInBits(cast<PointerType>(gep.getType())->getElementType())/8;
+        }
 
-        //llvm::errs() << "GEP: " << gep << " - " << getAnalysis(&gep).str() << " - off=" << off << "\n";
+        /*
+        if (gep.getName() == "arrayidx.i132") {
+            llvm::errs() << "HERE: off:" << off << " maxSize: " << maxSize << " vec: [";
+            for(auto v: vec) llvm::errs() << *v << ", ";
+            llvm::errs() << "] " << "\n";
+        }
+
+        if (gep.getName() == "m_inputImpl.i") {
+            dump();
+            llvm::errs() << *gep.getParent()->getParent() << "\n";
+            llvm::errs() << "GEP: " << gep << " - " << getAnalysis(&gep).str() << " - off=" << off << "\n";
+            llvm::errs() << "  + pa: " << *gep.getPointerOperand() << " - " << pointerAnalysis.str() << "\n";
+            llvm::errs() << "  + pa unmerge: " << pointerAnalysis.UnmergeIndices(off, maxSize).str() << "\n";
+        }
+        */
+
+        updateAnalysis(&gep, pointerAnalysis.UnmergeIndices(off, maxSize), &gep);
+
         auto merged = getAnalysis(&gep).MergeIndices(off);
 
         //llvm::errs()  << " + prevanalysis: " << getAnalysis(gep.getPointerOperand()).str() << " merged: " << merged.str() << " g2:[";
-        //for(auto v: vec) llvm::errs() << *v << ", ";
-        //llvm::errs() << "] " << "\n";
+
         updateAnalysis(gep.getPointerOperand(), merged, &gep);
     }
 }
