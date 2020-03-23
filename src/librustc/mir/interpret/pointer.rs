@@ -111,18 +111,8 @@ impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 ///
 /// `Pointer` is also generic over the `Tag` associated with each pointer,
 /// which is used to do provenance tracking during execution.
-#[derive(
-    Copy,
-    Clone,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    RustcEncodable,
-    RustcDecodable,
-    Hash,
-    HashStable
-)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
+#[derive(HashStable)]
 pub struct Pointer<Tag = (), Id = AllocId> {
     pub alloc_id: Id,
     pub offset: Size,

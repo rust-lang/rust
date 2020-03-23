@@ -69,18 +69,8 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 /// The various "big phases" that MIR goes through.
 ///
 /// Warning: ordering of variants is significant.
-#[derive(
-    Copy,
-    Clone,
-    RustcEncodable,
-    RustcDecodable,
-    HashStable,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord
-)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(HashStable)]
 pub enum MirPhase {
     Build = 0,
     Const = 1,
@@ -439,18 +429,8 @@ pub struct SourceInfo {
 ///////////////////////////////////////////////////////////////////////////
 // Borrow kinds
 
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    RustcEncodable,
-    RustcDecodable,
-    HashStable
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
+#[derive(HashStable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,

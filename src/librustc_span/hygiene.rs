@@ -59,18 +59,8 @@ pub struct ExpnId(u32);
 
 /// A property of a macro expansion that determines how identifiers
 /// produced by that expansion are resolved.
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Hash,
-    Debug,
-    RustcEncodable,
-    RustcDecodable,
-    HashStable_Generic
-)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable_Generic)]
 pub enum Transparency {
     /// Identifier produced by a transparent expansion is always resolved at call-site.
     /// Call-site spans in procedural macros, hygiene opt-out in `macro` should use this.
@@ -747,17 +737,8 @@ impl ExpnKind {
 }
 
 /// The kind of macro invocation or definition.
-#[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    RustcEncodable,
-    RustcDecodable,
-    Hash,
-    Debug,
-    HashStable_Generic
-)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub enum MacroKind {
     /// A bang macro `foo!()`.
     Bang,

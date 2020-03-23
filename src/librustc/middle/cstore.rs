@@ -40,18 +40,8 @@ impl CrateSource {
     }
 }
 
-#[derive(
-    RustcEncodable,
-    RustcDecodable,
-    Copy,
-    Clone,
-    Ord,
-    PartialOrd,
-    Eq,
-    PartialEq,
-    Debug,
-    HashStable
-)]
+#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
+#[derive(HashStable)]
 pub enum DepKind {
     /// A dependency that is only used for its macros.
     MacrosOnly,
