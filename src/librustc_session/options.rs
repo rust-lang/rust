@@ -299,6 +299,9 @@ macro_rules! options {
             }
         )*
 
+        /// Set a flag to true. Note that it cannot set the flag to false, so
+        /// using this parser in combination with a flag that defaults to true
+        /// is useless; the flag will always be true.
         fn parse_bool(slot: &mut bool, v: Option<&str>) -> bool {
             match v {
                 Some(..) => false,
