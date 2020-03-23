@@ -2375,7 +2375,7 @@ pub const ALL_LINTS: [Lint; 361] = [
     },
     Lint {
         name: "useless_transmute",
-        group: "complexity",
+        group: "nursery",
         desc: "transmutes that have the same to and from types or could be a cast/coercion",
         deprecation: None,
         module: "transmute",
