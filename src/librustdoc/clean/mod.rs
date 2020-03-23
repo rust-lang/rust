@@ -450,7 +450,6 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
             | ty::ReVar(..)
             | ty::RePlaceholder(..)
             | ty::ReEmpty(_)
-            | ty::ReClosureBound(_)
             | ty::ReErased => {
                 debug!("cannot clean region {:?}", self);
                 None

@@ -581,10 +581,6 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 return Ok(r);
             }
 
-            ty::ReClosureBound(..) => {
-                span_bug!(self.span, "encountered unexpected ReClosureBound: {:?}", r,);
-            }
-
             ty::RePlaceholder(..)
             | ty::ReVar(..)
             | ty::ReEmpty(_)

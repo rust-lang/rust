@@ -170,7 +170,6 @@ fn is_free_region(tcx: TyCtxt<'_>, region: Region<'_>) -> bool {
 
         // These regions don't appear in types from type declarations:
         RegionKind::ReErased
-        | RegionKind::ReClosureBound(..)
         | RegionKind::ReScope(..)
         | RegionKind::ReVar(..)
         | RegionKind::RePlaceholder(..)

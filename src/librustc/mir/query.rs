@@ -88,34 +88,35 @@ pub struct ConstQualifs {
 /// requirements are then verified and proved by the closure's
 /// creating function. This struct encodes those requirements.
 ///
-/// The requirements are listed as being between various
-/// `RegionVid`. The 0th region refers to `'static`; subsequent region
-/// vids refer to the free regions that appear in the closure (or
-/// generator's) type, in order of appearance. (This numbering is
-/// actually defined by the `UniversalRegions` struct in the NLL
-/// region checker. See for example
-/// `UniversalRegions::closure_mapping`.) Note that we treat the free
-/// regions in the closure's type "as if" they were erased, so their
-/// precise identity is not important, only their position.
+/// The requirements are listed as being between various `RegionVid`. The 0th
+/// region refers to `'static`; subsequent region vids refer to the free
+/// regions that appear in the closure (or generator's) type, in order of
+/// appearance. (This numbering is actually defined by the `UniversalRegions`
+/// struct in the NLL region checker. See for example
+/// `UniversalRegions::closure_mapping`.) Note the free regions in the
+/// closure's signature and captures are erased.
 ///
 /// Example: If type check produces a closure with the closure substs:
 ///
 /// ```text
 /// ClosureSubsts = [
-///     i8,                                  // the "closure kind"
-///     for<'x> fn(&'a &'x u32) -> &'x u32,  // the "closure signature"
-///     &'a String,                          // some upvar
+///     'a,                                         // From the parent.
+///     'b,
+///     i8,                                         // the "closure kind"
+///     for<'x> fn(&'<erased> &'x u32) -> &'x u32,  // the "closure signature"
+///     &'<erased> String,                          // some upvar
 /// ]
 /// ```
 ///
-/// here, there is one unique free region (`'a`) but it appears
-/// twice. We would "renumber" each occurrence to a unique vid, as follows:
+/// We would "renumber" each free region to a unique vid, as follows:
 ///
 /// ```text
 /// ClosureSubsts = [
-///     i8,                                  // the "closure kind"
-///     for<'x> fn(&'1 &'x u32) -> &'x u32,  // the "closure signature"
-///     &'2 String,                          // some upvar
+///     '1,                                         // From the parent.
+///     '2,
+///     i8,                                         // the "closure kind"
+///     for<'x> fn(&'3 &'x u32) -> &'x u32,         // the "closure signature"
+///     &'4 String,                                 // some upvar
 /// ]
 /// ```
 ///
@@ -124,14 +125,12 @@ pub struct ConstQualifs {
 /// can be extracted from its type and constrained to have the given
 /// outlives relationship.
 ///
-/// In some cases, we have to record outlives requirements between
-/// types and regions as well. In that case, if those types include
-/// any regions, those regions are recorded as `ReClosureBound`
-/// instances assigned one of these same indices. Those regions will
-/// be substituted away by the creator. We use `ReClosureBound` in
-/// that case because the regions must be allocated in the global
-/// `TyCtxt`, and hence we cannot use `ReVar` (which is what we use
-/// internally within the rest of the NLL code).
+/// In some cases, we have to record outlives requirements between types and
+/// regions as well. In that case, if those types include any regions, those
+/// regions are recorded using their external names (`ReStatic`,
+/// `ReEarlyBound`, `ReFree`). We use these because in a query response we
+/// cannot use `ReVar` (which is what we use internally within the rest of the
+/// NLL code).
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct ClosureRegionRequirements<'tcx> {
     /// The number of external regions defined on the closure. In our
