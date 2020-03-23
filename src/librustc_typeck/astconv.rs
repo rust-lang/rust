@@ -20,7 +20,7 @@ use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::{walk_generics, Visitor};
 use rustc_hir::print;
 use rustc_hir::{Constness, ExprKind, GenericArg, GenericArgs};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, LATE_BOUND_LIFETIME_ARGUMENTS};
@@ -838,18 +838,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             },
         );
-        if !inferred_params.is_empty() {
-            // We always collect the spans for placeholder types when evaluating `fn`s, but we
-            // only want to emit an error complaining about them if infer types (`_`) are not
-            // allowed. `allow_ty_infer` gates this behavior.
-            crate::collect::placeholder_type_error(
-                tcx,
-                inferred_params[0],
-                &[],
-                inferred_params,
-                false,
-            );
-        }
 
         self.complain_about_missing_type_params(
             missing_type_params,
@@ -2747,7 +2735,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::BareFn(ref bf) => {
                 require_c_abi_if_c_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-                tcx.mk_fn_ptr(self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl, &[], None))
+                tcx.mk_fn_ptr(self.ty_of_fn(
+                    bf.unsafety,
+                    bf.abi,
+                    &bf.decl,
+                    &hir::Generics::empty(),
+                    None,
+                ))
             }
             hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
@@ -2930,7 +2924,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         unsafety: hir::Unsafety,
         abi: abi::Abi,
         decl: &hir::FnDecl<'_>,
-        generic_params: &[hir::GenericParam<'_>],
+        generics: &hir::Generics<'_>,
         ident_span: Option<Span>,
     ) -> ty::PolyFnSig<'tcx> {
         debug!("ty_of_fn");
@@ -2942,6 +2936,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for ty in decl.inputs {
             visitor.visit_ty(ty);
         }
+        walk_generics(&mut visitor, generics);
+
         let input_tys = decl.inputs.iter().map(|a| self.ty_of_arg(a, None));
         let output_ty = match decl.output {
             hir::FnRetTy::Return(ref output) => {
@@ -2963,7 +2959,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             crate::collect::placeholder_type_error(
                 tcx,
                 ident_span.map(|sp| sp.shrink_to_hi()).unwrap_or(DUMMY_SP),
-                generic_params,
+                &generics.params[..],
                 visitor.0,
                 ident_span.is_some(),
             );
@@ -2989,8 +2985,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.sess,
                 decl.output.span(),
                 E0581,
-                "return type references {} \
-                                            which is not constrained by the fn input types",
+                "return type references {} which is not constrained by the fn input types",
                 lifetime_name
             );
             if let ty::BrAnon(_) = *br {
@@ -3001,8 +2996,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // though we can easily give a hint that ought to be
                 // relevant.
                 err.note(
-                    "lifetimes appearing in an associated type \
-                          are not considered constrained",
+                    "lifetimes appearing in an associated type are not considered constrained",
                 );
             }
             err.emit();
