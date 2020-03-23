@@ -1149,7 +1149,14 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }))
         } else {
             let module = parent_scope.module;
-            let vis = self.resolve_visibility(&item.vis);
+            let vis = match item.kind {
+                // Visibilities must not be resolved non-speculatively twice
+                // and we already resolved this one as a `fn` item visibility.
+                ItemKind::Fn(..) => self
+                    .resolve_visibility_speculative(&item.vis, true)
+                    .unwrap_or(ty::Visibility::Public),
+                _ => self.resolve_visibility(&item.vis),
+            };
             if vis != ty::Visibility::Public {
                 self.insert_unused_macro(ident, item.id, span);
             }
