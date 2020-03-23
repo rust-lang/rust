@@ -194,11 +194,10 @@ impl GlobalState {
 
 /// Error reporting
 fn err_sb_ub(msg: String) -> InterpError<'static> {
-    // FIXME: use `err_machine_stop!` macro, once that exists.
-    InterpError::MachineStop(Box::new(TerminationInfo::ExperimentalUb {
+    err_machine_stop!(TerminationInfo::ExperimentalUb {
         msg,
         url: format!("https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md"),
-    }))
+    })
 }
 
 // # Stacked Borrows Core Begin
