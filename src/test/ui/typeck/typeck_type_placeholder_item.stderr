@@ -11,25 +11,25 @@ LL | trait BadTrait<_> {}
    |                ^ expected identifier, found reserved identifier
 
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/typeck_type_placeholder_item.rs:170:19
+  --> $DIR/typeck_type_placeholder_item.rs:167:19
    |
 LL | struct BadStruct1<_, _>(_);
    |                   ^ expected identifier, found reserved identifier
 
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/typeck_type_placeholder_item.rs:170:22
+  --> $DIR/typeck_type_placeholder_item.rs:167:22
    |
 LL | struct BadStruct1<_, _>(_);
    |                      ^ expected identifier, found reserved identifier
 
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/typeck_type_placeholder_item.rs:175:19
+  --> $DIR/typeck_type_placeholder_item.rs:172:19
    |
 LL | struct BadStruct2<_, T>(_, T);
    |                   ^ expected identifier, found reserved identifier
 
 error: associated constant in `impl` without body
-  --> $DIR/typeck_type_placeholder_item.rs:208:5
+  --> $DIR/typeck_type_placeholder_item.rs:203:5
    |
 LL |     const C: _;
    |     ^^^^^^^^^^-
@@ -37,7 +37,7 @@ LL |     const C: _;
    |               help: provide a definition for the constant: `= <expr>;`
 
 error[E0403]: the name `_` is already used for a generic parameter in this item's generic parameters
-  --> $DIR/typeck_type_placeholder_item.rs:170:22
+  --> $DIR/typeck_type_placeholder_item.rs:167:22
    |
 LL | struct BadStruct1<_, _>(_);
    |                   -  ^ already used
@@ -352,18 +352,6 @@ LL | struct BadStruct<T>(T);
    |                  ^  ^
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:159:32
-   |
-LL | impl BadTrait<_> for BadStruct<_> {}
-   |                                ^ not allowed in type signatures
-
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:159:15
-   |
-LL | impl BadTrait<_> for BadStruct<_> {}
-   |               ^ not allowed in type signatures
-
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:159:15
    |
 LL | impl BadTrait<_> for BadStruct<_> {}
@@ -377,13 +365,13 @@ LL | impl<T> BadTrait<T> for BadStruct<T> {}
    |     ^^^          ^                ^
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:164:34
+  --> $DIR/typeck_type_placeholder_item.rs:162:34
    |
 LL | fn impl_trait() -> impl BadTrait<_> {
    |                                  ^ not allowed in type signatures
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:170:25
+  --> $DIR/typeck_type_placeholder_item.rs:167:25
    |
 LL | struct BadStruct1<_, _>(_);
    |                         ^ not allowed in type signatures
@@ -394,7 +382,7 @@ LL | struct BadStruct1<T, _>(T);
    |                   ^     ^
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:175:25
+  --> $DIR/typeck_type_placeholder_item.rs:172:25
    |
 LL | struct BadStruct2<_, T>(_, T);
    |                         ^ not allowed in type signatures
@@ -405,13 +393,7 @@ LL | struct BadStruct2<K, T>(K, T);
    |                   ^     ^
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:179:14
-   |
-LL | type X = Box<_>;
-   |              ^ not allowed in type signatures
-
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:179:14
+  --> $DIR/typeck_type_placeholder_item.rs:176:14
    |
 LL | type X = Box<_>;
    |              ^ not allowed in type signatures
@@ -531,37 +513,25 @@ LL |         fn clone_from<T>(&mut self, other: T) { *self = FnTest9; }
    |                      ^^^                   ^
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:164:34
-   |
-LL | fn impl_trait() -> impl BadTrait<_> {
-   |                                  ^ not allowed in type signatures
-
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:186:21
+  --> $DIR/typeck_type_placeholder_item.rs:182:21
    |
 LL | type Y = impl Trait<_>;
    |                     ^ not allowed in type signatures
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:186:21
-   |
-LL | type Y = impl Trait<_>;
-   |                     ^ not allowed in type signatures
-
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:195:14
+  --> $DIR/typeck_type_placeholder_item.rs:190:14
    |
 LL |     type B = _;
    |              ^ not allowed in type signatures
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:197:14
+  --> $DIR/typeck_type_placeholder_item.rs:192:14
    |
 LL |     const C: _;
    |              ^ not allowed in type signatures
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:199:14
+  --> $DIR/typeck_type_placeholder_item.rs:194:14
    |
 LL |     const D: _ = 42;
    |              ^
@@ -606,25 +576,25 @@ LL |         fn clone(&self) -> _ { FnTest9 }
    |                            help: replace with the correct return type: `main::FnTest9`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:204:14
+  --> $DIR/typeck_type_placeholder_item.rs:199:14
    |
 LL |     type A = _;
    |              ^ not allowed in type signatures
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:206:14
+  --> $DIR/typeck_type_placeholder_item.rs:201:14
    |
 LL |     type B = _;
    |              ^ not allowed in type signatures
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:208:14
+  --> $DIR/typeck_type_placeholder_item.rs:203:14
    |
 LL |     const C: _;
    |              ^ not allowed in type signatures
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/typeck_type_placeholder_item.rs:211:14
+  --> $DIR/typeck_type_placeholder_item.rs:206:14
    |
 LL |     const D: _ = 42;
    |              ^
@@ -632,7 +602,7 @@ LL |     const D: _ = 42;
    |              not allowed in type signatures
    |              help: replace `_` with the correct type: `i32`
 
-error: aborting due to 71 previous errors
+error: aborting due to 66 previous errors
 
 Some errors have detailed explanations: E0121, E0282, E0403.
 For more information about an error, try `rustc --explain E0121`.
