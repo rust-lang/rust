@@ -16,10 +16,10 @@ use crate::sync::Arc;
 /// used to wake up a task is stored in an [`Arc`]. Some executors (especially
 /// those for embedded systems) cannot use this API, which is why [`RawWaker`]
 /// exists as an alternative for those systems.
-#[unstable(feature = "wake_trait", issue = "0")]
+#[unstable(feature = "wake_trait", issue = "69912")]
 pub trait Wake {
     /// Wake this task.
-    #[unstable(feature = "wake_trait", issue = "0")]
+    #[unstable(feature = "wake_trait", issue = "69912")]
     fn wake(self: Arc<Self>);
 
     /// Wake this task without consuming the waker.
@@ -27,13 +27,13 @@ pub trait Wake {
     /// If an executor supports a cheaper way to wake without consuming the
     /// waker, it should override this method. By default, it clones the
     /// [`Arc`] and calls `wake` on the clone.
-    #[unstable(feature = "wake_trait", issue = "0")]
+    #[unstable(feature = "wake_trait", issue = "69912")]
     fn wake_by_ref(self: &Arc<Self>) {
         self.clone().wake();
     }
 }
 
-#[unstable(feature = "wake_trait", issue = "0")]
+#[unstable(feature = "wake_trait", issue = "69912")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
     fn from(waker: Arc<W>) -> Waker {
         // SAFETY: This is safe because raw_waker safely constructs
@@ -42,7 +42,7 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
     }
 }
 
-#[unstable(feature = "wake_trait", issue = "0")]
+#[unstable(feature = "wake_trait", issue = "69912")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
     fn from(waker: Arc<W>) -> RawWaker {
         raw_waker(waker)
