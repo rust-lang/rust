@@ -58,7 +58,7 @@ jobs:
 
     - name: Dist
       if: matrix.os != 'ubuntu-latest'
-      run: cargo xtask dist --version 0.3.$GITHUB_RUN_NUMBER-nightly --tag nightly
+      run: cargo xtask dist
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
