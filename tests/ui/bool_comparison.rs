@@ -112,6 +112,7 @@ fn issue3703() {
     if false < Foo {}
 }
 
+#[allow(dead_code)]
 fn issue4983() {
     let a = true;
     let b = false;

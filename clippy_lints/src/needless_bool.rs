@@ -3,7 +3,7 @@
 //! This lint is **warn** by default
 
 use crate::utils::sugg::Sugg;
-use crate::utils::{higher, parent_node_is_if_expr, span_lint, span_lint_and_help, span_lint_and_sugg, snippet_with_applicability};
+use crate::utils::{higher, parent_node_is_if_expr, snippet_with_applicability, span_lint, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -11,6 +11,7 @@ use rustc_hir::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for expressions of the form `if c { true } else {
@@ -189,7 +190,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
     }
 }
 
-fn is_unary_not<'tcx>(e: &'tcx Expr<'_>) -> (bool, rustc_span::Span) {
+struct ExpressionInfoWithSpan {
+    one_side_is_unary_not: bool,
+    left_span: Span,
+    right_span: Span,
+}
+
+fn is_unary_not(e: &Expr<'_>) -> (bool, Span) {
     if_chain! {
         if let ExprKind::Unary(unop, operand) = e.kind;
         if let UnOp::UnNot = unop;
@@ -200,12 +207,15 @@ fn is_unary_not<'tcx>(e: &'tcx Expr<'_>) -> (bool, rustc_span::Span) {
     (false, e.span)
 }
 
-fn one_side_is_unary_not<'tcx>(left_side: &'tcx Expr<'_>, right_side: &'tcx Expr<'_>) -> (bool, rustc_span::Span, rustc_span::Span) {
+fn one_side_is_unary_not<'tcx>(left_side: &'tcx Expr<'_>, right_side: &'tcx Expr<'_>) -> ExpressionInfoWithSpan {
     let left = is_unary_not(left_side);
     let right = is_unary_not(right_side);
 
-    let retval = left.0 ^ right.0;
-    (retval, left.1, right.1)
+    ExpressionInfoWithSpan {
+        one_side_is_unary_not: left.0 ^ right.0,
+        left_span: left.1,
+        right_span: right.1,
+    }
 }
 
 fn check_comparison<'a, 'tcx>(
@@ -224,20 +234,20 @@ fn check_comparison<'a, 'tcx>(
         if l_ty.is_bool() && r_ty.is_bool() {
             let mut applicability = Applicability::MachineApplicable;
 
-            if let BinOpKind::Eq = op.node
-            {
-                let xxx = one_side_is_unary_not(&left_side, &right_side);
-                if xxx.0
-                {
+            if let BinOpKind::Eq = op.node {
+                let expression_info = one_side_is_unary_not(&left_side, &right_side);
+                if expression_info.one_side_is_unary_not {
                     span_lint_and_sugg(
                         cx,
                         BOOL_COMPARISON,
                         e.span,
                         "This comparison might be written more concisely",
                         "try simplifying it as shown",
-                        format!("{} != {}",
-                            snippet_with_applicability(cx, xxx.1, "..", &mut applicability),
-                            snippet_with_applicability(cx, xxx.2, "..", &mut applicability)),
+                        format!(
+                            "{} != {}",
+                            snippet_with_applicability(cx, expression_info.left_span, "..", &mut applicability),
+                            snippet_with_applicability(cx, expression_info.right_span, "..", &mut applicability)
+                        ),
                         applicability,
                     )
                 }
