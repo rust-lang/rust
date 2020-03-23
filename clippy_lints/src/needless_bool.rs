@@ -3,7 +3,7 @@
 //! This lint is **warn** by default
 
 use crate::utils::sugg::Sugg;
-use crate::utils::{higher, parent_node_is_if_expr, span_lint, span_lint_and_help, span_lint_and_sugg};
+use crate::utils::{higher, parent_node_is_if_expr, span_lint, span_lint_and_help, span_lint_and_sugg, snippet_with_applicability};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -189,19 +189,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
     }
 }
 
-fn is_unary_not<'tcx>(e: &'tcx Expr<'_>) -> bool {
+fn is_unary_not<'tcx>(e: &'tcx Expr<'_>) -> (bool, rustc_span::Span) {
     if_chain! {
-        if let ExprKind::Unary(unop, _) = e.kind;
+        if let ExprKind::Unary(unop, operand) = e.kind;
         if let UnOp::UnNot = unop;
         then {
-            return true;
+            return (true, operand.span);
         }
     };
-    false
+    (false, e.span)
 }
 
-fn one_side_is_unary_not<'tcx>(left_side: &'tcx Expr<'_>, right_side: &'tcx Expr<'_>) -> bool {
-    is_unary_not(left_side) ^ is_unary_not(right_side)
+fn one_side_is_unary_not<'tcx>(left_side: &'tcx Expr<'_>, right_side: &'tcx Expr<'_>) -> (bool, rustc_span::Span, rustc_span::Span) {
+    let left = is_unary_not(left_side);
+    let right = is_unary_not(right_side);
+
+    let retval = left.0 ^ right.0;
+    (retval, left.1, right.1)
 }
 
 fn check_comparison<'a, 'tcx>(
@@ -218,14 +222,27 @@ fn check_comparison<'a, 'tcx>(
     if let ExprKind::Binary(op, ref left_side, ref right_side) = e.kind {
         let (l_ty, r_ty) = (cx.tables.expr_ty(left_side), cx.tables.expr_ty(right_side));
         if l_ty.is_bool() && r_ty.is_bool() {
-            if_chain! {
-                if let BinOpKind::Eq = op.node;
-                if one_side_is_unary_not(&left_side, &right_side);
-                then {
-                    span_lint_and_help(cx, BOOL_COMPARISON, e.span, "Here comes", "the suggestion");
-                }
-            };
             let mut applicability = Applicability::MachineApplicable;
+
+            if let BinOpKind::Eq = op.node
+            {
+                let xxx = one_side_is_unary_not(&left_side, &right_side);
+                if xxx.0
+                {
+                    span_lint_and_sugg(
+                        cx,
+                        BOOL_COMPARISON,
+                        e.span,
+                        "This comparison might be written more concisely",
+                        "try simplifying it as shown",
+                        format!("{} != {}",
+                            snippet_with_applicability(cx, xxx.1, "..", &mut applicability),
+                            snippet_with_applicability(cx, xxx.2, "..", &mut applicability)),
+                        applicability,
+                    )
+                }
+            }
+
             match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
                 (Bool(true), Other) => left_true.map_or((), |(h, m)| {
                     suggest_bool_comparison(cx, e, right_side, applicability, m, h)

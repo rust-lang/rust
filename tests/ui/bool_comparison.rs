@@ -120,4 +120,9 @@ fn issue4983() {
     if !a == b {};
     if a == b {};
     if !a == !b {};
+
+    if b == !a {};
+    if !b == a {};
+    if b == a {};
+    if !b == !a {};
 }
