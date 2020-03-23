@@ -113,7 +113,7 @@ fn eager_macro_recur(
             MacroDefKind::Declarative
             | MacroDefKind::BuiltIn(_)
             | MacroDefKind::BuiltInDerive(_)
-            | MacroDefKind::ProcMacro(_) => {
+            | MacroDefKind::CustomDerive(_) => {
                 let expanded = lazy_expand(db, &def, curr.with_value(child.clone()))?;
                 // replace macro inside
                 eager_macro_recur(db, expanded, macro_resolver)?

@@ -135,7 +135,7 @@ pub(crate) fn macro_def(
             Some(Arc::new((TokenExpander::BuiltinDerive(expander), mbe::TokenMap::default())))
         }
         MacroDefKind::BuiltInEager(_) => None,
-        MacroDefKind::ProcMacro(expander) => {
+        MacroDefKind::CustomDerive(expander) => {
             Some(Arc::new((TokenExpander::ProcMacro(expander), mbe::TokenMap::default())))
         }
     }

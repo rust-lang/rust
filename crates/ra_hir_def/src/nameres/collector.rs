@@ -892,7 +892,7 @@ impl ModCollector<'_, '_> {
                 let macro_id = MacroDefId {
                     ast_id: None,
                     krate: Some(krate),
-                    kind: MacroDefKind::ProcMacro(expander),
+                    kind: MacroDefKind::CustomDerive(expander),
                 };
 
                 self.def_collector.define_proc_macro(name.clone(), macro_id);
