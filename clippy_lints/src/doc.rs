@@ -234,8 +234,8 @@ fn lint_for_missing_headers<'a, 'tcx>(
                 if implements_trait(cx, ret_ty, future, &[]);
                 if let ty::Opaque(_, subs) = ret_ty.kind;
                 if let Some(gen) = subs.types().next();
-                if let ty::Generator(def_id, subs, _) = gen.kind;
-                if match_type(cx, subs.as_generator().return_ty(def_id, cx.tcx), &paths::RESULT);
+                if let ty::Generator(_, subs, _) = gen.kind;
+                if match_type(cx, subs.as_generator().return_ty(), &paths::RESULT);
                 then {
                     span_lint(
                         cx,
