@@ -825,11 +825,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Run it.
         match visitor.visit_value(op) {
             Ok(()) => Ok(()),
+            // We should only get validation errors here. Avoid other errors as
+            // those do not show *where* in the value the issue lies.
             Err(err) if matches!(err.kind, err_ub!(ValidationFailure { .. })) => Err(err),
-            Err(err) if cfg!(debug_assertions) => {
-                bug!("Unexpected error during validation: {}", err)
-            }
-            Err(err) => Err(err),
+            Err(err) => bug!("Unexpected error during validation: {}", err),
         }
     }
 
