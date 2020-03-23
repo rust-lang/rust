@@ -84,5 +84,21 @@ error: order comparisons between booleans can be simplified
 LL |     if x > y {
    |        ^^^^^ help: try simplifying it as shown: `x & !y`
 
-error: aborting due to 14 previous errors
+error: Here comes
+  --> $DIR/bool_comparison.rs:119:8
+   |
+LL |     if a == !b {};
+   |        ^^^^^^^
+   |
+   = help: the suggestion
+
+error: Here comes
+  --> $DIR/bool_comparison.rs:120:8
+   |
+LL |     if !a == b {};
+   |        ^^^^^^^
+   |
+   = help: the suggestion
+
+error: aborting due to 16 previous errors
 
