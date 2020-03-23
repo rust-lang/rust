@@ -182,4 +182,22 @@ use std::{fmt<|>::{Display, Debug}};
 ",
         );
     }
+
+    #[test]
+    fn removes_just_enough_whitespace() {
+        check_assist(
+            merge_imports,
+            r"
+use foo<|>::bar;
+use foo::baz;
+
+/// Doc comment
+",
+            r"
+use foo<|>::{bar, baz};
+
+/// Doc comment
+",
+        );
+    }
 }
