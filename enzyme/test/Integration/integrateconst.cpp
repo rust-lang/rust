@@ -3,11 +3,13 @@
 
 // RUN: %clang++ -fno-use-cxa-atexit -ffast-math -mllvm -force-vector-width=1 -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -S | %lli - 
 // RUN: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -S | %lli - 
-// RUN: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
-// RUN: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O0 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
+// The below two cases are not handled because there is a load from undefined memory (alloca/malloc), which is itself untyped
+// TODO: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
+// TODO: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O0 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
 // RUN: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_inline=1 -S | %lli - 
 // RUN: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_inline=1 -S | %lli - 
-// RUN: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_inline=1 -S | %lli - 
+// RUN: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_inline=1 -S | %lli -
+
 // RUN: %clang++ -fno-use-cxa-atexit -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O0 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_emptyfnconst=1 -enzyme_inline=1 -S | %lli - 
 
 #include "test_utils.h"
@@ -47,7 +49,7 @@ double foobar(double t=10.0) {
 
     // x -a x t == x(1-at) = (1-1.2t) = (1 - 1.2) == -.2
     
-    printf("final result t=%f x(t)=%f, -0.2=%f, steps=%d\n", t, x[0], -.2, steps);
+    printf("final result t=%f x(t)=%f, -0.2=%f, steps=%zu\n", t, x[0], -.2, steps);
     return x[0];
 }
 

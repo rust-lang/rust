@@ -38,11 +38,11 @@ declare double @__enzyme_autodiff(i8*, ...)
 
 ; CHECK: define internal {} @diffecallee(i64* %ptr, i64* %"ptr'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %ptr2_augmented = call { {}, i64*, i64* } @augmented_gep.4(i64* %ptr, i64* %"ptr'", i64 2)
+; CHECK-NEXT:   %ptr2_augmented = call { {}, i64*, i64* } @augmented_gep.1(i64* %ptr, i64* %"ptr'", i64 2)
 ; CHECK-NEXT:   %"ptr2'ac" = extractvalue { {}, i64*, i64* } %ptr2_augmented, 2
 ; CHECK-NEXT:   %ptr2 = extractvalue { {}, i64*, i64* } %ptr2_augmented, 1
 ; CHECK-NEXT:   %loadnotype = load i64, i64* %ptr2, align 4
-; CHECK-NEXT:   %ptr3_augmented = call { {}, i64*, i64* } @augmented_gep.2(i64* %ptr, i64* %"ptr'", i64 3)
+; CHECK-NEXT:   %ptr3_augmented = call { {}, i64*, i64* } @augmented_gep(i64* %ptr, i64* %"ptr'", i64 3)
 ; CHECK-NEXT:   %"ptr3'ac" = extractvalue { {}, i64*, i64* } %ptr3_augmented, 2
 ; CHECK-NEXT:   %ptr3 = extractvalue { {}, i64*, i64* } %ptr3_augmented, 1
 ; CHECK-NEXT:   store i64 %loadnotype, i64* %ptr3, align 4
@@ -63,12 +63,12 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %6 = bitcast i64* %"ptr3'ac" to double*
 ; CHECK-NEXT:   %7 = load double, double* %6, align 8
 ; CHECK-NEXT:   store i64 0, i64* %"ptr3'ac", align 4
-; CHECK-NEXT:   %8 = call {} @diffegep.3(i64* %ptr, i64* %"ptr'", i64 3, {} undef)
+; CHECK-NEXT:   %8 = call {} @diffegep(i64* %ptr, i64* %"ptr'", i64 3, {} undef)
 ; CHECK-NEXT:   %9 = bitcast i64* %"ptr2'ac" to double*
 ; CHECK-NEXT:   %10 = load double, double* %9, align 8
 ; CHECK-NEXT:   %11 = fadd fast double %10, %7
 ; CHECK-NEXT:   %12 = bitcast i64* %"ptr2'ac" to double*
 ; CHECK-NEXT:   store double %11, double* %12, align 8
-; CHECK-NEXT:   %13 = call {} @diffegep.5(i64* %ptr, i64* %"ptr'", i64 2, {} undef)
+; CHECK-NEXT:   %13 = call {} @diffegep.2(i64* %ptr, i64* %"ptr'", i64 2, {} undef)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

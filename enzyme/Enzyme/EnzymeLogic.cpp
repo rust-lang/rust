@@ -825,6 +825,10 @@ public:
 
     if (gutils->isConstantValue(&BO)) return;
 
+    if (BO.getType()->isIntOrIntVectorTy() && TR.intType(gutils->getOriginal(&BO), /*errifnotfound*/false) == IntType::Pointer) {
+      return;
+    }
+
     IRBuilder<> Builder2 = getReverseBuilder(BO.getParent());
 
     Value* dif0 = nullptr;
@@ -927,6 +931,13 @@ public:
       size = ci->getLimitedValue();
     }
 
+    auto tr = TR.query(gutils->getOriginal(MTI.getOperand(0)));
+
+    //TODO note that we only handle memcpy/etc of ONE type (aka memcpy of {int, double} not allowed)
+
+    //llvm::errs() << *gutils->oldFunc << "\n";
+    //TR.dump();
+    //llvm::errs() << "MIT: " << MTI << "|size: " << size << " dr: " << tr.str() << "\n";
 
     if (Type* secretty = TR.firstPointer(size, gutils->getOriginal(MTI.getOperand(0)), /*errifnotfound*/true, /*pointerIntSame*/true).isFloat()) {
       //no change to forward pass if represents floats

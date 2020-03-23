@@ -446,9 +446,111 @@ std::set<int64_t> couldBeZero(Value* val, std::map<Value*, std::set<int64_t>>& i
                 }
             }
         }
+
+        if (bo->getOpcode() == BinaryOperator::Shl) {
+            if (auto ci = info.isConstantInt(bo->getOperand(0))) {
+                auto inset = couldBeZero(bo->getOperand(1), intseen, info, DT);
+                for(auto pval : inset) {
+                    intseen[val].insert(ci->getSExtValue() << pval);
+                }
+            }
+            if (auto ci = info.isConstantInt(bo->getOperand(1))) {
+                auto inset = couldBeZero(bo->getOperand(0), intseen, info, DT);
+                for(auto pval : inset) {
+                    intseen[val].insert(pval << ci->getSExtValue());
+                }
+            }
+        }
+
+        //TOOD note C++ doesnt guarantee behavior of >> being arithmetic or logical
+        //     and should replace with llvm apint internal
+        if (bo->getOpcode() == BinaryOperator::AShr || bo->getOpcode() == BinaryOperator::LShr) {
+            if (auto ci = info.isConstantInt(bo->getOperand(0))) {
+                auto inset = couldBeZero(bo->getOperand(1), intseen, info, DT);
+                for(auto pval : inset) {
+                    intseen[val].insert(ci->getSExtValue() >> pval);
+                }
+            }
+            if (auto ci = info.isConstantInt(bo->getOperand(1))) {
+                auto inset = couldBeZero(bo->getOperand(0), intseen, info, DT);
+                for(auto pval : inset) {
+                    intseen[val].insert(pval >> ci->getSExtValue());
+                }
+            }
+        }
+
     }
 
     return intseen[val];
+}
+
+bool hasAnyUse(TypeAnalyzer& TAZ, Value* val, std::map<Value*, bool>& intseen, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
+    if (intseen.find(val) != intseen.end()) return intseen[val];
+    //todo what to insert to intseen
+
+    bool unknownUse = false;
+    intseen[val] = false;
+
+    for(User* use: val->users()) {
+        if (auto ci = dyn_cast<CastInst>(use)) {
+            unknownUse |= hasAnyUse(TAZ, ci, intseen, sawReturn);
+            continue;
+        }
+
+        if (auto pn = dyn_cast<PHINode>(use)) {
+            unknownUse |= hasAnyUse(TAZ, pn, intseen, sawReturn);
+            continue;
+        }
+
+        if (auto seli = dyn_cast<SelectInst>(use)) {
+            unknownUse |= hasAnyUse(TAZ, seli, intseen, sawReturn);
+            continue;
+        }
+
+        if (auto call = dyn_cast<CallInst>(use)) {
+            if (Function* ci = call->getCalledFunction()) {
+                //These function calls are known uses that do not potentially have an inactive use
+                if (ci->getName() == "__cxa_guard_acquire" || ci->getName() == "__cxa_guard_release" || ci->getName() == "__cxa_guard_abort" || ci->getName() == "printf" || ci->getName() == "fprintf") {
+                    continue;
+                }
+
+                //TODO recursive fns
+
+                if (!ci->empty()) {
+                    auto a = ci->arg_begin();
+
+                    bool shouldHandleReturn=false;
+
+                    for(size_t i=0; i<call->getNumArgOperands(); i++) {
+                        if (call->getArgOperand(i) == val) {
+                            if(hasAnyUse(TAZ, a, intseen, &shouldHandleReturn)) {
+                                return intseen[val] = unknownUse = true;
+                            }
+                        }
+                        a++;
+                    }
+
+                    if (shouldHandleReturn) {
+                        if(hasAnyUse(TAZ, call, intseen, sawReturn)) {
+                            return intseen[val] = unknownUse = true;
+                        }
+                    }
+                    continue;
+                }
+            }
+        }
+
+        if (sawReturn && isa<ReturnInst>(use)) {
+            *sawReturn = true;
+            continue;
+        }
+
+        unknownUse = true;
+        //llvm::errs() << "unknown use : " << *use << " of v: " << *v << "\n";
+        continue;
+    }
+
+    return intseen[val] = unknownUse;
 }
 
 bool hasNonIntegralUse(TypeAnalyzer& TAZ, Value* val, std::map<Value*, bool>& intseen, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
@@ -564,15 +666,30 @@ bool TypeAnalyzer::runUnusedChecks() {
     bool changed = false;
     std::vector<Value*> todo;
 
+    std::map<Value*, bool> anyseen;
+    std::map<Value*, bool> intseen;
+
     for(auto &BB: *function) {
         for(auto &inst : BB) {
-            if (!inst.getType()->isIntOrIntVectorTy()) continue;
             auto analysis = getAnalysis(&inst);
             if (analysis[{}] != IntType::Unknown) continue;
-            std::map<Value*, bool> intseen;
-            if(!hasNonIntegralUse(*this, &inst, intseen, nullptr)) {
-                updateAnalysis(&inst, IntType::Integer, &inst);
-                changed = true;
+
+            if (!inst.getType()->isIntOrIntVectorTy()) continue;
+
+            //This deals with integers representing floats or pointers with no use (and thus can be anything)
+            {
+                if(!hasAnyUse(*this, &inst, anyseen, nullptr)) {
+                    updateAnalysis(&inst, IntType::Anything, &inst);
+                    changed = true;
+                }
+            }
+
+            //This deals with integers with no use
+            {
+                if(!hasNonIntegralUse(*this, &inst, intseen, nullptr)) {
+                    updateAnalysis(&inst, IntType::Integer, &inst);
+                    changed = true;
+                }
             }
         }
     }
@@ -671,8 +788,14 @@ void TypeAnalyzer::visitLoadInst(LoadInst &I) {
 }
 
 void TypeAnalyzer::visitStoreInst(StoreInst &I) {
-    auto ptr = getAnalysis(I.getValueOperand()).PurgeAnything().Only({0});
-    ptr |= ValueData(IntType::Pointer);
+    auto purged = getAnalysis(I.getValueOperand()).PurgeAnything();
+    auto ptr = ValueData(IntType::Pointer);
+
+    auto storeSize = I.getParent()->getParent()->getParent()->getDataLayout().getTypeSizeInBits(I.getValueOperand()->getType()) / 8;
+
+    for(unsigned i=0; i<storeSize; i++) {
+        ptr |= purged.Only({(int)i});
+    }
 
     //llvm::errs() << "considering si: " << I << "\n";
     //llvm::errs() << " prevanalysis: " << getAnalysis(I.getPointerOperand()).str() << "\n";
@@ -705,9 +828,6 @@ std::set<std::vector<T>> getSet(const std::vector<std::set<T>> &todo, size_t idx
 
 void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
 
-    //for(auto& ind : gep.indices()) {
-    //    updateAnalysis(ind, IntType::Integer, &gep);
-    //}
 
     auto pointerAnalysis = getAnalysis(gep.getPointerOperand());
     updateAnalysis(&gep, pointerAnalysis.KeepMinusOne(), &gep);
@@ -715,6 +835,22 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
     std::vector<std::set<Value*>> idnext;
 
     std::map<Value*, std::set<int64_t>> intseen;
+
+    // If we know that the pointer operand is indeed a pointer, then the indicies must be integers
+    // Note that we can't do this if we don't know the pointer operand is a pointer since doing 1[pointer] is legal
+    //  sadly this still may not work since (nullptr)[fn] => fn where fn is pointer and not int (whereas nullptr is a pointer)
+    //  However if we are inbounds you are only allowed to have nullptr[0] or nullptr[nullptr], making this valid
+    // TODO note that we don't force the inttype::pointer (commented below) assuming nullptr[nullptr] doesn't occur in practice
+    //if (gep.isInBounds() && pointerAnalysis[{}] == IntType::Pointer) {
+    if (gep.isInBounds()) {
+        //llvm::errs() << "gep: " << gep << "\n";
+        for(auto& ind : gep.indices()) {
+           //llvm::errs() << " + ind: " << *ind << " - prev - " << getAnalysis(ind).str() << "\n";
+            updateAnalysis(ind, IntType::Integer, &gep);
+        }
+    }
+
+
 
     for(auto& a : gep.indices()) {
         auto iset = couldBeZero(a, intseen, fntypeinfo, DT);
@@ -863,6 +999,11 @@ void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
 }
 
 void TypeAnalyzer::visitSelectInst(SelectInst &I) {
+    //dump();
+    //llvm::errs() << *I.getParent()->getParent() << "\n";
+    //llvm::errs() << "SI: " << I << " analysis: " << getAnalysis(&I).str() << "\n";
+    //llvm::errs() << " +  " << *I.getTrueValue() << " analysis: " << getAnalysis(I.getTrueValue()).str() << "\n";
+    //llvm::errs() << " +  " << *I.getFalseValue() << " analysis: " << getAnalysis(I.getFalseValue()).str() << "\n";
     updateAnalysis(I.getTrueValue(), getAnalysis(&I), &I);
     updateAnalysis(I.getFalseValue(), getAnalysis(&I), &I);
 
@@ -1006,7 +1147,6 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
                 }
             }
         }
-
 		updateAnalysis(&I, vd, &I);
     }
 }
@@ -1015,6 +1155,9 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 	if (auto iasm = dyn_cast<InlineAsm>(call.getCalledValue())) {
 		if (iasm->getAsmString() == "cpuid") {
 			updateAnalysis(&call, ValueData(IntType::Integer), &call);
+            for(unsigned i=0; i<call.getNumArgOperands(); i++) {
+                updateAnalysis(call.getArgOperand(i), ValueData(IntType::Integer), &call);
+            }
 		}
 	}
 
@@ -1275,6 +1418,12 @@ ValueData TypeResults::query(Value* val) {
         assert(arg->getParent() == function);
     }
     return analysis.query(val, info);
+}
+
+
+void TypeResults::dump() {
+    assert(analysis.analyzedFunctions.find(info) != analysis.analyzedFunctions.end());
+    analysis.analyzedFunctions.find(info)->second.dump();
 }
 
 DataType TypeResults::intType(Value* val, bool errIfNotFound) {

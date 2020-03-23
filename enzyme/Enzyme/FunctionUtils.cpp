@@ -52,6 +52,9 @@
 #if LLVM_VERSION_MAJOR > 6
 #include "llvm/Transforms/Scalar/InstSimplifyPass.h"
 #endif
+
+#include "llvm/Transforms/Scalar/MemCpyOptimizer.h"
+
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Utils/LCSSA.h"
 #include "llvm/Transforms/Scalar/SROA.h"
@@ -264,7 +267,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
         SROA().run(*NewF, AM);
       }
    }
-   
+
    {
      FunctionAnalysisManager AM;
      AM.registerPass([] { return AAManager(); });
@@ -298,6 +301,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
 
      DCEPass().run(*NewF, AM);
      DSEPass().run(*NewF, AM);
+     MemCpyOptPass().run(*NewF, AM);
      SimplifyCFGOptions scfgo(/*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false, /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true, /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
      SimplifyCFGPass(scfgo).run(*NewF, AM);
    }
@@ -306,7 +310,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
  }
 
  //Run LoopSimplifyPass to ensure preheaders exist on all loops
-   
+
  {
     FunctionAnalysisManager AM;
     AM.registerPass([] { return LoopAnalysis(); });
@@ -429,13 +433,13 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
   for(auto ai : toconvert) {
 	  std::string nam = ai->getName().str();
       ai->setName("");
-  
+
       Instruction* insertBefore = ai;
       while (isa<AllocaInst>(insertBefore->getNextNode())) {
         insertBefore = insertBefore->getNextNode();
         assert(insertBefore);
       }
-	
+
       auto i64 = Type::getInt64Ty(NewF->getContext());
 	  auto rep = CallInst::CreateMalloc(insertBefore,
                     i64,

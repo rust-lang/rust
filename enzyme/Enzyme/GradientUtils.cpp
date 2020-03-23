@@ -853,6 +853,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
 }
 
 Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
+    assert(val->getName() != "<badref>");
     if (isa<Constant>(val)) {
         return val;
     }
@@ -876,6 +877,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
     }
 
     auto inst = cast<Instruction>(val);
+    assert(inst->getName() != "<badref>");
     if (inversionAllocs && inst->getParent() == inversionAllocs) {
         return val;
     }
@@ -901,6 +903,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
             }
         }
     }
+    assert(inst->getName() != "<badref>");
     val = inst = fixLCSSA(inst, BuilderM);
 
     assert(!this->isOriginalBlock(*BuilderM.GetInsertBlock()));

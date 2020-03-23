@@ -208,6 +208,16 @@ public:
             switch(op) {
                 case BinaryOperator::Add:
                 case BinaryOperator::Sub:
+                    // if one of these is unknown we cannot deduce the result
+                    // e.g. pointer + int = pointer and int + int = int
+                    if (typeEnum == IntType::Unknown || dt.typeEnum == IntType::Unknown) {
+                        if (typeEnum != IntType::Unknown) {
+                            typeEnum = IntType::Unknown;
+                            changed = true;
+                        }
+                        return changed;
+                    }
+
                 case BinaryOperator::Mul:
                 case BinaryOperator::UDiv:
                 case BinaryOperator::SDiv:
@@ -866,6 +876,7 @@ public:
     ValueData query(llvm::Value* val);
     NewFnTypeInfo getAnalyzedTypeInfo();
     ValueData getReturnAnalysis();
+    void dump();
 };
 
 
