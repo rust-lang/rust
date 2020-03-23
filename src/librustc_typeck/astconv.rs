@@ -1452,8 +1452,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .expect("missing associated type");
 
         if !assoc_ty.vis.is_accessible_from(def_scope, tcx) {
-            let msg = format!("associated type `{}` is private", binding.item_name);
-            tcx.sess.span_err(binding.span, &msg);
+            tcx.sess
+                .struct_span_err(
+                    binding.span,
+                    &format!("associated type `{}` is private", binding.item_name),
+                )
+                .span_label(binding.span, "private associated type")
+                .emit();
         }
         tcx.check_stability(assoc_ty.def_id, Some(hir_ref_id), binding.span);
 
@@ -2315,8 +2320,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let kind = DefKind::AssocTy;
         if !item.vis.is_accessible_from(def_scope, tcx) {
-            let msg = format!("{} `{}` is private", kind.descr(item.def_id), assoc_ident);
-            tcx.sess.span_err(span, &msg);
+            let kind = kind.descr(item.def_id);
+            let msg = format!("{} `{}` is private", kind, assoc_ident);
+            tcx.sess
+                .struct_span_err(span, &msg)
+                .span_label(span, &format!("private {}", kind))
+                .emit();
         }
         tcx.check_stability(item.def_id, Some(hir_ref_id), span);
 

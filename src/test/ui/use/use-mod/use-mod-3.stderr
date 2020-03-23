@@ -2,7 +2,7 @@ error[E0603]: module `bar` is private
   --> $DIR/use-mod-3.rs:1:10
    |
 LL | use foo::bar::{
-   |          ^^^ this module is private
+   |          ^^^ private module
    |
 note: the module `bar` is defined here
   --> $DIR/use-mod-3.rs:9:5
@@ -14,7 +14,7 @@ error[E0603]: module `bar` is private
   --> $DIR/use-mod-3.rs:4:10
    |
 LL | use foo::bar::{
-   |          ^^^ this module is private
+   |          ^^^ private module
    |
 note: the module `bar` is defined here
   --> $DIR/use-mod-3.rs:9:5

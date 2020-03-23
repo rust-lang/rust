@@ -2,7 +2,12 @@ error[E0615]: attempted to take value of method `method` on type `Foo`
   --> $DIR/E0615.rs:11:7
    |
 LL |     f.method;
-   |       ^^^^^^ help: use parentheses to call the method: `method()`
+   |       ^^^^^^ method, not a field
+   |
+help: use parentheses to call the method
+   |
+LL |     f.method();
+   |             ^^
 
 error: aborting due to previous error
 

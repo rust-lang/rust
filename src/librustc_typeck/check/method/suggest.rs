@@ -758,25 +758,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             MethodError::Ambiguity(sources) => {
                 let mut err = struct_span_err!(
                     self.sess(),
-                    span,
+                    item_name.span,
                     E0034,
                     "multiple applicable items in scope"
                 );
-                err.span_label(span, format!("multiple `{}` found", item_name));
+                err.span_label(item_name.span, format!("multiple `{}` found", item_name));
 
                 report_candidates(span, &mut err, sources, sugg_span);
                 err.emit();
             }
 
             MethodError::PrivateMatch(kind, def_id, out_of_scope_traits) => {
+                let kind = kind.descr(def_id);
                 let mut err = struct_span_err!(
                     self.tcx.sess,
-                    span,
+                    item_name.span,
                     E0624,
                     "{} `{}` is private",
-                    kind.descr(def_id),
+                    kind,
                     item_name
                 );
+                err.span_label(item_name.span, &format!("private {}", kind));
                 self.suggest_valid_traits(&mut err, out_of_scope_traits);
                 err.emit();
             }

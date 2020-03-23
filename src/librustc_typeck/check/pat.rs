@@ -753,17 +753,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         res.descr(),
                     ),
                 );
-                let (msg, sugg) = match parent_pat {
-                    Some(Pat { kind: hir::PatKind::Struct(..), .. }) => (
-                        "bind the struct field to a different name instead",
-                        format!("{}: other_{}", ident, ident.as_str().to_lowercase()),
-                    ),
-                    _ => (
-                        "introduce a new binding instead",
-                        format!("other_{}", ident.as_str().to_lowercase()),
-                    ),
+                match parent_pat {
+                    Some(Pat { kind: hir::PatKind::Struct(..), .. }) => {
+                        e.span_suggestion_verbose(
+                            ident.span.shrink_to_hi(),
+                            "bind the struct field to a different name instead",
+                            format!(": other_{}", ident.as_str().to_lowercase()),
+                            Applicability::HasPlaceholders,
+                        );
+                    }
+                    _ => {
+                        let msg = "introduce a new binding instead";
+                        let sugg = format!("other_{}", ident.as_str().to_lowercase());
+                        e.span_suggestion(ident.span, msg, sugg, Applicability::HasPlaceholders);
+                    }
                 };
-                e.span_suggestion(ident.span, msg, sugg, Applicability::HasPlaceholders);
             }
         }
         e.emit();

@@ -2,7 +2,12 @@ error[E0615]: attempted to take value of method `get` on type `std::boxed::Box<(
   --> $DIR/issue-13853-2.rs:5:43
    |
 LL | fn foo(res : Box<dyn ResponseHook>) { res.get }
-   |                                           ^^^ help: use parentheses to call the method: `get()`
+   |                                           ^^^ method, not a field
+   |
+help: use parentheses to call the method
+   |
+LL | fn foo(res : Box<dyn ResponseHook>) { res.get() }
+   |                                              ^^
 
 error: aborting due to previous error
 
