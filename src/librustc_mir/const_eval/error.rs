@@ -5,7 +5,7 @@ use rustc::mir::AssertKind;
 use rustc_span::Symbol;
 
 use super::InterpCx;
-use crate::interpret::{ConstEvalErr, InterpError, InterpErrorInfo, Machine};
+use crate::interpret::{ConstEvalErr, InterpErrorInfo, Machine};
 
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
@@ -21,7 +21,7 @@ pub enum ConstEvalErrKind {
 // handle these.
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     fn into(self) -> InterpErrorInfo<'tcx> {
-        InterpError::MachineStop(Box::new(self.to_string())).into()
+        err_machine_stop!(self.to_string()).into()
     }
 }
 
