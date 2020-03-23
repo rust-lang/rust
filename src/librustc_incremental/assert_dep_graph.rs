@@ -35,7 +35,7 @@
 
 use graphviz as dot;
 use rustc::dep_graph::debug::{DepNodeFilter, EdgeFilter};
-use rustc::dep_graph::{DepGraphQuery, DepKind, DepNode};
+use rustc::dep_graph::{DepGraphQuery, DepKind, DepNode, DepNodeExt};
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
 use rustc_ast::ast;

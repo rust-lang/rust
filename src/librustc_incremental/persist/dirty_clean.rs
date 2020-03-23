@@ -13,7 +13,7 @@
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 
-use rustc::dep_graph::{label_strs, DepNode};
+use rustc::dep_graph::{label_strs, DepNode, DepNodeExt};
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
 use rustc_ast::ast::{self, Attribute, NestedMetaItem};

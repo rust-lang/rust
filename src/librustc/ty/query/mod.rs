@@ -150,8 +150,6 @@ rustc_query_append! { [define_queries!][<'tcx>] }
 /// add it to the "We don't have enough information to reconstruct..." group in
 /// the match below.
 pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool {
-    use crate::dep_graph::DepKind;
-
     // We must avoid ever having to call `force_from_dep_node()` for a
     // `DepNode::codegen_unit`:
     // Since we cannot reconstruct the query key of a `DepNode::codegen_unit`, we
@@ -166,7 +164,7 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
     // hit the cache instead of having to go through `force_from_dep_node`.
     // This assertion makes sure, we actually keep applying the solution above.
     debug_assert!(
-        dep_node.kind != DepKind::codegen_unit,
+        dep_node.kind != crate::dep_graph::DepKind::codegen_unit,
         "calling force_from_dep_node() on DepKind::codegen_unit"
     );
 
@@ -177,14 +175,14 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
     rustc_dep_node_force!([dep_node, tcx]
         // These are inputs that are expected to be pre-allocated and that
         // should therefore always be red or green already.
-        DepKind::CrateMetadata |
+        crate::dep_graph::DepKind::CrateMetadata |
 
         // These are anonymous nodes.
-        DepKind::TraitSelect |
+        crate::dep_graph::DepKind::TraitSelect |
 
         // We don't have enough information to reconstruct the query key of
         // these.
-        DepKind::CompileCodegenUnit => {
+        crate::dep_graph::DepKind::CompileCodegenUnit => {
             bug!("force_from_dep_node: encountered {:?}", dep_node)
         }
     );
@@ -192,15 +190,6 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
     false
 }
 
-impl DepNode {
-    /// Check whether the query invocation corresponding to the given
-    /// DepNode is eligible for on-disk-caching. If so, this is method
-    /// will execute the query corresponding to the given DepNode.
-    /// Also, as a sanity check, it expects that the corresponding query
-    /// invocation has been marked as green already.
-    pub fn try_load_from_on_disk_cache<'tcx>(&self, tcx: TyCtxt<'tcx>) {
-        use crate::dep_graph::DepKind;
-
-        rustc_dep_node_try_load_from_on_disk_cache!(self, tcx)
-    }
+pub(crate) fn try_load_from_on_disk_cache<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
+    rustc_dep_node_try_load_from_on_disk_cache!(dep_node, tcx)
 }

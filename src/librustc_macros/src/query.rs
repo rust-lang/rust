@@ -429,14 +429,14 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 });
 
                 try_load_from_on_disk_cache_stream.extend(quote! {
-                    DepKind::#name => {
-                        if <#arg as DepNodeParams>::CAN_RECONSTRUCT_QUERY_KEY {
+                    ::rustc::dep_graph::DepKind::#name => {
+                        if <#arg as DepNodeParams<TyCtxt<'_>>>::CAN_RECONSTRUCT_QUERY_KEY {
                             debug_assert!($tcx.dep_graph
                                             .node_color($dep_node)
                                             .map(|c| c.is_green())
                                             .unwrap_or(false));
 
-                            let key = <#arg as DepNodeParams>::recover($tcx, $dep_node).unwrap();
+                            let key = <#arg as DepNodeParams<TyCtxt<'_>>>::recover($tcx, $dep_node).unwrap();
                             if queries::#name::cache_on_disk($tcx, key, None) {
                                 let _ = $tcx.#name(key);
                             }
@@ -486,9 +486,9 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
             // Add a match arm to force the query given the dep node
             dep_node_force_stream.extend(quote! {
-                DepKind::#name => {
-                    if <#arg as DepNodeParams>::CAN_RECONSTRUCT_QUERY_KEY {
-                        if let Some(key) = <#arg as DepNodeParams>::recover($tcx, $dep_node) {
+                ::rustc::dep_graph::DepKind::#name => {
+                    if <#arg as DepNodeParams<TyCtxt<'_>>>::CAN_RECONSTRUCT_QUERY_KEY {
+                        if let Some(key) = <#arg as DepNodeParams<TyCtxt<'_>>>::recover($tcx, $dep_node) {
                             $tcx.force_query::<crate::ty::query::queries::#name<'_>>(
                                 key,
                                 DUMMY_SP,
@@ -509,7 +509,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     }
 
     dep_node_force_stream.extend(quote! {
-        DepKind::Null => {
+        ::rustc::dep_graph::DepKind::Null => {
             bug!("Cannot force dep node: {:?}", $dep_node)
         }
     });
