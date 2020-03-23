@@ -1574,7 +1574,7 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
             ty::ReVar(_) | ty::ReScope(_) | ty::ReErased => false,
 
-            ty::ReStatic | ty::ReEmpty(_) | ty::ReClosureBound(_) => true,
+            ty::ReStatic | ty::ReEmpty(_) => true,
         }
     }
 
@@ -1684,12 +1684,6 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
             }
             ty::ReEmpty(ui) => {
                 p!(write("'<empty:{:?}>", ui));
-                return Ok(self);
-            }
-
-            // The user should never encounter these in unsubstituted form.
-            ty::ReClosureBound(vid) => {
-                p!(write("{:?}", vid));
                 return Ok(self);
             }
         }
