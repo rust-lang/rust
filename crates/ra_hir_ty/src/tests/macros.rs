@@ -656,7 +656,7 @@ fn test() {
 
 //- /lib.rs crate:foo
 #[proc_macro_derive(Foo)]
-pub fn derive_foo(_item: TokenStream) -> TokenStream {    
+pub fn derive_foo(_item: TokenStream) -> TokenStream {
 }
 "#,
     );
