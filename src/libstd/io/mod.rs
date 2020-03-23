@@ -1060,10 +1060,10 @@ impl<'a> DerefMut for IoSliceMut<'a> {
 #[repr(transparent)]
 pub struct IoSlice<'a>(sys::io::IoSlice<'a>);
 
-#[stable(feature = "iovec-send-sync", since = "1.43.0")]
+#[stable(feature = "iovec-send-sync", since = "1.44.0")]
 unsafe impl<'a> Send for IoSlice<'a> { }
 
-#[stable(feature = "iovec-send-sync", since = "1.43.0")]
+#[stable(feature = "iovec-send-sync", since = "1.44.0")]
 unsafe impl<'a> Sync for IoSlice<'a> { }
 
 #[stable(feature = "iovec", since = "1.36.0")]
