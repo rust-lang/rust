@@ -273,6 +273,20 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
         t.super_visit_with(self)
     }
 
+    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
+        match c.val {
+            ty::ConstKind::Bound(debruijn, bound_var) if debruijn == self.binder_index => {
+                self.types.insert(
+                    bound_var.as_u32(),
+                    Symbol::intern(&format!("^{}", bound_var.as_u32())),
+                );
+            }
+            _ => (),
+        }
+
+        c.super_visit_with(self)
+    }
+
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
         match r {
             ty::ReLateBound(index, br) if *index == self.binder_index => match br {
