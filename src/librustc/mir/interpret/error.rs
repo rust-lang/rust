@@ -577,7 +577,7 @@ impl InterpError<'_> {
     /// waste of resources.
     pub fn allocates(&self) -> bool {
         match self {
-            // Zero-sized boxes to not allocate.
+            // Zero-sized boxes do not allocate.
             InterpError::MachineStop(b) => mem::size_of_val(&**b) > 0,
             InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
             | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationFailure(_))

@@ -4,7 +4,7 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 
-use rustc::mir::interpret::{InterpResult, MachineStopType, Scalar};
+use rustc::mir::interpret::{InterpResult, Scalar};
 use rustc::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
@@ -38,6 +38,24 @@ use crate::transform::{MirPass, MirSource};
 
 /// The maximum number of bytes that we'll allocate space for a return value.
 const MAX_ALLOC_LIMIT: u64 = 1024;
+
+/// Macro for machine-specific `InterpError` without allocation.
+/// (These will never be shown to the user, but they help diagnose ICEs.)
+macro_rules! throw_machine_stop_str {
+    ($($tt:tt)*) => {{
+        // We make a new local type for it. The type itself does not carry any information,
+        // but its vtable (for the `MachineStopType` trait) does.
+        struct Zst;
+        // Debug-printing this type shows the desired string.
+        impl std::fmt::Debug for Zst {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, $($tt)*)
+            }
+        }
+        impl rustc::mir::interpret::MachineStopType for Zst {}
+        throw_machine_stop!(Zst)
+    }};
+}
 
 pub struct ConstProp;
 
@@ -192,10 +210,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
         _unwind: Option<BasicBlock>,
     ) -> InterpResult<'tcx> {
-        #[derive(Debug)]
-        struct ConstPropIntrinsic;
-        impl MachineStopType for ConstPropIntrinsic {}
-        throw_machine_stop!(ConstPropIntrinsic)
+        throw_machine_stop_str!("calling intrinsics isn't supported in ConstProp")
     }
 
     fn assert_panic(
@@ -216,11 +231,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
-        #[derive(Debug)]
-        struct ConstPropPtrOp;
-        impl MachineStopType for ConstPropPtrOp {}
         // We can't do this because aliasing of memory can differ between const eval and llvm
-        throw_machine_stop!(ConstPropPtrOp)
+        throw_machine_stop_str!("pointer arithmetic or comparisons aren't supported in ConstProp")
     }
 
     #[inline(always)]
@@ -243,10 +255,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        #[derive(Debug)]
-        struct ConstPropBox;
-        impl MachineStopType for ConstPropBox {}
-        throw_machine_stop!(ConstPropBox)
+        throw_machine_stop_str!("can't const prop heap allocations")
     }
 
     fn access_local(
@@ -257,10 +266,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         let l = &frame.locals[local];
 
         if l.value == LocalValue::Uninitialized {
-            #[derive(Debug)]
-            struct ConstPropUninitLocal;
-            impl MachineStopType for ConstPropUninitLocal {}
-            throw_machine_stop!(ConstPropUninitLocal)
+            throw_machine_stop_str!("tried to access an uninitialized local")
         }
 
         l.access()
@@ -270,13 +276,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _memory_extra: &(),
         allocation: &Allocation<Self::PointerTag, Self::AllocExtra>,
     ) -> InterpResult<'tcx> {
-        #[derive(Debug)]
-        struct ConstPropGlobalMem;
-        impl MachineStopType for ConstPropGlobalMem {}
         // if the static allocation is mutable or if it has relocations (it may be legal to mutate
         // the memory behind that in the future), then we can't const prop it
         if allocation.mutability == Mutability::Mut || allocation.relocations().len() > 0 {
-            throw_machine_stop!(ConstPropGlobalMem)
+            throw_machine_stop_str!("can't eval mutable statics in ConstProp")
         }
 
         Ok(())
