@@ -46,6 +46,13 @@ macro_rules! err_exhaust {
     };
 }
 
+#[macro_export]
+macro_rules! err_machine_stop {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::MachineStop(Box::new($($tt)*))
+    };
+}
+
 // In the `throw_*` macros, avoid `return` to make them work with `try {}`.
 #[macro_export]
 macro_rules! throw_unsup {
@@ -79,9 +86,7 @@ macro_rules! throw_exhaust {
 
 #[macro_export]
 macro_rules! throw_machine_stop {
-    ($($tt:tt)*) => {
-        Err::<!, _>($crate::mir::interpret::InterpError::MachineStop(Box::new($($tt)*)))?
-    };
+    ($($tt:tt)*) => { Err::<!, _>(err_machine_stop!($($tt)*))? };
 }
 
 mod allocation;
