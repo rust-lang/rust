@@ -1986,7 +1986,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             Rvalue::Repeat(operand, len) => {
-                if *len > 1 {
+                // If the length cannot be evaluated we must assume that the length can be larger
+                // than 1.
+                // If the length is larger than 1, the repeat expression will need to copy the
+                // element, so we require the `Copy` trait.
+                if len.try_eval_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
                     if let Operand::Move(_) = operand {
                         // While this is located in `nll::typeck` this error is not an NLL error, it's
                         // a required check to make sure that repeated elements implement `Copy`.

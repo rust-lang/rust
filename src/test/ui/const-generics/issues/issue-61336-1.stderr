@@ -6,11 +6,3 @@ LL | #![feature(const_generics)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error: array lengths can't depend on generic parameters
-  --> $DIR/issue-61336-1.rs:5:9
-   |
-LL |     [x; N]
-   |         ^
-
-error: aborting due to previous error
-

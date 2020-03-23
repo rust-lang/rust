@@ -18,7 +18,6 @@ use crate::type_error_struct;
 use crate::util::common::ErrorReported;
 
 use rustc::middle::lang_items;
-use rustc::mir::interpret::ErrorHandled;
 use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::Ty;
@@ -1008,13 +1007,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         _expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let count_def_id = tcx.hir().local_def_id(count.hir_id);
-        let count = if self.const_param_def_id(count).is_some() {
-            Ok(self.to_const(count, tcx.type_of(count_def_id)))
-        } else {
-            tcx.const_eval_poly(count_def_id)
-                .map(|val| ty::Const::from_value(tcx, val, tcx.type_of(count_def_id)))
-        };
+        let count = self.to_const(count);
 
         let uty = match expected {
             ExpectHasType(uty) => match uty.kind {
@@ -1042,17 +1035,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if element_ty.references_error() {
             return tcx.types.err;
         }
-        match count {
-            Ok(count) => tcx.mk_ty(ty::Array(t, count)),
-            Err(ErrorHandled::TooGeneric) => {
-                self.tcx.sess.span_err(
-                    tcx.def_span(count_def_id),
-                    "array lengths can't depend on generic parameters",
-                );
-                tcx.types.err
-            }
-            Err(ErrorHandled::Reported) => tcx.types.err,
-        }
+
+        tcx.mk_ty(ty::Array(t, count))
     }
 
     fn check_expr_tuple(

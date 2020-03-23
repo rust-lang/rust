@@ -4,6 +4,16 @@ error[E0080]: evaluation of constant value failed
 LL |     = [0; (i8::MAX + 1) as usize];
    |           ^^^^^^^^^^^^^ attempt to add with overflow
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/const-eval-overflow-3.rs:20:7
+   |
+LL |     = [0; (i8::MAX + 1) as usize];
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `128usize`, found `(i8::MAX + 1) as usize`
+   |
+   = note: expected array `[u32; 128]`
+              found array `[u32; _]`
 
-For more information about this error, try `rustc --explain E0080`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0080, E0308.
+For more information about an error, try `rustc --explain E0080`.

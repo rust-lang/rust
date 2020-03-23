@@ -331,7 +331,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 }
                 (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => self.to_ty(ty).into(),
                 (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
-                    self.to_const(&ct.value, self.tcx.type_of(param.def_id)).into()
+                    self.to_const(&ct.value).into()
                 }
                 _ => unreachable!(),
             },

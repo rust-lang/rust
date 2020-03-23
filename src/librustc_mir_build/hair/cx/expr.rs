@@ -3,7 +3,7 @@ use crate::hair::cx::to_ref::ToRef;
 use crate::hair::cx::Cx;
 use crate::hair::util::UserAnnotatedTyHelpers;
 use crate::hair::*;
-use rustc::mir::interpret::{ErrorHandled, Scalar};
+use rustc::mir::interpret::Scalar;
 use rustc::mir::BorrowKind;
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
@@ -406,34 +406,8 @@ fn make_mirror_unadjusted<'a, 'tcx>(
 
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
-            let def_id = cx.tcx.hir().local_def_id(count.hir_id);
-            let substs = InternalSubsts::identity_for_item(cx.tcx, def_id);
-            let span = cx.tcx.def_span(def_id);
-            let count = match cx.tcx.const_eval_resolve(
-                ty::ParamEnv::reveal_all(),
-                def_id,
-                substs,
-                None,
-                Some(span),
-            ) {
-                Ok(cv) => {
-                    if let Some(count) = cv.try_to_bits_for_ty(
-                        cx.tcx,
-                        ty::ParamEnv::reveal_all(),
-                        cx.tcx.types.usize,
-                    ) {
-                        count as u64
-                    } else {
-                        bug!("repeat count constant value can't be converted to usize");
-                    }
-                }
-                Err(ErrorHandled::Reported) => 0,
-                Err(ErrorHandled::TooGeneric) => {
-                    let span = cx.tcx.def_span(def_id);
-                    cx.tcx.sess.span_err(span, "array lengths can't depend on generic parameters");
-                    0
-                }
-            };
+            let count_def_id = cx.tcx.hir().local_def_id(count.hir_id).expect_local();
+            let count = ty::Const::from_anon_const(cx.tcx, count_def_id);
 
             ExprKind::Repeat { value: v.to_ref(), count }
         }

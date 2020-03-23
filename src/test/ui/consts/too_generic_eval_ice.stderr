@@ -41,7 +41,15 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
    = help: the trait `std::marker::Sized` is not implemented for `B`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
-error: aborting due to 3 previous errors
+error[E0369]: binary operation `==` cannot be applied to type `[{integer}; _]`
+  --> $DIR/too_generic_eval_ice.rs:7:30
+   |
+LL |         [5; Self::HOST_SIZE] == [6; 0]
+   |         -------------------- ^^ ------ [{integer}; 0]
+   |         |
+   |         [{integer}; _]
 
-Some errors have detailed explanations: E0277, E0599.
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0369, E0599.
 For more information about an error, try `rustc --explain E0277`.
