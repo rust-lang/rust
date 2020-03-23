@@ -143,17 +143,6 @@ impl ModuleDef {
     }
 }
 
-impl From<ModuleDef> for ItemInNs {
-    fn from(module_def: ModuleDef) -> Self {
-        match module_def {
-            ModuleDef::Static(_) | ModuleDef::Const(_) | ModuleDef::Function(_) => {
-                ItemInNs::Values(module_def.into())
-            }
-            _ => ItemInNs::Types(module_def.into()),
-        }
-    }
-}
-
 pub use hir_def::{
     attr::Attrs, item_scope::ItemInNs, visibility::Visibility, AssocItemId, AssocItemLoc,
 };
@@ -290,9 +279,9 @@ impl Module {
     pub fn find_use_path(
         self,
         db: &dyn DefDatabase,
-        item: ItemInNs,
+        item: impl Into<ItemInNs>,
     ) -> Option<hir_def::path::ModPath> {
-        hir_def::find_path::find_path(db, item, self.into())
+        hir_def::find_path::find_path(db, item.into(), self.into())
     }
 }
 
@@ -761,12 +750,6 @@ impl MacroDef {
     /// XXX: this parses the file
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
         self.source(db).value.name().map(|it| it.as_name())
-    }
-}
-
-impl From<MacroDef> for ItemInNs {
-    fn from(macro_def: MacroDef) -> Self {
-        ItemInNs::Macros(macro_def.into())
     }
 }
 
