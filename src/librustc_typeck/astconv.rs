@@ -1693,9 +1693,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
 
         // Erase the `dummy_self` (`trait_object_dummy_self`) used above.
-        let existential_trait_refs = regular_traits
-            .iter()
-            .map(|i| i.trait_ref().map_bound(|trait_ref| trait_ref_to_existential(trait_ref)));
+        let existential_trait_refs =
+            regular_traits.iter().map(|i| i.trait_ref().map_bound(trait_ref_to_existential));
         let existential_projections = bounds.projection_bounds.iter().map(|(bound, _)| {
             bound.map_bound(|b| {
                 let trait_ref = trait_ref_to_existential(b.projection_ty.trait_ref(tcx));
