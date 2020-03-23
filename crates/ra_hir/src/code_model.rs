@@ -33,7 +33,11 @@ use ra_syntax::{
 };
 use rustc_hash::FxHashSet;
 
-use crate::{db::HirDatabase, has_source::HasSource, CallableDef, HirDisplay, InFile, Name};
+use crate::{
+    db::{DefDatabase, HirDatabase},
+    has_source::HasSource,
+    CallableDef, HirDisplay, InFile, Name,
+};
 
 /// hir::Crate describes a single crate. It's the main interface with which
 /// a crate's dependencies interact. Mostly, it should be just a proxy for the
@@ -285,10 +289,10 @@ impl Module {
     /// this module, if possible.
     pub fn find_use_path(
         self,
-        db: &dyn HirDatabase,
+        db: &dyn DefDatabase,
         item: ItemInNs,
     ) -> Option<hir_def::path::ModPath> {
-        hir_def::find_path::find_path(db.upcast(), item, self.into())
+        hir_def::find_path::find_path(db, item, self.into())
     }
 }
 
