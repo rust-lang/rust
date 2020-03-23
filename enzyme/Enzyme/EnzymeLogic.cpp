@@ -3057,6 +3057,48 @@ badfn:;
   }
 }
 
+// TODO note this doesn't go through [loop, unreachable], and we could get more performance by doing this
+// can consider doing some domtree magic potentially
+SmallPtrSet<BasicBlock*, 4> getGuaranteedUnreachable(Function* F) {
+  SmallPtrSet<BasicBlock*, 4> knownUnreachables;
+  std::deque<BasicBlock*> todo;
+  for(auto &BB : *F) { todo.push_back(&BB); }
+
+  while(!todo.empty()) {
+    BasicBlock* next = todo.front();
+    todo.pop_front();
+
+    if (knownUnreachables.find(next) != knownUnreachables.end()) continue;
+
+    if (isa<ReturnInst>(next->getTerminator())) continue;
+
+    if (isa<UnreachableInst>(next->getTerminator())) {
+      knownUnreachables.insert(next);
+      for (BasicBlock *Pred : predecessors(next)) {
+        todo.push_back(Pred);
+      }
+      continue;
+    }
+
+    bool unreachable = true;
+    for (BasicBlock *Succ : successors(next)) {
+      if (knownUnreachables.find(Succ) == knownUnreachables.end()) {
+        unreachable = false;
+        break;
+      }
+    }
+
+    if (!unreachable) continue;
+    knownUnreachables.insert(next);
+    for (BasicBlock *Pred : predecessors(next)) {
+      todo.push_back(Pred);
+    }
+    continue;
+  }
+
+  return knownUnreachables;
+}
+
 Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI,
                                   TypeAnalysis &TA, AAResults &global_AA, bool returnUsed, bool differentialReturn, bool dretPtr, bool topLevel, llvm::Type* additionalArg,
                                   const NewFnTypeInfo& oldTypeInfo, const std::map<Argument*, bool> _uncacheable_args,
@@ -3165,6 +3207,46 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   //AA.addAAResult(global_AA);
   DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(todiff, TLI, TA, AA, constant_args, returnValue ? ( dretPtr ? ReturnType::ArgsWithTwoReturns: ReturnType::ArgsWithReturn ) : ReturnType::Args, differentialReturn, additionalArg);
   cachedfunctions[tup] = gutils->newFunc;
+
+  SmallPtrSet<BasicBlock*, 4> guaranteedUnreachable = getGuaranteedUnreachable(gutils->oldFunc);
+
+  SmallPtrSet<Value*, 4> assumeTrue;
+  SmallPtrSet<Value*, 4> assumeFalse;
+
+  if (!topLevel) {
+    //TODO also can consider switch instance as well
+    // TODO can also insert to topLevel as well [note this requires putting the intrinsic at the correct location]
+    for(auto& BB : *gutils->oldFunc) {
+      std::vector<BasicBlock*> unreachables;
+      std::vector<BasicBlock*> reachables;
+      for(auto Succ : successors(&BB)) {
+        if (guaranteedUnreachable.find(Succ) != guaranteedUnreachable.end()) {
+          unreachables.push_back(Succ);
+        } else {
+          reachables.push_back(Succ);
+        }
+      }
+
+      if (unreachables.size() == 0 || reachables.size() == 0) continue;
+
+      if (auto bi = dyn_cast<BranchInst>(BB.getTerminator())) {
+        IRBuilder<> B(&gutils->newFunc->getEntryBlock().front());
+
+        if (auto inst = dyn_cast<Instruction>(bi->getCondition())) {
+          B.SetInsertPoint(gutils->getNewFromOriginal(inst)->getNextNode());
+        }
+
+        Value* vals[1] = { gutils->getNewFromOriginal(bi->getCondition()) };
+        if (bi->getSuccessor(0) == unreachables[0]) {
+          assumeFalse.insert(vals[0]);
+          vals[0] = B.CreateNot(vals[0]);
+        } else {
+          assumeTrue.insert(vals[0]);
+        }
+        B.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::assume), vals);
+      }
+    }
+  }
 
   gutils->forceContexts();
 
@@ -3356,6 +3438,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   }
 
   for(BasicBlock* BB: gutils->originalBlocks) {
+    // Don't create derivatives for code that results in termination
+    if (guaranteedUnreachable.find(gutils->getOriginal(BB)) != guaranteedUnreachable.end()) continue;
+
     auto BB2 = gutils->reverseBlocks[BB];
     assert(BB2);
 
@@ -3385,8 +3470,6 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   assert(term);
   if (isa<ReturnInst>(term) || isa<BranchInst>(term) || isa<SwitchInst>(term)) {
 
-  } else if (isa<UnreachableInst>(term)) {
-    continue;
   } else {
     assert(BB);
     assert(BB->getParent());
@@ -3590,6 +3673,41 @@ realcall:
       inst->setMetadata(LLVMContext::MD_tbaa, nullptr);
   }
 
+  for(auto val : assumeTrue) {
+    bool changed;
+    do {
+      changed = false;
+      for(auto &use : val->uses()) {
+        if (auto user = dyn_cast<IntrinsicInst>(use.getUser())) {
+          if (user->getIntrinsicID() == Intrinsic::assume) continue;
+        }
+        use.set(ConstantInt::getTrue(val->getContext()));
+        changed = true;
+        break;
+      }
+    }while (!changed);
+  }
+
+  for(auto val : assumeFalse) {
+    bool changed;
+    do {
+      changed = false;
+      for(auto &use : val->uses()) {
+        if (auto notu = dyn_cast<BinaryOperator>(use.getUser())) {
+          if (notu->getNumUses() == 1 && notu->getOpcode() == BinaryOperator::Xor && notu->getOperand(0) == val && isa<ConstantInt>(notu->getOperand(1)) && cast<ConstantInt>(notu->getOperand(1))->isOne()) {
+            if (auto user = dyn_cast<IntrinsicInst>(*notu->user_begin())) {
+              if (user->getIntrinsicID() == Intrinsic::assume) {
+                continue;
+              }
+            }
+          }
+        }
+        use.set(ConstantInt::getFalse(val->getContext()));
+        changed = true;
+        break;
+      }
+    } while (!changed);
+  }
 
   while(gutils->inversionAllocs->size() > 0) {
     gutils->inversionAllocs->back().moveBefore(gutils->newFunc->getEntryBlock().getFirstNonPHIOrDbgOrLifetime());

@@ -137,6 +137,9 @@ public:
   CallInst* getOriginal(CallInst* newinst) {
     return cast<CallInst>(getOriginal((Value*)newinst));
   }
+  BasicBlock* getOriginal(BasicBlock* newinst) {
+    return cast<BasicBlock>(getOriginal((Value*)newinst));
+  }
 
   Value* getOriginalPointer(Value* newinst) {
     for(auto v: originalToNewFn) {
