@@ -7,13 +7,18 @@ use crate::{
     project_root,
 };
 
-pub fn run_dist(version: &str, release_tag: &str) -> Result<()> {
+pub struct ClientOpts {
+    pub version: String,
+    pub release_tag: String,
+}
+
+pub fn run_dist(client_opts: Option<ClientOpts>) -> Result<()> {
     let dist = project_root().join("dist");
     rm_rf(&dist)?;
     fs2::create_dir_all(&dist)?;
 
-    if cfg!(target_os = "linux") {
-        dist_client(version, release_tag)?;
+    if let Some(ClientOpts { version, release_tag}) = client_opts {
+        dist_client(&version, &release_tag)?;
     }
     dist_server()?;
     Ok(())

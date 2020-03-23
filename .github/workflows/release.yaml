@@ -49,11 +49,15 @@ jobs:
         node-version: 12.x
 
     - name: Dist
-      if: github.ref == 'refs/heads/release'
-      run: cargo xtask dist --version 0.2.$GITHUB_RUN_NUMBER         --tag $(date --iso --utc)
+      if: matrix.os == 'ubuntu-latest' && github.ref == 'refs/heads/release'
+      run: cargo xtask dist --client --version 0.2.$GITHUB_RUN_NUMBER         --tag $(date --iso --utc)
 
     - name: Dist
-      if: github.ref != 'refs/heads/release'
+      if: matrix.os == 'ubuntu-latest' && github.ref == 'refs/heads/release'
+      run: cargo xtask dist --client --version 0.3.$GITHUB_RUN_NUMBER-nightly --tag nightly
+
+    - name: Dist
+      if: matrix.os != 'ubuntu-latest'
       run: cargo xtask dist --version 0.3.$GITHUB_RUN_NUMBER-nightly --tag nightly
 
     - name: Upload artifacts

@@ -13,7 +13,7 @@ use std::env;
 use pico_args::Arguments;
 use xtask::{
     codegen::{self, Mode},
-    dist::run_dist,
+    dist::{ClientOpts, run_dist},
     install::{ClientOpt, InstallCmd, ServerOpt},
     not_bash::pushd,
     pre_commit, project_root, run_clippy, run_fuzzer, run_pre_cache, run_release, run_rustfmt,
@@ -103,10 +103,16 @@ FLAGS:
             run_release(dry_run)
         }
         "dist" => {
-            let version: String = args.value_from_str("--version")?;
-            let release_tag: String = args.value_from_str("--tag")?;
+            let client_opts = if args.contains("--client") {
+                Some(ClientOpts {
+                    version: args.value_from_str("--version")?,
+                    release_tag: args.value_from_str("--tag")?,
+                })
+            } else {
+                None
+            };
             args.finish()?;
-            run_dist(&version, &release_tag)
+            run_dist(client_opts)
         }
         _ => {
             eprintln!(
