@@ -84,15 +84,6 @@ impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
     }
 }
 
-impl<T, U> Clean<U> for ty::Binder<T>
-where
-    T: Clean<U>,
-{
-    fn clean(&self, cx: &DocContext<'_>) -> U {
-        self.skip_binder().clean(cx)
-    }
-}
-
 impl Clean<ExternalCrate> for CrateNum {
     fn clean(&self, cx: &DocContext<'_>) -> ExternalCrate {
         let root = DefId { krate: *self, index: CRATE_DEF_INDEX };
@@ -305,59 +296,66 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
     }
 }
 
-impl<'a, 'tcx> Clean<GenericBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>) {
-    fn clean(&self, cx: &DocContext<'_>) -> GenericBound {
-        let (trait_ref, ref bounds) = *self;
+impl Clean<Type> for (ty::TraitRef<'_>, &[TypeBinding]) {
+    fn clean(&self, cx: &DocContext<'_>) -> Type {
+        let (trait_ref, bounds) = *self;
         inline::record_extern_fqn(cx, trait_ref.def_id, TypeKind::Trait);
         let path = external_path(
             cx,
             cx.tcx.item_name(trait_ref.def_id),
             Some(trait_ref.def_id),
             true,
-            bounds.clone(),
+            bounds.to_vec(),
             trait_ref.substs,
         );
 
         debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
 
+        ResolvedPath { path, param_names: None, did: trait_ref.def_id, is_generic: false }
+    }
+}
+
+impl<'tcx> Clean<GenericBound> for ty::TraitRef<'tcx> {
+    fn clean(&self, cx: &DocContext<'_>) -> GenericBound {
+        GenericBound::TraitBound(
+            PolyTrait { trait_: (*self, &[][..]).clean(cx), generic_params: vec![] },
+            hir::TraitBoundModifier::None,
+        )
+    }
+}
+
+impl Clean<GenericBound> for (ty::PolyTraitRef<'_>, &[TypeBinding]) {
+    fn clean(&self, cx: &DocContext<'_>) -> GenericBound {
+        let (poly_trait_ref, bounds) = *self;
+        let poly_trait_ref = poly_trait_ref.lift_to_tcx(cx.tcx).unwrap();
+
         // collect any late bound regions
-        let mut late_bounds = vec![];
-        for ty_s in trait_ref.input_types().skip(1) {
-            if let ty::Tuple(ts) = ty_s.kind {
-                for &ty_s in ts {
-                    if let ty::Ref(ref reg, _, _) = ty_s.expect_ty().kind {
-                        if let &ty::RegionKind::ReLateBound(..) = *reg {
-                            debug!("  hit an ReLateBound {:?}", reg);
-                            if let Some(Lifetime(name)) = reg.clean(cx) {
-                                late_bounds.push(GenericParamDef {
-                                    name,
-                                    kind: GenericParamDefKind::Lifetime,
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        let late_bound_regions: Vec<_> = cx
+            .tcx
+            .collect_referenced_late_bound_regions(&poly_trait_ref)
+            .into_iter()
+            .filter_map(|br| match br {
+                ty::BrNamed(_, name) => Some(GenericParamDef {
+                    name: name.to_string(),
+                    kind: GenericParamDefKind::Lifetime,
+                }),
+                _ => None,
+            })
+            .collect();
 
         GenericBound::TraitBound(
             PolyTrait {
-                trait_: ResolvedPath {
-                    path,
-                    param_names: None,
-                    did: trait_ref.def_id,
-                    is_generic: false,
-                },
-                generic_params: late_bounds,
+                trait_: (*poly_trait_ref.skip_binder(), bounds).clean(cx),
+                generic_params: late_bound_regions,
             },
             hir::TraitBoundModifier::None,
         )
     }
 }
 
-impl<'tcx> Clean<GenericBound> for ty::TraitRef<'tcx> {
+impl<'tcx> Clean<GenericBound> for ty::PolyTraitRef<'tcx> {
     fn clean(&self, cx: &DocContext<'_>) -> GenericBound {
-        (self, vec![]).clean(cx)
+        (*self, &[][..]).clean(cx)
     }
 }
 
@@ -495,16 +493,17 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
     }
 }
 
-impl<'a> Clean<WherePredicate> for ty::TraitPredicate<'a> {
+impl<'a> Clean<WherePredicate> for ty::PolyTraitPredicate<'a> {
     fn clean(&self, cx: &DocContext<'_>) -> WherePredicate {
+        let poly_trait_ref = self.map_bound(|pred| pred.trait_ref);
         WherePredicate::BoundPredicate {
-            ty: self.trait_ref.self_ty().clean(cx),
-            bounds: vec![self.trait_ref.clean(cx)],
+            ty: poly_trait_ref.self_ty().clean(cx),
+            bounds: vec![poly_trait_ref.clean(cx)],
         }
     }
 }
 
-impl<'tcx> Clean<WherePredicate> for ty::SubtypePredicate<'tcx> {
+impl<'tcx> Clean<WherePredicate> for ty::PolySubtypePredicate<'tcx> {
     fn clean(&self, _cx: &DocContext<'_>) -> WherePredicate {
         panic!(
             "subtype predicates are an internal rustc artifact \
@@ -514,10 +513,10 @@ impl<'tcx> Clean<WherePredicate> for ty::SubtypePredicate<'tcx> {
 }
 
 impl<'tcx> Clean<Option<WherePredicate>>
-    for ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
+    for ty::PolyOutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
 {
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
-        let ty::OutlivesPredicate(ref a, ref b) = *self;
+        let ty::OutlivesPredicate(a, b) = self.skip_binder();
 
         if let (ty::ReEmpty(_), ty::ReEmpty(_)) = (a, b) {
             return None;
@@ -530,9 +529,9 @@ impl<'tcx> Clean<Option<WherePredicate>>
     }
 }
 
-impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
+impl<'tcx> Clean<Option<WherePredicate>> for ty::PolyOutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
-        let ty::OutlivesPredicate(ref ty, ref lt) = *self;
+        let ty::OutlivesPredicate(ty, lt) = self.skip_binder();
 
         if let ty::ReEmpty(_) = lt {
             return None;
@@ -545,9 +544,10 @@ impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty:
     }
 }
 
-impl<'tcx> Clean<WherePredicate> for ty::ProjectionPredicate<'tcx> {
+impl<'tcx> Clean<WherePredicate> for ty::PolyProjectionPredicate<'tcx> {
     fn clean(&self, cx: &DocContext<'_>) -> WherePredicate {
-        WherePredicate::EqPredicate { lhs: self.projection_ty.clean(cx), rhs: self.ty.clean(cx) }
+        let ty::ProjectionPredicate { projection_ty, ty } = *self.skip_binder();
+        WherePredicate::EqPredicate { lhs: projection_ty.clean(cx), rhs: ty.clean(cx) }
     }
 }
 
@@ -1674,7 +1674,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             }
                         }
 
-                        let bounds = bounds
+                        let bounds: Vec<_> = bounds
                             .predicates
                             .iter()
                             .filter_map(|pred| {
@@ -1703,7 +1703,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             })
                             .collect();
 
-                        Some((trait_ref.skip_binder(), bounds).clean(cx))
+                        Some((trait_ref, &bounds[..]).clean(cx))
                     })
                     .collect::<Vec<_>>();
                 bounds.extend(regions);

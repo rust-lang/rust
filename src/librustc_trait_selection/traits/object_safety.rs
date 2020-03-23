@@ -16,7 +16,7 @@ use crate::traits::{self, Obligation, ObligationCause};
 use rustc_errors::{Applicability, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
@@ -234,7 +234,7 @@ fn predicates_reference_self(
         tcx.predicates_of(trait_def_id)
     };
     let self_ty = tcx.types.self_param;
-    let has_self_ty = |t: Ty<'_>| t.walk().any(|arg| arg == self_ty.into());
+    let has_self_ty = |arg: &GenericArg<'_>| arg.walk().any(|arg| arg == self_ty.into());
     predicates
         .predicates
         .iter()
@@ -243,7 +243,7 @@ fn predicates_reference_self(
             match predicate {
                 ty::Predicate::Trait(ref data, _) => {
                     // In the case of a trait predicate, we can skip the "self" type.
-                    if data.skip_binder().input_types().skip(1).any(has_self_ty) {
+                    if data.skip_binder().trait_ref.substs[1..].iter().any(has_self_ty) {
                         Some(sp)
                     } else {
                         None
@@ -262,12 +262,8 @@ fn predicates_reference_self(
                     //
                     // This is ALT2 in issue #56288, see that for discussion of the
                     // possible alternatives.
-                    if data
-                        .skip_binder()
-                        .projection_ty
-                        .trait_ref(tcx)
-                        .input_types()
-                        .skip(1)
+                    if data.skip_binder().projection_ty.trait_ref(tcx).substs[1..]
+                        .iter()
                         .any(has_self_ty)
                     {
                         Some(sp)

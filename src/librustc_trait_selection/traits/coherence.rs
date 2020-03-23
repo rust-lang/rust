@@ -393,8 +393,11 @@ fn orphan_check_trait_ref<'tcx>(
     }
 
     let mut non_local_spans = vec![];
-    for (i, input_ty) in
-        trait_ref.input_types().flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate)).enumerate()
+    for (i, input_ty) in trait_ref
+        .substs
+        .types()
+        .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
+        .enumerate()
     {
         debug!("orphan_check_trait_ref: check ty `{:?}`", input_ty);
         let non_local_tys = ty_is_non_local(tcx, input_ty, in_crate);
@@ -404,7 +407,8 @@ fn orphan_check_trait_ref<'tcx>(
         } else if let ty::Param(_) = input_ty.kind {
             debug!("orphan_check_trait_ref: uncovered ty: `{:?}`", input_ty);
             let local_type = trait_ref
-                .input_types()
+                .substs
+                .types()
                 .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
                 .find(|ty| ty_is_non_local_constructor(ty, in_crate).is_none());
 

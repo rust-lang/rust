@@ -652,7 +652,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        // In intercrate mode, whenever any of the types are unbound,
+        // In intercrate mode, whenever any of the generics are unbound,
         // there can always be an impl. Even if there are no impls in
         // this crate, perhaps the type would be unified with
         // something from another crate that does provide an impl.
@@ -677,7 +677,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
         let unbound_input_types =
-            stack.fresh_trait_ref.skip_binder().input_types().any(|ty| ty.is_fresh());
+            stack.fresh_trait_ref.skip_binder().substs.types().any(|ty| ty.is_fresh());
         // This check was an imperfect workaround for a bug in the old
         // intercrate mode; it should be removed when that goes away.
         if unbound_input_types && self.intercrate {
@@ -3262,15 +3262,31 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // substitution if we find that any of the input types, when
         // simplified, do not match.
 
-        obligation.predicate.skip_binder().input_types().zip(impl_trait_ref.input_types()).any(
-            |(obligation_ty, impl_ty)| {
-                let simplified_obligation_ty =
-                    fast_reject::simplify_type(self.tcx(), obligation_ty, true);
-                let simplified_impl_ty = fast_reject::simplify_type(self.tcx(), impl_ty, false);
+        obligation.predicate.skip_binder().trait_ref.substs.iter().zip(impl_trait_ref.substs).any(
+            |(obligation_arg, impl_arg)| {
+                match (obligation_arg.unpack(), impl_arg.unpack()) {
+                    (GenericArgKind::Type(obligation_ty), GenericArgKind::Type(impl_ty)) => {
+                        let simplified_obligation_ty =
+                            fast_reject::simplify_type(self.tcx(), obligation_ty, true);
+                        let simplified_impl_ty =
+                            fast_reject::simplify_type(self.tcx(), impl_ty, false);
 
-                simplified_obligation_ty.is_some()
-                    && simplified_impl_ty.is_some()
-                    && simplified_obligation_ty != simplified_impl_ty
+                        simplified_obligation_ty.is_some()
+                            && simplified_impl_ty.is_some()
+                            && simplified_obligation_ty != simplified_impl_ty
+                    }
+                    (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_)) => {
+                        // Lifetimes can never cause a rejection.
+                        false
+                    }
+                    (GenericArgKind::Const(_), GenericArgKind::Const(_)) => {
+                        // Conservatively ignore consts (i.e. assume they might
+                        // unify later) until we have `fast_reject` support for
+                        // them (if we'll ever need it, even).
+                        false
+                    }
+                    _ => unreachable!(),
+                }
             },
         )
     }
