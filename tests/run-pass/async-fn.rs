@@ -1,7 +1,9 @@
 #![feature(never_type)]
+#![feature(wake_trait)]
 
-use std::{future::Future, pin::Pin, task::Poll, ptr};
-use std::task::{Waker, RawWaker, RawWakerVTable, Context};
+use std::{future::Future, pin::Pin, task::Poll};
+use std::task::{Wake, Waker, Context};
+use std::sync::Arc;
 
 // See if we can run a basic `async fn`
 pub async fn foo(x: &u32, y: u32) -> u32 {
@@ -47,25 +49,14 @@ async fn partial_init(x: u32) -> u32 {
 }
 
 fn run_fut(mut fut: impl Future<Output=u32>, output: u32) {
-    fn raw_waker_clone(_this: *const ()) -> RawWaker {
-        panic!("unimplemented");
+    struct MyWaker;
+    impl Wake for MyWaker {
+        fn wake(self: Arc<Self>) {
+            unimplemented!()
+        }
     }
-    fn raw_waker_wake(_this: *const ()) {
-        panic!("unimplemented");
-    }
-    fn raw_waker_wake_by_ref(_this: *const ()) {
-        panic!("unimplemented");
-    }
-    fn raw_waker_drop(_this: *const ()) {}
 
-    static RAW_WAKER: RawWakerVTable = RawWakerVTable::new(
-        raw_waker_clone,
-        raw_waker_wake,
-        raw_waker_wake_by_ref,
-        raw_waker_drop,
-    );
-
-    let waker = unsafe { Waker::from_raw(RawWaker::new(ptr::null(), &RAW_WAKER)) };
+    let waker = Waker::from(Arc::new(MyWaker));
     let mut context = Context::from_waker(&waker);
     assert_eq!(unsafe { Pin::new_unchecked(&mut fut) }.poll(&mut context), Poll::Ready(output));
 }
