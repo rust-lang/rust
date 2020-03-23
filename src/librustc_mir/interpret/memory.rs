@@ -112,25 +112,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for Memory<'mir, 'tcx, M>
     }
 }
 
-// FIXME: Really we shouldn't clone memory, ever. Snapshot machinery should instead
-// carefully copy only the reachable parts.
-impl<'mir, 'tcx, M> Clone for Memory<'mir, 'tcx, M>
-where
-    M: Machine<'mir, 'tcx, PointerTag = (), AllocExtra = ()>,
-    M::MemoryExtra: Copy,
-    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
-{
-    fn clone(&self) -> Self {
-        Memory {
-            alloc_map: self.alloc_map.clone(),
-            extra_fn_ptr_map: self.extra_fn_ptr_map.clone(),
-            dead_alloc_map: self.dead_alloc_map.clone(),
-            extra: self.extra,
-            tcx: self.tcx,
-        }
-    }
-}
-
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn new(tcx: TyCtxtAt<'tcx>, extra: M::MemoryExtra) -> Self {
         Memory {

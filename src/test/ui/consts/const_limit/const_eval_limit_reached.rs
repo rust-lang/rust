@@ -1,21 +1,18 @@
-// ignore-tidy-linelength
-// only-x86_64
-// check-pass
-// NOTE: We always compile this test with -Copt-level=0 because higher opt-levels
-//       optimize away the const function
-// compile-flags:-Copt-level=0
 #![feature(const_eval_limit)]
-#![const_eval_limit="2"]
+#![feature(const_loop, const_if_match)]
 
-const CONSTANT: usize = limit();
-//~^ WARNING Constant evaluating a complex constant, this might take some time
+#![const_eval_limit="500"]
+
+const X: usize = {
+    let mut x = 0;
+    while x != 1000 {
+        //~^ ERROR any use of this value will cause an error
+        x += 1;
+    }
+
+    x
+};
 
 fn main() {
-    assert_eq!(CONSTANT, 1764);
-}
-
-const fn limit() -> usize { //~ WARNING Constant evaluating a complex constant, this might take some time
-    let x = 42;
-
-    x * 42
+    assert_eq!(X, 1000);
 }
