@@ -23,19 +23,8 @@ pub struct RawConst<'tcx> {
 
 /// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
 /// array length computations, enum discriminants and the pattern matching logic.
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    Eq,
-    PartialEq,
-    PartialOrd,
-    Ord,
-    RustcEncodable,
-    RustcDecodable,
-    Hash,
-    HashStable
-)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
+#[derive(HashStable)]
 pub enum ConstValue<'tcx> {
     /// Used only for types with `layout::abi::Scalar` ABI and ZSTs.
     ///
@@ -98,18 +87,8 @@ impl<'tcx> ConstValue<'tcx> {
 /// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
 /// of a simple value or a pointer into another `Allocation`
-#[derive(
-    Clone,
-    Copy,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    RustcEncodable,
-    RustcDecodable,
-    Hash,
-    HashStable
-)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
+#[derive(HashStable)]
 pub enum Scalar<Tag = (), Id = AllocId> {
     /// The raw bytes of a simple value.
     Raw {
