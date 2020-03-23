@@ -2306,6 +2306,7 @@ impl<T> [T] {
     /// assert_eq!(&bytes, b"Hello, Wello!");
     /// ```
     #[stable(feature = "copy_within", since = "1.37.0")]
+    #[track_caller]
     pub fn copy_within<R: ops::RangeBounds<usize>>(&mut self, src: R, dest: usize)
     where
         T: Copy,
@@ -2721,18 +2722,21 @@ where
 
 #[inline(never)]
 #[cold]
+#[track_caller]
 fn slice_index_len_fail(index: usize, len: usize) -> ! {
     panic!("index {} out of range for slice of length {}", index, len);
 }
 
 #[inline(never)]
 #[cold]
+#[track_caller]
 fn slice_index_order_fail(index: usize, end: usize) -> ! {
     panic!("slice index starts at {} but ends at {}", index, end);
 }
 
 #[inline(never)]
 #[cold]
+#[track_caller]
 fn slice_index_overflow_fail() -> ! {
     panic!("attempted to index slice up to maximum usize");
 }
@@ -2804,11 +2808,13 @@ pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// Returns a shared reference to the output at this location, panicking
     /// if out of bounds.
     #[unstable(feature = "slice_index_methods", issue = "none")]
+    #[cfg_attr(not(bootstrap), track_caller)]
     fn index(self, slice: &T) -> &Self::Output;
 
     /// Returns a mutable reference to the output at this location, panicking
     /// if out of bounds.
     #[unstable(feature = "slice_index_methods", issue = "none")]
+    #[cfg_attr(not(bootstrap), track_caller)]
     fn index_mut(self, slice: &mut T) -> &mut Self::Output;
 }
 
