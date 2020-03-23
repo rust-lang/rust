@@ -10,7 +10,7 @@ use hir_def::{
     docs::Documentation,
     expr::{BindingAnnotation, Pat, PatId},
     per_ns::PerNs,
-    resolver::HasResolver,
+    resolver::{HasResolver, Resolver},
     type_ref::{Mutability, TypeRef},
     AdtId, AssocContainerId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule,
     ImplId, LocalEnumVariantId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId, StaticId,
@@ -912,10 +912,8 @@ impl Local {
         let def = DefWithBodyId::from(self.parent);
         let infer = db.infer(def);
         let ty = infer[self.pat_id].clone();
-        let resolver = def.resolver(db.upcast());
         let krate = def.module(db.upcast()).krate;
-        let environment = TraitEnvironment::lower(db, &resolver);
-        Type { krate, ty: InEnvironment { value: ty, environment } }
+        Type::new(db, krate, def, ty)
     }
 
     pub fn source(self, db: &dyn HirDatabase) -> InFile<Either<ast::BindPat, ast::SelfParam>> {
@@ -1020,11 +1018,21 @@ impl ImplDef {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Type {
-    pub(crate) krate: CrateId,
-    pub(crate) ty: InEnvironment<Ty>,
+    krate: CrateId,
+    ty: InEnvironment<Ty>,
 }
 
 impl Type {
+    pub(crate) fn new_with_resolver(
+        db: &dyn HirDatabase,
+        resolver: &Resolver,
+        ty: Ty,
+    ) -> Option<Type> {
+        let krate = resolver.krate()?;
+        let environment = TraitEnvironment::lower(db, &resolver);
+        Some(Type { krate, ty: InEnvironment { value: ty, environment } })
+    }
+
     fn new(db: &dyn HirDatabase, krate: CrateId, lexical_env: impl HasResolver, ty: Ty) -> Type {
         let resolver = lexical_env.resolver(db.upcast());
         let environment = TraitEnvironment::lower(db, &resolver);
