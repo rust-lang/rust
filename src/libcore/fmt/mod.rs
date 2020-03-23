@@ -282,10 +282,10 @@ impl<'a> ArgumentV1<'a> {
         // SAFETY: `mem::transmute(x)` is safe because
         //     1. `&'b T` keeps the lifetime it originated with `'b`
         //              (so as to not have an unbounded lifetime)
-        //     2. `&'b T` and `&'b Void` have the same memory layout
+        //     2. `&'b T` and `&'b Opaque` have the same memory layout
         //              (when `T` is `Sized`, as it is here)
         // `mem::transmute(f)` is safe since `fn(&T, &mut Formatter<'_>) -> Result`
-        // and `fn(&Void, &mut Formatter<'_>) -> Result` have the same ABI
+        // and `fn(&Opaque, &mut Formatter<'_>) -> Result` have the same ABI
         // (as long as `T` is `Sized`)
         unsafe { ArgumentV1 { formatter: mem::transmute(f), value: mem::transmute(x) } }
     }
