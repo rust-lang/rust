@@ -5,19 +5,8 @@ use rustc_macros::HashStable_Generic;
 #[cfg(test)]
 mod tests;
 
-#[derive(
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    Clone,
-    Copy,
-    Debug,
-    HashStable_Generic
-)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Clone, Copy, Debug)]
+#[derive(HashStable_Generic)]
 pub enum Abi {
     // N.B., this ordering MUST match the AbiDatas array below.
     // (This is ensured by the test indices_are_correct().)

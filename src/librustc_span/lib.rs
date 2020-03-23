@@ -72,18 +72,8 @@ impl Globals {
 scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
 /// Differentiates between real files and common virtual files.
-#[derive(
-    Debug,
-    Eq,
-    PartialEq,
-    Clone,
-    Ord,
-    PartialOrd,
-    Hash,
-    RustcDecodable,
-    RustcEncodable,
-    HashStable_Generic
-)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
+#[derive(HashStable_Generic)]
 pub enum FileName {
     Real(PathBuf),
     /// Call to `quote!`.
