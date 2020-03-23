@@ -725,7 +725,11 @@ impl<'a> Builder<'a> {
             self.clear_if_dirty(&my_out, &rustdoc);
         }
 
-        cargo.env("CARGO_TARGET_DIR", &out_dir).arg(cmd).arg("-Zconfig-profile");
+        cargo.env("CARGO_TARGET_DIR", &out_dir).arg(cmd);
+
+        if !self.local_rebuild {
+            cargo.arg("-Zconfig-profile");
+        }
 
         let profile_var = |name: &str| {
             let profile = if self.config.rust_optimize { "RELEASE" } else { "DEV" };
