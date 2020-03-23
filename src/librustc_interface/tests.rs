@@ -560,8 +560,6 @@ fn test_debugging_options_tracking_hash() {
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.keep_hygiene_data = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.keep_ast = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.print_mono_items = Some(String::from("abc"));
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.dump_mir = Some(String::from("abc"));
