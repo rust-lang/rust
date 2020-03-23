@@ -8,6 +8,7 @@ LL |     let mk_pat!();
    |         --------- in this macro invocation
    |
    = note: only allowed in tuple, tuple struct, and slice patterns
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `..` patterns are not allowed here
   --> $DIR/rest-pat-semantic-disallowed.rs:18:9

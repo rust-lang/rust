@@ -6,17 +6,18 @@ use rustc::middle::lang_items;
 use rustc::middle::region;
 use rustc::mir::*;
 use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_attr::{self as attr, UnwindAttr};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{GeneratorKind, HirIdMap, Node};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
 use std::u32;
-use syntax::attr::{self, UnwindAttr};
 
 use super::lints;
 
@@ -38,12 +39,11 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
             ..
         })
         | Node::ImplItem(hir::ImplItem {
-            kind: hir::ImplItemKind::Method(hir::FnSig { decl, .. }, body_id),
+            kind: hir::ImplItemKind::Fn(hir::FnSig { decl, .. }, body_id),
             ..
         })
         | Node::TraitItem(hir::TraitItem {
-            kind:
-                hir::TraitItemKind::Method(hir::FnSig { decl, .. }, hir::TraitMethod::Provided(body_id)),
+            kind: hir::TraitItemKind::Fn(hir::FnSig { decl, .. }, hir::TraitFn::Provided(body_id)),
             ..
         }) => (*body_id, decl.output.span()),
         Node::Item(hir::Item { kind: hir::ItemKind::Static(ty, _, body_id), .. })
@@ -68,6 +68,12 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
             let fn_sig = cx.tables().liberated_fn_sigs()[id];
             let fn_def_id = tcx.hir().local_def_id(id);
 
+            let safety = match fn_sig.unsafety {
+                hir::Unsafety::Normal => Safety::Safe,
+                hir::Unsafety::Unsafe => Safety::FnUnsafe,
+            };
+
+            let body = tcx.hir().body(body_id);
             let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
             let implicit_argument = match ty.kind {
@@ -75,21 +81,25 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
                     // HACK(eddyb) Avoid having RustCall on closures,
                     // as it adds unnecessary (and wrong) auto-tupling.
                     abi = Abi::Rust;
-                    Some(ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None))
+                    vec![ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None)]
                 }
                 ty::Generator(..) => {
                     let gen_ty = tcx.body_tables(body_id).node_type(id);
-                    Some(ArgInfo(gen_ty, None, None, None))
+
+                    // The resume argument may be missing, in that case we need to provide it here.
+                    // It will always be `()` in this case.
+                    if body.params.is_empty() {
+                        vec![
+                            ArgInfo(gen_ty, None, None, None),
+                            ArgInfo(tcx.mk_unit(), None, None, None),
+                        ]
+                    } else {
+                        vec![ArgInfo(gen_ty, None, None, None)]
+                    }
                 }
-                _ => None,
+                _ => vec![],
             };
 
-            let safety = match fn_sig.unsafety {
-                hir::Unsafety::Normal => Safety::Safe,
-                hir::Unsafety::Unsafe => Safety::FnUnsafe,
-            };
-
-            let body = tcx.hir().body(body_id);
             let explicit_arguments = body.params.iter().enumerate().map(|(index, arg)| {
                 let owner_id = tcx.hir().body_owner(body_id);
                 let opt_ty_info;
@@ -117,12 +127,8 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
                 let ty = if fn_sig.c_variadic && index == fn_sig.inputs().len() {
                     let va_list_did =
                         tcx.require_lang_item(lang_items::VaListTypeLangItem, Some(arg.span));
-                    let region = tcx.mk_region(ty::ReScope(region::Scope {
-                        id: body.value.hir_id.local_id,
-                        data: region::ScopeData::CallSite,
-                    }));
 
-                    tcx.type_of(va_list_did).subst(tcx, &[region.into()])
+                    tcx.type_of(va_list_did).subst(tcx, &[tcx.lifetimes.re_erased.into()])
                 } else {
                     fn_sig.inputs()[index]
                 };
@@ -178,6 +184,20 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
 
         let mut body = BodyAndCache::new(body);
         body.ensure_predecessors();
+
+        // The borrow checker will replace all the regions here with its own
+        // inference variables. There's no point having non-erased regions here.
+        // The exception is `body.user_type_annotations`, which is used unmodified
+        // by borrow checking.
+        debug_assert!(
+            !(body.local_decls.has_free_regions()
+                || body.basic_blocks().has_free_regions()
+                || body.var_debug_info.has_free_regions()
+                || body.yield_ty.has_free_regions()),
+            "Unexpected free regions in MIR: {:?}",
+            body,
+        );
+
         body
     })
 }
@@ -198,7 +218,7 @@ fn liberated_closure_env_ty(
     };
 
     let closure_env_ty = tcx.closure_env_ty(closure_def_id, closure_substs).unwrap();
-    tcx.liberate_late_bound_regions(closure_def_id, &closure_env_ty)
+    tcx.erase_late_bound_regions(&closure_env_ty)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -357,7 +377,7 @@ impl BlockContext {
             }
         }
 
-        return None;
+        None
     }
 
     /// Looks at the topmost frame on the BlockContext and reports
@@ -407,7 +427,7 @@ struct GuardFrameLocal {
 
 impl GuardFrameLocal {
     fn new(id: hir::HirId, _binding_mode: BindingMode) -> Self {
-        GuardFrameLocal { id: id }
+        GuardFrameLocal { id }
     }
 }
 
@@ -617,11 +637,12 @@ where
     );
     assert_eq!(block, builder.return_block());
 
-    let mut spread_arg = None;
-    if abi == Abi::RustCall {
+    let spread_arg = if abi == Abi::RustCall {
         // RustCall pseudo-ABI untuples the last argument.
-        spread_arg = Some(Local::new(arguments.len()));
-    }
+        Some(Local::new(arguments.len()))
+    } else {
+        None
+    };
     debug!("fn_id {:?} has attrs {:?}", fn_def_id, tcx.get_attrs(fn_def_id));
 
     let mut body = builder.finish();
@@ -660,14 +681,51 @@ fn construct_const<'a, 'tcx>(
     builder.finish()
 }
 
+/// Construct MIR for a item that has had errors in type checking.
+///
+/// This is required because we may still want to run MIR passes on an item
+/// with type errors, but normal MIR construction can't handle that in general.
 fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'tcx> {
-    let owner_id = hir.tcx().hir().body_owner(body_id);
-    let span = hir.tcx().hir().span(owner_id);
-    let ty = hir.tcx().types.err;
-    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, span, None);
+    let tcx = hir.tcx();
+    let owner_id = tcx.hir().body_owner(body_id);
+    let span = tcx.hir().span(owner_id);
+    let ty = tcx.types.err;
+    let num_params = match hir.body_owner_kind {
+        hir::BodyOwnerKind::Fn => tcx.hir().fn_decl_by_hir_id(owner_id).unwrap().inputs.len(),
+        hir::BodyOwnerKind::Closure => {
+            if tcx.hir().body(body_id).generator_kind().is_some() {
+                // Generators have an implicit `self` parameter *and* a possibly
+                // implicit resume parameter.
+                2
+            } else {
+                // The implicit self parameter adds another local in MIR.
+                1 + tcx.hir().fn_decl_by_hir_id(owner_id).unwrap().inputs.len()
+            }
+        }
+        hir::BodyOwnerKind::Const => 0,
+        hir::BodyOwnerKind::Static(_) => 0,
+    };
+    let mut builder = Builder::new(hir, span, num_params, Safety::Safe, ty, span, None);
     let source_info = builder.source_info(span);
+    // Some MIR passes will expect the number of parameters to match the
+    // function declaration.
+    for _ in 0..num_params {
+        builder.local_decls.push(LocalDecl {
+            mutability: Mutability::Mut,
+            ty,
+            user_ty: UserTypeProjections::none(),
+            source_info,
+            internal: false,
+            local_info: LocalInfo::Other,
+            is_block_tail: None,
+        });
+    }
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
-    builder.finish()
+    let mut body = builder.finish();
+    if tcx.hir().body(body_id).generator_kind.is_some() {
+        body.yield_ty = Some(ty);
+    }
+    body
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -834,7 +892,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             span: tcx_hir.span(var_id),
                         },
                         place: Place {
-                            local: closure_env_arg.into(),
+                            local: closure_env_arg,
                             projection: tcx.intern_place_elems(&projs),
                         },
                     });
@@ -879,7 +937,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         self.local_decls[local].local_info = if let Some(kind) = self_binding {
                             LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind)))
                         } else {
-                            let binding_mode = ty::BindingMode::BindByValue(mutability.into());
+                            let binding_mode = ty::BindingMode::BindByValue(mutability);
                             LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                                 VarBindingForm {
                                     binding_mode,
@@ -899,7 +957,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             matches::ArmHasGuard(false),
                             Some((Some(&place), span)),
                         );
-                        unpack!(block = self.place_into_pattern(block, pattern, &place, false));
+                        unpack!(block = self.place_into_pattern(block, pattern, place, false));
                     }
                 }
                 self.source_scope = original_source_scope;

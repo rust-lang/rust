@@ -2,7 +2,9 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
   --> $DIR/str-mut-idx.rs:4:15
    |
 LL | fn bot<T>() -> T { loop {} }
-   |    --- - required by this bound in `bot`
+   |    --- -- help: consider relaxing the implicit `Sized` restriction: `: ?Sized`
+   |        |
+   |        required by this bound in `bot`
 ...
 LL |     s[1..2] = bot();
    |               ^^^ doesn't have a size known at compile-time

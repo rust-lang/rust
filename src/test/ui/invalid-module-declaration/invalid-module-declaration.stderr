@@ -1,10 +1,10 @@
 error[E0583]: file not found for module `baz`
-  --> $DIR/auxiliary/foo/bar.rs:1:9
+  --> $DIR/auxiliary/foo/bar.rs:1:1
    |
 LL | pub mod baz;
-   |         ^^^
+   | ^^^^^^^^^^^^
    |
-   = help: name the file either bar/baz.rs or bar/baz/mod.rs inside the directory "$DIR/auxiliary/foo"
+   = help: to create the module `baz`, create file "$DIR/auxiliary/foo/bar/baz.rs"
 
 error: aborting due to previous error
 

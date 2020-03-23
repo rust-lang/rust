@@ -1,14 +1,15 @@
 //! The entry point of the NLL borrow checker.
 
-use rustc::infer::InferCtxt;
 use rustc::mir::{
     BasicBlock, Body, BodyAndCache, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind,
     Location, Promoted, ReadOnlyBodyAndCache,
 };
 use rustc::ty::{self, RegionKind, RegionVid};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
+use rustc_infer::infer::InferCtxt;
 use rustc_span::symbol::sym;
 use std::env;
 use std::fmt::Debug;
@@ -20,8 +21,8 @@ use std::str::FromStr;
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};
 
+use crate::dataflow::generic::ResultsCursor;
 use crate::dataflow::move_paths::{InitKind, InitLocation, MoveData};
-use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
 use crate::transform::MirSource;
 use crate::util as mir_util;
@@ -46,6 +47,7 @@ crate type PoloniusOutput = Output<RustcFacts>;
 /// closure requirements to propagate, and any generated errors.
 crate struct NllOutput<'tcx> {
     pub regioncx: RegionInferenceContext<'tcx>,
+    pub opaque_type_values: FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
     pub polonius_output: Option<Rc<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
     pub nll_errors: RegionErrors<'tcx>,
@@ -84,14 +86,17 @@ fn populate_polonius_move_facts(
     body: &Body<'_>,
 ) {
     all_facts
-        .path_belongs_to_var
+        .path_is_var
         .extend(move_data.rev_lookup.iter_locals_enumerated().map(|(v, &m)| (m, v)));
 
     for (child, move_path) in move_data.move_paths.iter_enumerated() {
-        all_facts
-            .child
-            .extend(move_path.parents(&move_data.move_paths).iter().map(|&parent| (child, parent)));
+        if let Some(parent) = move_path.parent {
+            all_facts.child_path.push((child, parent));
+        }
     }
+
+    let fn_entry_start = location_table
+        .start_index(Location { block: BasicBlock::from_u32(0u32), statement_index: 0 });
 
     // initialized_at
     for init in move_data.inits.iter() {
@@ -113,28 +118,37 @@ fn populate_polonius_move_facts(
                         // the successors, but not in the unwind block.
                         let first_statement = Location { block: successor, statement_index: 0 };
                         all_facts
-                            .initialized_at
+                            .path_assigned_at_base
                             .push((init.path, location_table.start_index(first_statement)));
                     }
                 } else {
                     // In all other cases, the initialization just happens at the
                     // midpoint, like any other effect.
-                    all_facts.initialized_at.push((init.path, location_table.mid_index(location)));
+                    all_facts
+                        .path_assigned_at_base
+                        .push((init.path, location_table.mid_index(location)));
                 }
             }
             // Arguments are initialized on function entry
             InitLocation::Argument(local) => {
                 assert!(body.local_kind(local) == LocalKind::Arg);
-                let fn_entry = Location { block: BasicBlock::from_u32(0u32), statement_index: 0 };
-                all_facts.initialized_at.push((init.path, location_table.start_index(fn_entry)));
+                all_facts.path_assigned_at_base.push((init.path, fn_entry_start));
             }
+        }
+    }
+
+    for (local, &path) in move_data.rev_lookup.iter_locals_enumerated() {
+        if body.local_kind(local) != LocalKind::Arg {
+            // Non-arguments start out deinitialised; we simulate this with an
+            // initial move:
+            all_facts.path_moved_at_base.push((path, fn_entry_start));
         }
     }
 
     // moved_out_at
     // deinitialisation is assumed to always happen!
     all_facts
-        .moved_out_at
+        .path_moved_at_base
         .extend(move_data.moves.iter().map(|mo| (mo.path, location_table.mid_index(mo.source))));
 }
 
@@ -149,7 +163,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     promoted: &IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
-    flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) -> NllOutput<'tcx> {
@@ -160,20 +174,21 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     let elements = &Rc::new(RegionValueElements::new(&body));
 
     // Run the MIR type-checker.
-    let MirTypeckResults { constraints, universal_region_relations } = type_check::type_check(
-        infcx,
-        param_env,
-        body,
-        promoted,
-        def_id,
-        &universal_regions,
-        location_table,
-        borrow_set,
-        &mut all_facts,
-        flow_inits,
-        move_data,
-        elements,
-    );
+    let MirTypeckResults { constraints, universal_region_relations, opaque_type_values } =
+        type_check::type_check(
+            infcx,
+            param_env,
+            body,
+            promoted,
+            def_id,
+            &universal_regions,
+            location_table,
+            borrow_set,
+            &mut all_facts,
+            flow_inits,
+            move_data,
+            elements,
+        );
 
     if let Some(all_facts) = &mut all_facts {
         let _prof_timer = infcx.tcx.prof.generic_activity("polonius_fact_generation");
@@ -257,7 +272,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     // Dump facts if requested.
     let polonius_output = all_facts.and_then(|all_facts| {
         if infcx.tcx.sess.opts.debugging_opts.nll_facts {
-            let def_path = infcx.tcx.hir().def_path(def_id);
+            let def_path = infcx.tcx.def_path(def_id);
             let dir_path =
                 PathBuf::from("nll-facts").join(def_path.to_filename_friendly_no_crate());
             all_facts.write_to_dir(dir_path, location_table).unwrap();
@@ -279,8 +294,16 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     let (closure_region_requirements, nll_errors) =
         regioncx.solve(infcx, &body, def_id, polonius_output.clone());
 
+    if !nll_errors.is_empty() {
+        // Suppress unhelpful extra errors in `infer_opaque_types`.
+        infcx.set_tainted_by_errors();
+    }
+
+    let remapped_opaque_tys = regioncx.infer_opaque_types(&infcx, opaque_type_values, body.span);
+
     NllOutput {
         regioncx,
+        opaque_type_values: remapped_opaque_tys,
         polonius_output,
         opt_closure_req: closure_region_requirements,
         nll_errors,
@@ -344,6 +367,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     mir_def_id: DefId,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
+    opaque_type_values: &FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
     errors_buffer: &mut Vec<Diagnostic>,
 ) {
     let tcx = infcx.tcx;
@@ -359,7 +383,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     // viewing the intraprocedural state, the -Zdump-mir output is
     // better.
 
-    if let Some(closure_region_requirements) = closure_region_requirements {
+    let mut err = if let Some(closure_region_requirements) = closure_region_requirements {
         let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "external requirements");
 
         regioncx.annotate(tcx, &mut err);
@@ -377,13 +401,19 @@ pub(super) fn dump_annotation<'a, 'tcx>(
         })
         .unwrap();
 
-        err.buffer(errors_buffer);
+        err
     } else {
         let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "no external requirements");
         regioncx.annotate(tcx, &mut err);
 
-        err.buffer(errors_buffer);
+        err
+    };
+
+    if !opaque_type_values.is_empty() {
+        err.note(&format!("Inferred opaque type values:\n{:#?}", opaque_type_values));
     }
+
+    err.buffer(errors_buffer);
 }
 
 fn for_each_region_constraint(

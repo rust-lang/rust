@@ -4,7 +4,7 @@
 LL |     let _a = (1 / (2 + 3));
    |              ^^^^^^^^^^^^^ help: remove these parentheses
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unused_parens_json_suggestion.rs:10:9
    |
 LL | #![deny(unused_parens)]

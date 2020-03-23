@@ -1,12 +1,14 @@
 //! Asynchronous values.
 
-use core::cell::Cell;
-use core::marker::Unpin;
-use core::ops::{Drop, Generator, GeneratorState};
-use core::option::Option;
-use core::pin::Pin;
-use core::ptr::NonNull;
-use core::task::{Context, Poll};
+#[cfg(bootstrap)]
+use core::{
+    cell::Cell,
+    marker::Unpin,
+    ops::{Drop, Generator, GeneratorState},
+    pin::Pin,
+    ptr::NonNull,
+    task::{Context, Poll},
+};
 
 #[doc(inline)]
 #[stable(feature = "futures_api", since = "1.36.0")]
@@ -16,13 +18,16 @@ pub use core::future::*;
 ///
 /// This function returns a `GenFuture` underneath, but hides it in `impl Trait` to give
 /// better error messages (`impl Future` rather than `GenFuture<[closure.....]>`).
+// This is `const` to avoid extra errors after we recover from `const async fn`
+#[cfg(bootstrap)]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
-pub fn from_generator<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
+pub const fn from_generator<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
     GenFuture(x)
 }
 
 /// A wrapper around generators used to implement `Future` for `async`/`await` code.
+#[cfg(bootstrap)]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -30,8 +35,10 @@ struct GenFuture<T: Generator<Yield = ()>>(T);
 
 // We rely on the fact that async/await futures are immovable in order to create
 // self-referential borrows in the underlying generator.
+#[cfg(bootstrap)]
 impl<T: Generator<Yield = ()>> !Unpin for GenFuture<T> {}
 
+#[cfg(bootstrap)]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
@@ -40,19 +47,22 @@ impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
         // Safe because we're !Unpin + !Drop mapping to a ?Unpin value
         let gen = unsafe { Pin::map_unchecked_mut(self, |s| &mut s.0) };
         let _guard = unsafe { set_task_context(cx) };
-        match gen.resume() {
+        match gen.resume(()) {
             GeneratorState::Yielded(()) => Poll::Pending,
             GeneratorState::Complete(x) => Poll::Ready(x),
         }
     }
 }
 
+#[cfg(bootstrap)]
 thread_local! {
     static TLS_CX: Cell<Option<NonNull<Context<'static>>>> = Cell::new(None);
 }
 
+#[cfg(bootstrap)]
 struct SetOnDrop(Option<NonNull<Context<'static>>>);
 
+#[cfg(bootstrap)]
 impl Drop for SetOnDrop {
     fn drop(&mut self) {
         TLS_CX.with(|tls_cx| {
@@ -63,6 +73,7 @@ impl Drop for SetOnDrop {
 
 // Safety: the returned guard must drop before `cx` is dropped and before
 // any previous guard is dropped.
+#[cfg(bootstrap)]
 unsafe fn set_task_context(cx: &mut Context<'_>) -> SetOnDrop {
     // transmute the context's lifetime to 'static so we can store it.
     let cx = core::mem::transmute::<&mut Context<'_>, &mut Context<'static>>(cx);
@@ -70,6 +81,7 @@ unsafe fn set_task_context(cx: &mut Context<'_>) -> SetOnDrop {
     SetOnDrop(old_cx)
 }
 
+#[cfg(bootstrap)]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 /// Polls a future in the current thread-local task waker.

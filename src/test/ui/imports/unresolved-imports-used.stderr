@@ -52,7 +52,7 @@ error: unused import: `qux::quy`
 LL | use qux::quy;
    |     ^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unresolved-imports-used.rs:2:9
    |
 LL | #![deny(unused_imports)]

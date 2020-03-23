@@ -6,8 +6,8 @@ LL |     x: &isize
    |
 help: consider introducing a named lifetime parameter
    |
-LL | struct Foo<'lifetime> {
-LL |     x: &'lifetime isize
+LL | struct Foo<'a> {
+LL |     x: &'a isize
    |
 
 error: aborting due to previous error

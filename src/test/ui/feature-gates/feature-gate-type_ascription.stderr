@@ -4,7 +4,7 @@ error[E0658]: type ascription is experimental
 LL |     let a = 10: u8;
    |             ^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
+   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
    = help: add `#![feature(type_ascription)]` to the crate attributes to enable
 
 error: aborting due to previous error

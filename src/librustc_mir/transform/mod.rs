@@ -1,16 +1,15 @@
 use crate::{shim, util};
-use rustc::hir::map::Map;
 use rustc::mir::{BodyAndCache, ConstQualifs, MirPhase, Promoted};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
 use rustc::ty::{InstanceDef, TyCtxt, TypeFoldable};
+use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_span::Span;
 use std::borrow::Cow;
-use syntax::ast;
 
 pub mod add_call_guards;
 pub mod add_moves_for_packed_drops;
@@ -23,7 +22,6 @@ pub mod copy_prop;
 pub mod deaggregator;
 pub mod dump_mir;
 pub mod elaborate_drops;
-pub mod erase_regions;
 pub mod generator;
 pub mod inline;
 pub mod instcombine;
@@ -86,8 +84,8 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
             }
             intravisit::walk_struct_def(self, v)
         }
-        type Map = Map<'tcx>;
-        fn nested_visit_map<'b>(&'b mut self) -> NestedVisitorMap<'b, Self::Map> {
+        type Map = intravisit::ErasedMap<'tcx>;
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
         }
     }
@@ -122,7 +120,7 @@ impl<'tcx> MirSource<'tcx> {
 /// type `T`.
 pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
     let name = ::std::any::type_name::<T>();
-    if let Some(tail) = name.rfind(":") { Cow::from(&name[tail + 1..]) } else { Cow::from(name) }
+    if let Some(tail) = name.rfind(':') { Cow::from(&name[tail + 1..]) } else { Cow::from(name) }
 }
 
 /// A streamlined trait that you can implement to create a pass; the
@@ -209,7 +207,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
 
     // We return the qualifs in the return place for every MIR body, even though it is only used
     // when deciding to promote a reference to a `const` for now.
-    validator.qualifs_in_return_place().into()
+    validator.qualifs_in_return_place()
 }
 
 fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyAndCache<'_>> {
@@ -297,8 +295,6 @@ fn run_optimization_passes<'tcx>(
             &simplify::SimplifyCfg::new("elaborate-drops"),
             // No lifetime analysis based on borrowing can be done from here on out.
 
-            // From here on out, regions are gone.
-            &erase_regions::EraseRegions,
             // Optimizations begin.
             &unreachable_prop::UnreachablePropagation,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
@@ -342,6 +338,9 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &BodyAndCache<'_> {
     let mut body = body.steal();
     run_optimization_passes(tcx, &mut body, def_id, None);
     body.ensure_predecessors();
+
+    debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");
+
     tcx.arena.alloc(body)
 }
 
@@ -358,6 +357,8 @@ fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, BodyAndCa
         run_optimization_passes(tcx, &mut body, def_id, Some(p));
         body.ensure_predecessors();
     }
+
+    debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");
 
     tcx.intern_promoted(promoted)
 }

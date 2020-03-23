@@ -9,25 +9,25 @@ mod simplify;
 pub mod types;
 pub mod utils;
 
-use rustc::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc::middle::lang_items;
 use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::stability;
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, AdtKind, Lift, Ty, TyCtxt};
+use rustc_ast::ast::{self, Ident};
+use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{self, Pos};
 use rustc_typeck::hir_ty_to_ty;
-use syntax::ast::{self, Ident};
-use syntax::attr;
 
 use std::collections::hash_map::Entry;
 use std::default::Default;
@@ -43,14 +43,14 @@ use utils::*;
 
 pub use utils::{get_auto_trait_and_blanket_impls, krate, register_res};
 
-pub use self::types::FunctionRetTy::*;
+pub use self::types::FnRetTy::*;
 pub use self::types::ItemEnum::*;
 pub use self::types::SelfTy::*;
 pub use self::types::Type::*;
 pub use self::types::Visibility::{Inherited, Public};
 pub use self::types::*;
 
-const FN_OUTPUT_NAME: &'static str = "Output";
+const FN_OUTPUT_NAME: &str = "Output";
 
 pub trait Clean<T> {
     fn clean(&self, cx: &DocContext<'_>) -> T;
@@ -141,6 +141,7 @@ impl Clean<ExternalCrate> for CrateNum {
             cx.tcx
                 .hir()
                 .krate()
+                .item
                 .module
                 .item_ids
                 .iter()
@@ -194,6 +195,7 @@ impl Clean<ExternalCrate> for CrateNum {
             cx.tcx
                 .hir()
                 .krate()
+                .item
                 .module
                 .item_ids
                 .iter()
@@ -263,9 +265,9 @@ impl Clean<Item> for doctree::Module<'_> {
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
         let whence = {
-            let cm = cx.sess().source_map();
-            let outer = cm.lookup_char_pos(self.where_outer.lo());
-            let inner = cm.lookup_char_pos(self.where_inner.lo());
+            let sm = cx.sess().source_map();
+            let outer = sm.lookup_char_pos(self.where_outer.lo());
+            let inner = sm.lookup_char_pos(self.where_inner.lo());
             if outer.file.start_pos == inner.file.start_pos {
                 // mod foo { ... }
                 self.where_outer
@@ -398,7 +400,7 @@ impl Clean<Lifetime> for hir::GenericParam<'_> {
     fn clean(&self, _: &DocContext<'_>) -> Lifetime {
         match self.kind {
             hir::GenericParamKind::Lifetime { .. } => {
-                if self.bounds.len() > 0 {
+                if !self.bounds.is_empty() {
                     let mut bounds = self.bounds.iter().map(|bound| match bound {
                         hir::GenericBound::Outlives(lt) => lt,
                         _ => panic!(),
@@ -447,7 +449,7 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
             | ty::ReScope(..)
             | ty::ReVar(..)
             | ty::RePlaceholder(..)
-            | ty::ReEmpty
+            | ty::ReEmpty(_)
             | ty::ReClosureBound(_)
             | ty::ReErased => {
                 debug!("cannot clean region {:?}", self);
@@ -521,7 +523,7 @@ impl<'tcx> Clean<Option<WherePredicate>>
         let ty::OutlivesPredicate(ref a, ref b) = *self;
 
         match (a, b) {
-            (ty::ReEmpty, ty::ReEmpty) => {
+            (ty::ReEmpty(_), ty::ReEmpty(_)) => {
                 return None;
             }
             _ => {}
@@ -539,7 +541,7 @@ impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty:
         let ty::OutlivesPredicate(ref ty, ref lt) = *self;
 
         match lt {
-            ty::ReEmpty => return None,
+            ty::ReEmpty(_) => return None,
             _ => {}
         }
 
@@ -607,7 +609,7 @@ impl Clean<GenericParamDef> for hir::GenericParam<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> GenericParamDef {
         let (name, kind) = match self.kind {
             hir::GenericParamKind::Lifetime { .. } => {
-                let name = if self.bounds.len() > 0 {
+                let name = if !self.bounds.is_empty() {
                     let mut bounds = self.bounds.iter().map(|bound| match bound {
                         hir::GenericBound::Outlives(lt) => lt,
                         _ => panic!(),
@@ -1001,8 +1003,8 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
     }
 }
 
-impl Clean<FunctionRetTy> for hir::FunctionRetTy<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> FunctionRetTy {
+impl Clean<FnRetTy> for hir::FnRetTy<'_> {
+    fn clean(&self, cx: &DocContext<'_>) -> FnRetTy {
         match *self {
             Self::Return(ref typ) => Return(typ.clean(cx)),
             Self::DefaultReturn(..) => DefaultReturn,
@@ -1013,7 +1015,6 @@ impl Clean<FunctionRetTy> for hir::FunctionRetTy<'_> {
 impl Clean<Item> for doctree::Trait<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let attrs = self.attrs.clean(cx);
-        let is_spotlight = attrs.has_doc_flag(sym::spotlight);
         Item {
             name: Some(self.name.clean(cx)),
             attrs,
@@ -1028,7 +1029,6 @@ impl Clean<Item> for doctree::Trait<'_> {
                 items: self.items.iter().map(|ti| ti.clean(cx)).collect(),
                 generics: self.generics.clean(cx),
                 bounds: self.bounds.clean(cx),
-                is_spotlight,
                 is_auto: self.is_auto.clean(cx),
             }),
         }
@@ -1078,16 +1078,36 @@ impl Clean<PolyTrait> for hir::PolyTraitRef<'_> {
     }
 }
 
+impl Clean<TypeKind> for hir::def::DefKind {
+    fn clean(&self, _: &DocContext<'_>) -> TypeKind {
+        match *self {
+            hir::def::DefKind::Mod => TypeKind::Module,
+            hir::def::DefKind::Struct => TypeKind::Struct,
+            hir::def::DefKind::Union => TypeKind::Union,
+            hir::def::DefKind::Enum => TypeKind::Enum,
+            hir::def::DefKind::Trait => TypeKind::Trait,
+            hir::def::DefKind::TyAlias => TypeKind::Typedef,
+            hir::def::DefKind::ForeignTy => TypeKind::Foreign,
+            hir::def::DefKind::TraitAlias => TypeKind::TraitAlias,
+            hir::def::DefKind::Fn => TypeKind::Function,
+            hir::def::DefKind::Const => TypeKind::Const,
+            hir::def::DefKind::Static => TypeKind::Static,
+            hir::def::DefKind::Macro(_) => TypeKind::Macro,
+            _ => TypeKind::Foreign,
+        }
+    }
+}
+
 impl Clean<Item> for hir::TraitItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let inner = match self.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
                 AssocConstItem(ty.clean(cx), default.map(|e| print_const_expr(cx, e)))
             }
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 MethodItem((sig, &self.generics, body, None).clean(cx))
             }
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref names)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(ref names)) => {
                 let (generics, decl) = enter_impl_trait(cx, || {
                     (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                 });
@@ -1118,7 +1138,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 AssocConstItem(ty.clean(cx), Some(print_const_expr(cx, expr)))
             }
-            hir::ImplItemKind::Method(ref sig, body) => {
+            hir::ImplItemKind::Fn(ref sig, body) => {
                 MethodItem((sig, &self.generics, body, Some(self.defaultness)).clean(cx))
             }
             hir::ImplItemKind::TyAlias(ref ty) => {
@@ -1332,7 +1352,9 @@ impl Clean<Type> for hir::Ty<'_> {
             TyKind::Array(ref ty, ref length) => {
                 let def_id = cx.tcx.hir().local_def_id(length.hir_id);
                 let length = match cx.tcx.const_eval_poly(def_id) {
-                    Ok(length) => print_const(cx, length),
+                    Ok(length) => {
+                        print_const(cx, ty::Const::from_value(cx.tcx, length, cx.tcx.types.usize))
+                    }
                     Err(_) => cx
                         .sess()
                         .source_map()
@@ -1915,10 +1937,10 @@ impl Clean<Span> for rustc_span::Span {
             return Span::empty();
         }
 
-        let cm = cx.sess().source_map();
-        let filename = cm.span_to_filename(*self);
-        let lo = cm.lookup_char_pos(self.lo());
-        let hi = cm.lookup_char_pos(self.hi());
+        let sm = cx.sess().source_map();
+        let filename = sm.span_to_filename(*self);
+        let lo = sm.lookup_char_pos(self.lo());
+        let hi = sm.lookup_char_pos(self.hi());
         Span {
             filename,
             loline: lo.line,
@@ -2108,11 +2130,7 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
         let provided: FxHashSet<String> = trait_
             .def_id()
             .map(|did| {
-                cx.tcx
-                    .provided_trait_methods(did)
-                    .into_iter()
-                    .map(|meth| meth.ident.to_string())
-                    .collect()
+                cx.tcx.provided_trait_methods(did).map(|meth| meth.ident.to_string()).collect()
             })
             .unwrap_or_default();
 
@@ -2390,9 +2408,9 @@ impl Clean<TypeBindingKind> for hir::TypeBindingKind<'_> {
             hir::TypeBindingKind::Equality { ref ty } => {
                 TypeBindingKind::Equality { ty: ty.clean(cx) }
             }
-            hir::TypeBindingKind::Constraint { ref bounds } => TypeBindingKind::Constraint {
-                bounds: bounds.into_iter().map(|b| b.clean(cx)).collect(),
-            },
+            hir::TypeBindingKind::Constraint { ref bounds } => {
+                TypeBindingKind::Constraint { bounds: bounds.iter().map(|b| b.clean(cx)).collect() }
+            }
         }
     }
 }

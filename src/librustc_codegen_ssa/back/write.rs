@@ -14,13 +14,11 @@ use jobserver::{Acquired, Client};
 use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::exported_symbols::SymbolExportLevel;
-use rustc::session::config::{
-    self, Lto, OutputFilenames, OutputType, Passes, Sanitizer, SwitchWithOptPath,
-};
-use rustc::session::Session;
 use rustc::ty::TyCtxt;
+use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::profiling::VerboseTimingGuard;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
@@ -32,11 +30,14 @@ use rustc_incremental::{
     copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
+use rustc_session::config::{
+    self, Lto, OutputFilenames, OutputType, Passes, Sanitizer, SwitchWithOptPath,
+};
+use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::MergeFunctions;
-use syntax::attr;
 
 use std::any::Any;
 use std::fs;
@@ -87,6 +88,7 @@ pub struct ModuleConfig {
     pub vectorize_slp: bool,
     pub merge_functions: bool,
     pub inline_threshold: Option<usize>,
+    pub new_llvm_pass_manager: Option<bool>,
     // Instead of creating an object file by doing LLVM codegen, just
     // make the object file bitcode. Provides easy compatibility with
     // emscripten's ecc compiler, when used as the linker.
@@ -131,6 +133,7 @@ impl ModuleConfig {
             vectorize_slp: false,
             merge_functions: false,
             inline_threshold: None,
+            new_llvm_pass_manager: None,
         }
     }
 
@@ -139,6 +142,7 @@ impl ModuleConfig {
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
         self.no_builtins = no_builtins || sess.target.target.options.no_builtins;
         self.inline_threshold = sess.opts.cg.inline_threshold;
+        self.new_llvm_pass_manager = sess.opts.debugging_opts.new_llvm_pass_manager;
         self.obj_is_bitcode =
             sess.target.target.options.obj_is_bitcode || sess.opts.cg.linker_plugin_lto.enabled();
         let embed_bitcode =
@@ -284,7 +288,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
         B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules).unwrap_or_else(|e| e.raise())
     };
 
-    let result = lto_modules
+    lto_modules
         .into_iter()
         .map(|module| {
             let cost = module.cost();
@@ -299,9 +303,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
                 0,
             )
         }))
-        .collect();
-
-    result
+        .collect()
 }
 
 pub struct CompiledModules {
@@ -337,9 +339,9 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
 
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
-    let no_builtins = attr::contains_name(&tcx.hir().krate().attrs, sym::no_builtins);
+    let no_builtins = attr::contains_name(&tcx.hir().krate().item.attrs, sym::no_builtins);
     let subsystem =
-        attr::first_attr_value_str_by_name(&tcx.hir().krate().attrs, sym::windows_subsystem);
+        attr::first_attr_value_str_by_name(&tcx.hir().krate().item.attrs, sym::windows_subsystem);
     let windows_subsystem = subsystem.map(|subsystem| {
         if subsystem != sym::windows && subsystem != sym::console {
             tcx.sess.fatal(&format!(
@@ -691,11 +693,17 @@ impl<B: WriteBackendMethods> WorkItem<B> {
         }
     }
 
-    fn profiling_event_id(&self) -> &'static str {
+    fn start_profiling<'a>(&self, cgcx: &'a CodegenContext<B>) -> TimingGuard<'a> {
         match *self {
-            WorkItem::Optimize(_) => "codegen_module_optimize",
-            WorkItem::CopyPostLtoArtifacts(_) => "codegen_copy_artifacts_from_incr_cache",
-            WorkItem::LTO(_) => "codegen_module_perform_lto",
+            WorkItem::Optimize(ref m) => {
+                cgcx.prof.generic_activity_with_arg("codegen_module_optimize", &m.name[..])
+            }
+            WorkItem::CopyPostLtoArtifacts(ref m) => cgcx
+                .prof
+                .generic_activity_with_arg("codegen_copy_artifacts_from_incr_cache", &m.name[..]),
+            WorkItem::LTO(ref m) => {
+                cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", m.name())
+            }
         }
     }
 }
@@ -726,7 +734,7 @@ fn execute_work_item<B: ExtraBackendMethods>(
     }
 }
 
-// Actual LTO type we end up chosing based on multiple factors.
+// Actual LTO type we end up choosing based on multiple factors.
 enum ComputedLtoType {
     No,
     Thin,
@@ -1234,11 +1242,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
         while !codegen_done
             || running > 0
             || (!codegen_aborted
-                && (work_items.len() > 0
-                    || needs_fat_lto.len() > 0
-                    || needs_thin_lto.len() > 0
-                    || lto_import_only_modules.len() > 0
-                    || main_thread_worker_state != MainThreadWorkerState::Idle))
+                && !(work_items.is_empty()
+                    && needs_fat_lto.is_empty()
+                    && needs_thin_lto.is_empty()
+                    && lto_import_only_modules.is_empty()
+                    && main_thread_worker_state == MainThreadWorkerState::Idle))
         {
             // While there are still CGUs to be codegened, the coordinator has
             // to decide how to utilize the compiler processes implicit Token:
@@ -1247,7 +1255,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 if main_thread_worker_state == MainThreadWorkerState::Idle {
                     if !queue_full_enough(work_items.len(), running, max_workers) {
                         // The queue is not full enough, codegen more items:
-                        if let Err(_) = codegen_worker_send.send(Message::CodegenItem) {
+                        if codegen_worker_send.send(Message::CodegenItem).is_err() {
                             panic!("Could not send Message::CodegenItem to main thread")
                         }
                         main_thread_worker_state = MainThreadWorkerState::Codegenning;
@@ -1279,7 +1287,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 // Perform the serial work here of figuring out what we're
                 // going to LTO and then push a bunch of work items onto our
                 // queue to do LTO
-                if work_items.len() == 0
+                if work_items.is_empty()
                     && running == 0
                     && main_thread_worker_state == MainThreadWorkerState::Idle
                 {
@@ -1344,7 +1352,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
             // Spin up what work we can, only doing this while we've got available
             // parallelism slots and work left to spawn.
-            while !codegen_aborted && work_items.len() > 0 && running < tokens.len() {
+            while !codegen_aborted && !work_items.is_empty() && running < tokens.len() {
                 let (item, _) = work_items.pop().unwrap();
 
                 maybe_start_llvm_timer(prof, cgcx.config(item.module_kind()), &mut llvm_start_time);
@@ -1520,7 +1528,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
     ) {
         if config.time_module && llvm_start_time.is_none() {
-            *llvm_start_time = Some(prof.extra_verbose_generic_activity("LLVM_passes"));
+            *llvm_start_time = Some(prof.extra_verbose_generic_activity("LLVM_passes", "crate"));
         }
     }
 }
@@ -1575,7 +1583,7 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
         // as a diagnostic was already sent off to the main thread - just
         // surface that there was an error in this worker.
         bomb.result = {
-            let _prof_timer = cgcx.prof.generic_activity(work.profiling_event_id());
+            let _prof_timer = work.start_profiling(&cgcx);
             Some(execute_work_item(&cgcx, work))
         };
     });

@@ -47,22 +47,22 @@ fn main() {
 //     }
 //     bb0: {
 //         _5 = discriminant(_1);
-//         switchInt(move _5) -> [0isize: bb3, otherwise: bb1];
+//         switchInt(move _5) -> [0isize: bb1, otherwise: bb2];
 //     }
 //     bb1: {
-//         _6 = ((_1 as Err).0: i32);
-//         ((_0 as Err).0: i32) = move _6;
-//         discriminant(_0) = 1;
-//         goto -> bb2;
-//     }
-//     bb2: {
-//         return;
-//     }
-//     bb3: {
 //         _10 = ((_1 as Ok).0: u32);
 //         ((_0 as Ok).0: u32) = move _10;
 //         discriminant(_0) = 0;
-//         goto -> bb2;
+//         goto -> bb3;
+//     }
+//     bb2: {
+//         _6 = ((_1 as Err).0: i32);
+//         ((_0 as Err).0: i32) = move _6;
+//         discriminant(_0) = 1;
+//         goto -> bb3;
+//     }
+//     bb3: {
+//         return;
 //     }
 // }
 // END rustc.try_identity.SimplifyArmIdentity.before.mir
@@ -106,22 +106,22 @@ fn main() {
 //     }
 //     bb0: {
 //         _5 = discriminant(_1);
-//         switchInt(move _5) -> [0isize: bb3, otherwise: bb1];
+//         switchInt(move _5) -> [0isize: bb1, otherwise: bb2];
 //     }
 //     bb1: {
 //         _0 = move _1;
 //         nop;
 //         nop;
-//         goto -> bb2;
+//         goto -> bb3;
 //     }
 //     bb2: {
-//         return;
-//     }
-//     bb3: {
 //         _0 = move _1;
 //         nop;
 //         nop;
-//         goto -> bb2;
+//         goto -> bb3;
+//     }
+//     bb3: {
+//         return;
 //     }
 // }
 // END rustc.try_identity.SimplifyArmIdentity.after.mir
@@ -165,16 +165,16 @@ fn main() {
 //     }
 //     bb0: {
 //         _5 = discriminant(_1);
-//         goto -> bb2;
+//         goto -> bb1;
 //     }
 //     bb1: {
-//         return;
-//     }
-//     bb2: {
 //         _0 = move _1;
 //         nop;
 //         nop;
-//         goto -> bb1;
+//         goto -> bb2;
+//     }
+//     bb2: {
+//         return;
 //     }
 // }
 // END rustc.try_identity.SimplifyBranchSame.after.mir

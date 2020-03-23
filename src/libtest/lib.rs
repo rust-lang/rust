@@ -13,7 +13,7 @@
 // running tests while providing a base that other test frameworks may
 // build off of.
 
-// N.B., this is also specified in this crate's Cargo.toml, but libsyntax contains logic specific to
+// N.B., this is also specified in this crate's Cargo.toml, but librustc_ast contains logic specific to
 // this crate, which relies on this attribute (rather than the value of `--crate-name` passed by
 // cargo) to detect this crate.
 
@@ -63,8 +63,7 @@ use std::{
     env, io,
     io::prelude::Write,
     panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo},
-    process,
-    process::{Command, Termination},
+    process::{self, Command, Termination},
     sync::mpsc::{channel, Sender},
     sync::{Arc, Mutex},
     thread,
@@ -97,7 +96,7 @@ use time::TestExecTime;
 // Process exit code to be used to indicate test failures.
 const ERROR_EXIT_CODE: i32 = 101;
 
-const SECONDARY_TEST_INVOKER_VAR: &'static str = "__RUST_TEST_INVOKE";
+const SECONDARY_TEST_INVOKER_VAR: &str = "__RUST_TEST_INVOKE";
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
@@ -159,7 +158,7 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
             .filter(|test| test.desc.name.as_slice() == name)
             .map(make_owned_test)
             .next()
-            .expect(&format!("couldn't find a test with the provided name '{}'", name));
+            .unwrap_or_else(|| panic!("couldn't find a test with the provided name '{}'", name));
         let TestDescAndFn { desc, testfn } = test;
         let testfn = match testfn {
             StaticTestFn(f) => f,
@@ -457,9 +456,13 @@ pub fn run_test(
                 monitor_ch,
                 opts.time,
             ),
-            RunStrategy::SpawnPrimary => {
-                spawn_test_subprocess(desc, opts.time.is_some(), monitor_ch, opts.time)
-            }
+            RunStrategy::SpawnPrimary => spawn_test_subprocess(
+                desc,
+                opts.nocapture,
+                opts.time.is_some(),
+                monitor_ch,
+                opts.time,
+            ),
         };
 
         // If the platform is single-threaded we're just going to run
@@ -558,6 +561,7 @@ fn run_test_in_process(
 
 fn spawn_test_subprocess(
     desc: TestDesc,
+    nocapture: bool,
     report_time: bool,
     monitor_ch: Sender<CompletedTest>,
     time_opts: Option<time::TestTimeOptions>,
@@ -566,11 +570,15 @@ fn spawn_test_subprocess(
         let args = env::args().collect::<Vec<_>>();
         let current_exe = &args[0];
 
+        let mut command = Command::new(current_exe);
+        command.env(SECONDARY_TEST_INVOKER_VAR, desc.name.as_slice());
+        if nocapture {
+            command.stdout(process::Stdio::inherit());
+            command.stderr(process::Stdio::inherit());
+        }
+
         let start = report_time.then(Instant::now);
-        let output = match Command::new(current_exe)
-            .env(SECONDARY_TEST_INVOKER_VAR, desc.name.as_slice())
-            .output()
-        {
+        let output = match command.output() {
             Ok(out) => out,
             Err(e) => {
                 let err = format!("Failed to spawn {} as child for test: {:?}", args[0], e);

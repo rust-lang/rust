@@ -1,19 +1,17 @@
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
 use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
-use getopts;
-use rustc::lint::Level;
-use rustc::session;
-use rustc::session::config::{
+use rustc_session::config::{self, parse_crate_types_from_list, parse_externs, CrateType};
+use rustc_session::config::{
     build_codegen_options, build_debugging_options, get_cmd_lint_options, host_triple,
     nightly_options,
 };
-use rustc::session::config::{parse_crate_types_from_list, parse_externs, CrateType};
-use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
-use rustc::session::search_paths::SearchPath;
-use rustc_driver;
+use rustc_session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
+use rustc_session::lint::Level;
+use rustc_session::search_paths::SearchPath;
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_target::spec::TargetTriple;
 
@@ -25,6 +23,33 @@ use crate::html::static_files;
 use crate::opts;
 use crate::passes::{self, Condition, DefaultPassOption};
 use crate::theme;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum OutputFormat {
+    Json,
+    Html,
+}
+
+impl OutputFormat {
+    pub fn is_json(&self) -> bool {
+        match self {
+            OutputFormat::Json => true,
+            _ => false,
+        }
+    }
+}
+
+impl TryFrom<&str> for OutputFormat {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "json" => Ok(OutputFormat::Json),
+            "html" => Ok(OutputFormat::Html),
+            _ => Err(format!("unknown output format `{}`", value)),
+        }
+    }
+}
 
 /// Configuration options for rustdoc.
 #[derive(Clone)]
@@ -117,6 +142,8 @@ pub struct Options {
     pub crate_version: Option<String>,
     /// Collected options specific to outputting final pages.
     pub render_options: RenderOptions,
+    /// Output format rendering (used only for "show-coverage" option for the moment)
+    pub output_format: Option<OutputFormat>,
 }
 
 impl fmt::Debug for Options {
@@ -271,9 +298,9 @@ impl Options {
             return Err(0);
         }
 
-        let color = session::config::parse_color(&matches);
-        let (json_rendered, _artifacts) = session::config::parse_json(&matches);
-        let error_format = session::config::parse_error_format(&matches, color, json_rendered);
+        let color = config::parse_color(&matches);
+        let (json_rendered, _artifacts) = config::parse_json(&matches);
+        let error_format = config::parse_error_format(&matches, color, json_rendered);
 
         let codegen_options = build_codegen_options(matches, error_format);
         let debugging_options = build_debugging_options(matches, error_format);
@@ -427,14 +454,6 @@ impl Options {
             }
         }
 
-        match matches.opt_str("w").as_ref().map(|s| &**s) {
-            Some("html") | None => {}
-            Some(s) => {
-                diag.struct_err(&format!("unknown output format: {}", s)).emit();
-                return Err(1);
-            }
-        }
-
         let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
         if let Some(ref index_page) = index_page {
             if !index_page.is_file() {
@@ -471,6 +490,29 @@ impl Options {
             }
         };
 
+        let output_format = match matches.opt_str("output-format") {
+            Some(s) => match OutputFormat::try_from(s.as_str()) {
+                Ok(o) => {
+                    if o.is_json() && !show_coverage {
+                        diag.struct_err("json output format isn't supported for doc generation")
+                            .emit();
+                        return Err(1);
+                    } else if !o.is_json() && show_coverage {
+                        diag.struct_err(
+                            "html output format isn't supported for the --show-coverage option",
+                        )
+                        .emit();
+                        return Err(1);
+                    }
+                    Some(o)
+                }
+                Err(e) => {
+                    diag.struct_err(&e).emit();
+                    return Err(1);
+                }
+            },
+            None => None,
+        };
         let crate_name = matches.opt_str("crate-name");
         let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
         let playground_url = matches.opt_str("playground-url");
@@ -555,6 +597,7 @@ impl Options {
                 generate_search_filter,
                 generate_redirect_pages,
             },
+            output_format,
         })
     }
 
@@ -570,9 +613,15 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
 
     for flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
+            if *flag == "output-format" && matches.opt_present("show-coverage") {
+                continue;
+            }
             let mut err =
                 diag.struct_warn(&format!("the '{}' flag is considered deprecated", flag));
-            err.warn("please see https://github.com/rust-lang/rust/issues/44136");
+            err.warn(
+                "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
+                 for more information",
+            );
 
             if *flag == "no-defaults" {
                 err.help("you may want to use --document-private-items");

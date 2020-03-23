@@ -4,7 +4,7 @@ error: type `priv_dep::OtherType` from private dependency 'priv_dep' in public i
 LL |     pub field: OtherType,
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/pub-priv1.rs:3:9
    |
 LL | #![deny(exported_private_dependencies)]

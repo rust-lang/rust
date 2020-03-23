@@ -22,8 +22,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, FatalError, Handler, HandlerFlags};
 
-use getopts;
-
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
 };
@@ -68,6 +66,19 @@ impl FromStr for Sanitizer {
             _ => Err(()),
         }
     }
+}
+
+/// The different settings that the `-Z control_flow_guard` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum CFGuard {
+    /// Do not emit Control Flow Guard metadata or checks.
+    Disabled,
+
+    /// Emit Control Flow Guard metadata but no checks.
+    NoChecks,
+
+    /// Emit Control Flow Guard metadata and checks.
+    Checks,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
@@ -380,6 +391,7 @@ impl ExternEntry {
 pub enum PrintRequest {
     FileNames,
     Sysroot,
+    TargetLibdir,
     CrateName,
     Cfg,
     TargetList,
@@ -454,6 +466,7 @@ pub struct OutputFilenames {
 
 impl_stable_hash_via_hash!(OutputFilenames);
 
+pub const RLINK_EXT: &str = "rlink";
 pub const RUST_CGU_EXT: &str = "rcgu";
 
 impl OutputFilenames {
@@ -613,7 +626,7 @@ impl DebuggingOptions {
             treat_err_as_bug: self.treat_err_as_bug,
             dont_buffer_diagnostics: self.dont_buffer_diagnostics,
             report_delayed_bugs: self.report_delayed_bugs,
-            external_macro_backtrace: self.external_macro_backtrace,
+            macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics.unwrap_or(true),
         }
     }
@@ -803,7 +816,6 @@ mod opt {
     #![allow(dead_code)]
 
     use super::RustcOptGroup;
-    use getopts;
 
     pub type R = RustcOptGroup;
     pub type S = &'static str;
@@ -901,7 +913,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "",
             "print",
             "Compiler information to print on stdout",
-            "[crate-name|file-names|sysroot|cfg|target-list|\
+            "[crate-name|file-names|sysroot|target-libdir|cfg|target-list|\
              target-cpus|target-features|relocation-models|\
              code-models|tls-models|target-spec-json|native-static-libs]",
         ),
@@ -995,18 +1007,25 @@ pub fn get_cmd_lint_options(
     matches: &getopts::Matches,
     error_format: ErrorOutputType,
 ) -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>) {
-    let mut lint_opts = vec![];
+    let mut lint_opts_with_position = vec![];
     let mut describe_lints = false;
 
     for &level in &[lint::Allow, lint::Warn, lint::Deny, lint::Forbid] {
-        for lint_name in matches.opt_strs(level.as_str()) {
+        for (arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
             if lint_name == "help" {
                 describe_lints = true;
             } else {
-                lint_opts.push((lint_name.replace("-", "_"), level));
+                lint_opts_with_position.push((arg_pos, lint_name.replace("-", "_"), level));
             }
         }
     }
+
+    lint_opts_with_position.sort_by_key(|x| x.0);
+    let lint_opts = lint_opts_with_position
+        .iter()
+        .cloned()
+        .map(|(_, lint_name, level)| (lint_name, level))
+        .collect();
 
     let lint_cap = matches.opt_str("cap-lints").map(|cap| {
         lint::Level::from_str(&cap)
@@ -1111,7 +1130,7 @@ pub fn parse_error_format(
         // Conservatively require that the `--json` argument is coupled with
         // `--error-format=json`. This means that `--json` is specified we
         // should actually be emitting JSON blobs.
-        _ if matches.opt_strs("json").len() > 0 => {
+        _ if !matches.opt_strs("json").is_empty() => {
             early_error(
                 ErrorOutputType::default(),
                 "using `--json` requires also using `--error-format=json`",
@@ -1121,7 +1140,7 @@ pub fn parse_error_format(
         _ => {}
     }
 
-    return error_format;
+    error_format
 }
 
 fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
@@ -1326,6 +1345,7 @@ fn collect_print_requests(
         "crate-name" => PrintRequest::CrateName,
         "file-names" => PrintRequest::FileNames,
         "sysroot" => PrintRequest::Sysroot,
+        "target-libdir" => PrintRequest::TargetLibdir,
         "cfg" => PrintRequest::Cfg,
         "target-list" => PrintRequest::TargetList,
         "target-cpus" => PrintRequest::TargetCPUs,
@@ -1482,10 +1502,8 @@ fn parse_libs(
             {
                 early_error(
                     error_format,
-                    &format!(
-                        "the library kind 'static-nobundle' is only \
-                         accepted on the nightly compiler"
-                    ),
+                    "the library kind 'static-nobundle' is only \
+                     accepted on the nightly compiler",
                 );
             }
             let mut name_parts = name.splitn(2, ':');
@@ -1849,7 +1867,6 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
 pub mod nightly_options {
     use super::{ErrorOutputType, OptionStability, RustcOptGroup};
     use crate::early_error;
-    use getopts;
     use rustc_feature::UnstableFeatures;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
@@ -1980,8 +1997,8 @@ impl PpMode {
 /// how the hash should be calculated when adding a new command-line argument.
 crate mod dep_tracking {
     use super::{
-        CrateType, DebugInfo, ErrorOutputType, LinkerPluginLto, LtoCli, OptLevel, OutputTypes,
-        Passes, Sanitizer, SwitchWithOptPath, SymbolManglingVersion,
+        CFGuard, CrateType, DebugInfo, ErrorOutputType, LinkerPluginLto, LtoCli, OptLevel,
+        OutputTypes, Passes, Sanitizer, SwitchWithOptPath, SymbolManglingVersion,
     };
     use crate::lint;
     use crate::utils::NativeLibraryKind;
@@ -2053,6 +2070,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(NativeLibraryKind);
     impl_dep_tracking_hash_via_hash!(Sanitizer);
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
+    impl_dep_tracking_hash_via_hash!(CFGuard);
     impl_dep_tracking_hash_via_hash!(TargetTriple);
     impl_dep_tracking_hash_via_hash!(Edition);
     impl_dep_tracking_hash_via_hash!(LinkerPluginLto);

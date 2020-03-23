@@ -3,26 +3,25 @@ use crate::hir::map::definitions::DefPathHash;
 use crate::ich::{CachingSourceMapView, Fingerprint};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
-use crate::session::{CrateDisambiguator, Session};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
+use rustc_ast::ast::Ident;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, Once};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
-use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{
     opaque, Decodable, Decoder, Encodable, Encoder, SpecializedDecoder, SpecializedEncoder,
     UseSpecializedDecodable, UseSpecializedEncodable,
 };
+use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::hygiene::{ExpnId, SyntaxContext};
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::{BytePos, SourceFile, Span, DUMMY_SP};
 use std::mem;
-use syntax::ast::{Ident, NodeId};
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
@@ -92,7 +91,7 @@ struct AbsoluteBytePos(u32);
 
 impl AbsoluteBytePos {
     fn new(pos: usize) -> AbsoluteBytePos {
-        debug_assert!(pos <= ::std::u32::MAX as usize);
+        debug_assert!(pos <= u32::MAX as usize);
         AbsoluteBytePos(pos as u32)
     }
 
@@ -425,7 +424,7 @@ impl<'sess> OnDiskCache<'sess> {
 
 //- DECODING -------------------------------------------------------------------
 
-/// A decoder that can read fro the incr. comp. cache. It is similar to the one
+/// A decoder that can read from the incr. comp. cache. It is similar to the one
 /// we use for crate metadata decoding in that it can rebase spans and eventually
 /// will also handle things that contain `Ty` instances.
 struct CacheDecoder<'a, 'tcx> {
@@ -657,36 +656,7 @@ impl<'a, 'tcx> SpecializedDecoder<DefId> for CacheDecoder<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedDecoder<LocalDefId> for CacheDecoder<'a, 'tcx> {
     #[inline]
     fn specialized_decode(&mut self) -> Result<LocalDefId, Self::Error> {
-        Ok(LocalDefId::from_def_id(DefId::decode(self)?))
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<hir::HirId> for CacheDecoder<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<hir::HirId, Self::Error> {
-        // Load the `DefPathHash` which is what we encoded the `DefIndex` as.
-        let def_path_hash = DefPathHash::decode(self)?;
-
-        // Use the `DefPathHash` to map to the current `DefId`.
-        let def_id = self.tcx().def_path_hash_to_def_id.as_ref().unwrap()[&def_path_hash];
-
-        debug_assert!(def_id.is_local());
-
-        // The `ItemLocalId` needs no remapping.
-        let local_id = hir::ItemLocalId::decode(self)?;
-
-        // Reconstruct the `HirId` and look up the corresponding `NodeId` in the
-        // context of the current session.
-        Ok(hir::HirId { owner: def_id.index, local_id })
-    }
-}
-
-// `NodeId`s are not stable across compilation sessions, so we store them in their
-// `HirId` representation. This allows use to map them to the current `NodeId`.
-impl<'a, 'tcx> SpecializedDecoder<NodeId> for CacheDecoder<'a, 'tcx> {
-    #[inline]
-    fn specialized_decode(&mut self) -> Result<NodeId, Self::Error> {
-        let hir_id = hir::HirId::decode(self)?;
-        Ok(self.tcx().hir().hir_to_node_id(hir_id))
+        Ok(DefId::decode(self)?.expect_local())
     }
 }
 
@@ -883,21 +853,6 @@ where
     }
 }
 
-impl<'a, 'tcx, E> SpecializedEncoder<hir::HirId> for CacheEncoder<'a, 'tcx, E>
-where
-    E: 'a + TyEncoder,
-{
-    #[inline]
-    fn specialized_encode(&mut self, id: &hir::HirId) -> Result<(), Self::Error> {
-        let hir::HirId { owner, local_id } = *id;
-
-        let def_path_hash = self.tcx.hir().definitions().def_path_hash(owner);
-
-        def_path_hash.encode(self)?;
-        local_id.encode(self)
-    }
-}
-
 impl<'a, 'tcx, E> SpecializedEncoder<DefId> for CacheEncoder<'a, 'tcx, E>
 where
     E: 'a + TyEncoder,
@@ -928,19 +883,6 @@ where
     }
 }
 
-// `NodeId`s are not stable across compilation sessions, so we store them in their
-// `HirId` representation. This allows use to map them to the current `NodeId`.
-impl<'a, 'tcx, E> SpecializedEncoder<NodeId> for CacheEncoder<'a, 'tcx, E>
-where
-    E: 'a + TyEncoder,
-{
-    #[inline]
-    fn specialized_encode(&mut self, node_id: &NodeId) -> Result<(), Self::Error> {
-        let hir_id = self.tcx.hir().node_to_hir_id(*node_id);
-        hir_id.encode(self)
-    }
-}
-
 impl<'a, 'tcx> SpecializedEncoder<Fingerprint> for CacheEncoder<'a, 'tcx, opaque::Encoder> {
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(&mut self.encoder)
@@ -966,6 +908,7 @@ where
 
 macro_rules! encoder_methods {
     ($($name:ident($ty:ty);)*) => {
+        #[inline]
         $(fn $name(&mut self, value: $ty) -> Result<(), Self::Error> {
             self.encoder.$name(value)
         })*
@@ -1019,7 +962,7 @@ impl SpecializedEncoder<IntEncodedWithFixedSize> for opaque::Encoder {
     fn specialized_encode(&mut self, x: &IntEncodedWithFixedSize) -> Result<(), Self::Error> {
         let start_pos = self.position();
         for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
-            ((x.0 >> i * 8) as u8).encode(self)?;
+            ((x.0 >> (i * 8)) as u8).encode(self)?;
         }
         let end_pos = self.position();
         assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
@@ -1053,23 +996,27 @@ where
     Q: super::config::QueryDescription<'tcx, Value: Encodable>,
     E: 'a + TyEncoder,
 {
-    let desc = &format!("encode_query_results_for_{}", ::std::any::type_name::<Q>());
-    let _timer = tcx.sess.prof.extra_verbose_generic_activity(desc);
+    let _timer = tcx
+        .sess
+        .prof
+        .extra_verbose_generic_activity("encode_query_results_for", ::std::any::type_name::<Q>());
 
-    let shards = Q::query_cache(tcx).lock_shards();
-    assert!(shards.iter().all(|shard| shard.active.is_empty()));
-    for (key, entry) in shards.iter().flat_map(|shard| shard.results.iter()) {
-        if Q::cache_on_disk(tcx, key.clone(), Some(&entry.value)) {
-            let dep_node = SerializedDepNodeIndex::new(entry.index.index());
+    let state = Q::query_state(tcx);
+    assert!(state.all_inactive());
 
-            // Record position of the cache entry.
-            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
+    state.iter_results(|results| {
+        for (key, value, dep_node) in results {
+            if Q::cache_on_disk(tcx, key.clone(), Some(&value)) {
+                let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
-            // Encode the type check tables with the `SerializedDepNodeIndex`
-            // as tag.
-            encoder.encode_tagged(dep_node, &entry.value)?;
+                // Record position of the cache entry.
+                query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
+
+                // Encode the type check tables with the `SerializedDepNodeIndex`
+                // as tag.
+                encoder.encode_tagged(dep_node, &value)?;
+            }
         }
-    }
-
-    Ok(())
+        Ok(())
+    })
 }

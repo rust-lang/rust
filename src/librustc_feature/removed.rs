@@ -108,7 +108,11 @@ declare_features! (
     /// Allows using `#[on_unimplemented(..)]` on traits.
     /// (Moved to `rustc_attrs`.)
     (removed, on_unimplemented, "1.40.0", None, None, None),
-
+    /// Allows overlapping impls of marker traits.
+    (removed, overlapping_marker_traits, "1.42.0", Some(29864), None,
+     Some("removed in favor of `#![feature(marker_trait_attr)]`")),
+    /// Allows `#[no_debug]`.
+    (removed, no_debug, "1.43.0", Some(29721), None, Some("removed due to lack of demand")),
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
     // -------------------------------------------------------------------------

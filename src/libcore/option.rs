@@ -317,7 +317,7 @@ impl<T> Option<T> {
     // Getting to contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Unwraps an option, yielding the content of a [`Some`].
+    /// Returns the contained [`Some`] value, consuming the `self` value.
     ///
     /// # Panics
     ///
@@ -331,12 +331,12 @@ impl<T> Option<T> {
     ///
     /// ```
     /// let x = Some("value");
-    /// assert_eq!(x.expect("the world is ending"), "value");
+    /// assert_eq!(x.expect("fruits are healthy"), "value");
     /// ```
     ///
     /// ```{.should_panic}
     /// let x: Option<&str> = None;
-    /// x.expect("the world is ending"); // panics with `the world is ending`
+    /// x.expect("fruits are healthy"); // panics with `fruits are healthy`
     /// ```
     #[inline]
     #[track_caller]
@@ -348,17 +348,22 @@ impl<T> Option<T> {
         }
     }
 
-    /// Moves the value `v` out of the `Option<T>` if it is [`Some(v)`].
+    /// Returns the contained [`Some`] value, consuming the `self` value.
     ///
-    /// In general, because this function may panic, its use is discouraged.
+    /// Because this function may panic, its use is generally discouraged.
     /// Instead, prefer to use pattern matching and handle the [`None`]
-    /// case explicitly.
+    /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
+    /// [`unwrap_or_default`].
+    ///
+    /// [`unwrap_or`]: #method.unwrap_or
+    /// [`unwrap_or_else`]: #method.unwrap_or_else
+    /// [`unwrap_or_default`]: #method.unwrap_or_default
     ///
     /// # Panics
     ///
     /// Panics if the self value equals [`None`].
     ///
-    /// [`Some(v)`]: #variant.Some
+    /// [`Some`]: #variant.Some
     /// [`None`]: #variant.None
     ///
     /// # Examples
@@ -382,12 +387,13 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns the contained value or a default.
+    /// Returns the contained [`Some`] value or a provided default.
     ///
     /// Arguments passed to `unwrap_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`unwrap_or_else`],
     /// which is lazily evaluated.
     ///
+    /// [`Some`]: #variant.Some
     /// [`unwrap_or_else`]: #method.unwrap_or_else
     ///
     /// # Examples
@@ -405,7 +411,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns the contained value or computes it from a closure.
+    /// Returns the contained [`Some`] value or computes it from a closure.
     ///
     /// # Examples
     ///
@@ -454,6 +460,12 @@ impl<T> Option<T> {
 
     /// Applies a function to the contained value (if any),
     /// or returns the provided default (if not).
+    ///
+    /// Arguments passed to `map_or` are eagerly evaluated; if you are passing
+    /// the result of a function call, it is recommended to use [`map_or_else`],
+    /// which is lazily evaluated.
+    ///
+    /// [`map_or_else`]: #method.map_or_else
     ///
     /// # Examples
     ///
@@ -901,6 +913,63 @@ impl<T> Option<T> {
     pub fn replace(&mut self, value: T) -> Option<T> {
         mem::replace(self, Some(value))
     }
+
+    /// Zips `self` with another `Option`.
+    ///
+    /// If `self` is `Some(s)` and `other` is `Some(o)`, this method returns `Some((s, o))`.
+    /// Otherwise, `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_zip)]
+    /// let x = Some(1);
+    /// let y = Some("hi");
+    /// let z = None::<u8>;
+    ///
+    /// assert_eq!(x.zip(y), Some((1, "hi")));
+    /// assert_eq!(x.zip(z), None);
+    /// ```
+    #[unstable(feature = "option_zip", issue = "70086")]
+    pub fn zip<U>(self, other: Option<U>) -> Option<(T, U)> {
+        self.zip_with(other, |a, b| (a, b))
+    }
+
+    /// Zips `self` and another `Option` with function `f`.
+    ///
+    /// If `self` is `Some(s)` and `other` is `Some(o)`, this method returns `Some(f(s, o))`.
+    /// Otherwise, `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_zip)]
+    ///
+    /// #[derive(Debug, PartialEq)]
+    /// struct Point {
+    ///     x: f64,
+    ///     y: f64,
+    /// }
+    ///
+    /// impl Point {
+    ///     fn new(x: f64, y: f64) -> Self {
+    ///         Self { x, y }
+    ///     }
+    /// }
+    ///
+    /// let x = Some(17.5);
+    /// let y = Some(42.7);
+    ///
+    /// assert_eq!(x.zip_with(y, Point::new), Some(Point { x: 17.5, y: 42.7 }));
+    /// assert_eq!(x.zip_with(None, Point::new), None);
+    /// ```
+    #[unstable(feature = "option_zip", issue = "70086")]
+    pub fn zip_with<U, F, R>(self, other: Option<U>, f: F) -> Option<R>
+    where
+        F: FnOnce(T, U) -> R,
+    {
+        Some(f(self?, other?))
+    }
 }
 
 impl<T: Copy> Option<&T> {
@@ -980,7 +1049,7 @@ impl<T: Clone> Option<&mut T> {
 }
 
 impl<T: fmt::Debug> Option<T> {
-    /// Unwraps an option, expecting [`None`] and returning nothing.
+    /// Consumes `self` while expecting [`None`] and returning nothing.
     ///
     /// # Panics
     ///
@@ -1023,7 +1092,7 @@ impl<T: fmt::Debug> Option<T> {
         }
     }
 
-    /// Unwraps an option, expecting [`None`] and returning nothing.
+    /// Consumes `self` while expecting [`None`] and returning nothing.
     ///
     /// # Panics
     ///
@@ -1068,7 +1137,7 @@ impl<T: fmt::Debug> Option<T> {
 }
 
 impl<T: Default> Option<T> {
-    /// Returns the contained value or a default
+    /// Returns the contained [`Some`] value or a default
     ///
     /// Consumes the `self` argument then, if [`Some`], returns the contained
     /// value, otherwise if [`None`], returns the [default value] for that

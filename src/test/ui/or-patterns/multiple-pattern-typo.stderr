@@ -1,5 +1,5 @@
 error: unexpected token `||` after pattern
-  --> $DIR/multiple-pattern-typo.rs:8:15
+  --> $DIR/multiple-pattern-typo.rs:7:15
    |
 LL |         1 | 2 || 3 => (),
    |         -     ^^ help: use a single `|` to separate multiple alternative patterns: `|`
@@ -7,7 +7,7 @@ LL |         1 | 2 || 3 => (),
    |         while parsing this or-pattern starting here
 
 error: unexpected token `||` after pattern
-  --> $DIR/multiple-pattern-typo.rs:13:16
+  --> $DIR/multiple-pattern-typo.rs:12:16
    |
 LL |         (1 | 2 || 3) => (),
    |          -     ^^ help: use a single `|` to separate multiple alternative patterns: `|`
@@ -15,7 +15,7 @@ LL |         (1 | 2 || 3) => (),
    |          while parsing this or-pattern starting here
 
 error: unexpected token `||` after pattern
-  --> $DIR/multiple-pattern-typo.rs:18:16
+  --> $DIR/multiple-pattern-typo.rs:17:16
    |
 LL |         (1 | 2 || 3,) => (),
    |          -     ^^ help: use a single `|` to separate multiple alternative patterns: `|`
@@ -23,7 +23,7 @@ LL |         (1 | 2 || 3,) => (),
    |          while parsing this or-pattern starting here
 
 error: unexpected token `||` after pattern
-  --> $DIR/multiple-pattern-typo.rs:25:18
+  --> $DIR/multiple-pattern-typo.rs:24:18
    |
 LL |         TS(1 | 2 || 3) => (),
    |            -     ^^ help: use a single `|` to separate multiple alternative patterns: `|`
@@ -31,7 +31,7 @@ LL |         TS(1 | 2 || 3) => (),
    |            while parsing this or-pattern starting here
 
 error: unexpected token `||` after pattern
-  --> $DIR/multiple-pattern-typo.rs:32:23
+  --> $DIR/multiple-pattern-typo.rs:31:23
    |
 LL |         NS { f: 1 | 2 || 3 } => (),
    |                 -     ^^ help: use a single `|` to separate multiple alternative patterns: `|`
@@ -39,7 +39,7 @@ LL |         NS { f: 1 | 2 || 3 } => (),
    |                 while parsing this or-pattern starting here
 
 error: unexpected token `||` after pattern
-  --> $DIR/multiple-pattern-typo.rs:37:16
+  --> $DIR/multiple-pattern-typo.rs:36:16
    |
 LL |         [1 | 2 || 3] => (),
    |          -     ^^ help: use a single `|` to separate multiple alternative patterns: `|`
@@ -47,18 +47,10 @@ LL |         [1 | 2 || 3] => (),
    |          while parsing this or-pattern starting here
 
 error: unexpected token `||` after pattern
-  --> $DIR/multiple-pattern-typo.rs:42:9
+  --> $DIR/multiple-pattern-typo.rs:41:9
    |
 LL |         || 1 | 2 | 3 => (),
    |         ^^ help: use a single `|` to separate multiple alternative patterns: `|`
-
-warning: the feature `or_patterns` is incomplete and may cause the compiler to crash
-  --> $DIR/multiple-pattern-typo.rs:1:12
-   |
-LL | #![feature(or_patterns)]
-   |            ^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
 
 error: aborting due to 7 previous errors
 

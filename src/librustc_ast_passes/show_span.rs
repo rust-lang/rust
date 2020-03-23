@@ -5,9 +5,9 @@
 
 use std::str::FromStr;
 
-use syntax::ast;
-use syntax::visit;
-use syntax::visit::Visitor;
+use rustc_ast::ast;
+use rustc_ast::visit;
+use rustc_ast::visit::Visitor;
 
 enum Mode {
     Expression,
@@ -55,7 +55,7 @@ impl<'a> Visitor<'a> for ShowSpanVisitor<'a> {
         visit::walk_ty(self, t);
     }
 
-    fn visit_mac(&mut self, mac: &'a ast::Mac) {
+    fn visit_mac(&mut self, mac: &'a ast::MacCall) {
         visit::walk_mac(self, mac);
     }
 }

@@ -1,6 +1,4 @@
 use quote::quote;
-use syn;
-use synstructure;
 
 pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     if let syn::Data::Union(_) = s.ast().data {

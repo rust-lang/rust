@@ -1,5 +1,5 @@
-error[E0271]: type mismatch resolving `<[closure@$DIR/issue-63279.rs:6:5: 6:28] as std::ops::FnOnce<()>>::Output == ()`
-  --> $DIR/issue-63279.rs:3:1
+error[E0271]: type mismatch resolving `<[closure@$DIR/issue-63279.rs:8:5: 8:28] as std::ops::FnOnce<()>>::Output == ()`
+  --> $DIR/issue-63279.rs:5:1
    |
 LL | type Closure = impl FnOnce();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected opaque type, found `()`

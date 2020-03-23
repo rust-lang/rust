@@ -1,21 +1,21 @@
 // Code that generates a test runner to run all the tests in a crate
 
 use log::debug;
+use rustc_ast::ast::{self, Ident};
+use rustc_ast::attr;
+use rustc_ast::entry::{self, EntryPointType};
+use rustc_ast::mut_visit::{ExpectOne, *};
+use rustc_ast::ptr::P;
 use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
+use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::PanicStrategy;
 use smallvec::{smallvec, SmallVec};
-use syntax::ast::{self, Ident};
-use syntax::attr;
-use syntax::entry::{self, EntryPointType};
-use syntax::mut_visit::{ExpectOne, *};
-use syntax::ptr::P;
-use syntax::sess::ParseSess;
 
 use std::{iter, mem};
 
@@ -138,7 +138,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         smallvec![P(item)]
     }
 
-    fn visit_mac(&mut self, _mac: &mut ast::Mac) {
+    fn visit_mac(&mut self, _mac: &mut ast::MacCall) {
         // Do nothing.
     }
 }
@@ -170,22 +170,13 @@ impl MutVisitor for EntryPointCleaner {
                     ));
                     let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
                     let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
+                    let attrs = attrs
+                        .into_iter()
+                        .filter(|attr| !attr.check_name(sym::main) && !attr.check_name(sym::start))
+                        .chain(iter::once(allow_dead_code))
+                        .collect();
 
-                    ast::Item {
-                        id,
-                        ident,
-                        attrs: attrs
-                            .into_iter()
-                            .filter(|attr| {
-                                !attr.check_name(sym::main) && !attr.check_name(sym::start)
-                            })
-                            .chain(iter::once(allow_dead_code))
-                            .collect(),
-                        kind,
-                        vis,
-                        span,
-                        tokens,
-                    }
+                    ast::Item { id, ident, attrs, kind, vis, span, tokens }
                 }),
             EntryPointType::None | EntryPointType::OtherMain => item,
         };
@@ -193,7 +184,7 @@ impl MutVisitor for EntryPointCleaner {
         smallvec![item]
     }
 
-    fn visit_mac(&mut self, _mac: &mut ast::Mac) {
+    fn visit_mac(&mut self, _mac: &mut ast::MacCall) {
         // Do nothing.
     }
 }
@@ -211,7 +202,7 @@ fn generate_test_harness(
     let mut econfig = ExpansionConfig::default("test".to_string());
     econfig.features = Some(features);
 
-    let ext_cx = ExtCtxt::new(sess, econfig, resolver);
+    let ext_cx = ExtCtxt::new(sess, econfig, resolver, None);
 
     let expn_id = ext_cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
@@ -305,9 +296,10 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
         ecx.block(sp, vec![call_test_main])
     };
 
-    let decl = ecx.fn_decl(vec![], ast::FunctionRetTy::Ty(main_ret_ty));
+    let decl = ecx.fn_decl(vec![], ast::FnRetTy::Ty(main_ret_ty));
     let sig = ast::FnSig { decl, header: ast::FnHeader::default() };
-    let main = ast::ItemKind::Fn(sig, ast::Generics::default(), main_body);
+    let def = ast::Defaultness::Final;
+    let main = ast::ItemKind::Fn(def, sig, ast::Generics::default(), Some(main_body));
 
     // Honor the reexport_test_harness_main attribute
     let main_id = match cx.reexport_test_harness_main {
@@ -334,7 +326,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 /// &[&test1, &test2]
 fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
-    let ref ecx = cx.ext_cx;
+    let ecx = &cx.ext_cx;
 
     ecx.expr_vec_slice(
         sp,

@@ -1,9 +1,8 @@
-//! Module for inferring the variance of type and lifetime parameters. See the [rustc guide]
+//! Module for inferring the variance of type and lifetime parameters. See the [rustc dev guide]
 //! chapter for more info.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/variance.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/variance.html
 
-use arena;
 use hir::Node;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, CrateVariancesMap, TyCtxt};
@@ -55,13 +54,13 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
         },
 
         Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Method(..) => {}
+            hir::TraitItemKind::Fn(..) => {}
 
             _ => unsupported(),
         },
 
         Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Method(..) => {}
+            hir::ImplItemKind::Fn(..) => {}
 
             _ => unsupported(),
         },
@@ -80,5 +79,5 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
     // Everything else must be inferred.
 
     let crate_map = tcx.crate_variances(LOCAL_CRATE);
-    crate_map.variances.get(&item_def_id).map(|p| *p).unwrap_or(&[])
+    crate_map.variances.get(&item_def_id).copied().unwrap_or(&[])
 }

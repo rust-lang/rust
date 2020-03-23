@@ -1,70 +1,62 @@
 error[E0415]: identifier `a` is bound more than once in this parameter list
-  --> $DIR/pat-at-same-name-both.rs:9:14
+  --> $DIR/pat-at-same-name-both.rs:8:14
    |
 LL |     fn f(a @ a @ a: ()) {}
    |              ^ used as parameter more than once
 
 error[E0415]: identifier `a` is bound more than once in this parameter list
-  --> $DIR/pat-at-same-name-both.rs:9:18
+  --> $DIR/pat-at-same-name-both.rs:8:18
    |
 LL |     fn f(a @ a @ a: ()) {}
    |                  ^ used as parameter more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/pat-at-same-name-both.rs:14:20
+  --> $DIR/pat-at-same-name-both.rs:13:20
    |
 LL |         Ok(a @ b @ a)
    |                    ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/pat-at-same-name-both.rs:16:23
+  --> $DIR/pat-at-same-name-both.rs:15:23
    |
 LL |         | Err(a @ b @ a)
    |                       ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/pat-at-same-name-both.rs:21:13
+  --> $DIR/pat-at-same-name-both.rs:20:13
    |
 LL |     let a @ a @ a = ();
    |             ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/pat-at-same-name-both.rs:21:17
+  --> $DIR/pat-at-same-name-both.rs:20:17
    |
 LL |     let a @ a @ a = ();
    |                 ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/pat-at-same-name-both.rs:24:21
+  --> $DIR/pat-at-same-name-both.rs:23:21
    |
 LL |     let ref a @ ref a = ();
    |                     ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/pat-at-same-name-both.rs:26:29
+  --> $DIR/pat-at-same-name-both.rs:25:29
    |
 LL |     let ref mut a @ ref mut a = ();
    |                             ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/pat-at-same-name-both.rs:29:17
+  --> $DIR/pat-at-same-name-both.rs:28:17
    |
 LL |     let a @ (Ok(a) | Err(a)) = Ok(());
    |                 ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/pat-at-same-name-both.rs:29:26
+  --> $DIR/pat-at-same-name-both.rs:28:26
    |
 LL |     let a @ (Ok(a) | Err(a)) = Ok(());
    |                          ^ used in a pattern more than once
-
-warning: the feature `or_patterns` is incomplete and may cause the compiler to crash
-  --> $DIR/pat-at-same-name-both.rs:5:12
-   |
-LL | #![feature(or_patterns)]
-   |            ^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
 
 error: aborting due to 10 previous errors
 

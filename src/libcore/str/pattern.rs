@@ -365,11 +365,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
         let haystack = self.haystack.as_bytes();
         loop {
             // get the haystack up to but not including the last character searched
-            let bytes = if let Some(slice) = haystack.get(self.finger..self.finger_back) {
-                slice
-            } else {
-                return None;
-            };
+            let bytes = haystack.get(self.finger..self.finger_back)?;
             // the last byte of the utf8 encoded needle
             // SAFETY: we have an invariant that `utf8_size < 5`
             let last_byte = unsafe { *self.utf8_encoded.get_unchecked(self.utf8_size - 1) };
@@ -575,11 +571,12 @@ macro_rules! pattern_methods {
 
         #[inline]
         fn is_suffix_of(self, haystack: &'a str) -> bool
-            where $t: ReverseSearcher<'a>
+        where
+            $t: ReverseSearcher<'a>,
         {
             ($pmap)(self).is_suffix_of(haystack)
         }
-    }
+    };
 }
 
 macro_rules! searcher_methods {
@@ -614,7 +611,7 @@ macro_rules! searcher_methods {
         fn next_reject_back(&mut self) -> Option<(usize, usize)> {
             self.0.next_reject_back()
         }
-    }
+    };
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1050,7 +1047,7 @@ impl TwoWaySearcher {
         // &v[..period]. If it is, we use "Algorithm CP1". Otherwise we use
         // "Algorithm CP2", which is optimized for when the period of the needle
         // is large.
-        if &needle[..crit_pos] == &needle[period..period + crit_pos] {
+        if needle[..crit_pos] == needle[period..period + crit_pos] {
             // short period case -- the period is exact
             // compute a separate critical factorization for the reversed needle
             // x = u' v' where |v'| < period(x).

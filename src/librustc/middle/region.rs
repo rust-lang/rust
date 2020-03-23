@@ -2,14 +2,13 @@
 //! the parent links in the region hierarchy.
 //!
 //! For more information about how MIR-based region-checking works,
-//! see the [rustc guide].
+//! see the [rustc dev guide].
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/borrowck.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/borrowck.html
 
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::ty::{self, DefIdTree, TyCtxt};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -468,7 +467,7 @@ impl<'tcx> ScopeTree {
         }
 
         debug!("temporary_scope({:?}) = None", expr_id);
-        return None;
+        None
     }
 
     /// Returns the lifetime of the variable `id`.
@@ -499,7 +498,7 @@ impl<'tcx> ScopeTree {
 
         debug!("is_subscope_of({:?}, {:?})=true", subscope, superscope);
 
-        return true;
+        true
     }
 
     /// Returns the ID of the innermost containing body.
@@ -594,7 +593,7 @@ impl<'tcx> ScopeTree {
                               region scope tree for {:?} / {:?}",
                             param_owner,
                             self.root_parent.map(|id| tcx.hir().local_def_id(id)),
-                            self.root_body.map(|hir_id| DefId::local(hir_id.owner))
+                            self.root_body.map(|hir_id| hir_id.owner)
                         ),
                     );
                 }
@@ -635,7 +634,7 @@ impl<'tcx> ScopeTree {
     /// Used to sanity check visit_expr call count when
     /// calculating generator interiors.
     pub fn body_expr_count(&self, body_id: hir::BodyId) -> Option<usize> {
-        self.body_expr_count.get(&body_id).map(|r| *r)
+        self.body_expr_count.get(&body_id).copied()
     }
 }
 

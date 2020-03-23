@@ -1,11 +1,18 @@
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/object-safety-no-static.rs:12:1
+  --> $DIR/object-safety-no-static.rs:12:18
    |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
 LL |     fn foo() {}
-   |        --- associated function `foo` has no `self` parameter
+   |        --- ...because associated function `foo` has no `self` parameter
 ...
 LL | fn diverges() -> Box<dyn Foo> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
+   |                  ^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
+   |
+help: consider turning `foo` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
+   |
+LL |     fn foo() where Self: Sized {}
+   |              ^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -6,7 +6,7 @@ LL |         Var3 => (),
 LL |         Var2 => (),
    |         ^^^^ unreachable pattern
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-31221.rs:4:9
    |
 LL | #![deny(unreachable_patterns)]

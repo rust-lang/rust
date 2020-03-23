@@ -4,27 +4,6 @@
 //! library. Each macro is available for use when linking against the standard
 //! library.
 
-#[cfg(bootstrap)]
-#[doc(include = "../libcore/macros/panic.md")]
-#[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable(libstd_sys_internals)]
-macro_rules! panic {
-    () => ({
-        $crate::panic!("explicit panic")
-    });
-    ($msg:expr) => ({
-        $crate::rt::begin_panic($msg, &($crate::file!(), $crate::line!(), $crate::column!()))
-    });
-    ($msg:expr,) => ({
-        $crate::panic!($msg)
-    });
-    ($fmt:expr, $($arg:tt)+) => ({
-        $crate::rt::begin_panic_fmt(&$crate::format_args!($fmt, $($arg)+))
-    });
-}
-
-#[cfg(not(bootstrap))]
 #[doc(include = "../libcore/macros/panic.md")]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -206,7 +185,7 @@ macro_rules! eprintln {
 /// builds or when debugging in release mode is significantly faster.
 ///
 /// Note that the macro is intended as a debugging tool and therefore you
-/// should avoid having uses of it in version control for longer periods.
+/// should avoid having uses of it in version control for long periods.
 /// Use cases involving debug output that should be added to version control
 /// are better served by macros such as [`debug!`] from the [`log`] crate.
 ///

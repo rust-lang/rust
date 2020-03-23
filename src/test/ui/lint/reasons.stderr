@@ -5,7 +5,7 @@ LL |     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
    |                             ^^^^^^^^^^^^^^- help: indicate the anonymous lifetime: `<'_>`
    |
    = note: explicit anonymous lifetimes aid reasoning about ownership
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/reasons.rs:5:9
    |
 LL | #![warn(elided_lifetimes_in_paths,
@@ -19,7 +19,7 @@ LL |     let Social_exchange_psychology = CheaterDetectionMechanism {};
    |
    = note: people shouldn't have to change their usual style habits
            to contribute to our project
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/reasons.rs:9:5
    |
 LL |     nonstandard_style,

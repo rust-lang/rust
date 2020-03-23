@@ -1,9 +1,9 @@
 use crate::tests::{matches_codepattern, string_to_crate};
 
-use syntax::ast::{self, Ident};
-use syntax::mut_visit::{self, MutVisitor};
-use syntax::print::pprust;
-use syntax::with_default_globals;
+use rustc_ast::ast::{self, Ident};
+use rustc_ast::mut_visit::{self, MutVisitor};
+use rustc_ast::with_default_globals;
+use rustc_ast_pretty::pprust;
 
 // This version doesn't care about getting comments or doc-strings in.
 fn fake_print_crate(s: &mut pprust::State<'_>, krate: &ast::Crate) {
@@ -17,7 +17,7 @@ impl MutVisitor for ToZzIdentMutVisitor {
     fn visit_ident(&mut self, ident: &mut ast::Ident) {
         *ident = Ident::from_str("zz");
     }
-    fn visit_mac(&mut self, mac: &mut ast::Mac) {
+    fn visit_mac(&mut self, mac: &mut ast::MacCall) {
         mut_visit::noop_visit_mac(mac, self)
     }
 }

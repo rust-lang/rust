@@ -24,7 +24,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a simplifiable pattern.
-    crate fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
+    pub(super) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         match *match_pair.pattern.kind {
             PatKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => Test {
                 span: match_pair.pattern.span,
@@ -64,17 +64,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 let len = prefix.len() + suffix.len();
                 let op = if slice.is_some() { BinOp::Ge } else { BinOp::Eq };
-                Test {
-                    span: match_pair.pattern.span,
-                    kind: TestKind::Len { len: len as u64, op: op },
-                }
+                Test { span: match_pair.pattern.span, kind: TestKind::Len { len: len as u64, op } }
             }
 
-            PatKind::Or { .. } => self
-                .hir
-                .tcx()
-                .sess
-                .span_fatal(match_pair.pattern.span, "or-patterns are not fully implemented yet"),
+            PatKind::Or { .. } => bug!("or-patterns should have already been handled"),
 
             PatKind::AscribeUserType { .. }
             | PatKind::Array { .. }
@@ -85,7 +78,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    crate fn add_cases_to_switch<'pat>(
+    pub(super) fn add_cases_to_switch<'pat>(
         &mut self,
         test_place: &Place<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
@@ -129,7 +122,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    crate fn add_variants_to_switch<'pat>(
+    pub(super) fn add_variants_to_switch<'pat>(
         &mut self,
         test_place: &Place<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
@@ -156,10 +149,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    crate fn perform_test(
+    pub(super) fn perform_test(
         &mut self,
         block: BasicBlock,
-        place: &Place<'tcx>,
+        place: Place<'tcx>,
         test: &Test<'tcx>,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
     ) {
@@ -209,7 +202,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
                 let discr = self.temp(discr_ty, test.span);
-                self.cfg.push_assign(block, source_info, &discr, Rvalue::Discriminant(*place));
+                self.cfg.push_assign(block, source_info, &discr, Rvalue::Discriminant(place));
                 assert_eq!(values.len() + 1, targets.len());
                 self.cfg.terminate(
                     block,
@@ -226,19 +219,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestKind::SwitchInt { switch_ty, ref options, indices: _ } => {
                 let target_blocks = make_target_blocks(self);
                 let terminator = if switch_ty.kind == ty::Bool {
-                    assert!(options.len() > 0 && options.len() <= 2);
+                    assert!(!options.is_empty() && options.len() <= 2);
                     if let [first_bb, second_bb] = *target_blocks {
                         let (true_bb, false_bb) = match options[0] {
                             1 => (first_bb, second_bb),
                             0 => (second_bb, first_bb),
                             v => span_bug!(test.span, "expected boolean value but got {:?}", v),
                         };
-                        TerminatorKind::if_(
-                            self.hir.tcx(),
-                            Operand::Copy(*place),
-                            true_bb,
-                            false_bb,
-                        )
+                        TerminatorKind::if_(self.hir.tcx(), Operand::Copy(place), true_bb, false_bb)
                     } else {
                         bug!("`TestKind::SwitchInt` on `bool` should have two targets")
                     }
@@ -246,7 +234,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // The switch may be inexhaustive so we have a catch all block
                     debug_assert_eq!(options.len() + 1, target_blocks.len());
                     TerminatorKind::SwitchInt {
-                        discr: Operand::Copy(*place),
+                        discr: Operand::Copy(place),
                         switch_ty,
                         values: options.clone().into(),
                         targets: target_blocks,
@@ -271,7 +259,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if let [success, fail] = *make_target_blocks(self) {
                         assert_eq!(value.ty, ty);
                         let expect = self.literal_operand(test.span, value);
-                        let val = Operand::Copy(*place);
+                        let val = Operand::Copy(place);
                         self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
                     } else {
                         bug!("`TestKind::Eq` should have two target blocks");
@@ -286,7 +274,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
                 let lo = self.literal_operand(test.span, lo);
                 let hi = self.literal_operand(test.span, hi);
-                let val = Operand::Copy(*place);
+                let val = Operand::Copy(place);
 
                 if let [success, fail] = *target_blocks {
                     self.compare(
@@ -315,7 +303,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let actual = self.temp(usize_ty, test.span);
 
                 // actual = len(place)
-                self.cfg.push_assign(block, source_info, &actual, Rvalue::Len(*place));
+                self.cfg.push_assign(block, source_info, &actual, Rvalue::Len(place));
 
                 // expected = <N>
                 let expected = self.push_usize(block, source_info, len);
@@ -371,13 +359,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
         source_info: SourceInfo,
         value: &'tcx ty::Const<'tcx>,
-        place: &Place<'tcx>,
+        place: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
         use rustc::middle::lang_items::EqTraitLangItem;
 
         let mut expect = self.literal_operand(source_info.span, value);
-        let mut val = Operand::Copy(*place);
+        let mut val = Operand::Copy(place);
 
         // If we're using `b"..."` as a pattern, we need to insert an
         // unsizing coercion, as the byte string has the type `&[u8; N]`.
@@ -502,7 +490,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// that it *doesn't* apply. For now, we return false, indicate that the
     /// test does not apply to this candidate, but it might be we can get
     /// tighter match code if we do something a bit different.
-    crate fn sort_candidate<'pat>(
+    pub(super) fn sort_candidate<'pat>(
         &mut self,
         test_place: &Place<'tcx>,
         test: &Test<'tcx>,
@@ -755,8 +743,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let downcast_place = tcx.mk_place_elem(match_pair.place, elem); // `(x as Variant)`
         let consequent_match_pairs = subpatterns.iter().map(|subpattern| {
             // e.g., `(x as Variant).0`
-            let place =
-                tcx.mk_place_field(downcast_place.clone(), subpattern.field, subpattern.pattern.ty);
+            let place = tcx.mk_place_field(downcast_place, subpattern.field, subpattern.pattern.ty);
             // e.g., `(x as Variant).0 @ P1`
             MatchPair::new(place, &subpattern.pattern)
         });

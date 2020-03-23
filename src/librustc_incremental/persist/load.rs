@@ -1,12 +1,12 @@
 //! Code to save/load the dep-graph from files.
 
 use rustc::dep_graph::{PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
-use rustc::session::Session;
 use rustc::ty::query::OnDiskCache;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::opaque::Decoder;
 use rustc_serialize::Decodable as RustcDecodable;
+use rustc_session::Session;
 use std::path::Path;
 
 use super::data::*;

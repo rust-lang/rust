@@ -8,10 +8,8 @@ trait T {}
 
 impl const S {}
 //~^ ERROR inherent impls cannot be `const`
-//~| ERROR const trait impls are not yet implemented
 
 impl const T {}
 //~^ ERROR inherent impls cannot be `const`
-//~| ERROR const trait impls are not yet implemented
 
 fn main() {}

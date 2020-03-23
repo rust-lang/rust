@@ -7,37 +7,39 @@ use crate::check::autoderef::{self, Autoderef};
 use crate::check::FnCtxt;
 use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
-use crate::namespace::Namespace;
 
-use rustc::infer::canonical::OriginalQueryValues;
-use rustc::infer::canonical::{Canonical, QueryResponse};
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc::infer::{self, InferOk};
-use rustc::lint;
 use rustc::middle::stability;
-use rustc::session::config::nightly_options;
-use rustc::traits::query::method_autoderef::MethodAutoderefBadTy;
-use rustc::traits::query::method_autoderef::{CandidateStep, MethodAutoderefStepsResult};
-use rustc::traits::query::CanonicalTyGoal;
-use rustc::traits::{self, ObligationCause};
 use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::{
-    self, ParamEnvAnd, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
-    WithConstness,
+    self, ParamEnvAnd, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
+use rustc_ast::ast;
+use rustc_ast::util::lev_distance::{find_best_match_for_name, lev_distance};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::def::Namespace;
+use rustc_infer::infer::canonical::OriginalQueryValues;
+use rustc_infer::infer::canonical::{Canonical, QueryResponse};
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_session::config::nightly_options;
+use rustc_session::lint;
 use rustc_span::{symbol::Symbol, Span, DUMMY_SP};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy;
+use rustc_trait_selection::traits::query::method_autoderef::{
+    CandidateStep, MethodAutoderefStepsResult,
+};
+use rustc_trait_selection::traits::query::CanonicalTyGoal;
+use rustc_trait_selection::traits::{self, ObligationCause};
 use std::cmp::max;
 use std::iter;
 use std::mem;
 use std::ops::Deref;
-use syntax::ast;
-use syntax::util::lev_distance::{find_best_match_for_name, lev_distance};
 
 use smallvec::{smallvec, SmallVec};
 
@@ -78,7 +80,7 @@ struct ProbeContext<'a, 'tcx> {
 
     /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
     /// for error reporting
-    unsatisfied_predicates: Vec<TraitRef<'tcx>>,
+    unsatisfied_predicates: Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
 
     is_suggestion: IsSuggestion,
 }
@@ -382,11 +384,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                     .emit();
                 } else {
-                    self.tcx.lint_hir(
+                    self.tcx.struct_span_lint_hir(
                         lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                         scope_expr_id,
                         span,
-                        "type annotations needed",
+                        |lint| lint.build("type annotations needed").emit(),
                     );
                 }
             } else {
@@ -573,7 +575,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn assemble_inherent_candidates(&mut self) {
-        let steps = self.steps.clone();
+        let steps = Lrc::clone(&self.steps);
         for step in steps.iter() {
             self.assemble_probe(&step.self_ty);
         }
@@ -636,87 +638,51 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::Slice(_) => {
-                let lang_def_id = lang_items.slice_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-
-                let lang_def_id = lang_items.slice_u8_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-
-                let lang_def_id = lang_items.slice_alloc_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-
-                let lang_def_id = lang_items.slice_u8_alloc_impl();
+                for &lang_def_id in &[
+                    lang_items.slice_impl(),
+                    lang_items.slice_u8_impl(),
+                    lang_items.slice_alloc_impl(),
+                    lang_items.slice_u8_alloc_impl(),
+                ] {
+                    self.assemble_inherent_impl_for_primitive(lang_def_id);
+                }
+            }
+            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl }) => {
+                let lang_def_id = match mutbl {
+                    hir::Mutability::Not => lang_items.const_ptr_impl(),
+                    hir::Mutability::Mut => lang_items.mut_ptr_impl(),
+                };
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Not }) => {
-                let lang_def_id = lang_items.const_ptr_impl();
+            ty::Int(i) => {
+                let lang_def_id = match i {
+                    ast::IntTy::I8 => lang_items.i8_impl(),
+                    ast::IntTy::I16 => lang_items.i16_impl(),
+                    ast::IntTy::I32 => lang_items.i32_impl(),
+                    ast::IntTy::I64 => lang_items.i64_impl(),
+                    ast::IntTy::I128 => lang_items.i128_impl(),
+                    ast::IntTy::Isize => lang_items.isize_impl(),
+                };
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Mut }) => {
-                let lang_def_id = lang_items.mut_ptr_impl();
+            ty::Uint(i) => {
+                let lang_def_id = match i {
+                    ast::UintTy::U8 => lang_items.u8_impl(),
+                    ast::UintTy::U16 => lang_items.u16_impl(),
+                    ast::UintTy::U32 => lang_items.u32_impl(),
+                    ast::UintTy::U64 => lang_items.u64_impl(),
+                    ast::UintTy::U128 => lang_items.u128_impl(),
+                    ast::UintTy::Usize => lang_items.usize_impl(),
+                };
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::Int(ast::IntTy::I8) => {
-                let lang_def_id = lang_items.i8_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Int(ast::IntTy::I16) => {
-                let lang_def_id = lang_items.i16_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Int(ast::IntTy::I32) => {
-                let lang_def_id = lang_items.i32_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Int(ast::IntTy::I64) => {
-                let lang_def_id = lang_items.i64_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Int(ast::IntTy::I128) => {
-                let lang_def_id = lang_items.i128_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Int(ast::IntTy::Isize) => {
-                let lang_def_id = lang_items.isize_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Uint(ast::UintTy::U8) => {
-                let lang_def_id = lang_items.u8_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Uint(ast::UintTy::U16) => {
-                let lang_def_id = lang_items.u16_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Uint(ast::UintTy::U32) => {
-                let lang_def_id = lang_items.u32_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Uint(ast::UintTy::U64) => {
-                let lang_def_id = lang_items.u64_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Uint(ast::UintTy::U128) => {
-                let lang_def_id = lang_items.u128_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Uint(ast::UintTy::Usize) => {
-                let lang_def_id = lang_items.usize_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Float(ast::FloatTy::F32) => {
-                let lang_def_id = lang_items.f32_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-
-                let lang_def_id = lang_items.f32_runtime_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Float(ast::FloatTy::F64) => {
-                let lang_def_id = lang_items.f64_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-
-                let lang_def_id = lang_items.f64_runtime_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
+            ty::Float(f) => {
+                let (lang_def_id1, lang_def_id2) = match f {
+                    ast::FloatTy::F32 => (lang_items.f32_impl(), lang_items.f32_runtime_impl()),
+                    ast::FloatTy::F64 => (lang_items.f64_impl(), lang_items.f64_runtime_impl()),
+                };
+                self.assemble_inherent_impl_for_primitive(lang_def_id1);
+                self.assemble_inherent_impl_for_primitive(lang_def_id2);
             }
             _ => {}
         }
@@ -902,13 +868,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             for trait_candidate in applicable_traits.iter() {
                 let trait_did = trait_candidate.def_id;
                 if duplicates.insert(trait_did) {
-                    let import_ids = trait_candidate
-                        .import_ids
-                        .iter()
-                        .map(|node_id| self.fcx.tcx.hir().node_to_hir_id(*node_id))
-                        .collect();
-                    let result =
-                        self.assemble_extension_candidates_for_trait(import_ids, trait_did);
+                    let result = self.assemble_extension_candidates_for_trait(
+                        &trait_candidate.import_ids,
+                        trait_did,
+                    );
                     result?;
                 }
             }
@@ -920,7 +883,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let mut duplicates = FxHashSet::default();
         for trait_info in suggest::all_traits(self.tcx) {
             if duplicates.insert(trait_info.def_id) {
-                self.assemble_extension_candidates_for_trait(smallvec![], trait_info.def_id)?;
+                self.assemble_extension_candidates_for_trait(&smallvec![], trait_info.def_id)?;
             }
         }
         Ok(())
@@ -959,7 +922,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn assemble_extension_candidates_for_trait(
         &mut self,
-        import_ids: SmallVec<[hir::HirId; 1]>,
+        import_ids: &SmallVec<[hir::HirId; 1]>,
         trait_def_id: DefId,
     ) -> Result<(), MethodError<'tcx>> {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})", trait_def_id);
@@ -1044,7 +1007,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             return r;
         }
 
-        debug!("pick: actual search failed, assemble diagnotics");
+        debug!("pick: actual search failed, assemble diagnostics");
 
         let static_candidates = mem::take(&mut self.static_candidates);
         let private_candidate = self.private_candidate.take();
@@ -1227,7 +1190,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         self_ty: Ty<'tcx>,
         probes: ProbesIter,
-        possibly_unsatisfied_predicates: &mut Vec<TraitRef<'tcx>>,
+        possibly_unsatisfied_predicates: &mut Vec<(
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+        )>,
         unstable_candidates: Option<&mut Vec<(&'b Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>>
     where
@@ -1280,33 +1246,36 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         stable_pick: &Pick<'_>,
         unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
     ) {
-        let mut diag = self.tcx.struct_span_lint_hir(
+        self.tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
             self.fcx.body_id,
             self.span,
-            "a method with this name may be added to the standard library in the future",
-        );
-
-        // FIXME: This should be a `span_suggestion` instead of `help`
-        // However `self.span` only
-        // highlights the method name, so we can't use it. Also consider reusing the code from
-        // `report_method_error()`.
-        diag.help(&format!(
-            "call with fully qualified syntax `{}(...)` to keep using the current method",
-            self.tcx.def_path_str(stable_pick.item.def_id),
-        ));
-
-        if nightly_options::is_nightly_build() {
-            for (candidate, feature) in unstable_candidates {
+            |lint| {
+                let mut diag = lint.build(
+                    "a method with this name may be added to the standard library in the future",
+                );
+                // FIXME: This should be a `span_suggestion` instead of `help`
+                // However `self.span` only
+                // highlights the method name, so we can't use it. Also consider reusing the code from
+                // `report_method_error()`.
                 diag.help(&format!(
-                    "add `#![feature({})]` to the crate attributes to enable `{}`",
-                    feature,
-                    self.tcx.def_path_str(candidate.item.def_id),
+                    "call with fully qualified syntax `{}(...)` to keep using the current method",
+                    self.tcx.def_path_str(stable_pick.item.def_id),
                 ));
-            }
-        }
 
-        diag.emit();
+                if nightly_options::is_nightly_build() {
+                    for (candidate, feature) in unstable_candidates {
+                        diag.help(&format!(
+                            "add `#![feature({})]` to the crate attributes to enable `{}`",
+                            feature,
+                            self.tcx.def_path_str(candidate.item.def_id),
+                        ));
+                    }
+                }
+
+                diag.emit();
+            },
+        );
     }
 
     fn select_trait_candidate(
@@ -1343,7 +1312,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         self_ty: Ty<'tcx>,
         probe: &Candidate<'tcx>,
-        possibly_unsatisfied_predicates: &mut Vec<TraitRef<'tcx>>,
+        possibly_unsatisfied_predicates: &mut Vec<(
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+        )>,
     ) -> ProbeResult {
         debug!("consider_probe: self_ty={:?} probe={:?}", self_ty, probe);
 
@@ -1398,21 +1370,44 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let predicate = trait_ref.without_const().to_predicate();
                     let obligation = traits::Obligation::new(cause, self.param_env, predicate);
                     if !self.predicate_may_hold(&obligation) {
-                        if self.probe(|_| self.select_trait_candidate(trait_ref).is_err()) {
+                        result = ProbeResult::NoMatch;
+                        if self.probe(|_| {
+                            match self.select_trait_candidate(trait_ref) {
+                                Err(_) => return true,
+                                Ok(Some(vtable))
+                                    if !vtable.borrow_nested_obligations().is_empty() =>
+                                {
+                                    for obligation in vtable.borrow_nested_obligations() {
+                                        // Determine exactly which obligation wasn't met, so
+                                        // that we can give more context in the error.
+                                        if !self.predicate_may_hold(&obligation) {
+                                            let o = self.resolve_vars_if_possible(obligation);
+                                            let predicate =
+                                                self.resolve_vars_if_possible(&predicate);
+                                            let p = if predicate == o.predicate {
+                                                // Avoid "`MyStruct: Foo` which is required by
+                                                // `MyStruct: Foo`" in E0599.
+                                                None
+                                            } else {
+                                                Some(predicate)
+                                            };
+                                            possibly_unsatisfied_predicates.push((o.predicate, p));
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    // Some nested subobligation of this predicate
+                                    // failed.
+                                    let predicate = self.resolve_vars_if_possible(&predicate);
+                                    possibly_unsatisfied_predicates.push((predicate, None));
+                                }
+                            }
+                            false
+                        }) {
                             // This candidate's primary obligation doesn't even
                             // select - don't bother registering anything in
                             // `potentially_unsatisfied_predicates`.
                             return ProbeResult::NoMatch;
-                        } else {
-                            // Some nested subobligation of this predicate
-                            // failed.
-                            //
-                            // FIXME: try to find the exact nested subobligation
-                            // and point at it rather than reporting the entire
-                            // trait-ref?
-                            result = ProbeResult::NoMatch;
-                            let trait_ref = self.resolve_vars_if_possible(&trait_ref);
-                            possibly_unsatisfied_predicates.push(trait_ref);
                         }
                     }
                     vec![]
@@ -1429,9 +1424,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let o = self.resolve_vars_if_possible(&o);
                 if !self.predicate_may_hold(&o) {
                     result = ProbeResult::NoMatch;
-                    if let &ty::Predicate::Trait(ref pred, _) = &o.predicate {
-                        possibly_unsatisfied_predicates.push(pred.skip_binder().trait_ref);
-                    }
+                    possibly_unsatisfied_predicates.push((o.predicate, None));
                 }
             }
 
@@ -1524,21 +1517,18 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
             let method_names = pcx.candidate_method_names();
             pcx.allow_similar_names = false;
-            let applicable_close_candidates: Vec<ty::AssocItem> =
-                method_names
-                    .iter()
-                    .filter_map(|&method_name| {
-                        pcx.reset();
-                        pcx.method_name = Some(method_name);
-                        pcx.assemble_inherent_candidates();
-                        pcx.assemble_extension_candidates_for_traits_in_scope(hir::DUMMY_HIR_ID)
-                            .map_or(None, |_| {
-                                pcx.pick_core()
-                                    .and_then(|pick| pick.ok())
-                                    .and_then(|pick| Some(pick.item))
-                            })
-                    })
-                    .collect();
+            let applicable_close_candidates: Vec<ty::AssocItem> = method_names
+                .iter()
+                .filter_map(|&method_name| {
+                    pcx.reset();
+                    pcx.method_name = Some(method_name);
+                    pcx.assemble_inherent_candidates();
+                    pcx.assemble_extension_candidates_for_traits_in_scope(hir::DUMMY_HIR_ID)
+                        .map_or(None, |_| {
+                            pcx.pick_core().and_then(|pick| pick.ok()).map(|pick| pick.item)
+                        })
+                })
+                .collect();
 
             if applicable_close_candidates.is_empty() {
                 Ok(None)
@@ -1696,18 +1686,20 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx
                     .associated_items(def_id)
+                    .in_definition_order()
                     .filter(|x| {
                         let dist = lev_distance(&*name.as_str(), &x.ident.as_str());
-                        Namespace::from(x.kind) == Namespace::Value && dist > 0 && dist <= max_dist
+                        x.kind.namespace() == Namespace::ValueNS && dist > 0 && dist <= max_dist
                     })
+                    .copied()
                     .collect()
             } else {
                 self.fcx
-                    .associated_item(def_id, name, Namespace::Value)
+                    .associated_item(def_id, name, Namespace::ValueNS)
                     .map_or(Vec::new(), |x| vec![x])
             }
         } else {
-            self.tcx.associated_items(def_id).collect()
+            self.tcx.associated_items(def_id).in_definition_order().copied().collect()
         }
     }
 }

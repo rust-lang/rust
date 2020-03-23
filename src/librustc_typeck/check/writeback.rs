@@ -4,18 +4,18 @@
 
 use crate::check::FnCtxt;
 
-use rustc::hir::map::Map;
-use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
-use rustc::infer::InferCtxt;
 use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, DefIdSet, DefIndex};
+use rustc_hir::def_id::DefIdSet;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
+use rustc_infer::infer::InferCtxt;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::opaque_types::InferCtxtExt;
 
 use std::mem;
 
@@ -61,7 +61,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_fru_field_types();
         wbcx.visit_opaque_types(body.value.span);
         wbcx.visit_coercion_casts();
-        wbcx.visit_free_region_map();
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
         wbcx.visit_generator_interior_types();
@@ -108,11 +107,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         body: &'tcx hir::Body<'tcx>,
         rustc_dump_user_substs: bool,
     ) -> WritebackCx<'cx, 'tcx> {
-        let owner = body.id().hir_id;
+        let owner = body.id().hir_id.owner;
 
         WritebackCx {
             fcx,
-            tables: ty::TypeckTables::empty(Some(DefId::local(owner.owner))),
+            tables: ty::TypeckTables::empty(Some(owner)),
             body,
             rustc_dump_user_substs,
         }
@@ -124,7 +123,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn write_ty_to_tables(&mut self, hir_id: hir::HirId, ty: Ty<'tcx>) {
         debug!("write_ty_to_tables({:?}, {:?})", hir_id, ty);
-        assert!(!ty.needs_infer() && !ty.has_placeholders());
+        assert!(!ty.needs_infer() && !ty.has_placeholders() && !ty.has_free_regions());
         self.tables.node_types_mut().insert(hir_id, ty);
     }
 
@@ -243,9 +242,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 // traffic in node-ids or update tables in the type context etc.
 
 impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -326,9 +325,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let new_upvar_capture = match *upvar_capture {
                 ty::UpvarCapture::ByValue => ty::UpvarCapture::ByValue,
                 ty::UpvarCapture::ByRef(ref upvar_borrow) => {
-                    let r = upvar_borrow.region;
-                    let r = self.resolve(&r, &upvar_id.var_path.hir_id);
-                    ty::UpvarCapture::ByRef(ty::UpvarBorrow { kind: upvar_borrow.kind, region: r })
+                    ty::UpvarCapture::ByRef(ty::UpvarBorrow {
+                        kind: upvar_borrow.kind,
+                        region: self.tcx().lifetimes.re_erased,
+                    })
                 }
             };
             debug!("Upvar capture for {:?} resolved to {:?}", upvar_id, new_upvar_capture);
@@ -338,11 +338,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn visit_closures(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
-        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
-        let common_local_id_root = fcx_tables.local_id_root.unwrap();
+        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
+        let common_hir_owner = fcx_tables.hir_owner.unwrap();
 
         for (&id, &origin) in fcx_tables.closure_kind_origins().iter() {
-            let hir_id = hir::HirId { owner: common_local_id_root.index, local_id: id };
+            let hir_id = hir::HirId { owner: common_hir_owner, local_id: id };
             self.tables.closure_kind_origins_mut().insert(hir_id, origin);
         }
     }
@@ -350,26 +350,21 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_coercion_casts(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
         let fcx_coercion_casts = fcx_tables.coercion_casts();
-        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
 
         for local_id in fcx_coercion_casts {
             self.tables.set_coercion_cast(*local_id);
         }
     }
 
-    fn visit_free_region_map(&mut self) {
-        self.tables.free_region_map = self.fcx.tables.borrow().free_region_map.clone();
-        debug_assert!(!self.tables.free_region_map.elements().any(|r| r.has_local_value()));
-    }
-
     fn visit_user_provided_tys(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
-        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
-        let common_local_id_root = fcx_tables.local_id_root.unwrap();
+        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
+        let common_hir_owner = fcx_tables.hir_owner.unwrap();
 
         let mut errors_buffer = Vec::new();
         for (&local_id, c_ty) in fcx_tables.user_provided_types().iter() {
-            let hir_id = hir::HirId { owner: common_local_id_root.index, local_id };
+            let hir_id = hir::HirId { owner: common_hir_owner, local_id };
 
             if cfg!(debug_assertions) && c_ty.has_local_value() {
                 span_bug!(hir_id.to_span(self.fcx.tcx), "writeback: `{:?}` is a local value", c_ty);
@@ -402,7 +397,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn visit_user_provided_sigs(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
-        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
 
         for (&def_id, c_sig) in fcx_tables.user_provided_sigs.iter() {
             if cfg!(debug_assertions) && c_sig.has_local_value() {
@@ -419,7 +414,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn visit_generator_interior_types(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
-        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
         self.tables.generator_interior_types = fcx_tables.generator_interior_types.clone();
     }
 
@@ -444,7 +439,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             // figures out the concrete type with `U`, but the stored type is with `T`.
             let definition_ty = self.fcx.infer_opaque_definition_from_instantiation(
                 def_id,
-                opaque_defn,
+                opaque_defn.substs,
                 instantiated_ty,
                 span,
             );
@@ -558,11 +553,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn visit_liberated_fn_sigs(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
-        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
-        let common_local_id_root = fcx_tables.local_id_root.unwrap();
+        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
+        let common_hir_owner = fcx_tables.hir_owner.unwrap();
 
         for (&local_id, fn_sig) in fcx_tables.liberated_fn_sigs().iter() {
-            let hir_id = hir::HirId { owner: common_local_id_root.index, local_id };
+            let hir_id = hir::HirId { owner: common_hir_owner, local_id };
             let fn_sig = self.resolve(fn_sig, &hir_id);
             self.tables.liberated_fn_sigs_mut().insert(hir_id, fn_sig.clone());
         }
@@ -570,11 +565,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn visit_fru_field_types(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
-        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
-        let common_local_id_root = fcx_tables.local_id_root.unwrap();
+        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
+        let common_hir_owner = fcx_tables.hir_owner.unwrap();
 
         for (&local_id, ftys) in fcx_tables.fru_field_types().iter() {
-            let hir_id = hir::HirId { owner: common_local_id_root.index, local_id };
+            let hir_id = hir::HirId { owner: common_hir_owner, local_id };
             let ftys = self.resolve(ftys, &hir_id);
             self.tables.fru_field_types_mut().insert(hir_id, ftys);
         }
@@ -602,23 +597,14 @@ impl Locatable for Span {
     }
 }
 
-impl Locatable for DefIndex {
-    fn to_span(&self, tcx: TyCtxt<'_>) -> Span {
-        let hir_id = tcx.hir().def_index_to_hir_id(*self);
-        tcx.hir().span(hir_id)
-    }
-}
-
 impl Locatable for hir::HirId {
     fn to_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.hir().span(*self)
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
-// The Resolver. This is the type folding engine that detects
-// unresolved types and so forth.
-
+/// The Resolver. This is the type folding engine that detects
+/// unresolved types and so forth.
 struct Resolver<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     infcx: &'cx InferCtxt<'cx, 'tcx>,
@@ -651,7 +637,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match self.infcx.fully_resolve(&t) {
-            Ok(t) => t,
+            Ok(t) => self.infcx.tcx.erase_regions(&t),
             Err(_) => {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
                 self.report_error(t);
@@ -660,15 +646,14 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
         }
     }
 
-    // FIXME This should be carefully checked
-    // We could use `self.report_error` but it doesn't accept a ty::Region, right now.
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        self.infcx.fully_resolve(&r).unwrap_or(self.tcx.lifetimes.re_static)
+        debug_assert!(!r.is_late_bound(), "Should not be resolving bound region.");
+        self.tcx.lifetimes.re_erased
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         match self.infcx.fully_resolve(&ct) {
-            Ok(ct) => ct,
+            Ok(ct) => self.infcx.tcx.erase_regions(&ct),
             Err(_) => {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
                 // FIXME: we'd like to use `self.report_error`, but it doesn't yet

@@ -1,31 +1,32 @@
 use crate::base::*;
 use crate::config::StripUnconfigured;
+use crate::configure;
 use crate::hygiene::{ExpnData, ExpnId, ExpnKind, SyntaxContext};
 use crate::mbe::macro_rules::annotate_err_with_kind;
+use crate::module::{parse_external_mod, push_directory, Directory, DirectoryOwnership};
 use crate::placeholders::{placeholder, PlaceholderExpander};
 use crate::proc_macro::collect_derives;
 
-use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, FatalError, PResult};
+use rustc_ast::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
+use rustc_ast::ast::{ItemKind, MacArgs, MacStmtStyle, StmtKind};
+use rustc_ast::mut_visit::*;
+use rustc_ast::ptr::P;
+use rustc_ast::token;
+use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::util::map_in_place::MapInPlace;
+use rustc_ast::visit::{self, AssocCtxt, Visitor};
+use rustc_ast_pretty::pprust;
+use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
+use rustc_errors::{Applicability, PResult};
 use rustc_feature::Features;
-use rustc_parse::configure;
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
-use rustc_parse::DirectoryOwnership;
+use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
+use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::parse::{feature_err, ParseSess};
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{FileName, Span, DUMMY_SP};
-use syntax::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
-use syntax::ast::{ItemKind, MacArgs, MacStmtStyle, StmtKind};
-use syntax::attr::{self, is_builtin_attr, HasAttrs};
-use syntax::mut_visit::*;
-use syntax::print::pprust;
-use syntax::ptr::P;
-use syntax::sess::{feature_err, ParseSess};
-use syntax::token;
-use syntax::tokenstream::{TokenStream, TokenTree};
-use syntax::util::map_in_place::MapInPlace;
-use syntax::visit::{self, Visitor};
 
 use smallvec::{smallvec, SmallVec};
 use std::io::ErrorKind;
@@ -39,7 +40,7 @@ macro_rules! ast_fragments {
         $($Kind:ident($AstTy:ty) {
             $kind_name:expr;
             $(one fn $mut_visit_ast:ident; fn $visit_ast:ident;)?
-            $(many fn $flat_map_ast_elt:ident; fn $visit_ast_elt:ident;)?
+            $(many fn $flat_map_ast_elt:ident; fn $visit_ast_elt:ident($($args:tt)*);)?
             fn $make_ast:ident;
         })*
     ) => {
@@ -127,7 +128,7 @@ macro_rules! ast_fragments {
                     AstFragment::OptExpr(None) => {}
                     $($(AstFragment::$Kind(ref ast) => visitor.$visit_ast(ast),)?)*
                     $($(AstFragment::$Kind(ref ast) => for ast_elt in &ast[..] {
-                        visitor.$visit_ast_elt(ast_elt);
+                        visitor.$visit_ast_elt(ast_elt, $($args)*);
                     })?)*
                 }
             }
@@ -147,52 +148,58 @@ ast_fragments! {
     Pat(P<ast::Pat>) { "pattern"; one fn visit_pat; fn visit_pat; fn make_pat; }
     Ty(P<ast::Ty>) { "type"; one fn visit_ty; fn visit_ty; fn make_ty; }
     Stmts(SmallVec<[ast::Stmt; 1]>) {
-        "statement"; many fn flat_map_stmt; fn visit_stmt; fn make_stmts;
+        "statement"; many fn flat_map_stmt; fn visit_stmt(); fn make_stmts;
     }
     Items(SmallVec<[P<ast::Item>; 1]>) {
-        "item"; many fn flat_map_item; fn visit_item; fn make_items;
+        "item"; many fn flat_map_item; fn visit_item(); fn make_items;
     }
-    TraitItems(SmallVec<[ast::AssocItem; 1]>) {
-        "trait item"; many fn flat_map_trait_item; fn visit_trait_item; fn make_trait_items;
+    TraitItems(SmallVec<[P<ast::AssocItem>; 1]>) {
+        "trait item";
+        many fn flat_map_trait_item;
+        fn visit_assoc_item(AssocCtxt::Trait);
+        fn make_trait_items;
     }
-    ImplItems(SmallVec<[ast::AssocItem; 1]>) {
-        "impl item"; many fn flat_map_impl_item; fn visit_impl_item; fn make_impl_items;
+    ImplItems(SmallVec<[P<ast::AssocItem>; 1]>) {
+        "impl item";
+        many fn flat_map_impl_item;
+        fn visit_assoc_item(AssocCtxt::Impl);
+        fn make_impl_items;
     }
-    ForeignItems(SmallVec<[ast::ForeignItem; 1]>) {
+    ForeignItems(SmallVec<[P<ast::ForeignItem>; 1]>) {
         "foreign item";
         many fn flat_map_foreign_item;
-        fn visit_foreign_item;
+        fn visit_foreign_item();
         fn make_foreign_items;
     }
     Arms(SmallVec<[ast::Arm; 1]>) {
-        "match arm"; many fn flat_map_arm; fn visit_arm; fn make_arms;
+        "match arm"; many fn flat_map_arm; fn visit_arm(); fn make_arms;
     }
     Fields(SmallVec<[ast::Field; 1]>) {
-        "field expression"; many fn flat_map_field; fn visit_field; fn make_fields;
+        "field expression"; many fn flat_map_field; fn visit_field(); fn make_fields;
     }
     FieldPats(SmallVec<[ast::FieldPat; 1]>) {
         "field pattern";
         many fn flat_map_field_pattern;
-        fn visit_field_pattern;
+        fn visit_field_pattern();
         fn make_field_patterns;
     }
     GenericParams(SmallVec<[ast::GenericParam; 1]>) {
         "generic parameter";
         many fn flat_map_generic_param;
-        fn visit_generic_param;
+        fn visit_generic_param();
         fn make_generic_params;
     }
     Params(SmallVec<[ast::Param; 1]>) {
-        "function parameter"; many fn flat_map_param; fn visit_param; fn make_params;
+        "function parameter"; many fn flat_map_param; fn visit_param(); fn make_params;
     }
     StructFields(SmallVec<[ast::StructField; 1]>) {
         "field";
         many fn flat_map_struct_field;
-        fn visit_struct_field;
+        fn visit_struct_field();
         fn make_struct_fields;
     }
     Variants(SmallVec<[ast::Variant; 1]>) {
-        "variant"; many fn flat_map_variant; fn visit_variant; fn make_variants;
+        "variant"; many fn flat_map_variant; fn visit_variant(); fn make_variants;
     }
 }
 
@@ -264,7 +271,7 @@ pub struct Invocation {
 
 pub enum InvocationKind {
     Bang {
-        mac: ast::Mac,
+        mac: ast::MacCall,
         span: Span,
     },
     Attr {
@@ -363,7 +370,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 krate.attrs = vec![];
                 krate.module = ast::Mod { inner: orig_mod_span, items: vec![], inline: true };
             }
-            _ => unreachable!(),
+            Some(ast::Item { span, kind, .. }) => {
+                krate.attrs = vec![];
+                krate.module = ast::Mod { inner: orig_mod_span, items: vec![], inline: true };
+                self.cx.span_err(
+                    span,
+                    &format!(
+                        "expected crate top-level item to be a module after macro expansion, found {} {}",
+                        kind.article(), kind.descr()
+                    ),
+                );
+            }
         };
         self.cx.trace_macros_diag();
         krate
@@ -391,7 +408,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mut undetermined_invocations = Vec::new();
         let (mut progress, mut force) = (false, !self.monotonic);
         loop {
-            let invoc = if let Some(invoc) = invocations.pop() {
+            let (invoc, res) = if let Some(invoc) = invocations.pop() {
                 invoc
             } else {
                 self.resolve_imports();
@@ -403,30 +420,51 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 continue;
             };
 
-            let eager_expansion_root =
-                if self.monotonic { invoc.expansion_data.id } else { orig_expansion_data.id };
-            let res = match self.cx.resolver.resolve_macro_invocation(
-                &invoc,
-                eager_expansion_root,
-                force,
-            ) {
-                Ok(res) => res,
-                Err(Indeterminate) => {
-                    undetermined_invocations.push(invoc);
-                    continue;
+            let res = match res {
+                Some(res) => res,
+                None => {
+                    let eager_expansion_root = if self.monotonic {
+                        invoc.expansion_data.id
+                    } else {
+                        orig_expansion_data.id
+                    };
+                    match self.cx.resolver.resolve_macro_invocation(
+                        &invoc,
+                        eager_expansion_root,
+                        force,
+                    ) {
+                        Ok(res) => res,
+                        Err(Indeterminate) => {
+                            // Cannot resolve, will retry this invocation later.
+                            undetermined_invocations.push((invoc, None));
+                            continue;
+                        }
+                    }
                 }
             };
 
-            progress = true;
             let ExpansionData { depth, id: expn_id, .. } = invoc.expansion_data;
             self.cx.current_expansion = invoc.expansion_data.clone();
 
             // FIXME(jseyfried): Refactor out the following logic
             let (expanded_fragment, new_invocations) = match res {
-                InvocationRes::Single(ext) => {
-                    let fragment = self.expand_invoc(invoc, &ext.kind);
-                    self.collect_invocations(fragment, &[])
-                }
+                InvocationRes::Single(ext) => match self.expand_invoc(invoc, &ext.kind) {
+                    ExpandResult::Ready(fragment) => self.collect_invocations(fragment, &[]),
+                    ExpandResult::Retry(invoc, explanation) => {
+                        if force {
+                            // We are stuck, stop retrying and produce a dummy fragment.
+                            let span = invoc.span();
+                            self.cx.span_err(span, &explanation);
+                            let fragment = invoc.fragment_kind.dummy(span);
+                            self.collect_invocations(fragment, &[])
+                        } else {
+                            // Cannot expand, will retry this invocation later.
+                            undetermined_invocations
+                                .push((invoc, Some(InvocationRes::Single(ext))));
+                            continue;
+                        }
+                    }
+                },
                 InvocationRes::DeriveContainer(_exts) => {
                     // FIXME: Consider using the derive resolutions (`_exts`) immediately,
                     // instead of enqueuing the derives to be resolved again later.
@@ -435,28 +473,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         _ => unreachable!(),
                     };
                     if !item.derive_allowed() {
-                        let attr = attr::find_by_name(item.attrs(), sym::derive)
-                            .expect("`derive` attribute should exist");
-                        let span = attr.span;
-                        let mut err = self.cx.struct_span_err(
-                            span,
-                            "`derive` may only be applied to structs, enums and unions",
-                        );
-                        if let ast::AttrStyle::Inner = attr.style {
-                            let trait_list = derives
-                                .iter()
-                                .map(|t| pprust::path_to_string(t))
-                                .collect::<Vec<_>>();
-                            let suggestion = format!("#[derive({})]", trait_list.join(", "));
-                            err.span_suggestion(
-                                span,
-                                "try an outer attribute",
-                                suggestion,
-                                // We don't 𝑘𝑛𝑜𝑤 that the following item is an ADT
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                        err.emit();
+                        self.error_derive_forbidden_on_non_adt(&derives, &item);
                     }
 
                     let mut item = self.fully_configure(item);
@@ -467,14 +484,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     for path in derives {
                         let expn_id = ExpnId::fresh(None);
                         derive_placeholders.push(NodeId::placeholder_from_expn_id(expn_id));
-                        invocations.push(Invocation {
-                            kind: InvocationKind::Derive { path, item: item.clone() },
-                            fragment_kind: invoc.fragment_kind,
-                            expansion_data: ExpansionData {
-                                id: expn_id,
-                                ..invoc.expansion_data.clone()
+                        invocations.push((
+                            Invocation {
+                                kind: InvocationKind::Derive { path, item: item.clone() },
+                                fragment_kind: invoc.fragment_kind,
+                                expansion_data: ExpansionData {
+                                    id: expn_id,
+                                    ..invoc.expansion_data.clone()
+                                },
                             },
-                        });
+                            None,
+                        ));
                     }
                     let fragment =
                         invoc.fragment_kind.expect_from_annotatables(::std::iter::once(item));
@@ -482,6 +502,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
             };
 
+            progress = true;
             if expanded_fragments.len() < depth {
                 expanded_fragments.push(Vec::new());
             }
@@ -505,6 +526,26 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         fragment_with_placeholders
     }
 
+    fn error_derive_forbidden_on_non_adt(&self, derives: &[Path], item: &Annotatable) {
+        let attr = attr::find_by_name(item.attrs(), sym::derive);
+        let span = attr.map_or(item.span(), |attr| attr.span);
+        let mut err = self
+            .cx
+            .struct_span_err(span, "`derive` may only be applied to structs, enums and unions");
+        if let Some(ast::Attribute { style: ast::AttrStyle::Inner, .. }) = attr {
+            let trait_list = derives.iter().map(|t| pprust::path_to_string(t)).collect::<Vec<_>>();
+            let suggestion = format!("#[derive({})]", trait_list.join(", "));
+            err.span_suggestion(
+                span,
+                "try an outer attribute",
+                suggestion,
+                // We don't 𝑘𝑛𝑜𝑤 that the following item is an ADT
+                Applicability::MaybeIncorrect,
+            );
+        }
+        err.emit();
+    }
+
     fn resolve_imports(&mut self) {
         if self.monotonic {
             self.cx.resolver.resolve_imports();
@@ -519,7 +560,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         &mut self,
         mut fragment: AstFragment,
         extra_placeholders: &[NodeId],
-    ) -> (AstFragment, Vec<Invocation>) {
+    ) -> (AstFragment, Vec<(Invocation, Option<InvocationRes>)>) {
         // Resolve `$crate`s in the fragment for pretty-printing.
         self.cx.resolver.resolve_dollar_crates();
 
@@ -554,15 +595,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         // we know that fold result vector will contain exactly one element
         match item {
             Annotatable::Item(item) => Annotatable::Item(cfg.flat_map_item(item).pop().unwrap()),
-            Annotatable::TraitItem(item) => Annotatable::TraitItem(
-                item.map(|item| cfg.flat_map_trait_item(item).pop().unwrap()),
-            ),
-            Annotatable::ImplItem(item) => {
-                Annotatable::ImplItem(item.map(|item| cfg.flat_map_impl_item(item).pop().unwrap()))
+            Annotatable::TraitItem(item) => {
+                Annotatable::TraitItem(cfg.flat_map_trait_item(item).pop().unwrap())
             }
-            Annotatable::ForeignItem(item) => Annotatable::ForeignItem(
-                item.map(|item| cfg.flat_map_foreign_item(item).pop().unwrap()),
-            ),
+            Annotatable::ImplItem(item) => {
+                Annotatable::ImplItem(cfg.flat_map_impl_item(item).pop().unwrap())
+            }
+            Annotatable::ForeignItem(item) => {
+                Annotatable::ForeignItem(cfg.flat_map_foreign_item(item).pop().unwrap())
+            }
             Annotatable::Stmt(stmt) => {
                 Annotatable::Stmt(stmt.map(|stmt| cfg.flat_map_stmt(stmt).pop().unwrap()))
             }
@@ -590,25 +631,54 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtensionKind) -> AstFragment {
-        if self.cx.current_expansion.depth > self.cx.ecfg.recursion_limit {
-            let expn_data = self.cx.current_expansion.id.expn_data();
-            let suggested_limit = self.cx.ecfg.recursion_limit * 2;
-            let mut err = self.cx.struct_span_err(
+    fn error_recursion_limit_reached(&mut self) {
+        let expn_data = self.cx.current_expansion.id.expn_data();
+        let suggested_limit = self.cx.ecfg.recursion_limit * 2;
+        self.cx
+            .struct_span_err(
                 expn_data.call_site,
                 &format!("recursion limit reached while expanding `{}`", expn_data.kind.descr()),
-            );
-            err.help(&format!(
-                "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
-                suggested_limit
-            ));
-            err.emit();
-            self.cx.trace_macros_diag();
-            FatalError.raise();
+            )
+            .help(&format!(
+                "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate (`{}`)",
+                suggested_limit, self.cx.ecfg.crate_name,
+            ))
+            .emit();
+        self.cx.trace_macros_diag();
+    }
+
+    /// A macro's expansion does not fit in this fragment kind.
+    /// For example, a non-type macro in a type position.
+    fn error_wrong_fragment_kind(&mut self, kind: AstFragmentKind, mac: &ast::MacCall, span: Span) {
+        let msg = format!(
+            "non-{kind} macro in {kind} position: {path}",
+            kind = kind.name(),
+            path = pprust::path_to_string(&mac.path),
+        );
+        self.cx.span_err(span, &msg);
+        self.cx.trace_macros_diag();
+    }
+
+    fn expand_invoc(
+        &mut self,
+        invoc: Invocation,
+        ext: &SyntaxExtensionKind,
+    ) -> ExpandResult<AstFragment, Invocation> {
+        let recursion_limit =
+            self.cx.reduced_recursion_limit.unwrap_or(self.cx.ecfg.recursion_limit);
+        if self.cx.current_expansion.depth > recursion_limit {
+            if self.cx.reduced_recursion_limit.is_none() {
+                self.error_recursion_limit_reached();
+            }
+
+            // Reduce the recursion limit by half each time it triggers.
+            self.cx.reduced_recursion_limit = Some(recursion_limit / 2);
+
+            return ExpandResult::Ready(invoc.fragment_kind.dummy(invoc.span()));
         }
 
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
-        match invoc.kind {
+        ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
                     self.gate_proc_macro_expansion_kind(span, fragment_kind);
@@ -622,13 +692,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
-                        let msg = format!(
-                            "non-{kind} macro in {kind} position: {path}",
-                            kind = fragment_kind.name(),
-                            path = pprust::path_to_string(&mac.path),
-                        );
-                        self.cx.span_err(span, &msg);
-                        self.cx.trace_macros_diag();
+                        self.error_wrong_fragment_kind(fragment_kind, &mac, span);
                         fragment_kind.dummy(span)
                     };
                     self.cx.current_expansion.prior_type_ascription = prev;
@@ -636,44 +700,41 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::Attr { attr, mut item, .. } => match ext {
+            InvocationKind::Attr { attr, mut item, derives, after_derive } => match ext {
                 SyntaxExtensionKind::Attr(expander) => {
                     self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
-                    let item_tok = TokenTree::token(
-                        token::Interpolated(Lrc::new(match item {
-                            Annotatable::Item(item) => token::NtItem(item),
-                            Annotatable::TraitItem(item) => token::NtTraitItem(item.into_inner()),
-                            Annotatable::ImplItem(item) => token::NtImplItem(item.into_inner()),
-                            Annotatable::ForeignItem(item) => {
-                                token::NtForeignItem(item.into_inner())
-                            }
-                            Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
-                            Annotatable::Expr(expr) => token::NtExpr(expr),
-                            Annotatable::Arm(..)
-                            | Annotatable::Field(..)
-                            | Annotatable::FieldPat(..)
-                            | Annotatable::GenericParam(..)
-                            | Annotatable::Param(..)
-                            | Annotatable::StructField(..)
-                            | Annotatable::Variant(..) => panic!("unexpected annotatable"),
-                        })),
-                        DUMMY_SP,
-                    )
-                    .into();
-                    let item = attr.unwrap_normal_item();
-                    if let MacArgs::Eq(..) = item.args {
+                    let tokens = item.into_tokens();
+                    let attr_item = attr.unwrap_normal_item();
+                    if let MacArgs::Eq(..) = attr_item.args {
                         self.cx.span_err(span, "key-value macro attributes are not supported");
                     }
                     let tok_result =
-                        expander.expand(self.cx, span, item.args.inner_tokens(), item_tok);
-                    self.parse_ast_fragment(tok_result, fragment_kind, &item.path, span)
+                        expander.expand(self.cx, span, attr_item.args.inner_tokens(), tokens);
+                    self.parse_ast_fragment(tok_result, fragment_kind, &attr_item.path, span)
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {
                     match validate_attr::parse_meta(self.cx.parse_sess, &attr) {
                         Ok(meta) => {
-                            let item = expander.expand(self.cx, span, &meta, item);
-                            fragment_kind.expect_from_annotatables(item)
+                            let items = match expander.expand(self.cx, span, &meta, item) {
+                                ExpandResult::Ready(items) => items,
+                                ExpandResult::Retry(item, explanation) => {
+                                    // Reassemble the original invocation for retrying.
+                                    return ExpandResult::Retry(
+                                        Invocation {
+                                            kind: InvocationKind::Attr {
+                                                attr,
+                                                item,
+                                                derives,
+                                                after_derive,
+                                            },
+                                            ..invoc
+                                        },
+                                        explanation,
+                                    );
+                                }
+                            };
+                            fragment_kind.expect_from_annotatables(items)
                         }
                         Err(mut err) => {
                             err.emit();
@@ -695,19 +756,31 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::Derive(expander)
                 | SyntaxExtensionKind::LegacyDerive(expander) => {
                     if !item.derive_allowed() {
-                        return fragment_kind.dummy(span);
+                        return ExpandResult::Ready(fragment_kind.dummy(span));
                     }
                     if let SyntaxExtensionKind::Derive(..) = ext {
                         self.gate_proc_macro_input(&item);
                     }
                     let meta = ast::MetaItem { kind: ast::MetaItemKind::Word, span, path };
-                    let items = expander.expand(self.cx, span, &meta, item);
+                    let items = match expander.expand(self.cx, span, &meta, item) {
+                        ExpandResult::Ready(items) => items,
+                        ExpandResult::Retry(item, explanation) => {
+                            // Reassemble the original invocation for retrying.
+                            return ExpandResult::Retry(
+                                Invocation {
+                                    kind: InvocationKind::Derive { path: meta.path, item },
+                                    ..invoc
+                                },
+                                explanation,
+                            );
+                        }
+                    };
                     fragment_kind.expect_from_annotatables(items)
                 }
                 _ => unreachable!(),
             },
             InvocationKind::DeriveContainer { .. } => unreachable!(),
-        }
+        })
     }
 
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
@@ -761,7 +834,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 visit::walk_item(self, item);
             }
 
-            fn visit_mac(&mut self, _: &'ast ast::Mac) {}
+            fn visit_mac(&mut self, _: &'ast ast::MacCall) {}
         }
 
         if !self.cx.ecfg.proc_macro_hygiene() {
@@ -807,7 +880,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         span: Span,
     ) -> AstFragment {
         let mut parser = self.cx.new_parser_from_tts(toks);
-        match parse_ast_fragment(&mut parser, kind, false) {
+        match parse_ast_fragment(&mut parser, kind) {
             Ok(fragment) => {
                 ensure_complete_parse(&mut parser, path, kind.name(), span);
                 fragment
@@ -826,7 +899,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 pub fn parse_ast_fragment<'a>(
     this: &mut Parser<'a>,
     kind: AstFragmentKind,
-    macro_legacy_warnings: bool,
 ) -> PResult<'a, AstFragment> {
     Ok(match kind {
         AstFragmentKind::Items => {
@@ -838,32 +910,30 @@ pub fn parse_ast_fragment<'a>(
         }
         AstFragmentKind::TraitItems => {
             let mut items = SmallVec::new();
-            while this.token != token::Eof {
-                items.push(this.parse_trait_item(&mut false)?);
+            while let Some(item) = this.parse_trait_item()? {
+                items.extend(item);
             }
             AstFragment::TraitItems(items)
         }
         AstFragmentKind::ImplItems => {
             let mut items = SmallVec::new();
-            while this.token != token::Eof {
-                items.push(this.parse_impl_item(&mut false)?);
+            while let Some(item) = this.parse_impl_item()? {
+                items.extend(item);
             }
             AstFragment::ImplItems(items)
         }
         AstFragmentKind::ForeignItems => {
             let mut items = SmallVec::new();
-            while this.token != token::Eof {
-                items.push(this.parse_foreign_item(DUMMY_SP)?);
+            while let Some(item) = this.parse_foreign_item()? {
+                items.extend(item);
             }
             AstFragment::ForeignItems(items)
         }
         AstFragmentKind::Stmts => {
             let mut stmts = SmallVec::new();
-            while this.token != token::Eof &&
-                    // won't make progress on a `}`
-                    this.token != token::CloseDelim(token::Brace)
-            {
-                if let Some(stmt) = this.parse_full_stmt(macro_legacy_warnings)? {
+            // Won't make progress on a `}`.
+            while this.token != token::Eof && this.token != token::CloseDelim(token::Brace) {
+                if let Some(stmt) = this.parse_full_stmt()? {
                     stmts.push(stmt);
                 }
             }
@@ -929,7 +999,7 @@ pub fn ensure_complete_parse<'a>(
 struct InvocationCollector<'a, 'b> {
     cx: &'a mut ExtCtxt<'b>,
     cfg: StripUnconfigured<'a>,
-    invocations: Vec<Invocation>,
+    invocations: Vec<(Invocation, Option<InvocationRes>)>,
     monotonic: bool,
 }
 
@@ -951,19 +1021,27 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         };
         let expn_id = ExpnId::fresh(expn_data);
         let vis = kind.placeholder_visibility();
-        self.invocations.push(Invocation {
-            kind,
-            fragment_kind,
-            expansion_data: ExpansionData {
-                id: expn_id,
-                depth: self.cx.current_expansion.depth + 1,
-                ..self.cx.current_expansion.clone()
+        self.invocations.push((
+            Invocation {
+                kind,
+                fragment_kind,
+                expansion_data: ExpansionData {
+                    id: expn_id,
+                    depth: self.cx.current_expansion.depth + 1,
+                    ..self.cx.current_expansion.clone()
+                },
             },
-        });
+            None,
+        ));
         placeholder(fragment_kind, NodeId::placeholder_from_expn_id(expn_id), vis)
     }
 
-    fn collect_bang(&mut self, mac: ast::Mac, span: Span, kind: AstFragmentKind) -> AstFragment {
+    fn collect_bang(
+        &mut self,
+        mac: ast::MacCall,
+        span: Span,
+        kind: AstFragmentKind,
+    ) -> AstFragment {
         self.collect(kind, InvocationKind::Bang { mac, span })
     }
 
@@ -1016,13 +1094,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 
     /// If `item` is an attr invocation, remove and return the macro attribute and derive traits.
-    fn classify_item<T>(
+    fn classify_item(
         &mut self,
-        item: &mut T,
-    ) -> (Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool)
-    where
-        T: HasAttrs,
-    {
+        item: &mut impl HasAttrs,
+    ) -> (Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool) {
         let (mut attr, mut traits, mut after_derive) = (None, Vec::new(), false);
 
         item.visit_attrs(|mut attrs| {
@@ -1036,9 +1111,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     /// Alternative to `classify_item()` that ignores `#[derive]` so invocations fallthrough
     /// to the unused-attributes lint (making it an error on statements and expressions
     /// is a breaking change)
-    fn classify_nonitem<T: HasAttrs>(
+    fn classify_nonitem(
         &mut self,
-        nonitem: &mut T,
+        nonitem: &mut impl HasAttrs,
     ) -> (Option<ast::Attribute>, /* after_derive */ bool) {
         let (mut attr, mut after_derive) = (None, false);
 
@@ -1067,6 +1142,16 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     .struct_span_warn(attr.span, "`#[derive]` does nothing on macro invocations")
                     .note("this may become a hard error in a future release")
                     .emit();
+            }
+
+            if attr.doc_str().is_some() {
+                self.cx.parse_sess.buffer_lint_with_diagnostic(
+                    &UNUSED_DOC_COMMENTS,
+                    attr.span,
+                    ast::CRATE_NODE_ID,
+                    "unused doc comment",
+                    BuiltinLintDiagnostics::UnusedDocComment(attr.span),
+                );
             }
         }
     }
@@ -1099,7 +1184,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     .into_inner();
             }
 
-            if let ast::ExprKind::Mac(mac) = expr.kind {
+            if let ast::ExprKind::MacCall(mac) = expr.kind {
                 self.check_attributes(&expr.attrs);
                 self.collect_bang(mac, expr.span, AstFragmentKind::Expr).make_expr().into_inner()
             } else {
@@ -1246,7 +1331,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     .map(|expr| expr.into_inner());
             }
 
-            if let ast::ExprKind::Mac(mac) = expr.kind {
+            if let ast::ExprKind::MacCall(mac) = expr.kind {
                 self.check_attributes(&expr.attrs);
                 self.collect_bang(mac, expr.span, AstFragmentKind::OptExpr)
                     .make_opt_expr()
@@ -1263,12 +1348,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn visit_pat(&mut self, pat: &mut P<ast::Pat>) {
         self.cfg.configure_pat(pat);
         match pat.kind {
-            PatKind::Mac(_) => {}
+            PatKind::MacCall(_) => {}
             _ => return noop_visit_pat(pat, self),
         }
 
         visit_clobber(pat, |mut pat| match mem::replace(&mut pat.kind, PatKind::Wild) {
-            PatKind::Mac(mac) => self.collect_bang(mac, pat.span, AstFragmentKind::Pat).make_pat(),
+            PatKind::MacCall(mac) => {
+                self.collect_bang(mac, pat.span, AstFragmentKind::Pat).make_pat()
+            }
             _ => unreachable!(),
         });
     }
@@ -1300,7 +1387,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             }
         }
 
-        if let StmtKind::Mac(mac) = stmt.kind {
+        if let StmtKind::MacCall(mac) = stmt.kind {
             let (mac, style, attrs) = mac.into_inner();
             self.check_attributes(&attrs);
             let mut placeholder =
@@ -1348,70 +1435,87 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 .make_items();
         }
 
+        let mut attrs = mem::take(&mut item.attrs); // We do this to please borrowck.
+        let ident = item.ident;
+        let span = item.span;
+
         match item.kind {
-            ast::ItemKind::Mac(..) => {
+            ast::ItemKind::MacCall(..) => {
+                item.attrs = attrs;
                 self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.kind {
-                    ItemKind::Mac(mac) => self
-                        .collect(
-                            AstFragmentKind::Items,
-                            InvocationKind::Bang { mac, span: item.span },
-                        )
+                    ItemKind::MacCall(mac) => self
+                        .collect(AstFragmentKind::Items, InvocationKind::Bang { mac, span })
                         .make_items(),
                     _ => unreachable!(),
                 })
             }
-            ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
-                if item.ident == Ident::invalid() {
-                    return noop_flat_map_item(item, self);
-                }
-
-                let orig_directory_ownership = self.cx.current_expansion.directory_ownership;
+            ast::ItemKind::Mod(ref mut old_mod @ ast::Mod { .. }) if ident != Ident::invalid() => {
+                let sess = self.cx.parse_sess;
+                let orig_ownership = self.cx.current_expansion.directory_ownership;
                 let mut module = (*self.cx.current_expansion.module).clone();
-                module.mod_path.push(item.ident);
 
-                // Detect if this is an inline module (`mod m { ... }` as opposed to `mod m;`).
-                // In the non-inline case, `inner` is never the dummy span (cf. `parse_item_mod`).
-                // Thus, if `inner` is the dummy span, we know the module is inline.
-                let inline_module = item.span.contains(inner) || inner.is_dummy();
-
-                if inline_module {
-                    if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, sym::path) {
-                        self.cx.current_expansion.directory_ownership =
-                            DirectoryOwnership::Owned { relative: None };
-                        module.directory.push(&*path.as_str());
-                    } else {
-                        module.directory.push(&*item.ident.as_str());
-                    }
+                let pushed = &mut false; // Record `parse_external_mod` pushing so we can pop.
+                let dir = Directory { ownership: orig_ownership, path: module.directory };
+                let Directory { ownership, path } = if old_mod.inline {
+                    // Inline `mod foo { ... }`, but we still need to push directories.
+                    item.attrs = attrs;
+                    push_directory(ident, &item.attrs, dir)
                 } else {
-                    let path = self.cx.parse_sess.source_map().span_to_unmapped_path(inner);
-                    let mut path = match path {
-                        FileName::Real(path) => path,
-                        other => PathBuf::from(other.to_string()),
-                    };
-                    let directory_ownership = match path.file_name().unwrap().to_str() {
-                        Some("mod.rs") => DirectoryOwnership::Owned { relative: None },
-                        Some(_) => DirectoryOwnership::Owned { relative: Some(item.ident) },
-                        None => DirectoryOwnership::UnownedViaMod,
-                    };
-                    path.pop();
-                    module.directory = path;
-                    self.cx.current_expansion.directory_ownership = directory_ownership;
-                }
+                    // We have an outline `mod foo;` so we need to parse the file.
+                    let (new_mod, dir) =
+                        parse_external_mod(sess, ident, span, dir, &mut attrs, pushed);
 
+                    let krate = ast::Crate {
+                        span: new_mod.inner,
+                        module: new_mod,
+                        attrs,
+                        proc_macros: vec![],
+                    };
+                    if let Some(extern_mod_loaded) = self.cx.extern_mod_loaded {
+                        extern_mod_loaded(&krate);
+                    }
+
+                    *old_mod = krate.module;
+                    item.attrs = krate.attrs;
+                    // File can have inline attributes, e.g., `#![cfg(...)]` & co. => Reconfigure.
+                    item = match self.configure(item) {
+                        Some(node) => node,
+                        None => {
+                            if *pushed {
+                                sess.included_mod_stack.borrow_mut().pop();
+                            }
+                            return Default::default();
+                        }
+                    };
+                    dir
+                };
+
+                // Set the module info before we flat map.
+                self.cx.current_expansion.directory_ownership = ownership;
+                module.directory = path;
+                module.mod_path.push(ident);
                 let orig_module =
                     mem::replace(&mut self.cx.current_expansion.module, Rc::new(module));
+
                 let result = noop_flat_map_item(item, self);
+
+                // Restore the module info.
                 self.cx.current_expansion.module = orig_module;
-                self.cx.current_expansion.directory_ownership = orig_directory_ownership;
+                self.cx.current_expansion.directory_ownership = orig_ownership;
+                if *pushed {
+                    sess.included_mod_stack.borrow_mut().pop();
+                }
                 result
             }
-
-            _ => noop_flat_map_item(item, self),
+            _ => {
+                item.attrs = attrs;
+                noop_flat_map_item(item, self)
+            }
         }
     }
 
-    fn flat_map_trait_item(&mut self, item: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
+    fn flat_map_trait_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         let mut item = configure!(self, item);
 
         let (attr, traits, after_derive) = self.classify_item(&mut item);
@@ -1420,7 +1524,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 .collect_attr(
                     attr,
                     traits,
-                    Annotatable::TraitItem(P(item)),
+                    Annotatable::TraitItem(item),
                     AstFragmentKind::TraitItems,
                     after_derive,
                 )
@@ -1428,16 +1532,20 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         match item.kind {
-            ast::AssocItemKind::Macro(mac) => {
-                let ast::AssocItem { attrs, span, .. } = item;
-                self.check_attributes(&attrs);
-                self.collect_bang(mac, span, AstFragmentKind::TraitItems).make_trait_items()
+            ast::AssocItemKind::MacCall(..) => {
+                self.check_attributes(&item.attrs);
+                item.and_then(|item| match item.kind {
+                    ast::AssocItemKind::MacCall(mac) => self
+                        .collect_bang(mac, item.span, AstFragmentKind::TraitItems)
+                        .make_trait_items(),
+                    _ => unreachable!(),
+                })
             }
             _ => noop_flat_map_assoc_item(item, self),
         }
     }
 
-    fn flat_map_impl_item(&mut self, item: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
+    fn flat_map_impl_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         let mut item = configure!(self, item);
 
         let (attr, traits, after_derive) = self.classify_item(&mut item);
@@ -1446,7 +1554,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 .collect_attr(
                     attr,
                     traits,
-                    Annotatable::ImplItem(P(item)),
+                    Annotatable::ImplItem(item),
                     AstFragmentKind::ImplItems,
                     after_derive,
                 )
@@ -1454,10 +1562,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         match item.kind {
-            ast::AssocItemKind::Macro(mac) => {
-                let ast::AssocItem { attrs, span, .. } = item;
-                self.check_attributes(&attrs);
-                self.collect_bang(mac, span, AstFragmentKind::ImplItems).make_impl_items()
+            ast::AssocItemKind::MacCall(..) => {
+                self.check_attributes(&item.attrs);
+                item.and_then(|item| match item.kind {
+                    ast::AssocItemKind::MacCall(mac) => self
+                        .collect_bang(mac, item.span, AstFragmentKind::ImplItems)
+                        .make_impl_items(),
+                    _ => unreachable!(),
+                })
             }
             _ => noop_flat_map_assoc_item(item, self),
         }
@@ -1465,12 +1577,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
     fn visit_ty(&mut self, ty: &mut P<ast::Ty>) {
         match ty.kind {
-            ast::TyKind::Mac(_) => {}
+            ast::TyKind::MacCall(_) => {}
             _ => return noop_visit_ty(ty, self),
         };
 
         visit_clobber(ty, |mut ty| match mem::replace(&mut ty.kind, ast::TyKind::Err) {
-            ast::TyKind::Mac(mac) => self.collect_bang(mac, ty.span, AstFragmentKind::Ty).make_ty(),
+            ast::TyKind::MacCall(mac) => {
+                self.collect_bang(mac, ty.span, AstFragmentKind::Ty).make_ty()
+            }
             _ => unreachable!(),
         });
     }
@@ -1482,8 +1596,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
     fn flat_map_foreign_item(
         &mut self,
-        mut foreign_item: ast::ForeignItem,
-    ) -> SmallVec<[ast::ForeignItem; 1]> {
+        mut foreign_item: P<ast::ForeignItem>,
+    ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
         let (attr, traits, after_derive) = self.classify_item(&mut foreign_item);
 
         if attr.is_some() || !traits.is_empty() {
@@ -1491,21 +1605,25 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 .collect_attr(
                     attr,
                     traits,
-                    Annotatable::ForeignItem(P(foreign_item)),
+                    Annotatable::ForeignItem(foreign_item),
                     AstFragmentKind::ForeignItems,
                     after_derive,
                 )
                 .make_foreign_items();
         }
 
-        if let ast::ForeignItemKind::Macro(mac) = foreign_item.kind {
-            self.check_attributes(&foreign_item.attrs);
-            return self
-                .collect_bang(mac, foreign_item.span, AstFragmentKind::ForeignItems)
-                .make_foreign_items();
+        match foreign_item.kind {
+            ast::ForeignItemKind::MacCall(..) => {
+                self.check_attributes(&foreign_item.attrs);
+                foreign_item.and_then(|item| match item.kind {
+                    ast::ForeignItemKind::MacCall(mac) => self
+                        .collect_bang(mac, item.span, AstFragmentKind::ForeignItems)
+                        .make_foreign_items(),
+                    _ => unreachable!(),
+                })
+            }
+            _ => noop_flat_map_foreign_item(foreign_item, self),
         }
-
-        noop_flat_map_foreign_item(foreign_item, self)
     }
 
     fn visit_item_kind(&mut self, item: &mut ast::ItemKind) {
@@ -1628,10 +1746,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         }
                     }
                 } else {
-                    let mut err = self.cx.struct_span_err(
-                        it.span(),
-                        &format!("expected path to external documentation"),
-                    );
+                    let mut err = self
+                        .cx
+                        .struct_span_err(it.span(), "expected path to external documentation");
 
                     // Check if the user erroneously used `doc(include(...))` syntax.
                     let literal = it.meta_item_list().and_then(|list| {
@@ -1661,7 +1778,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             }
 
             let meta = attr::mk_list_item(Ident::with_dummy_span(sym::doc), items);
-            *at = attr::Attribute {
+            *at = ast::Attribute {
                 kind: ast::AttrKind::Normal(AttrItem {
                     path: meta.path,
                     args: meta.kind.mac_args(meta.span),

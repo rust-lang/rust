@@ -1,16 +1,18 @@
+use rustc_ast::ast;
+use rustc_ast::ptr::P;
+use rustc_ast::token;
+use rustc_ast::tokenstream::TokenStream;
+use rustc_ast_pretty::pprust;
 use rustc_expand::base::{self, *};
+use rustc_expand::module::DirectoryOwnership;
 use rustc_expand::panictry;
-use rustc_parse::{self, new_sub_parser_from_file, parser::Parser, DirectoryOwnership};
+use rustc_parse::{self, new_sub_parser_from_file, parser::Parser};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_span::symbol::Symbol;
 use rustc_span::{self, Pos, Span};
-use syntax::ast;
-use syntax::print::pprust;
-use syntax::ptr::P;
-use syntax::token;
-use syntax::tokenstream::TokenStream;
 
 use smallvec::SmallVec;
+use std::rc::Rc;
 
 use rustc_data_structures::sync::Lrc;
 
@@ -101,15 +103,23 @@ pub fn expand_include<'cx>(
         None => return DummyResult::any(sp),
     };
     // The file will be added to the code map by the parser
-    let file = match cx.resolve_path(file, sp) {
+    let mut file = match cx.resolve_path(file, sp) {
         Ok(f) => f,
         Err(mut err) => {
             err.emit();
             return DummyResult::any(sp);
         }
     };
-    let directory_ownership = DirectoryOwnership::Owned { relative: None };
-    let p = new_sub_parser_from_file(cx.parse_sess(), &file, directory_ownership, None, sp);
+    let p = new_sub_parser_from_file(cx.parse_sess(), &file, None, sp);
+
+    // If in the included file we have e.g., `mod bar;`,
+    // then the path of `bar.rs` should be relative to the directory of `file`.
+    // See https://github.com/rust-lang/rust/pull/69838/files#r395217057 for a discussion.
+    // `MacroExpander::fully_expand_fragment` later restores, so "stack discipline" is maintained.
+    file.pop();
+    cx.current_expansion.directory_ownership = DirectoryOwnership::Owned { relative: None };
+    let mod_path = cx.current_expansion.module.mod_path.clone();
+    cx.current_expansion.module = Rc::new(ModuleData { mod_path, directory: file });
 
     struct ExpandResult<'a> {
         p: Parser<'a>,

@@ -6,51 +6,43 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(bool_to_option)]
-#![feature(box_patterns)]
-#![feature(box_syntax)]
 #![feature(const_cstr_unchecked)]
 #![feature(crate_visibility_modifier)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
-#![feature(libc)]
 #![feature(nll)]
-#![feature(optin_builtin_traits)]
-#![feature(concat_idents)]
-#![feature(link_args)]
-#![feature(static_nobundle)]
 #![feature(trusted_len)]
 #![recursion_limit = "256"]
 
 use back::write::{create_informational_target_machine, create_target_machine};
-use rustc_span::symbol::Symbol;
 
 pub use llvm_util::target_features;
-use rustc::dep_graph::WorkProduct;
+use rustc::dep_graph::{DepGraph, WorkProduct};
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
+use rustc::ty::{self, TyCtxt};
+use rustc::util::common::ErrorReported;
+use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::CompiledModule;
+use rustc_codegen_ssa::ModuleCodegen;
+use rustc_codegen_ssa::{CodegenResults, CompiledModule};
 use rustc_errors::{FatalError, Handler};
+use rustc_serialize::json;
+use rustc_session::config::{self, OptLevel, OutputFilenames, PrintRequest};
+use rustc_session::Session;
+use rustc_span::symbol::Symbol;
+
 use std::any::Any;
 use std::ffi::CStr;
 use std::fs;
 use std::sync::Arc;
-use syntax::expand::allocator::AllocatorKind;
-
-use rustc::dep_graph::DepGraph;
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc::session::config::{OptLevel, OutputFilenames, OutputType, PrintRequest};
-use rustc::session::Session;
-use rustc::ty::{self, TyCtxt};
-use rustc::util::common::ErrorReported;
-use rustc_codegen_ssa::ModuleCodegen;
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_serialize::json;
 
 mod back {
     pub mod archive;
     pub mod bytecode;
     pub mod lto;
+    mod profiling;
     pub mod write;
 }
 
@@ -196,7 +188,7 @@ unsafe impl Sync for LlvmCodegenBackend {}
 
 impl LlvmCodegenBackend {
     pub fn new() -> Box<dyn CodegenBackend> {
-        box LlvmCodegenBackend(())
+        Box::new(LlvmCodegenBackend(()))
     }
 }
 
@@ -245,7 +237,7 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn metadata_loader(&self) -> Box<MetadataLoaderDyn> {
-        box metadata::LlvmMetadataLoader
+        Box::new(metadata::LlvmMetadataLoader)
     }
 
     fn provide(&self, providers: &mut ty::query::Providers<'_>) {
@@ -262,21 +254,20 @@ impl CodegenBackend for LlvmCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        box rustc_codegen_ssa::base::codegen_crate(
+        Box::new(rustc_codegen_ssa::base::codegen_crate(
             LlvmCodegenBackend(()),
             tcx,
             metadata,
             need_metadata_module,
-        )
+        ))
     }
 
-    fn join_codegen_and_link(
+    fn join_codegen(
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         dep_graph: &DepGraph,
-        outputs: &OutputFilenames,
-    ) -> Result<(), ErrorReported> {
+    ) -> Result<Box<dyn Any>, ErrorReported> {
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
@@ -291,21 +282,25 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         sess.compile_status()?;
 
-        if !sess
-            .opts
-            .output_types
-            .keys()
-            .any(|&i| i == OutputType::Exe || i == OutputType::Metadata)
-        {
-            return Ok(());
-        }
+        Ok(Box::new(codegen_results))
+    }
+
+    fn link(
+        &self,
+        sess: &Session,
+        codegen_results: Box<dyn Any>,
+        outputs: &OutputFilenames,
+    ) -> Result<(), ErrorReported> {
+        let codegen_results = codegen_results
+            .downcast::<CodegenResults>()
+            .expect("Expected CodegenResults, found Box<Any>");
 
         if sess.opts.debugging_opts.no_link {
             // FIXME: use a binary format to encode the `.rlink` file
             let rlink_data = json::encode(&codegen_results).map_err(|err| {
                 sess.fatal(&format!("failed to encode rlink: {}", err));
             })?;
-            let rlink_file = outputs.with_extension("rlink");
+            let rlink_file = outputs.with_extension(config::RLINK_EXT);
             fs::write(&rlink_file, rlink_data).map_err(|err| {
                 sess.fatal(&format!("failed to write file {}: {}", rlink_file.display(), err));
             })?;
@@ -331,6 +326,12 @@ impl CodegenBackend for LlvmCodegenBackend {
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)
         rustc_incremental::finalize_session_directory(sess, codegen_results.crate_hash);
+
+        sess.time("llvm_dump_timing_file", || {
+            if sess.opts.debugging_opts.llvm_time_trace {
+                llvm_util::time_trace_profiler_finish("llvm_timings.json");
+            }
+        });
 
         Ok(())
     }

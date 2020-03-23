@@ -1,0 +1,30 @@
+error[E0038]: the trait `Trait` cannot be made into an object
+  --> $DIR/object-unsafe-trait-references-self.rs:6:11
+   |
+LL | trait Trait {
+   |       ----- this trait cannot be made into an object...
+LL |     fn baz(&self, _: Self) {}
+   |                      ---- ...because method `baz` references the `Self` type in this parameter
+LL |     fn bat(&self) -> Self {}
+   |                      ---- ...because method `bat` references the `Self` type in its return type
+...
+LL | fn bar(x: &dyn Trait) {}
+   |           ^^^^^^^^^^ the trait `Trait` cannot be made into an object
+   |
+   = help: consider moving `baz` to another trait
+   = help: consider moving `bat` to another trait
+
+error[E0038]: the trait `Other` cannot be made into an object
+  --> $DIR/object-unsafe-trait-references-self.rs:10:11
+   |
+LL | trait Other: Sized {}
+   |       -----  ----- ...because it requires `Self: Sized`
+   |       |
+   |       this trait cannot be made into an object...
+LL | 
+LL | fn foo(x: &dyn Other) {}
+   |           ^^^^^^^^^^ the trait `Other` cannot be made into an object
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

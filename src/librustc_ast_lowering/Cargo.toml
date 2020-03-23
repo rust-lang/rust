@@ -12,6 +12,7 @@ doctest = false
 [dependencies]
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
 rustc = { path = "../librustc" }
+rustc_ast_pretty = { path = "../librustc_ast_pretty" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }
@@ -19,5 +20,5 @@ rustc_index = { path = "../librustc_index" }
 rustc_span = { path = "../librustc_span" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_session = { path = "../librustc_session" }
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }

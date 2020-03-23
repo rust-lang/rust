@@ -1,15 +1,19 @@
 use rustc::hir::map as hir_map;
-use rustc::session::CrateDisambiguator;
-use rustc::traits::{self};
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_session::CrateDisambiguator;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
+use rustc_trait_selection::traits;
 
-fn sized_constraint_for_ty(tcx: TyCtxt<'tcx>, adtdef: &ty::AdtDef, ty: Ty<'tcx>) -> Vec<Ty<'tcx>> {
+fn sized_constraint_for_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    adtdef: &ty::AdtDef,
+    ty: Ty<'tcx>,
+) -> Vec<Ty<'tcx>> {
     use ty::TyKind::*;
 
     let result = match ty.kind {
@@ -206,6 +210,11 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
     }
 }
 
+fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AssociatedItems {
+    let items = tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did));
+    tcx.arena.alloc(ty::AssociatedItems::new(items))
+}
+
 fn def_span(tcx: TyCtxt<'_>, def_id: DefId) -> Span {
     tcx.hir().span_if_local(def_id).unwrap()
 }
@@ -228,7 +237,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     }
     // Compute the bounds on Self and the type parameters.
 
-    let ty::InstantiatedPredicates { predicates } =
+    let ty::InstantiatedPredicates { predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
 
     // Finally, we have to normalize the bounds in the environment, in
@@ -243,11 +252,8 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // are any errors at that point, so after type checking you can be
     // sure that this will succeed without errors anyway.
 
-    let unnormalized_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&predicates),
-        traits::Reveal::UserFacing,
-        tcx.sess.opts.debugging_opts.chalk.then_some(def_id),
-    );
+    let unnormalized_env =
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates), traits::Reveal::UserFacing, None);
 
     let body_id = tcx.hir().as_local_hir_id(def_id).map_or(hir::DUMMY_HIR_ID, |id| {
         tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
@@ -267,8 +273,7 @@ fn original_crate_name(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Symbol {
 }
 
 fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
-    assert_eq!(crate_num, LOCAL_CRATE);
-    tcx.hir().crate_hash
+    tcx.index_hir(crate_num).crate_hash
 }
 
 fn instance_def_size_estimate<'tcx>(
@@ -356,6 +361,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         asyncness,
         associated_item,
         associated_item_def_ids,
+        associated_items,
         adt_sized_constraint,
         def_span,
         param_env,

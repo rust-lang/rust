@@ -1,20 +1,20 @@
-use super::{CheckInAllocMsg, Pointer, RawConst, ScalarMaybeUndef};
+use super::{AllocId, CheckInAllocMsg, Pointer, RawConst, ScalarMaybeUndef};
 
 use crate::hir::map::definitions::DefPathData;
-use crate::mir;
+use crate::mir::interpret::ConstValue;
 use crate::ty::layout::{Align, LayoutError, Size};
 use crate::ty::query::TyCtxtAt;
+use crate::ty::tls;
 use crate::ty::{self, layout, Ty};
 
 use backtrace::Backtrace;
-use hir::GeneratorKind;
+use rustc_data_structures::sync::Lock;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_macros::HashStable;
-use rustc_span::symbol::Symbol;
-use rustc_span::{Pos, Span};
-use rustc_target::spec::abi::Abi;
-use std::{any::Any, env, fmt};
+use rustc_session::CtfeBacktrace;
+use rustc_span::{def_id::DefId, Pos, Span};
+use std::{any::Any, fmt};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
@@ -42,7 +42,7 @@ CloneTypeFoldableImpls! {
 }
 
 pub type ConstEvalRawResult<'tcx> = Result<RawConst<'tcx>, ErrorHandled>;
-pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
+pub type ConstEvalResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 
 #[derive(Debug)]
 pub struct ConstEvalErr<'tcx> {
@@ -83,18 +83,15 @@ impl<'tcx> ConstEvalErr<'tcx> {
         &self,
         tcx: TyCtxtAt<'tcx>,
         message: &str,
-    ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
-        self.struct_generic(tcx, message, None)
+        emit: impl FnOnce(DiagnosticBuilder<'_>),
+    ) -> Result<(), ErrorHandled> {
+        self.struct_generic(tcx, message, emit, None)
     }
 
     pub fn report_as_error(&self, tcx: TyCtxtAt<'tcx>, message: &str) -> ErrorHandled {
-        let err = self.struct_error(tcx, message);
-        match err {
-            Ok(mut err) => {
-                err.emit();
-                ErrorHandled::Reported
-            }
-            Err(err) => err,
+        match self.struct_error(tcx, message, |mut e| e.emit()) {
+            Ok(_) => ErrorHandled::Reported,
+            Err(x) => x,
         }
     }
 
@@ -105,9 +102,11 @@ impl<'tcx> ConstEvalErr<'tcx> {
         lint_root: hir::HirId,
         span: Option<Span>,
     ) -> ErrorHandled {
-        let lint = self.struct_generic(tcx, message, Some(lint_root));
-        match lint {
-            Ok(mut lint) => {
+        match self.struct_generic(
+            tcx,
+            message,
+            |mut lint: DiagnosticBuilder<'_>| {
+                // Apply the span.
                 if let Some(span) = span {
                     let primary_spans = lint.span.primary_spans().to_vec();
                     // point at the actual error as the primary span
@@ -121,59 +120,95 @@ impl<'tcx> ConstEvalErr<'tcx> {
                     }
                 }
                 lint.emit();
-                ErrorHandled::Reported
-            }
+            },
+            Some(lint_root),
+        ) {
+            Ok(_) => ErrorHandled::Reported,
             Err(err) => err,
         }
     }
 
+    /// Create a diagnostic for this const eval error.
+    ///
+    /// Sets the message passed in via `message` and adds span labels with detailed error
+    /// information before handing control back to `emit` to do any final processing.
+    /// It's the caller's responsibility to call emit(), stash(), etc. within the `emit`
+    /// function to dispose of the diagnostic properly.
+    ///
+    /// If `lint_root.is_some()` report it as a lint, else report it as a hard error.
+    /// (Except that for some errors, we ignore all that -- see `must_error` below.)
     fn struct_generic(
         &self,
         tcx: TyCtxtAt<'tcx>,
         message: &str,
+        emit: impl FnOnce(DiagnosticBuilder<'_>),
         lint_root: Option<hir::HirId>,
-    ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
+    ) -> Result<(), ErrorHandled> {
         let must_error = match self.error {
-            InterpError::MachineStop(_) => bug!("CTFE does not stop"),
             err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
                 return Err(ErrorHandled::TooGeneric);
             }
             err_inval!(TypeckError) => return Err(ErrorHandled::Reported),
+            // We must *always* hard error on these, even if the caller wants just a lint.
             err_inval!(Layout(LayoutError::SizeOverflow(_))) => true,
             _ => false,
         };
         trace!("reporting const eval failure at {:?}", self.span);
-        let mut err = if let (Some(lint_root), false) = (lint_root, must_error) {
-            let hir_id = self
-                .stacktrace
-                .iter()
-                .rev()
-                .filter_map(|frame| frame.lint_root)
-                .next()
-                .unwrap_or(lint_root);
-            tcx.struct_span_lint_hir(
-                rustc_session::lint::builtin::CONST_ERR,
-                hir_id,
-                tcx.span,
-                message,
-            )
-        } else if must_error {
-            struct_error(tcx, &self.error.to_string())
-        } else {
-            struct_error(tcx, message)
+
+        let err_msg = match &self.error {
+            InterpError::MachineStop(msg) => {
+                // A custom error (`ConstEvalErrKind` in `librustc_mir/interp/const_eval/error.rs`).
+                // Should be turned into a string by now.
+                msg.downcast_ref::<String>().expect("invalid MachineStop payload").clone()
+            }
+            err => err.to_string(),
         };
-        if !must_error {
-            err.span_label(self.span, self.error.to_string());
-        }
-        // Skip the last, which is just the environment of the constant.  The stacktrace
-        // is sometimes empty because we create "fake" eval contexts in CTFE to do work
-        // on constant values.
-        if self.stacktrace.len() > 0 {
-            for frame_info in &self.stacktrace[..self.stacktrace.len() - 1] {
-                err.span_label(frame_info.call_site, frame_info.to_string());
+
+        let finish = |mut err: DiagnosticBuilder<'_>, span_msg: Option<String>| {
+            if let Some(span_msg) = span_msg {
+                err.span_label(self.span, span_msg);
+            }
+            // Add spans for the stacktrace.
+            // Skip the last, which is just the environment of the constant.  The stacktrace
+            // is sometimes empty because we create "fake" eval contexts in CTFE to do work
+            // on constant values.
+            if !self.stacktrace.is_empty() {
+                for frame_info in &self.stacktrace[..self.stacktrace.len() - 1] {
+                    err.span_label(frame_info.call_site, frame_info.to_string());
+                }
+            }
+            // Let the caller finish the job.
+            emit(err)
+        };
+
+        if must_error {
+            // The `message` makes little sense here, this is a more serious error than the
+            // caller thinks anyway.
+            // See <https://github.com/rust-lang/rust/pull/63152>.
+            finish(struct_error(tcx, &err_msg), None);
+        } else {
+            // Regular case.
+            if let Some(lint_root) = lint_root {
+                // Report as lint.
+                let hir_id = self
+                    .stacktrace
+                    .iter()
+                    .rev()
+                    .filter_map(|frame| frame.lint_root)
+                    .next()
+                    .unwrap_or(lint_root);
+                tcx.struct_span_lint_hir(
+                    rustc_session::lint::builtin::CONST_ERR,
+                    hir_id,
+                    tcx.span,
+                    |lint| finish(lint.build(message), Some(err_msg)),
+                );
+            } else {
+                // Report as hard error.
+                finish(struct_error(tcx, message), Some(err_msg));
             }
         }
-        Ok(err)
+        Ok(())
     }
 }
 
@@ -211,7 +246,7 @@ fn print_backtrace(backtrace: &mut Backtrace) {
     eprintln!("\n\nAn error occurred in miri:\n{:?}", backtrace);
 }
 
-impl From<ErrorHandled> for InterpErrorInfo<'tcx> {
+impl From<ErrorHandled> for InterpErrorInfo<'_> {
     fn from(err: ErrorHandled) -> Self {
         match err {
             ErrorHandled::Reported => err_inval!(ReferencedConstant),
@@ -223,79 +258,26 @@ impl From<ErrorHandled> for InterpErrorInfo<'tcx> {
 
 impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
     fn from(kind: InterpError<'tcx>) -> Self {
-        let backtrace = match env::var("RUSTC_CTFE_BACKTRACE") {
-            // Matching `RUST_BACKTRACE` -- we treat "0" the same as "not present".
-            Ok(ref val) if val != "0" => {
+        let capture_backtrace = tls::with_context_opt(|ctxt| {
+            if let Some(ctxt) = ctxt {
+                *Lock::borrow(&ctxt.tcx.sess.ctfe_backtrace)
+            } else {
+                CtfeBacktrace::Disabled
+            }
+        });
+
+        let backtrace = match capture_backtrace {
+            CtfeBacktrace::Disabled => None,
+            CtfeBacktrace::Capture => Some(Box::new(Backtrace::new_unresolved())),
+            CtfeBacktrace::Immediate => {
+                // Print it now.
                 let mut backtrace = Backtrace::new_unresolved();
-
-                if val == "immediate" {
-                    // Print it now.
-                    print_backtrace(&mut backtrace);
-                    None
-                } else {
-                    Some(Box::new(backtrace))
-                }
+                print_backtrace(&mut backtrace);
+                None
             }
-            _ => None,
         };
+
         InterpErrorInfo { kind, backtrace }
-    }
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable, PartialEq)]
-pub enum PanicInfo<O> {
-    Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
-    BoundsCheck { len: O, index: O },
-    Overflow(mir::BinOp),
-    OverflowNeg,
-    DivisionByZero,
-    RemainderByZero,
-    ResumedAfterReturn(GeneratorKind),
-    ResumedAfterPanic(GeneratorKind),
-}
-
-/// Type for MIR `Assert` terminator error messages.
-pub type AssertMessage<'tcx> = PanicInfo<mir::Operand<'tcx>>;
-
-impl<O> PanicInfo<O> {
-    /// Getting a description does not require `O` to be printable, and does not
-    /// require allocation.
-    /// The caller is expected to handle `Panic` and `BoundsCheck` separately.
-    pub fn description(&self) -> &'static str {
-        use PanicInfo::*;
-        match self {
-            Overflow(mir::BinOp::Add) => "attempt to add with overflow",
-            Overflow(mir::BinOp::Sub) => "attempt to subtract with overflow",
-            Overflow(mir::BinOp::Mul) => "attempt to multiply with overflow",
-            Overflow(mir::BinOp::Div) => "attempt to divide with overflow",
-            Overflow(mir::BinOp::Rem) => "attempt to calculate the remainder with overflow",
-            OverflowNeg => "attempt to negate with overflow",
-            Overflow(mir::BinOp::Shr) => "attempt to shift right with overflow",
-            Overflow(mir::BinOp::Shl) => "attempt to shift left with overflow",
-            Overflow(op) => bug!("{:?} cannot overflow", op),
-            DivisionByZero => "attempt to divide by zero",
-            RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
-            ResumedAfterReturn(GeneratorKind::Gen) => "generator resumed after completion",
-            ResumedAfterReturn(GeneratorKind::Async(_)) => "`async fn` resumed after completion",
-            ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
-            ResumedAfterPanic(GeneratorKind::Async(_)) => "`async fn` resumed after panicking",
-            Panic { .. } | BoundsCheck { .. } => bug!("Unexpected PanicInfo"),
-        }
-    }
-}
-
-impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use PanicInfo::*;
-        match self {
-            Panic { ref msg, line, col, ref file } => {
-                write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col)
-            }
-            BoundsCheck { ref len, ref index } => {
-                write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index)
-            }
-            _ => write!(f, "{}", self.description()),
-        }
     }
 }
 
@@ -312,9 +294,11 @@ pub enum InvalidProgramInfo<'tcx> {
     TypeckError,
     /// An error occurred during layout computation.
     Layout(layout::LayoutError<'tcx>),
+    /// An invalid transmute happened.
+    TransmuteSizeDiff(Ty<'tcx>, Ty<'tcx>),
 }
 
-impl fmt::Debug for InvalidProgramInfo<'tcx> {
+impl fmt::Debug for InvalidProgramInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InvalidProgramInfo::*;
         match self {
@@ -322,6 +306,11 @@ impl fmt::Debug for InvalidProgramInfo<'tcx> {
             ReferencedConstant => write!(f, "referenced constant has errors"),
             TypeckError => write!(f, "encountered constants with type errors, stopping evaluation"),
             Layout(ref err) => write!(f, "{}", err),
+            TransmuteSizeDiff(from_ty, to_ty) => write!(
+                f,
+                "tried to transmute from {:?} to {:?}, but their sizes differed",
+                from_ty, to_ty
+            ),
         }
     }
 }
@@ -337,13 +326,55 @@ pub enum UndefinedBehaviorInfo {
     /// An enum discriminant was set to a value which was outside the range of valid values.
     InvalidDiscriminant(ScalarMaybeUndef),
     /// A slice/array index projection went out-of-bounds.
-    BoundsCheckFailed { len: u64, index: u64 },
+    BoundsCheckFailed {
+        len: u64,
+        index: u64,
+    },
     /// Something was divided by 0 (x / 0).
     DivisionByZero,
     /// Something was "remainded" by 0 (x % 0).
     RemainderByZero,
     /// Overflowing inbounds pointer arithmetic.
     PointerArithOverflow,
+    /// Invalid metadata in a wide pointer (using `str` to avoid allocations).
+    InvalidMeta(&'static str),
+    /// Reading a C string that does not end within its allocation.
+    UnterminatedCString(Pointer),
+    /// Dereferencing a dangling pointer after it got freed.
+    PointerUseAfterFree(AllocId),
+    /// Used a pointer outside the bounds it is valid for.
+    PointerOutOfBounds {
+        ptr: Pointer,
+        msg: CheckInAllocMsg,
+        allocation_size: Size,
+    },
+    /// Used a pointer with bad alignment.
+    AlignmentCheckFailed {
+        required: Align,
+        has: Align,
+    },
+    /// Using an integer as a pointer in the wrong way.
+    InvalidIntPointerUsage(u64),
+    /// Writing to read-only memory.
+    WriteToReadOnly(AllocId),
+    /// Using a pointer-not-to-a-function as function pointer.
+    InvalidFunctionPointer(Pointer),
+    // Trying to access the data behind a function pointer.
+    DerefFunctionPointer(AllocId),
+    /// The value validity check found a problem.
+    /// Should only be thrown by `validity.rs` and always point out which part of the value
+    /// is the problem.
+    ValidationFailure(String),
+    /// Using a non-boolean `u8` as bool.
+    InvalidBool(u8),
+    /// Using a non-character `u32` as character.
+    InvalidChar(u32),
+    /// Using uninitialized data where it is not allowed.
+    InvalidUndefBytes(Option<Pointer>),
+    /// Working with a local that is not currently live.
+    DeadLocal,
+    /// Trying to read from the return place of a function.
+    ReadFromReturnPlace,
 }
 
 impl fmt::Debug for UndefinedBehaviorInfo {
@@ -361,6 +392,51 @@ impl fmt::Debug for UndefinedBehaviorInfo {
             DivisionByZero => write!(f, "dividing by zero"),
             RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
             PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
+            InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {}", msg),
+            UnterminatedCString(p) => write!(
+                f,
+                "reading a null-terminated string starting at {:?} with no null found before end of allocation",
+                p,
+            ),
+            PointerUseAfterFree(a) => {
+                write!(f, "pointer to {:?} was dereferenced after this allocation got freed", a)
+            }
+            PointerOutOfBounds { ptr, msg, allocation_size } => write!(
+                f,
+                "{} failed: pointer must be in-bounds at offset {}, \
+                           but is outside bounds of {} which has size {}",
+                msg,
+                ptr.offset.bytes(),
+                ptr.alloc_id,
+                allocation_size.bytes()
+            ),
+            InvalidIntPointerUsage(0) => write!(f, "invalid use of NULL pointer"),
+            InvalidIntPointerUsage(i) => write!(f, "invalid use of {} as a pointer", i),
+            AlignmentCheckFailed { required, has } => write!(
+                f,
+                "accessing memory with alignment {}, but alignment {} is required",
+                has.bytes(),
+                required.bytes()
+            ),
+            WriteToReadOnly(a) => write!(f, "writing to {:?} which is read-only", a),
+            InvalidFunctionPointer(p) => {
+                write!(f, "using {:?} as function pointer but it does not point to a function", p)
+            }
+            DerefFunctionPointer(a) => write!(f, "accessing {:?} which contains a function", a),
+            ValidationFailure(ref err) => write!(f, "type validation failed: {}", err),
+            InvalidBool(b) => write!(f, "interpreting an invalid 8-bit value as a bool: {}", b),
+            InvalidChar(c) => write!(f, "interpreting an invalid 32-bit value as a char: {}", c),
+            InvalidUndefBytes(Some(p)) => write!(
+                f,
+                "reading uninitialized memory at {:?}, but this operation requires initialized memory",
+                p
+            ),
+            InvalidUndefBytes(None) => write!(
+                f,
+                "using uninitialized data, but this operation requires initialized memory"
+            ),
+            DeadLocal => write!(f, "accessing a dead local variable"),
+            ReadFromReturnPlace => write!(f, "tried to read from the return place"),
         }
     }
 }
@@ -372,203 +448,45 @@ impl fmt::Debug for UndefinedBehaviorInfo {
 ///
 /// Currently, we also use this as fall-back error kind for errors that have not been
 /// categorized yet.
-pub enum UnsupportedOpInfo<'tcx> {
+pub enum UnsupportedOpInfo {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
-
     /// When const-prop encounters a situation it does not support, it raises this error.
-    /// This must not allocate for performance reasons.
-    ConstPropUnsupported(&'tcx str),
-
-    // -- Everything below is not categorized yet --
-    FunctionAbiMismatch(Abi, Abi),
-    FunctionArgMismatch(Ty<'tcx>, Ty<'tcx>),
-    FunctionRetMismatch(Ty<'tcx>, Ty<'tcx>),
-    FunctionArgCountMismatch,
-    UnterminatedCString(Pointer),
-    DanglingPointerDeref,
-    DoubleFree,
-    InvalidMemoryAccess,
-    InvalidFunctionPointer,
-    InvalidBool,
-    PointerOutOfBounds {
-        ptr: Pointer,
-        msg: CheckInAllocMsg,
-        allocation_size: Size,
-    },
-    InvalidNullPointerUsage,
-    ReadPointerAsBytes,
-    ReadBytesAsPointer,
-    ReadForeignStatic,
-    InvalidPointerMath,
-    ReadUndefBytes(Size),
-    DeadLocal,
-    InvalidBoolOp(mir::BinOp),
-    UnimplementedTraitSelection,
-    CalledClosureAsFunction,
-    NoMirFor(String),
-    DerefFunctionPointer,
-    ExecuteMemory,
-    InvalidChar(u128),
-    OutOfTls,
-    TlsOutOfBounds,
-    AlignmentCheckFailed {
-        required: Align,
-        has: Align,
-    },
-    ValidationFailure(String),
-    VtableForArgumentlessMethod,
-    ModifiedConstantMemory,
+    /// This must not allocate for performance reasons (hence `str`, not `String`).
+    ConstPropUnsupported(&'static str),
+    /// Accessing an unsupported foreign static.
+    ReadForeignStatic(DefId),
+    /// Could not find MIR for a function.
+    NoMirFor(DefId),
+    /// Modified a static during const-eval.
+    /// FIXME: move this to `ConstEvalErrKind` through a machine hook.
     ModifiedStatic,
-    TypeNotPrimitive(Ty<'tcx>),
-    ReallocatedWrongMemoryKind(String, String),
-    DeallocatedWrongMemoryKind(String, String),
-    ReallocateNonBasePtr,
-    DeallocateNonBasePtr,
-    IncorrectAllocationInformation(Size, Size, Align, Align),
-    HeapAllocZeroBytes,
-    HeapAllocNonPowerOfTwoAlignment(u64),
-    ReadFromReturnPointer,
-    PathNotFound(Vec<String>),
-    TransmuteSizeDiff(Ty<'tcx>, Ty<'tcx>),
+    /// Encountered a pointer where we needed raw bytes.
+    ReadPointerAsBytes,
+    /// Encountered raw bytes where we needed a pointer.
+    ReadBytesAsPointer,
 }
 
-impl fmt::Debug for UnsupportedOpInfo<'tcx> {
+impl fmt::Debug for UnsupportedOpInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UnsupportedOpInfo::*;
         match self {
-            PointerOutOfBounds { ptr, msg, allocation_size } => write!(
-                f,
-                "{} failed: pointer must be in-bounds at offset {}, \
-                           but is outside bounds of allocation {} which has size {}",
-                msg,
-                ptr.offset.bytes(),
-                ptr.alloc_id,
-                allocation_size.bytes()
-            ),
-            ValidationFailure(ref err) => write!(f, "type validation failed: {}", err),
-            NoMirFor(ref func) => write!(f, "no MIR for `{}`", func),
-            FunctionAbiMismatch(caller_abi, callee_abi) => write!(
-                f,
-                "tried to call a function with ABI {:?} using caller ABI {:?}",
-                callee_abi, caller_abi
-            ),
-            FunctionArgMismatch(caller_ty, callee_ty) => write!(
-                f,
-                "tried to call a function with argument of type {:?} \
-                           passing data of type {:?}",
-                callee_ty, caller_ty
-            ),
-            TransmuteSizeDiff(from_ty, to_ty) => write!(
-                f,
-                "tried to transmute from {:?} to {:?}, but their sizes differed",
-                from_ty, to_ty
-            ),
-            FunctionRetMismatch(caller_ty, callee_ty) => write!(
-                f,
-                "tried to call a function with return type {:?} \
-                           passing return place of type {:?}",
-                callee_ty, caller_ty
-            ),
-            FunctionArgCountMismatch => {
-                write!(f, "tried to call a function with incorrect number of arguments")
+            Unsupported(ref msg) => write!(f, "{}", msg),
+            ConstPropUnsupported(ref msg) => {
+                write!(f, "Constant propagation encountered an unsupported situation: {}", msg)
             }
-            ReallocatedWrongMemoryKind(ref old, ref new) => {
-                write!(f, "tried to reallocate memory from `{}` to `{}`", old, new)
+            ReadForeignStatic(did) => {
+                write!(f, "tried to read from foreign (extern) static {:?}", did)
             }
-            DeallocatedWrongMemoryKind(ref old, ref new) => {
-                write!(f, "tried to deallocate `{}` memory but gave `{}` as the kind", old, new)
-            }
-            InvalidChar(c) => {
-                write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c)
-            }
-            AlignmentCheckFailed { required, has } => write!(
-                f,
-                "tried to access memory with alignment {}, but alignment {} is required",
-                has.bytes(),
-                required.bytes()
-            ),
-            TypeNotPrimitive(ty) => write!(f, "expected primitive type, got {}", ty),
-            PathNotFound(ref path) => write!(f, "cannot find path {:?}", path),
-            IncorrectAllocationInformation(size, size2, align, align2) => write!(
-                f,
-                "incorrect alloc info: expected size {} and align {}, \
-                           got size {} and align {}",
-                size.bytes(),
-                align.bytes(),
-                size2.bytes(),
-                align2.bytes()
-            ),
-            InvalidMemoryAccess => write!(f, "tried to access memory through an invalid pointer"),
-            DanglingPointerDeref => write!(f, "dangling pointer was dereferenced"),
-            DoubleFree => write!(f, "tried to deallocate dangling pointer"),
-            InvalidFunctionPointer => {
-                write!(f, "tried to use a function pointer after offsetting it")
-            }
-            InvalidBool => write!(f, "invalid boolean value read"),
-            InvalidNullPointerUsage => write!(f, "invalid use of NULL pointer"),
-            ReadPointerAsBytes => write!(
-                f,
-                "a raw memory access tried to access part of a pointer value as raw \
-                    bytes"
-            ),
-            ReadBytesAsPointer => {
-                write!(f, "a memory access tried to interpret some bytes as a pointer")
-            }
-            ReadForeignStatic => write!(f, "tried to read from foreign (extern) static"),
-            InvalidPointerMath => write!(
-                f,
-                "attempted to do invalid arithmetic on pointers that would leak base \
-                    addresses, e.g., comparing pointers into different allocations"
-            ),
-            DeadLocal => write!(f, "tried to access a dead local variable"),
-            DerefFunctionPointer => write!(f, "tried to dereference a function pointer"),
-            ExecuteMemory => write!(f, "tried to treat a memory pointer as a function pointer"),
-            OutOfTls => write!(f, "reached the maximum number of representable TLS keys"),
-            TlsOutOfBounds => write!(f, "accessed an invalid (unallocated) TLS key"),
-            CalledClosureAsFunction => {
-                write!(f, "tried to call a closure through a function pointer")
-            }
-            VtableForArgumentlessMethod => {
-                write!(f, "tried to call a vtable function without arguments")
-            }
-            ModifiedConstantMemory => write!(f, "tried to modify constant memory"),
+            NoMirFor(did) => write!(f, "could not load MIR for {:?}", did),
             ModifiedStatic => write!(
                 f,
                 "tried to modify a static's initial value from another static's \
                     initializer"
             ),
-            ReallocateNonBasePtr => write!(
-                f,
-                "tried to reallocate with a pointer not to the beginning of an \
-                    existing object"
-            ),
-            DeallocateNonBasePtr => write!(
-                f,
-                "tried to deallocate with a pointer not to the beginning of an \
-                    existing object"
-            ),
-            HeapAllocZeroBytes => write!(f, "tried to re-, de- or allocate zero bytes on the heap"),
-            ReadFromReturnPointer => write!(f, "tried to read from the return pointer"),
-            UnimplementedTraitSelection => {
-                write!(f, "there were unresolved type arguments during trait selection")
-            }
-            InvalidBoolOp(_) => write!(f, "invalid boolean operation"),
-            UnterminatedCString(_) => write!(
-                f,
-                "attempted to get length of a null-terminated string, but no null \
-                    found before end of allocation"
-            ),
-            ReadUndefBytes(_) => write!(f, "attempted to read undefined bytes"),
-            HeapAllocNonPowerOfTwoAlignment(_) => write!(
-                f,
-                "tried to re-, de-, or allocate heap memory with alignment that is \
-                    not a power of two"
-            ),
-            Unsupported(ref msg) => write!(f, "{}", msg),
-            ConstPropUnsupported(ref msg) => {
-                write!(f, "Constant propagation encountered an unsupported situation: {}", msg)
-            }
+
+            ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes",),
+            ReadBytesAsPointer => write!(f, "unable to turn bytes into a pointer"),
         }
     }
 }
@@ -599,13 +517,11 @@ impl fmt::Debug for ResourceExhaustionInfo {
 }
 
 pub enum InterpError<'tcx> {
-    /// The program panicked.
-    Panic(PanicInfo<u64>),
     /// The program caused undefined behavior.
     UndefinedBehavior(UndefinedBehaviorInfo),
     /// The program did something the interpreter does not support (some of these *might* be UB
     /// but the interpreter is not sure).
-    Unsupported(UnsupportedOpInfo<'tcx>),
+    Unsupported(UnsupportedOpInfo),
     /// The program was invalid (ill-typed, bad MIR, not sufficiently monomorphized, ...).
     InvalidProgram(InvalidProgramInfo<'tcx>),
     /// The program exhausted the interpreter's resources (stack/heap too big,
@@ -621,7 +537,7 @@ pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
 impl fmt::Display for InterpError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Forward `Display` to `Debug`.
-        write!(f, "{:?}", self)
+        fmt::Debug::fmt(self, f)
     }
 }
 
@@ -633,8 +549,23 @@ impl fmt::Debug for InterpError<'_> {
             InvalidProgram(ref msg) => write!(f, "{:?}", msg),
             UndefinedBehavior(ref msg) => write!(f, "{:?}", msg),
             ResourceExhaustion(ref msg) => write!(f, "{:?}", msg),
-            Panic(ref msg) => write!(f, "{:?}", msg),
-            MachineStop(_) => write!(f, "machine caused execution to stop"),
+            MachineStop(_) => bug!("unhandled MachineStop"),
+        }
+    }
+}
+
+impl InterpError<'_> {
+    /// Some errors allocate to be created as they contain free-form strings.
+    /// And sometimes we want to be sure that did not happen as it is a
+    /// waste of resources.
+    pub fn allocates(&self) -> bool {
+        match self {
+            InterpError::MachineStop(_)
+            | InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationFailure(_))
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_)) => true,
+            _ => false,
         }
     }
 }

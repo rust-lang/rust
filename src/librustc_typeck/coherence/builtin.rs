@@ -1,14 +1,8 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
-use rustc::infer;
-use rustc::infer::outlives::env::OutlivesEnvironment;
-use rustc::infer::SuppressRegionErrors;
 use rustc::middle::lang_items::UnsizeTraitLangItem;
 use rustc::middle::region;
-use rustc::traits::misc::{can_type_implement_copy, CopyImplementationError};
-use rustc::traits::predicate_for_trait_def;
-use rustc::traits::{self, ObligationCause, TraitEngine};
 use rustc::ty::adjustment::CoerceUnsizedInfo;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -16,16 +10,21 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::ItemKind;
+use rustc_infer::infer;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::{RegionckMode, TyCtxtInferExt};
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
+use rustc_trait_selection::traits::predicate_for_trait_def;
+use rustc_trait_selection::traits::{self, ObligationCause, TraitEngine, TraitEngineExt};
 
 pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
+    let lang_items = tcx.lang_items();
     Checker { tcx, trait_def_id }
-        .check(tcx.lang_items().drop_trait(), visit_implementation_of_drop)
-        .check(tcx.lang_items().copy_trait(), visit_implementation_of_copy)
-        .check(tcx.lang_items().coerce_unsized_trait(), visit_implementation_of_coerce_unsized)
-        .check(
-            tcx.lang_items().dispatch_from_dyn_trait(),
-            visit_implementation_of_dispatch_from_dyn,
-        );
+        .check(lang_items.drop_trait(), visit_implementation_of_drop)
+        .check(lang_items.copy_trait(), visit_implementation_of_copy)
+        .check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized)
+        .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn);
 }
 
 struct Checker<'tcx> {
@@ -179,10 +178,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
             use ty::TyKind::*;
             match (&source.kind, &target.kind) {
                 (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
-                    if infcx.at(&cause, param_env).eq(r_a, r_b).is_ok() && mutbl_a == *mutbl_b =>
-                {
-                    ()
-                }
+                    if infcx.at(&cause, param_env).eq(r_a, r_b).is_ok() && mutbl_a == *mutbl_b => {}
                 (&RawPtr(tm_a), &RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
                 (&Adt(def_a, substs_a), &Adt(def_b, substs_b))
                     if def_a.is_struct() && def_b.is_struct() =>
@@ -308,7 +304,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
                             impl_did,
                             &region_scope_tree,
                             &outlives_env,
-                            SuppressRegionErrors::default(),
+                            RegionckMode::default(),
                         );
                     }
                 }
@@ -324,7 +320,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
     }
 }
 
-pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedInfo {
+pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedInfo {
     debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
     let coerce_unsized_trait = tcx.lang_items().coerce_unsized_trait().unwrap();
 
@@ -569,7 +565,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
             impl_did,
             &region_scope_tree,
             &outlives_env,
-            SuppressRegionErrors::default(),
+            RegionckMode::default(),
         );
 
         CoerceUnsizedInfo { custom_kind: kind }

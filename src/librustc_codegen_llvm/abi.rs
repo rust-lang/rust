@@ -148,7 +148,7 @@ impl LlvmType for CastTarget {
             .prefix
             .iter()
             .flat_map(|option_kind| {
-                option_kind.map(|kind| Reg { kind: kind, size: self.prefix_chunk }.llvm_type(cx))
+                option_kind.map(|kind| Reg { kind, size: self.prefix_chunk }.llvm_type(cx))
             })
             .chain((0..rest_count).map(|_| rest_ll_unit))
             .collect();

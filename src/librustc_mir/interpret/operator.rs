@@ -6,7 +6,7 @@ use rustc::ty::{
     Ty,
 };
 use rustc_apfloat::Float;
-use syntax::ast::FloatTy;
+use rustc_ast::ast::FloatTy;
 
 use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
 
@@ -64,7 +64,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ge => l >= r,
             _ => bug!("Invalid operation on char: {:?}", bin_op),
         };
-        return (Scalar::from_bool(res), false, self.tcx.types.bool);
+        (Scalar::from_bool(res), false, self.tcx.types.bool)
     }
 
     fn binary_bool_op(
@@ -87,7 +87,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             BitXor => l ^ r,
             _ => bug!("Invalid operation on bool: {:?}", bin_op),
         };
-        return (Scalar::from_bool(res), false, self.tcx.types.bool);
+        (Scalar::from_bool(res), false, self.tcx.types.bool)
     }
 
     fn binary_float_op<F: Float + Into<Scalar<M::PointerTag>>>(
@@ -113,7 +113,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Rem => ((l % r).value.into(), ty),
             _ => bug!("invalid float op: `{:?}`", bin_op),
         };
-        return (val, false, ty);
+        (val, false, ty)
     }
 
     fn binary_int_op(
@@ -134,9 +134,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let mut r = r as u32;
             let size = left_layout.size;
             oflo |= r >= size.bits() as u32;
-            if oflo {
-                r %= size.bits() as u32;
-            }
+            r %= size.bits() as u32;
             let result = if signed {
                 let l = self.sign_extend(l, left_layout) as i128;
                 let result = match bin_op {
@@ -168,6 +166,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )
         }
 
+        let size = left_layout.size;
+
         // Operations that need special treatment for signed integers
         if left_layout.abi.is_signed() {
             let op: Option<fn(&i128, &i128) -> bool> = match bin_op {
@@ -195,31 +195,30 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             if let Some(op) = op {
                 let l128 = self.sign_extend(l, left_layout) as i128;
                 let r = self.sign_extend(r, right_layout) as i128;
-                let size = left_layout.size;
+                // We need a special check for overflowing remainder:
+                // "int_min % -1" overflows and returns 0, but after casting things to a larger int
+                // type it does *not* overflow nor give an unrepresentable result!
                 match bin_op {
-                    Rem | Div => {
-                        // int_min / -1
+                    Rem => {
                         if r == -1 && l == (1 << (size.bits() - 1)) {
-                            return Ok((Scalar::from_uint(l, size), true, left_layout.ty));
+                            return Ok((Scalar::from_int(0, size), true, left_layout.ty));
                         }
                     }
                     _ => {}
                 }
-                trace!("{}, {}, {}", l, l128, r);
-                let (result, mut oflo) = op(l128, r);
-                trace!("{}, {}", result, oflo);
-                if !oflo && size.bits() != 128 {
-                    let max = 1 << (size.bits() - 1);
-                    oflo = result >= max || result < -max;
-                }
-                // this may be out-of-bounds for the result type, so we have to truncate ourselves
+
+                let (result, oflo) = op(l128, r);
+                // This may be out-of-bounds for the result type, so we have to truncate ourselves.
+                // If that truncation loses any information, we have an overflow.
                 let result = result as u128;
                 let truncated = self.truncate(result, left_layout);
-                return Ok((Scalar::from_uint(truncated, size), oflo, left_layout.ty));
+                return Ok((
+                    Scalar::from_uint(truncated, size),
+                    oflo || self.sign_extend(truncated, left_layout) != result,
+                    left_layout.ty,
+                ));
             }
         }
-
-        let size = left_layout.size;
 
         let (val, ty) = match bin_op {
             Eq => (Scalar::from_bool(l == r), self.tcx.types.bool),
@@ -235,7 +234,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             BitXor => (Scalar::from_uint(l ^ r, size), left_layout.ty),
 
             Add | Sub | Mul | Rem | Div => {
-                debug_assert!(!left_layout.abi.is_signed());
+                assert!(!left_layout.abi.is_signed());
                 let op: fn(u128, u128) -> (u128, bool) = match bin_op {
                     Add => u128::overflowing_add,
                     Sub => u128::overflowing_sub,
@@ -247,6 +246,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     _ => bug!(),
                 };
                 let (result, oflo) = op(l, r);
+                // Truncate to target type.
+                // If that truncation loses any information, we have an overflow.
                 let truncated = self.truncate(result, left_layout);
                 return Ok((
                     Scalar::from_uint(truncated, size),
@@ -341,7 +342,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Typed version of `checked_binary_op`, returning an `ImmTy`. Also ignores overflows.
+    /// Typed version of `overflowing_binary_op`, returning an `ImmTy`. Also ignores overflows.
     #[inline]
     pub fn binary_op(
         &self,
@@ -353,11 +354,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(ImmTy::from_scalar(val, self.layout_of(ty)?))
     }
 
-    pub fn unary_op(
+    /// Returns the result of the specified operation, whether it overflowed, and
+    /// the result type.
+    pub fn overflowing_unary_op(
         &self,
         un_op: mir::UnOp,
         val: ImmTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
         use rustc::mir::UnOp::*;
 
         let layout = val.layout;
@@ -371,7 +374,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Not => !val,
                     _ => bug!("Invalid bool op {:?}", un_op),
                 };
-                Ok(ImmTy::from_scalar(Scalar::from_bool(res), self.layout_of(self.tcx.types.bool)?))
+                Ok((Scalar::from_bool(res), false, self.tcx.types.bool))
             }
             ty::Float(fty) => {
                 let res = match (un_op, fty) {
@@ -379,21 +382,36 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     (Neg, FloatTy::F64) => Scalar::from_f64(-val.to_f64()?),
                     _ => bug!("Invalid float op {:?}", un_op),
                 };
-                Ok(ImmTy::from_scalar(res, layout))
+                Ok((res, false, layout.ty))
             }
             _ => {
                 assert!(layout.ty.is_integral());
                 let val = self.force_bits(val, layout.size)?;
-                let res = match un_op {
-                    Not => !val,
+                let (res, overflow) = match un_op {
+                    Not => (self.truncate(!val, layout), false), // bitwise negation, then truncate
                     Neg => {
+                        // arithmetic negation
                         assert!(layout.abi.is_signed());
-                        (-(val as i128)) as u128
+                        let val = self.sign_extend(val, layout) as i128;
+                        let (res, overflow) = val.overflowing_neg();
+                        let res = res as u128;
+                        // Truncate to target type.
+                        // If that truncation loses any information, we have an overflow.
+                        let truncated = self.truncate(res, layout);
+                        (truncated, overflow || self.sign_extend(truncated, layout) != res)
                     }
                 };
-                // res needs tuncating
-                Ok(ImmTy::from_uint(self.truncate(res, layout), layout))
+                Ok((Scalar::from_uint(res, layout.size), overflow, layout.ty))
             }
         }
+    }
+
+    pub fn unary_op(
+        &self,
+        un_op: mir::UnOp,
+        val: ImmTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
+        let (val, _overflow, ty) = self.overflowing_unary_op(un_op, val)?;
+        Ok(ImmTy::from_scalar(val, self.layout_of(ty)?))
     }
 }

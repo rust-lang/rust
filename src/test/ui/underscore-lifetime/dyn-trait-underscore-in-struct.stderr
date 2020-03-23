@@ -6,8 +6,8 @@ LL |     x: Box<dyn Debug + '_>,
    |
 help: consider introducing a named lifetime parameter
    |
-LL | struct Foo<'lifetime> {
-LL |     x: Box<dyn Debug + 'lifetime>,
+LL | struct Foo<'a> {
+LL |     x: Box<dyn Debug + 'a>,
    |
 
 error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound

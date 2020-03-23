@@ -52,7 +52,6 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
 
 #[lang = "eh_personality"] extern fn rust_eh_personality() {}
 #[lang = "panic_impl"] extern fn rust_begin_panic(info: &PanicInfo) -> ! { unsafe { intrinsics::abort() } }
-#[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
 #[no_mangle] pub extern fn rust_eh_register_frames () {}
 #[no_mangle] pub extern fn rust_eh_unregister_frames () {}
 ```
@@ -67,7 +66,7 @@ Other features provided by lang items include:
   marked with lang items; those specific four are `eq`, `ord`,
   `deref`, and `add` respectively.
 - stack unwinding and general failure; the `eh_personality`,
-  `eh_unwind_resume`, `fail` and `fail_bounds_checks` lang items.
+  `panic` and `panic_bounds_checks` lang items.
 - the traits in `std::marker` used to indicate types of
   various kinds; lang items `send`, `sync` and `copy`.
 - the marker types and variance indicators found in
@@ -130,12 +129,6 @@ fn start(_argc: isize, _argv: *const *const u8) -> isize {
 pub extern fn rust_eh_personality() {
 }
 
-// This function may be needed based on the compilation target.
-#[lang = "eh_unwind_resume"]
-#[no_mangle]
-pub extern fn rust_eh_unwind_resume() {
-}
-
 #[lang = "panic_impl"]
 #[no_mangle]
 pub extern fn rust_begin_panic(info: &PanicInfo) -> ! {
@@ -173,12 +166,6 @@ pub extern fn main(_argc: i32, _argv: *const *const u8) -> i32 {
 pub extern fn rust_eh_personality() {
 }
 
-// This function may be needed based on the compilation target.
-#[lang = "eh_unwind_resume"]
-#[no_mangle]
-pub extern fn rust_eh_unwind_resume() {
-}
-
 #[lang = "panic_impl"]
 #[no_mangle]
 pub extern fn rust_begin_panic(info: &PanicInfo) -> ! {
@@ -211,10 +198,8 @@ compiler. When a panic happens, this controls the message that's displayed on
 the screen. While the language item's name is `panic_impl`, the symbol name is
 `rust_begin_panic`.
 
-A third function, `rust_eh_unwind_resume`, is also needed if the `custom_unwind_resume`
-flag is set in the options of the compilation target. It allows customizing the
-process of resuming unwind at the end of the landing pads. The language item's name
-is `eh_unwind_resume`.
+Finally, a `eh_catch_typeinfo` static is needed for certain targets which
+implement Rust panics on top of C++ exceptions.
 
 ## List of all language items
 
@@ -247,8 +232,6 @@ the source code.
   - `eh_personality`: `libpanic_unwind/emcc.rs` (EMCC)
   - `eh_personality`: `libpanic_unwind/gcc.rs` (GNU)
   - `eh_personality`: `libpanic_unwind/seh.rs` (SEH)
-  - `eh_unwind_resume`: `libpanic_unwind/gcc.rs` (GCC)
-  - `eh_catch_typeinfo`: `libpanic_unwind/seh.rs` (SEH)
   - `eh_catch_typeinfo`: `libpanic_unwind/emcc.rs` (EMCC)
   - `panic`: `libcore/panicking.rs`
   - `panic_bounds_check`: `libcore/panicking.rs`

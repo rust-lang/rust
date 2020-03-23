@@ -3,9 +3,12 @@ error[E0277]: the trait bound `T: TraitWithAssoc` is not satisfied
    |
 LL | type Foo<V> = impl Trait<V>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `TraitWithAssoc` is not implemented for `T`
-...
+   |
+help: consider further restricting this bound with `+ TraitWithAssoc`
+  --> $DIR/bound_reduction2.rs:18:21
+   |
 LL | fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
-   |                  -- help: consider further restricting this bound: `T: TraitWithAssoc +`
+   |                     ^^^^^^^^^^^^^^
 
 error: defining opaque type use does not fully define opaque type: generic parameter `V` is specified as concrete type `<T as TraitWithAssoc>::Assoc`
   --> $DIR/bound_reduction2.rs:18:1

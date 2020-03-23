@@ -5,11 +5,14 @@ use crate::ty::fast_reject;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{Ty, TyCtxt};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::HirId;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_errors::ErrorReported;
 use rustc_macros::HashStable;
+use std::collections::BTreeMap;
 
 /// A trait's definition with type information.
 #[derive(HashStable)]
@@ -33,9 +36,31 @@ pub struct TraitDef {
     /// and thus `impl`s of it are allowed to overlap.
     pub is_marker: bool,
 
+    /// Used to determine whether the standard library is allowed to specialize
+    /// on this trait.
+    pub specialization_kind: TraitSpecializationKind,
+
     /// The ICH of this trait's DefPath, cached here so it doesn't have to be
     /// recomputed all the time.
     pub def_path_hash: DefPathHash,
+}
+
+/// Whether this trait is treated specially by the standard library
+/// specialization lint.
+#[derive(HashStable, PartialEq, Clone, Copy, RustcEncodable, RustcDecodable)]
+pub enum TraitSpecializationKind {
+    /// The default. Specializing on this trait is not allowed.
+    None,
+    /// Specializing on this trait is allowed because it doesn't have any
+    /// methods. For example `Sized` or `FusedIterator`.
+    /// Applies to traits with the `rustc_unsafe_specialization_marker`
+    /// attribute.
+    Marker,
+    /// Specializing on this trait is allowed because all of the impls of this
+    /// trait are "always applicable". Always applicable means that if
+    /// `X<'x>: T<'y>` for any lifetimes, then `for<'a, 'b> X<'a>: T<'b>`.
+    /// Applies to traits with the `rustc_specialization_trait` attribute.
+    AlwaysApplicable,
 }
 
 #[derive(Default)]
@@ -52,16 +77,25 @@ impl<'tcx> TraitDef {
         paren_sugar: bool,
         has_auto_impl: bool,
         is_marker: bool,
+        specialization_kind: TraitSpecializationKind,
         def_path_hash: DefPathHash,
     ) -> TraitDef {
-        TraitDef { def_id, unsafety, paren_sugar, has_auto_impl, is_marker, def_path_hash }
+        TraitDef {
+            def_id,
+            unsafety,
+            paren_sugar,
+            has_auto_impl,
+            is_marker,
+            specialization_kind,
+            def_path_hash,
+        }
     }
 
     pub fn ancestors(
         &self,
         tcx: TyCtxt<'tcx>,
         of_impl: DefId,
-    ) -> specialization_graph::Ancestors<'tcx> {
+    ) -> Result<specialization_graph::Ancestors<'tcx>, ErrorReported> {
         specialization_graph::ancestors(tcx, self.def_id, of_impl)
     }
 }
@@ -144,6 +178,14 @@ impl<'tcx> TyCtxt<'tcx> {
             .cloned()
             .collect()
     }
+}
+
+// Query provider for `all_local_trait_impls`.
+pub(super) fn all_local_trait_impls<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    krate: CrateNum,
+) -> &'tcx BTreeMap<DefId, Vec<HirId>> {
+    &tcx.hir_crate(krate).trait_impls
 }
 
 // Query provider for `trait_impls_of`.

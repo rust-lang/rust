@@ -4,7 +4,7 @@ error: unused variable: `unused`
 LL | fn main() { let unused = (); }
    |                 ^^^^^^ help: consider prefixing with an underscore: `_unused`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-renamed-allow.rs:7:8
    |
 LL | #[deny(unused)]

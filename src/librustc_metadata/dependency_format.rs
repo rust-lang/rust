@@ -56,10 +56,10 @@ use crate::creader::CStore;
 use rustc::middle::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
 use rustc::middle::cstore::{self, DepKind};
 use rustc::middle::dependency_format::{Dependencies, DependencyList, Linkage};
-use rustc::session::config;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::CrateNum;
+use rustc_session::config;
 use rustc_target::spec::PanicStrategy;
 
 crate fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
@@ -97,7 +97,9 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
 
         // If the global prefer_dynamic switch is turned off, or the final
         // executable will be statically linked, prefer static crate linkage.
-        config::CrateType::Executable if !sess.opts.cg.prefer_dynamic || sess.crt_static() => {
+        config::CrateType::Executable
+            if !sess.opts.cg.prefer_dynamic || sess.crt_static(Some(ty)) =>
+        {
             Linkage::Static
         }
         config::CrateType::Executable => Linkage::Dynamic,
@@ -129,7 +131,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
         // If any are not found, generate some nice pretty errors.
         if ty == config::CrateType::Staticlib
             || (ty == config::CrateType::Executable
-                && sess.crt_static()
+                && sess.crt_static(Some(ty))
                 && !sess.target.target.options.crt_static_allows_dylibs)
         {
             for &cnum in tcx.crates().iter() {
@@ -339,7 +341,7 @@ fn activate_injected_dep(
 // there's only going to be one allocator in the output.
 fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
     let sess = &tcx.sess;
-    if list.len() == 0 {
+    if list.is_empty() {
         return;
     }
     let mut panic_runtime = None;

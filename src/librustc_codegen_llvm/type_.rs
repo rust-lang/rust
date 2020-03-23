@@ -12,10 +12,10 @@ use crate::common;
 use crate::type_of::LayoutLlvmExt;
 use rustc::ty::layout::{self, Align, Size, TyLayout};
 use rustc::ty::Ty;
+use rustc_ast::ast;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
-use syntax::ast;
 
 use std::fmt;
 use std::ptr;
@@ -240,7 +240,7 @@ impl Type {
         unsafe { llvm::LLVMIntTypeInContext(llcx, num_bits as c_uint) }
     }
 
-    pub fn i8p_llcx(llcx: &'ll llvm::Context) -> &'ll Type {
+    pub fn i8p_llcx(llcx: &llvm::Context) -> &Type {
         Type::i8_llcx(llcx).ptr_to()
     }
 

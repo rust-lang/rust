@@ -1,0 +1,38 @@
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible.rs:12:18
+   |
+LL | #[cfg_accessible(m::ExistingPrivate)]
+   |                  ^^^^^^^^^^^^^^^^^^
+   |
+note: `cfg_accessible` is not fully implemented
+  --> $DIR/cfg_accessible.rs:12:18
+   |
+LL | #[cfg_accessible(m::ExistingPrivate)]
+   |                  ^^^^^^^^^^^^^^^^^^
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible.rs:16:18
+   |
+LL | #[cfg_accessible(m::NonExistent)]
+   |                  ^^^^^^^^^^^^^^
+   |
+note: `cfg_accessible` is not fully implemented
+  --> $DIR/cfg_accessible.rs:16:18
+   |
+LL | #[cfg_accessible(m::NonExistent)]
+   |                  ^^^^^^^^^^^^^^
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible.rs:37:18
+   |
+LL | #[cfg_accessible(S::field)]
+   |                  ^^^^^^^^
+   |
+note: `cfg_accessible` is not fully implemented
+  --> $DIR/cfg_accessible.rs:37:18
+   |
+LL | #[cfg_accessible(S::field)]
+   |                  ^^^^^^^^
+
+error: aborting due to 3 previous errors
+

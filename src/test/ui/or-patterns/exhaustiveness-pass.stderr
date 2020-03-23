@@ -1,8 +1,0 @@
-error: or-patterns are not fully implemented yet
-  --> $DIR/exhaustiveness-pass.rs:10:10
-   |
-LL |         (0 | _,) => {}
-   |          ^^^^^
-
-error: aborting due to previous error
-

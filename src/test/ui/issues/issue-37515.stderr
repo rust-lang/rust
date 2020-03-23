@@ -4,7 +4,7 @@ warning: type alias is never used: `Z`
 LL | type Z = dyn for<'x> Send;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-37515.rs:3:9
    |
 LL | #![warn(unused)]

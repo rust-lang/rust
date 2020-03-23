@@ -27,7 +27,7 @@ pub enum TestResult {
 unsafe impl Send for TestResult {}
 
 /// Creates a `TestResult` depending on the raw result of test execution
-/// and assotiated data.
+/// and associated data.
 pub fn calc_result<'a>(
     desc: &TestDesc,
     task_result: Result<(), &'a (dyn Any + 'static + Send)>,
@@ -40,7 +40,7 @@ pub fn calc_result<'a>(
             let maybe_panic_str = err
                 .downcast_ref::<String>()
                 .map(|e| &**e)
-                .or_else(|| err.downcast_ref::<&'static str>().map(|e| *e));
+                .or_else(|| err.downcast_ref::<&'static str>().copied());
 
             if maybe_panic_str.map(|e| e.contains(msg)).unwrap_or(false) {
                 TestResult::TrOk

@@ -1,12 +1,12 @@
+use rustc_ast::ptr::P;
+use rustc_ast::{ast, attr};
 use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::ExpansionConfig;
+use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::AstPass;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
-use syntax::ptr::P;
-use syntax::sess::ParseSess;
-use syntax::{ast, attr};
 
 pub fn inject(
     mut krate: ast::Crate,
@@ -39,7 +39,7 @@ pub fn inject(
     let call_site = DUMMY_SP.with_call_site_ctxt(expn_id);
 
     let ecfg = ExpansionConfig::default("std_lib_injection".to_string());
-    let cx = ExtCtxt::new(sess, ecfg, resolver);
+    let cx = ExtCtxt::new(sess, ecfg, resolver, None);
 
     // .rev() to preserve ordering above in combination with insert(0, ...)
     for &name in names.iter().rev() {

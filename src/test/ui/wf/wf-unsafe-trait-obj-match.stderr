@@ -15,20 +15,28 @@ LL | |     }
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-unsafe-trait-obj-match.rs:26:21
    |
+LL | trait Trait: Sized {}
+   |       -----  ----- ...because it requires `Self: Sized`
+   |       |
+   |       this trait cannot be made into an object...
+...
 LL |         Some(()) => &S,
    |                     ^^ the trait `Trait` cannot be made into an object
    |
-   = note: the trait cannot require that `Self : Sized`
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Trait>` for `&S`
    = note: required by cast to type `&dyn Trait`
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-unsafe-trait-obj-match.rs:25:25
    |
+LL | trait Trait: Sized {}
+   |       -----  ----- ...because it requires `Self: Sized`
+   |       |
+   |       this trait cannot be made into an object...
+...
 LL |     let t: &dyn Trait = match opt() {
    |                         ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
    |
-   = note: the trait cannot require that `Self : Sized`
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Trait>` for `&R`
    = note: required by cast to type `&dyn Trait`
 

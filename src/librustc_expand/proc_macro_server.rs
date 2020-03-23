@@ -1,17 +1,17 @@
 use crate::base::ExtCtxt;
 
+use rustc_ast::ast;
+use rustc_ast::token;
+use rustc_ast::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
+use rustc_ast::util::comments;
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::Diagnostic;
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
+use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
-use syntax::ast;
-use syntax::print::pprust;
-use syntax::sess::ParseSess;
-use syntax::token;
-use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
-use syntax::util::comments;
 
 use pm::bridge::{server, TokenTree};
 use pm::{Delimiter, Level, LineColumn, Spacing};
@@ -54,13 +54,13 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
     fn from_internal(
         ((tree, is_joint), sess, stack): (TreeAndJoint, &ParseSess, &mut Vec<Self>),
     ) -> Self {
-        use syntax::token::*;
+        use rustc_ast::token::*;
 
         let joint = is_joint == Joint;
         let Token { kind, span } = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
                 let delimiter = Delimiter::from_internal(delim);
-                return TokenTree::Group(Group { delimiter, stream: tts.into(), span });
+                return TokenTree::Group(Group { delimiter, stream: tts, span });
             }
             tokenstream::TokenTree::Token(token) => token,
         };
@@ -191,17 +191,13 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
 
 impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
     fn to_internal(self) -> TokenStream {
-        use syntax::token::*;
+        use rustc_ast::token::*;
 
         let (ch, joint, span) = match self {
             TokenTree::Punct(Punct { ch, joint, span }) => (ch, joint, span),
             TokenTree::Group(Group { delimiter, stream, span }) => {
-                return tokenstream::TokenTree::Delimited(
-                    span,
-                    delimiter.to_internal(),
-                    stream.into(),
-                )
-                .into();
+                return tokenstream::TokenTree::Delimited(span, delimiter.to_internal(), stream)
+                    .into();
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
                 return tokenstream::TokenTree::token(Ident(sym, is_raw), span).into();
@@ -209,7 +205,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             TokenTree::Literal(self::Literal {
                 lit: token::Lit { kind: token::Integer, symbol, suffix },
                 span,
-            }) if symbol.as_str().starts_with("-") => {
+            }) if symbol.as_str().starts_with('-') => {
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let integer = TokenKind::lit(token::Integer, symbol, suffix);
@@ -220,7 +216,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
             TokenTree::Literal(self::Literal {
                 lit: token::Lit { kind: token::Float, symbol, suffix },
                 span,
-            }) if symbol.as_str().starts_with("-") => {
+            }) if symbol.as_str().starts_with('-') => {
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let float = TokenKind::lit(token::Float, symbol, suffix);

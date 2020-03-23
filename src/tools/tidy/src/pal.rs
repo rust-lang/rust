@@ -41,7 +41,7 @@ const EXCEPTION_PATHS: &[&str] = &[
     "src/libpanic_unwind",
     "src/libunwind",
     // black_box implementation is LLVM-version specific and it uses
-    // target_os to tell targets with different LLVM-versions appart
+    // target_os to tell targets with different LLVM-versions apart
     // (e.g. `wasm32-unknown-emscripten` vs `wasm32-unknown-unknown`):
     "src/libcore/hint.rs",
     "src/libstd/sys/", // Platform-specific code for std lives here.
@@ -59,6 +59,8 @@ const EXCEPTION_PATHS: &[&str] = &[
     "src/libstd/sys_common/mod.rs",
     "src/libstd/sys_common/net.rs",
     "src/libstd/sys_common/backtrace.rs",
+    // panic_unwind shims
+    "src/libstd/panicking.rs",
     "src/libterm", // Not sure how to make this crate portable, but test crate needs it.
     "src/libtest", // Probably should defer to unstable `std::sys` APIs.
     "src/libstd/sync/mpsc", // some tests are only run on non-emscripten
@@ -76,7 +78,7 @@ const EXCEPTION_PATHS: &[&str] = &[
     "src/tools",
     "src/librustc",
     "src/librustdoc",
-    "src/libsyntax",
+    "src/librustc_ast",
     "src/bootstrap",
 ];
 

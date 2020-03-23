@@ -1,5 +1,4 @@
 #![feature(optin_builtin_traits)]
-#![feature(overlapping_marker_traits)]
 
 use std::marker::Copy;
 
@@ -24,7 +23,8 @@ unsafe impl Send for [MyType] {}
 //~^ ERROR E0117
 
 unsafe impl Send for &'static [NotSync] {}
-//~^ ERROR E0117
+//~^ ERROR conflicting implementations of trait
+//~| ERROR only traits defined in the current crate
 
 fn main() {
 }

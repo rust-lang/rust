@@ -4,7 +4,7 @@ error: borrow of packed field is unsafe and requires unsafe function or block (e
 LL |     let _ = &good.data;
    |             ^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-27060.rs:13:8
    |
 LL | #[deny(safe_packed_borrows)]

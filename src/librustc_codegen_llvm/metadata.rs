@@ -22,10 +22,11 @@ impl MetadataLoader for LlvmMetadataLoader {
         // Use ArchiveRO for speed here, it's backed by LLVM and uses mmap
         // internally to read the file. We also avoid even using a memcpy by
         // just keeping the archive along while the metadata is in use.
-        let archive = ArchiveRO::open(filename).map(|ar| OwningRef::new(box ar)).map_err(|e| {
-            debug!("llvm didn't like `{}`: {}", filename.display(), e);
-            format!("failed to read rlib metadata in '{}': {}", filename.display(), e)
-        })?;
+        let archive =
+            ArchiveRO::open(filename).map(|ar| OwningRef::new(Box::new(ar))).map_err(|e| {
+                debug!("llvm didn't like `{}`: {}", filename.display(), e);
+                format!("failed to read rlib metadata in '{}': {}", filename.display(), e)
+            })?;
         let buf: OwningRef<_, [u8]> = archive.try_map(|ar| {
             ar.iter()
                 .filter_map(|s| s.ok())
@@ -44,9 +45,10 @@ impl MetadataLoader for LlvmMetadataLoader {
             let buf = path_to_c_string(filename);
             let mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf.as_ptr())
                 .ok_or_else(|| format!("error reading library: '{}'", filename.display()))?;
-            let of = ObjectFile::new(mb).map(|of| OwningRef::new(box of)).ok_or_else(|| {
-                format!("provided path not an object file: '{}'", filename.display())
-            })?;
+            let of =
+                ObjectFile::new(mb).map(|of| OwningRef::new(Box::new(of))).ok_or_else(|| {
+                    format!("provided path not an object file: '{}'", filename.display())
+                })?;
             let buf = of.try_map(|of| search_meta_section(of, target, filename))?;
             Ok(rustc_erase_owner!(buf))
         }

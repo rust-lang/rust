@@ -1,18 +1,17 @@
 //! The various pretty-printing routines.
 
 use rustc::hir::map as hir_map;
-use rustc::session::config::{Input, PpMode, PpSourceMode};
-use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
+use rustc_ast::ast;
+use rustc_ast_pretty::pprust;
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::print as pprust_hir;
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
-
+use rustc_session::config::{Input, PpMode, PpSourceMode};
+use rustc_session::Session;
 use rustc_span::FileName;
-use syntax::ast;
-use syntax::print::pprust;
 
 use std::cell::Cell;
 use std::fs::File;
@@ -70,19 +69,19 @@ where
     match *ppmode {
         PpmNormal => {
             let annotation = NoAnn { sess: tcx.sess, tcx: Some(tcx) };
-            f(&annotation, tcx.hir().forest.krate())
+            f(&annotation, tcx.hir().krate())
         }
 
         PpmIdentified => {
             let annotation = IdentifiedAnnotation { sess: tcx.sess, tcx: Some(tcx) };
-            f(&annotation, tcx.hir().forest.krate())
+            f(&annotation, tcx.hir().krate())
         }
         PpmTyped => {
             abort_on_err(tcx.analysis(LOCAL_CRATE), tcx.sess);
 
             let empty_tables = ty::TypeckTables::empty(None);
             let annotation = TypedAnnotation { tcx, tables: Cell::new(&empty_tables) };
-            tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().forest.krate()))
+            tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().krate()))
         }
         _ => panic!("Should use call_with_pp_support"),
     }
@@ -97,7 +96,7 @@ trait PrinterSupport: pprust::PpAnn {
     ///
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust::PpAnn;
+    fn pp_ann(&self) -> &dyn pprust::PpAnn;
 }
 
 trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
@@ -107,13 +106,13 @@ trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
 
     /// Provides a uniform interface for re-extracting a reference to an
     /// `hir_map::Map` from a value that now owns it.
-    fn hir_map<'a>(&'a self) -> Option<&'a hir_map::Map<'hir>>;
+    fn hir_map(&self) -> Option<hir_map::Map<'hir>>;
 
     /// Produces the pretty-print annotation object.
     ///
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn;
+    fn pp_ann(&self) -> &dyn pprust_hir::PpAnn;
 
     /// Computes an user-readable representation of a path, if possible.
     fn node_path(&self, id: hir::HirId) -> Option<String> {
@@ -133,7 +132,7 @@ impl<'hir> PrinterSupport for NoAnn<'hir> {
         self.sess
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust::PpAnn {
         self
     }
 }
@@ -143,11 +142,11 @@ impl<'hir> HirPrinterSupport<'hir> for NoAnn<'hir> {
         self.sess
     }
 
-    fn hir_map<'a>(&'a self) -> Option<&'a hir_map::Map<'hir>> {
+    fn hir_map(&self) -> Option<hir_map::Map<'hir>> {
         self.tcx.map(|tcx| tcx.hir())
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
         self
     }
 }
@@ -156,7 +155,7 @@ impl<'hir> pprust::PpAnn for NoAnn<'hir> {}
 impl<'hir> pprust_hir::PpAnn for NoAnn<'hir> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
         if let Some(tcx) = self.tcx {
-            pprust_hir::PpAnn::nested(tcx.hir(), state, nested)
+            pprust_hir::PpAnn::nested(&tcx.hir(), state, nested)
         }
     }
 }
@@ -171,7 +170,7 @@ impl<'hir> PrinterSupport for IdentifiedAnnotation<'hir> {
         self.sess
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust::PpAnn {
         self
     }
 }
@@ -217,11 +216,11 @@ impl<'hir> HirPrinterSupport<'hir> for IdentifiedAnnotation<'hir> {
         self.sess
     }
 
-    fn hir_map<'a>(&'a self) -> Option<&'a hir_map::Map<'hir>> {
+    fn hir_map(&self) -> Option<hir_map::Map<'hir>> {
         self.tcx.map(|tcx| tcx.hir())
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
         self
     }
 }
@@ -229,7 +228,7 @@ impl<'hir> HirPrinterSupport<'hir> for IdentifiedAnnotation<'hir> {
 impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
         if let Some(ref tcx) = self.tcx {
-            pprust_hir::PpAnn::nested(tcx.hir(), state, nested)
+            pprust_hir::PpAnn::nested(&tcx.hir(), state, nested)
         }
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
@@ -316,11 +315,11 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
         &self.tcx.sess
     }
 
-    fn hir_map<'a>(&'a self) -> Option<&'a hir_map::Map<'tcx>> {
-        Some(&self.tcx.hir())
+    fn hir_map(&self) -> Option<hir_map::Map<'tcx>> {
+        Some(self.tcx.hir())
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a dyn pprust_hir::PpAnn {
+    fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
         self
     }
 
@@ -335,7 +334,7 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
         if let pprust_hir::Nested::Body(id) = nested {
             self.tables.set(self.tcx.body_tables(id));
         }
-        pprust_hir::PpAnn::nested(self.tcx.hir(), state, nested);
+        pprust_hir::PpAnn::nested(&self.tcx.hir(), state, nested);
         self.tables.set(old_tables);
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
@@ -392,14 +391,16 @@ pub fn print_after_parsing(
         call_with_pp_support(&s, sess, None, move |annotation| {
             debug!("pretty printing source code {:?}", s);
             let sess = annotation.sess();
+            let parse = &sess.parse_sess;
             *out = pprust::print_crate(
                 sess.source_map(),
-                &sess.parse_sess,
                 krate,
                 src_name,
                 src,
                 annotation.pp_ann(),
                 false,
+                parse.edition,
+                parse.injected_crate_name.try_get().is_some(),
             )
         })
     } else {
@@ -432,14 +433,16 @@ pub fn print_after_hir_lowering<'tcx>(
             call_with_pp_support(&s, tcx.sess, Some(tcx), move |annotation| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
+                let parse = &sess.parse_sess;
                 *out = pprust::print_crate(
                     sess.source_map(),
-                    &sess.parse_sess,
                     krate,
                     src_name,
                     src,
                     annotation.pp_ann(),
                     true,
+                    parse.edition,
+                    parse.injected_crate_name.try_get().is_some(),
                 )
             })
         }
@@ -449,14 +452,8 @@ pub fn print_after_hir_lowering<'tcx>(
             call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
-                *out = pprust_hir::print_crate(
-                    sess.source_map(),
-                    &sess.parse_sess,
-                    krate,
-                    src_name,
-                    src,
-                    annotation.pp_ann(),
-                )
+                let sm = sess.source_map();
+                *out = pprust_hir::print_crate(sm, krate, src_name, src, annotation.pp_ann())
             })
         }
 

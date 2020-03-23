@@ -7,7 +7,6 @@ use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use libc::{c_char, c_uint};
 use log::debug;
-use rustc::session::config::{self, Sanitizer};
 use rustc::ty::layout::{self, Align, Size, TyLayout};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_codegen_ssa::base::to_immediate;
@@ -19,6 +18,7 @@ use rustc_codegen_ssa::MemFlags;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
+use rustc_session::config::{self, Sanitizer};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
 use std::ffi::CStr;
@@ -57,6 +57,7 @@ impl BackendTypes for Builder<'_, 'll, 'tcx> {
     type Funclet = <CodegenCx<'ll, 'tcx> as BackendTypes>::Funclet;
 
     type DIScope = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIScope;
+    type DIVariable = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIVariable;
 }
 
 impl ty::layout::HasDataLayout for Builder<'_, '_, '_> {
@@ -302,8 +303,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value) {
         use rustc::ty::{Int, Uint};
-        use syntax::ast::IntTy::*;
-        use syntax::ast::UintTy::*;
+        use rustc_ast::ast::IntTy::*;
+        use rustc_ast::ast::UintTy::*;
 
         let new_kind = match ty.kind {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.ptr_width)),
@@ -780,13 +781,18 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         align: Align,
         flags: MemFlags,
     ) {
-        let ptr_width = &self.sess().target.target.target_pointer_width;
-        let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
-        let llintrinsicfn = self.get_intrinsic(&intrinsic_key);
+        let is_volatile = flags.contains(MemFlags::VOLATILE);
         let ptr = self.pointercast(ptr, self.type_i8p());
-        let align = self.const_u32(align.bytes() as u32);
-        let volatile = self.const_bool(flags.contains(MemFlags::VOLATILE));
-        self.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None);
+        unsafe {
+            llvm::LLVMRustBuildMemSet(
+                self.llbuilder,
+                ptr,
+                align.bytes() as c_uint,
+                fill_byte,
+                size,
+                is_volatile,
+            );
+        }
     }
 
     fn select(
@@ -984,11 +990,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn lifetime_start(&mut self, ptr: &'ll Value, size: Size) {
-        self.call_lifetime_intrinsic("llvm.lifetime.start", ptr, size);
+        self.call_lifetime_intrinsic("llvm.lifetime.start.p0i8", ptr, size);
     }
 
     fn lifetime_end(&mut self, ptr: &'ll Value, size: Size) {
-        self.call_lifetime_intrinsic("llvm.lifetime.end", ptr, size);
+        self.call_lifetime_intrinsic("llvm.lifetime.end.p0i8", ptr, size);
     }
 
     fn call(
@@ -1010,7 +1016,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 args.as_ptr() as *const &llvm::Value,
                 args.len() as c_uint,
                 bundle,
-                UNNAMED,
             )
         }
     }

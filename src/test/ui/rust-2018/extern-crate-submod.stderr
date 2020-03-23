@@ -4,7 +4,7 @@ error: absolute paths must start with `self`, `super`, `crate`, or an external c
 LL | use m::edition_lint_paths::foo;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::m::edition_lint_paths::foo`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/extern-crate-submod.rs:9:9
    |
 LL | #![deny(absolute_paths_not_starting_with_crate)]

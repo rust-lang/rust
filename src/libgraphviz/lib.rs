@@ -597,6 +597,8 @@ pub enum RenderOption {
     NoNodeLabels,
     NoEdgeStyles,
     NoNodeStyles,
+
+    Monospace,
 }
 
 /// Returns vec holding all the default render options.
@@ -626,6 +628,14 @@ where
     W: Write,
 {
     writeln!(w, "digraph {} {{", g.graph_id().as_slice())?;
+
+    // Global graph properties
+    if options.contains(&RenderOption::Monospace) {
+        writeln!(w, r#"    graph[fontname="monospace"];"#)?;
+        writeln!(w, r#"    node[fontname="monospace"];"#)?;
+        writeln!(w, r#"    edge[fontname="monospace"];"#)?;
+    }
+
     for n in g.nodes().iter() {
         write!(w, "    ")?;
         let id = g.node_id(n);

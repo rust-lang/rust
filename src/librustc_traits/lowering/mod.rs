@@ -9,12 +9,12 @@ use rustc::traits::{
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, List, TyCtxt};
+use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::symbol::sym;
-use syntax::ast;
 
 use std::iter;
 
@@ -108,13 +108,13 @@ impl<'tcx> Lower<PolyDomainGoal<'tcx>> for ty::Predicate<'tcx> {
     }
 }
 
-/// Used for implied bounds related rules (see rustc guide).
+/// Used for implied bounds related rules (see rustc dev guide).
 trait IntoFromEnvGoal {
     /// Transforms an existing goal into a `FromEnv` goal.
     fn into_from_env_goal(self) -> Self;
 }
 
-/// Used for well-formedness related rules (see rustc guide).
+/// Used for well-formedness related rules (see rustc dev guide).
 trait IntoWellFormedGoal {
     /// Transforms an existing goal into a `WellFormed` goal.
     fn into_well_formed_goal(self) -> Self;
@@ -178,7 +178,7 @@ crate fn program_clauses_for(tcx: TyCtxt<'_>, def_id: DefId) -> Clauses<'_> {
 fn program_clauses_for_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Clauses<'_> {
     // `trait Trait<P1..Pn> where WC { .. } // P0 == Self`
 
-    // Rule Implemented-From-Env (see rustc guide)
+    // Rule Implemented-From-Env (see rustc dev guide)
     //
     // ```
     // forall<Self, P1..Pn> {
@@ -256,7 +256,7 @@ fn program_clauses_for_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Clauses<'_> {
 
     // `WellFormed(WC)`
     let wf_conditions = where_clauses
-        .into_iter()
+        .iter()
         .map(|wc| wc.subst(tcx, bound_vars))
         .map(|wc| wc.map_bound(|goal| goal.into_well_formed_goal()));
 
@@ -282,7 +282,7 @@ fn program_clauses_for_impl(tcx: TyCtxt<'tcx>, def_id: DefId) -> Clauses<'tcx> {
         return List::empty();
     }
 
-    // Rule Implemented-From-Impl (see rustc guide)
+    // Rule Implemented-From-Impl (see rustc dev guide)
     //
     // `impl<P0..Pn> Trait<A1..An> for A0 where WC { .. }`
     //
@@ -501,7 +501,7 @@ pub fn program_clauses_for_associated_type_def(tcx: TyCtxt<'_>, item_id: DefId) 
 }
 
 pub fn program_clauses_for_associated_type_value(tcx: TyCtxt<'_>, item_id: DefId) -> Clauses<'_> {
-    // Rule Normalize-From-Impl (see rustc guide)
+    // Rule Normalize-From-Impl (see rustc dev guide)
     //
     // ```
     // impl<P0..Pn> Trait<A1..An> for A0 {
@@ -603,8 +603,8 @@ impl ClauseDumper<'tcx> {
 impl Visitor<'tcx> for ClauseDumper<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {

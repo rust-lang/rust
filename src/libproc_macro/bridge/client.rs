@@ -15,7 +15,7 @@ macro_rules! define_handles {
         }
 
         impl HandleCounters {
-            // FIXME(eddyb) use a reference to the `static COUNTERS`, intead of
+            // FIXME(eddyb) use a reference to the `static COUNTERS`, instead of
             // a wrapper `fn` pointer, once `const fn` can reference `static`s.
             extern "C" fn get() -> &'static Self {
                 static COUNTERS: HandleCounters = HandleCounters {
@@ -334,7 +334,7 @@ impl Bridge<'_> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Client<F> {
-    // FIXME(eddyb) use a reference to the `static COUNTERS`, intead of
+    // FIXME(eddyb) use a reference to the `static COUNTERS`, instead of
     // a wrapper `fn` pointer, once `const fn` can reference `static`s.
     pub(super) get_handle_counters: extern "C" fn() -> &'static HandleCounters,
     pub(super) run: extern "C" fn(Bridge<'_>, F) -> Buffer<u8>,

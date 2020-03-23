@@ -1,6 +1,6 @@
-//! Method lookup: the secret sauce of Rust. See the [rustc guide] for more information.
+//! Method lookup: the secret sauce of Rust. See the [rustc dev guide] for more information.
 //!
-//! [rustc guide]: https://rust-lang.github.io/rustc-guide/method-lookup.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/method-lookup.html
 
 mod confirm;
 pub mod probe;
@@ -11,20 +11,20 @@ pub use self::CandidateSource::*;
 pub use self::MethodError::*;
 
 use crate::check::FnCtxt;
-use crate::namespace::Namespace;
-use rustc::infer::{self, InferOk};
-use rustc::traits;
 use rustc::ty::subst::Subst;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::GenericParamDefKind;
-use rustc::ty::{self, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TypeFoldable, WithConstness};
+use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TypeFoldable, WithConstness};
+use rustc_ast::ast;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorOf, DefKind};
+use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::{self, InferOk};
 use rustc_span::Span;
-use syntax::ast;
+use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 use self::probe::{IsSuggestion, ProbeScope};
 
@@ -58,7 +58,7 @@ pub enum MethodError<'tcx> {
 
     // Found a `Self: Sized` bound where `Self` is a trait object, also the caller may have
     // forgotten to import a trait.
-    IllegalSizedBound(Vec<DefId>, bool),
+    IllegalSizedBound(Vec<DefId>, bool, Span),
 
     // Found a match, but the return type is wrong
     BadReturnType,
@@ -68,7 +68,7 @@ pub enum MethodError<'tcx> {
 // could lead to matches if satisfied, and a list of not-in-scope traits which may work.
 pub struct NoMatchData<'tcx> {
     pub static_candidates: Vec<CandidateSource>,
-    pub unsatisfied_predicates: Vec<TraitRef<'tcx>>,
+    pub unsatisfied_predicates: Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
     pub out_of_scope_traits: Vec<DefId>,
     pub lev_candidate: Option<ty::AssocItem>,
     pub mode: probe::Mode,
@@ -77,7 +77,7 @@ pub struct NoMatchData<'tcx> {
 impl<'tcx> NoMatchData<'tcx> {
     pub fn new(
         static_candidates: Vec<CandidateSource>,
-        unsatisfied_predicates: Vec<TraitRef<'tcx>>,
+        unsatisfied_predicates: Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
         out_of_scope_traits: Vec<DefId>,
         lev_candidate: Option<ty::AssocItem>,
         mode: probe::Mode,
@@ -135,7 +135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         msg: &str,
         method_name: ast::Ident,
         self_ty: Ty<'tcx>,
-        call_expr_id: hir::HirId,
+        call_expr: &hir::Expr<'_>,
     ) {
         let has_params = self
             .probe_for_name(
@@ -144,7 +144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 method_name,
                 IsSuggestion(false),
                 self_ty,
-                call_expr_id,
+                call_expr.hir_id,
                 ProbeScope::TraitsInScope,
             )
             .and_then(|pick| {
@@ -152,13 +152,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(sig.inputs().skip_binder().len() > 1)
             });
 
+        // Account for `foo.bar<T>`;
+        let sugg_span = method_name.span.with_hi(call_expr.span.hi());
+        let snippet = self
+            .tcx
+            .sess
+            .source_map()
+            .span_to_snippet(sugg_span)
+            .unwrap_or_else(|_| method_name.to_string());
         let (suggestion, applicability) = if has_params.unwrap_or_default() {
-            (format!("{}(...)", method_name), Applicability::HasPlaceholders)
+            (format!("{}(...)", snippet), Applicability::HasPlaceholders)
         } else {
-            (format!("{}()", method_name), Applicability::MaybeIncorrect)
+            (format!("{}()", snippet), Applicability::MaybeIncorrect)
         };
 
-        err.span_suggestion(method_name.span, msg, suggestion, applicability);
+        err.span_suggestion(sugg_span, msg, suggestion, applicability);
     }
 
     /// Performs method lookup. If lookup is successful, it will return the callee
@@ -204,7 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let result =
             self.confirm_method(span, self_expr, call_expr, self_ty, pick.clone(), segment);
 
-        if result.illegal_sized_bound {
+        if let Some(span) = result.illegal_sized_bound {
             let mut needs_mut = false;
             if let ty::Ref(region, t_type, mutability) = self_ty.kind {
                 let trait_type = self
@@ -249,7 +257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => Vec::new(),
             };
 
-            return Err(IllegalSizedBound(candidates, needs_mut));
+            return Err(IllegalSizedBound(candidates, needs_mut, span));
         }
 
         Ok(result.callee)
@@ -334,7 +342,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Trait must have a method named `m_name` and it should not have
         // type parameters or early-bound regions.
         let tcx = self.tcx;
-        let method_item = match self.associated_item(trait_def_id, m_name, Namespace::Value) {
+        let method_item = match self.associated_item(trait_def_id, m_name, Namespace::ValueNS) {
             Some(method_item) => method_item,
             None => {
                 tcx.sess.delay_span_bug(
@@ -360,11 +368,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let fn_sig = tcx.fn_sig(def_id);
         let fn_sig = self.replace_bound_vars_with_fresh_vars(span, infer::FnCall, &fn_sig).0;
         let fn_sig = fn_sig.subst(self.tcx, substs);
-        let fn_sig = match self.normalize_associated_types_in_as_infer_ok(span, &fn_sig) {
-            InferOk { value, obligations: o } => {
-                obligations.extend(o);
-                value
-            }
+
+        let InferOk { value, obligations: o } =
+            self.normalize_associated_types_in_as_infer_ok(span, &fn_sig);
+        let fn_sig = {
+            obligations.extend(o);
+            value
         };
 
         // Register obligations for the parameters. This will include the
@@ -376,12 +385,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Note that as the method comes from a trait, it should not have
         // any late-bound regions appearing in its bounds.
         let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
-        let bounds = match self.normalize_associated_types_in_as_infer_ok(span, &bounds) {
-            InferOk { value, obligations: o } => {
-                obligations.extend(o);
-                value
-            }
+
+        let InferOk { value, obligations: o } =
+            self.normalize_associated_types_in_as_infer_ok(span, &bounds);
+        let bounds = {
+            obligations.extend(o);
+            value
         };
+
         assert!(!bounds.has_escaping_bound_vars());
 
         let cause = traits::ObligationCause::misc(span, self.body_id);
@@ -452,12 +463,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ProbeScope::TraitsInScope,
         )?;
         debug!("resolve_ufcs: pick={:?}", pick);
-        for import_id in pick.import_ids {
-            let import_def_id = tcx.hir().local_def_id(import_id);
-            debug!("resolve_ufcs: used_trait_import: {:?}", import_def_id);
-            Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
-                .unwrap()
-                .insert(import_def_id);
+        {
+            let mut tables = self.tables.borrow_mut();
+            let used_trait_imports = Lrc::get_mut(&mut tables.used_trait_imports).unwrap();
+            for import_id in pick.import_ids {
+                let import_def_id = tcx.hir().local_def_id(import_id);
+                debug!("resolve_ufcs: used_trait_import: {:?}", import_def_id);
+                used_trait_imports.insert(import_def_id);
+            }
         }
 
         let def_kind = pick.item.def_kind();
@@ -474,8 +487,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: ast::Ident,
         ns: Namespace,
     ) -> Option<ty::AssocItem> {
-        self.tcx.associated_items(def_id).find(|item| {
-            Namespace::from(item.kind) == ns && self.tcx.hygienic_eq(item_name, item.ident, def_id)
-        })
+        self.tcx
+            .associated_items(def_id)
+            .find_by_name_and_namespace(self.tcx, item_name, ns, def_id)
+            .copied()
     }
 }

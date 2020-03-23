@@ -1,4 +1,3 @@
-// compile-fail
 // ignore-tidy-linelength
 
 #![feature(associated_type_bounds)]

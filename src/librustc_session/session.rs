@@ -33,7 +33,6 @@ use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 
-use std;
 use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
@@ -48,6 +47,18 @@ pub struct OptimizationFuel {
     remaining: u64,
     /// We're rejecting all further optimizations.
     out_of_fuel: bool,
+}
+
+/// The behavior of the CTFE engine when an error occurs with regards to backtraces.
+#[derive(Clone, Copy)]
+pub enum CtfeBacktrace {
+    /// Do nothing special, return the error as usual without a backtrace.
+    Disabled,
+    /// Capture a backtrace at the point the error is created and return it in the error
+    /// (to be printed later if/when the error ever actually gets shown to the user).
+    Capture,
+    /// Capture a backtrace at the point the error is created and immediately print it out.
+    Immediate,
 }
 
 /// Represents the data associated with a compilation
@@ -89,10 +100,8 @@ pub struct Session {
     /// The maximum length of types during monomorphization.
     pub type_length_limit: Once<usize>,
 
-    /// Map from imported macro spans (which consist of
-    /// the localized span for the macro body) to the
-    /// macro name and definition span in the source crate.
-    pub imported_macro_spans: OneThread<RefCell<FxHashMap<Span, (String, Span)>>>,
+    /// The maximum blocks a const expression can evaluate.
+    pub const_eval_limit: Once<usize>,
 
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
     /// Used for incremental compilation tests. Will only be populated if
@@ -133,6 +142,15 @@ pub struct Session {
     /// Mapping from ident span to path span for paths that don't exist as written, but that
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: Lock<FxHashMap<Span, Span>>,
+
+    /// Path for libraries that will take preference over libraries shipped by Rust.
+    /// Used by windows-gnu targets to priortize system mingw-w64 libraries.
+    pub system_library_path: OneThread<RefCell<Option<Option<PathBuf>>>>,
+
+    /// Tracks the current behavior of the CTFE engine when an error occurs.
+    /// Options range from returning the error without a backtrace to returning an error
+    /// and immediately printing the backtrace to stderr.
+    pub ctfe_backtrace: Lock<CtfeBacktrace>,
 }
 
 pub struct PerfStats {
@@ -389,6 +407,7 @@ impl Session {
         );
     }
 
+    #[inline]
     pub fn source_map(&self) -> &source_map::SourceMap {
         self.parse_sess.source_map()
     }
@@ -536,25 +555,34 @@ impl Session {
             .unwrap_or(self.opts.debug_assertions)
     }
 
-    pub fn crt_static(&self) -> bool {
+    /// Check whether this compile session and crate type use static crt.
+    pub fn crt_static(&self, crate_type: Option<config::CrateType>) -> bool {
         // If the target does not opt in to crt-static support, use its default.
         if self.target.target.options.crt_static_respected {
-            self.crt_static_feature()
+            self.crt_static_feature(crate_type)
         } else {
             self.target.target.options.crt_static_default
         }
     }
 
-    pub fn crt_static_feature(&self) -> bool {
+    /// Check whether this compile session and crate type use `crt-static` feature.
+    pub fn crt_static_feature(&self, crate_type: Option<config::CrateType>) -> bool {
         let requested_features = self.opts.cg.target_feature.split(',');
         let found_negative = requested_features.clone().any(|r| r == "-crt-static");
         let found_positive = requested_features.clone().any(|r| r == "+crt-static");
 
-        // If the target we're compiling for requests a static crt by default,
-        // then see if the `-crt-static` feature was passed to disable that.
-        // Otherwise if we don't have a static crt by default then see if the
-        // `+crt-static` feature was passed.
-        if self.target.target.options.crt_static_default { !found_negative } else { found_positive }
+        if found_positive || found_negative {
+            found_positive
+        } else if crate_type == Some(config::CrateType::ProcMacro)
+            || crate_type == None && self.opts.crate_types.contains(&config::CrateType::ProcMacro)
+        {
+            // FIXME: When crate_type is not available,
+            // we use compiler options to determine the crate_type.
+            // We can't check `#![crate_type = "proc-macro"]` here.
+            false
+        } else {
+            self.target.target.options.crt_static_default
+        }
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
@@ -855,7 +883,7 @@ fn default_emitter(
     source_map: &Lrc<source_map::SourceMap>,
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Box<dyn Emitter + sync::Send> {
-    let external_macro_backtrace = sopts.debugging_opts.external_macro_backtrace;
+    let macro_backtrace = sopts.debugging_opts.macro_backtrace;
     match (sopts.error_format, emitter_dest) {
         (config::ErrorOutputType::HumanReadable(kind), dst) => {
             let (short, color_config) = kind.unzip();
@@ -864,7 +892,7 @@ fn default_emitter(
                 let emitter = AnnotateSnippetEmitterWriter::new(
                     Some(source_map.clone()),
                     short,
-                    external_macro_backtrace,
+                    macro_backtrace,
                 );
                 Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing()))
             } else {
@@ -875,7 +903,7 @@ fn default_emitter(
                         short,
                         sopts.debugging_opts.teach,
                         sopts.debugging_opts.terminal_width,
-                        external_macro_backtrace,
+                        macro_backtrace,
                     ),
                     Some(dst) => EmitterWriter::new(
                         dst,
@@ -884,7 +912,7 @@ fn default_emitter(
                         false, // no teach messages when writing to a buffer
                         false, // no colors when writing to a buffer
                         None,  // no terminal width
-                        external_macro_backtrace,
+                        macro_backtrace,
                     ),
                 };
                 Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing()))
@@ -896,7 +924,7 @@ fn default_emitter(
                 source_map.clone(),
                 pretty,
                 json_rendered,
-                external_macro_backtrace,
+                macro_backtrace,
             )
             .ui_testing(sopts.debugging_opts.ui_testing()),
         ),
@@ -907,7 +935,7 @@ fn default_emitter(
                 source_map.clone(),
                 pretty,
                 json_rendered,
-                external_macro_backtrace,
+                macro_backtrace,
             )
             .ui_testing(sopts.debugging_opts.ui_testing()),
         ),
@@ -1033,6 +1061,12 @@ fn build_session_(
         sopts.debugging_opts.time_passes,
     );
 
+    let ctfe_backtrace = Lock::new(match env::var("RUSTC_CTFE_BACKTRACE") {
+        Ok(ref val) if val == "immediate" => CtfeBacktrace::Immediate,
+        Ok(ref val) if val != "0" => CtfeBacktrace::Capture,
+        _ => CtfeBacktrace::Disabled,
+    });
+
     let sess = Session {
         target: target_cfg,
         host,
@@ -1049,7 +1083,7 @@ fn build_session_(
         features: Once::new(),
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
-        imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
+        const_eval_limit: Once::new(),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
         prof,
@@ -1069,6 +1103,8 @@ fn build_session_(
         driver_lint_caps,
         trait_methods_not_found: Lock::new(Default::default()),
         confused_type_with_std_module: Lock::new(Default::default()),
+        system_library_path: OneThread::new(RefCell::new(Default::default())),
+        ctfe_backtrace,
     };
 
     validate_commandline_args_with_session_available(&sess);
@@ -1121,7 +1157,8 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.err(
             "Profile-guided optimization does not yet work in conjunction \
                   with `-Cpanic=unwind` on Windows when targeting MSVC. \
-                  See https://github.com/rust-lang/rust/issues/61002 for details.",
+                  See issue #61002 <https://github.com/rust-lang/rust/issues/61002> \
+                  for more information.",
         );
     }
 

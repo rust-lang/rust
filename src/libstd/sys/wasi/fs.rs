@@ -12,7 +12,6 @@ use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use crate::sys_common::FromInner;
 
-pub use crate::sys_common::fs::copy;
 pub use crate::sys_common::fs::remove_dir_all;
 
 pub struct File {
@@ -646,4 +645,13 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
 
 pub fn osstr2str(f: &OsStr) -> io::Result<&str> {
     f.to_str().ok_or_else(|| io::Error::new(io::ErrorKind::Other, "input must be utf-8"))
+}
+
+pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    use crate::fs::File;
+
+    let mut reader = File::open(from)?;
+    let mut writer = File::create(to)?;
+
+    io::copy(&mut reader, &mut writer)
 }

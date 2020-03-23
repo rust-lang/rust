@@ -11,7 +11,7 @@ LL | |             }
 LL | |         }
    | |_________^ unreachable expression
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/try-block-unreachable-code-lint.rs:6:9
    |
 LL | #![warn(unreachable_code)]

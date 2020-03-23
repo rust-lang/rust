@@ -31,13 +31,6 @@ exclude = [
   "obj",
 ]
 
-# Curiously, LLVM 7.0 will segfault if compiled with opt-level=3
-# See issue https://github.com/rust-lang/rust/issues/52378
-[profile.release]
-opt-level = 2
-[profile.bench]
-opt-level = 2
-
 # These options are controlled from our rustc wrapper script, so turn them off
 # here and have them controlled elsewhere.
 [profile.dev]

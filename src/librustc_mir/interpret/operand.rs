@@ -3,18 +3,20 @@
 
 use std::convert::{TryFrom, TryInto};
 
-use rustc::ty::layout::{
-    self, HasDataLayout, IntegerExt, LayoutOf, PrimitiveExt, Size, TyLayout, VariantIdx,
-};
-use rustc::{mir, ty};
-
 use super::{InterpCx, MPlaceTy, Machine, MemPlace, Place, PlaceTy};
 pub use rustc::mir::interpret::ScalarMaybeUndef;
 use rustc::mir::interpret::{
     sign_extend, truncate, AllocId, ConstValue, GlobalId, InterpResult, Pointer, Scalar,
 };
+use rustc::ty::layout::{
+    self, HasDataLayout, IntegerExt, LayoutOf, PrimitiveExt, Size, TyLayout, VariantIdx,
+};
+use rustc::ty::print::{FmtPrinter, PrettyPrinter, Printer};
+use rustc::ty::Ty;
+use rustc::{mir, ty};
+use rustc_hir::def::Namespace;
 use rustc_macros::HashStable;
-use syntax::ast;
+use std::fmt::Write;
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
 ///
@@ -92,47 +94,44 @@ pub struct ImmTy<'tcx, Tag = ()> {
     pub layout: TyLayout<'tcx>,
 }
 
-// `Tag: Copy` because some methods on `Scalar` consume them by value
 impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.imm {
-            Immediate::Scalar(ScalarMaybeUndef::Scalar(s)) => match s.to_bits(self.layout.size) {
-                Ok(s) => {
-                    match self.layout.ty.kind {
-                        ty::Int(_) => {
-                            return write!(
-                                fmt,
-                                "{}",
-                                super::sign_extend(s, self.layout.size) as i128,
-                            );
-                        }
-                        ty::Uint(_) => return write!(fmt, "{}", s),
-                        ty::Bool if s == 0 => return fmt.write_str("false"),
-                        ty::Bool if s == 1 => return fmt.write_str("true"),
-                        ty::Char => {
-                            if let Some(c) = u32::try_from(s).ok().and_then(std::char::from_u32) {
-                                return write!(fmt, "{}", c);
-                            }
-                        }
-                        ty::Float(ast::FloatTy::F32) => {
-                            if let Ok(u) = u32::try_from(s) {
-                                return write!(fmt, "{}", f32::from_bits(u));
-                            }
-                        }
-                        ty::Float(ast::FloatTy::F64) => {
-                            if let Ok(u) = u64::try_from(s) {
-                                return write!(fmt, "{}", f64::from_bits(u));
-                            }
-                        }
-                        _ => {}
-                    }
-                    write!(fmt, "{:x}", s)
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        /// Helper function for printing a scalar to a FmtPrinter
+        fn p<'a, 'tcx, F: std::fmt::Write, Tag>(
+            cx: FmtPrinter<'a, 'tcx, F>,
+            s: ScalarMaybeUndef<Tag>,
+            ty: Ty<'tcx>,
+        ) -> Result<FmtPrinter<'a, 'tcx, F>, std::fmt::Error> {
+            match s {
+                ScalarMaybeUndef::Scalar(s) => {
+                    cx.pretty_print_const_scalar(s.erase_tag(), ty, true)
                 }
-                Err(_) => fmt.write_str("{pointer}"),
-            },
-            Immediate::Scalar(ScalarMaybeUndef::Undef) => fmt.write_str("{undef}"),
-            Immediate::ScalarPair(..) => fmt.write_str("{wide pointer or tuple}"),
+                ScalarMaybeUndef::Undef => cx.typed_value(
+                    |mut this| {
+                        this.write_str("{undef ")?;
+                        Ok(this)
+                    },
+                    |this| this.print_type(ty),
+                    " ",
+                ),
+            }
         }
+        ty::tls::with(|tcx| {
+            match self.imm {
+                Immediate::Scalar(s) => {
+                    if let Some(ty) = tcx.lift(&self.layout.ty) {
+                        let cx = FmtPrinter::new(tcx, f, Namespace::ValueNS);
+                        p(cx, s, ty)?;
+                        return Ok(());
+                    }
+                    write!(f, "{:?}: {}", s.erase_tag(), self.layout.ty)
+                }
+                Immediate::ScalarPair(a, b) => {
+                    // FIXME(oli-obk): at least print tuples and slices nicely
+                    write!(f, "({:?}, {:?}): {}", a.erase_tag(), b.erase_tag(), self.layout.ty,)
+                }
+            }
+        })
     }
 }
 
@@ -204,11 +203,6 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     #[inline]
     pub fn from_int(i: impl Into<i128>, layout: TyLayout<'tcx>) -> Self {
         Self::from_scalar(Scalar::from_int(i, layout.size), layout)
-    }
-
-    #[inline]
-    pub fn to_bits(self) -> InterpResult<'tcx, u128> {
-        self.to_scalar()?.to_bits(self.layout.size)
     }
 }
 
@@ -349,7 +343,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let len = mplace.len(self)?;
         let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len as u64))?;
         let str = ::std::str::from_utf8(bytes)
-            .map_err(|err| err_unsup!(ValidationFailure(err.to_string())))?;
+            .map_err(|err| err_ub_format!("this string is not valid UTF-8: {}", err))?;
         Ok(str)
     }
 
@@ -361,7 +355,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let base = match op.try_as_mplace(self) {
             Ok(mplace) => {
-                // The easy case
+                // We can reuse the mplace field computation logic for indirect operands.
                 let field = self.mplace_field(mplace, field)?;
                 return Ok(field.into());
             }
@@ -463,7 +457,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         layout: Option<TyLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let base_op = match place.local {
-            mir::RETURN_PLACE => throw_unsup!(ReadFromReturnPointer),
+            mir::RETURN_PLACE => throw_ub!(ReadFromReturnPlace),
             local => {
                 // Do not use the layout passed in as argument if the base we are looking at
                 // here is not the entire place.
@@ -496,7 +490,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Copy(ref place) | Move(ref place) => self.eval_place_to_op(place, layout)?,
 
             Constant(ref constant) => {
-                let val = self.subst_from_frame_and_normalize_erasing_regions(constant.literal);
+                let val =
+                    self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal);
                 self.eval_const_to_op(val, layout)?
             }
         };
@@ -509,7 +504,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         ops: &[mir::Operand<'tcx>],
     ) -> InterpResult<'tcx, Vec<OpTy<'tcx, M::PointerTag>>> {
-        ops.into_iter().map(|op| self.eval_operand(op, None)).collect()
+        ops.iter().map(|op| self.eval_operand(op, None)).collect()
     }
 
     // Used when the miri-engine runs into a constant and for extracting information from constants
@@ -518,7 +513,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// "universe" (param_env).
     crate fn eval_const_to_op(
         &self,
-        val: &'tcx ty::Const<'tcx>,
+        val: &ty::Const<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let tag_scalar = |scalar| match scalar {
@@ -536,7 +531,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // potentially requiring the current static to be evaluated again. This is not a
                 // problem here, because we are building an operand which means an actual read is
                 // happening.
-                return Ok(OpTy::from(self.const_eval(GlobalId { instance, promoted })?));
+                return Ok(self.const_eval(GlobalId { instance, promoted }, val.ty)?);
             }
             ty::ConstKind::Infer(..)
             | ty::ConstKind::Bound(..)
@@ -609,7 +604,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     .not_undef()
                     .and_then(|raw_discr| self.force_bits(raw_discr, discr_val.layout.size))
                     .map_err(|_| err_ub!(InvalidDiscriminant(raw_discr.erase_tag())))?;
-                let real_discr = if discr_val.layout.ty.is_signed() {
+                let real_discr = if discr_val.layout.abi.is_signed() {
                     // going from layout tag type to typeck discriminant type
                     // requires first sign extending with the discriminant layout
                     let sexted = sign_extend(bits_discr, discr_val.layout.size) as i128;
@@ -683,7 +678,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             // Then computing the absolute variant idx should not overflow any more.
                             let variant_index = variants_start
                                 .checked_add(variant_index_relative)
-                                .expect("oveflow computing absolute variant idx");
+                                .expect("overflow computing absolute variant idx");
                             let variants_len = rval
                                 .layout
                                 .ty

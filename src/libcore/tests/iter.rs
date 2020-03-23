@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 use core::cell::Cell;
 use core::convert::TryFrom;
 use core::iter::*;
@@ -1956,10 +1958,18 @@ fn test_range_inclusive_exhaustion() {
     assert_eq!(r.next(), None);
     assert_eq!(r.next(), None);
 
+    assert_eq!(*r.start(), 10);
+    assert_eq!(*r.end(), 10);
+    assert_ne!(r, 10..=10);
+
     let mut r = 10..=10;
     assert_eq!(r.next_back(), Some(10));
     assert!(r.is_empty());
     assert_eq!(r.next_back(), None);
+
+    assert_eq!(*r.start(), 10);
+    assert_eq!(*r.end(), 10);
+    assert_ne!(r, 10..=10);
 
     let mut r = 10..=12;
     assert_eq!(r.next(), Some(10));
@@ -2078,6 +2088,9 @@ fn test_range_inclusive_nth() {
     assert_eq!((10..=15).nth(5), Some(15));
     assert_eq!((10..=15).nth(6), None);
 
+    let mut exhausted_via_next = 10_u8..=20;
+    while exhausted_via_next.next().is_some() {}
+
     let mut r = 10_u8..=20;
     assert_eq!(r.nth(2), Some(12));
     assert_eq!(r, 13..=20);
@@ -2087,6 +2100,7 @@ fn test_range_inclusive_nth() {
     assert_eq!(ExactSizeIterator::is_empty(&r), false);
     assert_eq!(r.nth(10), None);
     assert_eq!(r.is_empty(), true);
+    assert_eq!(r, exhausted_via_next);
     assert_eq!(ExactSizeIterator::is_empty(&r), true);
 }
 
@@ -2098,6 +2112,9 @@ fn test_range_inclusive_nth_back() {
     assert_eq!((10..=15).nth_back(6), None);
     assert_eq!((-120..=80_i8).nth_back(200), Some(-120));
 
+    let mut exhausted_via_next_back = 10_u8..=20;
+    while exhausted_via_next_back.next_back().is_some() {}
+
     let mut r = 10_u8..=20;
     assert_eq!(r.nth_back(2), Some(18));
     assert_eq!(r, 10..=17);
@@ -2107,6 +2124,7 @@ fn test_range_inclusive_nth_back() {
     assert_eq!(ExactSizeIterator::is_empty(&r), false);
     assert_eq!(r.nth_back(10), None);
     assert_eq!(r.is_empty(), true);
+    assert_eq!(r, exhausted_via_next_back);
     assert_eq!(ExactSizeIterator::is_empty(&r), true);
 }
 
@@ -2923,4 +2941,74 @@ fn test_partition() {
     check(xs, |&x| x % 5 == 0, 2); // multiple of 5
     check(xs, |&x| x < 3, 3); // small
     check(xs, |&x| x > 6, 3); // large
+}
+
+/// An iterator that panics whenever `next` or next_back` is called
+/// after `None` has already been returned. This does not violate
+/// `Iterator`'s contract. Used to test that iterator adaptors don't
+/// poll their inner iterators after exhausting them.
+struct NonFused<I> {
+    iter: I,
+    done: bool,
+}
+
+impl<I> NonFused<I> {
+    fn new(iter: I) -> Self {
+        Self { iter, done: false }
+    }
+}
+
+impl<I> Iterator for NonFused<I>
+where
+    I: Iterator,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        assert!(!self.done, "this iterator has already returned None");
+        self.iter.next().or_else(|| {
+            self.done = true;
+            None
+        })
+    }
+}
+
+impl<I> DoubleEndedIterator for NonFused<I>
+where
+    I: DoubleEndedIterator,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        assert!(!self.done, "this iterator has already returned None");
+        self.iter.next_back().or_else(|| {
+            self.done = true;
+            None
+        })
+    }
+}
+
+#[test]
+fn test_peekable_non_fused() {
+    let mut iter = NonFused::new(empty::<i32>()).peekable();
+
+    assert_eq!(iter.peek(), None);
+    assert_eq!(iter.next_back(), None);
+}
+
+#[test]
+fn test_flatten_non_fused_outer() {
+    let mut iter = NonFused::new(once(0..2)).flatten();
+
+    assert_eq!(iter.next_back(), Some(1));
+    assert_eq!(iter.next(), Some(0));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn test_flatten_non_fused_inner() {
+    let mut iter = once(0..1).chain(once(1..3)).flat_map(NonFused::new);
+
+    assert_eq!(iter.next_back(), Some(2));
+    assert_eq!(iter.next(), Some(0));
+    assert_eq!(iter.next(), Some(1));
+    assert_eq!(iter.next(), None);
 }

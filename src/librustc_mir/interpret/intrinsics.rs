@@ -48,22 +48,15 @@ crate fn eval_nullary_intrinsic<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     def_id: DefId,
     substs: SubstsRef<'tcx>,
-) -> InterpResult<'tcx, &'tcx ty::Const<'tcx>> {
+) -> InterpResult<'tcx, ConstValue<'tcx>> {
     let tp_ty = substs.type_at(0);
     let name = tcx.item_name(def_id);
     Ok(match name {
         sym::type_name => {
             let alloc = type_name::alloc_type_name(tcx, tp_ty);
-            tcx.mk_const(ty::Const {
-                val: ty::ConstKind::Value(ConstValue::Slice {
-                    data: alloc,
-                    start: 0,
-                    end: alloc.len(),
-                }),
-                ty: tcx.mk_static_str(),
-            })
+            ConstValue::Slice { data: alloc, start: 0, end: alloc.len() }
         }
-        sym::needs_drop => ty::Const::from_bool(tcx, tp_ty.needs_drop(tcx, param_env)),
+        sym::needs_drop => ConstValue::from_bool(tp_ty.needs_drop(tcx, param_env)),
         sym::size_of | sym::min_align_of | sym::pref_align_of => {
             let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(e)))?;
             let n = match name {
@@ -72,11 +65,9 @@ crate fn eval_nullary_intrinsic<'tcx>(
                 sym::size_of => layout.size.bytes(),
                 _ => bug!(),
             };
-            ty::Const::from_usize(tcx, n)
+            ConstValue::from_machine_usize(n, &tcx)
         }
-        sym::type_id => {
-            ty::Const::from_bits(tcx, tcx.type_id_hash(tp_ty).into(), param_env.and(tcx.types.u64))
-        }
+        sym::type_id => ConstValue::from_u64(tcx.type_id_hash(tp_ty)),
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })
 }
@@ -93,14 +84,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let substs = instance.substs;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
 
-        // We currently do not handle any intrinsics that are *allowed* to diverge,
-        // but `transmute` could lack a return place in case of UB.
+        // First handle intrinsics without return place.
         let (dest, ret) = match ret {
-            Some(p) => p,
             None => match intrinsic_name {
-                sym::transmute => throw_ub!(Unreachable),
+                sym::transmute => throw_ub_format!("transmuting to uninhabited type"),
+                sym::abort => M::abort(self)?,
+                // Unsupported diverging intrinsic.
                 _ => return Ok(false),
             },
+            Some(p) => p,
         };
 
         // Keep the patterns in this match ordered the same as the list in
@@ -119,7 +111,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::type_id
             | sym::type_name => {
                 let gid = GlobalId { instance, promoted: None };
-                let val = self.const_eval(gid)?;
+                let ty = match intrinsic_name {
+                    sym::min_align_of | sym::pref_align_of | sym::size_of => self.tcx.types.usize,
+                    sym::needs_drop => self.tcx.types.bool,
+                    sym::type_id => self.tcx.types.u64,
+                    sym::type_name => self.tcx.mk_static_str(),
+                    _ => span_bug!(span, "Already checked for nullary intrinsics"),
+                };
+                let val = self.const_eval(gid, ty)?;
                 self.copy_op(val, dest)?;
             }
 
@@ -136,7 +135,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let bits = self.force_bits(val, layout_of.size)?;
                 let kind = match layout_of.abi {
                     ty::layout::Abi::Scalar(ref scalar) => scalar.value,
-                    _ => throw_unsup!(TypeNotPrimitive(ty)),
+                    _ => bug!("{} called on invalid type {:?}", intrinsic_name, ty),
                 };
                 let (nonzero, intrinsic_name) = match intrinsic_name {
                     sym::cttz_nonzero => (true, sym::cttz),
@@ -205,7 +204,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if is_add {
                             // max unsigned
                             Scalar::from_uint(
-                                u128::max_value() >> (128 - num_bits),
+                                u128::MAX >> (128 - num_bits),
                                 Size::from_bits(num_bits),
                             )
                         } else {
@@ -218,19 +217,39 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 self.write_scalar(val, dest)?;
             }
-            sym::unchecked_shl | sym::unchecked_shr => {
+            sym::discriminant_value => {
+                let place = self.deref_operand(args[0])?;
+                let discr_val = self.read_discriminant(place.into())?.0;
+                self.write_scalar(Scalar::from_uint(discr_val, dest.layout.size), dest)?;
+            }
+            sym::unchecked_shl
+            | sym::unchecked_shr
+            | sym::unchecked_add
+            | sym::unchecked_sub
+            | sym::unchecked_mul
+            | sym::unchecked_div
+            | sym::unchecked_rem => {
                 let l = self.read_immediate(args[0])?;
                 let r = self.read_immediate(args[1])?;
                 let bin_op = match intrinsic_name {
                     sym::unchecked_shl => BinOp::Shl,
                     sym::unchecked_shr => BinOp::Shr,
+                    sym::unchecked_add => BinOp::Add,
+                    sym::unchecked_sub => BinOp::Sub,
+                    sym::unchecked_mul => BinOp::Mul,
+                    sym::unchecked_div => BinOp::Div,
+                    sym::unchecked_rem => BinOp::Rem,
                     _ => bug!("Already checked for int ops"),
                 };
                 let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, l, r)?;
                 if overflowed {
                     let layout = self.layout_of(substs.type_at(0))?;
                     let r_val = self.force_bits(r.to_scalar()?, layout.size)?;
-                    throw_ub_format!("Overflowing shift by {} in `{}`", r_val, intrinsic_name);
+                    if let sym::unchecked_shl | sym::unchecked_shr = intrinsic_name {
+                        throw_ub_format!("overflowing shift by {} in `{}`", r_val, intrinsic_name);
+                    } else {
+                        throw_ub_format!("overflow executing `{}`", intrinsic_name);
+                    }
                 }
                 self.write_scalar(val, dest)?;
             }
@@ -361,32 +380,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(true)
     }
 
-    /// "Intercept" a function call to a panic-related function
-    /// because we have something special to do for it.
-    /// Returns `true` if an intercept happened.
-    pub fn hook_panic_fn(
-        &mut self,
-        span: Span,
-        instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx, M::PointerTag>],
-    ) -> InterpResult<'tcx, bool> {
-        let def_id = instance.def_id();
-        if Some(def_id) == self.tcx.lang_items().panic_fn()
-            || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
-        {
-            // &'static str
-            assert!(args.len() == 1);
-
-            let msg_place = self.deref_operand(args[0])?;
-            let msg = Symbol::intern(self.read_str(msg_place)?);
-            let span = self.find_closest_untracked_caller_location().unwrap_or(span);
-            let (file, line, col) = self.location_triple_for_span(span);
-            throw_panic!(Panic { msg, file, line, col })
-        } else {
-            return Ok(false);
-        }
-    }
-
     pub fn exact_div(
         &mut self,
         a: ImmTy<'tcx, M::PointerTag>,
@@ -394,10 +387,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         // Performs an exact division, resulting in undefined behavior where
-        // `x % y != 0` or `y == 0` or `x == T::min_value() && y == -1`.
-        // First, check x % y != 0.
-        if self.binary_op(BinOp::Rem, a, b)?.to_bits()? != 0 {
-            // Then, check if `b` is -1, which is the "min_value / -1" case.
+        // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
+        // First, check x % y != 0 (or if that computation overflows).
+        let (res, overflow, _ty) = self.overflowing_binary_op(BinOp::Rem, a, b)?;
+        if overflow || res.assert_bits(a.layout.size) != 0 {
+            // Then, check if `b` is -1, which is the "MIN / -1" case.
             let minus1 = Scalar::from_int(-1, dest.layout.size);
             let b_scalar = b.to_scalar().unwrap();
             if b_scalar == minus1 {
@@ -406,6 +400,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 throw_ub_format!("exact_div: {} cannot be divided by {} without remainder", a, b,)
             }
         }
+        // `Rem` says this is all right, so we can let `Div` do its job.
         self.binop_ignore_overflow(BinOp::Div, a, b, dest)
     }
 }

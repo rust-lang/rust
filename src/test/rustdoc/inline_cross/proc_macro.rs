@@ -26,3 +26,11 @@ pub use some_macros::some_proc_attr;
 // @has proc_macro/derive.SomeDerive.html
 // @has - 'a derive attribute that adds nothing to its input.'
 pub use some_macros::SomeDerive;
+
+// @has proc_macro/attr.first_attr.html
+// @has - 'Generated doc comment'
+pub use some_macros::first_attr;
+
+// @has proc_macro/attr.second_attr.html
+// @has - 'Generated doc comment'
+pub use some_macros::second_attr;

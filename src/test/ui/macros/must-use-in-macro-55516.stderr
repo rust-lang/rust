@@ -6,5 +6,5 @@ LL |     write!(&mut example, "{}", 42);
    |
    = note: `-W unused-must-use` implied by `-W unused`
    = note: this `Result` may be an `Err` variant, which should be handled
-   = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

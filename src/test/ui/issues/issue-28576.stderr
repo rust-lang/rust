@@ -1,11 +1,16 @@
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/issue-28576.rs:7:12
    |
+LL |   pub trait Bar: Foo<Assoc=()> {
+   |             ---  -------------
+   |             |    |   |
+   |             |    |   ...because it uses `Self` as a type parameter in this
+   |             |    ...because it uses `Self` as a type parameter in this
+   |             this trait cannot be made into an object...
+LL |       fn new(&self, b: &
 LL | /            dyn Bar
 LL | |               <Assoc=()>
    | |________________________^ the trait `Bar` cannot be made into an object
-   |
-   = note: the trait cannot use `Self` as a type parameter in the supertraits or where-clauses
 
 error: aborting due to previous error
 

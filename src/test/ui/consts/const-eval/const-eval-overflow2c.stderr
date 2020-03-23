@@ -8,7 +8,7 @@ LL | |      i8::MIN * 2,
 LL | |      );
    | |_______-
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/const-eval-overflow2c.rs:8:9
    |
 LL | #![deny(const_err)]

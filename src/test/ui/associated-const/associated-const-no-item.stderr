@@ -5,8 +5,11 @@ LL | const X: i32 = <i32>::ID;
    |                       ^^ associated item not found in `i32`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `ID`, perhaps you need to implement it:
-           candidate #1: `Foo`
+note: `Foo` defines an item `ID`, perhaps you need to implement it
+  --> $DIR/associated-const-no-item.rs:1:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
 
 error: aborting due to previous error
 

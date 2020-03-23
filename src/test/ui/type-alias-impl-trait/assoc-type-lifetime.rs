@@ -4,7 +4,7 @@
 
 #![feature(type_alias_impl_trait)]
 
-trait UnwrapItemsExt {
+trait UnwrapItemsExt<'a> {
     type Iter;
     fn unwrap_items(self) -> Self::Iter;
 }
@@ -15,9 +15,7 @@ trait MyTrait<'a> {}
 
 impl<'a> MyTrait<'a> for MyStruct {}
 
-impl<'a, I> UnwrapItemsExt for I
-where
-{
+impl<'a, I> UnwrapItemsExt<'a> for I {
     type Iter = impl MyTrait<'a>;
 
     fn unwrap_items(self) -> Self::Iter {

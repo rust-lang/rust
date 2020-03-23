@@ -4,7 +4,7 @@ error: floating-point types cannot be used in patterns
 LL |         NAN => {},
    |         ^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-6804.rs:4:9
    |
 LL | #![deny(illegal_floating_point_literal_pattern)]

@@ -8,6 +8,7 @@ LL | impl<T: Clone + ?Sized> Clone for Node<[T]> {
    | ------------------------------------------- first implementation here
    |
    = note: upstream crates may add a new impl of trait `std::clone::Clone` for type `[_]` in future versions
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

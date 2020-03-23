@@ -1,4 +1,4 @@
-use crate::dep_graph::{DepKind, DepNode, RecoverKey, SerializedDepNodeIndex};
+use crate::dep_graph::SerializedDepNodeIndex;
 use crate::mir;
 use crate::mir::interpret::{GlobalId, LitToConstInput};
 use crate::traits;
@@ -11,14 +11,14 @@ use crate::ty::query::queries;
 use crate::ty::query::QueryDescription;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 
 use rustc_span::symbol::Symbol;
 use std::borrow::Cow;
 
 fn describe_as_module(def_id: DefId, tcx: TyCtxt<'_>) -> String {
     if def_id.is_top_level_module() {
-        format!("top-level module")
+        "top-level module".to_string()
     } else {
         format!("module `{}`", tcx.def_path_str(def_id))
     }
@@ -43,9 +43,61 @@ rustc_queries! {
     }
 
     Other {
+        // Represents crate as a whole (as distinct from the top-level crate module).
+        // If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
+        // we will have to assume that any change means that you need to be recompiled.
+        // This is because the `hir_crate` query gives you access to all other items.
+        // To avoid this fate, do not call `tcx.hir().krate()`; instead,
+        // prefer wrappers like `tcx.visit_all_items_in_krate()`.
+        query hir_crate(key: CrateNum) -> &'tcx Crate<'tcx> {
+            eval_always
+            no_hash
+            desc { "get the crate HIR" }
+        }
+
+        // The indexed HIR. This can be conveniently accessed by `tcx.hir()`.
+        // Avoid calling this query directly.
+        query index_hir(_: CrateNum) -> &'tcx map::IndexedHir<'tcx> {
+            eval_always
+            no_hash
+            desc { "index HIR" }
+        }
+
+        // The items in a module.
+        //
+        // This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
+        // Avoid calling this query directly.
+        query hir_module_items(key: LocalDefId) -> &'tcx hir::ModuleItems {
+            eval_always
+            desc { |tcx| "HIR module items in `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
+
+        // Gives access to the HIR node for the HIR owner `key`.
+        //
+        // This can be conveniently accessed by methods on `tcx.hir()`.
+        // Avoid calling this query directly.
+        query hir_owner(key: LocalDefId) -> Option<&'tcx crate::hir::Owner<'tcx>> {
+            eval_always
+            desc { |tcx| "HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
+
+        // Gives access to the HIR nodes and bodies inside the HIR owner `key`.
+        //
+        // This can be conveniently accessed by methods on `tcx.hir()`.
+        // Avoid calling this query directly.
+        query hir_owner_nodes(key: LocalDefId) -> Option<&'tcx crate::hir::OwnerNodes<'tcx>> {
+            eval_always
+            desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
+
         /// Records the type of every item.
         query type_of(key: DefId) -> Ty<'tcx> {
             cache_on_disk_if { key.is_local() }
+        }
+
+        query analysis(key: CrateNum) -> Result<(), ErrorReported> {
+            eval_always
+            desc { "running analysis passes on this crate" }
         }
 
         /// Maps from the `DefId` of an item (trait/struct/enum/fn) to its
@@ -86,6 +138,11 @@ rustc_queries! {
             eval_always
             desc { "computing the lint levels for items in this crate" }
         }
+
+        query parent_module_from_def_id(key: LocalDefId) -> LocalDefId {
+            eval_always
+            desc { |tcx| "parent module of `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
     }
 
     Codegen {
@@ -113,7 +170,9 @@ rustc_queries! {
 
         /// Fetch the MIR for a given `DefId` right after it's built - this includes
         /// unreachable code.
-        query mir_built(_: DefId) -> &'tcx Steal<mir::BodyAndCache<'tcx>> {}
+        query mir_built(_: DefId) -> &'tcx Steal<mir::BodyAndCache<'tcx>> {
+            desc { "building MIR for" }
+        }
 
         /// Fetch the MIR for a given `DefId` up till the point where it is
         /// ready for const evaluation.
@@ -177,7 +236,6 @@ rustc_queries! {
             // queries). Making it anonymous avoids hashing the result, which
             // may save a bit of time.
             anon
-            no_force
             desc { "erasing regions from `{:?}`", ty }
         }
 
@@ -186,7 +244,6 @@ rustc_queries! {
         }
 
         query program_clauses_for_env(_: traits::Environment<'tcx>) -> Clauses<'tcx> {
-            no_force
             desc { "generating chalk-style clauses for environment" }
         }
 
@@ -229,7 +286,6 @@ rustc_queries! {
         /// To avoid cycles within the predicates of a single item we compute
         /// per-type-parameter predicates for resolving `T::AssocTy`.
         query type_param_predicates(key: (DefId, DefId)) -> ty::GenericPredicates<'tcx> {
-            no_force
             desc { |tcx| "computing the bounds for type parameter `{}`", {
                 let id = tcx.hir().as_local_hir_id(key.1).unwrap();
                 tcx.hir().ty_param_name(id)
@@ -265,6 +321,14 @@ rustc_queries! {
             desc { |tcx| "checking if item is const fn: `{}`", tcx.def_path_str(key) }
         }
 
+        /// Returns `true` if this is a const `impl`. **Do not call this function manually.**
+        ///
+        /// This query caches the base data for the `is_const_impl` helper function, which also
+        /// takes into account stability attributes (e.g., `#[rustc_const_unstable]`).
+        query is_const_impl_raw(key: DefId) -> bool {
+            desc { |tcx| "checking if item is const impl: `{}`", tcx.def_path_str(key) }
+        }
+
         query asyncness(key: DefId) -> hir::IsAsync {
             desc { |tcx| "checking if the function is async: `{}`", tcx.def_path_str(key) }
         }
@@ -285,6 +349,9 @@ rustc_queries! {
 
         /// Returns `Some(mutability)` if the node pointed to by `def_id` is a static item.
         query static_mutability(_: DefId) -> Option<hir::Mutability> {}
+
+        /// Returns `Some(generator_kind)` if the node pointed to by `def_id` is a generator.
+        query generator_kind(_: DefId) -> Option<hir::GeneratorKind> {}
 
         /// Gets a map with the variance of every item; use `item_variance` instead.
         query crate_variances(_: CrateNum) -> &'tcx ty::CrateVariancesMap<'tcx> {
@@ -310,6 +377,11 @@ rustc_queries! {
         /// Maps from a trait item to the trait item "descriptor".
         query associated_item(_: DefId) -> ty::AssocItem {}
 
+        /// Collects the associated items defined on a trait or impl.
+        query associated_items(key: DefId) -> &'tcx ty::AssociatedItems {
+            desc { |tcx| "collecting associated items of {}", tcx.def_path_str(key) }
+        }
+
         query impl_trait_ref(_: DefId) -> Option<ty::TraitRef<'tcx>> {}
         query impl_polarity(_: DefId) -> ty::ImplPolarity {}
 
@@ -328,6 +400,7 @@ rustc_queries! {
     TypeChecking {
         /// The result of unsafety-checking this `DefId`.
         query unsafety_check_result(key: DefId) -> mir::UnsafetyCheckResult {
+            desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
         }
 
@@ -397,14 +470,8 @@ rustc_queries! {
         }
 
         query typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
+            desc { |tcx| "type-checking `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
-            load_cached(tcx, id) {
-                let typeck_tables: Option<ty::TypeckTables<'tcx>> = tcx
-                    .queries.on_disk_cache
-                    .try_load_query_result(tcx, id);
-
-                typeck_tables.map(|tables| &*tcx.arena.alloc(tables))
-            }
         }
         query diagnostic_only_typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
             cache_on_disk_if { key.is_local() }
@@ -435,8 +502,13 @@ rustc_queries! {
     BorrowChecking {
         /// Borrow-checks the function body. If this is a closure, returns
         /// additional requirements that the closure's creator must verify.
-        query mir_borrowck(key: DefId) -> mir::BorrowCheckResult<'tcx> {
-            cache_on_disk_if(tcx, _) { key.is_local() && tcx.is_closure(key) }
+        query mir_borrowck(key: DefId) -> &'tcx mir::BorrowCheckResult<'tcx> {
+            desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key) }
+            cache_on_disk_if(tcx, opt_result) {
+                key.is_local()
+                    && (tcx.is_closure(key)
+                        || opt_result.map_or(false, |r| !r.concrete_opaque_types.is_empty()))
+            }
         }
     }
 
@@ -469,7 +541,6 @@ rustc_queries! {
         /// form to be used outside of const eval.
         query const_eval_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalRawResult<'tcx> {
-            no_force
             desc { |tcx|
                 "const-evaluating `{}`",
                 tcx.def_path_str(key.value.instance.def.def_id())
@@ -483,10 +554,9 @@ rustc_queries! {
         /// returns a proper constant that is usable by the rest of the compiler.
         ///
         /// **Do not use this** directly, use one of the following wrappers: `tcx.const_eval_poly`,
-        /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_promoted`.
+        /// `tcx.const_eval_resolve`, `tcx.const_eval_instance`, or `tcx.const_eval_global_id`.
         query const_eval_validated(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
             -> ConstEvalResult<'tcx> {
-            no_force
             desc { |tcx|
                 "const-evaluating + checking `{}`",
                 tcx.def_path_str(key.value.instance.def.def_id())
@@ -500,8 +570,7 @@ rustc_queries! {
         /// Extracts a field of a (variant of a) const.
         query const_field(
             key: ty::ParamEnvAnd<'tcx, (&'tcx ty::Const<'tcx>, mir::Field)>
-        ) -> &'tcx ty::Const<'tcx> {
-            no_force
+        ) -> ConstValue<'tcx> {
             desc { "extract field of const" }
         }
 
@@ -510,19 +579,16 @@ rustc_queries! {
         query destructure_const(
             key: ty::ParamEnvAnd<'tcx, &'tcx ty::Const<'tcx>>
         ) -> mir::DestructuredConst<'tcx> {
-            no_force
             desc { "destructure constant" }
         }
 
-        query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> &'tcx ty::Const<'tcx> {
-            no_force
+        query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> ConstValue<'tcx> {
             desc { "get a &core::panic::Location referring to a span" }
         }
 
         query lit_to_const(
             key: LitToConstInput<'tcx>
         ) -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {
-            no_force
             desc { "converting literal to const" }
         }
     }
@@ -553,7 +619,6 @@ rustc_queries! {
         query region_scope_tree(_: DefId) -> &'tcx region::ScopeTree {}
 
         query mir_shims(key: ty::InstanceDef<'tcx>) -> &'tcx mir::BodyAndCache<'tcx> {
-            no_force
             desc { |tcx| "generating MIR shim for `{}`", tcx.def_path_str(key.def_id()) }
         }
 
@@ -561,7 +626,6 @@ rustc_queries! {
         /// given instance from the local crate. In particular, it will also
         /// look up the correct symbol name of instances from upstream crates.
         query symbol_name(key: ty::Instance<'tcx>) -> ty::SymbolName {
-            no_force
             desc { "computing the symbol for `{}`", key }
             cache_on_disk_if { true }
         }
@@ -608,7 +672,6 @@ rustc_queries! {
     Other {
         query vtable_methods(key: ty::PolyTraitRef<'tcx>)
                             -> &'tcx [Option<(DefId, SubstsRef<'tcx>)>] {
-            no_force
             desc { |tcx| "finding all methods for trait {}", tcx.def_path_str(key.def_id()) }
         }
     }
@@ -616,8 +679,7 @@ rustc_queries! {
     Codegen {
         query codegen_fulfill_obligation(
             key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
-        ) -> Vtable<'tcx, ()> {
-            no_force
+        ) -> Option<Vtable<'tcx, ()>> {
             cache_on_disk_if { true }
             desc { |tcx|
                 "checking if `{}` fulfills its obligations",
@@ -627,13 +689,17 @@ rustc_queries! {
     }
 
     TypeChecking {
+        query all_local_trait_impls(key: CrateNum) -> &'tcx BTreeMap<DefId, Vec<hir::HirId>> {
+            desc { "local trait impls" }
+        }
         query trait_impls_of(key: DefId) -> &'tcx ty::trait_def::TraitImpls {
             desc { |tcx| "trait impls of `{}`", tcx.def_path_str(key) }
         }
-        query specialization_graph_of(_: DefId) -> &'tcx specialization_graph::Graph {
+        query specialization_graph_of(key: DefId) -> &'tcx specialization_graph::Graph {
+            desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { true }
         }
-        query is_object_safe(key: DefId) -> bool {
+        query object_safety_violations(key: DefId) -> Vec<traits::ObjectSafetyViolation> {
             desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(key) }
         }
 
@@ -648,33 +714,31 @@ rustc_queries! {
         /// Trait selection queries. These are best used by invoking `ty.is_copy_modulo_regions()`,
         /// `ty.is_copy()`, etc, since that will prune the environment where possible.
         query is_copy_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-            no_force
             desc { "computing whether `{}` is `Copy`", env.value }
         }
+        /// Query backing `TyS::is_sized`.
         query is_sized_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-            no_force
             desc { "computing whether `{}` is `Sized`", env.value }
         }
+        /// Query backing `TyS::is_freeze`.
         query is_freeze_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-            no_force
             desc { "computing whether `{}` is freeze", env.value }
         }
-
-        // The cycle error here should be reported as an error by `check_representable`.
-        // We consider the type as not needing drop in the meanwhile to avoid
-        // further errors (done in impl Value for NeedsDrop).
-        // Use `cycle_delay_bug` to delay the cycle error here to be emitted later
-        // in case we accidentally otherwise don't emit an error.
-        query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> NeedsDrop {
-            cycle_delay_bug
-            no_force
+        /// Query backing `TyS::needs_drop`.
+        query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
             desc { "computing whether `{}` needs drop", env.value }
+        }
+
+        /// A list of types where the ADT requires drop if and only if any of
+        /// those types require drop. If the ADT is known to always need drop
+        /// then `Err(AlwaysRequiresDrop)` is returned.
+        query adt_drop_tys(_: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
+            cache_on_disk_if { true }
         }
 
         query layout_raw(
             env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
         ) -> Result<&'tcx ty::layout::LayoutDetails, ty::layout::LayoutError<'tcx>> {
-            no_force
             desc { "computing layout of `{}`", env.value }
         }
     }
@@ -730,10 +794,9 @@ rustc_queries! {
 
     TypeChecking {
         query specializes(_: (DefId, DefId)) -> bool {
-            no_force
             desc { "computing whether impls specialize one another" }
         }
-        query in_scope_traits_map(_: DefIndex)
+        query in_scope_traits_map(_: LocalDefId)
             -> Option<&'tcx FxHashMap<ItemLocalId, StableVec<TraitCandidate>>> {
             eval_always
             desc { "traits in scope at a block" }
@@ -815,7 +878,6 @@ rustc_queries! {
         ///       (like `Clone::clone` for example).
         query upstream_drop_glue_for(substs: SubstsRef<'tcx>) -> Option<CrateNum> {
             desc { "available upstream drop-glue for `{:?}`", substs }
-            no_force
         }
     }
 
@@ -860,7 +922,6 @@ rustc_queries! {
     TypeChecking {
         query implementations_of_trait(_: (CrateNum, DefId))
             -> &'tcx [DefId] {
-            no_force
             desc { "looking up implementations of a trait in a crate" }
         }
         query all_trait_implementations(_: CrateNum)
@@ -892,15 +953,15 @@ rustc_queries! {
         query resolve_lifetimes(_: CrateNum) -> &'tcx ResolveLifetimes {
             desc { "resolving lifetimes" }
         }
-        query named_region_map(_: DefIndex) ->
+        query named_region_map(_: LocalDefId) ->
             Option<&'tcx FxHashMap<ItemLocalId, Region>> {
             desc { "looking up a named region" }
         }
-        query is_late_bound_map(_: DefIndex) ->
+        query is_late_bound_map(_: LocalDefId) ->
             Option<&'tcx FxHashSet<ItemLocalId>> {
             desc { "testing if a region is late bound" }
         }
-        query object_lifetime_defaults_map(_: DefIndex)
+        query object_lifetime_defaults_map(_: LocalDefId)
             -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ObjectLifetimeDefault>>> {
             desc { "looking up lifetime defaults for a region" }
         }
@@ -1027,7 +1088,6 @@ rustc_queries! {
         }
         query is_codegened_item(_: DefId) -> bool {}
         query codegen_unit(_: Symbol) -> Arc<CodegenUnit<'tcx>> {
-            no_force
             desc { "codegen_unit" }
         }
         query backend_optimization_level(_: CrateNum) -> OptLevel {
@@ -1050,7 +1110,6 @@ rustc_queries! {
             &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
             NoSolution,
         > {
-            no_force
             desc { "normalizing `{:?}`", goal }
         }
 
@@ -1058,7 +1117,6 @@ rustc_queries! {
         query normalize_ty_after_erasing_regions(
             goal: ParamEnvAnd<'tcx, Ty<'tcx>>
         ) -> Ty<'tcx> {
-            no_force
             desc { "normalizing `{:?}`", goal }
         }
 
@@ -1068,7 +1126,6 @@ rustc_queries! {
             &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
             NoSolution,
         > {
-            no_force
             desc { "computing implied outlives bounds for `{:?}`", goal }
         }
 
@@ -1079,7 +1136,6 @@ rustc_queries! {
             &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>,
             NoSolution,
         > {
-            no_force
             desc { "computing dropck types for `{:?}`", goal }
         }
 
@@ -1088,18 +1144,7 @@ rustc_queries! {
         query evaluate_obligation(
             goal: CanonicalPredicateGoal<'tcx>
         ) -> Result<traits::EvaluationResult, traits::OverflowError> {
-            no_force
             desc { "evaluating trait selection obligation `{}`", goal.value.value }
-        }
-
-        query evaluate_goal(
-            goal: traits::ChalkCanonicalGoal<'tcx>
-        ) -> Result<
-            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
-            NoSolution
-        > {
-            no_force
-            desc { "evaluating trait selection obligation `{}`", goal.value.goal }
         }
 
         /// Do not call this query directly: part of the `Eq` type-op
@@ -1109,7 +1154,6 @@ rustc_queries! {
             &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
             NoSolution,
         > {
-            no_force
             desc { "evaluating `type_op_ascribe_user_type` `{:?}`", goal }
         }
 
@@ -1120,7 +1164,6 @@ rustc_queries! {
             &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
             NoSolution,
         > {
-            no_force
             desc { "evaluating `type_op_eq` `{:?}`", goal }
         }
 
@@ -1131,7 +1174,6 @@ rustc_queries! {
             &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
             NoSolution,
         > {
-            no_force
             desc { "evaluating `type_op_subtype` `{:?}`", goal }
         }
 
@@ -1142,7 +1184,6 @@ rustc_queries! {
             &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
             NoSolution,
         > {
-            no_force
             desc { "evaluating `type_op_prove_predicate` `{:?}`", goal }
         }
 
@@ -1153,7 +1194,6 @@ rustc_queries! {
             &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Ty<'tcx>>>,
             NoSolution,
         > {
-            no_force
             desc { "normalizing `{:?}`", goal }
         }
 
@@ -1164,7 +1204,6 @@ rustc_queries! {
             &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::Predicate<'tcx>>>,
             NoSolution,
         > {
-            no_force
             desc { "normalizing `{:?}`", goal }
         }
 
@@ -1175,7 +1214,6 @@ rustc_queries! {
             &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::PolyFnSig<'tcx>>>,
             NoSolution,
         > {
-            no_force
             desc { "normalizing `{:?}`", goal }
         }
 
@@ -1186,12 +1224,10 @@ rustc_queries! {
             &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::FnSig<'tcx>>>,
             NoSolution,
         > {
-            no_force
             desc { "normalizing `{:?}`", goal }
         }
 
         query substitute_normalize_and_test_predicates(key: (DefId, SubstsRef<'tcx>)) -> bool {
-            no_force
             desc { |tcx|
                 "testing substituted normalized predicates:`{}`",
                 tcx.def_path_str(key.0)
@@ -1201,7 +1237,6 @@ rustc_queries! {
         query method_autoderef_steps(
             goal: CanonicalTyGoal<'tcx>
         ) -> MethodAutoderefStepsResult<'tcx> {
-            no_force
             desc { "computing autoderef types for `{:?}`", goal }
         }
     }
@@ -1215,7 +1250,6 @@ rustc_queries! {
         // Get an estimate of the size of an InstanceDef based on its MIR for CGU partitioning.
         query instance_def_size_estimate(def: ty::InstanceDef<'tcx>)
             -> usize {
-            no_force
             desc { |tcx| "estimating size for `{}`", tcx.def_path_str(def.def_id()) }
         }
 

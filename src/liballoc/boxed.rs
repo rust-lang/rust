@@ -2,7 +2,8 @@
 //!
 //! [`Box<T>`], casually referred to as a 'box', provides the simplest form of
 //! heap allocation in Rust. Boxes provide ownership for this allocation, and
-//! drop their contents when they go out of scope.
+//! drop their contents when they go out of scope. Boxes also ensure that they
+//! never allocate more than `isize::MAX` bytes.
 //!
 //! # Examples
 //!
@@ -195,12 +196,14 @@ impl<T> Box<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
-        if layout.size() == 0 {
-            return Box(NonNull::dangling().into());
+        unsafe {
+            let ptr = if layout.size() == 0 {
+                NonNull::dangling()
+            } else {
+                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).0.cast()
+            };
+            Box::from_raw(ptr.as_ptr())
         }
-        let ptr =
-            unsafe { Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)) };
-        Box(ptr.cast().into())
     }
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
@@ -263,15 +266,14 @@ impl<T> Box<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
-        let ptr = if layout.size() == 0 {
-            NonNull::dangling()
-        } else {
-            unsafe {
-                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).cast()
-            }
-        };
-        let slice = unsafe { slice::from_raw_parts_mut(ptr.as_ptr(), len) };
-        Box(Unique::from(slice))
+        unsafe {
+            let ptr = if layout.size() == 0 {
+                NonNull::dangling()
+            } else {
+                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).0.cast()
+            };
+            Box::from_raw(slice::from_raw_parts_mut(ptr.as_ptr(), len))
+        }
     }
 }
 
@@ -307,7 +309,7 @@ impl<T> Box<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Box<T> {
-        Box(Box::into_unique(self).cast())
+        Box::from_raw(Box::into_raw(self) as *mut T)
     }
 }
 
@@ -345,7 +347,7 @@ impl<T> Box<[mem::MaybeUninit<T>]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Box<[T]> {
-        Box(Unique::new_unchecked(Box::into_raw(self) as _))
+        Box::from_raw(Box::into_raw(self) as *mut [T])
     }
 }
 
@@ -823,7 +825,7 @@ impl From<Box<str>> for Box<[u8]> {
     }
 }
 
-#[unstable(feature = "boxed_slice_try_from", issue = "none")]
+#[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
 impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]>
 where
     [T; N]: LengthAtMost32,
@@ -1104,22 +1106,22 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
 impl<T: ?Sized> Unpin for Box<T> {}
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator + Unpin> Generator for Box<G> {
+impl<G: ?Sized + Generator<R> + Unpin, R> Generator<R> for Box<G> {
     type Yield = G::Yield;
     type Return = G::Return;
 
-    fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
-        G::resume(Pin::new(&mut *self))
+    fn resume(mut self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {
+        G::resume(Pin::new(&mut *self), arg)
     }
 }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator> Generator for Pin<Box<G>> {
+impl<G: ?Sized + Generator<R>, R> Generator<R> for Pin<Box<G>> {
     type Yield = G::Yield;
     type Return = G::Return;
 
-    fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
-        G::resume((*self).as_mut())
+    fn resume(mut self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {
+        G::resume((*self).as_mut(), arg)
     }
 }
 

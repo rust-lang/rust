@@ -35,6 +35,10 @@ LL | fn fizz(i32) {}
    |            ^ expected one of `:`, `@`, or `|`
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this is a `self` type, give it a parameter name
+   |
+LL | fn fizz(self: i32) {}
+   |         ^^^^^^^^^
 help: if this was a parameter name, give it a type
    |
 LL | fn fizz(i32: TypeName) {}
@@ -45,7 +49,7 @@ LL | fn fizz(_: i32) {}
    |         ^^^^^^
 
 error: expected one of `:`, `@`, or `|`, found `S`
-  --> $DIR/inverted-parameters.rs:26:23
+  --> $DIR/inverted-parameters.rs:27:23
    |
 LL | fn missing_colon(quux S) {}
    |                  -----^

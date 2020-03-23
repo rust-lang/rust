@@ -1,4 +1,3 @@
-// compile-fail
 // ignore-tidy-linelength
 
 // NOTE: rustc cannot currently handle bounds of the form `for<'a> <Foo as Bar<'a>>::Assoc: Baz`.

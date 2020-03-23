@@ -7,7 +7,7 @@ LL |     x = return;
    |     |   any code following this expression is unreachable
    |     unreachable expression
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/expr_assign.rs:5:9
    |
 LL | #![deny(unreachable_code)]

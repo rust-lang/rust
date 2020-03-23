@@ -8,7 +8,7 @@ LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
    |                 -- data moved here
 LL |             => println!("one empty"),
 LL |         (&[hd1, ..], &[hd2, ..])
-   |                        --- ...and here
+   |            --- ...and here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
 
@@ -22,7 +22,7 @@ LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
    |                 -- data moved here
 LL |             => println!("one empty"),
 LL |         (&[hd1, ..], &[hd2, ..])
-   |            --- ...and here
+   |                        --- ...and here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
 

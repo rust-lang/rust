@@ -11,18 +11,20 @@ doctest = false
 
 [dependencies]
 arena = { path = "../libarena" }
-itertools = "0.8"
 log = "0.4"
 rustc = { path = "../librustc" }
 rustc_apfloat = { path = "../librustc_apfloat" }
+rustc_attr = { path = "../librustc_attr" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_index = { path = "../librustc_index" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_hir = { path = "../librustc_hir" }
+rustc_infer = { path = "../librustc_infer" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 rustc_session = { path = "../librustc_session" }
 rustc_span = { path = "../librustc_span" }
 rustc_target = { path = "../librustc_target" }
-syntax = { path = "../libsyntax" }
+rustc_trait_selection = { path = "../librustc_trait_selection" }
+rustc_ast = { path = "../librustc_ast" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }

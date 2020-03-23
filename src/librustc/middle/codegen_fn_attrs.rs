@@ -1,6 +1,6 @@
 use crate::mir::mono::Linkage;
+use rustc_attr::{InlineAttr, OptimizeAttr};
 use rustc_span::symbol::Symbol;
-use syntax::attr::{InlineAttr, OptimizeAttr};
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub struct CodegenFnAttrs {
@@ -58,9 +58,6 @@ bitflags! {
         /// "weird symbol" for the standard library in that it has slightly
         /// different linkage, visibility, and reachability rules.
         const RUSTC_STD_INTERNAL_SYMBOL = 1 << 6;
-        /// `#[no_debug]`: an indicator that no debugging information should be
-        /// generated for this function by LLVM.
-        const NO_DEBUG                  = 1 << 7;
         /// `#[thread_local]`: indicates a static is actually a thread local
         /// piece of memory
         const THREAD_LOCAL              = 1 << 8;
@@ -72,6 +69,14 @@ bitflags! {
         const FFI_RETURNS_TWICE         = 1 << 10;
         /// `#[track_caller]`: allow access to the caller location
         const TRACK_CALLER              = 1 << 11;
+        /// `#[no_sanitize(address)]`: disables address sanitizer instrumentation
+        const NO_SANITIZE_ADDRESS = 1 << 12;
+        /// `#[no_sanitize(memory)]`: disables memory sanitizer instrumentation
+        const NO_SANITIZE_MEMORY  = 1 << 13;
+        /// `#[no_sanitize(thread)]`: disables thread sanitizer instrumentation
+        const NO_SANITIZE_THREAD  = 1 << 14;
+        /// All `#[no_sanitize(...)]` attributes.
+        const NO_SANITIZE_ANY = Self::NO_SANITIZE_ADDRESS.bits | Self::NO_SANITIZE_MEMORY.bits | Self::NO_SANITIZE_THREAD.bits;
     }
 }
 

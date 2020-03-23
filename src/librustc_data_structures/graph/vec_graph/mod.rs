@@ -101,7 +101,7 @@ impl<N: Idx> GraphSuccessors<'graph> for VecGraph<N> {
 }
 
 impl<N: Idx> WithSuccessors for VecGraph<N> {
-    fn successors<'graph>(&'graph self, node: N) -> <Self as GraphSuccessors<'graph>>::Iter {
+    fn successors(&self, node: N) -> <Self as GraphSuccessors<'_>>::Iter {
         self.successors(node).iter().cloned()
     }
 }

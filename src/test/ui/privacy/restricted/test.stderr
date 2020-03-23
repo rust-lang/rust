@@ -52,13 +52,13 @@ error[E0616]: field `x` of struct `foo::bar::S` is private
 LL |     S::default().x;
    |     ^^^^^^^^^^^^^^
 
-error[E0624]: method `f` is private
+error[E0624]: associated function `f` is private
   --> $DIR/test.rs:32:18
    |
 LL |     S::default().f();
    |                  ^
 
-error[E0624]: method `g` is private
+error[E0624]: associated function `g` is private
   --> $DIR/test.rs:33:5
    |
 LL |     S::g();
@@ -76,13 +76,13 @@ error[E0616]: field `z` of struct `pub_restricted::Universe` is private
 LL |     let _ = u.z;
    |             ^^^
 
-error[E0624]: method `g` is private
+error[E0624]: associated function `g` is private
   --> $DIR/test.rs:45:7
    |
 LL |     u.g();
    |       ^
 
-error[E0624]: method `h` is private
+error[E0624]: associated function `h` is private
   --> $DIR/test.rs:46:7
    |
 LL |     u.h();

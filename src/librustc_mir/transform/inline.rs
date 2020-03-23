@@ -1,29 +1,29 @@
 //! Inlining pass for MIR functions
 
-use rustc_hir::def_id::DefId;
-
-use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{Idx, IndexVec};
-
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::visit::*;
 use rustc::mir::*;
 use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable};
+use rustc_attr as attr;
+use rustc_hir::def_id::DefId;
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::{Idx, IndexVec};
+use rustc_session::config::Sanitizer;
+use rustc_target::spec::abi::Abi;
 
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 use crate::transform::{MirPass, MirSource};
 use std::collections::VecDeque;
 use std::iter;
 
-use rustc_target::spec::abi::Abi;
-use syntax::attr;
-
 const DEFAULT_THRESHOLD: usize = 50;
 const HINT_THRESHOLD: usize = 100;
 
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;
+const LANDINGPAD_PENALTY: usize = 50;
+const RESUME_PENALTY: usize = 45;
 
 const UNKNOWN_SIZE_COST: usize = 10;
 
@@ -228,6 +228,28 @@ impl Inliner<'tcx> {
             return false;
         }
 
+        // Avoid inlining functions marked as no_sanitize if sanitizer is enabled,
+        // since instrumentation might be enabled and performed on the caller.
+        match self.tcx.sess.opts.debugging_opts.sanitizer {
+            Some(Sanitizer::Address) => {
+                if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_SANITIZE_ADDRESS) {
+                    return false;
+                }
+            }
+            Some(Sanitizer::Memory) => {
+                if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_SANITIZE_MEMORY) {
+                    return false;
+                }
+            }
+            Some(Sanitizer::Thread) => {
+                if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_SANITIZE_THREAD) {
+                    return false;
+                }
+            }
+            Some(Sanitizer::Leak) => {}
+            None => {}
+        }
+
         let hinted = match codegen_fn_attrs.inline {
             // Just treat inline(always) as a hint for now,
             // there are cases that prevent inlining that we
@@ -305,6 +327,7 @@ impl Inliner<'tcx> {
                     if ty.needs_drop(tcx, param_env) {
                         cost += CALL_PENALTY;
                         if let Some(unwind) = unwind {
+                            cost += LANDINGPAD_PENALTY;
                             work_list.push(unwind);
                         }
                     } else {
@@ -320,7 +343,7 @@ impl Inliner<'tcx> {
                     threshold = 0;
                 }
 
-                TerminatorKind::Call { func: Operand::Constant(ref f), .. } => {
+                TerminatorKind::Call { func: Operand::Constant(ref f), cleanup, .. } => {
                     if let ty::FnDef(def_id, _) = f.literal.ty.kind {
                         // Don't give intrinsics the extra penalty for calls
                         let f = tcx.fn_sig(def_id);
@@ -329,9 +352,21 @@ impl Inliner<'tcx> {
                         } else {
                             cost += CALL_PENALTY;
                         }
+                    } else {
+                        cost += CALL_PENALTY;
+                    }
+                    if cleanup.is_some() {
+                        cost += LANDINGPAD_PENALTY;
                     }
                 }
-                TerminatorKind::Assert { .. } => cost += CALL_PENALTY,
+                TerminatorKind::Assert { cleanup, .. } => {
+                    cost += CALL_PENALTY;
+
+                    if cleanup.is_some() {
+                        cost += LANDINGPAD_PENALTY;
+                    }
+                }
+                TerminatorKind::Resume => cost += RESUME_PENALTY,
                 _ => cost += INSTR_COST,
             }
 

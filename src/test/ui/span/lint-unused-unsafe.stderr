@@ -4,7 +4,7 @@ error: unnecessary `unsafe` block
 LL | fn bad1() { unsafe {} }
    |             ^^^^^^ unnecessary `unsafe` block
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-unused-unsafe.rs:4:9
    |
 LL | #![deny(unused_unsafe)]

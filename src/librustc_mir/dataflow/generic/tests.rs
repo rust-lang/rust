@@ -294,7 +294,7 @@ fn cursor_seek() {
 
     cursor.seek_after(call_terminator_loc);
     assert!(!cursor.get().contains(call_return_effect));
-    cursor.seek_after_assume_call_returns(call_terminator_loc);
+    cursor.seek_after_assume_success(call_terminator_loc);
     assert!(cursor.get().contains(call_return_effect));
 
     let every_target = || {
@@ -310,7 +310,7 @@ fn cursor_seek() {
             BlockStart(block) => cursor.seek_to_block_start(block),
             Before(loc) => cursor.seek_before(loc),
             After(loc) => cursor.seek_after(loc),
-            AfterAssumeCallReturns(loc) => cursor.seek_after_assume_call_returns(loc),
+            AfterAssumeCallReturns(loc) => cursor.seek_after_assume_success(loc),
         }
 
         assert_eq!(cursor.get(), &cursor.analysis().expected_state_at_target(targ));

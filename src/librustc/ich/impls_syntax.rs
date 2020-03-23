@@ -1,27 +1,19 @@
 //! This module contains `HashStable` implementations for various data types
-//! from libsyntax in no particular order.
+//! from librustc_ast in no particular order.
 
 use crate::ich::StableHashingContext;
 
+use rustc_ast::ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_span::SourceFile;
-use syntax::ast;
 
 use smallvec::SmallVec;
 
 impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}
 
-impl<'a> HashStable<StableHashingContext<'a>> for ast::Lifetime {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.id.hash_stable(hcx, hasher);
-        self.ident.hash_stable(hcx, hasher);
-    }
-}
-
 impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        if self.len() == 0 {
+        if self.is_empty() {
             self.len().hash_stable(hcx, hasher);
             return;
         }
@@ -42,7 +34,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     }
 }
 
-impl<'ctx> syntax::HashStableContext for StableHashingContext<'ctx> {
+impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
     fn hash_attr(&mut self, attr: &ast::Attribute, hasher: &mut StableHasher) {
         // Make sure that these have been filtered out.
         debug_assert!(!attr.ident().map_or(false, |ident| self.is_ignored_attr(ident.name)));
@@ -66,7 +58,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             name_hash,
             name_was_remapped,
             unmapped_path: _,
-            crate_of_origin,
+            cnum,
             // Do not hash the source as it is not encoded
             src: _,
             src_hash,
@@ -81,9 +73,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
 
         (name_hash as u64).hash_stable(hcx, hasher);
         name_was_remapped.hash_stable(hcx, hasher);
-
-        DefId { krate: CrateNum::from_u32(crate_of_origin), index: CRATE_DEF_INDEX }
-            .hash_stable(hcx, hasher);
 
         src_hash.hash_stable(hcx, hasher);
 
@@ -108,6 +97,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
         for &char_pos in normalized_pos.iter() {
             stable_normalized_pos(char_pos, start_pos).hash_stable(hcx, hasher);
         }
+
+        cnum.hash_stable(hcx, hasher);
     }
 }
 

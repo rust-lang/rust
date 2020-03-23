@@ -74,7 +74,7 @@ mod bar {
         }
         self::baz::A;
         self::baz::A::foo();
-        self::baz::A::bar(); //~ ERROR: method `bar` is private
+        self::baz::A::bar(); //~ ERROR: associated function `bar` is private
         self::baz::A.foo2();
 
         // this used to cause an ICE in privacy traversal.
@@ -92,21 +92,21 @@ pub fn gpub() {}
 fn lol() {
     bar::A;
     bar::A::foo();
-    bar::A::bar(); //~ ERROR: method `bar` is private
+    bar::A::bar(); //~ ERROR: associated function `bar` is private
     bar::A.foo2();
 }
 
 mod foo {
     fn test() {
         ::bar::A::foo();
-        ::bar::A::bar();        //~ ERROR: method `bar` is private
+        ::bar::A::bar();        //~ ERROR: associated function `bar` is private
         ::bar::A.foo2();
         ::bar::baz::A::foo();   //~ ERROR: module `baz` is private
         ::bar::baz::A::bar();   //~ ERROR: module `baz` is private
-                                //~^ ERROR: method `bar` is private
+                                //~^ ERROR: associated function `bar` is private
         ::bar::baz::A.foo2();   //~ ERROR: module `baz` is private
         ::bar::baz::A.bar2();   //~ ERROR: module `baz` is private
-                                //~^ ERROR: method `bar2` is private
+                                //~^ ERROR: associated function `bar2` is private
 
         let _: isize =
         ::bar::B::foo();        //~ ERROR: trait `B` is private

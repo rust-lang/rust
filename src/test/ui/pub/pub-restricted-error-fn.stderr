@@ -1,8 +1,16 @@
-error: unmatched visibility `pub`
-  --> $DIR/pub-restricted-error-fn.rs:3:10
+error: visibility `pub(crate)` is not followed by an item
+  --> $DIR/pub-restricted-error-fn.rs:1:1
    |
 LL | pub(crate) () fn foo() {}
-   |          ^
+   | ^^^^^^^^^^ the visibility
+   |
+   = help: you likely meant to define an item, e.g., `pub(crate) fn foo() {}`
 
-error: aborting due to previous error
+error: expected item, found `(`
+  --> $DIR/pub-restricted-error-fn.rs:1:12
+   |
+LL | pub(crate) () fn foo() {}
+   |            ^ expected item
+
+error: aborting due to 2 previous errors
 

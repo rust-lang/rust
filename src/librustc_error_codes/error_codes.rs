@@ -118,6 +118,7 @@ E0220: include_str!("./error_codes/E0220.md"),
 E0221: include_str!("./error_codes/E0221.md"),
 E0222: include_str!("./error_codes/E0222.md"),
 E0223: include_str!("./error_codes/E0223.md"),
+E0224: include_str!("./error_codes/E0224.md"),
 E0225: include_str!("./error_codes/E0225.md"),
 E0229: include_str!("./error_codes/E0229.md"),
 E0230: include_str!("./error_codes/E0230.md"),
@@ -349,10 +350,13 @@ E0623: include_str!("./error_codes/E0623.md"),
 E0624: include_str!("./error_codes/E0624.md"),
 E0626: include_str!("./error_codes/E0626.md"),
 E0627: include_str!("./error_codes/E0627.md"),
+E0628: include_str!("./error_codes/E0628.md"),
 E0631: include_str!("./error_codes/E0631.md"),
 E0633: include_str!("./error_codes/E0633.md"),
+E0634: include_str!("./error_codes/E0634.md"),
 E0635: include_str!("./error_codes/E0635.md"),
 E0636: include_str!("./error_codes/E0636.md"),
+E0637: include_str!("./error_codes/E0637.md"),
 E0638: include_str!("./error_codes/E0638.md"),
 E0639: include_str!("./error_codes/E0639.md"),
 E0641: include_str!("./error_codes/E0641.md"),
@@ -379,6 +383,7 @@ E0689: include_str!("./error_codes/E0689.md"),
 E0690: include_str!("./error_codes/E0690.md"),
 E0691: include_str!("./error_codes/E0691.md"),
 E0692: include_str!("./error_codes/E0692.md"),
+E0693: include_str!("./error_codes/E0693.md"),
 E0695: include_str!("./error_codes/E0695.md"),
 E0697: include_str!("./error_codes/E0697.md"),
 E0698: include_str!("./error_codes/E0698.md"),
@@ -394,6 +399,7 @@ E0714: include_str!("./error_codes/E0714.md"),
 E0715: include_str!("./error_codes/E0715.md"),
 E0716: include_str!("./error_codes/E0716.md"),
 E0718: include_str!("./error_codes/E0718.md"),
+E0719: include_str!("./error_codes/E0719.md"),
 E0720: include_str!("./error_codes/E0720.md"),
 E0723: include_str!("./error_codes/E0723.md"),
 E0725: include_str!("./error_codes/E0725.md"),
@@ -409,6 +415,7 @@ E0735: include_str!("./error_codes/E0735.md"),
 E0736: include_str!("./error_codes/E0736.md"),
 E0737: include_str!("./error_codes/E0737.md"),
 E0738: include_str!("./error_codes/E0738.md"),
+E0739: include_str!("./error_codes/E0739.md"),
 E0740: include_str!("./error_codes/E0740.md"),
 E0741: include_str!("./error_codes/E0741.md"),
 E0742: include_str!("./error_codes/E0742.md"),
@@ -416,6 +423,8 @@ E0743: include_str!("./error_codes/E0743.md"),
 E0744: include_str!("./error_codes/E0744.md"),
 E0745: include_str!("./error_codes/E0745.md"),
 E0746: include_str!("./error_codes/E0746.md"),
+E0747: include_str!("./error_codes/E0747.md"),
+E0748: include_str!("./error_codes/E0748.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
@@ -461,7 +470,6 @@ E0746: include_str!("./error_codes/E0746.md"),
 //  E0217, // ambiguous associated type, defined in multiple supertraits
 //  E0218, // no associated type defined
 //  E0219, // associated type defined in higher-ranked supertrait
-    E0224, // at least one non-builtin train is required for an object type
     E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
     E0228, // explicit lifetime bound required
@@ -576,22 +584,18 @@ E0746: include_str!("./error_codes/E0746.md"),
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
     E0625, // thread-local statics cannot be accessed at compile-time
-    E0628, // generators cannot have explicit parameters
     E0629, // missing 'feature' (rustc_const_unstable)
     // rustc_const_unstable attribute must be paired with stable/unstable
     // attribute
     E0630,
     E0632, // cannot provide explicit generic arguments when `impl Trait` is
            // used in argument position
-    E0634, // type has conflicting packed representaton hints
-    E0637, // "'_" is not a valid lifetime bound
     E0640, // infer outlives requirements
 //  E0645, // trait aliases not finished
     E0657, // `impl Trait` can only capture lifetimes bound at the fn level
     E0667, // `impl Trait` in projections
     E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
-    E0693, // incorrect `repr(align)` attribute format
 //  E0694, // an unknown tool name found in scoped attributes
     E0696, // `continue` pointing to a labeled block
 //  E0702, // replaced with a generic attribute input check
@@ -603,10 +607,8 @@ E0746: include_str!("./error_codes/E0746.md"),
     E0710, // an unknown tool name found in scoped lint
     E0711, // a feature has been declared with conflicting stability attributes
     E0717, // rustc_promotable without stability attribute
-    E0719, // duplicate values for associated type binding
 //  E0721, // `await` keyword
     E0722, // Malformed `#[optimize]` attribute
     E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
-    E0739, // invalid track_caller application/syntax
 }

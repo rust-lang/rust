@@ -1,0 +1,50 @@
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found doc comment `//!self.allow_ty_infer()`
+  --> $DIR/doc-comment-in-stmt.rs:3:5
+   |
+LL |     false
+   |          - expected one of `.`, `;`, `?`, `}`, or an operator
+LL |     //!self.allow_ty_infer()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ unexpected token
+   |
+help: add a space before `!` to use a regular comment
+   |
+LL |     // !self.allow_ty_infer()
+   |     ^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found doc comment `/*! bar */`
+  --> $DIR/doc-comment-in-stmt.rs:9:5
+   |
+LL |     false
+   |          - expected one of `.`, `;`, `?`, `}`, or an operator
+LL |     /*! bar */
+   |     ^^^^^^^^^^ unexpected token
+   |
+help: add a space before `!` to use a regular comment
+   |
+LL |     /* ! bar */
+   |     ^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found doc comment `/** baz */`
+  --> $DIR/doc-comment-in-stmt.rs:13:7
+   |
+LL |     1 /** baz */
+   |       ^^^^^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+   |
+help: add a space before `*` to use a regular comment
+   |
+LL |     1 /* * baz */
+   |       ^^^^
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found doc comment `/*! quux */`
+  --> $DIR/doc-comment-in-stmt.rs:17:7
+   |
+LL |     2 /*! quux */
+   |       ^^^^^^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+   |
+help: add a space before `!` to use a regular comment
+   |
+LL |     2 /* ! quux */
+   |       ^^^^
+
+error: aborting due to 4 previous errors
+

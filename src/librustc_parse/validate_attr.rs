@@ -2,13 +2,13 @@
 
 use crate::parse_in;
 
+use rustc_ast::ast::{self, Attribute, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
+use rustc_ast::tokenstream::DelimSpan;
 use rustc_errors::{Applicability, PResult};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Symbol};
-use syntax::ast::{self, Attribute, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
-use syntax::tokenstream::DelimSpan;
 
 pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
     if attr.is_doc_comment() {
@@ -27,7 +27,11 @@ pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
         _ => {
             if let MacArgs::Eq(..) = attr.get_normal_item().args {
                 // All key-value attributes are restricted to meta-item syntax.
-                parse_meta(sess, attr).map_err(|mut err| err.emit()).ok();
+                parse_meta(sess, attr)
+                    .map_err(|mut err| {
+                        err.emit();
+                    })
+                    .ok();
             }
         }
     }
@@ -53,7 +57,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
     })
 }
 
-crate fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter, msg: &str) {
+pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter, msg: &str) {
     if let ast::MacDelimiter::Parenthesis = delim {
         return;
     }
@@ -152,6 +156,8 @@ pub fn check_builtin_attribute(
                 }
             }
         }
-        Err(mut err) => err.emit(),
+        Err(mut err) => {
+            err.emit();
+        }
     }
 }

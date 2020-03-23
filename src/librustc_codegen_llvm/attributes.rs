@@ -3,8 +3,6 @@
 use std::ffi::CString;
 
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc::session::config::{OptLevel, Sanitizer};
-use rustc::session::Session;
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -13,6 +11,8 @@ use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_session::config::{OptLevel, Sanitizer};
+use rustc_session::Session;
 use rustc_target::abi::call::Conv;
 use rustc_target::spec::PanicStrategy;
 
@@ -21,7 +21,7 @@ use crate::attributes;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, Attribute};
 use crate::llvm_util;
-pub use syntax::attr::{self, InlineAttr, OptimizeAttr};
+pub use rustc_attr::{self as attr, InlineAttr, OptimizeAttr};
 
 use crate::context::CodegenCx;
 use crate::value::Value;
@@ -44,6 +44,31 @@ fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
             Attribute::NoInline.unapply_llfn(Function, val);
         }
     };
+}
+
+/// Apply LLVM sanitize attributes.
+#[inline]
+pub fn sanitize(cx: &CodegenCx<'ll, '_>, codegen_fn_flags: CodegenFnAttrFlags, llfn: &'ll Value) {
+    if let Some(ref sanitizer) = cx.tcx.sess.opts.debugging_opts.sanitizer {
+        match *sanitizer {
+            Sanitizer::Address => {
+                if !codegen_fn_flags.contains(CodegenFnAttrFlags::NO_SANITIZE_ADDRESS) {
+                    llvm::Attribute::SanitizeAddress.apply_llfn(Function, llfn);
+                }
+            }
+            Sanitizer::Memory => {
+                if !codegen_fn_flags.contains(CodegenFnAttrFlags::NO_SANITIZE_MEMORY) {
+                    llvm::Attribute::SanitizeMemory.apply_llfn(Function, llfn);
+                }
+            }
+            Sanitizer::Thread => {
+                if !codegen_fn_flags.contains(CodegenFnAttrFlags::NO_SANITIZE_THREAD) {
+                    llvm::Attribute::SanitizeThread.apply_llfn(Function, llfn);
+                }
+            }
+            Sanitizer::Leak => {}
+        }
+    }
 }
 
 /// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.
@@ -288,6 +313,7 @@ pub fn from_fn_attrs(
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR) {
         Attribute::NoAlias.apply_llfn(llvm::AttributePlace::ReturnValue, llfn);
     }
+    sanitize(cx, codegen_fn_attrs.flags, llfn);
 
     unwind(
         llfn,

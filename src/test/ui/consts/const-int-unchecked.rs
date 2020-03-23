@@ -1,4 +1,5 @@
 #![feature(core_intrinsics)]
+#![feature(const_int_unchecked_arith)]
 
 use std::intrinsics;
 
@@ -115,6 +116,27 @@ const SHR_I32_NEG_RANDOM: i32 = unsafe { intrinsics::unchecked_shr(5_i32, -25) }
 const SHR_I64_NEG_RANDOM: i64 = unsafe { intrinsics::unchecked_shr(5_i64, -30) };
 //~^ ERROR any use of this value will cause an error
 const SHR_I128_NEG_RANDOM: i128 = unsafe { intrinsics::unchecked_shr(5_i128, -93) };
+//~^ ERROR any use of this value will cause an error
+
+// Other arithmetic functions:
+
+const _: u16 = unsafe { std::intrinsics::unchecked_add(40000u16, 30000) };
+//~^ ERROR any use of this value will cause an error
+
+const _: u32 = unsafe { std::intrinsics::unchecked_sub(14u32, 22) };
+//~^ ERROR any use of this value will cause an error
+
+const _: u16 = unsafe { std::intrinsics::unchecked_mul(300u16, 250u16) };
+//~^ ERROR any use of this value will cause an error
+
+const _: i32 = unsafe { std::intrinsics::unchecked_div(1, 0) };
+//~^ ERROR any use of this value will cause an error
+const _: i32 = unsafe { std::intrinsics::unchecked_div(i32::min_value(), -1) };
+//~^ ERROR any use of this value will cause an error
+
+const _: i32 = unsafe { std::intrinsics::unchecked_rem(1, 0) };
+//~^ ERROR any use of this value will cause an error
+const _: i32 = unsafe { std::intrinsics::unchecked_rem(i32::min_value(), -1) };
 //~^ ERROR any use of this value will cause an error
 
 fn main() {}

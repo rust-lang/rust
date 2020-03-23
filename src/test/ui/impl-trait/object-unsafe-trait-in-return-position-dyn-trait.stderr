@@ -1,20 +1,34 @@
 error[E0038]: the trait `NotObjectSafe` cannot be made into an object
-  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:21:1
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:21:13
    |
+LL | trait NotObjectSafe {
+   |       ------------- this trait cannot be made into an object...
 LL |     fn foo() -> Self;
-   |        --- associated function `foo` has no `self` parameter
+   |        --- ...because associated function `foo` has no `self` parameter
 ...
 LL | fn car() -> dyn NotObjectSafe {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NotObjectSafe` cannot be made into an object
+   |             ^^^^^^^^^^^^^^^^^ the trait `NotObjectSafe` cannot be made into an object
+   |
+help: consider turning `foo` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
+   |
+LL |     fn foo() -> Self where Self: Sized;
+   |                      ^^^^^^^^^^^^^^^^^
 
 error[E0038]: the trait `NotObjectSafe` cannot be made into an object
-  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:28:1
+  --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:28:13
    |
+LL | trait NotObjectSafe {
+   |       ------------- this trait cannot be made into an object...
 LL |     fn foo() -> Self;
-   |        --- associated function `foo` has no `self` parameter
+   |        --- ...because associated function `foo` has no `self` parameter
 ...
 LL | fn cat() -> Box<dyn NotObjectSafe> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NotObjectSafe` cannot be made into an object
+   |             ^^^^^^^^^^^^^^^^^^^^^^ the trait `NotObjectSafe` cannot be made into an object
+   |
+help: consider turning `foo` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
+   |
+LL |     fn foo() -> Self where Self: Sized;
+   |                      ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

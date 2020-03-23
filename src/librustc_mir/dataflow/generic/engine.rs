@@ -5,13 +5,13 @@ use std::fs;
 use std::path::PathBuf;
 
 use rustc::mir::{self, traversal, BasicBlock, Location};
-use rustc::ty::TyCtxt;
+use rustc::ty::{self, TyCtxt};
+use rustc_ast::ast;
 use rustc_data_structures::work_queue::WorkQueue;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_span::symbol::{sym, Symbol};
-use syntax::ast;
 
 use super::graphviz;
 use super::{Analysis, GenKillAnalysis, GenKillSet, Results};
@@ -44,14 +44,19 @@ where
         def_id: DefId,
         analysis: A,
     ) -> Self {
+        // If there are no back-edges in the control-flow graph, we only ever need to apply the
+        // transfer function for each block exactly once (assuming that we process blocks in RPO).
+        //
+        // In this case, there's no need to compute the block transfer functions ahead of time.
+        if !body.is_cfg_cyclic() {
+            return Self::new(tcx, body, def_id, analysis, None);
+        }
+
+        // Otherwise, compute and store the cumulative transfer function for each block.
+
         let bits_per_block = analysis.bits_per_block(body);
         let mut trans_for_block =
             IndexVec::from_elem(GenKillSet::identity(bits_per_block), body.basic_blocks());
-
-        // Compute cumulative block transfer functions.
-        //
-        // FIXME: we may want to skip this if the MIR is acyclic, since we will never access a
-        // block transfer function more than once.
 
         for (block, block_data) in body.basic_blocks().iter_enumerated() {
             let trans = &mut trans_for_block[block];
@@ -62,11 +67,10 @@ where
                 analysis.statement_effect(trans, statement, loc);
             }
 
-            if let Some(terminator) = &block_data.terminator {
-                let loc = Location { block, statement_index: block_data.statements.len() };
-                analysis.before_terminator_effect(trans, terminator, loc);
-                analysis.terminator_effect(trans, terminator, loc);
-            }
+            let terminator = block_data.terminator();
+            let loc = Location { block, statement_index: block_data.statements.len() };
+            analysis.before_terminator_effect(trans, terminator, loc);
+            analysis.terminator_effect(trans, terminator, loc);
         }
 
         Self::new(tcx, body, def_id, analysis, Some(trans_for_block))
@@ -100,7 +104,7 @@ where
     ) -> Self {
         let bits_per_block = analysis.bits_per_block(body);
 
-        let bottom_value_set = if A::BOTTOM_VALUE == true {
+        let bottom_value_set = if A::BOTTOM_VALUE {
             BitSet::new_filled(bits_per_block)
         } else {
             BitSet::new_empty(bits_per_block)
@@ -214,15 +218,18 @@ where
 
             Goto { target }
             | Assert { target, cleanup: None, .. }
-            | Yield { resume: target, drop: None, .. }
             | Drop { target, location: _, unwind: None }
             | DropAndReplace { target, value: _, location: _, unwind: None } => {
                 self.propagate_bits_into_entry_set_for(in_out, target, dirty_list)
             }
 
-            Yield { resume: target, drop: Some(drop), .. } => {
+            Yield { resume: target, drop, resume_arg, .. } => {
+                if let Some(drop) = drop {
+                    self.propagate_bits_into_entry_set_for(in_out, drop, dirty_list);
+                }
+
+                self.analysis.apply_yield_resume_effect(in_out, target, &resume_arg);
                 self.propagate_bits_into_entry_set_for(in_out, target, dirty_list);
-                self.propagate_bits_into_entry_set_for(in_out, drop, dirty_list);
             }
 
             Assert { target, cleanup: Some(unwind), .. }
@@ -234,9 +241,27 @@ where
                 }
             }
 
-            SwitchInt { ref targets, .. } => {
-                for target in targets {
-                    self.propagate_bits_into_entry_set_for(in_out, *target, dirty_list);
+            SwitchInt { ref targets, ref values, ref discr, .. } => {
+                let Engine { tcx, body, .. } = *self;
+                let enum_ = discr
+                    .place()
+                    .and_then(|discr| switch_on_enum_discriminant(tcx, body, bb_data, discr));
+                match enum_ {
+                    // If this is a switch on an enum discriminant, a custom effect may be applied
+                    // along each outgoing edge.
+                    Some((enum_place, enum_def)) => {
+                        self.propagate_bits_into_enum_discriminant_switch_successors(
+                            in_out, bb, enum_def, enum_place, dirty_list, &*values, &*targets,
+                        );
+                    }
+
+                    // Otherwise, it's just a normal `SwitchInt`, and every successor sees the same
+                    // exit state.
+                    None => {
+                        for target in targets.iter().copied() {
+                            self.propagate_bits_into_entry_set_for(&in_out, target, dirty_list);
+                        }
+                    }
                 }
             }
 
@@ -282,6 +307,79 @@ where
         if set_changed {
             dirty_queue.insert(bb);
         }
+    }
+
+    fn propagate_bits_into_enum_discriminant_switch_successors(
+        &mut self,
+        in_out: &mut BitSet<A::Idx>,
+        bb: BasicBlock,
+        enum_def: &'tcx ty::AdtDef,
+        enum_place: &mir::Place<'tcx>,
+        dirty_list: &mut WorkQueue<BasicBlock>,
+        values: &[u128],
+        targets: &[BasicBlock],
+    ) {
+        // MIR building adds discriminants to the `values` array in the same order as they
+        // are yielded by `AdtDef::discriminants`. We rely on this to match each
+        // discriminant in `values` to its corresponding variant in linear time.
+        let mut tmp = BitSet::new_empty(in_out.domain_size());
+        let mut discriminants = enum_def.discriminants(self.tcx);
+        for (value, target) in values.iter().zip(targets.iter().copied()) {
+            let (variant_idx, _) = discriminants.find(|&(_, discr)| discr.val == *value).expect(
+                "Order of `AdtDef::discriminants` differed from that of `SwitchInt::values`",
+            );
+
+            tmp.overwrite(in_out);
+            self.analysis.apply_discriminant_switch_effect(
+                &mut tmp,
+                bb,
+                enum_place,
+                enum_def,
+                variant_idx,
+            );
+            self.propagate_bits_into_entry_set_for(&tmp, target, dirty_list);
+        }
+
+        std::mem::drop(tmp);
+
+        // Propagate dataflow state along the "otherwise" edge.
+        let otherwise = targets.last().copied().unwrap();
+        self.propagate_bits_into_entry_set_for(&in_out, otherwise, dirty_list);
+    }
+}
+
+/// Inspect a `SwitchInt`-terminated basic block to see if the condition of that `SwitchInt` is
+/// an enum discriminant.
+///
+/// We expect such blocks to have a call to `discriminant` as their last statement like so:
+///   _42 = discriminant(_1)
+///   SwitchInt(_42, ..)
+///
+/// If the basic block matches this pattern, this function returns the place corresponding to the
+/// enum (`_1` in the example above) as well as the `AdtDef` of that enum.
+fn switch_on_enum_discriminant(
+    tcx: TyCtxt<'tcx>,
+    body: &'mir mir::Body<'tcx>,
+    block: &'mir mir::BasicBlockData<'tcx>,
+    switch_on: &mir::Place<'tcx>,
+) -> Option<(&'mir mir::Place<'tcx>, &'tcx ty::AdtDef)> {
+    match block.statements.last().map(|stmt| &stmt.kind) {
+        Some(mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated))))
+            if lhs == switch_on =>
+        {
+            match &discriminated.ty(body, tcx).ty.kind {
+                ty::Adt(def, _) => Some((discriminated, def)),
+
+                // `Rvalue::Discriminant` is also used to get the active yield point for a
+                // generator, but we do not need edge-specific effects in that case. This may
+                // change in the future.
+                ty::Generator(..) => None,
+
+                t => bug!("`discriminant` called on unexpected type {:?}", t),
+            }
+        }
+
+        _ => None,
     }
 }
 
@@ -331,7 +429,7 @@ where
     let mut buf = Vec::new();
 
     let graphviz = graphviz::Formatter::new(body, def_id, results, &mut *formatter);
-    dot::render(&graphviz, &mut buf)?;
+    dot::render_opts(&graphviz, &mut buf, &[dot::RenderOption::Monospace])?;
     fs::write(&path, buf)?;
     Ok(())
 }
@@ -350,7 +448,7 @@ impl RustcMirAttrs {
         let mut ret = RustcMirAttrs::default();
 
         let rustc_mir_attrs = attrs
-            .into_iter()
+            .iter()
             .filter(|attr| attr.check_name(sym::rustc_mir))
             .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
 

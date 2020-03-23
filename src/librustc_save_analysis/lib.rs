@@ -10,14 +10,20 @@ mod sig;
 
 use rustc::middle::cstore::ExternCrate;
 use rustc::middle::privacy::AccessLevels;
-use rustc::session::config::{CrateType, Input, OutputType};
 use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc::{bug, span_bug};
-use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
+use rustc_ast::ast::{self, Attribute, NodeId, PatKind, DUMMY_NODE_ID};
+use rustc_ast::util::comments::strip_doc_comment_decoration;
+use rustc_ast::visit::{self, Visitor};
+use rustc_ast_pretty::pprust::{self, param_to_string, ty_to_string};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind as HirDefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
+use rustc_session::config::{CrateType, Input, OutputType};
+use rustc_session::output::{filename_for_metadata, out_filename};
+use rustc_span::source_map::Spanned;
+use rustc_span::*;
 
 use std::cell::Cell;
 use std::default::Default;
@@ -25,14 +31,6 @@ use std::env;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
-
-use rustc_span::source_map::Spanned;
-use rustc_span::*;
-use syntax::ast::{self, Attribute, NodeId, PatKind, DUMMY_NODE_ID};
-use syntax::print::pprust;
-use syntax::print::pprust::{param_to_string, ty_to_string};
-use syntax::util::comments::strip_doc_comment_decoration;
-use syntax::visit::{self, Visitor};
 
 use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
@@ -68,9 +66,9 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     fn span_from_span(&self, span: Span) -> SpanData {
         use rls_span::{Column, Row};
 
-        let cm = self.tcx.sess.source_map();
-        let start = cm.lookup_char_pos(span.lo());
-        let end = cm.lookup_char_pos(span.hi());
+        let sm = self.tcx.sess.source_map();
+        let start = sm.lookup_char_pos(span.lo());
+        let end = sm.lookup_char_pos(span.hi());
 
         SpanData {
             file_name: start.file.name.to_string().into(),
@@ -135,7 +133,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
         );
         match item.kind {
-            ast::ForeignItemKind::Fn(ref decl, ref generics) => {
+            ast::ForeignItemKind::Fn(_, ref sig, ref generics, _) => {
                 filter!(self.span_utils, item.ident.span);
 
                 Some(Data::DefData(Def {
@@ -144,7 +142,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     span: self.span_from_span(item.ident.span),
                     name: item.ident.to_string(),
                     qualname,
-                    value: make_signature(decl, generics),
+                    value: make_signature(&sig.decl, generics),
                     parent: None,
                     children: vec![],
                     decl_id: None,
@@ -153,7 +151,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ForeignItemKind::Static(ref ty, _) => {
+            ast::ForeignItemKind::Static(ref ty, _, _) => {
                 filter!(self.span_utils, item.ident.span);
 
                 let id = id_from_node_id(item.id, self);
@@ -175,14 +173,14 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 }))
             }
             // FIXME(plietar): needs a new DefKind in rls-data
-            ast::ForeignItemKind::Ty => None,
-            ast::ForeignItemKind::Macro(..) => None,
+            ast::ForeignItemKind::TyAlias(..) => None,
+            ast::ForeignItemKind::MacCall(..) => None,
         }
     }
 
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.kind {
-            ast::ItemKind::Fn(ref sig, .., ref generics, _) => {
+            ast::ItemKind::Fn(_, ref sig, .., ref generics, _) => {
                 let qualname = format!(
                     "::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
@@ -229,7 +227,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ItemKind::Const(ref typ, _) => {
+            ast::ItemKind::Const(_, ref typ, _) => {
                 let qualname = format!(
                     "::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
@@ -260,8 +258,8 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
                 );
 
-                let cm = self.tcx.sess.source_map();
-                let filename = cm.span_to_filename(m.inner);
+                let sm = self.tcx.sess.source_map();
+                let filename = sm.span_to_filename(m.inner);
 
                 filter!(self.span_utils, item.ident.span);
 
@@ -336,7 +334,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                                     Some(_) => ImplKind::Direct,
                                     None => ImplKind::Inherent,
                                 },
-                                span: span,
+                                span,
                                 value: String::new(),
                                 parent: None,
                                 children: items
@@ -410,7 +408,6 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                         qualname.push_str(&self.tcx.hir().hir_to_pretty_string(self_ty.hir_id));
 
                         let trait_id = self.tcx.trait_id_of_impl(impl_id);
-                        let mut decl_id = None;
                         let mut docs = String::new();
                         let mut attrs = vec![];
                         let hir_id = self.tcx.hir().node_to_hir_id(id);
@@ -419,14 +416,18 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                             attrs = item.attrs.to_vec();
                         }
 
+                        let mut decl_id = None;
                         if let Some(def_id) = trait_id {
                             // A method in a trait impl.
                             qualname.push_str(" as ");
                             qualname.push_str(&self.tcx.def_path_str(def_id));
-                            self.tcx
+
+                            decl_id = self
+                                .tcx
                                 .associated_items(def_id)
-                                .find(|item| item.ident.name == ident.name)
-                                .map(|item| decl_id = Some(item.def_id));
+                                .filter_by_name_unhygienic(ident.name)
+                                .next()
+                                .map(|item| item.def_id);
                         }
                         qualname.push_str(">");
 
@@ -531,14 +532,17 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 match self.tables.expr_ty_adjusted(&hir_node).kind {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let variant = &def.non_enum_variant();
-                        let index = self.tcx.find_field_index(ident, variant).unwrap();
                         filter!(self.span_utils, ident.span);
                         let span = self.span_from_span(ident.span);
-                        return Some(Data::RefData(Ref {
+                        Some(Data::RefData(Ref {
                             kind: RefKind::Variable,
                             span,
-                            ref_id: id_from_def_id(variant.fields[index].did),
-                        }));
+                            ref_id: self
+                                .tcx
+                                .find_field_index(ident, variant)
+                                .map(|index| id_from_def_id(variant.fields[index].did))
+                                .unwrap_or_else(|| null_id()),
+                        }))
                     }
                     ty::Tuple(..) => None,
                     _ => {
@@ -714,14 +718,14 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             | Res::Def(HirDefKind::Ctor(..), _) => {
                 Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(res.def_id()) })
             }
-            Res::Def(HirDefKind::Method, decl_id) => {
+            Res::Def(HirDefKind::AssocFn, decl_id) => {
                 let def_id = if decl_id.is_local() {
                     let ti = self.tcx.associated_item(decl_id);
+
                     self.tcx
                         .associated_items(ti.container.id())
-                        .find(|item| {
-                            item.ident.name == ti.ident.name && item.defaultness.has_value()
-                        })
+                        .filter_by_name_unhygienic(ti.ident.name)
+                        .find(|item| item.defaultness.has_value())
                         .map(|item| item.def_id)
                 } else {
                     None
@@ -790,19 +794,6 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             ExpnKind::Root | ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => return None,
         };
 
-        // If the callee is an imported macro from an external crate, need to get
-        // the source span and name from the session, as their spans are localized
-        // when read in, and no longer correspond to the source.
-        if let Some(mac) = self.tcx.sess.imported_macro_spans.borrow().get(&callee.def_site) {
-            let &(ref mac_name, mac_span) = mac;
-            let mac_span = self.span_from_span(mac_span);
-            return Some(MacroRef {
-                span: callsite_span,
-                qualname: mac_name.clone(), // FIXME: generate the real qualname
-                callee_span: mac_span,
-            });
-        }
-
         let callee_span = self.span_from_span(callee.def_site);
         Some(MacroRef {
             span: callsite_span,
@@ -814,7 +805,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     fn lookup_def_id(&self, ref_id: NodeId) -> Option<DefId> {
         match self.get_path_res(ref_id) {
             Res::PrimTy(_) | Res::SelfTy(..) | Res::Err => None,
-            def => Some(def.def_id()),
+            def => def.opt_def_id(),
         }
     }
 
@@ -880,8 +871,8 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
     sig.push_str(&decl.inputs.iter().map(param_to_string).collect::<Vec<_>>().join(", "));
     sig.push(')');
     match decl.output {
-        ast::FunctionRetTy::Default(_) => sig.push_str(" -> ()"),
-        ast::FunctionRetTy::Ty(ref t) => sig.push_str(&format!(" -> {}", ty_to_string(t))),
+        ast::FnRetTy::Default(_) => sig.push_str(" -> ()"),
+        ast::FnRetTy::Ty(ref t) => sig.push_str(&format!(" -> {}", ty_to_string(t))),
     }
 
     sig

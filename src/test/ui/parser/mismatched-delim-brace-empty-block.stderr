@@ -1,14 +1,8 @@
 error: unexpected closing delimiter: `}`
   --> $DIR/mismatched-delim-brace-empty-block.rs:5:1
    |
-LL |   fn main() {
-   |  ___________-
-LL | |
-LL | | }
-   | |_- this block is empty, you might have not meant to close it
-LL |       let _ = ();
-LL |   }
-   |   ^ unexpected closing delimiter
+LL | }
+   | ^ unexpected closing delimiter
 
 error: aborting due to previous error
 

@@ -28,16 +28,14 @@ use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind}
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::{self, LinkagePreference};
+use rustc::middle::lang_items;
 use rustc::middle::lang_items::StartFnLangItem;
-use rustc::middle::weak_lang_items;
 use rustc::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
-use rustc::session::config::{self, EntryFnType, Lto};
-use rustc::session::Session;
 use rustc::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyLayout, VariantIdx};
 use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Instance, Ty, TyCtxt};
-use rustc_codegen_utils::{check_for_rustc_errors_attr, symbol_names_test};
+use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
@@ -45,8 +43,10 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::Idx;
 use rustc_session::cgu_reuse_tracker::CguReuse;
+use rustc_session::config::{self, EntryFnType, Lto};
+use rustc_session::Session;
 use rustc_span::Span;
-use syntax::attr;
+use rustc_symbol_mangling::test as symbol_names_test;
 
 use std::cmp;
 use std::ops::{Deref, DerefMut};
@@ -391,10 +391,12 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
 /// Creates the `main` function which will initialize the rust runtime and call
 /// users main function.
-pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'a Bx::CodegenCx) {
+pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    cx: &'a Bx::CodegenCx,
+) -> Option<Bx::Function> {
     let (main_def_id, span) = match cx.tcx().entry_fn(LOCAL_CRATE) {
         Some((def_id, _)) => (def_id, cx.tcx().def_span(def_id)),
-        None => return,
+        None => return None,
     };
 
     let instance = Instance::mono(cx.tcx(), main_def_id);
@@ -402,17 +404,15 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
     if !cx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
         // We want to create the wrapper in the same codegen unit as Rust's main
         // function.
-        return;
+        return None;
     }
 
     let main_llfn = cx.get_fn_addr(instance);
 
-    let et = cx.tcx().entry_fn(LOCAL_CRATE).map(|e| e.1);
-    match et {
-        Some(EntryFnType::Main) => create_entry_fn::<Bx>(cx, span, main_llfn, main_def_id, true),
-        Some(EntryFnType::Start) => create_entry_fn::<Bx>(cx, span, main_llfn, main_def_id, false),
-        None => {} // Do nothing.
-    }
+    return cx.tcx().entry_fn(LOCAL_CRATE).map(|(_, et)| {
+        let use_start_lang_item = EntryFnType::Start != et;
+        create_entry_fn::<Bx>(cx, span, main_llfn, main_def_id, use_start_lang_item)
+    });
 
     fn create_entry_fn<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx: &'a Bx::CodegenCx,
@@ -420,7 +420,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
         rust_main: Bx::Value,
         rust_main_def_id: DefId,
         use_start_lang_item: bool,
-    ) {
+    ) -> Bx::Function {
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,
         // depending on whether the target needs `argc` and `argv` to be passed in.
         let llfty = if cx.sess().target.target.options.main_needs_argc_argv {
@@ -437,10 +437,10 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
         // listing.
         let main_ret_ty = cx.tcx().erase_regions(&main_ret_ty.no_bound_vars().unwrap());
 
-        if cx.get_defined_value("main").is_some() {
+        if cx.get_declared_value("main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.
             cx.sess()
-                .struct_span_err(sp, "entry symbol `main` defined multiple times")
+                .struct_span_err(sp, "entry symbol `main` declared multiple times")
                 .help("did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead")
                 .emit();
             cx.sess().abort_if_errors();
@@ -481,6 +481,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(cx: &'
         let result = bx.call(start_fn, &args, None);
         let cast = bx.intcast(result, cx.type_int(), true);
         bx.ret(cast);
+
+        llfn
     }
 }
 
@@ -512,8 +514,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> OngoingCodegen<B> {
-    check_for_rustc_errors_attr(tcx);
-
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.debugging_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
         let ongoing_codegen = start_async_codegen(backend, tcx, metadata, 1);
@@ -845,15 +845,12 @@ impl CrateInfo {
 
             // No need to look for lang items that are whitelisted and don't
             // actually need to exist.
-            let missing = missing
-                .iter()
-                .cloned()
-                .filter(|&l| !weak_lang_items::whitelisted(tcx, l))
-                .collect();
+            let missing =
+                missing.iter().cloned().filter(|&l| !lang_items::whitelisted(tcx, l)).collect();
             info.missing_lang_items.insert(cnum, missing);
         }
 
-        return info;
+        info
     }
 }
 
@@ -888,7 +885,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
                 }
             }
         }
-        return tcx.sess.opts.optimize;
+        tcx.sess.opts.optimize
     };
 
     providers.dllimport_foreign_items = |tcx, krate| {

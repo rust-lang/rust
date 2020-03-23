@@ -8,7 +8,7 @@ LL | | /// println!("sup");
 LL | | /// ```
    | |_______^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-group.rs:7:9
    |
 LL | #![deny(rustdoc)]
@@ -21,7 +21,7 @@ error: `[error]` cannot be resolved, ignoring it.
 LL | /// what up, let's make an [error]
    |                             ^^^^^ cannot be resolved, ignoring
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-group.rs:7:9
    |
 LL | #![deny(rustdoc)]
@@ -35,7 +35,7 @@ error: missing code example in this documentation
 LL | /// wait, this doesn't have a doctest?
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/lint-group.rs:7:9
    |
 LL | #![deny(rustdoc)]

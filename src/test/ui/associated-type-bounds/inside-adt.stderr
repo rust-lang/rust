@@ -1,107 +1,107 @@
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:5:29
+  --> $DIR/inside-adt.rs:4:29
    |
 LL | struct S1 { f: dyn Iterator<Item: Copy> }
    |                             ^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:8:33
+  --> $DIR/inside-adt.rs:7:33
    |
 LL | struct S2 { f: Box<dyn Iterator<Item: Copy>> }
    |                                 ^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:11:29
+  --> $DIR/inside-adt.rs:10:29
    |
 LL | struct S3 { f: dyn Iterator<Item: 'static> }
    |                             ^^^^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:15:26
+  --> $DIR/inside-adt.rs:14:26
    |
 LL | enum E1 { V(dyn Iterator<Item: Copy>) }
    |                          ^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:18:30
+  --> $DIR/inside-adt.rs:17:30
    |
 LL | enum E2 { V(Box<dyn Iterator<Item: Copy>>) }
    |                              ^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:21:26
+  --> $DIR/inside-adt.rs:20:26
    |
 LL | enum E3 { V(dyn Iterator<Item: 'static>) }
    |                          ^^^^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:25:28
+  --> $DIR/inside-adt.rs:24:28
    |
 LL | union U1 { f: dyn Iterator<Item: Copy> }
    |                            ^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:28:32
+  --> $DIR/inside-adt.rs:27:32
    |
 LL | union U2 { f: Box<dyn Iterator<Item: Copy>> }
    |                                ^^^^^^^^^^
 
 error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:31:28
+  --> $DIR/inside-adt.rs:30:28
    |
 LL | union U3 { f: dyn Iterator<Item: 'static> }
    |                            ^^^^^^^^^^^^^
 
 error: could not find defining uses
-  --> $DIR/inside-adt.rs:5:29
+  --> $DIR/inside-adt.rs:4:29
    |
 LL | struct S1 { f: dyn Iterator<Item: Copy> }
    |                             ^^^^^^^^^^
 
 error: could not find defining uses
-  --> $DIR/inside-adt.rs:8:33
+  --> $DIR/inside-adt.rs:7:33
    |
 LL | struct S2 { f: Box<dyn Iterator<Item: Copy>> }
    |                                 ^^^^^^^^^^
 
 error: could not find defining uses
-  --> $DIR/inside-adt.rs:11:29
+  --> $DIR/inside-adt.rs:10:29
    |
 LL | struct S3 { f: dyn Iterator<Item: 'static> }
    |                             ^^^^^^^^^^^^^
 
 error: could not find defining uses
-  --> $DIR/inside-adt.rs:15:26
+  --> $DIR/inside-adt.rs:14:26
    |
 LL | enum E1 { V(dyn Iterator<Item: Copy>) }
    |                          ^^^^^^^^^^
 
 error: could not find defining uses
-  --> $DIR/inside-adt.rs:18:30
+  --> $DIR/inside-adt.rs:17:30
    |
 LL | enum E2 { V(Box<dyn Iterator<Item: Copy>>) }
    |                              ^^^^^^^^^^
 
 error: could not find defining uses
-  --> $DIR/inside-adt.rs:21:26
+  --> $DIR/inside-adt.rs:20:26
    |
 LL | enum E3 { V(dyn Iterator<Item: 'static>) }
    |                          ^^^^^^^^^^^^^
 
 error: could not find defining uses
-  --> $DIR/inside-adt.rs:25:28
+  --> $DIR/inside-adt.rs:24:28
    |
 LL | union U1 { f: dyn Iterator<Item: Copy> }
    |                            ^^^^^^^^^^
 
 error: could not find defining uses
-  --> $DIR/inside-adt.rs:28:32
+  --> $DIR/inside-adt.rs:27:32
    |
 LL | union U2 { f: Box<dyn Iterator<Item: Copy>> }
    |                                ^^^^^^^^^^
 
 error: could not find defining uses
-  --> $DIR/inside-adt.rs:31:28
+  --> $DIR/inside-adt.rs:30:28
    |
 LL | union U3 { f: dyn Iterator<Item: 'static> }
    |                            ^^^^^^^^^^^^^

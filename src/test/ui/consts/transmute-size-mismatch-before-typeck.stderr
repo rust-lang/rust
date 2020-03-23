@@ -21,7 +21,7 @@ LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
    |                             ^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: `usize` (word size)
-   = note: target type: `&'static [u8]` (2 * word size)
+   = note: target type: `&[u8]` (2 * word size)
 
 error: could not evaluate constant pattern
   --> $DIR/transmute-size-mismatch-before-typeck.rs:10:9

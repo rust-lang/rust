@@ -90,6 +90,7 @@ impl<T: ?Sized> !Send for *mut T {}
           ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>"
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
+#[cfg_attr(not(bootstrap), rustc_specialization_trait)]
 pub trait Sized {
     // Empty.
 }
@@ -727,6 +728,10 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// [`Pin<P>`]: ../pin/struct.Pin.html
 /// [`pin module`]: ../../std/pin/index.html
 #[stable(feature = "pin", since = "1.33.0")]
+#[rustc_on_unimplemented(
+    on(_Self = "std::future::Future", note = "consider using `Box::pin`",),
+    message = "`{Self}` cannot be unpinned"
+)]
 #[lang = "unpin"]
 pub auto trait Unpin {}
 

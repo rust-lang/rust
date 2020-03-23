@@ -1,13 +1,12 @@
+use rustc_ast::ast;
+use rustc_ast::util::parser::{self, AssocOp, Fixity};
+use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
+use rustc_ast_pretty::pp::{self, Breaks};
+use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, IdentPrinter};
 use rustc_span::{self, BytePos, FileName};
 use rustc_target::spec::abi::Abi;
-use syntax::ast;
-use syntax::print::pp::Breaks::{Consistent, Inconsistent};
-use syntax::print::pp::{self, Breaks};
-use syntax::print::pprust::{self, Comments, PrintState};
-use syntax::sess::ParseSess;
-use syntax::util::parser::{self, AssocOp, Fixity};
 
 use crate::hir;
 use crate::hir::{GenericArg, GenericParam, GenericParamKind, Node};
@@ -103,7 +102,7 @@ impl<'a> State<'a> {
             Node::Ctor(..) => panic!("cannot print isolated Ctor"),
             Node::Local(a) => self.print_local_decl(&a),
             Node::MacroDef(_) => panic!("cannot print MacroDef"),
-            Node::Crate => panic!("cannot print Crate"),
+            Node::Crate(..) => panic!("cannot print Crate"),
         }
     }
 }
@@ -127,7 +126,7 @@ impl<'a> PrintState<'a> for State<'a> {
     }
 
     fn print_ident(&mut self, ident: ast::Ident) {
-        self.s.word(pprust::ast_ident_to_string(ident, ident.is_raw_guess()));
+        self.s.word(IdentPrinter::for_ast_ident(ident, ident.is_raw_guess()).to_string());
         self.ann.post(self, AnnNode::Name(&ident.name))
     }
 
@@ -141,32 +140,30 @@ pub const INDENT_UNIT: usize = 4;
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(
-    cm: &'a SourceMap,
-    sess: &ParseSess,
+    sm: &'a SourceMap,
     krate: &hir::Crate<'_>,
     filename: FileName,
     input: String,
     ann: &'a dyn PpAnn,
 ) -> String {
-    let mut s = State::new_from_input(cm, sess, filename, input, ann);
+    let mut s = State::new_from_input(sm, filename, input, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
 
-    s.print_mod(&krate.module, &krate.attrs);
+    s.print_mod(&krate.item.module, &krate.item.attrs);
     s.print_remaining_comments();
     s.s.eof()
 }
 
 impl<'a> State<'a> {
     pub fn new_from_input(
-        cm: &'a SourceMap,
-        sess: &ParseSess,
+        sm: &'a SourceMap,
         filename: FileName,
         input: String,
         ann: &'a dyn PpAnn,
     ) -> State<'a> {
-        State { s: pp::mk_printer(), comments: Some(Comments::new(cm, sess, filename, input)), ann }
+        State { s: pp::mk_printer(), comments: Some(Comments::new(sm, filename, input)), ann }
     }
 }
 
@@ -457,14 +454,17 @@ impl<'a> State<'a> {
     fn print_associated_type(
         &mut self,
         ident: ast::Ident,
+        generics: &hir::Generics<'_>,
         bounds: Option<hir::GenericBounds<'_>>,
         ty: Option<&hir::Ty<'_>>,
     ) {
         self.word_space("type");
         self.print_ident(ident);
+        self.print_generic_params(&generics.params);
         if let Some(bounds) = bounds {
             self.print_bounds(":", bounds);
         }
+        self.print_where_clause(&generics.where_clause);
         if let Some(ty) = ty {
             self.s.space();
             self.word_space("=");
@@ -648,11 +648,11 @@ impl<'a> State<'a> {
                     self.s.space();
                 }
 
-                if constness == ast::Constness::Const {
+                if constness == hir::Constness::Const {
                     self.word_nbsp("const");
                 }
 
-                if let hir::ImplPolarity::Negative = polarity {
+                if let hir::ImplPolarity::Negative(_) = polarity {
                     self.s.word("!");
                 }
 
@@ -886,13 +886,13 @@ impl<'a> State<'a> {
                     Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Inherited };
                 self.print_associated_const(ti.ident, &ty, default, &vis);
             }
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref arg_names)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(ref arg_names)) => {
                 let vis =
                     Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Inherited };
                 self.print_method_sig(ti.ident, sig, &ti.generics, &vis, arg_names, None);
                 self.s.word(";");
             }
-            hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let vis =
                     Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Inherited };
                 self.head("");
@@ -905,6 +905,7 @@ impl<'a> State<'a> {
             hir::TraitItemKind::Type(ref bounds, ref default) => {
                 self.print_associated_type(
                     ti.ident,
+                    &ti.generics,
                     Some(bounds),
                     default.as_ref().map(|ty| &**ty),
                 );
@@ -924,7 +925,7 @@ impl<'a> State<'a> {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 self.print_associated_const(ii.ident, &ty, Some(expr), &ii.vis);
             }
-            hir::ImplItemKind::Method(ref sig, body) => {
+            hir::ImplItemKind::Fn(ref sig, body) => {
                 self.head("");
                 self.print_method_sig(ii.ident, sig, &ii.generics, &ii.vis, &[], Some(body));
                 self.nbsp();
@@ -933,7 +934,7 @@ impl<'a> State<'a> {
                 self.ann.nested(self, Nested::Body(body));
             }
             hir::ImplItemKind::TyAlias(ref ty) => {
-                self.print_associated_type(ii.ident, None, Some(ty));
+                self.print_associated_type(ii.ident, &ii.generics, None, Some(ty));
             }
             hir::ImplItemKind::OpaqueTy(bounds) => {
                 self.word_space("type");

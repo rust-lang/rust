@@ -35,7 +35,8 @@ macro_rules! arena_types {
                 rustc::mir::Promoted,
                 rustc::mir::BodyAndCache<$tcx>
             >,
-            [] tables: rustc::ty::TypeckTables<$tcx>,
+            [decode] tables: rustc::ty::TypeckTables<$tcx>,
+            [decode] borrowck_result: rustc::mir::BorrowCheckResult<$tcx>,
             [] const_allocs: rustc::mir::interpret::Allocation,
             [] vtable_method: Option<(
                 rustc_hir::def_id::DefId,
@@ -47,22 +48,23 @@ macro_rules! arena_types {
             [] item_local_set: rustc_hir::ItemLocalSet,
             [decode] mir_const_qualif: rustc_index::bit_set::BitSet<rustc::mir::Local>,
             [] trait_impls_of: rustc::ty::trait_def::TraitImpls,
+            [] associated_items: rustc::ty::AssociatedItems,
             [] dropck_outlives:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx,
-                        rustc::traits::query::dropck_outlives::DropckOutlivesResult<'tcx>
+                        rustc::traits::query::DropckOutlivesResult<'tcx>
                     >
                 >,
             [] normalize_projection_ty:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx,
-                        rustc::traits::query::normalize::NormalizationResult<'tcx>
+                        rustc::traits::query::NormalizationResult<'tcx>
                     >
                 >,
             [] implied_outlives_bounds:
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx,
-                        Vec<rustc::traits::query::outlives_bounds::OutlivesBound<'tcx>>
+                        Vec<rustc::traits::query::OutlivesBound<'tcx>>
                     >
                 >,
             [] type_op_subtype:
@@ -127,9 +129,9 @@ macro_rules! arena_types {
             [] tys: rustc::ty::TyS<$tcx>,
 
             // HIR types
-            [few] hir_forest: rustc::hir::map::Forest<$tcx>,
+            [few] hir_krate: rustc_hir::Crate<$tcx>,
             [] arm: rustc_hir::Arm<$tcx>,
-            [] attribute: syntax::ast::Attribute,
+            [] attribute: rustc_ast::ast::Attribute,
             [] block: rustc_hir::Block<$tcx>,
             [] bare_fn_ty: rustc_hir::BareFnTy<$tcx>,
             [few] global_asm: rustc_hir::GlobalAsm,
@@ -159,6 +161,12 @@ macro_rules! arena_types {
             [] type_binding: rustc_hir::TypeBinding<$tcx>,
             [] variant: rustc_hir::Variant<$tcx>,
             [] where_predicate: rustc_hir::WherePredicate<$tcx>,
+
+            // HIR query types
+            [few] indexed_hir: rustc::hir::map::IndexedHir<$tcx>,
+            [few] hir_definitions: rustc::hir::map::definitions::Definitions,
+            [] hir_owner: rustc::hir::Owner<$tcx>,
+            [] hir_owner_nodes: rustc::hir::OwnerNodes<$tcx>,
         ], $tcx);
     )
 }
@@ -216,6 +224,7 @@ arena_types!(declare_arena, [], 'tcx);
 
 arena_types!(impl_arena_allocatable, [], 'tcx);
 
+#[marker]
 pub trait ArenaAllocatable {}
 
 impl<T: Copy> ArenaAllocatable for T {}
@@ -247,7 +256,7 @@ impl<'tcx> Arena<'tcx> {
 
     #[inline]
     pub fn alloc_slice<T: Copy>(&self, value: &[T]) -> &mut [T] {
-        if value.len() == 0 {
+        if value.is_empty() {
             return &mut [];
         }
         self.dropless.alloc_slice(value)

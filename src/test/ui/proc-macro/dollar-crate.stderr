@@ -11,6 +11,7 @@ LL |     local!();
    |     --------- in this macro invocation
    |
    = note: `D` must be defined only once in the type namespace of this module
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0428]: the name `D` is defined multiple times
   --> $DIR/dollar-crate.rs:36:5
@@ -22,7 +23,7 @@ LL |     dollar_crate_external::external!();
    |     previous definition of the type `D` here
    |
    = note: `D` must be defined only once in the type namespace of this module
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

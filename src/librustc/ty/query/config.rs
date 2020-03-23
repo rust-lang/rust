@@ -1,15 +1,14 @@
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::dep_graph::{DepKind, DepNode};
+use crate::ty::query::caches::QueryCache;
 use crate::ty::query::plumbing::CycleError;
-use crate::ty::query::queries;
-use crate::ty::query::{Query, QueryCache};
+use crate::ty::query::QueryState;
 use crate::ty::TyCtxt;
 use rustc_data_structures::profiling::ProfileCategory;
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::DefId;
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::sharded::Sharded;
 use std::borrow::Cow;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -29,15 +28,14 @@ pub trait QueryConfig<'tcx> {
 pub(crate) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     const ANON: bool;
     const EVAL_ALWAYS: bool;
+    const DEP_KIND: DepKind;
 
-    fn query(key: Self::Key) -> Query<'tcx>;
+    type Cache: QueryCache<Key = Self::Key, Value = Self::Value>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_cache<'a>(tcx: TyCtxt<'tcx>) -> &'a Sharded<QueryCache<'tcx, Self>>;
+    fn query_state<'a>(tcx: TyCtxt<'tcx>) -> &'a QueryState<'tcx, Self::Cache>;
 
     fn to_dep_node(tcx: TyCtxt<'tcx>, key: &Self::Key) -> DepNode;
-
-    fn dep_kind() -> DepKind;
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn compute(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value;
@@ -80,11 +78,5 @@ impl<'tcx, M: QueryAccessors<'tcx, Key = DefId>> QueryDescription<'tcx> for M {
         _: SerializedDepNodeIndex,
     ) -> Option<Self::Value> {
         bug!("QueryDescription::load_from_disk() called for an unsupported query.")
-    }
-}
-
-impl<'tcx> QueryDescription<'tcx> for queries::analysis<'tcx> {
-    fn describe(_tcx: TyCtxt<'_>, _: CrateNum) -> Cow<'static, str> {
-        "running analysis passes on this crate".into()
     }
 }

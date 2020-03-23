@@ -4,27 +4,28 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use rustc::hir::check_attr::{MethodKind, Target};
 use rustc::hir::map::Map;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
 
+use rustc_ast::ast::{Attribute, NestedMetaItem};
+use rustc_ast::attr;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::DUMMY_HIR_ID;
 use rustc_hir::{self, HirId, Item, ItemKind, TraitItem};
+use rustc_hir::{MethodKind, Target};
 use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
+use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::ast::Attribute;
-use syntax::attr;
 
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
-        hir::ImplItemKind::Method(..) => {
+        hir::ImplItemKind::Fn(..) => {
             let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id);
             let containing_item = tcx.hir().expect_item(parent_hir_id);
             let containing_impl_is_for_trait = match &containing_item.kind {
@@ -92,14 +93,9 @@ impl CheckAttrVisitor<'tcx> {
             | Target::Method(MethodKind::Trait { body: true })
             | Target::Method(MethodKind::Inherent) => true,
             Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
-                self.tcx
-                    .struct_span_lint_hir(
-                        UNUSED_ATTRIBUTES,
-                        hir_id,
-                        attr.span,
-                        "`#[inline]` is ignored on function prototypes",
-                    )
-                    .emit();
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("`#[inline]` is ignored on function prototypes").emit()
+                });
                 true
             }
             // FIXME(#65833): We permit associated consts to have an `#[inline]` attribute with
@@ -107,23 +103,19 @@ impl CheckAttrVisitor<'tcx> {
             // accidentally, to to be compatible with crates depending on them, we can't throw an
             // error here.
             Target::AssocConst => {
-                self.tcx
-                    .struct_span_lint_hir(
-                        UNUSED_ATTRIBUTES,
-                        hir_id,
-                        attr.span,
-                        "`#[inline]` is ignored on constants",
-                    )
-                    .warn(
-                        "this was previously accepted by the compiler but is \
-                       being phased out; it will become a hard error in \
-                       a future release!",
-                    )
-                    .note(
-                        "for more information, see issue #65833 \
-                       <https://github.com/rust-lang/rust/issues/65833>",
-                    )
-                    .emit();
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("`#[inline]` is ignored on constants")
+                        .warn(
+                            "this was previously accepted by the compiler but is \
+                               being phased out; it will become a hard error in \
+                               a future release!",
+                        )
+                        .note(
+                            "see issue #65833 <https://github.com/rust-lang/rust/issues/65833> \
+                                 for more information",
+                        )
+                        .emit();
+                });
                 true
             }
             _ => {
@@ -287,6 +279,21 @@ impl CheckAttrVisitor<'tcx> {
                         _ => ("a", "struct, enum, or union"),
                     }
                 }
+                sym::no_niche => {
+                    if !self.tcx.features().enabled(sym::no_niche) {
+                        feature_err(
+                            &self.tcx.sess.parse_sess,
+                            sym::no_niche,
+                            hint.span(),
+                            "the attribute `repr(no_niche)` is currently unstable",
+                        )
+                        .emit();
+                    }
+                    match target {
+                        Target::Struct | Target::Enum => continue,
+                        _ => ("a", "struct or enum"),
+                    }
+                }
                 sym::i8
                 | sym::u8
                 | sym::i16
@@ -314,8 +321,10 @@ impl CheckAttrVisitor<'tcx> {
         // This is not ideal, but tracking precisely which ones are at fault is a huge hassle.
         let hint_spans = hints.iter().map(|hint| hint.span());
 
-        // Error on repr(transparent, <anything else>).
-        if is_transparent && hints.len() > 1 {
+        // Error on repr(transparent, <anything else apart from no_niche>).
+        let non_no_niche = |hint: &&NestedMetaItem| hint.name_or_empty() != sym::no_niche;
+        let non_no_niche_count = hints.iter().filter(non_no_niche).count();
+        if is_transparent && non_no_niche_count > 1 {
             let hint_spans: Vec<_> = hint_spans.clone().collect();
             struct_span_err!(
                 self.tcx.sess,
@@ -331,15 +340,16 @@ impl CheckAttrVisitor<'tcx> {
             || (is_simd && is_c)
             || (int_reprs == 1 && is_c && item.map_or(false, |item| is_c_like_enum(item)))
         {
-            self.tcx
-                .struct_span_lint_hir(
-                    CONFLICTING_REPR_HINTS,
-                    hir_id,
-                    hint_spans.collect::<Vec<Span>>(),
-                    "conflicting representation hints",
-                )
-                .code(rustc_errors::error_code!(E0566))
-                .emit();
+            self.tcx.struct_span_lint_hir(
+                CONFLICTING_REPR_HINTS,
+                hir_id,
+                hint_spans.collect::<Vec<Span>>(),
+                |lint| {
+                    lint.build("conflicting representation hints")
+                        .code(rustc_errors::error_code!(E0566))
+                        .emit();
+                },
+            );
         }
     }
 
@@ -408,8 +418,8 @@ impl CheckAttrVisitor<'tcx> {
 impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {

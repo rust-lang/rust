@@ -71,15 +71,16 @@ pub fn supersize_me(out: &mut Vec<Big>) {
 
 #[inline(never)]
 fn verify_stack_usage(before_ptr: *mut Vec<Big>) {
-    // to check stack usage, create locals before and after
+    // To check stack usage, create locals before and after
     // and check the difference in addresses between them.
     let mut stack_var: Vec<Big> = vec![];
     test::black_box(&mut stack_var);
     let stack_usage = isize::abs(
         (&mut stack_var as *mut _ as isize) -
             (before_ptr as isize)) as usize;
-    // give space for 2 copies of `Big` + 128 "misc" bytes.
-    if stack_usage > mem::size_of::<Big>() * 2 + 128 {
+    // Give space for 2 copies of `Big` + 272 "misc" bytes
+    // (value observed on x86_64-pc-windows-gnu).
+    if stack_usage > mem::size_of::<Big>() * 2 + 272 {
         panic!("used {} bytes of stack, but `struct Big` is only {} bytes",
                stack_usage, mem::size_of::<Big>());
     }

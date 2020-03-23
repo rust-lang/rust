@@ -212,7 +212,6 @@ class Type(object):
         # REGULAR STRUCT
         return TYPE_KIND_REGULAR_STRUCT
 
-
     def __classify_union(self):
         assert self.get_dwarf_type_kind() == DWARF_TYPE_CODE_UNION
 
@@ -232,7 +231,6 @@ class Type(object):
             return TYPE_KIND_COMPRESSED_ENUM
         else:
             return TYPE_KIND_REGULAR_UNION
-
 
     def __conforms_to_field_layout(self, expected_fields):
         actual_fields = self.get_fields()
@@ -363,6 +361,7 @@ def extract_tail_head_ptr_and_cap_from_std_vecdeque(vec_val):
     assert data_ptr.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_PTR
     return (tail, head, data_ptr, capacity)
 
+
 def extract_length_and_ptr_from_slice(slice_val):
     assert (slice_val.type.get_type_kind() == TYPE_KIND_SLICE or
             slice_val.type.get_type_kind() == TYPE_KIND_STR_SLICE)
@@ -376,7 +375,9 @@ def extract_length_and_ptr_from_slice(slice_val):
     assert data_ptr.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_PTR
     return (length, data_ptr)
 
+
 UNQUALIFIED_TYPE_MARKERS = frozenset(["(", "[", "&", "*"])
+
 
 def extract_type_name(qualified_type_name):
     """Extracts the type name from a fully qualified path"""
@@ -392,6 +393,7 @@ def extract_type_name(qualified_type_name):
         return qualified_type_name
     else:
         return qualified_type_name[index + 2:]
+
 
 try:
     compat_str = unicode  # Python 2

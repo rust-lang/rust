@@ -212,9 +212,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
         if self.layout.is_unsized() {
             // We need to consult `meta` metadata
             match self.layout.ty.kind {
-                ty::Slice(..) | ty::Str => {
-                    return self.mplace.meta.unwrap_meta().to_machine_usize(cx);
-                }
+                ty::Slice(..) | ty::Str => self.mplace.meta.unwrap_meta().to_machine_usize(cx),
                 _ => bug!("len not supported on unsized type {:?}", self.layout.ty),
             }
         } else {
@@ -640,14 +638,16 @@ where
                         // bail out.
                         None => Place::null(&*self),
                     },
-                    layout: self.layout_of(self.subst_from_frame_and_normalize_erasing_regions(
-                        self.frame().body.return_ty(),
-                    ))?,
+                    layout: self.layout_of(
+                        self.subst_from_current_frame_and_normalize_erasing_regions(
+                            self.frame().body.return_ty(),
+                        ),
+                    )?,
                 }
             }
             local => PlaceTy {
                 // This works even for dead/uninitialized locals; we check further when writing
-                place: Place::Local { frame: self.cur_frame(), local: local },
+                place: Place::Local { frame: self.cur_frame(), local },
                 layout: self.layout_of_local(self.frame(), local, None)?,
             },
         };
@@ -681,7 +681,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(self.place_to_op(dest)?, vec![], None)?;
+            self.validate_operand(self.place_to_op(dest)?)?;
         }
 
         Ok(())
@@ -698,7 +698,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(dest.into(), vec![], None)?;
+            self.validate_operand(dest.into())?;
         }
 
         Ok(())
@@ -835,7 +835,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(self.place_to_op(dest)?, vec![], None)?;
+            self.validate_operand(self.place_to_op(dest)?)?;
         }
 
         Ok(())
@@ -918,7 +918,11 @@ where
             // most likey we *are* running `typeck` right now. Investigate whether we can bail out
             // on `typeck_tables().has_errors` at all const eval entry points.
             debug!("Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}", src, dest);
-            throw_unsup!(TransmuteSizeDiff(src.layout.ty, dest.layout.ty));
+            self.tcx.sess.delay_span_bug(
+                self.tcx.span,
+                "size-changing transmute, should have been caught by transmute checking",
+            );
+            throw_inval!(TransmuteSizeDiff(src.layout.ty, dest.layout.ty));
         }
         // Unsized copies rely on interpreting `src.meta` with `dest.layout`, we want
         // to avoid that here.
@@ -943,7 +947,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(dest.into(), vec![], None)?;
+            self.validate_operand(dest.into())?;
         }
 
         Ok(())

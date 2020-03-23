@@ -1,32 +1,28 @@
-use rustc_span::symbol::{sym, Symbol};
-use syntax::ast::{self, MetaItem};
-use syntax::print::pprust;
-
-use rustc_data_structures::work_queue::WorkQueue;
-use rustc_index::bit_set::{BitSet, HybridBitSet};
-use rustc_index::vec::Idx;
-
 use rustc::mir::traversal;
 use rustc::mir::{self, BasicBlock, BasicBlockData, Body, Location, Statement, Terminator};
-use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
+use rustc_ast::ast::{self, MetaItem};
+use rustc_ast_pretty::pprust;
+use rustc_data_structures::work_queue::WorkQueue;
 use rustc_hir::def_id::DefId;
+use rustc_index::bit_set::{BitSet, HybridBitSet};
+use rustc_index::vec::Idx;
+use rustc_session::Session;
+use rustc_span::symbol::{sym, Symbol};
 
 use std::borrow::Borrow;
 use std::fmt;
 use std::io;
 use std::path::PathBuf;
-use std::usize;
 
 pub use self::at_location::{FlowAtLocation, FlowsAtLocation};
 pub(crate) use self::drop_flag_effects::*;
 pub use self::impls::borrows::Borrows;
 pub use self::impls::DefinitelyInitializedPlaces;
 pub use self::impls::EverInitializedPlaces;
-pub use self::impls::HaveBeenBorrowedLocals;
-pub use self::impls::IndirectlyMutableLocals;
+pub use self::impls::{MaybeBorrowedLocals, MaybeMutBorrowedLocals};
 pub use self::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
-pub use self::impls::{MaybeStorageLive, RequiresStorage};
+pub use self::impls::{MaybeRequiresStorage, MaybeStorageLive};
 
 use self::move_paths::MoveData;
 
@@ -126,7 +122,7 @@ pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: Symbol) -> Opti
             }
         }
     }
-    return None;
+    None
 }
 
 pub struct MoveDataParamEnv<'tcx> {
@@ -175,7 +171,7 @@ where
                     return None;
                 }
             }
-            return None;
+            None
         };
 
         let print_preflow_to = name_found(tcx.sess, attributes, sym::borrowck_graphviz_preflow);
@@ -690,11 +686,7 @@ pub trait BottomValue {
     /// 3. Override `join` to do the opposite from what it's doing now.
     #[inline]
     fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
-        if Self::BOTTOM_VALUE == false {
-            inout_set.union(in_set)
-        } else {
-            inout_set.intersect(in_set)
-        }
+        if !Self::BOTTOM_VALUE { inout_set.union(in_set) } else { inout_set.intersect(in_set) }
     }
 }
 
@@ -822,7 +814,7 @@ where
         let bits_per_block = denotation.bits_per_block();
         let num_blocks = body.basic_blocks().len();
 
-        let on_entry = if D::BOTTOM_VALUE == true {
+        let on_entry = if D::BOTTOM_VALUE {
             vec![BitSet::new_filled(bits_per_block); num_blocks]
         } else {
             vec![BitSet::new_empty(bits_per_block); num_blocks]

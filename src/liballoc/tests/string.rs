@@ -50,7 +50,11 @@ fn test_from_utf8() {
 
     let xs = b"hello\xFF".to_vec();
     let err = String::from_utf8(xs).unwrap_err();
+    assert_eq!(err.as_bytes(), b"hello\xff");
+    let err_clone = err.clone();
+    assert_eq!(err, err_clone);
     assert_eq!(err.into_bytes(), b"hello\xff".to_vec());
+    assert_eq!(err_clone.utf8_error().valid_up_to(), 5);
 }
 
 #[test]

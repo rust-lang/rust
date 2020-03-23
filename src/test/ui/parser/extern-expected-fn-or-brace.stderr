@@ -1,8 +1,8 @@
-error: expected one of `fn` or `{`, found keyword `mod`
-  --> $DIR/extern-expected-fn-or-brace.rs:4:12
+error: expected `{`, found keyword `mod`
+  --> $DIR/extern-expected-fn-or-brace.rs:3:12
    |
 LL | extern "C" mod foo;
-   |            ^^^ expected one of `fn` or `{`
+   |            ^^^ expected `{`
 
 error: aborting due to previous error
 

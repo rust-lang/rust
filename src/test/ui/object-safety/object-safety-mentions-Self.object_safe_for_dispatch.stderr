@@ -1,24 +1,30 @@
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/object-safety-mentions-Self.rs:24:5
    |
+LL | trait Bar {
+   |       --- this trait cannot be made into an object...
 LL |     fn bar(&self, x: &Self);
-   |        --- method `bar` references the `Self` type in its parameters or return type
+   |                      ----- ...because method `bar` references the `Self` type in this parameter
 ...
 LL |     t
    |     ^ the trait `Bar` cannot be made into an object
    |
+   = help: consider moving `bar` to another trait
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Bar>` for `&T`
    = note: required by cast to type `&dyn Bar`
 
 error[E0038]: the trait `Baz` cannot be made into an object
   --> $DIR/object-safety-mentions-Self.rs:30:5
    |
+LL | trait Baz {
+   |       --- this trait cannot be made into an object...
 LL |     fn baz(&self) -> Self;
-   |        --- method `baz` references the `Self` type in its parameters or return type
+   |                      ---- ...because method `baz` references the `Self` type in its return type
 ...
 LL |     t
    |     ^ the trait `Baz` cannot be made into an object
    |
+   = help: consider moving `baz` to another trait
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Baz>` for `&T`
    = note: required by cast to type `&dyn Baz`
 

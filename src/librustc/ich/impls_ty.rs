@@ -63,8 +63,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionKind {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            ty::ReErased | ty::ReStatic | ty::ReEmpty => {
+            ty::ReErased | ty::ReStatic => {
                 // No variant fields to hash for these ...
+            }
+            ty::ReEmpty(universe) => {
+                universe.hash_stable(hcx, hasher);
             }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
                 db.hash_stable(hcx, hasher);

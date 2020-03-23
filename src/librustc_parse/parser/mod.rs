@@ -1,8 +1,6 @@
 pub mod attr;
 mod expr;
 mod item;
-mod module;
-pub use module::{ModulePath, ModulePathSuccess};
 mod pat;
 mod path;
 mod ty;
@@ -13,24 +11,23 @@ mod stmt;
 use diagnostics::Error;
 
 use crate::lexer::UnmatchedBrace;
-use crate::{Directory, DirectoryOwnership};
 
 use log::debug;
+use rustc_ast::ast::DUMMY_NODE_ID;
+use rustc_ast::ast::{self, AttrStyle, AttrVec, Const, CrateSugar, Extern, Ident, Unsafe};
+use rustc_ast::ast::{
+    Async, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind,
+};
+use rustc_ast::ptr::P;
+use rustc_ast::token::{self, DelimToken, Token, TokenKind};
+use rustc_ast::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndJoint};
+use rustc_ast::util::comments::{doc_comment_style, strip_doc_comment_decoration};
+use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError, PResult};
-use rustc_span::source_map::respan;
+use rustc_session::parse::ParseSess;
+use rustc_span::source_map::{respan, Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
-use syntax::ast::{self, AttrStyle, AttrVec, CrateSugar, Extern, Ident, Unsafety, DUMMY_NODE_ID};
-use syntax::ast::{IsAsync, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind};
-use syntax::print::pprust;
-use syntax::ptr::P;
-use syntax::sess::ParseSess;
-use syntax::token::{self, DelimToken, Token, TokenKind};
-use syntax::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndJoint};
-use syntax::util::comments::{doc_comment_style, strip_doc_comment_decoration};
 
-use std::borrow::Cow;
-use std::path::PathBuf;
 use std::{cmp, mem, slice};
 
 bitflags::bitflags! {
@@ -76,48 +73,21 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
                 if let token::NtTy(ty) = &**nt {
                     let ty = ty.clone();
                     $self.bump();
-                    return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_span, ty);
+                    return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);
                 }
             }
         }
     };
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum PrevTokenKind {
-    DocComment,
-    Comma,
-    Plus,
-    Interpolated,
-    Eof,
-    Ident,
-    BitOr,
-    Other,
-}
-
-// NOTE: `Ident`s are handled by `common.rs`.
-
 #[derive(Clone)]
 pub struct Parser<'a> {
     pub sess: &'a ParseSess,
-    /// The current normalized token.
-    /// "Normalized" means that some interpolated tokens
-    /// (`$i: ident` and `$l: lifetime` meta-variables) are replaced
-    /// with non-interpolated identifier and lifetime tokens they refer to.
-    /// Perhaps the normalized / non-normalized setup can be simplified somehow.
+    /// The current token.
     pub token: Token,
-    /// The span of the current non-normalized token.
-    meta_var_span: Option<Span>,
-    /// The span of the previous non-normalized token.
-    pub prev_span: Span,
-    /// The kind of the previous normalized token (in simplified form).
-    prev_token_kind: PrevTokenKind,
+    /// The previous token.
+    pub prev_token: Token,
     restrictions: Restrictions,
-    /// Used to determine the path to externally loaded source files.
-    pub(super) directory: Directory<'a>,
-    /// `true` to parse sub-modules in other files.
-    // Public for rustfmt usage.
-    pub recurse_into_file_modules: bool,
     /// Name of the root module this parser originated from. If `None`, then the
     /// name is not known. This does not change while the parser is descending
     /// into modules, and sub-parsers have new values for this name.
@@ -125,9 +95,6 @@ pub struct Parser<'a> {
     expected_tokens: Vec<TokenType>,
     token_cursor: TokenCursor,
     desugar_doc_comments: bool,
-    /// `true` we should configure out of line modules as we parse.
-    // Public for rustfmt usage.
-    pub cfg_mods: bool,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
     /// appropriately.
@@ -271,8 +238,7 @@ impl TokenCursor {
             ]
             .iter()
             .cloned()
-            .collect::<TokenStream>()
-            .into(),
+            .collect::<TokenStream>(),
         );
 
         self.stack.push(mem::replace(
@@ -376,31 +342,21 @@ impl<'a> Parser<'a> {
     pub fn new(
         sess: &'a ParseSess,
         tokens: TokenStream,
-        directory: Option<Directory<'a>>,
-        recurse_into_file_modules: bool,
         desugar_doc_comments: bool,
         subparser_name: Option<&'static str>,
     ) -> Self {
         let mut parser = Parser {
             sess,
             token: Token::dummy(),
-            prev_span: DUMMY_SP,
-            meta_var_span: None,
-            prev_token_kind: PrevTokenKind::Other,
+            prev_token: Token::dummy(),
             restrictions: Restrictions::empty(),
-            recurse_into_file_modules,
-            directory: Directory {
-                path: Cow::from(PathBuf::new()),
-                ownership: DirectoryOwnership::Owned { relative: None },
-            },
             root_module_name: None,
             expected_tokens: Vec::new(),
             token_cursor: TokenCursor {
-                frame: TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, &tokens.into()),
+                frame: TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, &tokens),
                 stack: Vec::new(),
             },
             desugar_doc_comments,
-            cfg_mods: true,
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
             unclosed_delims: Vec::new(),
@@ -409,25 +365,13 @@ impl<'a> Parser<'a> {
             subparser_name,
         };
 
-        parser.token = parser.next_tok();
+        // Make parser point to the first token.
+        parser.bump();
 
-        if let Some(directory) = directory {
-            parser.directory = directory;
-        } else if !parser.token.span.is_dummy() {
-            if let Some(FileName::Real(path)) =
-                &sess.source_map().lookup_char_pos(parser.token.span.lo()).file.unmapped_path
-            {
-                if let Some(directory_path) = path.parent() {
-                    parser.directory.path = Cow::from(directory_path.to_path_buf());
-                }
-            }
-        }
-
-        parser.process_potential_macro_variable();
         parser
     }
 
-    fn next_tok(&mut self) -> Token {
+    fn next_tok(&mut self, fallback_span: Span) -> Token {
         let mut next = if self.desugar_doc_comments {
             self.token_cursor.next_desugared()
         } else {
@@ -435,7 +379,7 @@ impl<'a> Parser<'a> {
         };
         if next.span.is_dummy() {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
-            next.span = self.prev_span.with_ctxt(next.span.ctxt());
+            next.span = fallback_span.with_ctxt(next.span.ctxt());
         }
         next
     }
@@ -490,9 +434,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, ast::Ident> {
-        match self.token.kind {
-            token::Ident(name, _) => {
-                if self.token.is_reserved_ident() {
+        match self.token.ident() {
+            Some((ident, is_raw)) => {
+                if !is_raw && ident.is_reserved() {
                     let mut err = self.expected_ident_found();
                     if recover {
                         err.emit();
@@ -500,14 +444,14 @@ impl<'a> Parser<'a> {
                         return Err(err);
                     }
                 }
-                let span = self.token.span;
                 self.bump();
-                Ok(Ident::new(name, span))
+                Ok(ident)
             }
-            _ => Err(if self.prev_token_kind == PrevTokenKind::DocComment {
-                self.span_fatal_err(self.prev_span, Error::UselessDocComment)
-            } else {
-                self.expected_ident_found()
+            _ => Err(match self.prev_token.kind {
+                TokenKind::DocComment(..) => {
+                    self.span_fatal_err(self.prev_token.span, Error::UselessDocComment)
+                }
+                _ => self.expected_ident_found(),
             }),
         }
     }
@@ -568,6 +512,11 @@ impl<'a> Parser<'a> {
         if !self.eat_keyword(kw) { self.unexpected() } else { Ok(()) }
     }
 
+    /// Is the given keyword `kw` followed by a non-reserved identifier?
+    fn is_kw_followed_by_ident(&self, kw: Symbol) -> bool {
+        self.token.is_keyword(kw) && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
+    }
+
     fn check_or_expected(&mut self, ok: bool, typ: TokenType) -> bool {
         if ok {
             true
@@ -602,136 +551,76 @@ impl<'a> Parser<'a> {
         )
     }
 
-    /// Expects and consumes a `+`. if `+=` is seen, replaces it with a `=`
-    /// and continues. If a `+` is not seen, returns `false`.
-    ///
-    /// This is used when token-splitting `+=` into `+`.
-    /// See issue #47856 for an example of when this may occur.
+    /// Eats the expected token if it's present possibly breaking
+    /// compound tokens like multi-character operators in process.
+    /// Returns `true` if the token was eaten.
+    fn break_and_eat(&mut self, expected: TokenKind) -> bool {
+        if self.token.kind == expected {
+            self.bump();
+            return true;
+        }
+        match self.token.kind.break_two_token_op() {
+            Some((first, second)) if first == expected => {
+                let first_span = self.sess.source_map().start_point(self.token.span);
+                let second_span = self.token.span.with_lo(first_span.hi());
+                self.token = Token::new(first, first_span);
+                self.bump_with(Token::new(second, second_span));
+                true
+            }
+            _ => {
+                self.expected_tokens.push(TokenType::Token(expected));
+                false
+            }
+        }
+    }
+
+    /// Eats `+` possibly breaking tokens like `+=` in process.
     fn eat_plus(&mut self) -> bool {
-        self.expected_tokens.push(TokenType::Token(token::BinOp(token::Plus)));
-        match self.token.kind {
-            token::BinOp(token::Plus) => {
-                self.bump();
-                true
-            }
-            token::BinOpEq(token::Plus) => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                self.bump_with(token::Eq, span);
-                true
-            }
-            _ => false,
-        }
+        self.break_and_eat(token::BinOp(token::Plus))
     }
 
-    /// Expects and consumes an `&`. If `&&` is seen, replaces it with a single
-    /// `&` and continues. If an `&` is not seen, signals an error.
+    /// Eats `&` possibly breaking tokens like `&&` in process.
+    /// Signals an error if `&` is not eaten.
     fn expect_and(&mut self) -> PResult<'a, ()> {
-        self.expected_tokens.push(TokenType::Token(token::BinOp(token::And)));
-        match self.token.kind {
-            token::BinOp(token::And) => {
-                self.bump();
-                Ok(())
-            }
-            token::AndAnd => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Ok(self.bump_with(token::BinOp(token::And), span))
-            }
-            _ => self.unexpected(),
-        }
+        if self.break_and_eat(token::BinOp(token::And)) { Ok(()) } else { self.unexpected() }
     }
 
-    /// Expects and consumes an `|`. If `||` is seen, replaces it with a single
-    /// `|` and continues. If an `|` is not seen, signals an error.
+    /// Eats `|` possibly breaking tokens like `||` in process.
+    /// Signals an error if `|` was not eaten.
     fn expect_or(&mut self) -> PResult<'a, ()> {
-        self.expected_tokens.push(TokenType::Token(token::BinOp(token::Or)));
-        match self.token.kind {
-            token::BinOp(token::Or) => {
-                self.bump();
-                Ok(())
-            }
-            token::OrOr => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Ok(self.bump_with(token::BinOp(token::Or), span))
-            }
-            _ => self.unexpected(),
-        }
+        if self.break_and_eat(token::BinOp(token::Or)) { Ok(()) } else { self.unexpected() }
     }
 
-    /// Attempts to consume a `<`. If `<<` is seen, replaces it with a single
-    /// `<` and continue. If `<-` is seen, replaces it with a single `<`
-    /// and continue. If a `<` is not seen, returns false.
-    ///
-    /// This is meant to be used when parsing generics on a path to get the
-    /// starting token.
+    /// Eats `<` possibly breaking tokens like `<<` in process.
     fn eat_lt(&mut self) -> bool {
-        self.expected_tokens.push(TokenType::Token(token::Lt));
-        let ate = match self.token.kind {
-            token::Lt => {
-                self.bump();
-                true
-            }
-            token::BinOp(token::Shl) => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                self.bump_with(token::Lt, span);
-                true
-            }
-            token::LArrow => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                self.bump_with(token::BinOp(token::Minus), span);
-                true
-            }
-            _ => false,
-        };
-
+        let ate = self.break_and_eat(token::Lt);
         if ate {
             // See doc comment for `unmatched_angle_bracket_count`.
             self.unmatched_angle_bracket_count += 1;
             self.max_angle_bracket_count += 1;
             debug!("eat_lt: (increment) count={:?}", self.unmatched_angle_bracket_count);
         }
-
         ate
     }
 
+    /// Eats `<` possibly breaking tokens like `<<` in process.
+    /// Signals an error if `<` was not eaten.
     fn expect_lt(&mut self) -> PResult<'a, ()> {
-        if !self.eat_lt() { self.unexpected() } else { Ok(()) }
+        if self.eat_lt() { Ok(()) } else { self.unexpected() }
     }
 
-    /// Expects and consumes a single `>` token. if a `>>` is seen, replaces it
-    /// with a single `>` and continues. If a `>` is not seen, signals an error.
+    /// Eats `>` possibly breaking tokens like `>>` in process.
+    /// Signals an error if `>` was not eaten.
     fn expect_gt(&mut self) -> PResult<'a, ()> {
-        self.expected_tokens.push(TokenType::Token(token::Gt));
-        let ate = match self.token.kind {
-            token::Gt => {
-                self.bump();
-                Some(())
+        if self.break_and_eat(token::Gt) {
+            // See doc comment for `unmatched_angle_bracket_count`.
+            if self.unmatched_angle_bracket_count > 0 {
+                self.unmatched_angle_bracket_count -= 1;
+                debug!("expect_gt: (decrement) count={:?}", self.unmatched_angle_bracket_count);
             }
-            token::BinOp(token::Shr) => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Some(self.bump_with(token::Gt, span))
-            }
-            token::BinOpEq(token::Shr) => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Some(self.bump_with(token::Ge, span))
-            }
-            token::Ge => {
-                let span = self.token.span.with_lo(self.token.span.lo() + BytePos(1));
-                Some(self.bump_with(token::Eq, span))
-            }
-            _ => None,
-        };
-
-        match ate {
-            Some(_) => {
-                // See doc comment for `unmatched_angle_bracket_count`.
-                if self.unmatched_angle_bracket_count > 0 {
-                    self.unmatched_angle_bracket_count -= 1;
-                    debug!("expect_gt: (decrement) count={:?}", self.unmatched_angle_bracket_count);
-                }
-
-                Ok(())
-            }
-            None => self.unexpected(),
+            Ok(())
+        } else {
+            self.unexpected()
         }
     }
 
@@ -768,7 +657,7 @@ impl<'a> Parser<'a> {
                             break;
                         }
                         Err(mut expect_err) => {
-                            let sp = self.prev_span.shrink_to_hi();
+                            let sp = self.prev_token.span.shrink_to_hi();
                             let token_str = pprust::token_kind_to_string(t);
 
                             // Attempt to keep parsing if it was a similar separator.
@@ -882,44 +771,25 @@ impl<'a> Parser<'a> {
         self.parse_delim_comma_seq(token::Paren, f)
     }
 
-    /// Advance the parser by one token.
-    pub fn bump(&mut self) {
-        if self.prev_token_kind == PrevTokenKind::Eof {
-            // Bumping after EOF is a bad sign, usually an infinite loop.
+    /// Advance the parser by one token using provided token as the next one.
+    fn bump_with(&mut self, next_token: Token) {
+        // Bumping after EOF is a bad sign, usually an infinite loop.
+        if self.prev_token.kind == TokenKind::Eof {
             let msg = "attempted to bump the parser past EOF (may be stuck in a loop)";
             self.span_bug(self.token.span, msg);
         }
 
-        self.prev_span = self.meta_var_span.take().unwrap_or(self.token.span);
+        // Update the current and previous tokens.
+        self.prev_token = mem::replace(&mut self.token, next_token);
 
-        // Record last token kind for possible error recovery.
-        self.prev_token_kind = match self.token.kind {
-            token::DocComment(..) => PrevTokenKind::DocComment,
-            token::Comma => PrevTokenKind::Comma,
-            token::BinOp(token::Plus) => PrevTokenKind::Plus,
-            token::BinOp(token::Or) => PrevTokenKind::BitOr,
-            token::Interpolated(..) => PrevTokenKind::Interpolated,
-            token::Eof => PrevTokenKind::Eof,
-            token::Ident(..) => PrevTokenKind::Ident,
-            _ => PrevTokenKind::Other,
-        };
-
-        self.token = self.next_tok();
+        // Diagnostics.
         self.expected_tokens.clear();
-        // Check after each token.
-        self.process_potential_macro_variable();
     }
 
-    /// Advances the parser using provided token as a next one. Use this when
-    /// consuming a part of a token. For example a single `<` from `<<`.
-    fn bump_with(&mut self, next: TokenKind, span: Span) {
-        self.prev_span = self.token.span.with_hi(span.lo());
-        // It would be incorrect to record the kind of the current token, but
-        // fortunately for tokens currently using `bump_with`, the
-        // `prev_token_kind` will be of no use anyway.
-        self.prev_token_kind = PrevTokenKind::Other;
-        self.token = Token::new(next, span);
-        self.expected_tokens.clear();
+    /// Advance the parser by one token.
+    pub fn bump(&mut self) {
+        let next_token = self.next_tok(self.token.span);
+        self.bump_with(next_token);
     }
 
     /// Look-ahead `dist` tokens of `self.token` and get access to that token there.
@@ -947,17 +817,31 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses asyncness: `async` or nothing.
-    fn parse_asyncness(&mut self) -> IsAsync {
+    fn parse_asyncness(&mut self) -> Async {
         if self.eat_keyword(kw::Async) {
-            IsAsync::Async { closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
+            let span = self.prev_token.uninterpolated_span();
+            Async::Yes { span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
         } else {
-            IsAsync::NotAsync
+            Async::No
         }
     }
 
     /// Parses unsafety: `unsafe` or nothing.
-    fn parse_unsafety(&mut self) -> Unsafety {
-        if self.eat_keyword(kw::Unsafe) { Unsafety::Unsafe } else { Unsafety::Normal }
+    fn parse_unsafety(&mut self) -> Unsafe {
+        if self.eat_keyword(kw::Unsafe) {
+            Unsafe::Yes(self.prev_token.uninterpolated_span())
+        } else {
+            Unsafe::No
+        }
+    }
+
+    /// Parses constness: `const` or nothing.
+    fn parse_constness(&mut self) -> Const {
+        if self.eat_keyword(kw::Const) {
+            Const::Yes(self.prev_token.uninterpolated_span())
+        } else {
+            Const::No
+        }
     }
 
     /// Parses mutability (`mut` or nothing).
@@ -981,7 +865,7 @@ impl<'a> Parser<'a> {
         {
             self.expect_no_suffix(self.token.span, "a tuple index", suffix);
             self.bump();
-            Ok(Ident::new(symbol, self.prev_span))
+            Ok(Ident::new(symbol, self.prev_token.span))
         } else {
             self.parse_ident_common(false)
         }
@@ -1011,7 +895,7 @@ impl<'a> Parser<'a> {
                 }
             } else if !delimited_only {
                 if self.eat(&token::Eq) {
-                    let eq_span = self.prev_span;
+                    let eq_span = self.prev_token.span;
                     let mut is_interpolated_expr = false;
                     if let token::Interpolated(nt) = &self.token.kind {
                         if let token::NtExpr(..) = **nt {
@@ -1048,39 +932,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn process_potential_macro_variable(&mut self) {
-        self.token = match self.token.kind {
-            token::Dollar
-                if self.token.span.from_expansion() && self.look_ahead(1, |t| t.is_ident()) =>
-            {
-                self.bump();
-                let name = match self.token.kind {
-                    token::Ident(name, _) => name,
-                    _ => unreachable!(),
-                };
-                let span = self.prev_span.to(self.token.span);
-                self.struct_span_err(span, &format!("unknown macro variable `{}`", name))
-                    .span_label(span, "unknown macro variable")
-                    .emit();
-                self.bump();
-                return;
-            }
-            token::Interpolated(ref nt) => {
-                self.meta_var_span = Some(self.token.span);
-                // Interpolated identifier and lifetime tokens are replaced with usual identifier
-                // and lifetime tokens, so the former are never encountered during normal parsing.
-                match **nt {
-                    token::NtIdent(ident, is_raw) => {
-                        Token::new(token::Ident(ident.name, is_raw), ident.span)
-                    }
-                    token::NtLifetime(ident) => Token::new(token::Lifetime(ident.name), ident.span),
-                    _ => return,
-                }
-            }
-            _ => return,
-        };
-    }
-
     /// Parses a single token tree from the input.
     pub fn parse_token_tree(&mut self) -> TokenTree {
         match self.token.kind {
@@ -1089,15 +940,14 @@ impl<'a> Parser<'a> {
                     &mut self.token_cursor.frame,
                     self.token_cursor.stack.pop().unwrap(),
                 );
-                self.token.span = frame.span.entire();
+                self.token = Token::new(TokenKind::CloseDelim(frame.delim), frame.span.close);
                 self.bump();
-                TokenTree::Delimited(frame.span, frame.delim, frame.tree_cursor.stream.into())
+                TokenTree::Delimited(frame.span, frame.delim, frame.tree_cursor.stream)
             }
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
-                let token = self.token.take();
                 self.bump();
-                TokenTree::Token(token)
+                TokenTree::Token(self.prev_token.clone())
             }
         }
     }
@@ -1148,8 +998,8 @@ impl<'a> Parser<'a> {
         self.expected_tokens.push(TokenType::Keyword(kw::Crate));
         if self.is_crate_vis() {
             self.bump(); // `crate`
-            self.sess.gated_spans.gate(sym::crate_visibility_modifier, self.prev_span);
-            return Ok(respan(self.prev_span, VisibilityKind::Crate(CrateSugar::JustCrate)));
+            self.sess.gated_spans.gate(sym::crate_visibility_modifier, self.prev_token.span);
+            return Ok(respan(self.prev_token.span, VisibilityKind::Crate(CrateSugar::JustCrate)));
         }
 
         if !self.eat_keyword(kw::Pub) {
@@ -1158,7 +1008,7 @@ impl<'a> Parser<'a> {
             // beginning of the current token would seem to be the "Schelling span".
             return Ok(respan(self.token.span.shrink_to_lo(), VisibilityKind::Inherited));
         }
-        let lo = self.prev_span;
+        let lo = self.prev_token.span;
 
         if self.check(&token::OpenDelim(token::Paren)) {
             // We don't `self.bump()` the `(` yet because this might be a struct definition where
@@ -1173,7 +1023,7 @@ impl<'a> Parser<'a> {
                 self.bump(); // `crate`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = VisibilityKind::Crate(CrateSugar::PubCrate);
-                return Ok(respan(lo.to(self.prev_span), vis));
+                return Ok(respan(lo.to(self.prev_token.span), vis));
             } else if self.is_keyword_ahead(1, &[kw::In]) {
                 // Parse `pub(in path)`.
                 self.bump(); // `(`
@@ -1181,7 +1031,7 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `path`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
-                return Ok(respan(lo.to(self.prev_span), vis));
+                return Ok(respan(lo.to(self.prev_token.span), vis));
             } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren))
                 && self.is_keyword_ahead(1, &[kw::Super, kw::SelfLower])
             {
@@ -1190,7 +1040,7 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `super`/`self`
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
-                return Ok(respan(lo.to(self.prev_span), vis));
+                return Ok(respan(lo.to(self.prev_token.span), vis));
             } else if let FollowedByType::No = fbt {
                 // Provide this diagnostic if a type cannot follow;
                 // in particular, if this is not a tuple struct.
@@ -1257,19 +1107,6 @@ impl<'a> Parser<'a> {
                 }
             },
             Err(None) => None,
-        }
-    }
-
-    /// We are parsing `async fn`. If we are on Rust 2015, emit an error.
-    fn ban_async_in_2015(&self, async_span: Span) {
-        if async_span.rust_2015() {
-            struct_span_err!(
-                self.diagnostic(),
-                async_span,
-                E0670,
-                "`async fn` is not permitted in the 2015 edition",
-            )
-            .emit();
         }
     }
 
@@ -1374,6 +1211,8 @@ pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &Pa
     *sess.reached_eof.borrow_mut() |=
         unclosed_delims.iter().any(|unmatched_delim| unmatched_delim.found_delim.is_none());
     for unmatched in unclosed_delims.drain(..) {
-        make_unclosed_delims_error(unmatched, sess).map(|mut e| e.emit());
+        make_unclosed_delims_error(unmatched, sess).map(|mut e| {
+            e.emit();
+        });
     }
 }

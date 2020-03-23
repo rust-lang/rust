@@ -1,17 +1,17 @@
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs, PlaceOp};
 
-use rustc::infer::{InferCtxt, InferOk};
-use rustc::session::DiagnosticMessageId;
-use rustc::traits::{self, TraitEngine};
 use rustc::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc::ty::{self, TraitRef, Ty, TyCtxt, WithConstness};
 use rustc::ty::{ToPredicate, TypeFoldable};
+use rustc_ast::ast::Ident;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-
+use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_session::DiagnosticMessageId;
 use rustc_span::Span;
-use syntax::ast::Ident;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{self, TraitEngine};
 
 use std::iter;
 
@@ -250,8 +250,8 @@ pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Spa
         )
         .span_label(span, "deref recursion limit reached")
         .help(&format!(
-            "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
-            suggested_limit
+            "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate (`{}`)",
+            suggested_limit, tcx.crate_name,
         ))
         .emit();
     }

@@ -6,7 +6,7 @@ LL |     let (x, ) = (vec![], );
    |         |
    |         consider giving this pattern the explicit type `(std::vec::Vec<T>,)`, where the type parameter `T` is specified
    |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

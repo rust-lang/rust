@@ -2,7 +2,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized5.rs:4:5
    |
 LL | struct S1<X: ?Sized> {
-   |           -- help: consider further restricting this bound: `X: std::marker::Sized +`
+   |           - this type parameter needs to be `std::marker::Sized`
 LL |     f1: X,
    |     ^^^^^ doesn't have a size known at compile-time
    |
@@ -14,7 +14,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized5.rs:10:5
    |
 LL | struct S2<X: ?Sized> {
-   |           -- help: consider further restricting this bound: `X: std::marker::Sized +`
+   |           - this type parameter needs to be `std::marker::Sized`
 LL |     f: isize,
 LL |     g: X,
    |     ^^^^ doesn't have a size known at compile-time
@@ -47,7 +47,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized5.rs:25:8
    |
 LL | enum E<X: ?Sized> {
-   |        -- help: consider further restricting this bound: `X: std::marker::Sized +`
+   |        - this type parameter needs to be `std::marker::Sized`
 LL |     V1(X, isize),
    |        ^ doesn't have a size known at compile-time
    |
@@ -59,7 +59,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized5.rs:29:8
    |
 LL | enum F<X: ?Sized> {
-   |        -- help: consider further restricting this bound: `X: std::marker::Sized +`
+   |        - this type parameter needs to be `std::marker::Sized`
 LL |     V2{f1: X, f: isize},
    |        ^^^^^ doesn't have a size known at compile-time
    |

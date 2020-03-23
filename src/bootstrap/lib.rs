@@ -103,7 +103,6 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
-#![feature(core_intrinsics)]
 #![feature(drain_filter)]
 
 use std::cell::{Cell, RefCell};
@@ -239,9 +238,10 @@ pub struct Build {
     hosts: Vec<Interned<String>>,
     targets: Vec<Interned<String>>,
 
-    // Stage 0 (downloaded) compiler and cargo or their local rust equivalents
+    // Stage 0 (downloaded) compiler, lld and cargo or their local rust equivalents
     initial_rustc: PathBuf,
     initial_cargo: PathBuf,
+    initial_lld: PathBuf,
 
     // Runtime state filled in later on
     // C/C++ compilers and archiver for all targets
@@ -343,9 +343,18 @@ impl Build {
         // we always try to use git for LLVM builds
         let in_tree_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-project"));
 
+        let initial_sysroot = config.initial_rustc.parent().unwrap().parent().unwrap();
+        let initial_lld = initial_sysroot
+            .join("lib")
+            .join("rustlib")
+            .join(config.build)
+            .join("bin")
+            .join("rust-lld");
+
         let mut build = Build {
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
+            initial_lld,
             local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
@@ -444,7 +453,7 @@ impl Build {
             builder.execute_cli();
         } else {
             let builder = builder::Builder::new(&self);
-            let _ = builder.execute_cli();
+            builder.execute_cli();
         }
 
         // Check for postponed failures from `test --no-fail-fast`.
@@ -810,7 +819,7 @@ impl Build {
     }
 
     /// Returns the path to the linker for the given target if it needs to be overridden.
-    fn linker(&self, target: Interned<String>) -> Option<&Path> {
+    fn linker(&self, target: Interned<String>, can_use_lld: bool) -> Option<&Path> {
         if let Some(linker) = self.config.target_config.get(&target).and_then(|c| c.linker.as_ref())
         {
             Some(linker)
@@ -819,6 +828,8 @@ impl Build {
             && !target.contains("msvc")
         {
             Some(self.cc(target))
+        } else if can_use_lld && self.config.use_lld && self.build == target {
+            Some(&self.initial_lld)
         } else {
             None
         }
@@ -839,7 +850,7 @@ impl Build {
             .target_config
             .get(&target)
             .and_then(|t| t.musl_root.as_ref())
-            .or(self.config.musl_root.as_ref())
+            .or_else(|| self.config.musl_root.as_ref())
             .map(|p| &**p)
     }
 
@@ -1026,7 +1037,7 @@ impl Build {
     }
 
     fn llvm_link_tools_dynamically(&self, target: Interned<String>) -> bool {
-        (target.contains("linux-gnu") || target.contains("apple-darwin"))
+        target.contains("linux-gnu") || target.contains("apple-darwin")
     }
 
     /// Returns the `version` string associated with this compiler for Rust

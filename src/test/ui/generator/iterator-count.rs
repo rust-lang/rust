@@ -10,18 +10,18 @@ struct W<T>(T);
 
 // This impl isn't safe in general, but the generator used in this test is movable
 // so it won't cause problems.
-impl<T: Generator<Return = ()> + Unpin> Iterator for W<T> {
+impl<T: Generator<(), Return = ()> + Unpin> Iterator for W<T> {
     type Item = T::Yield;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match Pin::new(&mut self.0).resume() {
+        match Pin::new(&mut self.0).resume(()) {
             GeneratorState::Complete(..) => None,
             GeneratorState::Yielded(v) => Some(v),
         }
     }
 }
 
-fn test() -> impl Generator<Return=(), Yield=u8> + Unpin {
+fn test() -> impl Generator<(), Return=(), Yield=u8> + Unpin {
     || {
         for i in 1..6 {
             yield i

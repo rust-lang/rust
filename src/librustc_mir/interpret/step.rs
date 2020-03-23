@@ -38,6 +38,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `true` as long as there are more things to do.
     ///
     /// This is used by [priroda](https://github.com/oli-obk/priroda)
+    ///
+    /// This is marked `#inline(always)` to work around adverserial codegen when `opt-level = 3`
+    #[inline(always)]
     pub fn step(&mut self) -> InterpResult<'tcx, bool> {
         if self.stack.is_empty() {
             return Ok(false);
@@ -245,7 +248,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
-                let ty = self.subst_from_frame_and_normalize_erasing_regions(ty);
+                let ty = self.subst_from_current_frame_and_normalize_erasing_regions(ty);
                 let layout = self.layout_of(ty)?;
                 assert!(
                     !layout.is_unsized(),
@@ -284,7 +287,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.eval_terminator(terminator)?;
         if !self.stack.is_empty() {
             // This should change *something*
-            debug_assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
+            assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
             if let Some(block) = self.frame().block {
                 info!("// executing {:?}", block);
             }

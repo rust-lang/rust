@@ -9,6 +9,6 @@ fn main() {
    //~^ ERROR the size for values of type
        yield s[..];
    };
-   Pin::new(&mut gen).resume();
+   Pin::new(&mut gen).resume(());
    //~^ ERROR the size for values of type
 }

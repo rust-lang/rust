@@ -1,12 +1,12 @@
 //! Error reporting machinery for lifetime errors.
 
-use rustc::infer::{
-    error_reporting::nice_region_error::NiceRegionError, opaque_types, NLLRegionVariableOrigin,
-};
 use rustc::mir::ConstraintCategory;
 use rustc::ty::{self, RegionVid, Ty};
 use rustc_errors::{Applicability, DiagnosticBuilder};
-use rustc_hir::def_id::DefId;
+use rustc_infer::infer::{
+    error_reporting::nice_region_error::NiceRegionError,
+    error_reporting::unexpected_hidden_region_diagnostic, NLLRegionVariableOrigin,
+};
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 
@@ -58,8 +58,8 @@ crate enum RegionErrorKind<'tcx> {
 
     /// An unexpected hidden region for an opaque type.
     UnexpectedHiddenRegion {
-        /// The def id of the opaque type.
-        opaque_type_def_id: DefId,
+        /// The span for the member constraint.
+        span: Span,
         /// The hidden type.
         hidden_ty: Ty<'tcx>,
         /// The unexpected region.
@@ -194,18 +194,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                 }
 
-                RegionErrorKind::UnexpectedHiddenRegion {
-                    opaque_type_def_id,
-                    hidden_ty,
-                    member_region,
-                } => {
+                RegionErrorKind::UnexpectedHiddenRegion { span, hidden_ty, member_region } => {
                     let region_scope_tree = &self.infcx.tcx.region_scope_tree(self.mir_def_id);
-                    opaque_types::unexpected_hidden_region_diagnostic(
+                    let named_ty = self.regioncx.name_regions(self.infcx.tcx, hidden_ty);
+                    let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
+                    unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
                         Some(region_scope_tree),
-                        opaque_type_def_id,
-                        hidden_ty,
-                        member_region,
+                        span,
+                        named_ty,
+                        named_region,
                     )
                     .buffer(&mut self.errors_buffer);
                 }
@@ -286,8 +284,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         debug!("report_region_error: category={:?} {:?}", category, span);
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
-            let tables = self.infcx.tcx.typeck_tables_of(self.mir_def_id);
-            let nice = NiceRegionError::new_from_span(self.infcx, span, o, f, Some(tables));
+            let nice = NiceRegionError::new_from_span(self.infcx, span, o, f);
             if let Some(diag) = nice.try_report_from_nll() {
                 diag.buffer(&mut self.errors_buffer);
                 return;
@@ -430,18 +427,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             errci.outlived_fr,
         );
 
-        let escapes_from = match self.regioncx.universal_regions().defining_ty {
-            DefiningTy::Closure(..) => "closure",
-            DefiningTy::Generator(..) => "generator",
-            DefiningTy::FnDef(..) => "function",
-            DefiningTy::Const(..) => "const",
-        };
+        let (_, escapes_from) = self
+            .infcx
+            .tcx
+            .article_and_description(self.regioncx.universal_regions().defining_ty.def_id());
 
         // Revert to the normal error in these cases.
         // Assignments aren't "escapes" in function items.
         if (fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none())
-            || (*category == ConstraintCategory::Assignment && escapes_from == "function")
-            || escapes_from == "const"
+            || (*category == ConstraintCategory::Assignment
+                && self.regioncx.universal_regions().defining_ty.is_fn_def())
+            || self.regioncx.universal_regions().defining_ty.is_const()
         {
             return self.report_general_error(&ErrorConstraintInfo {
                 fr_is_local: true,
@@ -457,7 +453,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             diag.span_label(
                 outlived_fr_span,
                 format!(
-                    "`{}` is declared here, outside of the {} body",
+                    "`{}` declared here, outside of the {} body",
                     outlived_fr_name, escapes_from
                 ),
             );
@@ -507,8 +503,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut diag =
             self.infcx.tcx.sess.struct_span_err(*span, "lifetime may not live long enough");
 
-        let mir_def_name =
-            if self.infcx.tcx.is_closure(self.mir_def_id) { "closure" } else { "function" };
+        let (_, mir_def_name) = self.infcx.tcx.article_and_description(self.mir_def_id);
 
         let fr_name = self.give_region_a_name(*fr).unwrap();
         fr_name.highlight_region_name(&mut diag);
@@ -588,6 +583,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             {
                                 found = true;
                                 break;
+                            } else {
+                                // If there's already a lifetime bound, don't
+                                // suggest anything.
+                                return;
                             }
                         }
                     }
@@ -613,7 +612,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         } else {
                             "'_".to_string()
                         };
-                        let suggestion = if snippet.ends_with(";") {
+                        let suggestion = if snippet.ends_with(';') {
                             // `type X = impl Trait;`
                             format!("{} + {};", &snippet[..snippet.len() - 1], suggestable_fr_name)
                         } else {

@@ -388,8 +388,10 @@ impl Step for Miri {
             cargo.env("XARGO_RUST_SRC", builder.src.join("src"));
             // Debug things.
             cargo.env("RUST_BACKTRACE", "1");
+            // Overwrite bootstrap's `rustc` wrapper overwriting our flags.
+            cargo.env("RUSTC_DEBUG_ASSERTIONS", "true");
             // Let cargo-miri know where xargo ended up.
-            cargo.env("XARGO", builder.out.join("bin").join("xargo"));
+            cargo.env("XARGO_CHECK", builder.out.join("bin").join("xargo-check"));
 
             let mut cargo = Command::from(cargo);
             if !try_run(builder, &mut cargo) {
@@ -397,7 +399,7 @@ impl Step for Miri {
             }
 
             // # Determine where Miri put its sysroot.
-            // To this end, we run `cargo miri setup --env` and capture the output.
+            // To this end, we run `cargo miri setup --print-sysroot` and capture the output.
             // (We do this separately from the above so that when the setup actually
             // happens we get some output.)
             // We re-use the `cargo` from above.
@@ -596,7 +598,7 @@ impl Step for RustdocTheme {
             .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTDOC_CRATE_VERSION", builder.rust_version())
             .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(linker) = builder.linker(self.compiler.host) {
+        if let Some(linker) = builder.linker(self.compiler.host, true) {
             cmd.env("RUSTC_TARGET_LINKER", linker);
         }
         try_run(builder, &mut cmd);
@@ -605,7 +607,6 @@ impl Step for RustdocTheme {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocJSStd {
-    pub host: Interned<String>,
     pub target: Interned<String>,
 }
 
@@ -619,13 +620,16 @@ impl Step for RustdocJSStd {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustdocJSStd { host: run.host, target: run.target });
+        run.builder.ensure(RustdocJSStd { target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
         if let Some(ref nodejs) = builder.config.nodejs {
             let mut command = Command::new(nodejs);
-            command.args(&["src/tools/rustdoc-js-std/tester.js", &*self.host]);
+            command
+                .arg(builder.src.join("src/tools/rustdoc-js-std/tester.js"))
+                .arg(builder.doc_out(self.target))
+                .arg(builder.src.join("src/test/rustdoc-js-std"));
             builder.ensure(crate::doc::Std { target: self.target, stage: builder.top_stage });
             builder.run(&mut command);
         } else {
@@ -662,7 +666,7 @@ impl Step for RustdocJSNotStd {
                 target: self.target,
                 mode: "js-doc-test",
                 suite: "rustdoc-js",
-                path: None,
+                path: "src/test/rustdoc-js",
                 compare_mode: None,
             });
         } else {
@@ -698,7 +702,7 @@ impl Step for RustdocUi {
             target: self.target,
             mode: "ui",
             suite: "rustdoc-ui",
-            path: Some("src/test/rustdoc-ui"),
+            path: "src/test/rustdoc-ui",
             compare_mode: None,
         })
     }
@@ -724,9 +728,6 @@ impl Step for Tidy {
         let mut cmd = builder.tool_cmd(Tool::Tidy);
         cmd.arg(builder.src.join("src"));
         cmd.arg(&builder.initial_cargo);
-        if !builder.config.vendor {
-            cmd.arg("--no-vendor");
-        }
         if builder.is_verbose() {
             cmd.arg("--verbose");
         }
@@ -843,7 +844,7 @@ macro_rules! test_definitions {
                     target: self.target,
                     mode: $mode,
                     suite: $suite,
-                    path: Some($path),
+                    path: $path,
                     compare_mode: $compare_mode,
                 })
             }
@@ -926,7 +927,7 @@ struct Compiletest {
     target: Interned<String>,
     mode: &'static str,
     suite: &'static str,
-    path: Option<&'static str>,
+    path: &'static str,
     compare_mode: Option<&'static str>,
 }
 
@@ -949,7 +950,7 @@ impl Step for Compiletest {
         let suite = self.suite;
 
         // Path for test suite
-        let suite_path = self.path.unwrap_or("");
+        let suite_path = self.path;
 
         // Skip codegen tests if they aren't enabled in configuration.
         if !builder.config.codegen_tests && suite == "codegen" {
@@ -1035,7 +1036,8 @@ impl Step for Compiletest {
         flags.push("-Zunstable-options".to_string());
         flags.push(builder.config.cmd.rustc_args().join(" "));
 
-        if let Some(linker) = builder.linker(target) {
+        // Don't use LLD here since we want to test that rustc finds and uses a linker by itself.
+        if let Some(linker) = builder.linker(target, false) {
             cmd.arg("--linker").arg(linker);
         }
 
@@ -1050,10 +1052,10 @@ impl Step for Compiletest {
         cmd.arg("--docck-python").arg(builder.python());
 
         if builder.config.build.ends_with("apple-darwin") {
-            // Force /usr/bin/python on macOS for LLDB tests because we're loading the
+            // Force /usr/bin/python3 on macOS for LLDB tests because we're loading the
             // LLDB plugin's compiled module which only works with the system python
             // (namely not Homebrew-installed python)
-            cmd.arg("--lldb-python").arg("/usr/bin/python");
+            cmd.arg("--lldb-python").arg("/usr/bin/python3");
         } else {
             cmd.arg("--lldb-python").arg(builder.python());
         }
@@ -1263,15 +1265,15 @@ impl Step for Compiletest {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-struct DocTest {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct BookTest {
     compiler: Compiler,
-    path: &'static str,
+    path: PathBuf,
     name: &'static str,
     is_ext_doc: bool,
 }
 
-impl Step for DocTest {
+impl Step for BookTest {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
@@ -1279,12 +1281,59 @@ impl Step for DocTest {
         run.never()
     }
 
-    /// Runs `rustdoc --test` for all documentation in `src/doc`.
+    /// Runs the documentation tests for a book in `src/doc`.
     ///
-    /// This will run all tests in our markdown documentation (e.g., the book)
-    /// located in `src/doc`. The `rustdoc` that's run is the one that sits next to
-    /// `compiler`.
+    /// This uses the `rustdoc` that sits next to `compiler`.
     fn run(self, builder: &Builder<'_>) {
+        // External docs are different from local because:
+        // - Some books need pre-processing by mdbook before being tested.
+        // - They need to save their state to toolstate.
+        // - They are only tested on the "checktools" builders.
+        //
+        // The local docs are tested by default, and we don't want to pay the
+        // cost of building mdbook, so they use `rustdoc --test` directly.
+        // Also, the unstable book is special because SUMMARY.md is generated,
+        // so it is easier to just run `rustdoc` on its files.
+        if self.is_ext_doc {
+            self.run_ext_doc(builder);
+        } else {
+            self.run_local_doc(builder);
+        }
+    }
+}
+
+impl BookTest {
+    /// This runs the equivalent of `mdbook test` (via the rustbook wrapper)
+    /// which in turn runs `rustdoc --test` on each file in the book.
+    fn run_ext_doc(self, builder: &Builder<'_>) {
+        let compiler = self.compiler;
+
+        builder.ensure(compile::Std { compiler, target: compiler.host });
+
+        // mdbook just executes a binary named "rustdoc", so we need to update
+        // PATH so that it points to our rustdoc.
+        let mut rustdoc_path = builder.rustdoc(compiler);
+        rustdoc_path.pop();
+        let old_path = env::var_os("PATH").unwrap_or_default();
+        let new_path = env::join_paths(iter::once(rustdoc_path).chain(env::split_paths(&old_path)))
+            .expect("could not add rustdoc to PATH");
+
+        let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
+        let path = builder.src.join(&self.path);
+        rustbook_cmd.env("PATH", new_path).arg("test").arg(path);
+        builder.add_rust_test_threads(&mut rustbook_cmd);
+        builder.info(&format!("Testing rustbook {}", self.path.display()));
+        let _time = util::timeit(&builder);
+        let toolstate = if try_run(builder, &mut rustbook_cmd) {
+            ToolState::TestPass
+        } else {
+            ToolState::TestFail
+        };
+        builder.save_toolstate(self.name, toolstate);
+    }
+
+    /// This runs `rustdoc --test` on all `.md` files in the path.
+    fn run_local_doc(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
 
         builder.ensure(compile::Std { compiler, target: compiler.host });
@@ -1293,7 +1342,6 @@ impl Step for DocTest {
         // tests for all files that end in `*.md`
         let mut stack = vec![builder.src.join(self.path)];
         let _time = util::timeit(&builder);
-
         let mut files = Vec::new();
         while let Some(p) = stack.pop() {
             if p.is_dir() {
@@ -1305,25 +1353,13 @@ impl Step for DocTest {
                 continue;
             }
 
-            // The nostarch directory in the book is for no starch, and so isn't
-            // guaranteed to builder. We don't care if it doesn't build, so skip it.
-            if p.to_str().map_or(false, |p| p.contains("nostarch")) {
-                continue;
-            }
-
             files.push(p);
         }
 
         files.sort();
 
-        let mut toolstate = ToolState::TestPass;
         for file in files {
-            if !markdown_test(builder, compiler, &file) {
-                toolstate = ToolState::TestFail;
-            }
-        }
-        if self.is_ext_doc {
-            builder.save_toolstate(self.name, toolstate);
+            markdown_test(builder, compiler, &file);
         }
     }
 }
@@ -1352,9 +1388,9 @@ macro_rules! test_book {
                 }
 
                 fn run(self, builder: &Builder<'_>) {
-                    builder.ensure(DocTest {
+                    builder.ensure(BookTest {
                         compiler: self.compiler,
-                        path: $path,
+                        path: PathBuf::from($path),
                         name: $book_name,
                         is_ext_doc: !$default,
                     });
@@ -1424,13 +1460,10 @@ impl Step for ErrorIndex {
 }
 
 fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> bool {
-    match fs::read_to_string(markdown) {
-        Ok(contents) => {
-            if !contents.contains("```") {
-                return true;
-            }
+    if let Ok(contents) = fs::read_to_string(markdown) {
+        if !contents.contains("```") {
+            return true;
         }
-        Err(_) => {}
     }
 
     builder.info(&format!("doc tests for: {}", markdown.display()));

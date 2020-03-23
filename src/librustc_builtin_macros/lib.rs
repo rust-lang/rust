@@ -13,15 +13,16 @@ extern crate proc_macro;
 
 use crate::deriving::*;
 
+use rustc_ast::ast::Ident;
 use rustc_expand::base::{MacroExpanderFn, Resolver, SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
-use syntax::ast::Ident;
 
 mod asm;
 mod assert;
 mod cfg;
+mod cfg_accessible;
 mod compile_error;
 mod concat;
 mod concat_idents;
@@ -85,6 +86,7 @@ pub fn register_builtin_macros(resolver: &mut dyn Resolver, edition: Edition) {
 
     register_attr! {
         bench: test::expand_bench,
+        cfg_accessible: cfg_accessible::Expander,
         global_allocator: global_allocator::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,

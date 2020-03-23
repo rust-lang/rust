@@ -16,11 +16,11 @@
 
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
-use rustc_session::lint::{LintBuffer, LintPass};
+use rustc_ast::ast;
+use rustc_ast::visit as ast_visit;
+use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_session::Session;
 use rustc_span::Span;
-use syntax::ast;
-use syntax::visit as ast_visit;
 
 use log::debug;
 use std::slice;
@@ -37,11 +37,12 @@ struct EarlyContextAndPass<'a, T: EarlyLintPass> {
 impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
-            self.context.lookup_and_emit_with_diagnostics(
-                early_lint.lint_id.lint,
-                Some(early_lint.span.clone()),
-                &early_lint.msg,
-                early_lint.diagnostic,
+            let BufferedEarlyLint { span, msg, node_id: _, lint_id, diagnostic } = early_lint;
+            self.context.lookup_with_diagnostics(
+                lint_id.lint,
+                Some(span),
+                |lint| lint.build(&msg).emit(),
+                diagnostic,
             );
         }
     }
@@ -116,17 +117,11 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_stmt(self, s);
     }
 
-    fn visit_fn(
-        &mut self,
-        fk: ast_visit::FnKind<'a>,
-        decl: &'a ast::FnDecl,
-        span: Span,
-        id: ast::NodeId,
-    ) {
-        run_early_pass!(self, check_fn, fk, decl, span, id);
+    fn visit_fn(&mut self, fk: ast_visit::FnKind<'a>, span: Span, id: ast::NodeId) {
+        run_early_pass!(self, check_fn, fk, span, id);
         self.check_id(id);
-        ast_visit::walk_fn(self, fk, decl, span);
-        run_early_pass!(self, check_fn_post, fk, decl, span, id);
+        ast_visit::walk_fn(self, fk, span);
+        run_early_pass!(self, check_fn_post, fk, span, id);
     }
 
     fn visit_variant_data(&mut self, s: &'a ast::VariantData) {
@@ -213,19 +208,18 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_poly_trait_ref(self, t, m);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'a ast::AssocItem) {
-        self.with_lint_attrs(trait_item.id, &trait_item.attrs, |cx| {
-            run_early_pass!(cx, check_trait_item, trait_item);
-            ast_visit::walk_trait_item(cx, trait_item);
-            run_early_pass!(cx, check_trait_item_post, trait_item);
-        });
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &'a ast::AssocItem) {
-        self.with_lint_attrs(impl_item.id, &impl_item.attrs, |cx| {
-            run_early_pass!(cx, check_impl_item, impl_item);
-            ast_visit::walk_impl_item(cx, impl_item);
-            run_early_pass!(cx, check_impl_item_post, impl_item);
+    fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
+        self.with_lint_attrs(item.id, &item.attrs, |cx| match ctxt {
+            ast_visit::AssocCtxt::Trait => {
+                run_early_pass!(cx, check_trait_item, item);
+                ast_visit::walk_assoc_item(cx, item, ctxt);
+                run_early_pass!(cx, check_trait_item_post, item);
+            }
+            ast_visit::AssocCtxt::Impl => {
+                run_early_pass!(cx, check_impl_item, item);
+                ast_visit::walk_assoc_item(cx, item, ctxt);
+                run_early_pass!(cx, check_impl_item_post, item);
+            }
         });
     }
 
@@ -249,9 +243,9 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         self.check_id(id);
     }
 
-    fn visit_mac(&mut self, mac: &'a ast::Mac) {
+    fn visit_mac(&mut self, mac: &'a ast::MacCall) {
         // FIXME(#54110): So, this setup isn't really right. I think
-        // that (a) the libsyntax visitor ought to be doing this as
+        // that (a) the librustc_ast visitor ought to be doing this as
         // part of `walk_mac`, and (b) we should be calling
         // `visit_path`, *but* that would require a `NodeId`, and I
         // want to get #53686 fixed quickly. -nmatsakis
@@ -326,11 +320,9 @@ pub fn check_ast_crate<T: EarlyLintPass>(
     lint_buffer: Option<LintBuffer>,
     builtin_lints: T,
 ) {
-    let mut passes: Vec<_> = if pre_expansion {
-        lint_store.pre_expansion_passes.iter().map(|p| (p)()).collect()
-    } else {
-        lint_store.early_passes.iter().map(|p| (p)()).collect()
-    };
+    let passes =
+        if pre_expansion { &lint_store.pre_expansion_passes } else { &lint_store.early_passes };
+    let mut passes: Vec<_> = passes.iter().map(|p| (p)()).collect();
     let mut buffered = lint_buffer.unwrap_or_default();
 
     if !sess.opts.debugging_opts.no_interleave_lints {
@@ -349,10 +341,8 @@ pub fn check_ast_crate<T: EarlyLintPass>(
         }
     } else {
         for pass in &mut passes {
-            buffered = sess
-                .prof
-                .extra_verbose_generic_activity(&format!("running lint: {}", pass.name()))
-                .run(|| {
+            buffered =
+                sess.prof.extra_verbose_generic_activity("run_lint", pass.name()).run(|| {
                     early_lint_crate(
                         sess,
                         lint_store,

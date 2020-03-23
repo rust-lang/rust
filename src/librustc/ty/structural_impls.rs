@@ -7,6 +7,7 @@ use crate::mir::ProjectionKind;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, InferConst, Lift, Ty, TyCtxt};
+use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_index::vec::{Idx, IndexVec};
@@ -15,18 +16,6 @@ use smallvec::SmallVec;
 use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
-use syntax::ast;
-
-impl fmt::Debug for ty::GenericParamDef {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let type_name = match self.kind {
-            ty::GenericParamDefKind::Lifetime => "Lifetime",
-            ty::GenericParamDefKind::Type { .. } => "Type",
-            ty::GenericParamDefKind::Const => "Const",
-        };
-        write!(f, "{}({}, {:?}, {})", type_name, self.name, self.def_id, self.index)
-    }
-}
 
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -108,7 +97,7 @@ impl fmt::Debug for ty::RegionKind {
 
             ty::RePlaceholder(placeholder) => write!(f, "RePlaceholder({:?})", placeholder),
 
-            ty::ReEmpty => write!(f, "ReEmpty"),
+            ty::ReEmpty(ui) => write!(f, "ReEmpty({:?})", ui),
 
             ty::ReErased => write!(f, "ReErased"),
         }
@@ -236,7 +225,7 @@ impl fmt::Debug for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ty::Predicate::Trait(ref a, constness) => {
-                if let ast::Constness::Const = constness {
+                if let hir::Constness::Const = constness {
                     write!(f, "const ")?;
                 }
                 a.fmt(f)
@@ -271,8 +260,8 @@ CloneTypeFoldableAndLiftImpls! {
     u64,
     String,
     crate::middle::region::Scope,
-    ::syntax::ast::FloatTy,
-    ::syntax::ast::NodeId,
+    ::rustc_ast::ast::FloatTy,
+    ::rustc_ast::ast::NodeId,
     ::rustc_span::symbol::Symbol,
     ::rustc_hir::def::Res,
     ::rustc_hir::def_id::DefId,
@@ -598,8 +587,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::AutoBorrow<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::GenSig<'a> {
     type Lifted = ty::GenSig<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&(self.yield_ty, self.return_ty))
-            .map(|(yield_ty, return_ty)| ty::GenSig { yield_ty, return_ty })
+        tcx.lift(&(self.resume_ty, self.yield_ty, self.return_ty))
+            .map(|(resume_ty, yield_ty, return_ty)| ty::GenSig { resume_ty, yield_ty, return_ty })
     }
 }
 

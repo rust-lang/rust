@@ -1,7 +1,7 @@
-use rustc::traits::auto_trait::{self, AutoTraitResult};
 use rustc::ty::{self, Region, RegionVid, TypeFoldable};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_trait_selection::traits::auto_trait::{self, AutoTraitResult};
 
 use std::fmt::Debug;
 
@@ -493,7 +493,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     // Writing a projection trait bound of the form
                     // <T as Trait>::Name : ?Sized
                     // is illegal, because ?Sized bounds can only
-                    // be written in the (here, nonexistant) definition
+                    // be written in the (here, nonexistent) definition
                     // of the type.
                     // Therefore, we make sure that we never add a ?Sized
                     // bound for projections

@@ -28,7 +28,7 @@ pub enum OverflowOp {
 
 pub trait BuilderMethods<'a, 'tcx>:
     HasCodegen<'tcx>
-    + DebugInfoBuilderMethods<'tcx>
+    + DebugInfoBuilderMethods
     + ArgAbiMethods<'tcx>
     + AbiBuilderMethods<'tcx>
     + IntrinsicCallMethods<'tcx>

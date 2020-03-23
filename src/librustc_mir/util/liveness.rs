@@ -36,7 +36,7 @@ use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use std::fs;
-use std::io::{self, Write};
+use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 pub type LiveVarSet = BitSet<Local>;
@@ -288,11 +288,12 @@ fn dump_matched_mir_node<'tcx>(
     let item_id = tcx.hir().as_local_hir_id(source.def_id()).unwrap();
     let file_name = format!("rustc.node{}{}-liveness.mir", item_id, pass_name);
     file_path.push(&file_name);
-    let _ = fs::File::create(&file_path).and_then(|mut file| {
+    let _ = fs::File::create(&file_path).and_then(|file| {
+        let mut file = BufWriter::new(file);
         writeln!(file, "// MIR local liveness analysis for `{}`", node_path)?;
         writeln!(file, "// source = {:?}", source)?;
         writeln!(file, "// pass_name = {}", pass_name)?;
-        writeln!(file, "")?;
+        writeln!(file)?;
         write_mir_fn(tcx, source, body, &mut file, result)?;
         Ok(())
     });
@@ -315,7 +316,7 @@ pub fn write_mir_fn<'tcx>(
         write_basic_block(tcx, block, body, &mut |_, _| Ok(()), w)?;
         print(w, "   ", &result.outs)?;
         if block.index() + 1 != body.basic_blocks().len() {
-            writeln!(w, "")?;
+            writeln!(w)?;
         }
     }
 

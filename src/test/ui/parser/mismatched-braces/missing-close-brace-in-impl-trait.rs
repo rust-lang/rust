@@ -1,12 +1,13 @@
+fn main() {}
+
 impl T for () { //~ ERROR cannot find trait `T` in this scope
 
 fn foo(&self) {}
 
-trait T { //~ ERROR expected one of
+trait T { //~ ERROR trait is not supported in `trait`s or `impl`s
     fn foo(&self);
 }
 
-pub(crate) struct Bar<T>();
+pub(crate) struct Bar<T>(); //~ ERROR struct is not supported in `trait`s or `impl`s
 
-fn main() {}
 //~ ERROR this file contains an unclosed delimiter

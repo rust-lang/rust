@@ -2,7 +2,6 @@ use super::archive;
 use super::command::Command;
 use super::symbol_export;
 
-use rustc_data_structures::fx::FxHashMap;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -10,11 +9,12 @@ use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
 
 use rustc::middle::dependency_format::Linkage;
-use rustc::session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel};
-use rustc::session::Session;
 use rustc::ty::TyCtxt;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_serialize::{json, Encoder};
+use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel};
+use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
 
@@ -106,6 +106,7 @@ pub trait Linker {
     fn no_relro(&mut self);
     fn optimize(&mut self);
     fn pgo_gen(&mut self);
+    fn control_flow_guard(&mut self);
     fn debuginfo(&mut self);
     fn no_default_libraries(&mut self);
     fn build_dylib(&mut self, out_filename: &Path);
@@ -358,6 +359,10 @@ impl<'a> Linker for GccLinker<'a> {
         // the overhead of the initialization should be minor.
         self.cmd.arg("-u");
         self.cmd.arg("__llvm_profile_runtime");
+    }
+
+    fn control_flow_guard(&mut self) {
+        self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
     }
 
     fn debuginfo(&mut self) {
@@ -660,6 +665,10 @@ impl<'a> Linker for MsvcLinker<'a> {
         // Nothing needed here.
     }
 
+    fn control_flow_guard(&mut self) {
+        self.cmd.arg("/guard:cf");
+    }
+
     fn debuginfo(&mut self) {
         // This will cause the Microsoft linker to generate a PDB file
         // from the CodeView line tables in the object files.
@@ -862,6 +871,10 @@ impl<'a> Linker for EmLinker<'a> {
         // noop, but maybe we need something like the gnu linker?
     }
 
+    fn control_flow_guard(&mut self) {
+        self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
+    }
+
     fn debuginfo(&mut self) {
         // Preserve names or generate source maps depending on debug info
         self.cmd.arg(match self.sess.opts.debuginfo {
@@ -1058,6 +1071,10 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn debuginfo(&mut self) {}
 
+    fn control_flow_guard(&mut self) {
+        self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
+    }
+
     fn no_default_libraries(&mut self) {}
 
     fn build_dylib(&mut self, _out_filename: &Path) {
@@ -1232,6 +1249,10 @@ impl<'a> Linker for PtxLinker<'a> {
     fn pgo_gen(&mut self) {}
 
     fn no_default_libraries(&mut self) {}
+
+    fn control_flow_guard(&mut self) {
+        self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
+    }
 
     fn build_dylib(&mut self, _out_filename: &Path) {}
 

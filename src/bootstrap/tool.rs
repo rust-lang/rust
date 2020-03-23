@@ -234,7 +234,7 @@ pub fn prepare_tool_cargo(
         cargo.env("RUSTC_EXTERNAL_TOOL", "1");
     }
 
-    let mut features = extra_features.iter().cloned().collect::<Vec<_>>();
+    let mut features = extra_features.to_vec();
     if builder.build.config.cargo_native_static {
         if path.ends_with("cargo")
             || path.ends_with("rls")

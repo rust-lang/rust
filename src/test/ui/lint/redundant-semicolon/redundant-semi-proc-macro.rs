@@ -1,6 +1,6 @@
 // aux-build:redundant-semi-proc-macro-def.rs
 
-#![deny(redundant_semicolon)]
+#![deny(redundant_semicolons)]
 extern crate redundant_semi_proc_macro;
 use redundant_semi_proc_macro::should_preserve_spans;
 

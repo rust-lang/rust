@@ -4,7 +4,7 @@ error: absolute paths must start with `self`, `super`, `crate`, or an external c
 LL | use my_crate::foo;
    |     ^^^^^^^^^^^^^ help: use `crate`: `crate::my_crate::foo`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/extern-crate-rename.rs:8:9
    |
 LL | #![deny(absolute_paths_not_starting_with_crate)]

@@ -1,12 +1,12 @@
+use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::util::comments;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{DiagnosticBuilder, FatalError};
+use rustc_errors::{error_code, DiagnosticBuilder, FatalError};
 use rustc_lexer::unescape;
 use rustc_lexer::Base;
+use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Pos, Span};
-use syntax::sess::ParseSess;
-use syntax::token::{self, Token, TokenKind};
-use syntax::util::comments;
 
 use log::debug;
 use std::char;
@@ -46,12 +46,20 @@ impl<'a> StringReader<'a> {
         source_file: Lrc<rustc_span::SourceFile>,
         override_span: Option<Span>,
     ) -> Self {
-        if source_file.src.is_none() {
+        // Make sure external source is loaded first, before accessing it.
+        // While this can't show up during normal parsing, `retokenize` may
+        // be called with a source file from an external crate.
+        sess.source_map().ensure_source_file_source_present(source_file.clone());
+
+        // FIXME(eddyb) use `Lrc<str>` or similar to avoid cloning the `String`.
+        let src = if let Some(src) = &source_file.src {
+            src.clone()
+        } else if let Some(src) = source_file.external_src.borrow().get_source() {
+            src.clone()
+        } else {
             sess.span_diagnostic
                 .bug(&format!("cannot lex `source_file` without source: {}", source_file.name));
-        }
-
-        let src = (*source_file.src.as_ref().unwrap()).clone();
+        };
 
         StringReader {
             sess,
@@ -172,21 +180,19 @@ impl<'a> StringReader<'a> {
     }
 
     /// Turns simple `rustc_lexer::TokenKind` enum into a rich
-    /// `libsyntax::TokenKind`. This turns strings into interned
+    /// `librustc_ast::TokenKind`. This turns strings into interned
     /// symbols and runs additional validation.
     fn cook_lexer_token(&self, token: rustc_lexer::TokenKind, start: BytePos) -> TokenKind {
         match token {
             rustc_lexer::TokenKind::LineComment => {
                 let string = self.str_from(start);
                 // comments with only more "/"s are not doc comments
-                let tok = if comments::is_line_doc_comment(string) {
+                if comments::is_line_doc_comment(string) {
                     self.forbid_bare_cr(start, string, "bare CR not allowed in doc-comment");
                     token::DocComment(Symbol::intern(string))
                 } else {
                     token::Comment
-                };
-
-                tok
+                }
             }
             rustc_lexer::TokenKind::BlockComment { terminated } => {
                 let string = self.str_from(start);
@@ -204,14 +210,12 @@ impl<'a> StringReader<'a> {
                     self.fatal_span_(start, last_bpos, msg).raise();
                 }
 
-                let tok = if is_doc_comment {
+                if is_doc_comment {
                     self.forbid_bare_cr(start, string, "bare CR not allowed in block doc-comment");
                     token::DocComment(Symbol::intern(string))
                 } else {
                     token::Comment
-                };
-
-                tok
+                }
             }
             rustc_lexer::TokenKind::Whitespace => token::Whitespace,
             rustc_lexer::TokenKind::Ident | rustc_lexer::TokenKind::RawIdent => {
@@ -248,8 +252,9 @@ impl<'a> StringReader<'a> {
                                    a future release!",
                             )
                             .note(
-                                "for more information, see issue #42326 \
-                                   <https://github.com/rust-lang/rust/issues/42326>",
+                                "see issue #42326 \
+                                 <https://github.com/rust-lang/rust/issues/42326> \
+                                 for more information",
                             )
                             .emit();
                         None
@@ -326,8 +331,7 @@ impl<'a> StringReader<'a> {
         match kind {
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start, "unterminated character literal".into())
-                        .raise()
+                    self.fatal_span_(start, suffix_start, "unterminated character literal").raise()
                 }
                 let content_start = start + BytePos(1);
                 let content_end = suffix_start - BytePos(1);
@@ -337,12 +341,8 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
-                    self.fatal_span_(
-                        start + BytePos(1),
-                        suffix_start,
-                        "unterminated byte constant".into(),
-                    )
-                    .raise()
+                    self.fatal_span_(start + BytePos(1), suffix_start, "unterminated byte constant")
+                        .raise()
                 }
                 let content_start = start + BytePos(2);
                 let content_end = suffix_start - BytePos(1);
@@ -352,7 +352,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start, "unterminated double quote string".into())
+                    self.fatal_span_(start, suffix_start, "unterminated double quote string")
                         .raise()
                 }
                 let content_start = start + BytePos(1);
@@ -366,7 +366,7 @@ impl<'a> StringReader<'a> {
                     self.fatal_span_(
                         start + BytePos(1),
                         suffix_start,
-                        "unterminated double quote byte string".into(),
+                        "unterminated double quote byte string",
                     )
                     .raise()
                 }
@@ -499,7 +499,11 @@ impl<'a> StringReader<'a> {
     }
 
     fn report_unterminated_raw_string(&self, start: BytePos, n_hashes: usize) -> ! {
-        let mut err = self.struct_span_fatal(start, start, "unterminated raw string");
+        let mut err = self.sess.span_diagnostic.struct_span_fatal_with_code(
+            self.mk_sp(start, start),
+            "unterminated raw string",
+            error_code!(E0748),
+        );
         err.span_label(self.mk_sp(start, start), "unterminated raw string");
 
         if n_hashes > 0 {

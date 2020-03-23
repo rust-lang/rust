@@ -6,6 +6,8 @@ LL |         let value = Pub::method;
 ...
 LL |     priv_nominal::mac!();
    |     --------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `for<'r> fn(&'r priv_nominal::Pub) {priv_nominal::Pub::method}` is private
   --> $DIR/associated-item-privacy-inherent.rs:15:9
@@ -15,6 +17,8 @@ LL |         value;
 ...
 LL |     priv_nominal::mac!();
    |     --------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `for<'r> fn(&'r priv_nominal::Pub) {priv_nominal::Pub::method}` is private
   --> $DIR/associated-item-privacy-inherent.rs:17:13
@@ -24,6 +28,8 @@ LL |         Pub.method();
 ...
 LL |     priv_nominal::mac!();
    |     --------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: associated constant `CONST` is private
   --> $DIR/associated-item-privacy-inherent.rs:19:9
@@ -33,6 +39,8 @@ LL |         Pub::CONST;
 ...
 LL |     priv_nominal::mac!();
    |     --------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_signature::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:37:21
@@ -42,6 +50,8 @@ LL |         let value = Pub::method;
 ...
 LL |     priv_signature::mac!();
    |     ----------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_signature::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:39:9
@@ -51,6 +61,8 @@ LL |         value;
 ...
 LL |     priv_signature::mac!();
    |     ----------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_signature::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:41:13
@@ -60,6 +72,8 @@ LL |         Pub.method(loop {});
 ...
 LL |     priv_signature::mac!();
    |     ----------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:57:21
@@ -69,6 +83,8 @@ LL |         let value = Pub::method::<Priv>;
 ...
 LL |     priv_substs::mac!();
    |     -------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:59:9
@@ -78,6 +94,8 @@ LL |         value;
 ...
 LL |     priv_substs::mac!();
    |     -------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:61:9
@@ -87,6 +105,8 @@ LL |         Pub.method::<Priv>();
 ...
 LL |     priv_substs::mac!();
    |     -------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:80:21
@@ -96,6 +116,8 @@ LL |         let value = <Pub>::method;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:82:9
@@ -105,6 +127,8 @@ LL |         value;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:84:21
@@ -114,6 +138,8 @@ LL |         let value = Pub::method;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:86:9
@@ -123,6 +149,8 @@ LL |         value;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:88:21
@@ -132,6 +160,8 @@ LL |         let value = <Pub>::static_method;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:90:9
@@ -141,6 +171,8 @@ LL |         value;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:92:21
@@ -150,6 +182,8 @@ LL |         let value = Pub::static_method;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:94:9
@@ -159,6 +193,8 @@ LL |         value;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:96:19
@@ -168,6 +204,8 @@ LL |         Pub(Priv).method();
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:99:10
@@ -177,6 +215,8 @@ LL |         <Pub>::CONST;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:101:9
@@ -186,6 +226,8 @@ LL |         Pub::CONST;
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 21 previous errors
 

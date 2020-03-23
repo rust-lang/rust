@@ -1,21 +1,21 @@
-use rustc::hir::map as hir_map;
-use rustc::session::config::EntryFnType;
-use rustc::session::{config, Session};
+use rustc::hir::map::Map;
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_ast::attr;
+use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ImplItem, Item, ItemKind, TraitItem};
+use rustc_session::config::EntryFnType;
+use rustc_session::{config, Session};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
-use syntax::attr;
-use syntax::entry::EntryPointType;
 
 struct EntryContext<'a, 'tcx> {
     session: &'a Session,
 
-    map: &'a hir_map::Map<'tcx>,
+    map: Map<'tcx>,
 
     /// The top-level function called `main`.
     main_fn: Option<(HirId, Span)>,
@@ -34,7 +34,7 @@ struct EntryContext<'a, 'tcx> {
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         let def_id = self.map.local_def_id(item.hir_id);
-        let def_key = self.map.def_key(def_id);
+        let def_key = self.map.def_key(def_id.expect_local());
         let at_root = def_key.parent == Some(CRATE_DEF_INDEX);
         find_item(item, self, at_root);
     }
@@ -59,7 +59,7 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
     }
 
     // If the user wants no main function at all, then stop here.
-    if attr::contains_name(&tcx.hir().krate().attrs, sym::no_main) {
+    if attr::contains_name(&tcx.hir().krate().item.attrs, sym::no_main) {
         return None;
     }
 
@@ -77,7 +77,7 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
     configure_main(tcx, &ctxt)
 }
 
-// Beware, this is duplicated in `libsyntax/entry.rs`, so make sure to keep
+// Beware, this is duplicated in `librustc_ast/entry.rs`, so make sure to keep
 // them in sync.
 fn entry_point_type(item: &Item<'_>, at_root: bool) -> EntryPointType {
     match item.kind {
@@ -157,7 +157,7 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(De
 }
 
 fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
-    let sp = tcx.hir().krate().span;
+    let sp = tcx.hir().krate().item.span;
     if *tcx.sess.parse_sess.reached_eof.borrow() {
         // There's an unclosed brace that made the parser reach `Eof`, we shouldn't complain about
         // the missing `fn main()` then as it might have been hidden inside an unclosed block.
@@ -196,7 +196,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
     // The file may be empty, which leads to the diagnostic machinery not emitting this
     // note. This is a relatively simple way to detect that case and emit a span-less
     // note instead.
-    if let Ok(_) = tcx.sess.source_map().lookup_line(sp.lo()) {
+    if tcx.sess.source_map().lookup_line(sp.lo()).is_ok() {
         err.set_span(sp);
         err.span_label(sp, &note);
     } else {

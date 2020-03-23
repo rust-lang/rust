@@ -4,7 +4,7 @@
 LL |     if (_b) {
    |        ^^^^ help: remove these parentheses
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unused_parens_remove_json_suggestion.rs:10:9
    |
 LL | #![deny(unused_parens)]

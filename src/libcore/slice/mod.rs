@@ -103,7 +103,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn first(&self) -> Option<&T> {
-        self.get(0)
+        if let [first, ..] = self { Some(first) } else { None }
     }
 
     /// Returns a mutable pointer to the first element of the slice, or `None` if it is empty.
@@ -121,7 +121,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn first_mut(&mut self) -> Option<&mut T> {
-        self.get_mut(0)
+        if let [first, ..] = self { Some(first) } else { None }
     }
 
     /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
@@ -139,7 +139,7 @@ impl<T> [T] {
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[inline]
     pub fn split_first(&self) -> Option<(&T, &[T])> {
-        if self.is_empty() { None } else { Some((&self[0], &self[1..])) }
+        if let [first, tail @ ..] = self { Some((first, tail)) } else { None }
     }
 
     /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
@@ -159,12 +159,7 @@ impl<T> [T] {
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[inline]
     pub fn split_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
-        if self.is_empty() {
-            None
-        } else {
-            let split = self.split_at_mut(1);
-            Some((&mut split.0[0], split.1))
-        }
+        if let [first, tail @ ..] = self { Some((first, tail)) } else { None }
     }
 
     /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
@@ -182,8 +177,7 @@ impl<T> [T] {
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[inline]
     pub fn split_last(&self) -> Option<(&T, &[T])> {
-        let len = self.len();
-        if len == 0 { None } else { Some((&self[len - 1], &self[..(len - 1)])) }
+        if let [init @ .., last] = self { Some((last, init)) } else { None }
     }
 
     /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
@@ -203,13 +197,7 @@ impl<T> [T] {
     #[stable(feature = "slice_splits", since = "1.5.0")]
     #[inline]
     pub fn split_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
-        let len = self.len();
-        if len == 0 {
-            None
-        } else {
-            let split = self.split_at_mut(len - 1);
-            Some((&mut split.1[0], split.0))
-        }
+        if let [init @ .., last] = self { Some((last, init)) } else { None }
     }
 
     /// Returns the last element of the slice, or `None` if it is empty.
@@ -226,8 +214,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn last(&self) -> Option<&T> {
-        let last_idx = self.len().checked_sub(1)?;
-        self.get(last_idx)
+        if let [.., last] = self { Some(last) } else { None }
     }
 
     /// Returns a mutable pointer to the last item in the slice.
@@ -245,8 +232,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn last_mut(&mut self) -> Option<&mut T> {
-        let last_idx = self.len().checked_sub(1)?;
-        self.get_mut(last_idx)
+        if let [.., last] = self { Some(last) } else { None }
     }
 
     /// Returns a reference to an element or subslice depending on the type of
@@ -1153,6 +1139,69 @@ impl<T> [T] {
         F: FnMut(&T) -> bool,
     {
         SplitMut { v: self, pred, finished: false }
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`. The matched element is contained in the end of the previous
+    /// subslice as a terminator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive)]
+    /// let slice = [10, 40, 33, 20];
+    /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[10, 40, 33]);
+    /// assert_eq!(iter.next().unwrap(), &[20]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// If the last element of the slice is matched,
+    /// that element will be considered the terminator of the preceding slice.
+    /// That slice will be the last item returned by the iterator.
+    ///
+    /// ```
+    /// #![feature(split_inclusive)]
+    /// let slice = [3, 10, 40, 33];
+    /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[3]);
+    /// assert_eq!(iter.next().unwrap(), &[10, 40, 33]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    #[unstable(feature = "split_inclusive", issue = "none")]
+    #[inline]
+    pub fn split_inclusive<F>(&self, pred: F) -> SplitInclusive<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        SplitInclusive { v: self, pred, finished: false }
+    }
+
+    /// Returns an iterator over mutable subslices separated by elements that
+    /// match `pred`. The matched element is contained in the previous
+    /// subslice as a terminator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive)]
+    /// let mut v = [10, 40, 30, 20, 60, 50];
+    ///
+    /// for group in v.split_inclusive_mut(|num| *num % 3 == 0) {
+    ///     let terminator_idx = group.len()-1;
+    ///     group[terminator_idx] = 1;
+    /// }
+    /// assert_eq!(v, [10, 40, 1, 20, 1, 1]);
+    /// ```
+    #[unstable(feature = "split_inclusive", issue = "none")]
+    #[inline]
+    pub fn split_inclusive_mut<F>(&mut self, pred: F) -> SplitInclusiveMut<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        SplitInclusiveMut { v: self, pred, finished: false }
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -2508,11 +2557,13 @@ impl<T> [T] {
             let (left, rest) = self.split_at_mut(offset);
             // now `rest` is definitely aligned, so `from_raw_parts_mut` below is okay
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
+            let rest_len = rest.len();
             let mut_ptr = rest.as_mut_ptr();
+            // We can't use `rest` again after this, that would invalidate its alias `mut_ptr`!
             (
                 left,
                 from_raw_parts_mut(mut_ptr as *mut U, us_len),
-                from_raw_parts_mut(mut_ptr.add(rest.len() - ts_len), ts_len),
+                from_raw_parts_mut(mut_ptr.add(rest_len - ts_len), ts_len),
             )
         }
     }
@@ -3675,7 +3726,106 @@ where
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, P> FusedIterator for Split<'_, T, P> where P: FnMut(&T) -> bool {}
 
-/// An iterator over the subslices of the vector which are separated
+/// An iterator over subslices separated by elements that match a predicate
+/// function. Unlike `Split`, it contains the matched part as a terminator
+/// of the subslice.
+///
+/// This struct is created by the [`split_inclusive`] method on [slices].
+///
+/// [`split_inclusive`]: ../../std/primitive.slice.html#method.split_inclusive
+/// [slices]: ../../std/primitive.slice.html
+#[unstable(feature = "split_inclusive", issue = "none")]
+pub struct SplitInclusive<'a, T: 'a, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    v: &'a [T],
+    pred: P,
+    finished: bool,
+}
+
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<T: fmt::Debug, P> fmt::Debug for SplitInclusive<'_, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SplitInclusive")
+            .field("v", &self.v)
+            .field("finished", &self.finished)
+            .finish()
+    }
+}
+
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<T, P> Clone for SplitInclusive<'_, T, P>
+where
+    P: Clone + FnMut(&T) -> bool,
+{
+    fn clone(&self) -> Self {
+        SplitInclusive { v: self.v, pred: self.pred.clone(), finished: self.finished }
+    }
+}
+
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<'a, T, P> Iterator for SplitInclusive<'a, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    type Item = &'a [T];
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a [T]> {
+        if self.finished {
+            return None;
+        }
+
+        let idx =
+            self.v.iter().position(|x| (self.pred)(x)).map(|idx| idx + 1).unwrap_or(self.v.len());
+        if idx == self.v.len() {
+            self.finished = true;
+        }
+        let ret = Some(&self.v[..idx]);
+        self.v = &self.v[idx..];
+        ret
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.finished { (0, Some(0)) } else { (1, Some(self.v.len() + 1)) }
+    }
+}
+
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<'a, T, P> DoubleEndedIterator for SplitInclusive<'a, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a [T]> {
+        if self.finished {
+            return None;
+        }
+
+        // The last index of self.v is already checked and found to match
+        // by the last iteration, so we start searching a new match
+        // one index to the left.
+        let remainder = if self.v.is_empty() { &[] } else { &self.v[..(self.v.len() - 1)] };
+        let idx = remainder.iter().rposition(|x| (self.pred)(x)).map(|idx| idx + 1).unwrap_or(0);
+        if idx == 0 {
+            self.finished = true;
+        }
+        let ret = Some(&self.v[idx..]);
+        self.v = &self.v[..idx];
+        ret
+    }
+}
+
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<T, P> FusedIterator for SplitInclusive<'_, T, P> where P: FnMut(&T) -> bool {}
+
+/// An iterator over the mutable subslices of the vector which are separated
 /// by elements that match `pred`.
 ///
 /// This struct is created by the [`split_mut`] method on [slices].
@@ -3788,6 +3938,114 @@ where
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, P> FusedIterator for SplitMut<'_, T, P> where P: FnMut(&T) -> bool {}
+
+/// An iterator over the mutable subslices of the vector which are separated
+/// by elements that match `pred`. Unlike `SplitMut`, it contains the matched
+/// parts in the ends of the subslices.
+///
+/// This struct is created by the [`split_inclusive_mut`] method on [slices].
+///
+/// [`split_inclusive_mut`]: ../../std/primitive.slice.html#method.split_inclusive_mut
+/// [slices]: ../../std/primitive.slice.html
+#[unstable(feature = "split_inclusive", issue = "none")]
+pub struct SplitInclusiveMut<'a, T: 'a, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    v: &'a mut [T],
+    pred: P,
+    finished: bool,
+}
+
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<T: fmt::Debug, P> fmt::Debug for SplitInclusiveMut<'_, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SplitInclusiveMut")
+            .field("v", &self.v)
+            .field("finished", &self.finished)
+            .finish()
+    }
+}
+
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<'a, T, P> Iterator for SplitInclusiveMut<'a, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    type Item = &'a mut [T];
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a mut [T]> {
+        if self.finished {
+            return None;
+        }
+
+        let idx_opt = {
+            // work around borrowck limitations
+            let pred = &mut self.pred;
+            self.v.iter().position(|x| (*pred)(x))
+        };
+        let idx = idx_opt.map(|idx| idx + 1).unwrap_or(self.v.len());
+        if idx == self.v.len() {
+            self.finished = true;
+        }
+        let tmp = mem::replace(&mut self.v, &mut []);
+        let (head, tail) = tmp.split_at_mut(idx);
+        self.v = tail;
+        Some(head)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.finished {
+            (0, Some(0))
+        } else {
+            // if the predicate doesn't match anything, we yield one slice
+            // if it matches every element, we yield len+1 empty slices.
+            (1, Some(self.v.len() + 1))
+        }
+    }
+}
+
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<'a, T, P> DoubleEndedIterator for SplitInclusiveMut<'a, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a mut [T]> {
+        if self.finished {
+            return None;
+        }
+
+        let idx_opt = if self.v.is_empty() {
+            None
+        } else {
+            // work around borrowck limitations
+            let pred = &mut self.pred;
+
+            // The last index of self.v is already checked and found to match
+            // by the last iteration, so we start searching a new match
+            // one index to the left.
+            let remainder = &self.v[..(self.v.len() - 1)];
+            remainder.iter().rposition(|x| (*pred)(x))
+        };
+        let idx = idx_opt.map(|idx| idx + 1).unwrap_or(0);
+        if idx == 0 {
+            self.finished = true;
+        }
+        let tmp = mem::replace(&mut self.v, &mut []);
+        let (head, tail) = tmp.split_at_mut(idx);
+        self.v = head;
+        Some(tail)
+    }
+}
+
+#[unstable(feature = "split_inclusive", issue = "none")]
+impl<T, P> FusedIterator for SplitInclusiveMut<'_, T, P> where P: FnMut(&T) -> bool {}
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function, starting from the end of the slice.
@@ -5584,21 +5842,18 @@ where
 
 #[doc(hidden)]
 // intermediate trait for specialization of slice's PartialOrd
-trait SlicePartialOrd<B> {
-    fn partial_compare(&self, other: &[B]) -> Option<Ordering>;
+trait SlicePartialOrd: Sized {
+    fn partial_compare(left: &[Self], right: &[Self]) -> Option<Ordering>;
 }
 
-impl<A> SlicePartialOrd<A> for [A]
-where
-    A: PartialOrd,
-{
-    default fn partial_compare(&self, other: &[A]) -> Option<Ordering> {
-        let l = cmp::min(self.len(), other.len());
+impl<A: PartialOrd> SlicePartialOrd for A {
+    default fn partial_compare(left: &[A], right: &[A]) -> Option<Ordering> {
+        let l = cmp::min(left.len(), right.len());
 
         // Slice to the loop iteration range to enable bound check
         // elimination in the compiler
-        let lhs = &self[..l];
-        let rhs = &other[..l];
+        let lhs = &left[..l];
+        let rhs = &right[..l];
 
         for i in 0..l {
             match lhs[i].partial_cmp(&rhs[i]) {
@@ -5607,36 +5862,61 @@ where
             }
         }
 
-        self.len().partial_cmp(&other.len())
+        left.len().partial_cmp(&right.len())
     }
 }
 
-impl<A> SlicePartialOrd<A> for [A]
+// This is the impl that we would like to have. Unfortunately it's not sound.
+// See `partial_ord_slice.rs`.
+/*
+impl<A> SlicePartialOrd for A
 where
     A: Ord,
 {
-    default fn partial_compare(&self, other: &[A]) -> Option<Ordering> {
-        Some(SliceOrd::compare(self, other))
+    default fn partial_compare(left: &[A], right: &[A]) -> Option<Ordering> {
+        Some(SliceOrd::compare(left, right))
     }
+}
+*/
+
+impl<A: AlwaysApplicableOrd> SlicePartialOrd for A {
+    fn partial_compare(left: &[A], right: &[A]) -> Option<Ordering> {
+        Some(SliceOrd::compare(left, right))
+    }
+}
+
+trait AlwaysApplicableOrd: SliceOrd + Ord {}
+
+macro_rules! always_applicable_ord {
+    ($([$($p:tt)*] $t:ty,)*) => {
+        $(impl<$($p)*> AlwaysApplicableOrd for $t {})*
+    }
+}
+
+always_applicable_ord! {
+    [] u8, [] u16, [] u32, [] u64, [] u128, [] usize,
+    [] i8, [] i16, [] i32, [] i64, [] i128, [] isize,
+    [] bool, [] char,
+    [T: ?Sized] *const T, [T: ?Sized] *mut T,
+    [T: AlwaysApplicableOrd] &T,
+    [T: AlwaysApplicableOrd] &mut T,
+    [T: AlwaysApplicableOrd] Option<T>,
 }
 
 #[doc(hidden)]
 // intermediate trait for specialization of slice's Ord
-trait SliceOrd<B> {
-    fn compare(&self, other: &[B]) -> Ordering;
+trait SliceOrd: Sized {
+    fn compare(left: &[Self], right: &[Self]) -> Ordering;
 }
 
-impl<A> SliceOrd<A> for [A]
-where
-    A: Ord,
-{
-    default fn compare(&self, other: &[A]) -> Ordering {
-        let l = cmp::min(self.len(), other.len());
+impl<A: Ord> SliceOrd for A {
+    default fn compare(left: &[Self], right: &[Self]) -> Ordering {
+        let l = cmp::min(left.len(), right.len());
 
         // Slice to the loop iteration range to enable bound check
         // elimination in the compiler
-        let lhs = &self[..l];
-        let rhs = &other[..l];
+        let lhs = &left[..l];
+        let rhs = &right[..l];
 
         for i in 0..l {
             match lhs[i].cmp(&rhs[i]) {
@@ -5645,19 +5925,19 @@ where
             }
         }
 
-        self.len().cmp(&other.len())
+        left.len().cmp(&right.len())
     }
 }
 
 // memcmp compares a sequence of unsigned bytes lexicographically.
 // this matches the order we want for [u8], but no others (not even [i8]).
-impl SliceOrd<u8> for [u8] {
+impl SliceOrd for u8 {
     #[inline]
-    fn compare(&self, other: &[u8]) -> Ordering {
+    fn compare(left: &[Self], right: &[Self]) -> Ordering {
         let order =
-            unsafe { memcmp(self.as_ptr(), other.as_ptr(), cmp::min(self.len(), other.len())) };
+            unsafe { memcmp(left.as_ptr(), right.as_ptr(), cmp::min(left.len(), right.len())) };
         if order == 0 {
-            self.len().cmp(&other.len())
+            left.len().cmp(&right.len())
         } else if order < 0 {
             Less
         } else {

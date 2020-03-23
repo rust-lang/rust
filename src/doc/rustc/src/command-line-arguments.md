@@ -146,6 +146,7 @@ The valid types of print values are:
 - `crate-name` — The name of the crate.
 - `file-names` — The names of the files created by the `link` emit kind.
 - `sysroot` — Path to the sysroot.
+- `target-libdir` - Path to the target libdir.
 - `cfg` — List of cfg values. See [conditional compilation] for more
   information about cfg values.
 - `target-list` — List of known targets. The target may be selected with the
@@ -215,20 +216,28 @@ This controls which [target](targets/index.md) to produce.
 
 This flag will set which lints should be set to the [warn level](lints/levels.md#warn).
 
+_Note:_ The order of these lint level arguments is taken into account, see [lint level via compiler flag](lints/levels.md#via-compiler-flag) for more information.
+
 <a id="option-a-allow"></a>
 ## `-A`: set lint allowed
 
 This flag will set which lints should be set to the [allow level](lints/levels.md#allow).
+
+_Note:_ The order of these lint level arguments is taken into account, see [lint level via compiler flag](lints/levels.md#via-compiler-flag) for more information.
 
 <a id="option-d-deny"></a>
 ## `-D`: set lint denied
 
 This flag will set which lints should be set to the [deny level](lints/levels.md#deny).
 
+_Note:_ The order of these lint level arguments is taken into account, see [lint level via compiler flag](lints/levels.md#via-compiler-flag) for more information.
+
 <a id="option-f-forbid"></a>
 ## `-F`: set lint forbidden
 
 This flag will set which lints should be set to the [forbid level](lints/levels.md#forbid).
+
+_Note:_ The order of these lint level arguments is taken into account, see [lint level via compiler flag](lints/levels.md#via-compiler-flag) for more information.
 
 <a id="option-z-unstable"></a>
 ## `-Z`: set unstable options

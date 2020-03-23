@@ -1,24 +1,24 @@
 use crate::context::{CheckLintNameResult, LintStore};
 use crate::late::unerased_lint_store;
 use rustc::hir::map::Map;
-use rustc::lint::struct_lint_level;
-use rustc::lint::{LintLevelMap, LintLevelSets, LintSet, LintSource};
+use rustc::lint::LintDiagnosticBuilder;
+use rustc::lint::{struct_lint_level, LintLevelMap, LintLevelSets, LintSet, LintSource};
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast;
+use rustc_ast::attr;
+use rustc_ast::unwrap_or;
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_hir::hir_id::HirId;
-use rustc_hir::intravisit;
+use rustc_hir::{intravisit, HirId};
 use rustc_session::lint::{builtin, Level, Lint};
+use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::{sym, MultiSpan, Symbol};
-use syntax::ast;
-use syntax::attr;
-use syntax::print::pprust;
-use syntax::sess::feature_err;
-use syntax::unwrap_or;
+use rustc_span::source_map::MultiSpan;
+use rustc_span::symbol::{sym, Symbol};
 
 use std::cmp;
 
@@ -29,7 +29,7 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
     let mut builder = LintLevelMapBuilder { levels, tcx, store };
     let krate = tcx.hir().krate();
 
-    let push = builder.levels.push(&krate.attrs, &store);
+    let push = builder.levels.push(&krate.item.attrs, &store);
     builder.levels.register_id(hir::CRATE_HIR_ID);
     for macro_def in krate.exported_macros {
         builder.levels.register_id(macro_def.hir_id);
@@ -40,8 +40,8 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
     tcx.arena.alloc(builder.levels.build_map())
 }
 
-pub struct LintLevelsBuilder<'a> {
-    sess: &'a Session,
+pub struct LintLevelsBuilder<'s> {
+    sess: &'s Session,
     sets: LintLevelSets,
     id_to_set: FxHashMap<HirId, u32>,
     cur: u32,
@@ -53,8 +53,8 @@ pub struct BuilderPush {
     pub changed: bool,
 }
 
-impl<'a> LintLevelsBuilder<'a> {
-    pub fn new(sess: &'a Session, warn_about_weird_lints: bool, store: &LintStore) -> Self {
+impl<'s> LintLevelsBuilder<'s> {
+    pub fn new(sess: &'s Session, warn_about_weird_lints: bool, store: &LintStore) -> Self {
         let mut builder = LintLevelsBuilder {
             sess,
             sets: LintLevelSets::new(),
@@ -234,27 +234,29 @@ impl<'a> LintLevelsBuilder<'a> {
                                 let lint = builtin::RENAMED_AND_REMOVED_LINTS;
                                 let (lvl, src) =
                                     self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
-                                let msg = format!(
-                                    "lint name `{}` is deprecated \
-                                     and may not have an effect in the future. \
-                                     Also `cfg_attr(cargo-clippy)` won't be necessary anymore",
-                                    name
-                                );
                                 struct_lint_level(
                                     self.sess,
                                     lint,
                                     lvl,
                                     src,
                                     Some(li.span().into()),
-                                    &msg,
-                                )
-                                .span_suggestion(
-                                    li.span(),
-                                    "change it to",
-                                    new_lint_name.to_string(),
-                                    Applicability::MachineApplicable,
-                                )
-                                .emit();
+                                    |lint| {
+                                        let msg = format!(
+                                            "lint name `{}` is deprecated \
+                                             and may not have an effect in the future. \
+                                             Also `cfg_attr(cargo-clippy)` won't be necessary anymore",
+                                            name
+                                        );
+                                        lint.build(&msg)
+                                            .span_suggestion(
+                                                li.span(),
+                                                "change it to",
+                                                new_lint_name.to_string(),
+                                                Applicability::MachineApplicable,
+                                            )
+                                            .emit();
+                                    },
+                                );
 
                                 let src = LintSource::Node(
                                     Symbol::intern(&new_lint_name),
@@ -280,48 +282,49 @@ impl<'a> LintLevelsBuilder<'a> {
                         let lint = builtin::RENAMED_AND_REMOVED_LINTS;
                         let (level, src) =
                             self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
-                        let mut err = struct_lint_level(
+                        struct_lint_level(
                             self.sess,
                             lint,
                             level,
                             src,
                             Some(li.span().into()),
-                            &msg,
+                            |lint| {
+                                let mut err = lint.build(&msg);
+                                if let Some(new_name) = renamed {
+                                    err.span_suggestion(
+                                        li.span(),
+                                        "use the new name",
+                                        new_name,
+                                        Applicability::MachineApplicable,
+                                    );
+                                }
+                                err.emit();
+                            },
                         );
-                        if let Some(new_name) = renamed {
-                            err.span_suggestion(
-                                li.span(),
-                                "use the new name",
-                                new_name,
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        err.emit();
                     }
                     CheckLintNameResult::NoLint(suggestion) => {
                         let lint = builtin::UNKNOWN_LINTS;
                         let (level, src) =
                             self.sets.get_lint_level(lint, self.cur, Some(&specs), self.sess);
-                        let msg = format!("unknown lint: `{}`", name);
-                        let mut db = struct_lint_level(
+                        struct_lint_level(
                             self.sess,
                             lint,
                             level,
                             src,
                             Some(li.span().into()),
-                            &msg,
+                            |lint| {
+                                let mut db = lint.build(&format!("unknown lint: `{}`", name));
+                                if let Some(suggestion) = suggestion {
+                                    db.span_suggestion(
+                                        li.span(),
+                                        "did you mean",
+                                        suggestion.to_string(),
+                                        Applicability::MachineApplicable,
+                                    );
+                                }
+                                db.emit();
+                            },
                         );
-
-                        if let Some(suggestion) = suggestion {
-                            db.span_suggestion(
-                                li.span(),
-                                "did you mean",
-                                suggestion.to_string(),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-
-                        db.emit();
                     }
                 }
             }
@@ -372,12 +375,12 @@ impl<'a> LintLevelsBuilder<'a> {
         }
 
         let prev = self.cur;
-        if specs.len() > 0 {
+        if !specs.is_empty() {
             self.cur = self.sets.list.len() as u32;
-            self.sets.list.push(LintSet::Node { specs: specs, parent: prev });
+            self.sets.list.push(LintSet::Node { specs, parent: prev });
         }
 
-        BuilderPush { prev: prev, changed: prev != self.cur }
+        BuilderPush { prev, changed: prev != self.cur }
     }
 
     /// Called after `push` when the scope of a set of attributes are exited.
@@ -391,10 +394,10 @@ impl<'a> LintLevelsBuilder<'a> {
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
-        msg: &str,
-    ) -> DiagnosticBuilder<'a> {
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+    ) {
         let (level, src) = self.sets.get_lint_level(lint, self.cur, None, self.sess);
-        struct_lint_level(self.sess, lint, level, src, span, msg)
+        struct_lint_level(self.sess, lint, level, src, span, decorate)
     }
 
     /// Registers the ID provided with the current set of lints stored in
@@ -435,8 +438,8 @@ impl LintLevelMapBuilder<'_, '_> {
 impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, Self::Map> {
-        intravisit::NestedVisitorMap::All(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::All(self.tcx.hir())
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {

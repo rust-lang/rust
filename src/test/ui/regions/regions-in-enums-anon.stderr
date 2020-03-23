@@ -6,8 +6,8 @@ LL |     Bar(&isize)
    |
 help: consider introducing a named lifetime parameter
    |
-LL | enum Foo<'lifetime> {
-LL |     Bar(&'lifetime isize)
+LL | enum Foo<'a> {
+LL |     Bar(&'a isize)
    |
 
 error: aborting due to previous error

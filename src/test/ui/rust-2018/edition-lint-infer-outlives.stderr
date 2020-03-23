@@ -4,7 +4,7 @@ error: outlives requirements can be inferred
 LL |     struct TeeOutlivesAy<'a, T: 'a> {
    |                               ^^^^ help: remove this bound
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/edition-lint-infer-outlives.rs:4:9
    |
 LL | #![deny(explicit_outlives_requirements)]

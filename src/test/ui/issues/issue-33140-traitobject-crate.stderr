@@ -6,7 +6,7 @@ LL | unsafe impl Trait for dyn (::std::marker::Send) + Sync { }
 LL | unsafe impl Trait for dyn (::std::marker::Send) + Send + Sync { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + std::marker::Sync + 'static)`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-33140-traitobject-crate.rs:3:9
    |
 LL | #![warn(order_dependent_trait_objects)]

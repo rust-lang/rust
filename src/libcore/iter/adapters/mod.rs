@@ -200,6 +200,18 @@ where
     {
         self.it.fold(init, copy_fold(f))
     }
+
+    fn nth(&mut self, n: usize) -> Option<T> {
+        self.it.nth(n).copied()
+    }
+
+    fn last(self) -> Option<T> {
+        self.it.last().copied()
+    }
+
+    fn count(self) -> usize {
+        self.it.count()
+    }
 }
 
 #[stable(feature = "iter_copied", since = "1.36.0")]
@@ -1468,7 +1480,11 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.iter.next_back().or_else(|| self.peeked.take().and_then(|x| x))
+        match self.peeked.as_mut() {
+            Some(v @ Some(_)) => self.iter.next_back().or_else(|| v.take()),
+            Some(None) => None,
+            None => self.iter.next_back(),
+        }
     }
 
     #[inline]
@@ -1752,6 +1768,14 @@ where
     }
 }
 
+#[stable(feature = "fused", since = "1.26.0")]
+impl<I, P> FusedIterator for TakeWhile<I, P>
+where
+    I: FusedIterator,
+    P: FnMut(&I::Item) -> bool,
+{
+}
+
 /// An iterator that only accepts elements while `predicate` returns `Some(_)`.
 ///
 /// This `struct` is created by the [`map_while`] method on [`Iterator`]. See its
@@ -1764,20 +1788,19 @@ where
 #[derive(Clone)]
 pub struct MapWhile<I, P> {
     iter: I,
-    finished: bool,
     predicate: P,
 }
 
 impl<I, P> MapWhile<I, P> {
     pub(super) fn new(iter: I, predicate: P) -> MapWhile<I, P> {
-        MapWhile { iter, finished: false, predicate }
+        MapWhile { iter, predicate }
     }
 }
 
 #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
 impl<I: fmt::Debug, P> fmt::Debug for MapWhile<I, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("MapWhile").field("iter", &self.iter).field("flag", &self.finished).finish()
+        f.debug_struct("MapWhile").field("iter", &self.iter).finish()
     }
 }
 
@@ -1790,63 +1813,30 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<B> {
-        if self.finished {
-            None
-        } else {
-            let x = self.iter.next()?;
-            let ret = (self.predicate)(x);
-            self.finished = ret.is_none();
-            ret
-        }
+        let x = self.iter.next()?;
+        (self.predicate)(x)
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.finished {
-            (0, Some(0))
-        } else {
-            let (_, upper) = self.iter.size_hint();
-            (0, upper) // can't know a lower bound, due to the predicate
-        }
+        let (_, upper) = self.iter.size_hint();
+        (0, upper) // can't know a lower bound, due to the predicate
     }
 
     #[inline]
-    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Ok = Acc>,
     {
-        fn check<'a, B, T, Acc, R: Try<Ok = Acc>>(
-            flag: &'a mut bool,
-            p: &'a mut impl FnMut(T) -> Option<B>,
-            mut fold: impl FnMut(Acc, B) -> R + 'a,
-        ) -> impl FnMut(Acc, T) -> LoopState<Acc, R> + 'a {
-            move |acc, x| match p(x) {
-                Some(item) => LoopState::from_try(fold(acc, item)),
-                None => {
-                    *flag = true;
-                    LoopState::Break(Try::from_ok(acc))
-                }
-            }
-        }
-
-        if self.finished {
-            Try::from_ok(init)
-        } else {
-            let flag = &mut self.finished;
-            let p = &mut self.predicate;
-            self.iter.try_fold(init, check(flag, p, fold)).into_try()
-        }
+        let Self { iter, predicate } = self;
+        iter.try_fold(init, |acc, x| match predicate(x) {
+            Some(item) => LoopState::from_try(fold(acc, item)),
+            None => LoopState::Break(Try::from_ok(acc)),
+        })
+        .into_try()
     }
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<I, P> FusedIterator for TakeWhile<I, P>
-where
-    I: FusedIterator,
-    P: FnMut(&I::Item) -> bool,
-{
 }
 
 /// An iterator that skips over `n` elements of `iter`.
@@ -1890,17 +1880,13 @@ where
     #[inline]
     fn nth(&mut self, n: usize) -> Option<I::Item> {
         // Can't just add n + self.n due to overflow.
-        if self.n == 0 {
-            self.iter.nth(n)
-        } else {
+        if self.n > 0 {
             let to_skip = self.n;
             self.n = 0;
             // nth(n) skips n+1
-            if self.iter.nth(to_skip - 1).is_none() {
-                return None;
-            }
-            self.iter.nth(n)
+            self.iter.nth(to_skip - 1)?;
         }
+        self.iter.nth(n)
     }
 
     #[inline]
@@ -1916,17 +1902,11 @@ where
 
     #[inline]
     fn last(mut self) -> Option<I::Item> {
-        if self.n == 0 {
-            self.iter.last()
-        } else {
-            let next = self.next();
-            if next.is_some() {
-                // recurse. n should be 0.
-                self.last().or(next)
-            } else {
-                None
-            }
+        if self.n > 0 {
+            // nth(n) skips n+1
+            self.iter.nth(self.n - 1)?;
         }
+        self.iter.last()
     }
 
     #[inline]

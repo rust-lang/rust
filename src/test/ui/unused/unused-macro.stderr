@@ -6,7 +6,7 @@ LL | |     () => {}
 LL | | }
    | |_^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unused-macro.rs:2:9
    |
 LL | #![deny(unused_macros)]
@@ -20,7 +20,7 @@ LL | |         () => {}
 LL | |     }
    | |_____^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unused-macro.rs:14:12
    |
 LL |     #[deny(unused_macros)]

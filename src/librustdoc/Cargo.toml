@@ -9,7 +9,7 @@ name = "rustdoc"
 path = "lib.rs"
 
 [dependencies]
-pulldown-cmark = { version = "0.5.3", default-features = false }
+pulldown-cmark = { version = "0.7", default-features = false }
 minifier = "0.0.33"
 rayon = { version = "0.3.0", package = "rustc-rayon" }
 serde = { version = "1.0", features = ["derive"] }

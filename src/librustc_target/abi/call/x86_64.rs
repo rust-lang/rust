@@ -56,16 +56,24 @@ where
 
             Abi::Vector { .. } => Class::Sse,
 
-            Abi::ScalarPair(..) | Abi::Aggregate { .. } => match layout.variants {
-                abi::Variants::Single { .. } => {
-                    for i in 0..layout.fields.count() {
-                        let field_off = off + layout.fields.offset(i);
-                        classify(cx, layout.field(cx, i), cls, field_off)?;
-                    }
-                    return Ok(());
+            Abi::ScalarPair(..) | Abi::Aggregate { .. } => {
+                for i in 0..layout.fields.count() {
+                    let field_off = off + layout.fields.offset(i);
+                    classify(cx, layout.field(cx, i), cls, field_off)?;
                 }
-                abi::Variants::Multiple { .. } => return Err(Memory),
-            },
+
+                match &layout.variants {
+                    abi::Variants::Single { .. } => {}
+                    abi::Variants::Multiple { variants, .. } => {
+                        // Treat enum variants like union members.
+                        for variant_idx in variants.indices() {
+                            classify(cx, layout.for_variant(cx, variant_idx), cls, off)?;
+                        }
+                    }
+                }
+
+                return Ok(());
+            }
         };
 
         // Fill in `cls` for scalars (Int/Sse) and vectors (Sse).

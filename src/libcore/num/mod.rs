@@ -8,8 +8,17 @@ use crate::convert::Infallible;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem;
-use crate::ops;
 use crate::str::FromStr;
+
+// Used because the `?` operator is not allowed in a const context.
+macro_rules! try_opt {
+    ($e:expr) => {
+        match $e {
+            Some(x) => x,
+            None => return None,
+        }
+    };
+}
 
 macro_rules! impl_nonzero_fmt {
     ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
@@ -69,8 +78,9 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
 
                 /// Creates a non-zero if the given value is not zero.
                 #[$stability]
+                #[rustc_const_unstable(feature = "const_nonzero_int_methods", issue = "53718")]
                 #[inline]
-                pub fn new(n: $Int) -> Option<Self> {
+                pub const fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
                         // SAFETY: we just checked that there's no `0`
                         Some(unsafe { Self(n) })
@@ -256,11 +266,10 @@ macro_rules! int_impl {
 Basic usage:
 
 ```
-#![feature(assoc_int_consts)]
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MIN, ", stringify!($Min), ");",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+            #[stable(feature = "assoc_int_consts", since = "1.43.0")]
             pub const MIN: Self = !0 ^ ((!0 as $UnsignedT) >> 1) as Self;
         }
 
@@ -272,34 +281,11 @@ $EndFeature, "
 Basic usage:
 
 ```
-#![feature(assoc_int_consts)]
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($Max), ");",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+            #[stable(feature = "assoc_int_consts", since = "1.43.0")]
             pub const MAX: Self = !Self::MIN;
-        }
-
-        doc_comment! {
-            "Returns the smallest value that can be represented by this integer type.",
-            #[stable(feature = "rust1", since = "1.0.0")]
-            #[inline(always)]
-            #[rustc_promotable]
-            #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
-            pub const fn min_value() -> Self {
-                Self::MIN
-            }
-        }
-
-        doc_comment! {
-            "Returns the largest value that can be represented by this integer type.",
-            #[stable(feature = "rust1", since = "1.0.0")]
-            #[inline(always)]
-            #[rustc_promotable]
-            #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-            pub const fn max_value() -> Self {
-                Self::MAX
-            }
         }
 
         doc_comment! {
@@ -359,7 +345,7 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value().count_zeros(), 1);", $EndFeature, "
+", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX.count_zeros(), 1);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
@@ -696,15 +682,16 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!((", stringify!($SelfT),
-"::max_value() - 2).checked_add(1), Some(", stringify!($SelfT), "::max_value() - 1));
-assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);",
+"::MAX - 2).checked_add(1), Some(", stringify!($SelfT), "::MAX - 1));
+assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_add(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
                 if b {None} else {Some(a)}
             }
@@ -720,15 +707,16 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!((", stringify!($SelfT),
-"::min_value() + 2).checked_sub(1), Some(", stringify!($SelfT), "::min_value() + 1));
-assert_eq!((", stringify!($SelfT), "::min_value() + 2).checked_sub(3), None);",
+"::MIN + 2).checked_sub(1), Some(", stringify!($SelfT), "::MIN + 1));
+assert_eq!((", stringify!($SelfT), "::MIN + 2).checked_sub(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_sub(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
                 if b {None} else {Some(a)}
             }
@@ -744,15 +732,16 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(", stringify!($SelfT),
-"::max_value().checked_mul(1), Some(", stringify!($SelfT), "::max_value()));
-assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);",
+"::MAX.checked_mul(1), Some(", stringify!($SelfT), "::MAX));
+assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
                 if b {None} else {Some(a)}
             }
@@ -768,16 +757,17 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!((", stringify!($SelfT),
-"::min_value() + 1).checked_div(-1), Some(", stringify!($Max), "));
-assert_eq!(", stringify!($SelfT), "::min_value().checked_div(-1), None);
+"::MIN + 1).checked_div(-1), Some(", stringify!($Max), "));
+assert_eq!(", stringify!($SelfT), "::MIN.checked_div(-1), None);
 assert_eq!((1", stringify!($SelfT), ").checked_div(0), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_div(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_div(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
                 } else {
@@ -797,15 +787,16 @@ Basic usage:
 
 ```
 assert_eq!((", stringify!($SelfT),
-"::min_value() + 1).checked_div_euclid(-1), Some(", stringify!($Max), "));
-assert_eq!(", stringify!($SelfT), "::min_value().checked_div_euclid(-1), None);
+"::MIN + 1).checked_div_euclid(-1), Some(", stringify!($Max), "));
+assert_eq!(", stringify!($SelfT), "::MIN.checked_div_euclid(-1), None);
 assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
                 } else {
@@ -823,18 +814,18 @@ assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".checked_rem(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);
 assert_eq!(", stringify!($SelfT), "::MIN.checked_rem(-1), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_rem(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
                 } else {
@@ -853,17 +844,16 @@ if `rhs == 0` or the division results in overflow.
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
-
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
 assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
                 } else {
@@ -880,15 +870,15 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".checked_neg(), Some(-5));
 assert_eq!(", stringify!($SelfT), "::MIN.checked_neg(), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[inline]
-            pub fn checked_neg(self) -> Option<Self> {
+            pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
                 if b {None} else {Some(a)}
             }
@@ -908,10 +898,11 @@ assert_eq!(0x1", stringify!($SelfT), ".checked_shl(129), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_shl(self, rhs: u32) -> Option<Self> {
+            pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
                 if b {None} else {Some(a)}
             }
@@ -931,10 +922,11 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(128), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_shr(self, rhs: u32) -> Option<Self> {
+            pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
                 if b {None} else {Some(a)}
             }
@@ -949,15 +941,15 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!((-5", stringify!($SelfT), ").checked_abs(), Some(5));
 assert_eq!(", stringify!($SelfT), "::MIN.checked_abs(), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[inline]
-            pub fn checked_abs(self) -> Option<Self> {
+            pub const fn checked_abs(self) -> Option<Self> {
                 if self.is_negative() {
                     self.checked_neg()
                 } else {
@@ -976,31 +968,32 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(8", stringify!($SelfT), ".checked_pow(2), Some(64));
-assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);",
+assert_eq!(", stringify!($SelfT), "::MAX.checked_pow(2), None);",
 $EndFeature, "
 ```"),
 
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_pow(self, mut exp: u32) -> Option<Self> {
+            pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
                 let mut base = self;
                 let mut acc: Self = 1;
 
                 while exp > 1 {
                     if (exp & 1) == 1 {
-                        acc = acc.checked_mul(base)?;
+                        acc = try_opt!(acc.checked_mul(base));
                     }
                     exp /= 2;
-                    base = base.checked_mul(base)?;
+                    base = try_opt!(base.checked_mul(base));
                 }
 
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
                 if exp == 1 {
-                    acc = acc.checked_mul(base)?;
+                    acc = try_opt!(acc.checked_mul(base));
                 }
 
                 Some(acc)
@@ -1017,10 +1010,10 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
-assert_eq!(", stringify!($SelfT), "::max_value().saturating_add(100), ", stringify!($SelfT),
-"::max_value());
-assert_eq!(", stringify!($SelfT), "::min_value().saturating_add(-1), ", stringify!($SelfT),
-"::min_value());",
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_add(100), ", stringify!($SelfT),
+"::MAX);
+assert_eq!(", stringify!($SelfT), "::MIN.saturating_add(-1), ", stringify!($SelfT),
+"::MIN);",
 $EndFeature, "
 ```"),
 
@@ -1044,10 +1037,10 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_sub(127), -27);
-assert_eq!(", stringify!($SelfT), "::min_value().saturating_sub(100), ", stringify!($SelfT),
-"::min_value());
-assert_eq!(", stringify!($SelfT), "::max_value().saturating_sub(-1), ", stringify!($SelfT),
-"::max_value());",
+assert_eq!(", stringify!($SelfT), "::MIN.saturating_sub(100), ", stringify!($SelfT),
+"::MIN);
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_sub(-1), ", stringify!($SelfT),
+"::MAX);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -1072,16 +1065,17 @@ Basic usage:
 ", $Feature, "#![feature(saturating_neg)]
 assert_eq!(100", stringify!($SelfT), ".saturating_neg(), -100);
 assert_eq!((-100", stringify!($SelfT), ").saturating_neg(), 100);
-assert_eq!(", stringify!($SelfT), "::min_value().saturating_neg(), ", stringify!($SelfT),
-"::max_value());
-assert_eq!(", stringify!($SelfT), "::max_value().saturating_neg(), ", stringify!($SelfT),
-"::min_value() + 1);",
+assert_eq!(", stringify!($SelfT), "::MIN.saturating_neg(), ", stringify!($SelfT),
+"::MAX);
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_neg(), ", stringify!($SelfT),
+"::MIN + 1);",
 $EndFeature, "
 ```"),
 
             #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[inline]
-            pub fn saturating_neg(self) -> Self {
+            pub const fn saturating_neg(self) -> Self {
                 intrinsics::saturating_sub(0, self)
             }
         }
@@ -1098,16 +1092,17 @@ Basic usage:
 ", $Feature, "#![feature(saturating_neg)]
 assert_eq!(100", stringify!($SelfT), ".saturating_abs(), 100);
 assert_eq!((-100", stringify!($SelfT), ").saturating_abs(), 100);
-assert_eq!(", stringify!($SelfT), "::min_value().saturating_abs(), ", stringify!($SelfT),
-"::max_value());
-assert_eq!((", stringify!($SelfT), "::min_value() + 1).saturating_abs(), ", stringify!($SelfT),
-"::max_value());",
+assert_eq!(", stringify!($SelfT), "::MIN.saturating_abs(), ", stringify!($SelfT),
+"::MAX);
+assert_eq!((", stringify!($SelfT), "::MIN + 1).saturating_abs(), ", stringify!($SelfT),
+"::MAX);",
 $EndFeature, "
 ```"),
 
             #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[inline]
-            pub fn saturating_abs(self) -> Self {
+            pub const fn saturating_abs(self) -> Self {
                 if self.is_negative() {
                     self.saturating_neg()
                 } else {
@@ -1125,25 +1120,26 @@ numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(10", stringify!($SelfT), ".saturating_mul(12), 120);
 assert_eq!(", stringify!($SelfT), "::MAX.saturating_mul(10), ", stringify!($SelfT), "::MAX);
 assert_eq!(", stringify!($SelfT), "::MIN.saturating_mul(10), ", stringify!($SelfT), "::MIN);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn saturating_mul(self, rhs: Self) -> Self {
-                self.checked_mul(rhs).unwrap_or_else(|| {
-                    if (self < 0) == (rhs < 0) {
+            pub const fn saturating_mul(self, rhs: Self) -> Self {
+                match self.checked_mul(rhs) {
+                    Some(x) => x,
+                    None => if (self < 0) == (rhs < 0) {
                         Self::max_value()
                     } else {
                         Self::min_value()
                     }
-                })
+                }
             }
         }
 
@@ -1156,18 +1152,18 @@ saturating at the numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!((-4", stringify!($SelfT), ").saturating_pow(3), -64);
 assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(2), ", stringify!($SelfT), "::MAX);
 assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(3), ", stringify!($SelfT), "::MIN);",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn saturating_pow(self, exp: u32) -> Self {
+            pub const fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
                     Some(x) => x,
                     None if self < 0 && exp % 2 == 1 => Self::min_value(),
@@ -1186,8 +1182,8 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_add(27), 127);
-assert_eq!(", stringify!($SelfT), "::max_value().wrapping_add(2), ", stringify!($SelfT),
-"::min_value() + 1);",
+assert_eq!(", stringify!($SelfT), "::MAX.wrapping_add(2), ", stringify!($SelfT),
+"::MIN + 1);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -1210,8 +1206,8 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(0", stringify!($SelfT), ".wrapping_sub(127), -127);
-assert_eq!((-2", stringify!($SelfT), ").wrapping_sub(", stringify!($SelfT), "::max_value()), ",
-stringify!($SelfT), "::max_value());",
+assert_eq!((-2", stringify!($SelfT), ").wrapping_sub(", stringify!($SelfT), "::MAX), ",
+stringify!($SelfT), "::MAX);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -1269,10 +1265,11 @@ assert_eq!((-128i8).wrapping_div(-1), -128);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_div(self, rhs: Self) -> Self {
+            pub const fn wrapping_div(self, rhs: Self) -> Self {
                 self.overflowing_div(rhs).0
             }
         }
@@ -1298,10 +1295,11 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
 assert_eq!((-128i8).wrapping_div_euclid(-1), -128);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_div_euclid(self, rhs: Self) -> Self {
+            pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
                 self.overflowing_div_euclid(rhs).0
             }
         }
@@ -1328,10 +1326,11 @@ assert_eq!((-128i8).wrapping_rem(-1), 0);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_rem(self, rhs: Self) -> Self {
+            pub const fn wrapping_rem(self, rhs: Self) -> Self {
                 self.overflowing_rem(rhs).0
             }
         }
@@ -1356,10 +1355,11 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
 assert_eq!((-128i8).wrapping_rem_euclid(-1), 0);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_rem_euclid(self, rhs: Self) -> Self {
+            pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
                 self.overflowing_rem_euclid(rhs).0
             }
         }
@@ -1378,8 +1378,8 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_neg(), -100);
-assert_eq!(", stringify!($SelfT), "::min_value().wrapping_neg(), ", stringify!($SelfT),
-"::min_value());",
+assert_eq!(", stringify!($SelfT), "::MIN.wrapping_neg(), ", stringify!($SelfT),
+"::MIN);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
@@ -1469,8 +1469,8 @@ Basic usage:
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_abs(), 100);
 assert_eq!((-100", stringify!($SelfT), ").wrapping_abs(), 100);
-assert_eq!(", stringify!($SelfT), "::min_value().wrapping_abs(), ", stringify!($SelfT),
-"::min_value());
+assert_eq!(", stringify!($SelfT), "::MIN.wrapping_abs(), ", stringify!($SelfT),
+"::MIN);
 assert_eq!((-128i8).wrapping_abs() as u8, 128);",
 $EndFeature, "
 ```"),
@@ -1503,10 +1503,11 @@ assert_eq!(3i8.wrapping_pow(6), -39);",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_pow(self, mut exp: u32) -> Self {
+            pub const fn wrapping_pow(self, mut exp: u32) -> Self {
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -1540,8 +1541,7 @@ occur. If an overflow would have occurred then the wrapped value is returned.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));
 assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (", stringify!($SelfT),
 "::MIN, true));", $EndFeature, "
@@ -1568,8 +1568,7 @@ would occur. If an overflow would have occurred then the wrapped value is return
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_sub(1), (", stringify!($SelfT),
 "::MAX, true));", $EndFeature, "
@@ -1626,8 +1625,7 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_div(2), (2, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div(-1), (", stringify!($SelfT),
 "::MIN, true));",
@@ -1635,9 +1633,10 @@ $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_overflowing_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (self, true)
                 } else {
@@ -1661,17 +1660,16 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
-
 assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringify!($SelfT),
 "::MIN, true));
 ```"),
             #[inline]
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (self, true)
                 } else {
@@ -1695,17 +1693,17 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_rem(2), (1, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem(-1), (0, true));",
 $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_overflowing_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (0, true)
                 } else {
@@ -1730,16 +1728,15 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-use std::", stringify!($SelfT), ";
-
 assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (0, true)
                 } else {
@@ -1761,8 +1758,6 @@ minimum value will be returned again and `true` will be returned for an overflow
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
 assert_eq!(2", stringify!($SelfT), ".overflowing_neg(), (-2, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_neg(), (", stringify!($SelfT),
 "::MIN, true));", $EndFeature, "
@@ -1848,8 +1843,8 @@ Basic usage:
 ```
 ", $Feature, "assert_eq!(10", stringify!($SelfT), ".overflowing_abs(), (10, false));
 assert_eq!((-10", stringify!($SelfT), ").overflowing_abs(), (10, false));
-assert_eq!((", stringify!($SelfT), "::min_value()).overflowing_abs(), (", stringify!($SelfT),
-"::min_value(), true));",
+assert_eq!((", stringify!($SelfT), "::MIN).overflowing_abs(), (", stringify!($SelfT),
+"::MIN, true));",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
@@ -1876,10 +1871,11 @@ assert_eq!(3i8.overflowing_pow(5), (-13, true));",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
+            pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
                 let mut base = self;
                 let mut acc: Self = 1;
                 let mut overflown = false;
@@ -1925,11 +1921,12 @@ assert_eq!(x.pow(5), 32);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub fn pow(self, mut exp: u32) -> Self {
+            pub const fn pow(self, mut exp: u32) -> Self {
                 let mut base = self;
                 let mut acc = 1;
 
@@ -1981,11 +1978,12 @@ assert_eq!((-a).div_euclid(b), -2); // -7 >= 4 * -2
 assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub fn div_euclid(self, rhs: Self) -> Self {
+            pub const fn div_euclid(self, rhs: Self) -> Self {
                 let q = self / rhs;
                 if self % rhs < 0 {
                     return if rhs > 0 { q - 1 } else { q + 1 }
@@ -2020,11 +2018,12 @@ assert_eq!(a.rem_euclid(-b), 3);
 assert_eq!((-a).rem_euclid(-b), 1);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub fn rem_euclid(self, rhs: Self) -> Self {
+            pub const fn rem_euclid(self, rhs: Self) -> Self {
                 let r = self % rhs;
                 if r < 0 {
                     if rhs < 0 {
@@ -2043,10 +2042,10 @@ assert_eq!((-a).rem_euclid(-b), 1);
 
 # Overflow behavior
 
-The absolute value of `", stringify!($SelfT), "::min_value()` cannot be represented as an
+The absolute value of `", stringify!($SelfT), "::MIN` cannot be represented as an
 `", stringify!($SelfT), "`, and attempting to calculate it will cause an overflow. This means that
 code in debug mode will trigger a panic on this case and optimized code will return `",
-stringify!($SelfT), "::min_value()` without a panic.
+stringify!($SelfT), "::MIN` without a panic.
 
 # Examples
 
@@ -2155,7 +2154,7 @@ let bytes = ", $swap_op, stringify!($SelfT), ".to_be_bytes();
 assert_eq!(bytes, ", $be_bytes, ");
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_unstable(feature = "const_int_conversion", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn to_be_bytes(self) -> [u8; mem::size_of::<Self>()] {
                 self.to_be().to_ne_bytes()
@@ -2175,7 +2174,7 @@ let bytes = ", $swap_op, stringify!($SelfT), ".to_le_bytes();
 assert_eq!(bytes, ", $le_bytes, ");
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_unstable(feature = "const_int_conversion", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn to_le_bytes(self) -> [u8; mem::size_of::<Self>()] {
                 self.to_le().to_ne_bytes()
@@ -2210,12 +2209,20 @@ assert_eq!(
 );
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_unstable(feature = "const_int_conversion", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+            // SAFETY: const sound because integers are plain old datatypes so we can always
+            // transmute them to arrays of bytes
+            #[allow_internal_unstable(const_fn_union)]
             #[inline]
             pub const fn to_ne_bytes(self) -> [u8; mem::size_of::<Self>()] {
+                #[repr(C)]
+                union Bytes {
+                    val: $SelfT,
+                    bytes: [u8; mem::size_of::<$SelfT>()],
+                }
                 // SAFETY: integers are plain old datatypes so we can always transmute them to
                 // arrays of bytes
-                unsafe { mem::transmute(self) }
+                unsafe { Bytes { val: self }.bytes }
             }
         }
 
@@ -2244,7 +2251,7 @@ fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_unstable(feature = "const_int_conversion", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn from_be_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
                 Self::from_be(Self::from_ne_bytes(bytes))
@@ -2277,7 +2284,7 @@ fn read_le_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_unstable(feature = "const_int_conversion", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn from_le_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
                 Self::from_le(Self::from_ne_bytes(bytes))
@@ -2320,11 +2327,51 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_unstable(feature = "const_int_conversion", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+            // SAFETY: const sound because integers are plain old datatypes so we can always
+            // transmute to them
+            #[allow_internal_unstable(const_fn_union)]
             #[inline]
             pub const fn from_ne_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
+                #[repr(C)]
+                union Bytes {
+                    val: $SelfT,
+                    bytes: [u8; mem::size_of::<$SelfT>()],
+                }
                 // SAFETY: integers are plain old datatypes so we can always transmute to them
-                unsafe { mem::transmute(bytes) }
+                unsafe { Bytes { bytes }.val }
+            }
+        }
+
+        doc_comment! {
+            concat!("**This method is soft-deprecated.**
+
+Although using it won’t cause compilation warning,
+new code should use [`", stringify!($SelfT), "::MIN", "`](#associatedconstant.MIN) instead.
+
+Returns the smallest value that can be represented by this integer type."),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline(always)]
+            #[rustc_promotable]
+            #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
+            pub const fn min_value() -> Self {
+                Self::MIN
+            }
+        }
+
+        doc_comment! {
+            concat!("**This method is soft-deprecated.**
+
+Although using it won’t cause compilation warning,
+new code should use [`", stringify!($SelfT), "::MAX", "`](#associatedconstant.MAX) instead.
+
+Returns the largest value that can be represented by this integer type."),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[inline(always)]
+            #[rustc_promotable]
+            #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
+            pub const fn max_value() -> Self {
+                Self::MAX
             }
         }
     }
@@ -2409,10 +2456,9 @@ macro_rules! uint_impl {
 Basic usage:
 
 ```
-#![feature(assoc_int_consts)]
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MIN, 0);", $EndFeature, "
 ```"),
-            #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+            #[stable(feature = "assoc_int_consts", since = "1.43.0")]
             pub const MIN: Self = 0;
         }
 
@@ -2424,30 +2470,11 @@ Basic usage:
 Basic usage:
 
 ```
-#![feature(assoc_int_consts)]
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX, ", stringify!($MaxV), ");",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "assoc_int_consts", reason = "recently added", issue = "68490")]
+            #[stable(feature = "assoc_int_consts", since = "1.43.0")]
             pub const MAX: Self = !0;
-        }
-
-        doc_comment! {
-            "Returns the smallest value that can be represented by this integer type.",
-            #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_promotable]
-            #[inline(always)]
-            #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-            pub const fn min_value() -> Self { Self::MIN }
-        }
-
-        doc_comment! {
-            "Returns the largest value that can be represented by this integer type.",
-            #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_promotable]
-            #[inline(always)]
-            #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-            pub const fn max_value() -> Self { Self::MAX }
         }
 
         doc_comment! {
@@ -2508,7 +2535,7 @@ assert_eq!(n.count_ones(), 3);", $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value().count_zeros(), 0);", $EndFeature, "
+", $Feature, "assert_eq!(", stringify!($SelfT), "::MAX.count_zeros(), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
@@ -2526,7 +2553,7 @@ Basic usage:
 Basic usage:
 
 ```
-", $Feature, "let n = ", stringify!($SelfT), "::max_value() >> 2;
+", $Feature, "let n = ", stringify!($SelfT), "::MAX >> 2;
 
 assert_eq!(n.leading_zeros(), 2);", $EndFeature, "
 ```"),
@@ -2568,7 +2595,7 @@ Basic usage:
 
 ```
 ", $Feature, "#![feature(leading_trailing_ones)]
-let n = !(", stringify!($SelfT), "::max_value() >> 2);
+let n = !(", stringify!($SelfT), "::MAX >> 2);
 
 assert_eq!(n.leading_ones(), 2);", $EndFeature, "
 ```"),
@@ -2842,15 +2869,16 @@ if overflow occurred.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(1), ",
-"Some(", stringify!($SelfT), "::max_value() - 1));
-assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);", $EndFeature, "
+", $Feature, "assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(1), ",
+"Some(", stringify!($SelfT), "::MAX - 1));
+assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_add(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
                 if b {None} else {Some(a)}
             }
@@ -2869,10 +2897,11 @@ Basic usage:
 assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_sub(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
                 if b {None} else {Some(a)}
             }
@@ -2888,13 +2917,14 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(5", stringify!($SelfT), ".checked_mul(1), Some(5));
-assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);", $EndFeature, "
+assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
                 if b {None} else {Some(a)}
             }
@@ -2913,10 +2943,11 @@ Basic usage:
 assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_div(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_div(self, rhs: Self) -> Option<Self> {
                 match rhs {
                     0 => None,
                     // SAFETY: div by zero has been checked above and unsigned types have no other
@@ -2939,10 +2970,11 @@ assert_eq!(128", stringify!($SelfT), ".checked_div_euclid(2), Some(64));
 assert_eq!(1", stringify!($SelfT), ".checked_div_euclid(0), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 {
                     None
                 } else {
@@ -2965,10 +2997,11 @@ Basic usage:
 assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_rem(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 {
                     None
                 } else {
@@ -2992,10 +3025,11 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
+            pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 {
                     None
                 } else {
@@ -3019,8 +3053,9 @@ Basic usage:
 assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[inline]
-            pub fn checked_neg(self) -> Option<Self> {
+            pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
                 if b {None} else {Some(a)}
             }
@@ -3039,10 +3074,11 @@ Basic usage:
 assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_shl(self, rhs: u32) -> Option<Self> {
+            pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
                 if b {None} else {Some(a)}
             }
@@ -3061,10 +3097,11 @@ Basic usage:
 assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_shr(self, rhs: u32) -> Option<Self> {
+            pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
                 if b {None} else {Some(a)}
             }
@@ -3080,29 +3117,30 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(2", stringify!($SelfT), ".checked_pow(5), Some(32));
-assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);", $EndFeature, "
+assert_eq!(", stringify!($SelfT), "::MAX.checked_pow(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_pow(self, mut exp: u32) -> Option<Self> {
+            pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
                 let mut base = self;
                 let mut acc: Self = 1;
 
                 while exp > 1 {
                     if (exp & 1) == 1 {
-                        acc = acc.checked_mul(base)?;
+                        acc = try_opt!(acc.checked_mul(base));
                     }
                     exp /= 2;
-                    base = base.checked_mul(base)?;
+                    base = try_opt!(base.checked_mul(base));
                 }
 
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
                 if exp == 1 {
-                    acc = acc.checked_mul(base)?;
+                    acc = try_opt!(acc.checked_mul(base));
                 }
 
                 Some(acc)
@@ -3163,18 +3201,21 @@ saturating at the numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(2", stringify!($SelfT), ".saturating_mul(10), 20);
 assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($SelfT),
 "::MAX);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn saturating_mul(self, rhs: Self) -> Self {
-                self.checked_mul(rhs).unwrap_or(Self::max_value())
+            pub const fn saturating_mul(self, rhs: Self) -> Self {
+                match self.checked_mul(rhs) {
+                    Some(x) => x,
+                    None => Self::max_value(),
+                }
             }
         }
 
@@ -3187,17 +3228,17 @@ saturating at the numeric bounds instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(4", stringify!($SelfT), ".saturating_pow(3), 64);
 assert_eq!(", stringify!($SelfT), "::MAX.saturating_pow(2), ", stringify!($SelfT), "::MAX);",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn saturating_pow(self, exp: u32) -> Self {
+            pub const fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
                     Some(x) => x,
                     None => Self::max_value(),
@@ -3215,7 +3256,7 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(200", stringify!($SelfT), ".wrapping_add(55), 255);
-assert_eq!(200", stringify!($SelfT), ".wrapping_add(", stringify!($SelfT), "::max_value()), 199);",
+assert_eq!(200", stringify!($SelfT), ".wrapping_add(", stringify!($SelfT), "::MAX), 199);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -3238,7 +3279,7 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_sub(100), 0);
-assert_eq!(100", stringify!($SelfT), ".wrapping_sub(", stringify!($SelfT), "::max_value()), 101);",
+assert_eq!(100", stringify!($SelfT), ".wrapping_sub(", stringify!($SelfT), "::MAX), 101);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -3289,10 +3330,11 @@ Basic usage:
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_div(10), 10);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_div(self, rhs: Self) -> Self {
+            pub const fn wrapping_div(self, rhs: Self) -> Self {
                 self / rhs
             }
         }
@@ -3315,10 +3357,11 @@ Basic usage:
 assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_div_euclid(self, rhs: Self) -> Self {
+            pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
                 self / rhs
             }
         }
@@ -3339,10 +3382,11 @@ Basic usage:
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_rem(10), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_rem(self, rhs: Self) -> Self {
+            pub const fn wrapping_rem(self, rhs: Self) -> Self {
                 self % rhs
             }
         }
@@ -3366,10 +3410,11 @@ Basic usage:
 assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_rem_euclid(self, rhs: Self) -> Self {
+            pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
                 self % rhs
             }
         }
@@ -3483,10 +3528,11 @@ Basic usage:
 assert_eq!(3u8.wrapping_pow(6), 217);", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_pow(self, mut exp: u32) -> Self {
+            pub const fn wrapping_pow(self, mut exp: u32) -> Self {
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -3521,8 +3567,7 @@ have occurred then the wrapped value is returned.
 Basic usage
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));
 assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (0, true));", $EndFeature, "
 ```"),
@@ -3549,8 +3594,7 @@ have occurred then the wrapped value is returned.
 Basic usage
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
-
+", $Feature, "
 assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));
 assert_eq!(0", stringify!($SelfT), ".overflowing_sub(1), (", stringify!($SelfT), "::MAX, true));",
 $EndFeature, "
@@ -3614,9 +3658,10 @@ Basic usage
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_overflowing_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
                 (self / rhs, false)
             }
         }
@@ -3645,9 +3690,10 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));
 ```"),
             #[inline]
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
                 (self / rhs, false)
             }
         }
@@ -3673,9 +3719,10 @@ Basic usage
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[rustc_const_unstable(feature = "const_overflowing_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
                 (self % rhs, false)
             }
         }
@@ -3704,9 +3751,10 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
 ```"),
             #[inline]
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
+            pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
                 (self % rhs, false)
             }
         }
@@ -3805,10 +3853,11 @@ Basic usage:
 assert_eq!(3u8.overflowing_pow(6), (217, true));", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
+            pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
                 let mut base = self;
                 let mut acc: Self = 1;
                 let mut overflown = false;
@@ -3851,11 +3900,12 @@ Basic usage:
 ", $Feature, "assert_eq!(2", stringify!($SelfT), ".pow(5), 32);", $EndFeature, "
 ```"),
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
         #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        pub fn pow(self, mut exp: u32) -> Self {
+        pub const fn pow(self, mut exp: u32) -> Self {
             let mut base = self;
             let mut acc = 1;
 
@@ -3897,11 +3947,12 @@ Basic usage:
 assert_eq!(7", stringify!($SelfT), ".div_euclid(4), 1); // or any other integer type
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub fn div_euclid(self, rhs: Self) -> Self {
+            pub const fn div_euclid(self, rhs: Self) -> Self {
                 self / rhs
             }
         }
@@ -3926,11 +3977,12 @@ Basic usage:
 assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer type
 ```"),
             #[stable(feature = "euclidean_division", since = "1.38.0")]
+            #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub fn rem_euclid(self, rhs: Self) -> Self {
+            pub const fn rem_euclid(self, rhs: Self) -> Self {
                 self % rhs
             }
         }
@@ -3964,7 +4016,8 @@ assert!(!10", stringify!($SelfT), ".is_power_of_two());", $EndFeature, "
         // overflow cases it instead ends up returning the maximum value
         // of the type, and can return 0 for 0.
         #[inline]
-        fn one_less_than_next_power_of_two(self) -> Self {
+        #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+        const fn one_less_than_next_power_of_two(self) -> Self {
             if self <= 1 { return 0; }
 
             let p = self - 1;
@@ -3992,10 +4045,11 @@ Basic usage:
 assert_eq!(3", stringify!($SelfT), ".next_power_of_two(), 4);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
             #[inline]
-            pub fn next_power_of_two(self) -> Self {
-                // Call the trait to get overflow checks
-                ops::Add::add(self.one_less_than_next_power_of_two(), 1)
+            #[rustc_inherit_overflow_checks]
+            pub const fn next_power_of_two(self) -> Self {
+                self.one_less_than_next_power_of_two() + 1
             }
         }
 
@@ -4012,12 +4066,13 @@ Basic usage:
 ", $Feature, "assert_eq!(2", stringify!($SelfT),
 ".checked_next_power_of_two(), Some(2));
 assert_eq!(3", stringify!($SelfT), ".checked_next_power_of_two(), Some(4));
-assert_eq!(", stringify!($SelfT), "::max_value().checked_next_power_of_two(), None);",
+assert_eq!(", stringify!($SelfT), "::MAX.checked_next_power_of_two(), None);",
 $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "rust1", since = "1.0.0")]
-            pub fn checked_next_power_of_two(self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            pub const fn checked_next_power_of_two(self) -> Option<Self> {
                 self.one_less_than_next_power_of_two().checked_add(1)
             }
         }
@@ -4036,12 +4091,13 @@ Basic usage:
 ", $Feature, "
 assert_eq!(2", stringify!($SelfT), ".wrapping_next_power_of_two(), 2);
 assert_eq!(3", stringify!($SelfT), ".wrapping_next_power_of_two(), 4);
-assert_eq!(", stringify!($SelfT), "::max_value().wrapping_next_power_of_two(), 0);",
+assert_eq!(", stringify!($SelfT), "::MAX.wrapping_next_power_of_two(), 0);",
 $EndFeature, "
 ```"),
             #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
                        reason = "needs decision on wrapping behaviour")]
-            pub fn wrapping_next_power_of_two(self) -> Self {
+            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            pub const fn wrapping_next_power_of_two(self) -> Self {
                 self.one_less_than_next_power_of_two().wrapping_add(1)
             }
         }
@@ -4059,7 +4115,7 @@ let bytes = ", $swap_op, stringify!($SelfT), ".to_be_bytes();
 assert_eq!(bytes, ", $be_bytes, ");
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_unstable(feature = "const_int_conversion", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn to_be_bytes(self) -> [u8; mem::size_of::<Self>()] {
                 self.to_be().to_ne_bytes()
@@ -4079,7 +4135,7 @@ let bytes = ", $swap_op, stringify!($SelfT), ".to_le_bytes();
 assert_eq!(bytes, ", $le_bytes, ");
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_unstable(feature = "const_int_conversion", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn to_le_bytes(self) -> [u8; mem::size_of::<Self>()] {
                 self.to_le().to_ne_bytes()
@@ -4114,12 +4170,20 @@ assert_eq!(
 );
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_unstable(feature = "const_int_conversion", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+            // SAFETY: const sound because integers are plain old datatypes so we can always
+            // transmute them to arrays of bytes
+            #[allow_internal_unstable(const_fn_union)]
             #[inline]
             pub const fn to_ne_bytes(self) -> [u8; mem::size_of::<Self>()] {
+                #[repr(C)]
+                union Bytes {
+                    val: $SelfT,
+                    bytes: [u8; mem::size_of::<$SelfT>()],
+                }
                 // SAFETY: integers are plain old datatypes so we can always transmute them to
                 // arrays of bytes
-                unsafe { mem::transmute(self) }
+                unsafe { Bytes { val: self }.bytes }
             }
         }
 
@@ -4148,7 +4212,7 @@ fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_unstable(feature = "const_int_conversion", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn from_be_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
                 Self::from_be(Self::from_ne_bytes(bytes))
@@ -4181,7 +4245,7 @@ fn read_le_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_unstable(feature = "const_int_conversion", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
             #[inline]
             pub const fn from_le_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
                 Self::from_le(Self::from_ne_bytes(bytes))
@@ -4224,12 +4288,48 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 }
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
-            #[rustc_const_unstable(feature = "const_int_conversion", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+            // SAFETY: const sound because integers are plain old datatypes so we can always
+            // transmute to them
+            #[allow_internal_unstable(const_fn_union)]
             #[inline]
             pub const fn from_ne_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
+                #[repr(C)]
+                union Bytes {
+                    val: $SelfT,
+                    bytes: [u8; mem::size_of::<$SelfT>()],
+                }
                 // SAFETY: integers are plain old datatypes so we can always transmute to them
-                unsafe { mem::transmute(bytes) }
+                unsafe { Bytes { bytes }.val }
             }
+        }
+
+        doc_comment! {
+            concat!("**This method is soft-deprecated.**
+
+Although using it won’t cause compilation warning,
+new code should use [`", stringify!($SelfT), "::MIN", "`](#associatedconstant.MIN) instead.
+
+Returns the smallest value that can be represented by this integer type."),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_promotable]
+            #[inline(always)]
+            #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
+            pub const fn min_value() -> Self { Self::MIN }
+        }
+
+        doc_comment! {
+            concat!("**This method is soft-deprecated.**
+
+Although using it won’t cause compilation warning,
+new code should use [`", stringify!($SelfT), "::MAX", "`](#associatedconstant.MAX) instead.
+
+Returns the largest value that can be represented by this integer type."),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_promotable]
+            #[inline(always)]
+            #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
+            pub const fn max_value() -> Self { Self::MAX }
         }
     }
 }
@@ -4251,8 +4351,9 @@ impl u8 {
     /// assert!(!non_ascii.is_ascii());
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.43.0")]
     #[inline]
-    pub fn is_ascii(&self) -> bool {
+    pub const fn is_ascii(&self) -> bool {
         *self & 128 == 0
     }
 
@@ -4399,8 +4500,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_alphabetic());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_alphabetic(&self) -> bool {
+    pub const fn is_ascii_alphabetic(&self) -> bool {
         matches!(*self, b'A'..=b'Z' | b'a'..=b'z')
     }
 
@@ -4431,8 +4533,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_uppercase());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_uppercase(&self) -> bool {
+    pub const fn is_ascii_uppercase(&self) -> bool {
         matches!(*self, b'A'..=b'Z')
     }
 
@@ -4463,8 +4566,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_lowercase());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_lowercase(&self) -> bool {
+    pub const fn is_ascii_lowercase(&self) -> bool {
         matches!(*self, b'a'..=b'z')
     }
 
@@ -4498,8 +4602,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_alphanumeric());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_alphanumeric(&self) -> bool {
+    pub const fn is_ascii_alphanumeric(&self) -> bool {
         matches!(*self, b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z')
     }
 
@@ -4530,8 +4635,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_digit());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_digit(&self) -> bool {
+    pub const fn is_ascii_digit(&self) -> bool {
         matches!(*self, b'0'..=b'9')
     }
 
@@ -4565,8 +4671,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_hexdigit());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_hexdigit(&self) -> bool {
+    pub const fn is_ascii_hexdigit(&self) -> bool {
         matches!(*self, b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f')
     }
 
@@ -4601,8 +4708,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_punctuation());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_punctuation(&self) -> bool {
+    pub const fn is_ascii_punctuation(&self) -> bool {
         matches!(*self, b'!'..=b'/' | b':'..=b'@' | b'['..=b'`' | b'{'..=b'~')
     }
 
@@ -4633,8 +4741,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_graphic());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_graphic(&self) -> bool {
+    pub const fn is_ascii_graphic(&self) -> bool {
         matches!(*self, b'!'..=b'~')
     }
 
@@ -4682,8 +4791,9 @@ impl u8 {
     /// assert!(!esc.is_ascii_whitespace());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_whitespace(&self) -> bool {
+    pub const fn is_ascii_whitespace(&self) -> bool {
         matches!(*self, b'\t' | b'\n' | b'\x0C' | b'\r' | b' ')
     }
 
@@ -4716,8 +4826,9 @@ impl u8 {
     /// assert!(esc.is_ascii_control());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
+    #[rustc_const_unstable(feature = "const_ascii_ctype_on_intrinsics", issue = "68983")]
     #[inline]
-    pub fn is_ascii_control(&self) -> bool {
+    pub const fn is_ascii_control(&self) -> bool {
         matches!(*self, b'\0'..=b'\x1F' | b'\x7F')
     }
 }
@@ -4792,7 +4903,6 @@ impl usize {
 ///
 /// ```
 /// use std::num::FpCategory;
-/// use std::f32;
 ///
 /// let num = 12.4_f32;
 /// let inf = f32::INFINITY;

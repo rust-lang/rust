@@ -13,7 +13,8 @@ doctest = false
 log = "0.4"
 rayon = { version = "0.3.0", package = "rustc-rayon" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
-syntax = { path = "../libsyntax" }
+rustc_ast = { path = "../librustc_ast" }
+rustc_attr = { path = "../librustc_attr" }
 rustc_builtin_macros = { path = "../librustc_builtin_macros" }
 rustc_expand = { path = "../librustc_expand" }
 rustc_parse = { path = "../librustc_parse" }
@@ -27,9 +28,10 @@ rustc_incremental = { path = "../librustc_incremental" }
 rustc_traits = { path = "../librustc_traits" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
-rustc_codegen_utils = { path = "../librustc_codegen_utils" }
+rustc_symbol_mangling = { path = "../librustc_symbol_mangling" }
 rustc_codegen_llvm = { path = "../librustc_codegen_llvm", optional = true }
 rustc_hir = { path = "../librustc_hir" }
+rustc_infer = { path = "../librustc_infer" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_mir = { path = "../librustc_mir" }
 rustc_mir_build = { path = "../librustc_mir_build" }
@@ -40,6 +42,7 @@ rustc_errors = { path = "../librustc_errors" }
 rustc_plugin_impl = { path = "../librustc_plugin_impl" }
 rustc_privacy = { path = "../librustc_privacy" }
 rustc_resolve = { path = "../librustc_resolve" }
+rustc_trait_selection = { path = "../librustc_trait_selection" }
 rustc_ty = { path = "../librustc_ty" }
 tempfile = "3.0.5"
 once_cell = "1"

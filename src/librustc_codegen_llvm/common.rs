@@ -18,8 +18,8 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 
 use libc::{c_char, c_uint};
 
+use rustc_ast::ast::Mutability;
 use rustc_span::symbol::Symbol;
-use syntax::ast::Mutability;
 
 pub use crate::context::CodegenCx;
 
@@ -91,19 +91,16 @@ impl BackendTypes for CodegenCx<'ll, 'tcx> {
     type Funclet = Funclet<'ll>;
 
     type DIScope = &'ll llvm::debuginfo::DIScope;
+    type DIVariable = &'ll llvm::debuginfo::DIVariable;
 }
 
 impl CodegenCx<'ll, 'tcx> {
     pub fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
-        unsafe {
-            return llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint);
-        }
+        unsafe { llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint) }
     }
 
     pub fn const_vector(&self, elts: &[&'ll Value]) -> &'ll Value {
-        unsafe {
-            return llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint);
-        }
+        unsafe { llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint) }
     }
 
     pub fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
@@ -258,11 +255,14 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let base_addr = match alloc_kind {
                     Some(GlobalAlloc::Memory(alloc)) => {
                         let init = const_alloc_to_llvm(self, alloc);
-                        if alloc.mutability == Mutability::Mut {
-                            self.static_addr_of_mut(init, alloc.align, None)
-                        } else {
-                            self.static_addr_of(init, alloc.align, None)
+                        let value = match alloc.mutability {
+                            Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
+                            _ => self.static_addr_of(init, alloc.align, None),
+                        };
+                        if !self.sess().fewer_names() {
+                            llvm::set_value_name(value, format!("{:?}", ptr.alloc_id).as_bytes());
                         }
+                        value
                     }
                     Some(GlobalAlloc::Function(fn_instance)) => self.get_fn_addr(fn_instance),
                     Some(GlobalAlloc::Static(def_id)) => {
@@ -319,14 +319,14 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
-pub fn val_ty(v: &'ll Value) -> &'ll Type {
+pub fn val_ty(v: &Value) -> &Type {
     unsafe { llvm::LLVMTypeOf(v) }
 }
 
 pub fn bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
-        return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
+        llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True)
     }
 }
 
@@ -341,6 +341,6 @@ fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
     ((hi as u128) << 64) | (lo as u128)
 }
 
-fn try_as_const_integral(v: &'ll Value) -> Option<&'ll ConstantInt> {
+fn try_as_const_integral(v: &Value) -> Option<&ConstantInt> {
     unsafe { llvm::LLVMIsAConstantInt(v) }
 }

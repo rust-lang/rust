@@ -11,8 +11,6 @@ LL |         ()+()
    |         --^-- ()
    |         |
    |         ()
-   |
-   = note: an implementation of `std::ops::Add` might be missing for `()`
 
 error: aborting due to 2 previous errors
 

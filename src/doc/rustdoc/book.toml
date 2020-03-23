@@ -1,0 +1,4 @@
+[book]
+authors = ["The Rust Project Developers"]
+src = "src"
+title = "The rustdoc book"

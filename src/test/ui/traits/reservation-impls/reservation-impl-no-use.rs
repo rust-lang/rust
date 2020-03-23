@@ -1,5 +1,3 @@
-// compile-fail
-
 // check that reservation impls can't be used as normal impls in positive reasoning.
 
 #![feature(rustc_attrs)]

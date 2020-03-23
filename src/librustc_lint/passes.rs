@@ -1,11 +1,11 @@
 use crate::context::{EarlyContext, LateContext};
 
+use rustc_ast::ast;
 use rustc_data_structures::sync;
 use rustc_hir as hir;
 use rustc_session::lint::builtin::HardwiredLints;
 use rustc_session::lint::LintPass;
 use rustc_span::Span;
-use syntax::ast;
 
 #[macro_export]
 macro_rules! late_lint_methods {
@@ -179,10 +179,9 @@ macro_rules! early_lint_methods {
             fn check_where_predicate(a: &ast::WherePredicate);
             fn check_poly_trait_ref(a: &ast::PolyTraitRef,
                                     b: &ast::TraitBoundModifier);
-            fn check_fn(a: syntax::visit::FnKind<'_>, b: &ast::FnDecl, c: Span, d_: ast::NodeId);
+            fn check_fn(a: rustc_ast::visit::FnKind<'_>, c: Span, d_: ast::NodeId);
             fn check_fn_post(
-                a: syntax::visit::FnKind<'_>,
-                b: &ast::FnDecl,
+                a: rustc_ast::visit::FnKind<'_>,
                 c: Span,
                 d: ast::NodeId
             );
@@ -199,7 +198,7 @@ macro_rules! early_lint_methods {
             fn check_path(a: &ast::Path, b: ast::NodeId);
             fn check_attribute(a: &ast::Attribute);
             fn check_mac_def(a: &ast::MacroDef, b: ast::NodeId);
-            fn check_mac(a: &ast::Mac);
+            fn check_mac(a: &ast::MacCall);
 
             /// Called when entering a syntax node that can have lint attributes such
             /// as `#[allow(...)]`. Called with *all* the attributes of that node.

@@ -10,11 +10,13 @@ error[E0541]: unknown meta item 'sinse'
 LL | #[stable(feature = "a", sinse = "1.0.0")]
    |                         ^^^^^^^^^^^^^^^ expected one of `since`, `note`
 
-error[E0545]: incorrect 'issue'
-  --> $DIR/stability-attribute-sanity-2.rs:13:1
+error[E0545]: `issue` must be a non-zero numeric string or "none"
+  --> $DIR/stability-attribute-sanity-2.rs:13:27
    |
 LL | #[unstable(feature = "a", issue = "no")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                           ^^^^^^^^----
+   |                                   |
+   |                                   invalid digit found in string
 
 error: aborting due to 3 previous errors
 

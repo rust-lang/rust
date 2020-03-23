@@ -1,16 +1,13 @@
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/issue-20005.rs:8:5
+  --> $DIR/issue-20005.rs:10:49
    |
-LL |   trait From<Src> {
-   |   --------------- required by `From`
+LL | trait From<Src> {
+   | --------------- required by `From`
 ...
-LL | /     fn to<Dst>(
-LL | |         self
-LL | |     ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
-   | |                                                           - help: consider further restricting `Self`: `, Self: std::marker::Sized`
-LL | |         From::from(self)
-LL | |     }
-   | |_____^ doesn't have a size known at compile-time
+LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
+   |                                                 ^^^^^^^^^^- help: consider further restricting `Self`: `, Self: std::marker::Sized`
+   |                                                 |
+   |                                                 doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `Self`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>

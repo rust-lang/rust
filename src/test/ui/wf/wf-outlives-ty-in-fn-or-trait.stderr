@@ -2,7 +2,7 @@ error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/wf-outlives-ty-in-fn-or-trait.rs:9:5
    |
 LL | impl<'a, T> Trait<'a, T> for usize {
-   |          - help: consider adding an explicit lifetime bound `T: 'a`...
+   |          - help: consider adding an explicit lifetime bound...: `T: 'a`
 LL |     type Out = &'a fn(T);
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
@@ -16,7 +16,7 @@ error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/wf-outlives-ty-in-fn-or-trait.rs:19:5
    |
 LL | impl<'a, T> Trait<'a, T> for u32 {
-   |          - help: consider adding an explicit lifetime bound `T: 'a`...
+   |          - help: consider adding an explicit lifetime bound...: `T: 'a`
 LL |     type Out = &'a dyn Baz<T>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |

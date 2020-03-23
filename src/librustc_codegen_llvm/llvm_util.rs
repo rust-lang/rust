@@ -2,10 +2,10 @@ use crate::back::write::create_informational_target_machine;
 use crate::llvm;
 use libc::c_int;
 use rustc::bug;
-use rustc::session::config::PrintRequest;
-use rustc::session::Session;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::UnstableFeatures;
+use rustc_session::config::PrintRequest;
+use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
@@ -61,7 +61,7 @@ unsafe fn configure_llvm(sess: &Session) {
     let sess_args = cg_opts.chain(tg_opts);
 
     let user_specified_args: FxHashSet<_> =
-        sess_args.clone().map(|s| llvm_arg_to_arg_name(s)).filter(|s| s.len() > 0).collect();
+        sess_args.clone().map(|s| llvm_arg_to_arg_name(s)).filter(|s| !s.is_empty()).collect();
 
     {
         // This adds the given argument to LLVM. Unless `force` is true
@@ -113,11 +113,29 @@ unsafe fn configure_llvm(sess: &Session) {
         }
     }
 
+    if sess.opts.debugging_opts.llvm_time_trace && get_major_version() >= 9 {
+        // time-trace is not thread safe and running it in parallel will cause seg faults.
+        if !sess.opts.debugging_opts.no_parallel_llvm {
+            bug!("`-Z llvm-time-trace` requires `-Z no-parallel-llvm")
+        }
+
+        llvm::LLVMTimeTraceProfilerInitialize();
+    }
+
     llvm::LLVMInitializePasses();
 
     ::rustc_llvm::initialize_available_targets();
 
     llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr());
+}
+
+pub fn time_trace_profiler_finish(file_name: &str) {
+    unsafe {
+        if get_major_version() >= 9 {
+            let file_name = CString::new(file_name).unwrap();
+            llvm::LLVMTimeTraceProfilerFinish(file_name.as_ptr());
+        }
+    }
 }
 
 // WARNING: the features after applying `to_llvm_feature` must be known

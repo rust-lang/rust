@@ -11,12 +11,12 @@
 
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_span::symbol::{sym, Symbol};
-use syntax::ast;
 
 struct DiagnosticItemCollector<'tcx> {
     // items from this crate
@@ -73,10 +73,10 @@ fn collect_item(
                 )),
             };
             if let Some(span) = tcx.hir().span_if_local(original_def_id) {
-                err.span_note(span, "first defined here");
+                err.span_note(span, "the diagnostic item is first defined here");
             } else {
                 err.note(&format!(
-                    "first defined in crate `{}`.",
+                    "the diagnostic item is first defined in crate `{}`.",
                     tcx.crate_name(original_def_id.krate)
                 ));
             }

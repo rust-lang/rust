@@ -3,6 +3,7 @@
 use std::iter::once;
 
 use rustc::ty;
+use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -11,9 +12,7 @@ use rustc_hir::Mutability;
 use rustc_metadata::creader::LoadedMacro;
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::ast;
 
 use crate::clean::{self, GetDefId, ToSource, TypeKind};
 use crate::core::DocContext;
@@ -42,11 +41,7 @@ pub fn try_inline(
     attrs: Option<Attrs<'_>>,
     visited: &mut FxHashSet<DefId>,
 ) -> Option<Vec<clean::Item>> {
-    let did = if let Some(did) = res.opt_def_id() {
-        did
-    } else {
-        return None;
-    };
+    let did = res.opt_def_id()?;
     if did.is_local() {
         return None;
     }
@@ -190,13 +185,14 @@ pub fn record_extern_fqn(cx: &DocContext<'_>, did: DefId, kind: clean::TypeKind)
 }
 
 pub fn build_external_trait(cx: &DocContext<'_>, did: DefId) -> clean::Trait {
+    let trait_items =
+        cx.tcx.associated_items(did).in_definition_order().map(|item| item.clean(cx)).collect();
+
     let auto_trait = cx.tcx.trait_def(did).has_auto_impl;
-    let trait_items = cx.tcx.associated_items(did).map(|item| item.clean(cx)).collect();
     let predicates = cx.tcx.predicates_of(did);
     let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
-    let is_spotlight = load_attrs(cx, did).clean(cx).has_doc_flag(sym::spotlight);
     let is_auto = cx.tcx.trait_is_auto(did);
     clean::Trait {
         auto: auto_trait,
@@ -204,7 +200,6 @@ pub fn build_external_trait(cx: &DocContext<'_>, did: DefId) -> clean::Trait {
         generics,
         items: trait_items,
         bounds: supertrait_bounds,
-        is_spotlight,
         is_auto,
     }
 }
@@ -376,6 +371,7 @@ pub fn build_impl(
     } else {
         (
             tcx.associated_items(did)
+                .in_definition_order()
                 .filter_map(|item| {
                     if associated_trait.is_some() || item.vis == ty::Visibility::Public {
                         Some(item.clean(cx))
@@ -401,9 +397,7 @@ pub fn build_impl(
 
     let provided = trait_
         .def_id()
-        .map(|did| {
-            tcx.provided_trait_methods(did).into_iter().map(|meth| meth.ident.to_string()).collect()
-        })
+        .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.ident.to_string()).collect())
         .unwrap_or_default();
 
     debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
@@ -580,7 +574,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
                     name: ref _name,
                 },
             ref bounds,
-        } => !(*s == "Self" && did == trait_did) && !bounds.is_empty(),
+        } => !(bounds.is_empty() || *s == "Self" && did == trait_did),
         _ => true,
     });
     g

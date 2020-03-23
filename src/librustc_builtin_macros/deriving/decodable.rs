@@ -4,12 +4,12 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::pathvec_std;
 
+use rustc_ast::ast;
+use rustc_ast::ast::{Expr, MetaItem, Mutability};
+use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
-use syntax::ast;
-use syntax::ast::{Expr, MetaItem, Mutability};
-use syntax::ptr::P;
 
 pub fn expand_deriving_rustc_decodable(
     cx: &mut ExtCtxt<'_>,
@@ -87,7 +87,7 @@ fn decodable_substructure(
     let blkarg = cx.ident_of("_d", trait_span);
     let blkdecoder = cx.expr_ident(trait_span, blkarg);
 
-    return match *substr.fields {
+    match *substr.fields {
         StaticStruct(_, ref summary) => {
             let nfields = match *summary {
                 Unnamed(ref fields, _) => fields.len(),
@@ -178,7 +178,7 @@ fn decodable_substructure(
             )
         }
         _ => cx.bug("expected StaticEnum or StaticStruct in derive(Decodable)"),
-    };
+    }
 }
 
 /// Creates a decoder for a single enum variant/struct:

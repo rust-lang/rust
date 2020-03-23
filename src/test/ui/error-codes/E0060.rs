@@ -5,5 +5,5 @@ extern "C" {
 fn main() {
     unsafe { printf(); }
     //~^ ERROR E0060
-    //~| expected at least 1 parameter
+    //~| expected at least 1 argument
 }

@@ -1,14 +1,18 @@
-error[E0057]: this function takes 1 parameter but 0 parameters were supplied
+error[E0057]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/E0057.rs:3:13
    |
 LL |     let a = f();
-   |             ^^^ expected 1 parameter
+   |             ^-- supplied 0 arguments
+   |             |
+   |             expected 1 argument
 
-error[E0057]: this function takes 1 parameter but 2 parameters were supplied
+error[E0057]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/E0057.rs:5:13
    |
 LL |     let c = f(2, 3);
-   |             ^^^^^^^ expected 1 parameter
+   |             ^ -  - supplied 2 arguments
+   |             |
+   |             expected 1 argument
 
 error: aborting due to 2 previous errors
 

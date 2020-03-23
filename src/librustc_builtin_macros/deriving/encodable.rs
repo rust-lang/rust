@@ -89,11 +89,11 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::pathvec_std;
 
+use rustc_ast::ast::{Expr, ExprKind, MetaItem, Mutability};
+use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
-use syntax::ast::{Expr, ExprKind, MetaItem, Mutability};
-use syntax::ptr::P;
 
 pub fn expand_deriving_rustc_encodable(
     cx: &mut ExtCtxt<'_>,
@@ -173,7 +173,7 @@ fn encodable_substructure(
         ],
     ));
 
-    return match *substr.fields {
+    match *substr.fields {
         Struct(_, ref fields) => {
             let emit_struct_field = cx.ident_of("emit_struct_field", trait_span);
             let mut stmts = Vec::new();
@@ -283,5 +283,5 @@ fn encodable_substructure(
         }
 
         _ => cx.bug("expected Struct or EnumMatching in derive(Encodable)"),
-    };
+    }
 }

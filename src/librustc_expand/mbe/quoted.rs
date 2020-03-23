@@ -1,12 +1,12 @@
 use crate::mbe::macro_parser;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, SequenceRepetition, TokenTree};
 
+use rustc_ast::ast;
+use rustc_ast::token::{self, Token};
+use rustc_ast::tokenstream;
+use rustc_ast_pretty::pprust;
+use rustc_session::parse::ParseSess;
 use rustc_span::symbol::kw;
-use syntax::ast;
-use syntax::print::pprust;
-use syntax::sess::ParseSess;
-use syntax::token::{self, Token};
-use syntax::tokenstream;
 
 use rustc_span::Span;
 
@@ -112,7 +112,7 @@ fn parse_tree(
                     sess.span_diagnostic.span_err(span.entire(), &msg);
                 }
                 // Parse the contents of the sequence itself
-                let sequence = parse(tts.into(), expect_matchers, sess);
+                let sequence = parse(tts, expect_matchers, sess);
                 // Get the Kleene operator and optional separator
                 let (separator, kleene) = parse_sep_and_kleene_op(trees, span.entire(), sess);
                 // Count the number of captured "names" (i.e., named metavars)
@@ -159,7 +159,7 @@ fn parse_tree(
         // descend into the delimited set and further parse it.
         tokenstream::TokenTree::Delimited(span, delim, tts) => TokenTree::Delimited(
             span,
-            Lrc::new(Delimited { delim, tts: parse(tts.into(), expect_matchers, sess) }),
+            Lrc::new(Delimited { delim, tts: parse(tts, expect_matchers, sess) }),
         ),
     }
 }

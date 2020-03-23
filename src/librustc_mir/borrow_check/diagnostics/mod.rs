@@ -51,7 +51,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(super) fn add_moved_or_invoked_closure_note(
         &self,
         location: Location,
-        place: PlaceRef<'cx, 'tcx>,
+        place: PlaceRef<'tcx>,
         diag: &mut DiagnosticBuilder<'_>,
     ) {
         debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
@@ -139,7 +139,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     /// End-user visible description of `place` if one can be found. If the
     /// place is a temporary for instance, None will be returned.
-    pub(super) fn describe_place(&self, place_ref: PlaceRef<'cx, 'tcx>) -> Option<String> {
+    pub(super) fn describe_place(&self, place_ref: PlaceRef<'tcx>) -> Option<String> {
         self.describe_place_with_options(place_ref, IncludingDowncast(false))
     }
 
@@ -149,7 +149,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// `Downcast` and `IncludingDowncast` is true
     pub(super) fn describe_place_with_options(
         &self,
-        place: PlaceRef<'cx, 'tcx>,
+        place: PlaceRef<'tcx>,
         including_downcast: IncludingDowncast,
     ) -> Option<String> {
         let mut buf = String::new();
@@ -162,7 +162,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Appends end-user visible description of `place` to `buf`.
     fn append_place_to_string(
         &self,
-        place: PlaceRef<'cx, 'tcx>,
+        place: PlaceRef<'tcx>,
         buf: &mut String,
         mut autoderef: bool,
         including_downcast: &IncludingDowncast,
@@ -175,7 +175,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if self.body.local_decls[local].is_ref_for_guard() =>
             {
                 self.append_place_to_string(
-                    PlaceRef { local: local, projection: &[] },
+                    PlaceRef { local, projection: &[] },
                     buf,
                     autoderef,
                     &including_downcast,
@@ -303,7 +303,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// End-user visible description of the `field`nth field of `base`
-    fn describe_field(&self, place: PlaceRef<'cx, 'tcx>, field: Field) -> String {
+    fn describe_field(&self, place: PlaceRef<'tcx>, field: Field) -> String {
         // FIXME Place2 Make this work iteratively
         match place {
             PlaceRef { local, projection: [] } => {
@@ -399,7 +399,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     pub(super) fn borrowed_content_source(
         &self,
-        deref_base: PlaceRef<'cx, 'tcx>,
+        deref_base: PlaceRef<'tcx>,
     ) -> BorrowedContentSource<'tcx> {
         let tcx = self.infcx.tcx;
 
@@ -619,14 +619,14 @@ pub(super) enum BorrowedContentSource<'tcx> {
 impl BorrowedContentSource<'tcx> {
     pub(super) fn describe_for_unnamed_place(&self) -> String {
         match *self {
-            BorrowedContentSource::DerefRawPointer => format!("a raw pointer"),
-            BorrowedContentSource::DerefSharedRef => format!("a shared reference"),
-            BorrowedContentSource::DerefMutableRef => format!("a mutable reference"),
+            BorrowedContentSource::DerefRawPointer => "a raw pointer".to_string(),
+            BorrowedContentSource::DerefSharedRef => "a shared reference".to_string(),
+            BorrowedContentSource::DerefMutableRef => "a mutable reference".to_string(),
             BorrowedContentSource::OverloadedDeref(ty) => {
                 if ty.is_rc() {
-                    format!("an `Rc`")
+                    "an `Rc`".to_string()
                 } else if ty.is_arc() {
-                    format!("an `Arc`")
+                    "an `Arc`".to_string()
                 } else {
                     format!("dereference of `{}`", ty)
                 }
@@ -649,16 +649,16 @@ impl BorrowedContentSource<'tcx> {
 
     pub(super) fn describe_for_immutable_place(&self) -> String {
         match *self {
-            BorrowedContentSource::DerefRawPointer => format!("a `*const` pointer"),
-            BorrowedContentSource::DerefSharedRef => format!("a `&` reference"),
+            BorrowedContentSource::DerefRawPointer => "a `*const` pointer".to_string(),
+            BorrowedContentSource::DerefSharedRef => "a `&` reference".to_string(),
             BorrowedContentSource::DerefMutableRef => {
                 bug!("describe_for_immutable_place: DerefMutableRef isn't immutable")
             }
             BorrowedContentSource::OverloadedDeref(ty) => {
                 if ty.is_rc() {
-                    format!("an `Rc`")
+                    "an `Rc`".to_string()
                 } else if ty.is_arc() {
-                    format!("an `Arc`")
+                    "an `Arc`".to_string()
                 } else {
                     format!("a dereference of `{}`", ty)
                 }
@@ -694,7 +694,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Finds the spans associated to a move or copy of move_place at location.
     pub(super) fn move_spans(
         &self,
-        moved_place: PlaceRef<'cx, 'tcx>, // Could also be an upvar.
+        moved_place: PlaceRef<'tcx>, // Could also be an upvar.
         location: Location,
     ) -> UseSpans {
         use self::UseSpans::*;
@@ -782,7 +782,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn closure_span(
         &self,
         def_id: DefId,
-        target_place: PlaceRef<'cx, 'tcx>,
+        target_place: PlaceRef<'tcx>,
         places: &Vec<Operand<'tcx>>,
     ) -> Option<(Span, Option<GeneratorKind>, Span)> {
         debug!(

@@ -16,6 +16,7 @@
 use rustc::dep_graph::{label_strs, DepNode};
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast::{self, Attribute, NestedMetaItem};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -28,7 +29,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::iter::FromIterator;
 use std::vec::Vec;
-use syntax::ast::{self, Attribute, NestedMetaItem};
 
 const EXCEPT: Symbol = sym::except;
 const LABEL: Symbol = sym::label;
@@ -53,9 +53,9 @@ const BASE_FN: &[&str] = &[
 
 /// DepNodes for Hir, which is pretty much everything
 const BASE_HIR: &[&str] = &[
-    // Hir and HirBody should be computed for all nodes
-    label_strs::Hir,
-    label_strs::HirBody,
+    // hir_owner and hir_owner_nodes should be computed for all nodes
+    label_strs::hir_owner,
+    label_strs::hir_owner_nodes,
 ];
 
 /// `impl` implementation of struct/trait
@@ -78,7 +78,7 @@ const BASE_STRUCT: &[&str] =
 const BASE_TRAIT_DEF: &[&str] = &[
     label_strs::associated_item_def_ids,
     label_strs::generics_of,
-    label_strs::is_object_safe,
+    label_strs::object_safety_violations,
     label_strs::predicates_of,
     label_strs::specialization_graph_of,
     label_strs::trait_def,
@@ -168,7 +168,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
 
         // Note that we cannot use the existing "unused attribute"-infrastructure
         // here, since that is running before codegen. This is also the reason why
-        // all codegen-specific attributes are `Whitelisted` in syntax::feature_gate.
+        // all codegen-specific attributes are `Whitelisted` in rustc_ast::feature_gate.
         all_attrs.report_unchecked_attrs(&dirty_clean_visitor.checked_attrs);
     })
 }
@@ -328,12 +328,12 @@ impl DirtyCleanVisitor<'tcx> {
                 }
             }
             HirNode::TraitItem(item) => match item.kind {
-                TraitItemKind::Method(..) => ("Node::TraitItem", LABELS_FN_IN_TRAIT),
+                TraitItemKind::Fn(..) => ("Node::TraitItem", LABELS_FN_IN_TRAIT),
                 TraitItemKind::Const(..) => ("NodeTraitConst", LABELS_CONST_IN_TRAIT),
                 TraitItemKind::Type(..) => ("NodeTraitType", LABELS_CONST_IN_TRAIT),
             },
             HirNode::ImplItem(item) => match item.kind {
-                ImplItemKind::Method(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
+                ImplItemKind::Fn(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                 ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                 ImplItemKind::TyAlias(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
                 ImplItemKind::OpaqueTy(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
@@ -343,7 +343,8 @@ impl DirtyCleanVisitor<'tcx> {
                 &format!("clean/dirty auto-assertions not yet defined for {:?}", node),
             ),
         };
-        let labels = Labels::from_iter(labels.iter().flat_map(|s| s.iter().map(|l| l.to_string())));
+        let labels =
+            Labels::from_iter(labels.iter().flat_map(|s| s.iter().map(|l| (*l).to_string())));
         (name, labels)
     }
 
@@ -537,10 +538,7 @@ impl FindAllAttrs<'tcx> {
             if !checked_attrs.contains(&attr.id) {
                 self.tcx.sess.span_err(
                     attr.span,
-                    &format!(
-                        "found unchecked \
-                    `#[rustc_dirty]` / `#[rustc_clean]` attribute"
-                    ),
+                    "found unchecked `#[rustc_dirty]` / `#[rustc_clean]` attribute",
                 );
             }
         }
@@ -550,8 +548,8 @@ impl FindAllAttrs<'tcx> {
 impl intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, Self::Map> {
-        intravisit::NestedVisitorMap::All(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::All(self.tcx.hir())
     }
 
     fn visit_attribute(&mut self, attr: &'tcx Attribute) {

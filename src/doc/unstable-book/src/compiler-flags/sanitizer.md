@@ -170,7 +170,7 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
 ## MemorySanitizer
 
 Use of uninitialized memory. Note that we are using `-Zbuild-std` to instrument
-standard library, and passing `-msan-track-origins=2` to the LLVM to track
+the standard library, and passing `-Zsanitizer-track-origins` to track the
 origins of uninitialized memory:
 
 ```shell
@@ -185,7 +185,15 @@ fn main() {
     }
 }
 
-$ env RUSTFLAGS="-Zsanitizer=memory -Cllvm-args=-msan-track-origins=2" cargo -Zbuild-std run --target x86_64-unknown-linux-gnu
+$ export \
+  CC=clang \
+  CXX=clang++ \
+  CFLAGS='-fsanitize=memory -fsanitize-memory-track-origins' \
+  CXXFLAGS='-fsanitize=memory -fsanitize-memory-track-origins' \
+  RUSTFLAGS='-Zsanitizer=memory -Zsanitizer-memory-track-origins' \
+  RUSTDOCFLAGS='-Zsanitizer=memory -Zsanitizer-memory-track-origins'
+$ cargo clean
+$ cargo -Zbuild-std run --target x86_64-unknown-linux-gnu
 ==9416==WARNING: MemorySanitizer: use-of-uninitialized-value
     #0 0x560c04f7488a in core::fmt::num::imp::fmt_u64::haa293b0b098501ca $RUST/build/x86_64-unknown-linux-gnu/stage1/lib/rustlib/src/rust/src/libcore/fmt/num.rs:202:16
 ...

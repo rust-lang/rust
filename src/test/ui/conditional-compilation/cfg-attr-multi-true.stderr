@@ -30,7 +30,7 @@ warning: unused `MustUseDeprecated` that must be used
 LL |     MustUseDeprecated::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/cfg-attr-multi-true.rs:7:9
    |
 LL | #![warn(unused_must_use)]

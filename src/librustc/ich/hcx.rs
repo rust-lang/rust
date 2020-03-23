@@ -1,26 +1,25 @@
-use crate::hir::map::definitions::Definitions;
-use crate::hir::map::DefPathHash;
+use crate::hir::map::definitions::{DefPathHash, Definitions};
 use crate::ich::{self, CachingSourceMapView};
 use crate::middle::cstore::CrateStore;
-use crate::session::Session;
 use crate::ty::{fast_reject, TyCtxt};
 
+use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, DefIndex};
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, SourceFile};
-use syntax::ast;
 
 use smallvec::SmallVec;
 use std::cmp::Ord;
 
 fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
-    debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
-    ich::IGNORED_ATTRIBUTES.iter().map(|&s| s).collect()
+    debug_assert!(!ich::IGNORED_ATTRIBUTES.is_empty());
+    ich::IGNORED_ATTRIBUTES.iter().copied().collect()
 }
 
 /// This is the context state available during incr. comp. hashing. It contains
@@ -124,16 +123,16 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
-        if def_id.is_local() {
-            self.definitions.def_path_hash(def_id.index)
+        if let Some(def_id) = def_id.as_local() {
+            self.local_def_path_hash(def_id)
         } else {
             self.cstore.def_path_hash(def_id)
         }
     }
 
     #[inline]
-    pub fn local_def_path_hash(&self, def_index: DefIndex) -> DefPathHash {
-        self.definitions.def_path_hash(def_index)
+    pub fn local_def_path_hash(&self, def_id: LocalDefId) -> DefPathHash {
+        self.definitions.def_path_hash(def_id)
     }
 
     #[inline]
@@ -149,7 +148,7 @@ impl<'a> StableHashingContext<'a> {
     #[inline]
     pub fn source_map(&mut self) -> &mut CachingSourceMapView<'a> {
         match self.caching_source_map {
-            Some(ref mut cm) => cm,
+            Some(ref mut sm) => sm,
             ref mut none => {
                 *none = Some(CachingSourceMapView::new(self.raw_source_map));
                 none.as_mut().unwrap()
@@ -163,15 +162,6 @@ impl<'a> StableHashingContext<'a> {
             static IGNORED_ATTRIBUTES: FxHashSet<Symbol> = compute_ignored_attr_names();
         }
         IGNORED_ATTRIBUTES.with(|attrs| attrs.contains(&name))
-    }
-
-    pub fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F) {
-        let prev_hash_node_ids = self.node_id_hashing_mode;
-        self.node_id_hashing_mode = NodeIdHashingMode::Ignore;
-
-        f(self);
-
-        self.node_id_hashing_mode = prev_hash_node_ids;
     }
 }
 
@@ -206,47 +196,21 @@ impl<'a> StableHashingContextProvider<'a> for StableHashingContext<'a> {
 
 impl<'a> crate::dep_graph::DepGraphSafe for StableHashingContext<'a> {}
 
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::HirId {
-    type KeyType = (DefPathHash, hir::ItemLocalId);
-
-    #[inline]
-    fn to_stable_hash_key(
-        &self,
-        hcx: &StableHashingContext<'a>,
-    ) -> (DefPathHash, hir::ItemLocalId) {
-        let def_path_hash = hcx.local_def_path_hash(self.owner);
-        (def_path_hash, self.local_id)
-    }
-}
-
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        match hcx.node_id_hashing_mode {
-            NodeIdHashingMode::Ignore => {
-                // Don't do anything.
-            }
-            NodeIdHashingMode::HashDefPath => {
-                hcx.definitions.node_to_hir_id(*self).hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::NodeId {
-    type KeyType = (DefPathHash, hir::ItemLocalId);
-
-    #[inline]
-    fn to_stable_hash_key(
-        &self,
-        hcx: &StableHashingContext<'a>,
-    ) -> (DefPathHash, hir::ItemLocalId) {
-        hcx.definitions.node_to_hir_id(*self).to_stable_hash_key(hcx)
+    fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {
+        panic!("Node IDs should not appear in incremental state");
     }
 }
 
 impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     fn hash_spans(&self) -> bool {
         self.hash_spans
+    }
+
+    #[inline]
+    fn hash_def_id(&mut self, def_id: DefId, hasher: &mut StableHasher) {
+        let hcx = self;
+        hcx.def_path_hash(def_id).hash_stable(hcx, hasher);
     }
 
     fn byte_pos_to_line_and_col(

@@ -1,8 +1,13 @@
 error: the `min` method cannot be invoked on a trait object
-  --> $DIR/imm-ref-trait-object.rs:2:8
+  --> $DIR/imm-ref-trait-object.rs:7:8
    |
 LL |      t.min().unwrap()
    |        ^^^
+   | 
+  ::: $SRC_DIR/libcore/iter/traits/iterator.rs:LL:COL
+   |
+LL |         Self: Sized,
+   |               ----- this has a `Sized` requirement
    |
    = note: you need `&mut dyn std::iter::Iterator<Item = &u64>` instead of `&dyn std::iter::Iterator<Item = &u64>`
 

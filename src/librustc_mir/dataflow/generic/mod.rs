@@ -35,6 +35,9 @@
 use std::io;
 
 use rustc::mir::{self, BasicBlock, Location};
+use rustc::ty::layout::VariantIdx;
+use rustc::ty::{self, TyCtxt};
+use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::{Idx, IndexVec};
 
@@ -43,9 +46,12 @@ use crate::dataflow::BottomValue;
 mod cursor;
 mod engine;
 mod graphviz;
+mod visitor;
 
 pub use self::cursor::{ResultsCursor, ResultsRefCursor};
 pub use self::engine::Engine;
+pub use self::visitor::{visit_results, ResultsVisitor};
+pub use self::visitor::{BorrowckFlowState, BorrowckResults};
 
 /// A dataflow analysis that has converged to fixpoint.
 pub struct Results<'tcx, A>
@@ -68,6 +74,24 @@ where
     /// Gets the entry set for the given block.
     pub fn entry_set_for_block(&self, block: BasicBlock) -> &BitSet<A::Idx> {
         &self.entry_sets[block]
+    }
+
+    pub fn visit_with(
+        &self,
+        body: &'mir mir::Body<'tcx>,
+        blocks: impl IntoIterator<Item = BasicBlock>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
+    ) {
+        visit_results(body, blocks, self, vis)
+    }
+
+    pub fn visit_in_rpo_with(
+        &self,
+        body: &'mir mir::Body<'tcx>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
+    ) {
+        let blocks = mir::traversal::reverse_postorder(body);
+        visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
     }
 }
 
@@ -166,6 +190,59 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         args: &[mir::Operand<'tcx>],
         return_place: &mir::Place<'tcx>,
     );
+
+    /// Updates the current dataflow state with the effect of resuming from a `Yield` terminator.
+    ///
+    /// This is similar to `apply_call_return_effect` in that it only takes place after the
+    /// generator is resumed, not when it is dropped.
+    ///
+    /// By default, no effects happen.
+    fn apply_yield_resume_effect(
+        &self,
+        _state: &mut BitSet<Self::Idx>,
+        _resume_block: BasicBlock,
+        _resume_place: &mir::Place<'tcx>,
+    ) {
+    }
+
+    /// Updates the current dataflow state with the effect of taking a particular branch in a
+    /// `SwitchInt` terminator.
+    ///
+    /// Much like `apply_call_return_effect`, this effect is only propagated along a single
+    /// outgoing edge from this basic block.
+    fn apply_discriminant_switch_effect(
+        &self,
+        _state: &mut BitSet<Self::Idx>,
+        _block: BasicBlock,
+        _enum_place: &mir::Place<'tcx>,
+        _adt: &ty::AdtDef,
+        _variant: VariantIdx,
+    ) {
+    }
+
+    /// Creates an `Engine` to find the fixpoint for this dataflow problem.
+    ///
+    /// You shouldn't need to override this outside this module, since the combination of the
+    /// default impl and the one for all `A: GenKillAnalysis` will do the right thing.
+    /// Its purpose is to enable method chaining like so:
+    ///
+    /// ```ignore(cross-crate-imports)
+    /// let results = MyAnalysis::new(tcx, body)
+    ///     .into_engine(tcx, body, def_id)
+    ///     .iterate_to_fixpoint()
+    ///     .into_results_cursor(body);
+    /// ```
+    fn into_engine(
+        self,
+        tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+        def_id: DefId,
+    ) -> Engine<'mir, 'tcx, Self>
+    where
+        Self: Sized,
+    {
+        Engine::new_generic(tcx, body, def_id, self)
+    }
 }
 
 /// A gen/kill dataflow problem.
@@ -220,6 +297,26 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
         args: &[mir::Operand<'tcx>],
         return_place: &mir::Place<'tcx>,
     );
+
+    /// See `Analysis::apply_yield_resume_effect`.
+    fn yield_resume_effect(
+        &self,
+        _trans: &mut BitSet<Self::Idx>,
+        _resume_block: BasicBlock,
+        _resume_place: &mir::Place<'tcx>,
+    ) {
+    }
+
+    /// See `Analysis::apply_discriminant_switch_effect`.
+    fn discriminant_switch_effect(
+        &self,
+        _state: &mut impl GenKill<Self::Idx>,
+        _block: BasicBlock,
+        _enum_place: &mir::Place<'tcx>,
+        _adt: &ty::AdtDef,
+        _variant: VariantIdx,
+    ) {
+    }
 }
 
 impl<A> Analysis<'tcx> for A
@@ -271,6 +368,38 @@ where
         return_place: &mir::Place<'tcx>,
     ) {
         self.call_return_effect(state, block, func, args, return_place);
+    }
+
+    fn apply_yield_resume_effect(
+        &self,
+        state: &mut BitSet<Self::Idx>,
+        resume_block: BasicBlock,
+        resume_place: &mir::Place<'tcx>,
+    ) {
+        self.yield_resume_effect(state, resume_block, resume_place);
+    }
+
+    fn apply_discriminant_switch_effect(
+        &self,
+        state: &mut BitSet<Self::Idx>,
+        block: BasicBlock,
+        enum_place: &mir::Place<'tcx>,
+        adt: &ty::AdtDef,
+        variant: VariantIdx,
+    ) {
+        self.discriminant_switch_effect(state, block, enum_place, adt, variant);
+    }
+
+    fn into_engine(
+        self,
+        tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+        def_id: DefId,
+    ) -> Engine<'mir, 'tcx, Self>
+    where
+        Self: Sized,
+    {
+        Engine::new_gen_kill(tcx, body, def_id, self)
     }
 }
 

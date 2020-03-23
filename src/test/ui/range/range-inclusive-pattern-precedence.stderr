@@ -16,7 +16,7 @@ warning: `...` range patterns are deprecated
 LL |         &0...9 => {}
    |         ^^^^^^ help: use `..=` for an inclusive range: `&(0..=9)`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/range-inclusive-pattern-precedence.rs:9:9
    |
 LL | #![warn(ellipsis_inclusive_range_patterns)]

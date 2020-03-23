@@ -7,7 +7,7 @@ LL |     let y = (match x { Ok(n) => Ok(n as u32), Err(e) => Err(e) })?;
    |                                    unreachable expression
    |                                    any code following this expression is unreachable
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unreachable-try-pattern.rs:3:9
    |
 LL | #![warn(unreachable_code)]
@@ -19,7 +19,7 @@ warning: unreachable pattern
 LL |     let y = (match x { Ok(n) => Ok(n as u32), Err(e) => Err(e) })?;
    |                        ^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unreachable-try-pattern.rs:4:9
    |
 LL | #![warn(unreachable_patterns)]

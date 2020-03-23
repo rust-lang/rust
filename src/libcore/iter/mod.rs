@@ -43,7 +43,7 @@
 //! are elements, and once they've all been exhausted, will return `None` to
 //! indicate that iteration is finished. Individual iterators may choose to
 //! resume iteration, and so calling [`next`] again may or may not eventually
-//! start returning `Some(Item)` again at some point.
+//! start returning `Some(Item)` again at some point (for example, see [`TryIter`]).
 //!
 //! [`Iterator`]'s full definition includes a number of other methods as well,
 //! but they are default methods, built on top of [`next`], and so you get
@@ -56,6 +56,7 @@
 //! [`Iterator`]: trait.Iterator.html
 //! [`next`]: trait.Iterator.html#tymethod.next
 //! [`Option`]: ../../std/option/enum.Option.html
+//! [`TryIter`]: ../../std/sync/mpsc/struct.TryIter.html
 //!
 //! # The three forms of iteration
 //!
@@ -327,7 +328,7 @@ pub use self::sources::{empty, Empty};
 pub use self::sources::{from_fn, FromFn};
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub use self::sources::{once, Once};
-#[unstable(feature = "iter_once_with", issue = "57581")]
+#[stable(feature = "iter_once_with", since = "1.43.0")]
 pub use self::sources::{once_with, OnceWith};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sources::{repeat, Repeat};

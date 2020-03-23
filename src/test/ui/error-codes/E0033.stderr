@@ -7,11 +7,18 @@ LL |     let trait_obj: &dyn SomeTrait = SomeTrait;
 error[E0038]: the trait `SomeTrait` cannot be made into an object
   --> $DIR/E0033.rs:6:20
    |
+LL | trait SomeTrait {
+   |       --------- this trait cannot be made into an object...
 LL |     fn foo();
-   |        --- associated function `foo` has no `self` parameter
+   |        --- ...because associated function `foo` has no `self` parameter
 ...
 LL |     let trait_obj: &dyn SomeTrait = SomeTrait;
    |                    ^^^^^^^^^^^^^^ the trait `SomeTrait` cannot be made into an object
+   |
+help: consider turning `foo` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
+   |
+LL |     fn foo() where Self: Sized;
+   |              ^^^^^^^^^^^^^^^^^
 
 error[E0033]: type `&dyn SomeTrait` cannot be dereferenced
   --> $DIR/E0033.rs:10:9

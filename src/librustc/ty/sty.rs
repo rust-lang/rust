@@ -17,6 +17,7 @@ use crate::ty::{
 };
 use crate::ty::{List, ParamEnv, ParamEnvAnd, TyS};
 use polonius_engine::Atom;
+use rustc_ast::ast::{self, Ident};
 use rustc_data_structures::captures::Captures;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -29,7 +30,6 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::ops::Range;
-use syntax::ast::{self, Ident};
 
 #[derive(
     Clone,
@@ -118,7 +118,7 @@ impl BoundRegion {
 }
 
 /// N.B., if you change this, you'll probably want to change the corresponding
-/// AST structure in `libsyntax/ast.rs` as well.
+/// AST structure in `librustc_ast/ast.rs` as well.
 #[derive(
     Clone,
     PartialEq,
@@ -346,9 +346,17 @@ static_assert_size!(TyKind<'_>, 24);
 /// ## Generators
 ///
 /// Generators are handled similarly in `GeneratorSubsts`.  The set of
-/// type parameters is similar, but the role of CK and CS are
-/// different. CK represents the "yield type" and CS represents the
-/// "return type" of the generator.
+/// type parameters is similar, but `CK` and `CS` are replaced by the
+/// following type parameters:
+///
+/// * `GS`: The generator's "resume type", which is the type of the
+///   argument passed to `resume`, and the type of `yield` expressions
+///   inside the generator.
+/// * `GY`: The "yield type", which is the type of values passed to
+///   `yield` inside the generator.
+/// * `GR`: The "return type", which is the type of value returned upon
+///   completion of the generator.
+/// * `GW`: The "generator witness".
 #[derive(Copy, Clone, Debug, TypeFoldable)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
@@ -363,7 +371,7 @@ pub struct ClosureSubsts<'tcx> {
 /// parent slice and not canonical substs themselves.
 struct SplitClosureSubsts<'tcx> {
     closure_kind_ty: Ty<'tcx>,
-    closure_sig_ty: Ty<'tcx>,
+    closure_sig_as_fn_ptr_ty: Ty<'tcx>,
     upvar_kinds: &'tcx [GenericArg<'tcx>],
 }
 
@@ -376,7 +384,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
         let parent_len = generics.parent_count;
         SplitClosureSubsts {
             closure_kind_ty: self.substs.type_at(parent_len),
-            closure_sig_ty: self.substs.type_at(parent_len + 1),
+            closure_sig_as_fn_ptr_ty: self.substs.type_at(parent_len + 1),
             upvar_kinds: &self.substs[parent_len + 2..],
         }
     }
@@ -404,12 +412,10 @@ impl<'tcx> ClosureSubsts<'tcx> {
         self.split(def_id, tcx).closure_kind_ty
     }
 
-    /// Returns the type representing the closure signature for this
-    /// closure; may contain type variables during inference. To get
-    /// the closure signature during inference, use
-    /// `infcx.fn_sig(def_id)`.
-    pub fn sig_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
-        self.split(def_id, tcx).closure_sig_ty
+    /// Returns the `fn` pointer type representing the closure signature for this
+    /// closure.
+    pub fn sig_as_fn_ptr_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
+        self.split(def_id, tcx).closure_sig_as_fn_ptr_ty
     }
 
     /// Returns the closure kind for this closure; only usable outside
@@ -421,16 +427,12 @@ impl<'tcx> ClosureSubsts<'tcx> {
         self.split(def_id, tcx).closure_kind_ty.to_opt_closure_kind().unwrap()
     }
 
-    /// Extracts the signature from the closure; only usable outside
-    /// of an inference context, because in that context we know that
-    /// there are no type variables.
-    ///
-    /// If you have an inference context, use `infcx.closure_sig()`.
+    /// Extracts the signature from the closure.
     pub fn sig(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
-        let ty = self.sig_ty(def_id, tcx);
+        let ty = self.sig_as_fn_ptr_ty(def_id, tcx);
         match ty.kind {
             ty::FnPtr(sig) => sig,
-            _ => bug!("closure_sig_ty is not a fn-ptr: {:?}", ty.kind),
+            _ => bug!("closure_sig_as_fn_ptr_ty is not a fn-ptr: {:?}", ty.kind),
         }
     }
 }
@@ -442,6 +444,7 @@ pub struct GeneratorSubsts<'tcx> {
 }
 
 struct SplitGeneratorSubsts<'tcx> {
+    resume_ty: Ty<'tcx>,
     yield_ty: Ty<'tcx>,
     return_ty: Ty<'tcx>,
     witness: Ty<'tcx>,
@@ -453,10 +456,11 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         let generics = tcx.generics_of(def_id);
         let parent_len = generics.parent_count;
         SplitGeneratorSubsts {
-            yield_ty: self.substs.type_at(parent_len),
-            return_ty: self.substs.type_at(parent_len + 1),
-            witness: self.substs.type_at(parent_len + 2),
-            upvar_kinds: &self.substs[parent_len + 3..],
+            resume_ty: self.substs.type_at(parent_len),
+            yield_ty: self.substs.type_at(parent_len + 1),
+            return_ty: self.substs.type_at(parent_len + 2),
+            witness: self.substs.type_at(parent_len + 3),
+            upvar_kinds: &self.substs[parent_len + 4..],
         }
     }
 
@@ -485,6 +489,11 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         })
     }
 
+    /// Returns the type representing the resume type of the generator.
+    pub fn resume_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
+        self.split(def_id, tcx).resume_ty
+    }
+
     /// Returns the type representing the yield type of the generator.
     pub fn yield_ty(self, def_id: DefId, tcx: TyCtxt<'_>) -> Ty<'tcx> {
         self.split(def_id, tcx).yield_ty
@@ -505,10 +514,14 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         ty::Binder::dummy(self.sig(def_id, tcx))
     }
 
-    /// Returns the "generator signature", which consists of its yield
+    /// Returns the "generator signature", which consists of its resume, yield
     /// and return types.
     pub fn sig(self, def_id: DefId, tcx: TyCtxt<'_>) -> GenSig<'tcx> {
-        ty::GenSig { yield_ty: self.yield_ty(def_id, tcx), return_ty: self.return_ty(def_id, tcx) }
+        ty::GenSig {
+            resume_ty: self.resume_ty(def_id, tcx),
+            yield_ty: self.yield_ty(def_id, tcx),
+            return_ty: self.return_ty(def_id, tcx),
+        }
     }
 }
 
@@ -1047,10 +1060,7 @@ impl<'tcx> ProjectionTy<'tcx> {
     ) -> ProjectionTy<'tcx> {
         let item_def_id = tcx
             .associated_items(trait_ref.def_id)
-            .find(|item| {
-                item.kind == ty::AssocKind::Type
-                    && tcx.hygienic_eq(item_name, item.ident, trait_ref.def_id)
-            })
+            .find_by_name_and_kind(tcx, item_name, ty::AssocKind::Type, trait_ref.def_id)
             .unwrap()
             .def_id;
 
@@ -1072,6 +1082,7 @@ impl<'tcx> ProjectionTy<'tcx> {
 
 #[derive(Clone, Debug, TypeFoldable)]
 pub struct GenSig<'tcx> {
+    pub resume_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
 }
@@ -1079,6 +1090,9 @@ pub struct GenSig<'tcx> {
 pub type PolyGenSig<'tcx> = Binder<GenSig<'tcx>>;
 
 impl<'tcx> PolyGenSig<'tcx> {
+    pub fn resume_ty(&self) -> ty::Binder<Ty<'tcx>> {
+        self.map_bound_ref(|sig| sig.resume_ty)
+    }
     pub fn yield_ty(&self) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|sig| sig.yield_ty)
     }
@@ -1173,7 +1187,7 @@ pub struct ParamTy {
 
 impl<'tcx> ParamTy {
     pub fn new(index: u32, name: Symbol) -> ParamTy {
-        ParamTy { index, name: name }
+        ParamTy { index, name }
     }
 
     pub fn for_self() -> ParamTy {
@@ -1269,11 +1283,67 @@ rustc_index::newtype_index! {
 
 pub type Region<'tcx> = &'tcx RegionKind;
 
-/// Representation of regions.
+/// Representation of (lexical) regions. Note that the NLL checker
+/// uses a distinct representation of regions. For this reason, it
+/// internally replaces all the regions with inference variables --
+/// the index of the variable is then used to index into internal NLL
+/// data structures. See `rustc_mir::borrow_check` module for more
+/// information.
 ///
-/// Unlike types, most region variants are "fictitious", not concrete,
-/// regions. Among these, `ReStatic`, `ReEmpty` and `ReScope` are the only
-/// ones representing concrete regions.
+/// ## The Region lattice within a given function
+///
+/// In general, the (lexical, and hence deprecated) region lattice
+/// looks like
+///
+/// ```
+/// static ----------+-----...------+       (greatest)
+/// |                |              |
+/// early-bound and  |              |
+/// free regions     |              |
+/// |                |              |
+/// scope regions    |              |
+/// |                |              |
+/// empty(root)   placeholder(U1)   |
+/// |            /                  |
+/// |           /         placeholder(Un)
+/// empty(U1) --         /
+/// |                   /
+/// ...                /
+/// |                 /
+/// empty(Un) --------                      (smallest)
+/// ```
+///
+/// Early-bound/free regions are the named lifetimes in scope from the
+/// function declaration. They have relationships to one another
+/// determined based on the declared relationships from the
+/// function. They all collectively outlive the scope regions. (See
+/// `RegionRelations` type, and particularly
+/// `crate::infer::outlives::free_region_map::FreeRegionMap`.)
+///
+/// The scope regions are related to one another based on the AST
+/// structure. (See `RegionRelations` type, and particularly the
+/// `rustc::middle::region::ScopeTree`.)
+///
+/// Note that inference variables and bound regions are not included
+/// in this diagram. In the case of inference variables, they should
+/// be inferred to some other region from the diagram.  In the case of
+/// bound regions, they are excluded because they don't make sense to
+/// include -- the diagram indicates the relationship between free
+/// regions.
+///
+/// ## Inference variables
+///
+/// During region inference, we sometimes create inference variables,
+/// represented as `ReVar`. These will be inferred by the code in
+/// `infer::lexical_region_resolve` to some free region from the
+/// lattice above (the minimal region that meets the
+/// constraints).
+///
+/// During NLL checking, where regions are defined differently, we
+/// also use `ReVar` -- in that case, the index is used to index into
+/// the NLL region checker's data structures. The variable may in fact
+/// represent either a free region or an inference variable, in that
+/// case.
 ///
 /// ## Bound Regions
 ///
@@ -1320,11 +1390,11 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// the inference variable is supposed to satisfy the relation
 /// *for every value of the placeholder region*. To ensure that doesn't
 /// happen, you can use `leak_check`. This is more clearly explained
-/// by the [rustc guide].
+/// by the [rustc dev guide].
 ///
 /// [1]: http://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2]: http://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
-/// [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/hrtb.html
+/// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
 #[derive(Clone, PartialEq, Eq, Hash, Copy, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
 pub enum RegionKind {
     /// Region bound in a type or fn declaration which will be
@@ -1356,14 +1426,13 @@ pub enum RegionKind {
     /// Should not exist after typeck.
     RePlaceholder(ty::PlaceholderRegion),
 
-    /// Empty lifetime is for data that is never accessed.
-    /// Bottom in the region lattice. We treat ReEmpty somewhat
-    /// specially; at least right now, we do not generate instances of
-    /// it during the GLB computations, but rather
-    /// generate an error instead. This is to improve error messages.
-    /// The only way to get an instance of ReEmpty is to have a region
-    /// variable with no constraints.
-    ReEmpty,
+    /// Empty lifetime is for data that is never accessed.  We tag the
+    /// empty lifetime with a universe -- the idea is that we don't
+    /// want `exists<'a> { forall<'b> { 'b: 'a } }` to be satisfiable.
+    /// Therefore, the `'empty` in a universe `U` is less than all
+    /// regions visible from `U`, but not less than regions not visible
+    /// from `U`.
+    ReEmpty(ty::UniverseIndex),
 
     /// Erased region, used by trait selection, in MIR and during codegen.
     ReErased,
@@ -1537,7 +1606,7 @@ impl<'tcx> PolyExistentialProjection<'tcx> {
     }
 
     pub fn item_def_id(&self) -> DefId {
-        return self.skip_binder().item_def_id;
+        self.skip_binder().item_def_id
     }
 }
 
@@ -1612,7 +1681,7 @@ impl RegionKind {
             RegionKind::ReStatic => true,
             RegionKind::ReVar(..) => false,
             RegionKind::RePlaceholder(placeholder) => placeholder.name.is_named(),
-            RegionKind::ReEmpty => false,
+            RegionKind::ReEmpty(_) => false,
             RegionKind::ReErased => false,
             RegionKind::ReClosureBound(..) => false,
         }
@@ -1668,45 +1737,42 @@ impl RegionKind {
         }
     }
 
-    pub fn keep_in_local_tcx(&self) -> bool {
-        if let ty::ReVar(..) = self { true } else { false }
-    }
-
     pub fn type_flags(&self) -> TypeFlags {
         let mut flags = TypeFlags::empty();
-
-        if self.keep_in_local_tcx() {
-            flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
-        }
 
         match *self {
             ty::ReVar(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_INFER;
+                flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
             }
             ty::RePlaceholder(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_PLACEHOLDER;
+            }
+            ty::ReEarlyBound(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
+                flags = flags | TypeFlags::HAS_RE_PARAM;
+            }
+            ty::ReFree { .. } | ty::ReScope { .. } => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
+            }
+            ty::ReEmpty(_) | ty::ReStatic => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+            }
+            ty::ReClosureBound(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
             ty::ReLateBound(..) => {
                 flags = flags | TypeFlags::HAS_RE_LATE_BOUND;
             }
-            ty::ReEarlyBound(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_EARLY_BOUND;
+            ty::ReErased => {
+                flags = flags | TypeFlags::HAS_RE_ERASED;
             }
-            ty::ReEmpty | ty::ReStatic | ty::ReFree { .. } | ty::ReScope { .. } => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-            }
-            ty::ReErased => {}
-            ty::ReClosureBound(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-            }
-        }
-
-        match *self {
-            ty::ReStatic | ty::ReEmpty | ty::ReErased | ty::ReLateBound(..) => (),
-            _ => flags = flags | TypeFlags::HAS_FREE_LOCAL_NAMES,
         }
 
         debug!("type_flags({:?}) = {:?}", self, flags);
@@ -1928,8 +1994,8 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_unsafe_ptr(&self) -> bool {
         match self.kind {
-            RawPtr(_) => return true,
-            _ => return false,
+            RawPtr(_) => true,
+            _ => false,
         }
     }
 
@@ -2128,9 +2194,9 @@ impl<'tcx> TyS<'tcx> {
                 // ignore errors (#54954)
                 ty::Binder::dummy(FnSig::fake())
             }
-            Closure(..) => {
-                bug!("to get the signature of a closure, use `closure_sig()` not `fn_sig()`",)
-            }
+            Closure(..) => bug!(
+                "to get the signature of a closure, use `substs.as_closure().sig()` not `fn_sig()`",
+            ),
             _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self),
         }
     }
@@ -2337,8 +2403,13 @@ static_assert_size!(Const<'_>, 48);
 
 impl<'tcx> Const<'tcx> {
     #[inline]
+    pub fn from_value(tcx: TyCtxt<'tcx>, val: ConstValue<'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
+        tcx.mk_const(Self { val: ConstKind::Value(val), ty })
+    }
+
+    #[inline]
     pub fn from_scalar(tcx: TyCtxt<'tcx>, val: Scalar, ty: Ty<'tcx>) -> &'tcx Self {
-        tcx.mk_const(Self { val: ConstKind::Value(ConstValue::Scalar(val)), ty })
+        Self::from_value(tcx, ConstValue::Scalar(val), ty)
     }
 
     #[inline]
@@ -2392,7 +2463,9 @@ impl<'tcx> Const<'tcx> {
 
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            tcx.const_eval_resolve(param_env, did, substs, promoted, None).ok()
+            tcx.const_eval_resolve(param_env, did, substs, promoted, None)
+                .ok()
+                .map(|val| Const::from_value(tcx, val, self.ty))
         };
 
         match self.val {
@@ -2400,8 +2473,8 @@ impl<'tcx> Const<'tcx> {
                 // HACK(eddyb) when substs contain e.g. inference variables,
                 // attempt using identity substs instead, that will succeed
                 // when the expression doesn't depend on any parameters.
-                // FIXME(eddyb) make `const_eval` a canonical query instead,
-                // that would properly handle inference variables in `substs`.
+                // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
+                // we can call `infcx.const_eval_resolve` which handles inference variables.
                 if substs.has_local_value() {
                     let identity_substs = InternalSubsts::identity_for_item(tcx, did);
                     // The `ParamEnv` needs to match the `identity_substs`.
@@ -2492,7 +2565,7 @@ impl<'tcx> ConstKind<'tcx> {
 
     #[inline]
     pub fn try_to_bits(&self, size: ty::layout::Size) -> Option<u128> {
-        self.try_to_scalar()?.to_bits(size).ok()
+        if let ConstKind::Value(val) = self { val.try_to_bits(size) } else { None }
     }
 }
 

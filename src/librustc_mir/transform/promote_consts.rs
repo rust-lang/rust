@@ -18,10 +18,10 @@ use rustc::mir::*;
 use rustc::ty::cast::CastTy;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::{self, List, TyCtxt, TypeFoldable};
+use rustc_ast::ast::LitKind;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast::LitKind;
 
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_target::spec::abi::Abi;
@@ -407,15 +407,17 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     // FIXME(eddyb) maybe cache this?
     fn qualif_local<Q: qualifs::Qualif>(&self, local: Local) -> bool {
-        let per_local = &|l| self.qualif_local::<Q>(l);
-
         if let TempState::Defined { location: loc, .. } = self.temps[local] {
             let num_stmts = self.body[loc.block].statements.len();
 
             if loc.statement_index < num_stmts {
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
-                    StatementKind::Assign(box (_, rhs)) => Q::in_rvalue(&self.item, per_local, rhs),
+                    StatementKind::Assign(box (_, rhs)) => qualifs::in_rvalue::<Q, _>(
+                        &self.item,
+                        &mut |l| self.qualif_local::<Q>(l),
+                        rhs,
+                    ),
                     _ => {
                         span_bug!(
                             statement.source_info.span,
@@ -427,9 +429,9 @@ impl<'tcx> Validator<'_, 'tcx> {
             } else {
                 let terminator = self.body[loc.block].terminator();
                 match &terminator.kind {
-                    TerminatorKind::Call { func, args, .. } => {
+                    TerminatorKind::Call { .. } => {
                         let return_ty = self.body.local_decls[local].ty;
-                        Q::in_call(&self.item, per_local, func, args, return_ty)
+                        Q::in_any_value_of_ty(&self.item, return_ty)
                     }
                     kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
@@ -463,6 +465,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let terminator = self.body[loc.block].terminator();
                 match &terminator.kind {
                     TerminatorKind::Call { func, args, .. } => self.validate_call(func, args),
+                    TerminatorKind::Yield { .. } => Err(Unpromotable),
                     kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
                     }
@@ -473,7 +476,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         }
     }
 
-    fn validate_place(&self, place: PlaceRef<'_, 'tcx>) -> Result<(), Unpromotable> {
+    fn validate_place(&self, place: PlaceRef<'tcx>) -> Result<(), Unpromotable> {
         match place {
             PlaceRef { local, projection: [] } => self.validate_local(local),
             PlaceRef { local: _, projection: [proj_base @ .., elem] } => {
@@ -910,7 +913,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         ty,
                         val: ty::ConstKind::Unevaluated(
                             def_id,
-                            InternalSubsts::identity_for_item(tcx, def_id),
+                            InternalSubsts::for_item(tcx, def_id, |param, _| {
+                                if let ty::GenericParamDefKind::Lifetime = param.kind {
+                                    tcx.lifetimes.re_erased.into()
+                                } else {
+                                    tcx.mk_param_from_def(param)
+                                }
+                            }),
                             Some(promoted_id),
                         ),
                     }),
@@ -919,7 +928,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {
                 Candidate::Ref(loc) => {
-                    let ref mut statement = blocks[loc.block].statements[loc.statement_index];
+                    let statement = &mut blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
                         StatementKind::Assign(box (
                             _,
@@ -970,7 +979,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     }
                 }
                 Candidate::Repeat(loc) => {
-                    let ref mut statement = blocks[loc.block].statements[loc.statement_index];
+                    let statement = &mut blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
                         StatementKind::Assign(box (_, Rvalue::Repeat(ref mut operand, _))) => {
                             let ty = operand.ty(local_decls, self.tcx);

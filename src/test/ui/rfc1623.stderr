@@ -1,19 +1,46 @@
-error[E0106]: missing lifetime specifier
-  --> $DIR/rfc1623.rs:8:42
+error[E0308]: mismatched types
+  --> $DIR/rfc1623.rs:22:35
    |
-LL | static NON_ELIDABLE_FN: &fn(&u8, &u8) -> &u8 =
-   |                                          ^ expected named lifetime parameter
+LL |   static SOME_STRUCT: &SomeStruct = SomeStruct {
+   |  ___________________________________^
+LL | |     foo: &Foo { bools: &[false, true] },
+LL | |     bar: &Bar { bools: &[true, true] },
+LL | |     f: &id,
+LL | |
+LL | |
+LL | | };
+   | |_^ expected `&SomeStruct<'static, 'static, 'static>`, found struct `SomeStruct`
    |
-   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+help: consider borrowing here
+   |
+LL | static SOME_STRUCT: &SomeStruct = &SomeStruct {
+LL |     foo: &Foo { bools: &[false, true] },
+LL |     bar: &Bar { bools: &[true, true] },
+LL |     f: &id,
+LL |
+LL |
+ ...
 
-error[E0106]: missing lifetime specifier
-  --> $DIR/rfc1623.rs:10:39
+error[E0631]: type mismatch in function arguments
+  --> $DIR/rfc1623.rs:25:8
    |
-LL |     &(non_elidable as fn(&u8, &u8) -> &u8);
-   |                                       ^ expected named lifetime parameter
+LL | fn id<T>(t: T) -> T {
+   | ------------------- found signature of `fn(_) -> _`
+...
+LL |     f: &id,
+   |        ^^^ expected signature of `for<'a, 'b> fn(&'a Foo<'b>) -> _`
    |
-   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
+   = note: required for the cast to the object type `dyn for<'a, 'b> std::ops::Fn(&'a Foo<'b>) -> &'a Foo<'b>`
 
-error: aborting due to 2 previous errors
+error[E0271]: type mismatch resolving `for<'a, 'b> <fn(_) -> _ {id::<_>} as std::ops::FnOnce<(&'a Foo<'b>,)>>::Output == &'a Foo<'b>`
+  --> $DIR/rfc1623.rs:25:8
+   |
+LL |     f: &id,
+   |        ^^^ expected bound lifetime parameter 'a, found concrete lifetime
+   |
+   = note: required for the cast to the object type `dyn for<'a, 'b> std::ops::Fn(&'a Foo<'b>) -> &'a Foo<'b>`
 
-For more information about this error, try `rustc --explain E0106`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0271, E0308, E0631.
+For more information about an error, try `rustc --explain E0271`.

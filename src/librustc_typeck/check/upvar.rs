@@ -35,16 +35,15 @@ use super::FnCtxt;
 use crate::expr_use_visitor as euv;
 use crate::mem_categorization as mc;
 use crate::mem_categorization::PlaceBase;
-use rustc::hir::map::Map;
-use rustc::infer::UpvarRegion;
 use rustc::ty::{self, Ty, TyCtxt, UpvarSubsts};
+use rustc_ast::ast;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_infer::infer::UpvarRegion;
 use rustc_span::Span;
-use syntax::ast;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn closure_analyze(&self, body: &'tcx hir::Body<'tcx>) {
@@ -60,9 +59,9 @@ struct InferBorrowKindVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -119,7 +118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for (&var_hir_id, _) in upvars.iter() {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath { hir_id: var_hir_id },
-                    closure_expr_id: LocalDefId::from_def_id(closure_def_id),
+                    closure_expr_id: closure_def_id.expect_local(),
                 };
                 debug!("seed upvar_id {:?}", upvar_id);
                 // Adding the upvar Id to the list of Upvars, which will be added
@@ -229,7 +228,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let upvar_ty = self.node_ty(var_hir_id);
                     let upvar_id = ty::UpvarId {
                         var_path: ty::UpvarPath { hir_id: var_hir_id },
-                        closure_expr_id: LocalDefId::from_def_id(closure_def_id),
+                        closure_expr_id: closure_def_id.expect_local(),
                     };
                     let capture = self.tables.borrow().upvar_capture(upvar_id);
 

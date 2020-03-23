@@ -1,10 +1,10 @@
-error: unexpected `self` parameter in function
+error: `self` parameter is only allowed in associated functions
   --> $DIR/bare-fn-start.rs:1:6
    |
 LL | fn a(&self) { }
-   |      ^^^^^ not valid as function parameter
+   |      ^^^^^ not semantically valid as function parameter
    |
-   = note: `self` is only valid as the first parameter of an associated function
+   = note: associated functions are those in `impl` or `trait` definitions
 
 error: aborting due to previous error
 

@@ -13,13 +13,6 @@
 // receivers (namely, in many cases demonstrated below, the error
 // would not arise).
 
-// (If we revise the compiler or this test so that the g2p revision
-// passes, turn the `rustc_attrs` feature back on and tag the `fn
-// main` with `#[rustc_error]` so that this remains a valid
-// compile-fail test.)
-//
-// #![feature(rustc_attrs)]
-
 use std::ops::{Index, IndexMut};
 
 fn foo(x: &mut u32, y: u32) {

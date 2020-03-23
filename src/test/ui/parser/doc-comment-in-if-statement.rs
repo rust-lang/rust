@@ -1,4 +1,5 @@
 fn main() {
     if true /*!*/ {}
-    //~^ ERROR expected `{`, found doc comment `/*!*/`
+    //~^ ERROR outer attributes are not allowed on
+    //~| ERROR expected outer doc comment
 }

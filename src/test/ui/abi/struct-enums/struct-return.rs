@@ -10,13 +10,23 @@ pub struct Quad { a: u64, b: u64, c: u64, d: u64 }
 #[derive(Copy, Clone)]
 pub struct Floats { a: f64, b: u8, c: f64 }
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct CharCharDouble { a: u8, b: u8, c: f64 }
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct CharCharFloat { a: u8, b: u8, c: f32 }
+
 mod rustrt {
-    use super::{Floats, Quad};
+    use super::{Floats, Quad, CharCharDouble, CharCharFloat};
 
     #[link(name = "rust_test_helpers", kind = "static")]
     extern {
         pub fn rust_dbg_abi_1(q: Quad) -> Quad;
         pub fn rust_dbg_abi_2(f: Floats) -> Floats;
+        pub fn rust_dbg_abi_3(a: CharCharDouble) -> CharCharDouble;
+        pub fn rust_dbg_abi_4(a: CharCharFloat) -> CharCharFloat;
     }
 }
 
@@ -58,7 +68,47 @@ fn test2() {
 fn test2() {
 }
 
+#[cfg(target_pointer_width = "64")]
+fn test3() {
+    unsafe {
+        let a = CharCharDouble {
+            a: 1,
+            b: 2,
+            c: 3.,
+        };
+        let b = rustrt::rust_dbg_abi_3(a);
+        println!("a: {}", b.a);
+        println!("b: {}", b.b);
+        println!("c: {}", b.c);
+        assert_eq!(b.a, a.a + 1);
+        assert_eq!(b.b, a.b - 1);
+        assert_eq!(b.c, a.c + 1.0);
+    }
+}
+
+#[cfg(target_pointer_width = "32")]
+fn test3() {}
+
+fn test4() {
+    unsafe {
+        let a = CharCharFloat {
+            a: 1,
+            b: 2,
+            c: 3.,
+        };
+        let b = rustrt::rust_dbg_abi_4(a);
+        println!("a: {}", b.a);
+        println!("b: {}", b.b);
+        println!("c: {}", b.c);
+        assert_eq!(b.a, a.a + 1);
+        assert_eq!(b.b, a.b - 1);
+        assert_eq!(b.c, a.c + 1.0);
+    }
+}
+
 pub fn main() {
     test1();
     test2();
+    test3();
+    test4();
 }

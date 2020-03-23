@@ -1,4 +1,3 @@
-use rustc::hir::map::Map;
 use rustc::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -122,9 +121,9 @@ impl ExprVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for ItemVisitor<'tcx> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -139,9 +138,9 @@ impl Visitor<'tcx> for ItemVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for ExprVisitor<'tcx> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 

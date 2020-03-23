@@ -2,59 +2,75 @@
 // otherwise forbidden.
 
 #![feature(generators)]
+#![allow(unconditional_recursion)]
 
-fn option(i: i32) -> impl Sized { //~ ERROR
-    if i < 0 {
-        None
-    } else {
-        Some((option(i - 1), i))
-    }
+fn option(i: i32) -> impl Sized {
+    //~^ ERROR
+    if i < 0 { None } else { Some((option(i - 1), i)) }
 }
 
-fn tuple() -> impl Sized { //~ ERROR
+fn tuple() -> impl Sized {
+    //~^ ERROR
     (tuple(),)
 }
 
-fn array() -> impl Sized { //~ ERROR
+fn array() -> impl Sized {
+    //~^ ERROR
     [array()]
 }
 
-fn ptr() -> impl Sized { //~ ERROR
+fn ptr() -> impl Sized {
+    //~^ ERROR
     &ptr() as *const _
 }
 
-fn fn_ptr() -> impl Sized { //~ ERROR
+fn fn_ptr() -> impl Sized {
+    //~^ ERROR
     fn_ptr as fn() -> _
 }
 
-fn closure_capture() -> impl Sized { //~ ERROR
+fn closure_capture() -> impl Sized {
+    //~^ ERROR
     let x = closure_capture();
-    move || { x; }
+    move || {
+        x;
+    }
 }
 
-fn closure_ref_capture() -> impl Sized { //~ ERROR
+fn closure_ref_capture() -> impl Sized {
+    //~^ ERROR
     let x = closure_ref_capture();
-    move || { &x; }
+    move || {
+        &x;
+    }
 }
 
-fn closure_sig() -> impl Sized { //~ ERROR
+fn closure_sig() -> impl Sized {
+    //~^ ERROR
     || closure_sig()
 }
 
-fn generator_sig() -> impl Sized { //~ ERROR
+fn generator_sig() -> impl Sized {
+    //~^ ERROR
     || generator_sig()
 }
 
-fn generator_capture() -> impl Sized { //~ ERROR
+fn generator_capture() -> impl Sized {
+    //~^ ERROR
     let x = generator_capture();
-    move || { yield; x; }
+    move || {
+        yield;
+        x;
+    }
 }
 
-fn substs_change<T>() -> impl Sized { //~ ERROR
+fn substs_change<T: 'static>() -> impl Sized {
+    //~^ ERROR
     (substs_change::<&T>(),)
 }
 
-fn generator_hold() -> impl Sized { //~ ERROR
+fn generator_hold() -> impl Sized {
+    //~^ ERROR
     move || {
         let x = generator_hold();
         yield;
@@ -62,15 +78,18 @@ fn generator_hold() -> impl Sized { //~ ERROR
     }
 }
 
-fn use_fn_ptr() -> impl Sized { // OK, error already reported
+fn use_fn_ptr() -> impl Sized {
+    // OK, error already reported
     fn_ptr()
 }
 
-fn mutual_recursion() -> impl Sync { //~ ERROR
+fn mutual_recursion() -> impl Sync {
+    //~^ ERROR
     mutual_recursion_b()
 }
 
-fn mutual_recursion_b() -> impl Sized { //~ ERROR
+fn mutual_recursion_b() -> impl Sized {
+    //~^ ERROR
     mutual_recursion()
 }
 

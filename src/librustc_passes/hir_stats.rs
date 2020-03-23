@@ -4,13 +4,13 @@
 
 use rustc::hir::map::Map;
 use rustc::util::common::to_readable_str;
+use rustc_ast::ast::{self, AttrId, NodeId};
+use rustc_ast::visit as ast_visit;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::intravisit as hir_visit;
 use rustc_hir::HirId;
 use rustc_span::Span;
-use syntax::ast::{self, AttrId, NodeId};
-use syntax::visit as ast_visit;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 enum Id {
@@ -95,7 +95,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
 
     type Map = Map<'v>;
 
-    fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<Self::Map> {
         panic!("visit_nested_xxx must be manually implemented in this visitor")
     }
 
@@ -302,19 +302,18 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_ty(self, t)
     }
 
-    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, fd: &'v ast::FnDecl, s: Span, _: NodeId) {
-        self.record("FnDecl", Id::None, fd);
-        ast_visit::walk_fn(self, fk, fd, s)
+    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, s: Span, _: NodeId) {
+        self.record("FnDecl", Id::None, fk.decl());
+        ast_visit::walk_fn(self, fk, s)
     }
 
-    fn visit_trait_item(&mut self, ti: &'v ast::AssocItem) {
-        self.record("TraitItem", Id::None, ti);
-        ast_visit::walk_trait_item(self, ti)
-    }
-
-    fn visit_impl_item(&mut self, ii: &'v ast::AssocItem) {
-        self.record("ImplItem", Id::None, ii);
-        ast_visit::walk_impl_item(self, ii)
+    fn visit_assoc_item(&mut self, item: &'v ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
+        let label = match ctxt {
+            ast_visit::AssocCtxt::Trait => "TraitItem",
+            ast_visit::AssocCtxt::Impl => "ImplItem",
+        };
+        self.record(label, Id::None, item);
+        ast_visit::walk_assoc_item(self, item, ctxt);
     }
 
     fn visit_param_bound(&mut self, bounds: &'v ast::GenericBound) {
@@ -337,8 +336,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_lifetime(self, lifetime)
     }
 
-    fn visit_mac(&mut self, mac: &'v ast::Mac) {
-        self.record("Mac", Id::None, mac);
+    fn visit_mac(&mut self, mac: &'v ast::MacCall) {
+        self.record("MacCall", Id::None, mac);
     }
 
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v ast::PathSegment) {

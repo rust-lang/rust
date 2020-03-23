@@ -167,17 +167,17 @@ impl Diagnostic {
         found: DiagnosticStyledString,
     ) -> &mut Self {
         let mut msg: Vec<_> =
-            vec![(format!("required when trying to coerce from type `"), Style::NoStyle)];
+            vec![("required when trying to coerce from type `".to_string(), Style::NoStyle)];
         msg.extend(expected.0.iter().map(|x| match *x {
             StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
             StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
         }));
-        msg.push((format!("` to type '"), Style::NoStyle));
+        msg.push(("` to type '".to_string(), Style::NoStyle));
         msg.extend(found.0.iter().map(|x| match *x {
             StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
             StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
         }));
-        msg.push((format!("`"), Style::NoStyle));
+        msg.push(("`".to_string(), Style::NoStyle));
 
         // For now, just attach these as notes
         self.highlighted_note(msg);
@@ -194,6 +194,7 @@ impl Diagnostic {
         found_extra: &dyn fmt::Display,
     ) -> &mut Self {
         let expected_label = format!("expected {}", expected_label);
+
         let found_label = format!("found {}", found_label);
         let (found_padding, expected_padding) = if expected_label.len() > found_label.len() {
             (expected_label.len() - found_label.len(), 0)

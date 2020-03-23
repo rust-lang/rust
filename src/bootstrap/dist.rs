@@ -105,6 +105,7 @@ impl Step for Docs {
         t!(fs::create_dir_all(&dst));
         let src = builder.doc_out(host);
         builder.cp_r(&src, &dst);
+        builder.install(&builder.src.join("src/doc/robots.txt"), &dst, 0o644);
 
         let mut cmd = rust_installer(builder);
         cmd.arg("generate")
@@ -233,7 +234,14 @@ fn make_win_dist(
         }
     }
 
-    let target_tools = ["gcc.exe", "ld.exe", "dlltool.exe", "libwinpthread-1.dll"];
+    let compiler = if target_triple == "i686-pc-windows-gnu" {
+        "i686-w64-mingw32-gcc.exe"
+    } else if target_triple == "x86_64-pc-windows-gnu" {
+        "x86_64-w64-mingw32-gcc.exe"
+    } else {
+        "gcc.exe"
+    };
+    let target_tools = [compiler, "ld.exe", "dlltool.exe", "libwinpthread-1.dll"];
     let mut rustc_dlls = vec!["libwinpthread-1.dll"];
     if target_triple.starts_with("i686-") {
         rustc_dlls.push("libgcc_s_dw2-1.dll");
@@ -827,7 +835,7 @@ impl Step for Analysis {
         assert!(builder.config.extended);
         let name = pkgname(builder, "rust-analysis");
 
-        if &compiler.host != builder.config.build {
+        if compiler.host != builder.config.build {
             return distdir(builder).join(format!("{}-{}.tar.gz", name, target));
         }
 
@@ -876,7 +884,7 @@ fn copy_src_dirs(builder: &Builder<'_>, src_dirs: &[&str], exclude_dirs: &[&str]
             Some(path) => path,
             None => return false,
         };
-        if spath.ends_with("~") || spath.ends_with(".pyc") {
+        if spath.ends_with('~') || spath.ends_with(".pyc") {
             return false;
         }
 
@@ -994,8 +1002,6 @@ impl Step for Src {
             "src/tools/rustc-std-workspace-core",
             "src/tools/rustc-std-workspace-alloc",
             "src/tools/rustc-std-workspace-std",
-            "src/librustc",
-            "src/libsyntax",
         ];
 
         copy_src_dirs(builder, &std_src_dirs[..], &[], &dst_src);

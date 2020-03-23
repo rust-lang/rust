@@ -1,24 +1,25 @@
 use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
-use rustc::infer::opaque_types::may_define_opaque_type;
 use rustc::middle::lang_items;
-use rustc::session::parse::feature_err;
-use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::{InternalSubsts, Subst};
+use rustc::ty::trait_def::TraitSpecializationKind;
 use rustc::ty::{
     self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
+use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 use rustc_hir::ItemKind;
+use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::ast;
-
-use rustc_hir as hir;
-use rustc_hir::itemlikevisit::ParItemLikeVisitor;
+use rustc_trait_selection::opaque_types::may_define_opaque_type;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 /// Helper type of a temporary returned by `.for_item(...)`.
 /// This is necessary because we can't write the following bound:
@@ -173,10 +174,73 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
     let trait_item = tcx.hir().expect_trait_item(hir_id);
 
     let method_sig = match trait_item.kind {
-        hir::TraitItemKind::Method(ref sig, _) => Some(sig),
+        hir::TraitItemKind::Fn(ref sig, _) => Some(sig),
         _ => None,
     };
+    check_object_unsafe_self_trait_by_name(tcx, &trait_item);
     check_associated_item(tcx, trait_item.hir_id, trait_item.span, method_sig);
+}
+
+fn could_be_self(trait_def_id: DefId, ty: &hir::Ty<'_>) -> bool {
+    match ty.kind {
+        hir::TyKind::TraitObject([trait_ref], ..) => match trait_ref.trait_ref.path.segments {
+            [s] => s.res.and_then(|r| r.opt_def_id()) == Some(trait_def_id),
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
+/// Detect when an object unsafe trait is referring to itself in one of its associated items.
+/// When this is done, suggest using `Self` instead.
+fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
+    let (trait_name, trait_def_id) = match tcx.hir().get(tcx.hir().get_parent_item(item.hir_id)) {
+        hir::Node::Item(item) => match item.kind {
+            hir::ItemKind::Trait(..) => (item.ident, tcx.hir().local_def_id(item.hir_id)),
+            _ => return,
+        },
+        _ => return,
+    };
+    let mut trait_should_be_self = vec![];
+    match &item.kind {
+        hir::TraitItemKind::Const(ty, _) | hir::TraitItemKind::Type(_, Some(ty))
+            if could_be_self(trait_def_id, ty) =>
+        {
+            trait_should_be_self.push(ty.span)
+        }
+        hir::TraitItemKind::Fn(sig, _) => {
+            for ty in sig.decl.inputs {
+                if could_be_self(trait_def_id, ty) {
+                    trait_should_be_self.push(ty.span);
+                }
+            }
+            match sig.decl.output {
+                hir::FnRetTy::Return(ty) if could_be_self(trait_def_id, ty) => {
+                    trait_should_be_self.push(ty.span);
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+    if !trait_should_be_self.is_empty() {
+        if tcx.object_safety_violations(trait_def_id).is_empty() {
+            return;
+        }
+        let sugg = trait_should_be_self.iter().map(|span| (*span, "Self".to_string())).collect();
+        tcx.sess
+            .struct_span_err(
+                trait_should_be_self,
+                "associated item referring to unboxed trait object for its own trait",
+            )
+            .span_label(trait_name.span, "in this trait")
+            .multipart_suggestion(
+                "you might have meant to use `Self` to refer to the implementing type",
+                sugg,
+                Applicability::MachineApplicable,
+            )
+            .emit();
+    }
 }
 
 pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {
@@ -184,7 +248,7 @@ pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {
     let impl_item = tcx.hir().expect_impl_item(hir_id);
 
     let method_sig = match impl_item.kind {
-        hir::ImplItemKind::Method(ref sig, _) => Some(sig),
+        hir::ImplItemKind::Fn(ref sig, _) => Some(sig),
         _ => None,
     };
 
@@ -219,9 +283,17 @@ fn check_associated_item(
             ty::AssocKind::Method => {
                 let sig = fcx.tcx.fn_sig(item.def_id);
                 let sig = fcx.normalize_associated_types_in(span, &sig);
-                check_fn_or_method(tcx, fcx, span, sig, item.def_id, &mut implied_bounds);
-                let sig_if_method = sig_if_method.expect("bad signature for method");
-                check_method_receiver(fcx, sig_if_method, &item, self_ty);
+                let hir_sig = sig_if_method.expect("bad signature for method");
+                check_fn_or_method(
+                    tcx,
+                    fcx,
+                    item.ident.span,
+                    sig,
+                    hir_sig,
+                    item.def_id,
+                    &mut implied_bounds,
+                );
+                check_method_receiver(fcx, hir_sig, &item, self_ty);
             }
             ty::AssocKind::Type => {
                 if item.defaultness.has_value() {
@@ -244,12 +316,12 @@ fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>) -> CheckWfFcxBuilder<
 }
 
 fn for_id(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) -> CheckWfFcxBuilder<'_> {
-    let def_id = tcx.hir().local_def_id(id);
+    let def_id = tcx.hir().local_def_id(id).expect_local();
     CheckWfFcxBuilder {
         inherited: Inherited::build(tcx, def_id),
         id,
         span,
-        param_env: tcx.param_env(def_id),
+        param_env: tcx.param_env(def_id.to_def_id()),
     }
 }
 
@@ -340,7 +412,9 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     let trait_def_id = tcx.hir().local_def_id(item.hir_id);
 
     let trait_def = tcx.trait_def(trait_def_id);
-    if trait_def.is_marker {
+    if trait_def.is_marker
+        || matches!(trait_def.specialization_kind, TraitSpecializationKind::Marker)
+    {
         for associated_def_id in &*tcx.associated_item_def_ids(trait_def_id) {
             struct_span_err!(
                 tcx.sess,
@@ -354,8 +428,107 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
 
     for_item(tcx, item).with_fcx(|fcx, _| {
         check_where_clauses(tcx, fcx, item.span, trait_def_id, None);
+        check_associated_type_defaults(fcx, trait_def_id);
+
         vec![]
     });
+}
+
+/// Checks all associated type defaults of trait `trait_def_id`.
+///
+/// Assuming the defaults are used, check that all predicates (bounds on the
+/// assoc type and where clauses on the trait) hold.
+fn check_associated_type_defaults(fcx: &FnCtxt<'_, '_>, trait_def_id: DefId) {
+    let tcx = fcx.tcx;
+    let substs = InternalSubsts::identity_for_item(tcx, trait_def_id);
+
+    // For all assoc. types with defaults, build a map from
+    // `<Self as Trait<...>>::Assoc` to the default type.
+    let map = tcx
+        .associated_items(trait_def_id)
+        .in_definition_order()
+        .filter_map(|item| {
+            if item.kind == ty::AssocKind::Type && item.defaultness.has_value() {
+                // `<Self as Trait<...>>::Assoc`
+                let proj = ty::ProjectionTy { substs, item_def_id: item.def_id };
+                let default_ty = tcx.type_of(item.def_id);
+                debug!("assoc. type default mapping: {} -> {}", proj, default_ty);
+                Some((proj, default_ty))
+            } else {
+                None
+            }
+        })
+        .collect::<FxHashMap<_, _>>();
+
+    /// Replaces projections of associated types with their default types.
+    ///
+    /// This does a "shallow substitution", meaning that defaults that refer to
+    /// other defaulted assoc. types will still refer to the projection
+    /// afterwards, not to the other default. For example:
+    ///
+    /// ```compile_fail
+    /// trait Tr {
+    ///     type A: Clone = Vec<Self::B>;
+    ///     type B = u8;
+    /// }
+    /// ```
+    ///
+    /// This will end up replacing the bound `Self::A: Clone` with
+    /// `Vec<Self::B>: Clone`, not with `Vec<u8>: Clone`. If we did a deep
+    /// substitution and ended up with the latter, the trait would be accepted.
+    /// If an `impl` then replaced `B` with something that isn't `Clone`,
+    /// suddenly the default for `A` is no longer valid. The shallow
+    /// substitution forces the trait to add a `B: Clone` bound to be accepted,
+    /// which means that an `impl` can replace any default without breaking
+    /// others.
+    ///
+    /// Note that this isn't needed for soundness: The defaults would still be
+    /// checked in any impl that doesn't override them.
+    struct DefaultNormalizer<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        map: FxHashMap<ty::ProjectionTy<'tcx>, Ty<'tcx>>,
+    }
+
+    impl<'tcx> ty::fold::TypeFolder<'tcx> for DefaultNormalizer<'tcx> {
+        fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+            match t.kind {
+                ty::Projection(proj_ty) => {
+                    if let Some(default) = self.map.get(&proj_ty) {
+                        default
+                    } else {
+                        t.super_fold_with(self)
+                    }
+                }
+                _ => t.super_fold_with(self),
+            }
+        }
+    }
+
+    // Now take all predicates defined on the trait, replace any mention of
+    // the assoc. types with their default, and prove them.
+    // We only consider predicates that directly mention the assoc. type.
+    let mut norm = DefaultNormalizer { tcx, map };
+    let predicates = fcx.tcx.predicates_of(trait_def_id);
+    for &(orig_pred, span) in predicates.predicates.iter() {
+        let pred = orig_pred.fold_with(&mut norm);
+        if pred != orig_pred {
+            // Mentions one of the defaulted assoc. types
+            debug!("default suitability check: proving predicate: {} -> {}", orig_pred, pred);
+            let pred = fcx.normalize_associated_types_in(span, &pred);
+            let cause = traits::ObligationCause::new(
+                span,
+                fcx.body_id,
+                traits::ItemObligation(trait_def_id),
+            );
+            let obligation = traits::Obligation::new(cause, fcx.param_env, pred);
+
+            fcx.register_predicate(obligation);
+        }
+    }
 }
 
 fn check_item_fn(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
@@ -364,7 +537,11 @@ fn check_item_fn(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
         let sig = fcx.tcx.fn_sig(def_id);
         let sig = fcx.normalize_associated_types_in(item.span, &sig);
         let mut implied_bounds = vec![];
-        check_fn_or_method(tcx, fcx, item.span, sig, def_id, &mut implied_bounds);
+        let hir_sig = match &item.kind {
+            ItemKind::Fn(sig, ..) => sig,
+            _ => bug!("expected `ItemKind::Fn`, found `{:?}`", item.kind),
+        };
+        check_fn_or_method(tcx, fcx, item.ident.span, sig, hir_sig, def_id, &mut implied_bounds);
         implied_bounds
     })
 }
@@ -452,7 +629,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
     span: Span,
     def_id: DefId,
-    return_ty: Option<Ty<'tcx>>,
+    return_ty: Option<(Ty<'tcx>, Span)>,
 ) {
     debug!("check_where_clauses(def_id={:?}, return_ty={:?})", def_id, return_ty);
 
@@ -586,17 +763,22 @@ fn check_where_clauses<'tcx, 'fcx>(
 
     let mut predicates = predicates.instantiate_identity(fcx.tcx);
 
-    if let Some(return_ty) = return_ty {
-        predicates.predicates.extend(check_opaque_types(tcx, fcx, def_id, span, return_ty));
+    if let Some((return_ty, span)) = return_ty {
+        let opaque_types = check_opaque_types(tcx, fcx, def_id, span, return_ty);
+        for _ in 0..opaque_types.len() {
+            predicates.spans.push(span);
+        }
+        predicates.predicates.extend(opaque_types);
     }
 
     let predicates = fcx.normalize_associated_types_in(span, &predicates);
 
     debug!("check_where_clauses: predicates={:?}", predicates.predicates);
-    let wf_obligations = predicates
-        .predicates
-        .iter()
-        .flat_map(|p| traits::wf::predicate_obligations(fcx, fcx.param_env, fcx.body_id, p, span));
+    assert_eq!(predicates.predicates.len(), predicates.spans.len());
+    let wf_obligations =
+        predicates.predicates.iter().zip(predicates.spans.iter()).flat_map(|(p, sp)| {
+            traits::wf::predicate_obligations(fcx, fcx.param_env, fcx.body_id, p, *sp)
+        });
 
     for obligation in wf_obligations.chain(default_obligations) {
         debug!("next obligation cause: {:?}", obligation.cause);
@@ -609,23 +791,28 @@ fn check_fn_or_method<'fcx, 'tcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
     span: Span,
     sig: ty::PolyFnSig<'tcx>,
+    hir_sig: &hir::FnSig<'_>,
     def_id: DefId,
     implied_bounds: &mut Vec<Ty<'tcx>>,
 ) {
     let sig = fcx.normalize_associated_types_in(span, &sig);
     let sig = fcx.tcx.liberate_late_bound_regions(def_id, &sig);
 
-    for input_ty in sig.inputs() {
+    for (input_ty, span) in sig.inputs().iter().zip(hir_sig.decl.inputs.iter().map(|t| t.span)) {
         fcx.register_wf_obligation(&input_ty, span, ObligationCauseCode::MiscObligation);
     }
     implied_bounds.extend(sig.inputs());
 
-    fcx.register_wf_obligation(sig.output(), span, ObligationCauseCode::ReturnType);
+    fcx.register_wf_obligation(
+        sig.output(),
+        hir_sig.decl.output.span(),
+        ObligationCauseCode::ReturnType,
+    );
 
     // FIXME(#25759) return types should not be implied bounds
     implied_bounds.push(sig.output());
 
-    check_where_clauses(tcx, fcx, span, def_id, Some(sig.output()));
+    check_where_clauses(tcx, fcx, span, def_id, Some((sig.output(), hir_sig.decl.output.span())));
 }
 
 /// Checks "defining uses" of opaque `impl Trait` types to ensure that they meet the restrictions

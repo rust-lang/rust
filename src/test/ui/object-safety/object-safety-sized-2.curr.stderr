@@ -1,10 +1,13 @@
 error[E0038]: the trait `Bar` cannot be made into an object
-  --> $DIR/object-safety-sized-2.rs:14:1
+  --> $DIR/object-safety-sized-2.rs:14:30
    |
+LL | trait Bar
+   |       --- this trait cannot be made into an object...
+LL |     where Self : Sized
+   |                  ----- ...because it requires `Self: Sized`
+...
 LL | fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` cannot be made into an object
-   |
-   = note: the trait cannot require that `Self : Sized`
+   |                              ^^^^^^^^ the trait `Bar` cannot be made into an object
 
 error: aborting due to previous error
 

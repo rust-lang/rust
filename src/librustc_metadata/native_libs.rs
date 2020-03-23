@@ -1,21 +1,21 @@
 use rustc::middle::cstore::{self, NativeLibrary};
-use rustc::session::parse::feature_err;
-use rustc::session::Session;
 use rustc::ty::TyCtxt;
+use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_session::parse::feature_err;
+use rustc_session::Session;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::spec::abi::Abi;
-use syntax::attr;
 
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
     let mut collector = Collector { tcx, libs: Vec::new() };
     tcx.hir().krate().visit_all_item_likes(&mut collector);
     collector.process_command_line();
-    return collector.libs;
+    collector.libs
 }
 
 crate fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {

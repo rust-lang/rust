@@ -282,7 +282,6 @@ mod inner {
             (cfg!(target_os = "linux") && cfg!(target_arch = "x86_64"))
                 || (cfg!(target_os = "linux") && cfg!(target_arch = "x86"))
                 || cfg!(target_os = "fuchsia")
-                || false // last clause, used so `||` is always trailing above
         }
 
         pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {

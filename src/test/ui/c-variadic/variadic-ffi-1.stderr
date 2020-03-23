@@ -4,23 +4,27 @@ error[E0045]: C-variadic function must have C or cdecl calling convention
 LL |     fn printf(_: *const u8, ...);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadics require C or cdecl calling convention
 
-error[E0060]: this function takes at least 2 parameters but 0 parameters were supplied
+error[E0060]: this function takes at least 2 arguments but 0 arguments were supplied
   --> $DIR/variadic-ffi-1.rs:16:9
    |
 LL |     fn foo(f: isize, x: u8, ...);
    |     ----------------------------- defined here
 ...
 LL |         foo();
-   |         ^^^^^ expected at least 2 parameters
+   |         ^^^-- supplied 0 arguments
+   |         |
+   |         expected at least 2 arguments
 
-error[E0060]: this function takes at least 2 parameters but 1 parameter was supplied
+error[E0060]: this function takes at least 2 arguments but 1 argument was supplied
   --> $DIR/variadic-ffi-1.rs:17:9
    |
 LL |     fn foo(f: isize, x: u8, ...);
    |     ----------------------------- defined here
 ...
 LL |         foo(1);
-   |         ^^^^^^ expected at least 2 parameters
+   |         ^^^ - supplied 1 argument
+   |         |
+   |         expected at least 2 arguments
 
 error[E0308]: mismatched types
   --> $DIR/variadic-ffi-1.rs:19:56

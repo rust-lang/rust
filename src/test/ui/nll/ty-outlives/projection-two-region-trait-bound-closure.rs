@@ -36,7 +36,7 @@ where
     T: Anything<'b, 'c>,
 {
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ ERROR associated type `<T as Anything<'_#5r, '_#6r>>::AssocType` may not live long enough
+    //~^ ERROR may not live long enough
 }
 
 #[rustc_regions]
@@ -46,7 +46,7 @@ where
     'a: 'a,
 {
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
+    //~^ ERROR may not live long enough
 }
 
 #[rustc_regions]

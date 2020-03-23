@@ -1,5 +1,5 @@
 use crate::rustc::ty::{self, Ty};
-use rustc::infer::region_constraints::MemberConstraint;
+use rustc::infer::MemberConstraint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
@@ -125,7 +125,7 @@ where
         // wind up mapped to the same key `S`, we would append the
         // linked list for `Ra` onto the end of the linked list for
         // `Rb` (or vice versa) -- this basically just requires
-        // rewriting the final link from one list to point at the othe
+        // rewriting the final link from one list to point at the other
         // other (see `append_list`).
 
         let MemberConstraintSet { first_constraints, mut constraints, choice_regions } = self;

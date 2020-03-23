@@ -8,8 +8,8 @@ use std::io;
 use crate::transform::{MirPass, MirSource};
 use crate::util as mir_util;
 use rustc::mir::{Body, BodyAndCache};
-use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::TyCtxt;
+use rustc_session::config::{OutputFilenames, OutputType};
 
 pub struct Marker(pub &'static str);
 
@@ -61,7 +61,7 @@ pub fn on_mir_pass<'tcx>(
 
 pub fn emit_mir(tcx: TyCtxt<'_>, outputs: &OutputFilenames) -> io::Result<()> {
     let path = outputs.path(OutputType::Mir);
-    let mut f = File::create(&path)?;
+    let mut f = io::BufWriter::new(File::create(&path)?);
     mir_util::write_mir_pretty(tcx, None, &mut f)?;
     Ok(())
 }

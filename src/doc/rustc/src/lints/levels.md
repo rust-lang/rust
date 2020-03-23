@@ -164,6 +164,18 @@ And of course, you can mix these four flags together:
 $ rustc lib.rs --crate-type=lib -D missing-docs -A unused-variables
 ```
 
+The order of these command line arguments is taken into account. The following allows the `unused-variables` lint, because it is the last argument for that lint:
+
+```bash
+$ rustc lib.rs --crate-type=lib -D unused-variables -A unused-variables
+```
+
+You can make use of this behavior by overriding the level of one specific lint out of a group of lints. The following example denies all the lints in the `unused` group, but explicitly allows the `unused-variables` lint in that group:
+
+```bash
+$ rustc lib.rs --crate-type=lib -D unused -A unused-variables
+```
+
 ### Via an attribute
 
 You can also modify the lint level with a crate-wide attribute:

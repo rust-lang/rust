@@ -19,7 +19,6 @@ fn configure(host: &[&str], target: &[&str]) -> Config {
     config.out = dir;
     config.build = INTERNER.intern_str("A");
     config.hosts = vec![config.build]
-        .clone()
         .into_iter()
         .chain(host.iter().map(|s| INTERNER.intern_str(s)))
         .collect::<Vec<_>>();

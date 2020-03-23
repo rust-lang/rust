@@ -3,27 +3,26 @@ use crate::base::{SyntaxExtension, SyntaxExtensionKind};
 use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
 use crate::mbe;
 use crate::mbe::macro_check;
-use crate::mbe::macro_parser::parse;
+use crate::mbe::macro_parser::parse_tt;
 use crate::mbe::macro_parser::{Error, Failure, Success};
-use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedParseResult};
+use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq};
 use crate::mbe::transcribe::transcribe;
 
+use rustc_ast::ast;
+use rustc_ast::token::{self, NtTT, Token, TokenKind::*};
+use rustc_ast::tokenstream::{DelimSpan, TokenStream};
+use rustc_ast_pretty::pprust;
+use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder, FatalError};
 use rustc_feature::Features;
 use rustc_parse::parser::Parser;
-use rustc_parse::Directory;
+use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::Span;
-use syntax::ast;
-use syntax::attr::{self, TransparencyError};
-use syntax::print::pprust;
-use syntax::sess::ParseSess;
-use syntax::token::{self, NtTT, Token, TokenKind::*};
-use syntax::tokenstream::{DelimSpan, TokenStream};
 
 use log::debug;
 use std::borrow::Cow;
@@ -87,7 +86,7 @@ fn suggest_slice_pat(e: &mut DiagnosticBuilder<'_>, site_span: Span, parser: &Pa
 impl<'a> ParserAnyMacro<'a> {
     crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
-        let fragment = panictry!(parse_ast_fragment(parser, kind, true).map_err(|mut e| {
+        let fragment = panictry!(parse_ast_fragment(parser, kind).map_err(|mut e| {
             if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
                 if !e.span.is_dummy() {
                     // early end of macro arm (#52866)
@@ -105,10 +104,10 @@ impl<'a> ParserAnyMacro<'a> {
             if e.span.is_dummy() {
                 // Get around lack of span in error (#30128)
                 e.replace_span_with(site_span);
-                if parser.sess.source_map().span_to_filename(arm_span).is_real() {
+                if !parser.sess.source_map().is_imported(arm_span) {
                     e.span_label(arm_span, "in this macro arm");
                 }
-            } else if !parser.sess.source_map().span_to_filename(parser.token.span).is_real() {
+            } else if parser.sess.source_map().is_imported(parser.token.span) {
                 e.span_label(site_span, "in this macro invocation");
             }
             match kind {
@@ -166,9 +165,9 @@ impl TTMacroExpander for MacroRulesMacroExpander {
     }
 }
 
-fn trace_macros_note(cx: &mut ExtCtxt<'_>, sp: Span, message: String) {
+fn trace_macros_note(cx_expansions: &mut FxHashMap<Span, Vec<String>>, sp: Span, message: String) {
     let sp = sp.macro_backtrace().last().map(|trace| trace.call_site).unwrap_or(sp);
-    cx.expansions.entry(sp).or_default().push(message);
+    cx_expansions.entry(sp).or_default().push(message);
 }
 
 /// Given `lhses` and `rhses`, this is the new macro we create
@@ -182,13 +181,37 @@ fn generic_extension<'cx>(
     lhses: &[mbe::TokenTree],
     rhses: &[mbe::TokenTree],
 ) -> Box<dyn MacResult + 'cx> {
+    let sess = cx.parse_sess;
+
     if cx.trace_macros() {
         let msg = format!("expanding `{}! {{ {} }}`", name, pprust::tts_to_string(arg.clone()));
-        trace_macros_note(cx, sp, msg);
+        trace_macros_note(&mut cx.expansions, sp, msg);
     }
 
     // Which arm's failure should we report? (the one furthest along)
     let mut best_failure: Option<(Token, &str)> = None;
+
+    // We create a base parser that can be used for the "black box" parts.
+    // Every iteration needs a fresh copy of that parser. However, the parser
+    // is not mutated on many of the iterations, particularly when dealing with
+    // macros like this:
+    //
+    // macro_rules! foo {
+    //     ("a") => (A);
+    //     ("b") => (B);
+    //     ("c") => (C);
+    //     // ... etc. (maybe hundreds more)
+    // }
+    //
+    // as seen in the `html5ever` benchmark. We use a `Cow` so that the base
+    // parser is only cloned when necessary (upon mutation). Furthermore, we
+    // reinitialize the `Cow` with the base parser at the start of every
+    // iteration, so that any mutated parsers are not reused. This is all quite
+    // hacky, but speeds up the `html5ever` benchmark significantly. (Issue
+    // 68836 suggests a more comprehensive but more complex change to deal with
+    // this situation.)
+    let parser = parser_from_cx(sess, arg.clone());
+
     for (i, lhs) in lhses.iter().enumerate() {
         // try each arm's matchers
         let lhs_tt = match *lhs {
@@ -200,13 +223,13 @@ fn generic_extension<'cx>(
         // This is used so that if a matcher is not `Success(..)`ful,
         // then the spans which became gated when parsing the unsuccessful matcher
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
-        let mut gated_spans_snaphot = mem::take(&mut *cx.parse_sess.gated_spans.spans.borrow_mut());
+        let mut gated_spans_snapshot = mem::take(&mut *sess.gated_spans.spans.borrow_mut());
 
-        match parse_tt(cx, lhs_tt, arg.clone()) {
+        match parse_tt(&mut Cow::Borrowed(&parser), lhs_tt) {
             Success(named_matches) => {
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
-                cx.parse_sess.gated_spans.merge(gated_spans_snaphot);
+                sess.gated_spans.merge(gated_spans_snapshot);
 
                 let rhs = match rhses[i] {
                     // ignore delimiters
@@ -232,19 +255,14 @@ fn generic_extension<'cx>(
 
                 if cx.trace_macros() {
                     let msg = format!("to `{}`", pprust::tts_to_string(tts.clone()));
-                    trace_macros_note(cx, sp, msg);
+                    trace_macros_note(&mut cx.expansions, sp, msg);
                 }
 
-                let directory = Directory {
-                    path: Cow::from(cx.current_expansion.module.directory.as_path()),
-                    ownership: cx.current_expansion.directory_ownership,
-                };
-                let mut p = Parser::new(cx.parse_sess(), tts, Some(directory), true, false, None);
+                let mut p = Parser::new(sess, tts, false, None);
                 p.root_module_name =
                     cx.current_expansion.module.mod_path.last().map(|id| id.to_string());
                 p.last_type_ascription = cx.current_expansion.prior_type_ascription;
 
-                p.process_potential_macro_variable();
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return Box::new(ParserAnyMacro {
@@ -267,14 +285,15 @@ fn generic_extension<'cx>(
 
         // The matcher was not `Success(..)`ful.
         // Restore to the state before snapshotting and maybe try again.
-        mem::swap(&mut gated_spans_snaphot, &mut cx.parse_sess.gated_spans.spans.borrow_mut());
+        mem::swap(&mut gated_spans_snapshot, &mut sess.gated_spans.spans.borrow_mut());
     }
+    drop(parser);
 
     let (token, label) = best_failure.expect("ran no matchers");
     let span = token.span.substitute_dummy(sp);
     let mut err = cx.struct_span_err(span, &parse_failure_msg(&token));
     err.span_label(span, label);
-    if !def_span.is_dummy() && cx.source_map().span_to_filename(def_span).is_real() {
+    if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
         err.span_label(cx.source_map().def_span(def_span), "when calling this macro");
     }
 
@@ -286,7 +305,7 @@ fn generic_extension<'cx>(
                 mbe::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
                 _ => continue,
             };
-            match parse_tt(cx, lhs_tt, arg.clone()) {
+            match parse_tt(&mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())), lhs_tt) {
                 Success(_) => {
                     if comma_span.is_dummy() {
                         err.note("you might be missing a comma");
@@ -326,8 +345,8 @@ pub fn compile_declarative_macro(
     let tt_spec = ast::Ident::new(sym::tt, def.span);
 
     // Parse the macro_rules! invocation
-    let (is_legacy, body) = match &def.kind {
-        ast::ItemKind::MacroDef(macro_def) => (macro_def.legacy, macro_def.body.inner_tokens()),
+    let (macro_rules, body) = match &def.kind {
+        ast::ItemKind::MacroDef(def) => (def.macro_rules, def.body.inner_tokens()),
         _ => unreachable!(),
     };
 
@@ -346,7 +365,7 @@ pub fn compile_declarative_macro(
                     mbe::TokenTree::MetaVarDecl(def.span, rhs_nm, tt_spec),
                 ],
                 separator: Some(Token::new(
-                    if is_legacy { token::Semi } else { token::Comma },
+                    if macro_rules { token::Semi } else { token::Comma },
                     def.span,
                 )),
                 kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, def.span),
@@ -358,7 +377,7 @@ pub fn compile_declarative_macro(
             DelimSpan::dummy(),
             Lrc::new(mbe::SequenceRepetition {
                 tts: vec![mbe::TokenTree::token(
-                    if is_legacy { token::Semi } else { token::Comma },
+                    if macro_rules { token::Semi } else { token::Comma },
                     def.span,
                 )],
                 separator: None,
@@ -368,7 +387,8 @@ pub fn compile_declarative_macro(
         ),
     ];
 
-    let argument_map = match parse(sess, body, &argument_gram, None, true) {
+    let parser = Parser::new(sess, body, true, rustc_parse::MACRO_ARGUMENTS);
+    let argument_map = match parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
         Success(m) => m,
         Failure(token, msg) => {
             let s = parse_failure_msg(&token);
@@ -386,7 +406,7 @@ pub fn compile_declarative_macro(
     let mut valid = true;
 
     // Extract the arguments:
-    let lhses = match argument_map[&lhs_nm] {
+    let lhses = match argument_map[&MacroRulesNormalizedIdent::new(lhs_nm)] {
         MatchedSeq(ref s) => s
             .iter()
             .map(|m| {
@@ -403,7 +423,7 @@ pub fn compile_declarative_macro(
         _ => sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs"),
     };
 
-    let rhses = match argument_map[&rhs_nm] {
+    let rhses = match argument_map[&MacroRulesNormalizedIdent::new(rhs_nm)] {
         MatchedSeq(ref s) => s
             .iter()
             .map(|m| {
@@ -431,7 +451,7 @@ pub fn compile_declarative_macro(
     // that is not lint-checked and trigger the "failed to process buffered lint here" bug.
     valid &= macro_check::check_meta_variables(sess, ast::CRATE_NODE_ID, def.span, &lhses, &rhses);
 
-    let (transparency, transparency_error) = attr::find_transparency(&def.attrs, is_legacy);
+    let (transparency, transparency_error) = attr::find_transparency(&def.attrs, macro_rules);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) => {
             diag.span_err(span, &format!("unknown macro transparency: `{}`", value))
@@ -945,7 +965,7 @@ fn check_matcher_core(
                                         msg,
                                         ts[..ts.len() - 1]
                                             .iter()
-                                            .map(|s| *s)
+                                            .copied()
                                             .collect::<Vec<_>>()
                                             .join(", "),
                                         ts[ts.len() - 1],
@@ -966,7 +986,7 @@ fn token_can_be_followed_by_any(tok: &mbe::TokenTree) -> bool {
     if let mbe::TokenTree::MetaVarDecl(_, _, frag_spec) = *tok {
         frag_can_be_followed_by_any(frag_spec.name)
     } else {
-        // (Non NT's can always be followed by anthing in matchers.)
+        // (Non NT's can always be followed by anything in matchers.)
         true
     }
 }
@@ -1184,14 +1204,8 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     }
 }
 
-/// Use this token tree as a matcher to parse given tts.
-fn parse_tt(cx: &ExtCtxt<'_>, mtch: &[mbe::TokenTree], tts: TokenStream) -> NamedParseResult {
-    // `None` is because we're not interpolating
-    let directory = Directory {
-        path: Cow::from(cx.current_expansion.module.directory.as_path()),
-        ownership: cx.current_expansion.directory_ownership,
-    };
-    parse(cx.parse_sess(), tts, mtch, Some(directory), true)
+fn parser_from_cx(sess: &ParseSess, tts: TokenStream) -> Parser<'_> {
+    Parser::new(sess, tts, true, rustc_parse::MACRO_ARGUMENTS)
 }
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For

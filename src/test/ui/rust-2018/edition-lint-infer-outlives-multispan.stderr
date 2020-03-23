@@ -4,7 +4,7 @@ error: outlives requirements can be inferred
 LL |     struct TeeOutlivesAyIsDebugBee<'a, 'b, T: 'a + Debug + 'b> {
    |                                               ^^^^^     ^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/edition-lint-infer-outlives-multispan.rs:2:9
    |
 LL | #![deny(explicit_outlives_requirements)]

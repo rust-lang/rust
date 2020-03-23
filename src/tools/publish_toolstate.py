@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-## This script publishes the new "current" toolstate in the toolstate repo (not to be
-## confused with publishing the test results, which happens in
-## `src/ci/docker/x86_64-gnu-tools/checktools.sh`).
-## It is set as callback for `src/ci/docker/x86_64-gnu-tools/repo.sh` by the CI scripts
-## when a new commit lands on `master` (i.e., after it passed all checks on `auto`).
+# This script computes the new "current" toolstate for the toolstate repo (not to be
+# confused with publishing the test results, which happens in `src/bootstrap/toolstate.rs`).
+# It gets called from `src/ci/publish_toolstate.sh` when a new commit lands on `master`
+# (i.e., after it passed all checks on `auto`).
 
 from __future__ import print_function
 
@@ -103,6 +102,7 @@ def validate_maintainers(repo, github_token):
         print("The build will fail due to this.")
         exit(1)
 
+
 def read_current_status(current_commit, path):
     '''Reads build status of `current_commit` from content of `history/*.tsv`
     '''
@@ -113,13 +113,16 @@ def read_current_status(current_commit, path):
                 return json.loads(status)
     return {}
 
+
 def gh_url():
     return os.environ['TOOLSTATE_ISSUES_API_URL']
+
 
 def maybe_delink(message):
     if os.environ.get('TOOLSTATE_SKIP_MENTIONS') is not None:
         return message.replace("@", "")
     return message
+
 
 def issue(
     tool,
@@ -127,7 +130,6 @@ def issue(
     assignees,
     relevant_pr_number,
     relevant_pr_user,
-    pr_reviewer,
 ):
     # Open an issue about the toolstate failure.
     if status == 'test-fail':
@@ -143,11 +145,11 @@ def issue(
         cc @{}, do you think you would have time to do the follow-up work?
         If so, that would be great!
 
-        cc @{}, the PR reviewer, and nominating for compiler team prioritization.
+        And nominating for compiler team prioritization.
 
         ''').format(
             relevant_pr_number, tool, status_description,
-            REPOS.get(tool), relevant_pr_user, pr_reviewer
+            REPOS.get(tool), relevant_pr_user
         )),
         'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
         'assignees': list(assignees),
@@ -163,6 +165,7 @@ def issue(
         }
     ))
     response.read()
+
 
 def update_latest(
     current_commit,
@@ -194,7 +197,7 @@ def update_latest(
         for status in latest:
             tool = status['tool']
             changed = False
-            create_issue_for_status = None # set to the status that caused the issue
+            create_issue_for_status = None  # set to the status that caused the issue
 
             for os, s in current_status.items():
                 old = status[os]
@@ -206,14 +209,14 @@ def update_latest(
                 if new > old:
                     # things got fixed or at least the status quo improved
                     changed = True
-                    message += '🎉 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
+                    message += '🎉 {} on {}: {} → {} (cc {}).\n' \
                         .format(tool, os, old, new, maintainers)
                 elif new < old:
                     # tests or builds are failing and were not failing before
                     changed = True
                     title = '💔 {} on {}: {} → {}' \
                         .format(tool, os, old, new)
-                    message += '{} (cc {}, @rust-lang/infra).\n' \
+                    message += '{} (cc {}).\n' \
                         .format(title, maintainers)
                     # See if we need to create an issue.
                     if tool == 'miri':
@@ -231,7 +234,7 @@ def update_latest(
                 try:
                     issue(
                         tool, create_issue_for_status, MAINTAINERS.get(tool, ''),
-                        relevant_pr_number, relevant_pr_user, pr_reviewer,
+                        relevant_pr_number, relevant_pr_user,
                     )
                 except urllib2.HTTPError as e:
                     # network errors will simply end up not creating an issue, but that's better

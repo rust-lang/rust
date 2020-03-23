@@ -1,12 +1,11 @@
 error[E0599]: no method named `foo` found for reference `&dyn Foo` in the current scope
   --> $DIR/issue-5153.rs:10:27
    |
+LL |     fn foo(self: Box<Self>);
+   |                  --------- the method might not be found because of this arbitrary self type
+...
 LL |     (&5isize as &dyn Foo).foo();
    |                           ^^^ method not found in `&dyn Foo`
-   |
-   = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `foo`, perhaps you need to implement it:
-           candidate #1: `Foo`
 
 error: aborting due to previous error
 

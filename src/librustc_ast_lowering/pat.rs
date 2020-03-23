@@ -1,10 +1,10 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode};
 
+use rustc_ast::ast::*;
+use rustc_ast::ptr::P;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_span::{source_map::Spanned, Span};
-use syntax::ast::*;
-use syntax::ptr::P;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     crate fn lower_pat(&mut self, p: &Pat) -> &'hir hir::Pat<'hir> {
@@ -75,7 +75,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.ban_illegal_rest_pat(p.span)
             }
             PatKind::Paren(ref inner) => return self.lower_pat(inner),
-            PatKind::Mac(_) => panic!("Shouldn't exist here"),
+            PatKind::MacCall(_) => panic!("Shouldn't exist here"),
         };
 
         self.pat_with_node_id_of(p, node)
@@ -128,6 +128,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut slice = None;
         let mut prev_rest_span = None;
 
+        // Lowers `$bm $ident @ ..` to `$bm $ident @ _`.
+        let lower_rest_sub = |this: &mut Self, pat, bm, ident, sub| {
+            let lower_sub = |this: &mut Self| Some(this.pat_wild_with_node_id_of(sub));
+            let node = this.lower_pat_ident(pat, bm, ident, lower_sub);
+            this.pat_with_node_id_of(pat, node)
+        };
+
         let mut iter = pats.iter();
         // Lower all the patterns until the first occurrence of a sub-slice pattern.
         for pat in iter.by_ref() {
@@ -142,9 +149,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // Record, lower it to `$binding_mode $ident @ _`, and stop here.
                 PatKind::Ident(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
                     prev_rest_span = Some(sub.span);
-                    let lower_sub = |this: &mut Self| Some(this.pat_wild_with_node_id_of(sub));
-                    let node = self.lower_pat_ident(pat, bm, ident, lower_sub);
-                    slice = Some(self.pat_with_node_id_of(pat, node));
+                    slice = Some(lower_rest_sub(self, pat, bm, ident, sub));
                     break;
                 }
                 // It was not a subslice pattern so lower it normally.
@@ -157,9 +162,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // There was a previous subslice pattern; make sure we don't allow more.
             let rest_span = match pat.kind {
                 PatKind::Rest => Some(pat.span),
-                PatKind::Ident(.., Some(ref sub)) if sub.is_rest() => {
-                    // The `HirValidator` is merciless; add a `_` pattern to avoid ICEs.
-                    after.push(self.pat_wild_with_node_id_of(pat));
+                PatKind::Ident(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
+                    // #69103: Lower into `binding @ _` as above to avoid ICEs.
+                    after.push(lower_rest_sub(self, pat, bm, ident, sub));
                     Some(sub.span)
                 }
                 _ => None,

@@ -10,6 +10,7 @@ LL | |                              fn(&'x u32)) }
    |
    = note: expected enum `std::option::Option<for<'a> fn(&'a u32)>`
               found enum `std::option::Option<fn(&'x u32)>`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

@@ -4,7 +4,7 @@ error: `ambiguous` is both a struct and a function
 LL | /// [`ambiguous`] is ambiguous.
    |      ^^^^^^^^^^^ ambiguous link
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/intra-links-ambiguity.rs:1:9
    |
 LL | #![deny(intra_doc_link_resolution_failure)]

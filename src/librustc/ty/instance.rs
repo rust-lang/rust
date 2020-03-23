@@ -1,12 +1,11 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::middle::lang_items::DropInPlaceFnLangItem;
-use crate::traits;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
+use rustc_data_structures::AtomicRef;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_macros::HashStable;
-use rustc_target::spec::abi::Abi;
 
 use std::fmt;
 
@@ -40,6 +39,10 @@ pub enum InstanceDef<'tcx> {
 
     /// `<fn() as FnTrait>::call_*`
     /// `DefId` is `FnTrait::call_*`.
+    ///
+    /// NB: the (`fn` pointer) type must currently be monomorphic to avoid double substitution
+    /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
+    // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     FnPtrShim(DefId, Ty<'tcx>),
 
     /// `<dyn Trait as Trait>::fn`, "direct calls" of which are implicitly
@@ -54,10 +57,21 @@ pub enum InstanceDef<'tcx> {
         call_once: DefId,
     },
 
-    /// `drop_in_place::<T>; None` for empty drop glue.
+    /// `core::ptr::drop_in_place::<T>`.
+    /// The `DefId` is for `core::ptr::drop_in_place`.
+    /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop
+    /// glue.
+    ///
+    /// NB: the type must currently be monomorphic to avoid double substitution
+    /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
+    // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
     ///`<T as Clone>::clone` shim.
+    ///
+    /// NB: the type must currently be monomorphic to avoid double substitution
+    /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
+    // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     CloneShim(DefId, Ty<'tcx>),
 }
 
@@ -113,9 +127,7 @@ impl<'tcx> Instance<'tcx> {
         }
 
         // If this a non-generic instance, it cannot be a shared monomorphization.
-        if self.substs.non_erasable_generics().next().is_none() {
-            return None;
-        }
+        self.substs.non_erasable_generics().next()?;
 
         match self.def {
             InstanceDef::Item(def_id) => tcx
@@ -177,11 +189,25 @@ impl<'tcx> InstanceDef<'tcx> {
         if self.requires_inline(tcx) {
             return true;
         }
-        if let ty::InstanceDef::DropGlue(..) = *self {
-            // Drop glue wants to be instantiated at every codegen
+        if let ty::InstanceDef::DropGlue(.., Some(ty)) = *self {
+            // Drop glue generally wants to be instantiated at every codegen
             // unit, but without an #[inline] hint. We should make this
             // available to normal end-users.
-            return true;
+            if tcx.sess.opts.incremental.is_none() {
+                return true;
+            }
+            // When compiling with incremental, we can generate a *lot* of
+            // codegen units. Including drop glue into all of them has a
+            // considerable compile time cost.
+            //
+            // We include enums without destructors to allow, say, optimizing
+            // drops of `Option::None` before LTO. We also respect the intent of
+            // `#[inline]` on `Drop::drop` implementations.
+            return ty.ty_adt_def().map_or(true, |adt_def| {
+                adt_def.destructor(tcx).map_or(adt_def.is_enum(), |dtor| {
+                    tcx.codegen_fn_attrs(dtor.did).requests_inline()
+                })
+            });
         }
         tcx.codegen_fn_attrs(self.def_id()).requests_inline()
     }
@@ -227,7 +253,7 @@ impl<'tcx> Instance<'tcx> {
             def_id,
             substs
         );
-        Instance { def: InstanceDef::Item(def_id), substs: substs }
+        Instance { def: InstanceDef::Item(def_id), substs }
     }
 
     pub fn mono(tcx: TyCtxt<'tcx>, def_id: DefId) -> Instance<'tcx> {
@@ -263,45 +289,7 @@ impl<'tcx> Instance<'tcx> {
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
-        debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
-        let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
-            debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
-            let item = tcx.associated_item(def_id);
-            resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
-        } else {
-            let ty = tcx.type_of(def_id);
-            let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, &ty);
-
-            let def = match item_type.kind {
-                ty::FnDef(..)
-                    if {
-                        let f = item_type.fn_sig(tcx);
-                        f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic
-                    } =>
-                {
-                    debug!(" => intrinsic");
-                    ty::InstanceDef::Intrinsic(def_id)
-                }
-                _ => {
-                    if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
-                        let ty = substs.type_at(0);
-                        if ty.needs_drop(tcx, ty::ParamEnv::reveal_all()) {
-                            debug!(" => nontrivial drop glue");
-                            ty::InstanceDef::DropGlue(def_id, Some(ty))
-                        } else {
-                            debug!(" => trivial drop glue");
-                            ty::InstanceDef::DropGlue(def_id, None)
-                        }
-                    } else {
-                        debug!(" => free item");
-                        ty::InstanceDef::Item(def_id)
-                    }
-                }
-            };
-            Some(Instance { def: def, substs: substs })
-        };
-        debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
-        result
+        (*RESOLVE_INSTANCE)(tcx, param_env, def_id, substs)
     }
 
     pub fn resolve_for_fn_ptr(
@@ -336,7 +324,7 @@ impl<'tcx> Instance<'tcx> {
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         let fn_sig = tcx.fn_sig(def_id);
-        let is_vtable_shim = fn_sig.inputs().skip_binder().len() > 0
+        let is_vtable_shim = !fn_sig.inputs().skip_binder().is_empty()
             && fn_sig.input(0).skip_binder().is_param(0)
             && tcx.generics_of(def_id).has_self;
         if is_vtable_shim {
@@ -376,6 +364,7 @@ impl<'tcx> Instance<'tcx> {
         let fn_once = tcx.lang_items().fn_once_trait().unwrap();
         let call_once = tcx
             .associated_items(fn_once)
+            .in_definition_order()
             .find(|it| it.kind == ty::AssocKind::Method)
             .unwrap()
             .def_id;
@@ -392,90 +381,30 @@ impl<'tcx> Instance<'tcx> {
         Instance { def, substs }
     }
 
-    pub fn is_vtable_shim(&self) -> bool {
-        if let InstanceDef::VtableShim(..) = self.def { true } else { false }
-    }
-}
-
-fn resolve_associated_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_item: &ty::AssocItem,
-    param_env: ty::ParamEnv<'tcx>,
-    trait_id: DefId,
-    rcvr_substs: SubstsRef<'tcx>,
-) -> Option<Instance<'tcx>> {
-    let def_id = trait_item.def_id;
-    debug!(
-        "resolve_associated_item(trait_item={:?}, \
-            param_env={:?}, \
-            trait_id={:?}, \
-            rcvr_substs={:?})",
-        def_id, param_env, trait_id, rcvr_substs
-    );
-
-    let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = tcx.codegen_fulfill_obligation((param_env, ty::Binder::bind(trait_ref)));
-
-    // Now that we know which impl is being used, we can dispatch to
-    // the actual function:
-    match vtbl {
-        traits::VtableImpl(impl_data) => {
-            let (def_id, substs) =
-                traits::find_associated_item(tcx, param_env, trait_item, rcvr_substs, &impl_data);
-
-            let resolved_item = tcx.associated_item(def_id);
-
-            // Since this is a trait item, we need to see if the item is either a trait default item
-            // or a specialization because we can't resolve those unless we can `Reveal::All`.
-            // NOTE: This should be kept in sync with the similar code in
-            // `rustc::traits::project::assemble_candidates_from_impls()`.
-            let eligible = if !resolved_item.defaultness.is_default() {
-                true
-            } else if param_env.reveal == traits::Reveal::All {
-                !trait_ref.needs_subst()
-            } else {
-                false
-            };
-
-            if !eligible {
-                return None;
-            }
-
-            let substs = tcx.erase_regions(&substs);
-            Some(ty::Instance::new(def_id, substs))
+    /// FIXME(#69925) Depending on the kind of `InstanceDef`, the MIR body associated with an
+    /// instance is expressed in terms of the generic parameters of `self.def_id()`, and in other
+    /// cases the MIR body is expressed in terms of the types found in the substitution array.
+    /// In the former case, we want to substitute those generic types and replace them with the
+    /// values from the substs when monomorphizing the function body. But in the latter case, we
+    /// don't want to do that substitution, since it has already been done effectively.
+    ///
+    /// This function returns `Some(substs)` in the former case and None otherwise -- i.e., if
+    /// this function returns `None`, then the MIR body does not require substitution during
+    /// monomorphization.
+    pub fn substs_for_mir_body(&self) -> Option<SubstsRef<'tcx>> {
+        match self.def {
+            InstanceDef::CloneShim(..)
+            | InstanceDef::DropGlue(_, Some(_)) => None,
+            InstanceDef::ClosureOnceShim { .. }
+            | InstanceDef::DropGlue(..)
+            // FIXME(#69925): `FnPtrShim` should be in the other branch.
+            | InstanceDef::FnPtrShim(..)
+            | InstanceDef::Item(_)
+            | InstanceDef::Intrinsic(..)
+            | InstanceDef::ReifyShim(..)
+            | InstanceDef::Virtual(..)
+            | InstanceDef::VtableShim(..) => Some(self.substs),
         }
-        traits::VtableGenerator(generator_data) => Some(Instance {
-            def: ty::InstanceDef::Item(generator_data.generator_def_id),
-            substs: generator_data.substs,
-        }),
-        traits::VtableClosure(closure_data) => {
-            let trait_closure_kind = tcx.lang_items().fn_trait_kind(trait_id).unwrap();
-            Some(Instance::resolve_closure(
-                tcx,
-                closure_data.closure_def_id,
-                closure_data.substs,
-                trait_closure_kind,
-            ))
-        }
-        traits::VtableFnPointer(ref data) => Some(Instance {
-            def: ty::InstanceDef::FnPtrShim(trait_item.def_id, data.fn_ty),
-            substs: rcvr_substs,
-        }),
-        traits::VtableObject(ref data) => {
-            let index = traits::get_vtable_index_of_object_method(tcx, data, def_id);
-            Some(Instance { def: ty::InstanceDef::Virtual(def_id, index), substs: rcvr_substs })
-        }
-        traits::VtableBuiltin(..) => {
-            if tcx.lang_items().clone_trait().is_some() {
-                Some(Instance {
-                    def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
-                    substs: rcvr_substs,
-                })
-            } else {
-                None
-            }
-        }
-        traits::VtableAutoImpl(..) | traits::VtableParam(..) | traits::VtableTraitAlias(..) => None,
     }
 }
 
@@ -511,3 +440,21 @@ fn needs_fn_once_adapter_shim(
         (ty::ClosureKind::FnMut, _) | (ty::ClosureKind::FnOnce, _) => Err(()),
     }
 }
+
+fn resolve_instance_default(
+    _tcx: TyCtxt<'tcx>,
+    _param_env: ty::ParamEnv<'tcx>,
+    _def_id: DefId,
+    _substs: SubstsRef<'tcx>,
+) -> Option<Instance<'tcx>> {
+    unimplemented!()
+}
+
+pub static RESOLVE_INSTANCE: AtomicRef<
+    for<'tcx> fn(
+        TyCtxt<'tcx>,
+        ty::ParamEnv<'tcx>,
+        DefId,
+        SubstsRef<'tcx>,
+    ) -> Option<Instance<'tcx>>,
+> = AtomicRef::new(&(resolve_instance_default as _));

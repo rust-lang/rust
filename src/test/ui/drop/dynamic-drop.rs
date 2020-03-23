@@ -2,6 +2,8 @@
 // ignore-wasm32-bare compiled with panic=abort by default
 
 #![feature(generators, generator_trait, untagged_unions)]
+#![feature(move_ref_pattern)]
+#![feature(bindings_after_at)]
 
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
@@ -184,7 +186,7 @@ fn generator(a: &Allocator, run_count: usize) {
          );
     };
     for _ in 0..run_count {
-        Pin::new(&mut gen).resume();
+        Pin::new(&mut gen).resume(());
     }
 }
 
@@ -288,6 +290,49 @@ fn subslice_mixed_min_lengths(a: &Allocator, c: i32) {
         6 => { let [_y @ ..] = ar; }
         _ => { let [_y @ .., _] = ar; }
     }
+}
+
+fn bindings_after_at_dynamic_init_move(a: &Allocator, c: bool) {
+    let foo = if c { Some(a.alloc()) } else { None };
+    let _x;
+
+    if let bar @ Some(_) = foo {
+        _x = bar;
+    }
+}
+
+fn bindings_after_at_dynamic_init_ref(a: &Allocator, c: bool) {
+    let foo = if c { Some(a.alloc()) } else { None };
+    let _x;
+
+    if let bar @ Some(_baz) = &foo {
+        _x = bar;
+    }
+}
+
+fn bindings_after_at_dynamic_drop_move(a: &Allocator, c: bool) {
+    let foo = if c { Some(a.alloc()) } else { None };
+
+    if let bar @ Some(_) = foo {
+        bar
+    } else {
+        None
+    };
+}
+
+fn bindings_after_at_dynamic_drop_ref(a: &Allocator, c: bool) {
+    let foo = if c { Some(a.alloc()) } else { None };
+
+    if let bar @ Some(_baz) = &foo {
+        bar
+    } else {
+        &None
+    };
+}
+
+fn move_ref_pattern(a: &Allocator) {
+    let mut tup = (a.alloc(), a.alloc(), a.alloc(), a.alloc());
+    let (ref _a, ref mut _b, _c, mut _d) = tup;
 }
 
 fn panic_after_return(a: &Allocator) -> Ptr<'_> {
@@ -453,6 +498,8 @@ fn main() {
     run_test(|a| subslice_mixed_min_lengths(a, 6));
     run_test(|a| subslice_mixed_min_lengths(a, 7));
 
+    run_test(|a| move_ref_pattern(a));
+
     run_test(|a| {
         panic_after_return(a);
     });
@@ -462,6 +509,15 @@ fn main() {
     run_test(|a| panic_after_init(a));
     run_test(|a| panic_after_init_temp(a));
     run_test(|a| panic_after_init_by_loop(a));
+
+    run_test(|a| bindings_after_at_dynamic_init_move(a, true));
+    run_test(|a| bindings_after_at_dynamic_init_move(a, false));
+    run_test(|a| bindings_after_at_dynamic_init_ref(a, true));
+    run_test(|a| bindings_after_at_dynamic_init_ref(a, false));
+    run_test(|a| bindings_after_at_dynamic_drop_move(a, true));
+    run_test(|a| bindings_after_at_dynamic_drop_move(a, false));
+    run_test(|a| bindings_after_at_dynamic_drop_ref(a, true));
+    run_test(|a| bindings_after_at_dynamic_drop_ref(a, false));
 
     run_test_nopanic(|a| union1(a));
 }

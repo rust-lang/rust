@@ -184,14 +184,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             ..
         } = self.builder;
         *rev_lookup.projections.entry((base, elem.lift())).or_insert_with(move || {
-            let path = MoveDataBuilder::new_move_path(
+            MoveDataBuilder::new_move_path(
                 move_paths,
                 path_map,
                 init_path_map,
                 Some(base),
                 mk_place(*tcx),
-            );
-            path
+            )
         })
     }
 
@@ -380,8 +379,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 self.gather_operand(discr);
             }
 
-            TerminatorKind::Yield { ref value, .. } => {
+            TerminatorKind::Yield { ref value, resume_arg: ref place, .. } => {
                 self.gather_operand(value);
+                self.create_move_path(place);
+                self.gather_init(place.as_ref(), InitKind::Deep);
             }
 
             TerminatorKind::Drop { ref location, target: _, unwind: _ } => {
@@ -472,7 +473,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     }
 
     fn record_move(&mut self, place: &Place<'tcx>, path: MovePathIndex) {
-        let move_out = self.builder.data.moves.push(MoveOut { path: path, source: self.loc });
+        let move_out = self.builder.data.moves.push(MoveOut { path, source: self.loc });
         debug!(
             "gather_move({:?}, {:?}): adding move {:?} of {:?}",
             self.loc, place, move_out, path
@@ -481,7 +482,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         self.builder.data.loc_map[self.loc].push(move_out);
     }
 
-    fn gather_init(&mut self, place: PlaceRef<'cx, 'tcx>, kind: InitKind) {
+    fn gather_init(&mut self, place: PlaceRef<'tcx>, kind: InitKind) {
         debug!("gather_init({:?}, {:?})", self.loc, place);
 
         let mut place = place;

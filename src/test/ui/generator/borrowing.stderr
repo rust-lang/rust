@@ -1,7 +1,7 @@
 error[E0597]: `a` does not live long enough
   --> $DIR/borrowing.rs:9:33
    |
-LL |         Pin::new(&mut || yield &a).resume()
+LL |         Pin::new(&mut || yield &a).resume(())
    |                       ----------^
    |                       |         |
    |                       |         borrowed value does not live long enough

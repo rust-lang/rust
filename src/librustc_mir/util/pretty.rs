@@ -134,7 +134,7 @@ fn dump_matched_mir_node<'tcx, F>(
         if let Some(ref layout) = body.generator_layout {
             writeln!(file, "// generator_layout = {:?}", layout)?;
         }
-        writeln!(file, "")?;
+        writeln!(file)?;
         extra_data(PassWhere::BeforeCFG, &mut file)?;
         write_user_type_annotations(body, &mut file)?;
         write_mir_fn(tcx, source, body, &mut extra_data, &mut file)?;
@@ -242,13 +242,13 @@ pub fn write_mir_pretty<'tcx>(
             first = false;
         } else {
             // Put empty lines between all items
-            writeln!(w, "")?;
+            writeln!(w)?;
         }
 
         write_mir_fn(tcx, MirSource::item(def_id), body, &mut |_, _| Ok(()), w)?;
 
         for (i, body) in tcx.promoted_mir(def_id).iter_enumerated() {
-            writeln!(w, "")?;
+            writeln!(w)?;
             let src = MirSource { instance: ty::InstanceDef::Item(def_id), promoted: Some(i) };
             write_mir_fn(tcx, src, body, &mut |_, _| Ok(()), w)?;
         }
@@ -271,7 +271,7 @@ where
         extra_data(PassWhere::BeforeBlock(block), w)?;
         write_basic_block(tcx, block, body, extra_data, w)?;
         if block.index() + 1 != body.basic_blocks().len() {
-            writeln!(w, "")?;
+            writeln!(w)?;
         }
     }
 
@@ -297,7 +297,7 @@ where
     writeln!(w, "{}{:?}{}: {{", INDENT, block, cleanup_text)?;
 
     // List of statements in the middle.
-    let mut current_location = Location { block: block, statement_index: 0 };
+    let mut current_location = Location { block, statement_index: 0 };
     for statement in &data.statements {
         extra_data(PassWhere::BeforeLocation(current_location), w)?;
         let indented_body = format!("{0}{0}{1:?};", INDENT, statement);
@@ -477,7 +477,7 @@ fn write_scope_tree(
         indented_decl.push_str(";");
 
         let local_name =
-            if local == RETURN_PLACE { format!(" return place") } else { String::new() };
+            if local == RETURN_PLACE { " return place".to_string() } else { String::new() };
 
         writeln!(
             w,
@@ -490,7 +490,7 @@ fn write_scope_tree(
     }
 
     let children = match scope_tree.get(&parent) {
-        Some(childs) => childs,
+        Some(children) => children,
         None => return Ok(()),
     };
 
@@ -529,7 +529,7 @@ pub fn write_mir_intro<'tcx>(
     write_scope_tree(tcx, body, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1)?;
 
     // Add an empty line before the first block is printed.
-    writeln!(w, "")?;
+    writeln!(w)?;
 
     Ok(())
 }
@@ -545,7 +545,7 @@ fn write_mir_sig(
     trace!("write_mir_sig: {:?}", src.instance);
     let kind = tcx.def_kind(src.def_id());
     let is_function = match kind {
-        Some(DefKind::Fn) | Some(DefKind::Method) | Some(DefKind::Ctor(..)) => true,
+        Some(DefKind::Fn) | Some(DefKind::AssocFn) | Some(DefKind::Ctor(..)) => true,
         _ => tcx.is_closure(src.def_id()),
     };
     match (kind, src.promoted) {

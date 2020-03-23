@@ -235,18 +235,16 @@ use rustc_index::vec::Idx;
 use super::{compare_const_vals, PatternFoldable, PatternFolder};
 use super::{FieldPat, Pat, PatKind, PatRange};
 
-use rustc::ty::layout::{Integer, IntegerExt, Size, VariantIdx};
-use rustc::ty::{self, Const, Ty, TyCtxt, TypeFoldable, VariantDef};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{HirId, RangeEnd};
-
-use rustc::lint;
 use rustc::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
 use rustc::mir::Field;
+use rustc::ty::layout::{Integer, IntegerExt, Size, VariantIdx};
+use rustc::ty::{self, Const, Ty, TyCtxt, TypeFoldable, VariantDef};
 use rustc::util::common::ErrorReported;
-
+use rustc_attr::{SignedInt, UnsignedInt};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{HirId, RangeEnd};
+use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
-use syntax::attr::{SignedInt, UnsignedInt};
 
 use arena::TypedArena;
 
@@ -343,12 +341,11 @@ impl<'tcx> PatternFolder<'tcx> for LiteralExpander<'tcx> {
                         ty: rty,
                         span: pat.span,
                         kind: box PatKind::Constant {
-                            value: self.tcx.mk_const(Const {
-                                val: ty::ConstKind::Value(
-                                    self.fold_const_value_deref(*val, rty, crty),
-                                ),
-                                ty: rty,
-                            }),
+                            value: Const::from_value(
+                                self.tcx,
+                                self.fold_const_value_deref(*val, rty, crty),
+                                rty,
+                            ),
                         },
                     },
                 },
@@ -412,7 +409,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 
     fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
-        self.0.iter().map(|p| *p)
+        self.0.iter().copied()
     }
 
     // If the first pattern is an or-pattern, expand this pattern. Otherwise, return `None`.
@@ -481,7 +478,11 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this expands it.
     crate fn push(&mut self, row: PatStack<'p, 'tcx>) {
         if let Some(rows) = row.expand_or_pat() {
-            self.0.extend(rows);
+            for row in rows {
+                // We recursively expand the or-patterns of the new rows.
+                // This is necessary as we might have `0 | (1 | 2)` or e.g., `x @ 0 | x @ (1 | 2)`.
+                self.push(row)
+            }
         } else {
             self.0.push(row);
         }
@@ -595,7 +596,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
     fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         if self.tcx.features().exhaustive_patterns {
-            self.tcx.is_ty_uninhabited_from(self.module, ty)
+            self.tcx.is_ty_uninhabited_from(self.module, ty, self.param_env)
         } else {
             false
         }
@@ -838,7 +839,7 @@ impl<'tcx> Constructor<'tcx> {
                             // eliminate it straight away.
                             remaining_ranges = vec![];
                         } else {
-                            // Otherwise explicitely compute the remaining ranges.
+                            // Otherwise explicitly compute the remaining ranges.
                             remaining_ranges = other_range.subtract_from(remaining_ranges);
                         }
 
@@ -1001,7 +1002,7 @@ impl<'tcx> Constructor<'tcx> {
                         PatKind::Leaf { subpatterns }
                     }
                 }
-                ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.nth(0).unwrap() },
+                ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
                 ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, ty),
                 _ => PatKind::Wild,
             },
@@ -1264,7 +1265,7 @@ fn all_constructors<'a, 'tcx>(
                 def.variants
                     .iter()
                     .filter(|v| {
-                        !v.uninhabited_from(cx.tcx, substs, def.adt_kind())
+                        !v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
                             .contains(cx.tcx, cx.module)
                     })
                     .map(|v| Variant(v.def_id))
@@ -1397,21 +1398,19 @@ impl<'tcx> IntRange<'tcx> {
     ) -> Option<IntRange<'tcx>> {
         if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty) {
             let ty = value.ty;
-            let val = if let ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data, size })) =
-                value.val
-            {
-                // For this specific pattern we can skip a lot of effort and go
-                // straight to the result, after doing a bit of checking. (We
-                // could remove this branch and just use the next branch, which
-                // is more general but much slower.)
-                Scalar::<()>::check_raw(data, size, target_size);
-                data
-            } else if let Some(val) = value.try_eval_bits(tcx, param_env, ty) {
-                // This is a more general form of the previous branch.
-                val
-            } else {
-                return None;
-            };
+            let val = (|| {
+                if let ty::ConstKind::Value(ConstValue::Scalar(scalar)) = value.val {
+                    // For this specific pattern we can skip a lot of effort and go
+                    // straight to the result, after doing a bit of checking. (We
+                    // could remove this branch and just fall through, which
+                    // is more general but much slower.)
+                    if let Ok(bits) = scalar.to_bits_or_ptr(target_size, &tcx) {
+                        return Some(bits);
+                    }
+                }
+                // This is a more general form of the previous case.
+                value.try_eval_bits(tcx, param_env, ty)
+            })()?;
             let val = val ^ bias;
             Some(IntRange { range: val..=val, ty, span })
         } else {
@@ -2235,24 +2234,26 @@ fn lint_overlapping_patterns<'tcx>(
     overlaps: Vec<IntRange<'tcx>>,
 ) {
     if let (true, Some(hir_id)) = (!overlaps.is_empty(), hir_id) {
-        let mut err = tcx.struct_span_lint_hir(
+        tcx.struct_span_lint_hir(
             lint::builtin::OVERLAPPING_PATTERNS,
             hir_id,
             ctor_range.span,
-            "multiple patterns covering the same range",
+            |lint| {
+                let mut err = lint.build("multiple patterns covering the same range");
+                err.span_label(ctor_range.span, "overlapping patterns");
+                for int_range in overlaps {
+                    // Use the real type for user display of the ranges:
+                    err.span_label(
+                        int_range.span,
+                        &format!(
+                            "this range overlaps on `{}`",
+                            IntRange { range: int_range.range, ty, span: DUMMY_SP }.to_pat(tcx),
+                        ),
+                    );
+                }
+                err.emit();
+            },
         );
-        err.span_label(ctor_range.span, "overlapping patterns");
-        for int_range in overlaps {
-            // Use the real type for user display of the ranges:
-            err.span_label(
-                int_range.span,
-                &format!(
-                    "this range overlaps on `{}`",
-                    IntRange { range: int_range.range, ty, span: DUMMY_SP }.to_pat(tcx),
-                ),
-            );
-        }
-        err.emit();
     }
 }
 
@@ -2332,7 +2333,7 @@ fn specialize_one_pattern<'p, 'tcx>(
         PatKind::Binding { .. } | PatKind::Wild => Some(ctor_wild_subpatterns.iter().collect()),
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
-            let ref variant = adt_def.variants[variant_index];
+            let variant = &adt_def.variants[variant_index];
             let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(pat.ty, variant);
             Some(Variant(variant.def_id))
                 .filter(|variant_constructor| variant_constructor == constructor)

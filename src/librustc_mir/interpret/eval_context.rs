@@ -21,7 +21,7 @@ use rustc_span::source_map::{self, Span, DUMMY_SP};
 
 use super::{
     Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
-    ScalarMaybeUndef, StackPopInfo,
+    ScalarMaybeUndef, StackPopJump,
 };
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
@@ -98,10 +98,10 @@ pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return). Also store layout of return place so
     /// we can validate it at that layout.
-    /// `ret` stores the block we jump to on a normal return, while 'unwind'
-    /// stores the block used for cleanup during unwinding
+    /// `ret` stores the block we jump to on a normal return, while `unwind`
+    /// stores the block used for cleanup during unwinding.
     Goto { ret: Option<mir::BasicBlock>, unwind: Option<mir::BasicBlock> },
-    /// Just do nohing: Used by Main and for the box_alloc hook in miri.
+    /// Just do nothing: Used by Main and for the `box_alloc` hook in miri.
     /// `cleanup` says whether locals are deallocated. Static computation
     /// wants them leaked to intern what they need (and just throw away
     /// the entire `ecx` when it is done).
@@ -138,7 +138,7 @@ pub enum LocalValue<Tag = (), Id = AllocId> {
 impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     pub fn access(&self) -> InterpResult<'tcx, Operand<Tag>> {
         match self.value {
-            LocalValue::Dead => throw_unsup!(DeadLocal),
+            LocalValue::Dead => throw_ub!(DeadLocal),
             LocalValue::Uninitialized => {
                 bug!("The type checker should prevent reading from a never-written local")
             }
@@ -152,7 +152,7 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
         &mut self,
     ) -> InterpResult<'tcx, Result<&mut LocalValue<Tag>, MemPlace<Tag>>> {
         match self.value {
-            LocalValue::Dead => throw_unsup!(DeadLocal),
+            LocalValue::Dead => throw_ub!(DeadLocal),
             LocalValue::Live(Operand::Indirect(mplace)) => Ok(Err(mplace)),
             ref mut local @ LocalValue::Live(Operand::Immediate(_))
             | ref mut local @ LocalValue::Uninitialized => Ok(Ok(local)),
@@ -264,7 +264,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline(always)]
     pub fn cur_frame(&self) -> usize {
-        assert!(self.stack.len() > 0);
+        assert!(!self.stack.is_empty());
         self.stack.len() - 1
     }
 
@@ -326,7 +326,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if self.tcx.is_mir_available(did) {
                     Ok(self.tcx.optimized_mir(did).unwrap_read_only())
                 } else {
-                    throw_unsup!(NoMirFor(self.tcx.def_path_str(def_id)))
+                    throw_unsup!(NoMirFor(def_id))
                 }
             }
             _ => Ok(self.tcx.instance_mir(instance)),
@@ -335,15 +335,25 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Call this on things you got out of the MIR (so it is as generic as the current
     /// stack frame), to bring it into the proper environment for this interpreter.
-    pub(super) fn subst_from_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
+    pub(super) fn subst_from_current_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
         &self,
         value: T,
     ) -> T {
-        self.tcx.subst_and_normalize_erasing_regions(
-            self.frame().instance.substs,
-            self.param_env,
-            &value,
-        )
+        self.subst_from_frame_and_normalize_erasing_regions(self.frame(), value)
+    }
+
+    /// Call this on things you got out of the MIR (so it is as generic as the provided
+    /// stack frame), to bring it into the proper environment for this interpreter.
+    pub(super) fn subst_from_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
+        &self,
+        frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
+        value: T,
+    ) -> T {
+        if let Some(substs) = frame.instance.substs_for_mir_body() {
+            self.tcx.subst_and_normalize_erasing_regions(substs, self.param_env, &value)
+        } else {
+            self.tcx.normalize_erasing_regions(self.param_env, value)
+        }
     }
 
     /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
@@ -371,11 +381,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             None => {
                 let layout = crate::interpret::operand::from_known_layout(layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
-                    let local_ty = self.tcx.subst_and_normalize_erasing_regions(
-                        frame.instance.substs,
-                        self.param_env,
-                        &local_ty,
-                    );
+                    let local_ty =
+                        self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty);
                     self.layout_of(local_ty)
                 })?;
                 if let Some(state) = frame.locals.get(local) {
@@ -457,10 +464,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Check if this brought us over the size limit.
                 if size.bytes() >= self.tcx.data_layout().obj_size_bound() {
-                    throw_ub_format!(
-                        "wide pointer metadata contains invalid information: \
-                        total size is bigger than largest supported object"
-                    );
+                    throw_ub!(InvalidMeta("total size is bigger than largest supported object"));
                 }
                 Ok(Some((size, align)))
             }
@@ -476,10 +480,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Make sure the slice is not too big.
                 let size = elem.size.checked_mul(len, &*self.tcx).ok_or_else(|| {
-                    err_ub_format!(
-                        "invalid slice: \
-                        total size is bigger than largest supported object"
-                    )
+                    err_ub!(InvalidMeta("slice is bigger than largest supported object"))
                 })?;
                 Ok(Some((size, elem.align.abi)))
             }
@@ -505,7 +506,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
-        if self.stack.len() > 0 {
+        if !self.stack.is_empty() {
             info!("PAUSING({}) {}", self.cur_frame(), self.frame().instance);
         }
         ::log_settings::settings().indentation += 1;
@@ -580,7 +581,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// If `target` is `None`, that indicates the function cannot return, so we raise UB.
     pub fn return_to_block(&mut self, target: Option<mir::BasicBlock>) -> InterpResult<'tcx> {
         if let Some(target) = target {
-            Ok(self.go_to_block(target))
+            self.go_to_block(target);
+            Ok(())
         } else {
             throw_ub!(Unreachable)
         }
@@ -629,23 +631,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
-        let stack_pop_info = M::stack_pop(self, frame.extra, unwinding)?;
-        if let (false, StackPopInfo::StopUnwinding) = (unwinding, stack_pop_info) {
-            bug!("Attempted to stop unwinding while there is no unwinding!");
-        }
 
         // Now where do we jump next?
-
-        // Determine if we leave this function normally or via unwinding.
-        let cur_unwinding =
-            if let StackPopInfo::StopUnwinding = stack_pop_info { false } else { unwinding };
 
         // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
         // In that case, we return early. We also avoid validation in that case,
         // because this is CTFE and the final value will be thoroughly validated anyway.
         let (cleanup, next_block) = match frame.return_to_block {
             StackPopCleanup::Goto { ret, unwind } => {
-                (true, Some(if cur_unwinding { unwind } else { ret }))
+                (true, Some(if unwinding { unwind } else { ret }))
             }
             StackPopCleanup::None { cleanup, .. } => (cleanup, None),
         };
@@ -653,7 +647,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if !cleanup {
             assert!(self.stack.is_empty(), "only the topmost frame should ever be leaked");
             assert!(next_block.is_none(), "tried to skip cleanup when we have a next block!");
-            // Leak the locals, skip validation.
+            assert!(!unwinding, "tried to skip cleanup during unwinding");
+            // Leak the locals, skip validation, skip machine hook.
             return Ok(());
         }
 
@@ -662,15 +657,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.deallocate_local(local.value)?;
         }
 
-        trace!(
-            "StackPopCleanup: {:?} StackPopInfo: {:?} cur_unwinding = {:?}",
-            frame.return_to_block,
-            stack_pop_info,
-            cur_unwinding
-        );
-        if cur_unwinding {
+        if M::stack_pop(self, frame.extra, unwinding)? == StackPopJump::NoJump {
+            // The hook already did everything.
+            // We want to skip the `info!` below, hence early return.
+            return Ok(());
+        }
+        // Normal return.
+        if unwinding {
             // Follow the unwind edge.
-            let unwind = next_block.expect("Encounted StackPopCleanup::None when unwinding!");
+            let unwind = next_block.expect("Encountered StackPopCleanup::None when unwinding!");
             self.unwind_to_block(unwind);
         } else {
             // Follow the normal return edge.
@@ -685,7 +680,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // invariant -- that is, unless a function somehow has a ptr to
                     // its return place... but the way MIR is currently generated, the
                     // return place is always a local and then this cannot happen.
-                    self.validate_operand(self.place_to_op(return_place)?, vec![], None)?;
+                    self.validate_operand(self.place_to_op(return_place)?)?;
                 }
             } else {
                 // Uh, that shouldn't happen... the function did not intend to return
@@ -698,12 +693,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
-        if self.stack.len() > 0 {
+        if !self.stack.is_empty() {
             info!(
                 "CONTINUING({}) {} (unwinding = {})",
                 self.cur_frame(),
                 self.frame().instance,
-                cur_unwinding
+                unwinding
             );
         }
 
@@ -756,6 +751,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub(super) fn const_eval(
         &self,
         gid: GlobalId<'tcx>,
+        ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
         // and thus don't care about the parameter environment. While we could just use
@@ -767,17 +763,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             self.param_env
         };
-        let val = if let Some(promoted) = gid.promoted {
-            self.tcx.const_eval_promoted(param_env, gid.instance, promoted)?
-        } else {
-            self.tcx.const_eval_instance(param_env, gid.instance, Some(self.tcx.span))?
-        };
+        let val = self.tcx.const_eval_global_id(param_env, gid, Some(self.tcx.span))?;
 
         // Even though `ecx.const_eval` is called from `eval_const_to_op` we can never have a
         // recursion deeper than one level, because the `tcx.const_eval` above is guaranteed to not
         // return `ConstValue::Unevaluated`, which is the only way that `eval_const_to_op` will call
         // `ecx.const_eval`.
-        self.eval_const_to_op(val, None)
+        let const_ = ty::Const { val: ty::ConstKind::Value(val), ty };
+        self.eval_const_to_op(&const_, None)
     }
 
     pub fn const_eval_raw(

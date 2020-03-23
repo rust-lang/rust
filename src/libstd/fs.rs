@@ -407,7 +407,7 @@ impl File {
     ///
     /// It is equivalent to `OpenOptions::new()` but allows you to write more
     /// readable code. Instead of `OpenOptions::new().read(true).open("foo.txt")`
-    /// you can write `File::with_options().read(true).open("foo.txt"). This
+    /// you can write `File::with_options().read(true).open("foo.txt")`. This
     /// also avoids the need to import `OpenOptions`.
     ///
     /// See the [`OpenOptions::new`] function for more details.
@@ -844,10 +844,7 @@ impl OpenOptions {
         self
     }
 
-    /// Sets the option for creating a new file.
-    ///
-    /// This option indicates whether a new file will be created if the file
-    /// does not yet already exist.
+    /// Sets the option to create a new file, or open it if it already exists.
     ///
     /// In order for the file to be created, [`write`] or [`append`] access must
     /// be used.
@@ -868,11 +865,10 @@ impl OpenOptions {
         self
     }
 
-    /// Sets the option to always create a new file.
+    /// Sets the option to create a new file, failing if it already exists.
     ///
-    /// This option indicates whether a new file will be created.
-    /// No file is allowed to exist at the target location, also no (dangling)
-    /// symlink.
+    /// No file is allowed to exist at the target location, also no (dangling) symlink. In this
+    /// way, if the call succeeds, the file returned is guaranteed to be new.
     ///
     /// This option is useful because it is atomic. Otherwise between checking
     /// whether a file exists and creating a new one, the file may have been

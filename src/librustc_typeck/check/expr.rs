@@ -17,26 +17,27 @@ use crate::check::TupleArgumentsFlag::DontTupleArguments;
 use crate::type_error_struct;
 use crate::util::common::ErrorReported;
 
-use rustc::infer;
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::middle::lang_items;
-use rustc::traits::{self, ObligationCauseCode};
+use rustc::mir::interpret::ErrorHandled;
 use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::Ty;
 use rustc::ty::TypeFoldable;
 use rustc::ty::{AdtKind, Visibility};
+use rustc_ast::ast;
+use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, QPath};
+use rustc_infer::infer;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};
-use syntax::ast;
-use syntax::util::lev_distance::find_best_match_for_name;
+use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 use std::fmt::Display;
 
@@ -404,7 +405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let needs = Needs::maybe_mut_place(mutbl);
         let ty = self.check_expr_with_expectation_and_needs(&oprnd, hint, needs);
 
-        let tm = ty::TypeAndMut { ty: ty, mutbl: mutbl };
+        let tm = ty::TypeAndMut { ty, mutbl };
         match kind {
             _ if tm.ty.references_error() => self.tcx.types.err,
             hir::BorrowKind::Raw => {
@@ -1012,6 +1013,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(self.to_const(count, tcx.type_of(count_def_id)))
         } else {
             tcx.const_eval_poly(count_def_id)
+                .map(|val| ty::Const::from_value(tcx, val, tcx.type_of(count_def_id)))
         };
 
         let uty = match expected {
@@ -1038,11 +1040,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if element_ty.references_error() {
-            tcx.types.err
-        } else if let Ok(count) = count {
-            tcx.mk_ty(ty::Array(t, count))
-        } else {
-            tcx.types.err
+            return tcx.types.err;
+        }
+        match count {
+            Ok(count) => tcx.mk_ty(ty::Array(t, count)),
+            Err(ErrorHandled::TooGeneric) => {
+                self.tcx.sess.span_err(
+                    tcx.def_span(count_def_id),
+                    "array lengths can't depend on generic parameters",
+                );
+                tcx.types.err
+            }
+            Err(ErrorHandled::Reported) => tcx.types.err,
         }
     }
 
@@ -1060,16 +1069,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         });
 
-        let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| {
-            let t = match flds {
-                Some(ref fs) if i < fs.len() => {
-                    let ety = fs[i].expect_ty();
-                    self.check_expr_coercable_to_type(&e, ety);
-                    ety
-                }
-                _ => self.check_expr_with_expectation(&e, NoExpectation),
-            };
-            t
+        let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| match flds {
+            Some(ref fs) if i < fs.len() => {
+                let ety = fs[i].expect_ty();
+                self.check_expr_coercable_to_type(&e, ety);
+                ety
+            }
+            _ => self.check_expr_with_expectation(&e, NoExpectation),
         });
         let tuple = self.tcx.mk_tup(elt_ts_iter);
         if tuple.references_error() {
@@ -1194,7 +1200,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .fields
             .iter()
             .enumerate()
-            .map(|(i, field)| (field.ident.modern(), (i, field)))
+            .map(|(i, field)| (field.ident.normalize_to_macros_2_0(), (i, field)))
             .collect::<FxHashMap<_, _>>();
 
         let mut seen_fields = FxHashMap::default();
@@ -1311,6 +1317,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty_span: Span,
     ) {
         if variant.recovered {
+            self.set_tainted_by_errors();
             return;
         }
         let mut err = self.type_error_struct_with_diag(
@@ -1459,7 +1466,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (ident, def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, base_def.did, self.body_id);
                     let fields = &base_def.non_enum_variant().fields;
-                    if let Some(index) = fields.iter().position(|f| f.ident.modern() == ident) {
+                    if let Some(index) =
+                        fields.iter().position(|f| f.ident.normalize_to_macros_2_0() == ident)
+                    {
                         let field = &fields[index];
                         let field_ty = self.field_ty(expr.span, field, substs);
                         // Save the index of all fields regardless of their visibility in case
@@ -1586,7 +1595,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &format!("a method `{}` also exists, call it with parentheses", field),
                 field,
                 expr_t,
-                expr.hir_id,
+                expr,
             );
         }
         err.emit();
@@ -1609,7 +1618,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "use parentheses to call the method",
                 field,
                 expr_t,
-                expr.hir_id,
+                expr,
             );
         } else {
             err.help("methods are immutable and cannot be assigned to");
@@ -1619,7 +1628,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn point_at_param_definition(&self, err: &mut DiagnosticBuilder<'_>, param: ty::ParamTy) {
-        let generics = self.tcx.generics_of(self.body_id.owner_def_id());
+        let generics = self.tcx.generics_of(self.body_id.owner.to_def_id());
         let generic_param = generics.type_param(&param, self.tcx);
         if let ty::GenericParamDefKind::Type { synthetic: Some(..), .. } = generic_param.kind {
             return;
@@ -1796,9 +1805,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         src: &'tcx hir::YieldSource,
     ) -> Ty<'tcx> {
-        match self.yield_ty {
-            Some(ty) => {
-                self.check_expr_coercable_to_type(&value, ty);
+        match self.resume_yield_tys {
+            Some((resume_ty, yield_ty)) => {
+                self.check_expr_coercable_to_type(&value, yield_ty);
+
+                resume_ty
             }
             // Given that this `yield` expression was generated as a result of lowering a `.await`,
             // we know that the yield type must be `()`; however, the context won't contain this
@@ -1806,6 +1817,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // value's type against `()` (this check should always hold).
             None if src == &hir::YieldSource::Await => {
                 self.check_expr_coercable_to_type(&value, self.tcx.mk_unit());
+                self.tcx.mk_unit()
             }
             _ => {
                 struct_span_err!(
@@ -1815,9 +1827,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "yield expression outside of generator literal"
                 )
                 .emit();
+                self.tcx.mk_unit()
             }
         }
-        self.tcx.mk_unit()
     }
 }
 

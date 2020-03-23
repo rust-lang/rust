@@ -4,7 +4,7 @@ warning: unused import: `m::Tr1 as _`
 LL |     use m::Tr1 as _;
    |         ^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/basic.rs:4:9
    |
 LL | #![warn(unused_imports, unused_extern_crates)]

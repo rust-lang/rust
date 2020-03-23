@@ -234,12 +234,55 @@ mod crate_keyword {}
 
 #[doc(keyword = "else")]
 //
-/// What to do when an [`if`] condition does not hold.
+/// What expression to evaluate when an [`if`] condition evaluates to [`false`].
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// `else` expressions are optional. When no else expressions are supplied it is assumed to evaluate
+/// to the unit type `()`.
 ///
+/// The type that the `else` blocks evaluate to must be compatible with the type that the `if` block
+/// evaluates to.
+///
+/// As can be seen below, `else` must be followed by either: `if`, `if let`, or a block `{}` and it
+/// will return the value of that expression.
+///
+/// ```rust
+/// let result = if true == false {
+///     "oh no"
+/// } else if "something" == "other thing" {
+///     "oh dear"
+/// } else if let Some(200) = "blarg".parse::<i32>().ok() {
+///     "uh oh"
+/// } else {
+///     println!("Sneaky side effect.");
+///     "phew, nothing's broken"
+/// };
+/// ```
+///
+/// Here's another example but here we do not try and return an expression:
+///
+/// ```rust
+/// if true == false {
+///     println!("oh no");
+/// } else if "something" == "other thing" {
+///     println!("oh dear");
+/// } else if let Some(200) = "blarg".parse::<i32>().ok() {
+///     println!("uh oh");
+/// } else {
+///     println!("phew, nothing's broken");
+/// }
+/// ```
+///
+/// The above is _still_ an expression but it will always evaluate to `()`.
+///
+/// There is possibly no limit to the number of `else` blocks that could follow an `if` expression
+/// however if you have several then a [`match`] expression might be preferable.
+///
+/// Read more about control flow in the [Rust Book].
+///
+/// [Rust Book]: ../book/ch03-05-control-flow.html#handling-multiple-conditions-with-else-if
+/// [`match`]: keyword.match.html
+/// [`false`]: keyword.false.html
 /// [`if`]: keyword.if.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
 mod else_keyword {}
 
 #[doc(keyword = "enum")]
@@ -637,10 +680,18 @@ mod impl_keyword {}
 //
 /// Iterate over a series of values with [`for`].
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// The expression immediately following `in` must implement the [`Iterator`] trait.
 ///
+/// ## Literal Examples:
+///
+///    * `for _ **in** 1..3 {}` - Iterate over an exclusive range up to but excluding 3.
+///    * `for _ **in** 1..=3 {}` - Iterate over an inclusive range up to and includeing 3.
+///
+/// (Read more about [range patterns])
+///
+/// [`Iterator`]: ../book/ch13-04-performance.html
+/// [`range patterns`]: ../reference/patterns.html?highlight=range#range-patterns
 /// [`for`]: keyword.for.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
 mod in_keyword {}
 
 #[doc(keyword = "let")]
@@ -895,6 +946,15 @@ mod mod_keyword {}
 /// // x is no longer available
 /// ```
 ///
+/// `move` is also valid before an async block.
+///
+/// ```rust
+/// let capture = "hello";
+/// let block = async move {
+///     println!("rust says {} from async block", capture);
+/// };
+/// ```
+///
 /// For more information on the `move` keyword, see the [closure]'s section
 /// of the Rust book or the [threads] section
 ///
@@ -916,9 +976,15 @@ mod mut_keyword {}
 //
 /// Make an item visible to others.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// The keyword `pub` makes any module, function, or data structure accessible from inside
+/// of external modules. The `pub` keyword may also be used in a `use` declaration to re-export
+/// an identifier from a namespace.
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// For more information on the `pub` keyword, please see the visibility section
+/// of the [reference] and for some examples, see [Rust by Example].
+///
+/// [reference]:../reference/visibility-and-privacy.html?highlight=pub#visibility-and-privacy
+/// [Rust by Example]:../rust-by-example/mod/visibility.html
 mod pub_keyword {}
 
 #[doc(keyword = "ref")]
@@ -1100,10 +1166,28 @@ mod trait_keyword {}
 //
 /// A value of type [`bool`] representing logical **true**.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// Logically `true` is not equal to [`false`].
 ///
+/// ## Control structures that check for **true**
+///
+/// Several of Rust's control structures will check for a `bool` condition evaluating to **true**.
+///
+///   * The condition in an [`if`] expression must be of type `bool`.
+///     Whenever that condition evaluates to **true**, the `if` expression takes
+///     on the value of the first block. If however, the condition evaluates
+///     to `false`, the expression takes on value of the `else` block if there is one.
+///
+///   * [`while`] is another control flow construct expecting a `bool`-typed condition.
+///     As long as the condition evaluates to **true**, the `while` loop will continually
+///     evaluate its associated block.
+///
+///   * [`match`] arms can have guard clauses on them.
+///
+/// [`if`]: keyword.if.html
+/// [`while`]: keyword.while.html
+/// [`match`]: ../reference/expressions/match-expr.html#match-guards
+/// [`false`]: keyword.false.html
 /// [`bool`]: primitive.bool.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
 mod true_keyword {}
 
 #[doc(keyword = "type")]
@@ -1186,12 +1270,33 @@ mod await_keyword {}
 
 #[doc(keyword = "dyn")]
 //
-/// Name the type of a [trait object].
+/// `dyn` is a prefix of a [trait object]'s type.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// The `dyn` keyword is used to highlight that calls to methods on the associated `Trait`
+/// are dynamically dispatched. To use the trait this way, it must be 'object safe'.
+///
+/// Unlike generic parameters or `impl Trait`, the compiler does not know the concrete type that
+/// is being passed. That is, the type has been [erased].
+/// As such, a `dyn Trait` reference contains _two_ pointers.
+/// One pointer goes to the data (e.g., an instance of a struct).
+/// Another pointer goes to a map of method call names to function pointers
+/// (known as a virtual method table or vtable).
+///
+/// At run-time, when a method needs to be called on the `dyn Trait`, the vtable is consulted to get
+/// the function pointer and then that function pointer is called.
+///
+/// ## Trade-offs
+///
+/// The above indirection is the additional runtime cost of calling a function on a `dyn Trait`.
+/// Methods called by dynamic dispatch generally cannot be inlined by the compiler.
+///
+/// However, `dyn Trait` is likely to produce smaller code than `impl Trait` / generic parameters as
+/// the method won't be duplicated for each concrete type.
+///
+/// Read more about `object safety` and [trait object]s.
 ///
 /// [trait object]: ../book/ch17-02-trait-objects.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// [erased]: https://en.wikipedia.org/wiki/Type_erasure
 mod dyn_keyword {}
 
 #[doc(keyword = "union")]

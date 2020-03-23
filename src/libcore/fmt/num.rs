@@ -1,9 +1,8 @@
 //! Integer and floating-point number formatting
 
-// ignore-tidy-undocumented-unsafe
-
 use crate::fmt;
 use crate::mem::MaybeUninit;
+use crate::num::flt2dec;
 use crate::ops::{Div, Rem, Sub};
 use crate::ptr;
 use crate::slice;
@@ -83,6 +82,8 @@ trait GenericRadix {
             }
         }
         let buf = &buf[curr..];
+        // SAFETY: The only chars in `buf` are created by `Self::digit` which are assumed to be
+        // valid UTF-8
         let buf = unsafe {
             str::from_utf8_unchecked(slice::from_raw_parts(MaybeUninit::first_ptr(buf), buf.len()))
         };
@@ -188,11 +189,19 @@ static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
 macro_rules! impl_Display {
     ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
         fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            // 2^128 is about 3*10^38, so 39 gives an extra byte of space
             let mut buf = [MaybeUninit::<u8>::uninit(); 39];
             let mut curr = buf.len() as isize;
             let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
+            // SAFETY: Since `d1` and `d2` are always less than or equal to `198`, we
+            // can copy from `lut_ptr[d1..d1 + 1]` and `lut_ptr[d2..d2 + 1]`. To show
+            // that it's OK to copy into `buf_ptr`, notice that at the beginning
+            // `curr == buf.len() == 39 > log(n)` since `n < 2^128 < 10^39`, and at
+            // each step this is kept the same as `n` is divided. Since `n` is always
+            // non-negative, this means that `curr > 0` so `buf_ptr[curr..curr + 1]`
+            // is safe to access.
             unsafe {
                 // need at least 16 bits for the 4-characters-at-a-time to work.
                 assert!(crate::mem::size_of::<$u>() >= 2);
@@ -205,6 +214,10 @@ macro_rules! impl_Display {
                     let d1 = (rem / 100) << 1;
                     let d2 = (rem % 100) << 1;
                     curr -= 4;
+
+                    // We are allowed to copy to `buf_ptr[curr..curr + 3]` here since
+                    // otherwise `curr < 0`. But then `n` was originally at least `10000^10`
+                    // which is `10^40 > 2^128 > n`.
                     ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
                     ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
                 }
@@ -231,6 +244,8 @@ macro_rules! impl_Display {
                 }
             }
 
+            // SAFETY: `curr` > 0 (since we made `buf` large enough), and all the chars are valid
+            // UTF-8 since `DEC_DIGITS_LUT` is
             let buf_slice = unsafe {
                 str::from_utf8_unchecked(
                     slice::from_raw_parts(buf_ptr.offset(curr), buf.len() - curr as usize))
@@ -256,6 +271,170 @@ macro_rules! impl_Display {
     };
 }
 
+macro_rules! impl_Exp {
+    ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
+        fn $name(
+            mut n: $u,
+            is_nonnegative: bool,
+            upper: bool,
+            f: &mut fmt::Formatter<'_>
+        ) -> fmt::Result {
+            let (mut n, mut exponent, trailing_zeros, added_precision) = {
+                let mut exponent = 0;
+                // count and remove trailing decimal zeroes
+                while n % 10 == 0 && n >= 10 {
+                    n /= 10;
+                    exponent += 1;
+                }
+                let trailing_zeros = exponent;
+
+                let (added_precision, subtracted_precision) = match f.precision() {
+                    Some(fmt_prec) => {
+                        // number of decimal digits minus 1
+                        let mut tmp = n;
+                        let mut prec = 0;
+                        while tmp >= 10 {
+                            tmp /= 10;
+                            prec += 1;
+                        }
+                        (fmt_prec.saturating_sub(prec), prec.saturating_sub(fmt_prec))
+                    }
+                    None => (0,0)
+                };
+                for _ in 1..subtracted_precision {
+                    n/=10;
+                    exponent += 1;
+                }
+                if subtracted_precision != 0 {
+                    let rem = n % 10;
+                    n /= 10;
+                    exponent += 1;
+                    // round up last digit
+                    if rem >= 5 {
+                        n += 1;
+                    }
+                }
+                (n, exponent, trailing_zeros, added_precision)
+            };
+
+            // 39 digits (worst case u128) + . = 40
+            // Since `curr` always decreases by the number of digits copied, this means
+            // that `curr >= 0`.
+            let mut buf = [MaybeUninit::<u8>::uninit(); 40];
+            let mut curr = buf.len() as isize; //index for buf
+            let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
+            let lut_ptr = DEC_DIGITS_LUT.as_ptr();
+
+            // decode 2 chars at a time
+            while n >= 100 {
+                let d1 = ((n % 100) as isize) << 1;
+                curr -= 2;
+                // SAFETY: `d1 <= 198`, so we can copy from `lut_ptr[d1..d1 + 2]` since
+                // `DEC_DIGITS_LUT` has a length of 200.
+                unsafe {
+                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+                }
+                n /= 100;
+                exponent += 2;
+            }
+            // n is <= 99, so at most 2 chars long
+            let mut n = n as isize; // possibly reduce 64bit math
+            // decode second-to-last character
+            if n >= 10 {
+                curr -= 1;
+                // SAFETY: Safe since `40 > curr >= 0` (see comment)
+                unsafe {
+                    *buf_ptr.offset(curr) = (n as u8 % 10_u8) + b'0';
+                }
+                n /= 10;
+                exponent += 1;
+            }
+            // add decimal point iff >1 mantissa digit will be printed
+            if exponent != trailing_zeros || added_precision != 0 {
+                curr -= 1;
+                // SAFETY: Safe since `40 > curr >= 0`
+                unsafe {
+                    *buf_ptr.offset(curr) = b'.';
+                }
+            }
+
+            // SAFETY: Safe since `40 > curr >= 0`
+            let buf_slice = unsafe {
+                // decode last character
+                curr -= 1;
+                *buf_ptr.offset(curr) = (n as u8) + b'0';
+
+                let len = buf.len() - curr as usize;
+                slice::from_raw_parts(buf_ptr.offset(curr), len)
+            };
+
+            // stores 'e' (or 'E') and the up to 2-digit exponent
+            let mut exp_buf = [MaybeUninit::<u8>::uninit(); 3];
+            let exp_ptr = MaybeUninit::first_ptr_mut(&mut exp_buf);
+            // SAFETY: In either case, `exp_buf` is written within bounds and `exp_ptr[..len]`
+            // is contained within `exp_buf` since `len <= 3`.
+            let exp_slice = unsafe {
+                *exp_ptr.offset(0) = if upper {b'E'} else {b'e'};
+                let len = if exponent < 10 {
+                    *exp_ptr.offset(1) = (exponent as u8) + b'0';
+                    2
+                } else {
+                    let off = exponent << 1;
+                    ptr::copy_nonoverlapping(lut_ptr.offset(off), exp_ptr.offset(1), 2);
+                    3
+                };
+                slice::from_raw_parts(exp_ptr, len)
+            };
+
+            let parts = &[
+                flt2dec::Part::Copy(buf_slice),
+                flt2dec::Part::Zero(added_precision),
+                flt2dec::Part::Copy(exp_slice)
+            ];
+            let sign = if !is_nonnegative {
+                "-"
+            } else if f.sign_plus() {
+                "+"
+            } else {
+                ""
+            };
+            let formatted = flt2dec::Formatted{sign, parts};
+            f.pad_formatted_parts(&formatted)
+        }
+
+        $(
+            #[stable(feature = "integer_exp_format", since = "1.42.0")]
+            impl fmt::LowerExp for $t {
+                #[allow(unused_comparisons)]
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    let is_nonnegative = *self >= 0;
+                    let n = if is_nonnegative {
+                        self.$conv_fn()
+                    } else {
+                        // convert the negative num to positive by summing 1 to it's 2 complement
+                        (!self.$conv_fn()).wrapping_add(1)
+                    };
+                    $name(n, is_nonnegative, false, f)
+                }
+            })*
+        $(
+            #[stable(feature = "integer_exp_format", since = "1.42.0")]
+            impl fmt::UpperExp for $t {
+                #[allow(unused_comparisons)]
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    let is_nonnegative = *self >= 0;
+                    let n = if is_nonnegative {
+                        self.$conv_fn()
+                    } else {
+                        // convert the negative num to positive by summing 1 to it's 2 complement
+                        (!self.$conv_fn()).wrapping_add(1)
+                    };
+                    $name(n, is_nonnegative, true, f)
+                }
+            })*
+    };
+}
+
 // Include wasm32 in here since it doesn't reflect the native pointer size, and
 // often cares strongly about getting a smaller code size.
 #[cfg(any(target_pointer_width = "64", target_arch = "wasm32"))]
@@ -265,6 +444,10 @@ mod imp {
         i8, u8, i16, u16, i32, u32, i64, u64, usize, isize
             as u64 via to_u64 named fmt_u64
     );
+    impl_Exp!(
+        i8, u8, i16, u16, i32, u32, i64, u64, usize, isize
+            as u64 via to_u64 named exp_u64
+    );
 }
 
 #[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
@@ -272,6 +455,9 @@ mod imp {
     use super::*;
     impl_Display!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named fmt_u32);
     impl_Display!(i64, u64 as u64 via to_u64 named fmt_u64);
+    impl_Exp!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named exp_u32);
+    impl_Exp!(i64, u64 as u64 via to_u64 named exp_u64);
 }
 
 impl_Display!(i128, u128 as u128 via to_u128 named fmt_u128);
+impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);

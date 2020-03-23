@@ -101,7 +101,7 @@ impl TargetDataLayout {
             match &*spec_parts {
                 ["e"] => dl.endian = Endian::Little,
                 ["E"] => dl.endian = Endian::Big,
-                [p] if p.starts_with("P") => {
+                [p] if p.starts_with('P') => {
                     dl.instruction_address_space = parse_address_space(&p[1..], "P")?
                 }
                 ["a", ref a @ ..] => dl.aggregate_align = align(a, "a")?,
@@ -111,7 +111,7 @@ impl TargetDataLayout {
                     dl.pointer_size = size(s, p)?;
                     dl.pointer_align = align(a, p)?;
                 }
-                [s, ref a @ ..] if s.starts_with("i") => {
+                [s, ref a @ ..] if s.starts_with('i') => {
                     let bits = match s[1..].parse::<u64>() {
                         Ok(bits) => bits,
                         Err(_) => {
@@ -135,7 +135,7 @@ impl TargetDataLayout {
                         dl.i128_align = a;
                     }
                 }
-                [s, ref a @ ..] if s.starts_with("v") => {
+                [s, ref a @ ..] if s.starts_with('v') => {
                     let v_size = size(&s[1..], "v")?;
                     let a = align(a, s)?;
                     if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {
@@ -401,7 +401,7 @@ impl Align {
     }
 }
 
-/// A pair of aligments, ABI-mandated and preferred.
+/// A pair of alignments, ABI-mandated and preferred.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 #[derive(HashStable_Generic)]
 pub struct AbiAndPrefAlign {
@@ -660,7 +660,10 @@ impl FieldPlacement {
 
     pub fn offset(&self, i: usize) -> Size {
         match *self {
-            FieldPlacement::Union(_) => Size::ZERO,
+            FieldPlacement::Union(count) => {
+                assert!(i < count, "tried to access field {} of union with {} fields", i, count);
+                Size::ZERO
+            }
             FieldPlacement::Array { stride, count } => {
                 let i = i as u64;
                 assert!(i < count);
@@ -748,7 +751,7 @@ impl Abi {
                 Primitive::Int(_, signed) => signed,
                 _ => false,
             },
-            _ => false,
+            _ => panic!("`is_signed` on non-scalar ABI {:?}", self),
         }
     }
 
@@ -871,8 +874,26 @@ impl Niche {
 
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct LayoutDetails {
-    pub variants: Variants,
+    /// Says where the fields are located within the layout.
+    /// Primitives and uninhabited enums appear as unions without fields.
     pub fields: FieldPlacement,
+
+    /// Encodes information about multi-variant layouts.
+    /// Even with `Multiple` variants, a layout still has its own fields! Those are then
+    /// shared between all variants. One of them will be the discriminant,
+    /// but e.g. generators can have more.
+    ///
+    /// To access all fields of this layout, both `fields` and the fields of the active variant
+    /// must be taken into account.
+    pub variants: Variants,
+
+    /// The `abi` defines how this data is passed between functions, and it defines
+    /// value restrictions via `valid_range`.
+    ///
+    /// Note that this is entirely orthogonal to the recursive structure defined by
+    /// `variants` and `fields`; for example, `ManuallyDrop<Result<isize, isize>>` has
+    /// `Abi::ScalarPair`! So, even with non-`Aggregate` `abi`, `fields` and `variants`
+    /// have to be taken into account to find all fields of this layout.
     pub abi: Abi,
 
     /// The leaf scalar with the largest number of invalid values
@@ -919,6 +940,7 @@ impl<'a, Ty> Deref for TyLayout<'a, Ty> {
     }
 }
 
+/// Trait for context types that can compute layouts of things.
 pub trait LayoutOf {
     type Ty;
     type TyLayout;
@@ -926,6 +948,38 @@ pub trait LayoutOf {
     fn layout_of(&self, ty: Self::Ty) -> Self::TyLayout;
     fn spanned_layout_of(&self, ty: Self::Ty, _span: Span) -> Self::TyLayout {
         self.layout_of(ty)
+    }
+}
+
+/// The `TyLayout` above will always be a `MaybeResult<TyLayout<'_, Self>>`.
+/// We can't add the bound due to the lifetime, but this trait is still useful when
+/// writing code that's generic over the `LayoutOf` impl.
+pub trait MaybeResult<T> {
+    type Error;
+
+    fn from(x: Result<T, Self::Error>) -> Self;
+    fn to_result(self) -> Result<T, Self::Error>;
+}
+
+impl<T> MaybeResult<T> for T {
+    type Error = !;
+
+    fn from(Ok(x): Result<T, Self::Error>) -> Self {
+        x
+    }
+    fn to_result(self) -> Result<T, Self::Error> {
+        Ok(self)
+    }
+}
+
+impl<T, E> MaybeResult<T> for Result<T, E> {
+    type Error = E;
+
+    fn from(x: Result<T, Self::Error>) -> Self {
+        x
+    }
+    fn to_result(self) -> Result<T, Self::Error> {
+        self
     }
 }
 
@@ -969,6 +1023,9 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     {
         Ty::for_variant(self, cx, variant_index)
     }
+
+    /// Callers might want to use `C: LayoutOf<Ty=Ty, TyLayout: MaybeResult<Self>>`
+    /// to allow recursion (see `might_permit_zero_init` below for an example).
     pub fn field<C>(self, cx: &C, i: usize) -> C::TyLayout
     where
         Ty: TyLayoutMethods<'a, C>,
@@ -976,6 +1033,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     {
         Ty::field(self, cx, i)
     }
+
     pub fn pointee_info_at<C>(self, cx: &C, offset: Size) -> Option<PointeeInfo>
     where
         Ty: TyLayoutMethods<'a, C>,
@@ -998,5 +1056,53 @@ impl<'a, Ty> TyLayout<'a, Ty> {
             Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }
+    }
+
+    /// Determines if this type permits "raw" initialization by just transmuting some
+    /// memory into an instance of `T`.
+    /// `zero` indicates if the memory is zero-initialized, or alternatively
+    /// left entirely uninitialized.
+    /// This is conservative: in doubt, it will answer `true`.
+    ///
+    /// FIXME: Once we removed all the conservatism, we could alternatively
+    /// create an all-0/all-undef constant and run the const value validator to see if
+    /// this is a valid value for the given type.
+    pub fn might_permit_raw_init<C, E>(self, cx: &C, zero: bool) -> Result<bool, E>
+    where
+        Self: Copy,
+        Ty: TyLayoutMethods<'a, C>,
+        C: LayoutOf<Ty = Ty, TyLayout: MaybeResult<Self, Error = E>> + HasDataLayout,
+    {
+        let scalar_allows_raw_init = move |s: &Scalar| -> bool {
+            if zero {
+                let range = &s.valid_range;
+                // The range must contain 0.
+                range.contains(&0) || (*range.start() > *range.end()) // wrap-around allows 0
+            } else {
+                // The range must include all values. `valid_range_exclusive` handles
+                // the wrap-around using target arithmetic; with wrap-around then the full
+                // range is one where `start == end`.
+                let range = s.valid_range_exclusive(cx);
+                range.start == range.end
+            }
+        };
+
+        // Check the ABI.
+        let valid = match &self.abi {
+            Abi::Uninhabited => false, // definitely UB
+            Abi::Scalar(s) => scalar_allows_raw_init(s),
+            Abi::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
+            Abi::Vector { element: s, count } => *count == 0 || scalar_allows_raw_init(s),
+            Abi::Aggregate { .. } => true, // Cannot be excluded *right now*.
+        };
+        if !valid {
+            // This is definitely not okay.
+            trace!("might_permit_raw_init({:?}, zero={}): not valid", self.details, zero);
+            return Ok(false);
+        }
+
+        // If we have not found an error yet, we need to recursively descend.
+        // FIXME(#66151): For now, we are conservative and do not do this.
+        Ok(true)
     }
 }

@@ -29,7 +29,7 @@ pub fn target() -> TargetResult {
     base.abi_return_struct_as_int = true;
 
     // Use -GNU here, because of the reason below:
-    // Backgound and Problem:
+    // Background and Problem:
     //   If we use i686-unknown-windows, the LLVM IA32 MSVC generates compiler intrinsic
     //   _alldiv, _aulldiv, _allrem, _aullrem, _allmul, which will cause undefined symbol.
     //   A real issue is __aulldiv() is referred by __udivdi3() - udivmod_inner!(), from
@@ -64,7 +64,7 @@ pub fn target() -> TargetResult {
     //      i386/umoddi3.S
     // Possible solution:
     //   1. Eliminate Intrinsics generation.
-    //      1.1 Choose differnt target to bypass isTargetKnownWindowsMSVC().
+    //      1.1 Choose different target to bypass isTargetKnownWindowsMSVC().
     //      1.2 Remove the "Setup Windows compiler runtime calls" in LLVM
     //   2. Implement Intrinsics.
     //   We evaluated all options.

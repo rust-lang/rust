@@ -8,7 +8,7 @@
 //! actual codegen, while the builder stores the information about the function during codegen and
 //! is used to produce the instructions of the backend IR.
 //!
-//! Finaly, a third `Backend` structure has to implement methods related to how codegen information
+//! Finally, a third `Backend` structure has to implement methods related to how codegen information
 //! is passed to the backend, especially for asynchronous compilation.
 //!
 //! The traits contain associated types that are backend-specific, such as the backend's value or
@@ -29,7 +29,7 @@ mod write;
 
 pub use self::abi::AbiBuilderMethods;
 pub use self::asm::{AsmBuilderMethods, AsmMethods};
-pub use self::backend::{Backend, BackendTypes, ExtraBackendMethods};
+pub use self::backend::{Backend, BackendTypes, CodegenBackend, ExtraBackendMethods};
 pub use self::builder::{BuilderMethods, OverflowOp};
 pub use self::consts::ConstMethods;
 pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoMethods};
@@ -93,5 +93,6 @@ pub trait HasCodegen<'tcx>:
             Type = Self::Type,
             Funclet = Self::Funclet,
             DIScope = Self::DIScope,
+            DIVariable = Self::DIVariable,
         >;
 }

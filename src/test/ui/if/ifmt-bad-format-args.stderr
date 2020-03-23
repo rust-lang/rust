@@ -3,6 +3,8 @@ error: requires at least a format string argument
    |
 LL |     format_args!();
    |     ^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: format argument must be a string literal
   --> $DIR/ifmt-bad-format-args.rs:3:18

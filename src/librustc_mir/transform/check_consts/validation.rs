@@ -3,28 +3,33 @@
 use rustc::middle::lang_items;
 use rustc::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::*;
-use rustc::traits::{self, TraitEngine};
 use rustc::ty::cast::CastTy;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, Instance, InstanceDef, TyCtxt};
 use rustc_errors::struct_span_err;
 use rustc_hir::{def_id::DefId, HirId};
 use rustc_index::bit_set::BitSet;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::{self, TraitEngine};
 
 use std::borrow::Cow;
 use std::ops::Deref;
 
-use self::old_dataflow::IndirectlyMutableLocals;
 use super::ops::{self, NonConstOp};
 use super::qualifs::{self, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstKind, Item, Qualif};
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
-use crate::dataflow::{self as old_dataflow, generic as dataflow};
+use crate::dataflow::generic::{self as dataflow, Analysis};
+use crate::dataflow::MaybeMutBorrowedLocals;
 
+// We are using `MaybeMutBorrowedLocals` as a proxy for whether an item may have been mutated
+// through a pointer prior to the given point. This is okay even though `MaybeMutBorrowedLocals`
+// kills locals upon `StorageDead` because a local will never be used after a `StorageDead`.
 pub type IndirectlyMutableResults<'mir, 'tcx> =
-    old_dataflow::DataflowResultsCursor<'mir, 'tcx, IndirectlyMutableLocals<'mir, 'tcx>>;
+    dataflow::ResultsCursor<'mir, 'tcx, MaybeMutBorrowedLocals<'mir, 'tcx>>;
 
 struct QualifCursor<'a, 'mir, 'tcx, Q: Qualif> {
     cursor: dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q>>,
@@ -33,10 +38,10 @@ struct QualifCursor<'a, 'mir, 'tcx, Q: Qualif> {
 
 impl<Q: Qualif> QualifCursor<'a, 'mir, 'tcx, Q> {
     pub fn new(q: Q, item: &'a Item<'mir, 'tcx>) -> Self {
-        let analysis = FlowSensitiveAnalysis::new(q, item);
-        let results = dataflow::Engine::new_generic(item.tcx, &item.body, item.def_id, analysis)
-            .iterate_to_fixpoint();
-        let cursor = dataflow::ResultsCursor::new(*item.body, results);
+        let cursor = FlowSensitiveAnalysis::new(q, item)
+            .into_engine(item.tcx, &item.body, item.def_id)
+            .iterate_to_fixpoint()
+            .into_results_cursor(*item.body);
 
         let mut in_any_value_of_ty = BitSet::new_empty(item.body.local_decls.len());
         for (local, decl) in item.body.local_decls.iter_enumerated() {
@@ -57,14 +62,14 @@ pub struct Qualifs<'a, 'mir, 'tcx> {
 
 impl Qualifs<'a, 'mir, 'tcx> {
     fn indirectly_mutable(&mut self, local: Local, location: Location) -> bool {
-        self.indirectly_mutable.seek(location);
+        self.indirectly_mutable.seek_before(location);
         self.indirectly_mutable.get().contains(local)
     }
 
     /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
-    fn needs_drop_lazy_seek(&mut self, local: Local, location: Location) -> bool {
+    fn needs_drop(&mut self, local: Local, location: Location) -> bool {
         if !self.needs_drop.in_any_value_of_ty.contains(local) {
             return false;
         }
@@ -76,7 +81,7 @@ impl Qualifs<'a, 'mir, 'tcx> {
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary.
-    fn has_mut_interior_lazy_seek(&mut self, local: Local, location: Location) -> bool {
+    fn has_mut_interior(&mut self, local: Local, location: Location) -> bool {
         if !self.has_mut_interior.in_any_value_of_ty.contains(local) {
             return false;
         }
@@ -84,17 +89,6 @@ impl Qualifs<'a, 'mir, 'tcx> {
         self.has_mut_interior.cursor.seek_before(location);
         self.has_mut_interior.cursor.get().contains(local)
             || self.indirectly_mutable(local, location)
-    }
-
-    /// Returns `true` if `local` is `HasMutInterior`, but requires the `has_mut_interior` and
-    /// `indirectly_mutable` cursors to be updated beforehand.
-    fn has_mut_interior_eager_seek(&self, local: Local) -> bool {
-        if !self.has_mut_interior.in_any_value_of_ty.contains(local) {
-            return false;
-        }
-
-        self.has_mut_interior.cursor.get().contains(local)
-            || self.indirectly_mutable.get().contains(local)
     }
 
     fn in_return_place(&mut self, item: &Item<'_, 'tcx>) -> ConstQualifs {
@@ -120,8 +114,8 @@ impl Qualifs<'a, 'mir, 'tcx> {
         let return_loc = item.body.terminator_loc(return_block);
 
         ConstQualifs {
-            needs_drop: self.needs_drop_lazy_seek(RETURN_PLACE, return_loc),
-            has_mut_interior: self.has_mut_interior_lazy_seek(RETURN_PLACE, return_loc),
+            needs_drop: self.needs_drop(RETURN_PLACE, return_loc),
+            has_mut_interior: self.has_mut_interior(RETURN_PLACE, return_loc),
         }
     }
 }
@@ -144,22 +138,21 @@ impl Deref for Validator<'_, 'mir, 'tcx> {
 
 impl Validator<'a, 'mir, 'tcx> {
     pub fn new(item: &'a Item<'mir, 'tcx>) -> Self {
+        let Item { tcx, body, def_id, param_env, .. } = *item;
+
         let needs_drop = QualifCursor::new(NeedsDrop, item);
         let has_mut_interior = QualifCursor::new(HasMutInterior, item);
 
-        let dead_unwinds = BitSet::new_empty(item.body.basic_blocks().len());
-        let indirectly_mutable = old_dataflow::do_dataflow(
-            item.tcx,
-            &*item.body,
-            item.def_id,
-            &item.tcx.get_attrs(item.def_id),
-            &dead_unwinds,
-            old_dataflow::IndirectlyMutableLocals::new(item.tcx, *item.body, item.param_env),
-            |_, local| old_dataflow::DebugFormatted::new(&local),
-        );
-
-        let indirectly_mutable =
-            old_dataflow::DataflowResultsCursor::new(indirectly_mutable, *item.body);
+        // We can use `unsound_ignore_borrow_on_drop` here because custom drop impls are not
+        // allowed in a const.
+        //
+        // FIXME(ecstaticmorse): Someday we want to allow custom drop impls. How do we do this
+        // without breaking stable code?
+        let indirectly_mutable = MaybeMutBorrowedLocals::mut_borrows_only(tcx, *body, param_env)
+            .unsound_ignore_borrow_on_drop()
+            .into_engine(tcx, *body, def_id)
+            .iterate_to_fixpoint()
+            .into_results_cursor(*body);
 
         let qualifs = Qualifs { needs_drop, has_mut_interior, indirectly_mutable };
 
@@ -220,7 +213,7 @@ impl Validator<'a, 'mir, 'tcx> {
 
         // If an operation is supported in miri (and is not already controlled by a feature gate) it
         // can be turned on with `-Zunleash-the-miri-inside-of-you`.
-        let is_unleashable = O::IS_SUPPORTED_IN_MIRI && O::feature_gate(self.tcx).is_none();
+        let is_unleashable = O::IS_SUPPORTED_IN_MIRI && O::feature_gate().is_none();
 
         if is_unleashable && self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
             self.tcx.sess.span_warn(span, "skipping const checks");
@@ -242,23 +235,6 @@ impl Validator<'a, 'mir, 'tcx> {
             self.check_op_spanned(ops::ThreadLocalAccess, span)
         } else {
             self.check_op_spanned(ops::StaticAccess, span)
-        }
-    }
-
-    fn check_immutable_borrow_like(&mut self, location: Location, place: &Place<'tcx>) {
-        // FIXME: Change the `in_*` methods to take a `FnMut` so we don't have to manually
-        // seek the cursors beforehand.
-        self.qualifs.has_mut_interior.cursor.seek_before(location);
-        self.qualifs.indirectly_mutable.seek(location);
-
-        let borrowed_place_has_mut_interior = HasMutInterior::in_place(
-            &self.item,
-            &|local| self.qualifs.has_mut_interior_eager_seek(local),
-            place.as_ref(),
-        );
-
-        if borrowed_place_has_mut_interior {
-            self.check_op(ops::CellBorrow);
         }
     }
 }
@@ -301,7 +277,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                         }
                     };
                     self.visit_place_base(&place.local, ctx, location);
-                    self.visit_projection(&place.local, reborrowed_proj, ctx, location);
+                    self.visit_projection(place.local, reborrowed_proj, ctx, location);
                     return;
                 }
             }
@@ -314,7 +290,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                         Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
                     };
                     self.visit_place_base(&place.local, ctx, location);
-                    self.visit_projection(&place.local, reborrowed_proj, ctx, location);
+                    self.visit_projection(place.local, reborrowed_proj, ctx, location);
                     return;
                 }
             }
@@ -366,12 +342,17 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             Rvalue::AddressOf(Mutability::Mut, _) => self.check_op(ops::MutAddressOf),
 
             Rvalue::Ref(_, BorrowKind::Shared, ref place)
-            | Rvalue::Ref(_, BorrowKind::Shallow, ref place) => {
-                self.check_immutable_borrow_like(location, place)
-            }
+            | Rvalue::Ref(_, BorrowKind::Shallow, ref place)
+            | Rvalue::AddressOf(Mutability::Not, ref place) => {
+                let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
+                    &self.item,
+                    &mut |local| self.qualifs.has_mut_interior(local, location),
+                    place.as_ref(),
+                );
 
-            Rvalue::AddressOf(Mutability::Not, ref place) => {
-                self.check_immutable_borrow_like(location, place)
+                if borrowed_place_has_mut_interior {
+                    self.check_op(ops::CellBorrow);
+                }
             }
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
@@ -428,7 +409,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
     }
     fn visit_projection_elem(
         &mut self,
-        place_local: &Local,
+        place_local: Local,
         proj_base: &[PlaceElem<'tcx>],
         elem: &PlaceElem<'tcx>,
         context: PlaceContext,
@@ -448,11 +429,11 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
         match elem {
             ProjectionElem::Deref => {
-                let base_ty = Place::ty_from(*place_local, proj_base, *self.body, self.tcx).ty;
+                let base_ty = Place::ty_from(place_local, proj_base, *self.body, self.tcx).ty;
                 if let ty::RawPtr(_) = base_ty.kind {
                     if proj_base.is_empty() {
                         if let (local, []) = (place_local, proj_base) {
-                            let decl = &self.body.local_decls[*local];
+                            let decl = &self.body.local_decls[local];
                             if let LocalInfo::StaticRef { def_id, .. } = decl.local_info {
                                 let span = decl.source_info.span;
                                 self.check_static(def_id, span);
@@ -472,7 +453,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {
-                let base_ty = Place::ty_from(*place_local, proj_base, *self.body, self.tcx).ty;
+                let base_ty = Place::ty_from(place_local, proj_base, *self.body, self.tcx).ty;
                 match base_ty.ty_adt_def() {
                     Some(def) if def.is_union() => {
                         self.check_op(ops::UnionAccess);
@@ -522,8 +503,8 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             TerminatorKind::Call { func, .. } => {
                 let fn_ty = func.ty(*self.body, self.tcx);
 
-                let def_id = match fn_ty.kind {
-                    ty::FnDef(def_id, _) => def_id,
+                let (def_id, substs) = match fn_ty.kind {
+                    ty::FnDef(def_id, substs) => (def_id, substs),
 
                     ty::FnPtr(_) => {
                         self.check_op(ops::FnCallIndirect);
@@ -538,6 +519,20 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 // At this point, we are calling a function whose `DefId` is known...
                 if is_const_fn(self.tcx, def_id) {
                     return;
+                }
+
+                // See if this is a trait method for a concrete type whose impl of that trait is
+                // `const`.
+                if self.tcx.features().const_trait_impl {
+                    let instance = Instance::resolve(self.tcx, self.param_env, def_id, substs);
+                    debug!("Resolving ({:?}) -> {:?}", def_id, instance);
+                    if let Some(func) = instance {
+                        if let InstanceDef::Item(def_id) = func.def {
+                            if is_const_fn(self.tcx, def_id) {
+                                return;
+                            }
+                        }
+                    }
                 }
 
                 if is_lang_panic_fn(self.tcx, def_id) {
@@ -571,7 +566,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 let needs_drop = if let Some(local) = dropped_place.as_local() {
                     // Use the span where the local was declared as the span of the drop error.
                     err_span = self.body.local_decls[local].source_info.span;
-                    self.qualifs.needs_drop_lazy_seek(local, location)
+                    self.qualifs.needs_drop(local, location)
                 } else {
                     true
                 };
@@ -588,7 +583,10 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
 fn error_min_const_fn_violation(tcx: TyCtxt<'_>, span: Span, msg: Cow<'_, str>) {
     struct_span_err!(tcx.sess, span, E0723, "{}", msg)
-        .note("for more information, see issue https://github.com/rust-lang/rust/issues/57563")
+        .note(
+            "see issue #57563 <https://github.com/rust-lang/rust/issues/57563> \
+             for more information",
+        )
         .help("add `#![feature(const_fn)]` to the crate attributes to enable")
         .emit();
 }
@@ -616,16 +614,16 @@ fn check_short_circuiting_in_const_local(item: &Item<'_, 'tcx>) {
                 *span,
                 &format!(
                     "use of {} here does not actually short circuit due to \
-                the const evaluator presently not being able to do control flow. \
-                See https://github.com/rust-lang/rust/issues/49146 for more \
-                information.",
+                     the const evaluator presently not being able to do control flow. \
+                     See issue #49146 <https://github.com/rust-lang/rust/issues/49146> \
+                     for more information.",
                     kind
                 ),
             );
         }
         for local in locals {
             let span = body.local_decls[local].source_info.span;
-            error.span_note(span, "more locals defined here");
+            error.span_note(span, "more locals are defined here");
         }
         error.emit();
     }

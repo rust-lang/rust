@@ -11,13 +11,6 @@ help: you might want to use `if let` to ignore the variant that isn't matched
 LL |     if let Ok(x) = res { /* */ }
    |
 
-error[E0381]: use of possibly-uninitialized variable: `x`
-  --> $DIR/recursive-types-are-not-uninhabited.rs:8:5
-   |
-LL |     x
-   |     ^ use of possibly-uninitialized `x`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0005, E0381.
-For more information about an error, try `rustc --explain E0005`.
+For more information about this error, try `rustc --explain E0005`.

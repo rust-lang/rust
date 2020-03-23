@@ -35,7 +35,7 @@ impl Token {
     }
 }
 
-/// Enum represening common lexeme types.
+/// Enum representing common lexeme types.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TokenKind {
     // Multi-char tokens:
@@ -527,10 +527,10 @@ impl Cursor<'_> {
         if self.first() == '\'' {
             self.bump();
             let kind = Char { terminated: true };
-            return Literal { kind, suffix_start: self.len_consumed() };
+            Literal { kind, suffix_start: self.len_consumed() }
+        } else {
+            Lifetime { starts_with_number }
         }
-
-        return Lifetime { starts_with_number };
     }
 
     fn single_quoted_string(&mut self) -> bool {

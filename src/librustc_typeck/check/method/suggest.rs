@@ -3,23 +3,23 @@
 
 use crate::check::FnCtxt;
 use crate::middle::lang_items::FnOnceTraitLangItem;
-use crate::namespace::Namespace;
 use rustc::hir::map as hir_map;
-use rustc::hir::map::Map;
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::traits::Obligation;
 use rustc::ty::print::with_crate_prefix;
 use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_ast::ast;
+use rustc_ast::util::lev_distance;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit;
 use rustc_hir::{ExprKind, Node, QPath};
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_span::symbol::kw;
 use rustc_span::{source_map, FileName, Span};
-use syntax::ast;
-use syntax::util::lev_distance;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::Obligation;
 
 use std::cmp::Ordering;
 
@@ -97,13 +97,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Provide the best span we can. Use the item, if local to crate, else
                         // the impl, if local to crate (item may be defaulted), else nothing.
                         let item = match self
-                            .associated_item(impl_did, item_name, Namespace::Value)
+                            .associated_item(impl_did, item_name, Namespace::ValueNS)
                             .or_else(|| {
                                 let impl_trait_ref = self.tcx.impl_trait_ref(impl_did)?;
                                 self.associated_item(
                                     impl_trait_ref.def_id,
                                     item_name,
-                                    Namespace::Value,
+                                    Namespace::ValueNS,
                                 )
                             }) {
                             Some(item) => item,
@@ -167,7 +167,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .skip_binder()
                                     .get(0)
                                     .filter(|ty| ty.is_region_ptr() && !rcvr_ty.is_region_ptr())
-                                    .map(|ty| *ty)
+                                    .copied()
                                     .unwrap_or(rcvr_ty),
                             };
                             print_disambiguation_help(
@@ -185,7 +185,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     CandidateSource::TraitSource(trait_did) => {
                         let item =
-                            match self.associated_item(trait_did, item_name, Namespace::Value) {
+                            match self.associated_item(trait_did, item_name, Namespace::ValueNS) {
                                 Some(item) => item,
                                 None => continue,
                             };
@@ -264,7 +264,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // be used exists at all, and the type is an ambiguous numeric type
                     // ({integer}/{float}).
                     let mut candidates = all_traits(self.tcx).into_iter().filter_map(|info| {
-                        self.associated_item(info.def_id, item_name, Namespace::Value)
+                        self.associated_item(info.def_id, item_name, Namespace::ValueNS)
                     });
                     if let (true, false, SelfSource::MethodCall(expr), Some(_)) = (
                         actual.is_numeric(),
@@ -427,7 +427,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         });
 
                     if let Some((field, field_ty)) = field_receiver {
-                        let scope = self.tcx.hir().get_module_parent(self.body_id);
+                        let scope = self.tcx.parent_module(self.body_id).to_def_id();
                         let is_accessible = field.vis.is_accessible_from(scope, self.tcx);
 
                         if is_accessible {
@@ -497,7 +497,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !static_sources.is_empty() {
                     err.note(
                         "found the following associated functions; to be used as methods, \
-                              functions must have a `self` parameter",
+                         functions must have a `self` parameter",
                     );
                     err.span_label(span, "this is an associated function, not a method");
                 }
@@ -535,22 +535,162 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     report_candidates(span, &mut err, static_sources, sugg_span);
                 }
 
+                let mut restrict_type_params = false;
                 if !unsatisfied_predicates.is_empty() {
+                    let def_span =
+                        |def_id| self.tcx.sess.source_map().def_span(self.tcx.def_span(def_id));
+                    let mut type_params = FxHashMap::default();
+                    let mut bound_spans = vec![];
+                    let mut collect_type_param_suggestions =
+                        |self_ty: Ty<'_>, parent_pred: &ty::Predicate<'_>, obligation: &str| {
+                            if let (ty::Param(_), ty::Predicate::Trait(p, _)) =
+                                (&self_ty.kind, parent_pred)
+                            {
+                                if let ty::Adt(def, _) = p.skip_binder().trait_ref.self_ty().kind {
+                                    let node = self
+                                        .tcx
+                                        .hir()
+                                        .as_local_hir_id(def.did)
+                                        .map(|id| self.tcx.hir().get(id));
+                                    match node {
+                                        Some(hir::Node::Item(hir::Item { kind, .. })) => {
+                                            if let Some(g) = kind.generics() {
+                                                let key = match &g.where_clause.predicates[..] {
+                                                    [.., pred] => {
+                                                        (pred.span().shrink_to_hi(), false)
+                                                    }
+                                                    [] => (
+                                                        g.where_clause
+                                                            .span_for_predicates_or_empty_place(),
+                                                        true,
+                                                    ),
+                                                };
+                                                type_params
+                                                    .entry(key)
+                                                    .or_insert_with(FxHashSet::default)
+                                                    .insert(obligation.to_owned());
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        };
+                    let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
+                        let msg = format!(
+                            "doesn't satisfy `{}`",
+                            if obligation.len() > 50 { quiet } else { obligation }
+                        );
+                        match &self_ty.kind {
+                            // Point at the type that couldn't satisfy the bound.
+                            ty::Adt(def, _) => bound_spans.push((def_span(def.did), msg)),
+                            // Point at the trait object that couldn't satisfy the bound.
+                            ty::Dynamic(preds, _) => {
+                                for pred in *preds.skip_binder() {
+                                    match pred {
+                                        ty::ExistentialPredicate::Trait(tr) => {
+                                            bound_spans.push((def_span(tr.def_id), msg.clone()))
+                                        }
+                                        ty::ExistentialPredicate::Projection(_)
+                                        | ty::ExistentialPredicate::AutoTrait(_) => {}
+                                    }
+                                }
+                            }
+                            // Point at the closure that couldn't satisfy the bound.
+                            ty::Closure(def_id, _) => bound_spans
+                                .push((def_span(*def_id), format!("doesn't satisfy `{}`", quiet))),
+                            _ => {}
+                        }
+                    };
+                    let mut format_pred = |pred| {
+                        match pred {
+                            ty::Predicate::Projection(pred) => {
+                                // `<Foo as Iterator>::Item = String`.
+                                let trait_ref =
+                                    pred.skip_binder().projection_ty.trait_ref(self.tcx);
+                                let assoc = self
+                                    .tcx
+                                    .associated_item(pred.skip_binder().projection_ty.item_def_id);
+                                let ty = pred.skip_binder().ty;
+                                let obligation = format!("{}::{} = {}", trait_ref, assoc.ident, ty);
+                                let quiet = format!(
+                                    "<_ as {}>::{} = {}",
+                                    trait_ref.print_only_trait_path(),
+                                    assoc.ident,
+                                    ty
+                                );
+                                bound_span_label(trait_ref.self_ty(), &obligation, &quiet);
+                                Some((obligation, trait_ref.self_ty()))
+                            }
+                            ty::Predicate::Trait(poly_trait_ref, _) => {
+                                let p = poly_trait_ref.skip_binder().trait_ref;
+                                let self_ty = p.self_ty();
+                                let path = p.print_only_trait_path();
+                                let obligation = format!("{}: {}", self_ty, path);
+                                let quiet = format!("_: {}", path);
+                                bound_span_label(self_ty, &obligation, &quiet);
+                                Some((obligation, self_ty))
+                            }
+                            _ => None,
+                        }
+                    };
                     let mut bound_list = unsatisfied_predicates
                         .iter()
-                        .map(|p| format!("`{} : {}`", p.self_ty(), p.print_only_trait_path()))
-                        .collect::<Vec<_>>();
-                    bound_list.sort();
-                    bound_list.dedup(); // #35677
-                    let bound_list = bound_list.join("\n");
-                    err.note(&format!(
-                        "the method `{}` exists but the following trait bounds \
-                                       were not satisfied:\n{}",
-                        item_name, bound_list
-                    ));
+                        .filter_map(|(pred, parent_pred)| {
+                            format_pred(*pred).map(|(p, self_ty)| match parent_pred {
+                                None => format!("`{}`", p),
+                                Some(parent_pred) => match format_pred(*parent_pred) {
+                                    None => format!("`{}`", p),
+                                    Some((parent_p, _)) => {
+                                        collect_type_param_suggestions(self_ty, parent_pred, &p);
+                                        format!("`{}`\nwhich is required by `{}`", p, parent_p)
+                                    }
+                                },
+                            })
+                        })
+                        .enumerate()
+                        .collect::<Vec<(usize, String)>>();
+                    for ((span, empty_where), obligations) in type_params.into_iter() {
+                        restrict_type_params = true;
+                        err.span_suggestion_verbose(
+                            span,
+                            &format!(
+                                "consider restricting the type parameter{s} to satisfy the \
+                                 trait bound{s}",
+                                s = pluralize!(obligations.len())
+                            ),
+                            format!(
+                                "{} {}",
+                                if empty_where { " where" } else { "," },
+                                obligations.into_iter().collect::<Vec<_>>().join(", ")
+                            ),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+
+                    bound_list.sort_by(|(_, a), (_, b)| a.cmp(&b)); // Sort alphabetically.
+                    bound_list.dedup_by(|(_, a), (_, b)| a == b); // #35677
+                    bound_list.sort_by_key(|(pos, _)| *pos); // Keep the original predicate order.
+                    bound_spans.sort();
+                    bound_spans.dedup();
+                    for (span, msg) in bound_spans.into_iter() {
+                        err.span_label(span, &msg);
+                    }
+                    if !bound_list.is_empty() {
+                        let bound_list = bound_list
+                            .into_iter()
+                            .map(|(_, path)| path)
+                            .collect::<Vec<_>>()
+                            .join("\n");
+                        err.note(&format!(
+                            "the method `{}` exists but the following trait bounds were not \
+                             satisfied:\n{}",
+                            item_name, bound_list
+                        ));
+                    }
                 }
 
-                if actual.is_numeric() && actual.is_fresh() {
+                if actual.is_numeric() && actual.is_fresh() || restrict_type_params {
                 } else {
                     self.suggest_traits_to_import(
                         &mut err,
@@ -559,6 +699,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         item_name,
                         source,
                         out_of_scope_traits,
+                        &unsatisfied_predicates,
                     );
                 }
 
@@ -640,9 +781,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.emit();
             }
 
-            MethodError::IllegalSizedBound(candidates, needs_mut) => {
+            MethodError::IllegalSizedBound(candidates, needs_mut, bound_span) => {
                 let msg = format!("the `{}` method cannot be invoked on a trait object", item_name);
                 let mut err = self.sess().struct_span_err(span, &msg);
+                err.span_label(bound_span, "this has a `Sized` requirement");
                 if !candidates.is_empty() {
                     let help = format!(
                         "{an}other candidate{s} {were} found in the following trait{s}, perhaps \
@@ -685,8 +827,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mut msg: String,
         candidates: Vec<DefId>,
     ) {
-        let module_did = self.tcx.hir().get_module_parent(self.body_id);
-        let module_id = self.tcx.hir().as_local_hir_id(module_did).unwrap();
+        let module_did = self.tcx.parent_module(self.body_id);
+        let module_id = self.tcx.hir().as_local_hir_id(module_did.to_def_id()).unwrap();
         let krate = self.tcx.hir().krate();
         let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
         if let Some(span) = span {
@@ -757,6 +899,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: ast::Ident,
         source: SelfSource<'b>,
         valid_out_of_scope_traits: Vec<DefId>,
+        unsatisfied_predicates: &[(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)],
     ) {
         if self.suggest_valid_traits(err, valid_out_of_scope_traits) {
             return;
@@ -764,6 +907,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let type_is_local = self.type_derefs_to_local(span, rcvr_ty, source);
 
+        let mut arbitrary_rcvr = vec![];
         // There are no traits implemented, so lets suggest some traits to
         // implement, by finding ones that have the item name, and are
         // legal to implement.
@@ -776,16 +920,71 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this isn't perfect (that is, there are cases when
                 // implementing a trait would be legal but is rejected
                 // here).
-                (type_is_local || info.def_id.is_local())
+                !unsatisfied_predicates.iter().any(|(p, _)| match p {
+                    // Hide traits if they are present in predicates as they can be fixed without
+                    // having to implement them.
+                    ty::Predicate::Trait(t, _) => t.def_id() != info.def_id,
+                    ty::Predicate::Projection(p) => p.item_def_id() != info.def_id,
+                    _ => true,
+                }) && (type_is_local || info.def_id.is_local())
                     && self
-                        .associated_item(info.def_id, item_name, Namespace::Value)
+                        .associated_item(info.def_id, item_name, Namespace::ValueNS)
                         .filter(|item| {
+                            if let ty::AssocKind::Method = item.kind {
+                                let id = self.tcx.hir().as_local_hir_id(item.def_id);
+                                if let Some(hir::Node::TraitItem(hir::TraitItem {
+                                    kind: hir::TraitItemKind::Fn(fn_sig, method),
+                                    ..
+                                })) = id.map(|id| self.tcx.hir().get(id))
+                                {
+                                    let self_first_arg = match method {
+                                        hir::TraitFn::Required([ident, ..]) => {
+                                            ident.name == kw::SelfLower
+                                        }
+                                        hir::TraitFn::Provided(body_id) => {
+                                            match &self.tcx.hir().body(*body_id).params[..] {
+                                                [hir::Param {
+                                                    pat:
+                                                        hir::Pat {
+                                                            kind:
+                                                                hir::PatKind::Binding(
+                                                                    _,
+                                                                    _,
+                                                                    ident,
+                                                                    ..,
+                                                                ),
+                                                            ..
+                                                        },
+                                                    ..
+                                                }, ..] => ident.name == kw::SelfLower,
+                                                _ => false,
+                                            }
+                                        }
+                                        _ => false,
+                                    };
+
+                                    if !fn_sig.decl.implicit_self.has_implicit_self()
+                                        && self_first_arg
+                                    {
+                                        if let Some(ty) = fn_sig.decl.inputs.get(0) {
+                                            arbitrary_rcvr.push(ty.span);
+                                        }
+                                        return false;
+                                    }
+                                }
+                            }
                             // We only want to suggest public or local traits (#45781).
                             item.vis == ty::Visibility::Public || info.def_id.is_local()
                         })
                         .is_some()
             })
             .collect::<Vec<_>>();
+        for span in &arbitrary_rcvr {
+            err.span_label(
+                *span,
+                "the method might not be found because of this arbitrary self type",
+            );
+        }
 
         if !candidates.is_empty() {
             // Sort from most relevant to least relevant.
@@ -808,7 +1007,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let message = |action| {
                 format!(
                     "the following {traits_define} an item `{name}`, perhaps you need to {action} \
-                 {one_of_them}:",
+                     {one_of_them}:",
                     traits_define =
                         if candidates.len() == 1 { "trait defines" } else { "traits define" },
                     action = action,
@@ -819,9 +1018,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Obtain the span for `param` and use it for a structured suggestion.
             let mut suggested = false;
             if let (Some(ref param), Some(ref table)) = (param_type, self.in_progress_tables) {
-                let table = table.borrow();
-                if let Some(did) = table.local_id_root {
-                    let generics = self.tcx.generics_of(did);
+                let table_owner = table.borrow().hir_owner;
+                if let Some(table_owner) = table_owner {
+                    let generics = self.tcx.generics_of(table_owner.to_def_id());
                     let type_param = generics.type_param(param, self.tcx);
                     let hir = &self.tcx.hir();
                     if let Some(id) = hir.as_local_hir_id(type_param.def_id) {
@@ -853,26 +1052,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else {
                                     sp
                                 };
-                                // FIXME: contrast `t.def_id` against `param.bounds` to not suggest
-                                // traits already there. That can happen when the cause is that
-                                // we're in a const scope or associated function used as a method.
-                                err.span_suggestions(
-                                    sp,
-                                    &message(format!(
-                                        "restrict type parameter `{}` with",
-                                        param.name.ident(),
-                                    )),
-                                    candidates.iter().map(|t| {
-                                        format!(
-                                            "{}{} {}{}",
+                                let trait_def_ids: FxHashSet<DefId> = param
+                                    .bounds
+                                    .iter()
+                                    .filter_map(|bound| bound.trait_def_id())
+                                    .collect();
+                                if !candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
+                                    err.span_suggestions(
+                                        sp,
+                                        &message(format!(
+                                            "restrict type parameter `{}` with",
                                             param.name.ident(),
-                                            if impl_trait { " +" } else { ":" },
-                                            self.tcx.def_path_str(t.def_id),
-                                            if has_bounds.is_some() { " + " } else { "" },
-                                        )
-                                    }),
-                                    Applicability::MaybeIncorrect,
-                                );
+                                        )),
+                                        candidates.iter().map(|t| {
+                                            format!(
+                                                "{}{} {}{}",
+                                                param.name.ident(),
+                                                if impl_trait { " +" } else { ":" },
+                                                self.tcx.def_path_str(t.def_id),
+                                                if has_bounds.is_some() { " + " } else { "" },
+                                            )
+                                        }),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                }
                                 suggested = true;
                             }
                             Node::Item(hir::Item {
@@ -902,19 +1105,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             if !suggested {
-                let mut msg = message(if let Some(param) = param_type {
+                let action = if let Some(param) = param_type {
                     format!("restrict type parameter `{}` with", param)
                 } else {
+                    // FIXME: it might only need to be imported into scope, not implemented.
                     "implement".to_string()
-                });
-                for (i, trait_info) in candidates.iter().enumerate() {
-                    msg.push_str(&format!(
-                        "\ncandidate #{}: `{}`",
-                        i + 1,
-                        self.tcx.def_path_str(trait_info.def_id),
-                    ));
+                };
+                let mut use_note = true;
+                if let [trait_info] = &candidates[..] {
+                    if let Some(span) = self.tcx.hir().span_if_local(trait_info.def_id) {
+                        err.span_note(
+                            self.tcx.sess.source_map().def_span(span),
+                            &format!(
+                                "`{}` defines an item `{}`, perhaps you need to {} it",
+                                self.tcx.def_path_str(trait_info.def_id),
+                                item_name,
+                                action
+                            ),
+                        );
+                        use_note = false
+                    }
                 }
-                err.note(&msg[..]);
+                if use_note {
+                    let mut msg = message(action);
+                    for (i, trait_info) in candidates.iter().enumerate() {
+                        msg.push_str(&format!(
+                            "\ncandidate #{}: `{}`",
+                            i + 1,
+                            self.tcx.def_path_str(trait_info.def_id),
+                        ));
+                    }
+                    err.note(&msg[..]);
+                }
             }
         }
     }
@@ -1124,9 +1346,9 @@ impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
         }
     }
 
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
         intravisit::NestedVisitorMap::None
     }
 }

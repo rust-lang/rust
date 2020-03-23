@@ -560,7 +560,7 @@ impl Step for Rustdoc {
         builder.ensure(Rustc { stage, target });
 
         // Build rustdoc.
-        builder.ensure(tool::Rustdoc { compiler: compiler });
+        builder.ensure(tool::Rustdoc { compiler });
 
         // Symlink compiler docs to the output directory of rustdoc documentation.
         let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target).join("doc");

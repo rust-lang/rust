@@ -2,14 +2,15 @@
 
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs};
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc_errors::{self, struct_span_err, Applicability};
+use rustc_ast::ast::Ident;
+use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_span::Span;
-use syntax::ast::Ident;
+use rustc_trait_selection::infer::InferCtxtExt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
@@ -25,7 +26,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty =
             if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
-                self.enforce_builtin_binop_types(lhs, lhs_ty, rhs, rhs_ty, op);
+                self.enforce_builtin_binop_types(&lhs.span, lhs_ty, &rhs.span, rhs_ty, op);
                 self.tcx.mk_unit()
             } else {
                 return_ty
@@ -86,8 +87,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && !rhs_ty.is_ty_var()
                     && is_builtin_binop(lhs_ty, rhs_ty, op)
                 {
-                    let builtin_return_ty =
-                        self.enforce_builtin_binop_types(lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
+                    let builtin_return_ty = self.enforce_builtin_binop_types(
+                        &lhs_expr.span,
+                        lhs_ty,
+                        &rhs_expr.span,
+                        rhs_ty,
+                        op,
+                    );
                     self.demand_suptype(expr.span, builtin_return_ty, return_ty);
                 }
 
@@ -98,19 +104,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn enforce_builtin_binop_types(
         &self,
-        lhs_expr: &'tcx hir::Expr<'tcx>,
+        lhs_span: &Span,
         lhs_ty: Ty<'tcx>,
-        rhs_expr: &'tcx hir::Expr<'tcx>,
+        rhs_span: &Span,
         rhs_ty: Ty<'tcx>,
         op: hir::BinOp,
     ) -> Ty<'tcx> {
         debug_assert!(is_builtin_binop(lhs_ty, rhs_ty, op));
 
+        // Special-case a single layer of referencing, so that things like `5.0 + &6.0f32` work.
+        // (See https://github.com/rust-lang/rust/issues/57447.)
+        let (lhs_ty, rhs_ty) = (deref_ty_if_possible(lhs_ty), deref_ty_if_possible(rhs_ty));
+
         let tcx = self.tcx;
         match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
-                self.demand_suptype(lhs_expr.span, tcx.mk_bool(), lhs_ty);
-                self.demand_suptype(rhs_expr.span, tcx.mk_bool(), rhs_ty);
+                self.demand_suptype(*lhs_span, tcx.mk_bool(), lhs_ty);
+                self.demand_suptype(*rhs_span, tcx.mk_bool(), rhs_ty);
                 tcx.mk_bool()
             }
 
@@ -121,13 +131,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             BinOpCategory::Math | BinOpCategory::Bitwise => {
                 // both LHS and RHS and result will have the same type
-                self.demand_suptype(rhs_expr.span, lhs_ty, rhs_ty);
+                self.demand_suptype(*rhs_span, lhs_ty, rhs_ty);
                 lhs_ty
             }
 
             BinOpCategory::Comparison => {
                 // both LHS and RHS and result will have the same type
-                self.demand_suptype(rhs_expr.span, lhs_ty, rhs_ty);
+                self.demand_suptype(*rhs_span, lhs_ty, rhs_ty);
                 tcx.mk_bool()
             }
         }
@@ -312,11 +322,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         lhs_ty, missing_trait
                                     ));
                                 } else if !suggested_deref {
-                                    err.note(&format!(
-                                        "an implementation of `{}` might \
-                                         be missing for `{}`",
-                                        missing_trait, lhs_ty
-                                    ));
+                                    suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
                                 }
                             }
                             err.emit();
@@ -458,11 +464,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         lhs_ty, missing_trait
                                     ));
                                 } else if !suggested_deref && !involves_fn {
-                                    err.note(&format!(
-                                        "an implementation of `{}` might \
-                                         be missing for `{}`",
-                                        missing_trait, lhs_ty
-                                    ));
+                                    suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
                                 }
                             }
                             err.emit();
@@ -494,7 +496,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(hir_id) => hir_id,
                 None => return false,
             };
-            if self.tcx.has_typeck_tables(def_id) == false {
+            if !self.tcx.has_typeck_tables(def_id) {
                 return false;
             }
             let fn_sig = {
@@ -511,7 +513,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(hir_id) => hir_id,
                     None => return false,
                 };
-                if self.tcx.has_typeck_tables(def_id) == false {
+                if !self.tcx.has_typeck_tables(def_id) {
                     return false;
                 }
                 match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(hir_id) {
@@ -528,7 +530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .lookup_op_method(fn_sig.output(), &[other_ty], Op::Binary(op, is_assign))
                 .is_ok()
             {
-                let (variable_snippet, applicability) = if fn_sig.inputs().len() > 0 {
+                let (variable_snippet, applicability) = if !fn_sig.inputs().is_empty() {
                     (
                         format!("{}( /* arguments */ )", source_map.span_to_snippet(span).unwrap()),
                         Applicability::HasPlaceholders,
@@ -596,15 +598,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Ok(lstring) => {
                             err.span_suggestion(
                                 lhs_expr.span,
-                                if lstring.starts_with("&") {
+                                if lstring.starts_with('&') {
                                     remove_borrow_msg
                                 } else {
                                     msg
                                 },
-                                if lstring.starts_with("&") {
+                                if lstring.starts_with('&') {
                                     // let a = String::new();
                                     // let _ = &a + "bar";
-                                    format!("{}", &lstring[1..])
+                                    lstring[1..].to_string()
                                 } else {
                                     format!("{}.to_owned()", lstring)
                                 },
@@ -629,10 +631,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     is_assign,
                 ) {
                     (Ok(l), Ok(r), false) => {
-                        let to_string = if l.starts_with("&") {
+                        let to_string = if l.starts_with('&') {
                             // let a = String::new(); let b = String::new();
                             // let _ = &a + b;
-                            format!("{}", &l[1..])
+                            l[1..].to_string()
                         } else {
                             format!("{}.to_owned()", l)
                         };
@@ -698,11 +700,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 hir::UnOp::UnNot => "std::ops::Not",
                                 hir::UnOp::UnDeref => "std::ops::UnDerf",
                             };
-                            err.note(&format!(
-                                "an implementation of `{}` might \
-                                                be missing for `{}`",
-                                missing_trait, operand_ty
-                            ));
+                            suggest_impl_missing(&mut err, operand_ty, &missing_trait);
                         }
                     }
                     err.emit();
@@ -862,6 +860,14 @@ enum Op {
     Unary(hir::UnOp, Span),
 }
 
+/// Dereferences a single level of immutable referencing.
+fn deref_ty_if_possible(ty: Ty<'tcx>) -> Ty<'tcx> {
+    match ty.kind {
+        ty::Ref(_, ty, hir::Mutability::Not) => ty,
+        _ => ty,
+    }
+}
+
 /// Returns `true` if this is a built-in arithmetic operation (e.g., u32
 /// + u32, i16x4 == i16x4) and false if these types would have to be
 /// overloaded to be legal. There are two reasons that we distinguish
@@ -878,7 +884,11 @@ enum Op {
 /// Reason #2 is the killer. I tried for a while to always use
 /// overloaded logic and just check the types in constants/codegen after
 /// the fact, and it worked fine, except for SIMD types. -nmatsakis
-fn is_builtin_binop(lhs: Ty<'_>, rhs: Ty<'_>, op: hir::BinOp) -> bool {
+fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool {
+    // Special-case a single layer of referencing, so that things like `5.0 + &6.0f32` work.
+    // (See https://github.com/rust-lang/rust/issues/57447.)
+    let (lhs, rhs) = (deref_ty_if_possible(lhs), deref_ty_if_possible(rhs));
+
     match BinOpCategory::from(op) {
         BinOpCategory::Shortcircuit => true,
 
@@ -905,6 +915,19 @@ fn is_builtin_binop(lhs: Ty<'_>, rhs: Ty<'_>, op: hir::BinOp) -> bool {
 
         BinOpCategory::Comparison => {
             lhs.references_error() || rhs.references_error() || lhs.is_scalar() && rhs.is_scalar()
+        }
+    }
+}
+
+/// If applicable, note that an implementation of `trait` for `ty` may fix the error.
+fn suggest_impl_missing(err: &mut DiagnosticBuilder<'_>, ty: Ty<'_>, missing_trait: &str) {
+    if let Adt(def, _) = ty.peel_refs().kind {
+        if def.did.is_local() {
+            err.note(&format!(
+                "an implementation of `{}` might \
+                be missing for `{}`",
+                missing_trait, ty
+            ));
         }
     }
 }

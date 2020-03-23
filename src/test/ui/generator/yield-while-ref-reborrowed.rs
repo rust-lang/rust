@@ -12,7 +12,7 @@ fn reborrow_shared_ref(x: &i32) {
         yield();
         println!("{}", a);
     };
-    Pin::new(&mut b).resume();
+    Pin::new(&mut b).resume(());
 }
 
 fn reborrow_mutable_ref(x: &mut i32) {
@@ -23,7 +23,7 @@ fn reborrow_mutable_ref(x: &mut i32) {
         yield();
         println!("{}", a);
     };
-    Pin::new(&mut b).resume();
+    Pin::new(&mut b).resume(());
 }
 
 fn reborrow_mutable_ref_2(x: &mut i32) {
@@ -34,7 +34,7 @@ fn reborrow_mutable_ref_2(x: &mut i32) {
         println!("{}", a);
     };
     println!("{}", x); //~ ERROR
-    Pin::new(&mut b).resume();
+    Pin::new(&mut b).resume(());
 }
 
 fn main() { }

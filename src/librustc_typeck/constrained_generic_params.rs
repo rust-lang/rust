@@ -36,7 +36,7 @@ pub fn parameters_for_impl<'tcx>(
     vec.into_iter().collect()
 }
 
-/// If `include_projections` is false, returns the list of parameters that are
+/// If `include_nonconstraining` is false, returns the list of parameters that are
 /// constrained by `t` - i.e., the value of each parameter in the list is
 /// uniquely determined by `t` (see RFC 447). If it is true, return the list
 /// of parameters whose values are needed in order to constrain `ty` - these
@@ -79,10 +79,18 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     }
 
     fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
-        if let ty::ConstKind::Param(data) = c.val {
-            self.parameters.push(Parameter::from(data));
+        match c.val {
+            ty::ConstKind::Unevaluated(..) if !self.include_nonconstraining => {
+                // Constant expressions are not injective
+                return c.ty.visit_with(self);
+            }
+            ty::ConstKind::Param(data) => {
+                self.parameters.push(Parameter::from(data));
+            }
+            _ => {}
         }
-        false
+
+        c.super_visit_with(self)
     }
 }
 

@@ -4,7 +4,7 @@ error: constant item is never used: `foo`
 LL | const foo: isize = 3;
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-17718-const-naming.rs:2:9
    |
 LL | #![deny(warnings)]
@@ -17,7 +17,7 @@ error: constant `foo` should have an upper case name
 LL | const foo: isize = 3;
    |       ^^^ help: convert the identifier to upper case (notice the capitalization): `FOO`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/issue-17718-const-naming.rs:2:9
    |
 LL | #![deny(warnings)]

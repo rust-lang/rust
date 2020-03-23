@@ -1,10 +1,10 @@
 use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
+use rustc_ast::ast;
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 use rustc_target::spec::abi;
-use syntax::ast;
 
 use std::borrow::Cow;
 use std::fmt;
@@ -13,6 +13,16 @@ use std::fmt;
 pub struct ExpectedFound<T> {
     pub expected: T,
     pub found: T,
+}
+
+impl<T> ExpectedFound<T> {
+    pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
+        if a_is_expected {
+            ExpectedFound { expected: a, found: b }
+        } else {
+            ExpectedFound { expected: b, found: a }
+        }
+    }
 }
 
 // Data structures used in type unification
@@ -331,7 +341,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     db.note("distinct uses of `impl Trait` result in different opaque types");
                     let e_str = values.expected.to_string();
                     let f_str = values.found.to_string();
-                    if &e_str == &f_str && &e_str == "impl std::future::Future" {
+                    if e_str == f_str && &e_str == "impl std::future::Future" {
                         // FIXME: use non-string based check.
                         db.help(
                             "if both `Future`s have the same `Output` type, consider \
@@ -473,8 +483,9 @@ impl Trait for X {
                 if ty.is_closure() || ty.is_generator() {
                     db.note(
                         "closures cannot capture themselves or take themselves as argument;\n\
-                             this error may be the result of a recent compiler bug-fix,\n\
-                             see https://github.com/rust-lang/rust/issues/46062 for more details",
+                         this error may be the result of a recent compiler bug-fix,\n\
+                         see issue #46062 <https://github.com/rust-lang/rust/issues/46062>\n\
+                         for more information",
                     );
                 }
             }

@@ -21,12 +21,16 @@ error[E0277]: the trait bound `Test1: std::clone::Clone` is not satisfied
    |
 LL | #[derive(Copy(Bad))]
    |          ^^^^ the trait `std::clone::Clone` is not implemented for `Test1`
+   |
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `Test2: std::clone::Clone` is not satisfied
   --> $DIR/malformed-derive-entry.rs:6:10
    |
 LL | #[derive(Copy="bad")]
    |          ^^^^ the trait `std::clone::Clone` is not implemented for `Test2`
+   |
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
 

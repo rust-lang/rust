@@ -90,30 +90,46 @@ impl<'tcx> TyCtxt<'tcx> {
     /// ```
     /// This code should only compile in modules where the uninhabitedness of Foo is
     /// visible.
-    pub fn is_ty_uninhabited_from(self, module: DefId, ty: Ty<'tcx>) -> bool {
+    pub fn is_ty_uninhabited_from(
+        self,
+        module: DefId,
+        ty: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> bool {
         // To check whether this type is uninhabited at all (not just from the
         // given node), you could check whether the forest is empty.
         // ```
         // forest.is_empty()
         // ```
-        ty.uninhabited_from(self).contains(self, module)
+        ty.uninhabited_from(self, param_env).contains(self, module)
     }
 
-    pub fn is_ty_uninhabited_from_any_module(self, ty: Ty<'tcx>) -> bool {
-        !ty.uninhabited_from(self).is_empty()
+    pub fn is_ty_uninhabited_from_any_module(
+        self,
+        ty: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> bool {
+        !ty.uninhabited_from(self, param_env).is_empty()
     }
 }
 
 impl<'tcx> AdtDef {
     /// Calculates the forest of `DefId`s from which this ADT is visibly uninhabited.
-    fn uninhabited_from(&self, tcx: TyCtxt<'tcx>, substs: SubstsRef<'tcx>) -> DefIdForest {
+    fn uninhabited_from(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        substs: SubstsRef<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> DefIdForest {
         // Non-exhaustive ADTs from other crates are always considered inhabited.
         if self.is_variant_list_non_exhaustive() && !self.did.is_local() {
             DefIdForest::empty()
         } else {
             DefIdForest::intersection(
                 tcx,
-                self.variants.iter().map(|v| v.uninhabited_from(tcx, substs, self.adt_kind())),
+                self.variants
+                    .iter()
+                    .map(|v| v.uninhabited_from(tcx, substs, self.adt_kind(), param_env)),
             )
         }
     }
@@ -126,6 +142,7 @@ impl<'tcx> VariantDef {
         tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
         adt_kind: AdtKind,
+        param_env: ty::ParamEnv<'tcx>,
     ) -> DefIdForest {
         let is_enum = match adt_kind {
             // For now, `union`s are never considered uninhabited.
@@ -140,7 +157,7 @@ impl<'tcx> VariantDef {
         } else {
             DefIdForest::union(
                 tcx,
-                self.fields.iter().map(|f| f.uninhabited_from(tcx, substs, is_enum)),
+                self.fields.iter().map(|f| f.uninhabited_from(tcx, substs, is_enum, param_env)),
             )
         }
     }
@@ -153,8 +170,9 @@ impl<'tcx> FieldDef {
         tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
         is_enum: bool,
+        param_env: ty::ParamEnv<'tcx>,
     ) -> DefIdForest {
-        let data_uninhabitedness = move || self.ty(tcx, substs).uninhabited_from(tcx);
+        let data_uninhabitedness = move || self.ty(tcx, substs).uninhabited_from(tcx, param_env);
         // FIXME(canndrew): Currently enum fields are (incorrectly) stored with
         // `Visibility::Invisible` so we need to override `self.vis` if we're
         // dealing with an enum.
@@ -176,20 +194,21 @@ impl<'tcx> FieldDef {
 
 impl<'tcx> TyS<'tcx> {
     /// Calculates the forest of `DefId`s from which this type is visibly uninhabited.
-    fn uninhabited_from(&self, tcx: TyCtxt<'tcx>) -> DefIdForest {
+    fn uninhabited_from(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> DefIdForest {
         match self.kind {
-            Adt(def, substs) => def.uninhabited_from(tcx, substs),
+            Adt(def, substs) => def.uninhabited_from(tcx, substs, param_env),
 
             Never => DefIdForest::full(tcx),
 
-            Tuple(ref tys) => {
-                DefIdForest::union(tcx, tys.iter().map(|ty| ty.expect_ty().uninhabited_from(tcx)))
-            }
+            Tuple(ref tys) => DefIdForest::union(
+                tcx,
+                tys.iter().map(|ty| ty.expect_ty().uninhabited_from(tcx, param_env)),
+            ),
 
-            Array(ty, len) => match len.try_eval_usize(tcx, ty::ParamEnv::empty()) {
+            Array(ty, len) => match len.try_eval_usize(tcx, param_env) {
                 // If the array is definitely non-empty, it's uninhabited if
                 // the type of its elements is uninhabited.
-                Some(n) if n != 0 => ty.uninhabited_from(tcx),
+                Some(n) if n != 0 => ty.uninhabited_from(tcx, param_env),
                 _ => DefIdForest::empty(),
             },
 

@@ -13,7 +13,7 @@
 /// ```
 /// use std::ops::Add;
 ///
-/// #[derive(Debug, PartialEq)]
+/// #[derive(Debug, Copy, Clone, PartialEq)]
 /// struct Point {
 ///     x: i32,
 ///     y: i32,
@@ -42,7 +42,7 @@
 /// ```
 /// use std::ops::Add;
 ///
-/// #[derive(Debug, PartialEq)]
+/// #[derive(Debug, Copy, Clone, PartialEq)]
 /// struct Point<T> {
 ///     x: T,
 ///     y: T,
@@ -115,7 +115,7 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 /// use std::ops::Sub;
 ///
-/// #[derive(Debug, PartialEq)]
+/// #[derive(Debug, Copy, Clone, PartialEq)]
 /// struct Point {
 ///     x: i32,
 ///     y: i32,
@@ -657,7 +657,7 @@ neg_impl_numeric! { isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 /// use std::ops::AddAssign;
 ///
-/// #[derive(Debug, PartialEq)]
+/// #[derive(Debug, Copy, Clone, PartialEq)]
 /// struct Point {
 ///     x: i32,
 ///     y: i32,
@@ -715,7 +715,7 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 /// use std::ops::SubAssign;
 ///
-/// #[derive(Debug, PartialEq)]
+/// #[derive(Debug, Copy, Clone, PartialEq)]
 /// struct Point {
 ///     x: i32,
 ///     y: i32,

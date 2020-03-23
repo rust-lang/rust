@@ -12,7 +12,7 @@ error: any use of this value will cause an error
 LL |     const I32_REF_U8_UNION: u8 = unsafe { Nonsense { int_32_ref: &3 }.uint_8 };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                           |
-   |                                           a raw memory access tried to access part of a pointer value as raw bytes
+   |                                           unable to turn pointer into raw bytes
    |
    = note: `#[deny(const_err)]` on by default
 
@@ -22,7 +22,7 @@ error: any use of this value will cause an error
 LL |     const I32_REF_U16_UNION: u16 = unsafe { Nonsense { int_32_ref: &3 }.uint_16 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                             |
-   |                                             a raw memory access tried to access part of a pointer value as raw bytes
+   |                                             unable to turn pointer into raw bytes
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:34:45
@@ -30,7 +30,7 @@ error: any use of this value will cause an error
 LL |     const I32_REF_U32_UNION: u32 = unsafe { Nonsense { int_32_ref: &3 }.uint_32 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                             |
-   |                                             a raw memory access tried to access part of a pointer value as raw bytes
+   |                                             unable to turn pointer into raw bytes
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const-pointer-values-in-various-types.rs:37:5
@@ -54,7 +54,7 @@ error: any use of this value will cause an error
 LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8 };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                           |
-   |                                           a raw memory access tried to access part of a pointer value as raw bytes
+   |                                           unable to turn pointer into raw bytes
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:46:45
@@ -62,7 +62,7 @@ error: any use of this value will cause an error
 LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int_16 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                             |
-   |                                             a raw memory access tried to access part of a pointer value as raw bytes
+   |                                             unable to turn pointer into raw bytes
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:49:45
@@ -70,7 +70,7 @@ error: any use of this value will cause an error
 LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int_32 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                             |
-   |                                             a raw memory access tried to access part of a pointer value as raw bytes
+   |                                             unable to turn pointer into raw bytes
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const-pointer-values-in-various-types.rs:52:5
@@ -94,7 +94,7 @@ error: any use of this value will cause an error
 LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.float_32 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                             |
-   |                                             a raw memory access tried to access part of a pointer value as raw bytes
+   |                                             unable to turn pointer into raw bytes
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const-pointer-values-in-various-types.rs:61:5
@@ -110,7 +110,7 @@ error: any use of this value will cause an error
 LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.truthy_falsey };
    |     ------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                               |
-   |                                               a raw memory access tried to access part of a pointer value as raw bytes
+   |                                               unable to turn pointer into raw bytes
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:67:47
@@ -118,7 +118,7 @@ error: any use of this value will cause an error
 LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.character };
    |     ------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                               |
-   |                                               a raw memory access tried to access part of a pointer value as raw bytes
+   |                                               unable to turn pointer into raw bytes
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:70:39
@@ -126,7 +126,7 @@ error: any use of this value will cause an error
 LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
    |     ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                       |
-   |                                       a raw memory access tried to access part of a pointer value as raw bytes
+   |                                       unable to turn pointer into raw bytes
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:73:41
@@ -134,7 +134,7 @@ error: any use of this value will cause an error
 LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                         |
-   |                                         a raw memory access tried to access part of a pointer value as raw bytes
+   |                                         unable to turn pointer into raw bytes
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:76:41
@@ -142,7 +142,7 @@ error: any use of this value will cause an error
 LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                         |
-   |                                         a raw memory access tried to access part of a pointer value as raw bytes
+   |                                         unable to turn pointer into raw bytes
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const-pointer-values-in-various-types.rs:79:5
@@ -158,7 +158,7 @@ error: any use of this value will cause an error
 LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_128 };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                           |
-   |                                           a raw memory access tried to access part of a pointer value as raw bytes
+   |                                           unable to turn pointer into raw bytes
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:85:39
@@ -166,7 +166,7 @@ error: any use of this value will cause an error
 LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
    |     ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                       |
-   |                                       a raw memory access tried to access part of a pointer value as raw bytes
+   |                                       unable to turn pointer into raw bytes
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:88:41
@@ -174,7 +174,7 @@ error: any use of this value will cause an error
 LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                         |
-   |                                         a raw memory access tried to access part of a pointer value as raw bytes
+   |                                         unable to turn pointer into raw bytes
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:91:41
@@ -182,7 +182,7 @@ error: any use of this value will cause an error
 LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                         |
-   |                                         a raw memory access tried to access part of a pointer value as raw bytes
+   |                                         unable to turn pointer into raw bytes
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const-pointer-values-in-various-types.rs:94:5
@@ -198,7 +198,7 @@ error: any use of this value will cause an error
 LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128 };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                           |
-   |                                           a raw memory access tried to access part of a pointer value as raw bytes
+   |                                           unable to turn pointer into raw bytes
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:100:41
@@ -206,7 +206,7 @@ error: any use of this value will cause an error
 LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                         |
-   |                                         a raw memory access tried to access part of a pointer value as raw bytes
+   |                                         unable to turn pointer into raw bytes
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const-pointer-values-in-various-types.rs:103:5
@@ -222,7 +222,7 @@ error: any use of this value will cause an error
 LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_falsey };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                           |
-   |                                           a raw memory access tried to access part of a pointer value as raw bytes
+   |                                           unable to turn pointer into raw bytes
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:109:43
@@ -230,7 +230,7 @@ error: any use of this value will cause an error
 LL |     const STR_CHAR_UNION: char = unsafe { Nonsense { stringy: "3" }.character };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                                           |
-   |                                           a raw memory access tried to access part of a pointer value as raw bytes
+   |                                           unable to turn pointer into raw bytes
 
 error: aborting due to 29 previous errors
 

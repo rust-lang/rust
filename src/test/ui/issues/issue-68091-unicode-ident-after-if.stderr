@@ -12,6 +12,8 @@ LL |         $($c)ö* {}
 ...
 LL |     x!(if);
    |     ------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

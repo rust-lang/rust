@@ -92,6 +92,18 @@ mod tests {
     #[derive(Copy, Clone)]
     pub struct Floats { a: f64, b: u8, c: f64 }
 
+    #[repr(C, u8)]
+    pub enum U8TaggedEnumOptionU64U64 {
+        None,
+        Some(u64,u64),
+    }
+
+    #[repr(C, u8)]
+    pub enum U8TaggedEnumOptionU64 {
+        None,
+        Some(u64),
+    }
+
     #[link(name = "rust_test_helpers", kind = "static")]
     extern "sysv64" {
         pub fn rust_int8_to_int32(_: i8) -> i32;
@@ -125,6 +137,16 @@ mod tests {
         ) -> f32;
         pub fn rust_dbg_abi_1(q: Quad) -> Quad;
         pub fn rust_dbg_abi_2(f: Floats) -> Floats;
+        pub fn rust_dbg_new_some_u64u64(a: u64, b: u64) -> U8TaggedEnumOptionU64U64;
+        pub fn rust_dbg_new_none_u64u64() -> U8TaggedEnumOptionU64U64;
+        pub fn rust_dbg_unpack_option_u64u64(
+            o: U8TaggedEnumOptionU64U64,
+            a: *mut u64,
+            b: *mut u64,
+        ) -> i32;
+        pub fn rust_dbg_new_some_u64(some: u64) -> U8TaggedEnumOptionU64;
+        pub fn rust_dbg_new_none_u64() -> U8TaggedEnumOptionU64;
+        pub fn rust_dbg_unpack_option_u64(o: U8TaggedEnumOptionU64, v: *mut u64) -> i32;
     }
 
     pub fn cabi_int_widening() {
@@ -336,6 +358,63 @@ mod tests {
         test1();
         test2();
     }
+
+    pub fn enum_passing_and_return_pair() {
+        let some_u64u64 = unsafe { rust_dbg_new_some_u64u64(10, 20) };
+        if let U8TaggedEnumOptionU64U64::Some(a, b) = some_u64u64 {
+            assert_eq!(10, a);
+            assert_eq!(20, b);
+        } else {
+            panic!("unexpected none");
+        }
+
+        let none_u64u64 = unsafe { rust_dbg_new_none_u64u64() };
+        if let U8TaggedEnumOptionU64U64::Some(_,_) = none_u64u64 {
+            panic!("unexpected some");
+        }
+
+        let mut a: u64 = 0;
+        let mut b: u64 = 0;
+        let r = unsafe {
+            rust_dbg_unpack_option_u64u64(some_u64u64, &mut a as *mut _, &mut b as *mut _)
+        };
+        assert_eq!(1, r);
+        assert_eq!(10, a);
+        assert_eq!(20, b);
+
+        let mut a: u64 = 0;
+        let mut b: u64 = 0;
+        let r = unsafe {
+            rust_dbg_unpack_option_u64u64(none_u64u64, &mut a as *mut _, &mut b as *mut _)
+        };
+        assert_eq!(0, r);
+        assert_eq!(0, a);
+        assert_eq!(0, b);
+    }
+
+    pub fn enum_passing_and_return() {
+        let some_u64 = unsafe { rust_dbg_new_some_u64(10) };
+        if let U8TaggedEnumOptionU64::Some(v) = some_u64 {
+            assert_eq!(10, v);
+        } else {
+            panic!("unexpected none");
+        }
+
+        let none_u64 = unsafe { rust_dbg_new_none_u64() };
+        if let U8TaggedEnumOptionU64::Some(_) = none_u64 {
+            panic!("unexpected some");
+        }
+
+        let mut target: u64 = 0;
+        let r = unsafe { rust_dbg_unpack_option_u64(some_u64, &mut target as *mut _) };
+        assert_eq!(1, r);
+        assert_eq!(10, target);
+
+        let mut target: u64 = 0;
+        let r = unsafe { rust_dbg_unpack_option_u64(none_u64, &mut target as *mut _) };
+        assert_eq!(0, r);
+        assert_eq!(0, target);
+    }
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -359,6 +438,8 @@ fn main() {
     issue_28676();
     issue_62350();
     struct_return();
+    enum_passing_and_return_pair();
+    enum_passing_and_return();
 }
 
 #[cfg(not(target_arch = "x86_64"))]

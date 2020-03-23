@@ -10,13 +10,13 @@
 
 fn main() {
 
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
     //[cfail2]~^ ERROR found unchecked `#[rustc_dirty]` / `#[rustc_clean]` attribute
     {
         // empty block
     }
 
-    #[rustc_clean(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="hir_owner", cfg="cfail2")]
     //[cfail2]~^ ERROR found unchecked `#[rustc_dirty]` / `#[rustc_clean]` attribute
     {
         // empty block
@@ -24,11 +24,11 @@ fn main() {
 }
 
 struct _Struct {
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
     //[cfail2]~^ ERROR found unchecked `#[rustc_dirty]` / `#[rustc_clean]` attribute
     _field1: i32,
 
-    #[rustc_clean(label="Hir", cfg="cfail2")]
+    #[rustc_clean(label="hir_owner", cfg="cfail2")]
     //[cfail2]~^ ERROR found unchecked `#[rustc_dirty]` / `#[rustc_clean]` attribute
     _field2: i32,
 }

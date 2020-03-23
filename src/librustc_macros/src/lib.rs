@@ -1,8 +1,6 @@
 #![allow(rustc::default_hash_types)]
 #![recursion_limit = "128"]
 
-extern crate proc_macro;
-
 use synstructure::decl_derive;
 
 use proc_macro::TokenStream;

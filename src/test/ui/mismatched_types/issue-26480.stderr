@@ -7,6 +7,7 @@ LL |                   $arr.len() * size_of($arr[0]));
 LL |     write!(hello);
    |     -------------- in this macro invocation
    |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you can convert an `usize` to `u64` and panic if the converted value wouldn't fit
    |
 LL |                   ($arr.len() * size_of($arr[0])).try_into().unwrap());
@@ -22,6 +23,7 @@ LL |     cast!(2);
    |     --------- in this macro invocation
    |
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

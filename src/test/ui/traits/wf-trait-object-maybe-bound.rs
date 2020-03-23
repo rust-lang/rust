@@ -1,5 +1,3 @@
-// compile-fail
-
 // Test that `dyn ... + ?Sized + ...` is okay (though `?Sized` has no effect in trait objects).
 
 trait Foo {}

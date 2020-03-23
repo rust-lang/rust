@@ -21,7 +21,7 @@ when they'd need to do the same thing for every type anyway).
 
 impl<T: Copy> CheapToClone for T {}
 
-// These could potentally overlap with the blanket implementation above,
+// These could potentially overlap with the blanket implementation above,
 // so are only allowed because CheapToClone is a marker trait.
 impl<T: CheapToClone, U: CheapToClone> CheapToClone for (T, U) {}
 impl<T: CheapToClone> CheapToClone for std::ops::Range<T> {}

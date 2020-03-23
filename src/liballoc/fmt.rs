@@ -247,6 +247,21 @@
 //! Hello, `     123` has 3 right-aligned characters
 //! ```
 //!
+//! ## Localization
+//!
+//! In some programming languages, the behavior of string formatting functions
+//! depends on the operating system's locale setting. The format functions
+//! provided by Rust's standard library do not have any concept of locale, and
+//! will produce the same results on all systems regardless of user
+//! configuration.
+//!
+//! For example, the following code will always print `1.5` even if the system
+//! locale uses a decimal separator other than a dot.
+//!
+//! ```
+//! println!("The value is {}", 1.5);
+//! ```
+//!
 //! # Escaping
 //!
 //! The literal characters `{` and `}` may be included in a string by preceding

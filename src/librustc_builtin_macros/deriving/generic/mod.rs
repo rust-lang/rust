@@ -181,16 +181,16 @@ use std::cell::RefCell;
 use std::iter;
 use std::vec;
 
+use rustc_ast::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
+use rustc_ast::ast::{GenericArg, GenericParamKind, VariantData};
+use rustc_ast::ptr::P;
+use rustc_ast::util::map_in_place::MapInPlace;
+use rustc_attr as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_session::parse::ParseSess;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
-use syntax::ast::{GenericArg, GenericParamKind, VariantData};
-use syntax::attr;
-use syntax::ptr::P;
-use syntax::sess::ParseSess;
-use syntax::util::map_in_place::MapInPlace;
 
 use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 
@@ -339,7 +339,7 @@ fn find_type_parameters(
     ty_param_names: &[ast::Name],
     cx: &ExtCtxt<'_>,
 ) -> Vec<P<ast::Ty>> {
-    use syntax::visit;
+    use rustc_ast::visit;
 
     struct Visitor<'a, 'b> {
         cx: &'a ExtCtxt<'b>,
@@ -360,7 +360,7 @@ fn find_type_parameters(
             visit::walk_ty(self, ty)
         }
 
-        fn visit_mac(&mut self, mac: &ast::Mac) {
+        fn visit_mac(&mut self, mac: &ast::MacCall) {
             self.cx.span_err(mac.span(), "`derive` cannot be used on items with type macros");
         }
     }
@@ -482,14 +482,13 @@ impl<'a> TraitDef<'a> {
                         })
                         .cloned(),
                 );
-                push(Annotatable::Item(P(ast::Item { attrs: attrs, ..(*newitem).clone() })))
+                push(Annotatable::Item(P(ast::Item { attrs, ..(*newitem).clone() })))
             }
             _ => {
                 // Non-Item derive is an error, but it should have been
                 // set earlier; see
                 // librustc_expand/expand.rs:MacroExpander::fully_expand_fragment()
                 // librustc_expand/base.rs:Annotatable::derive_allowed()
-                return;
             }
         }
     }
@@ -531,26 +530,27 @@ impl<'a> TraitDef<'a> {
         type_ident: Ident,
         generics: &Generics,
         field_tys: Vec<P<ast::Ty>>,
-        methods: Vec<ast::AssocItem>,
+        methods: Vec<P<ast::AssocItem>>,
     ) -> P<ast::Item> {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
         // Transform associated types from `deriving::ty::Ty` into `ast::AssocItem`
-        let associated_types =
-            self.associated_types.iter().map(|&(ident, ref type_def)| ast::AssocItem {
+        let associated_types = self.associated_types.iter().map(|&(ident, ref type_def)| {
+            P(ast::AssocItem {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
                 ident,
                 vis: respan(self.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
-                defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
-                generics: Generics::default(),
                 kind: ast::AssocItemKind::TyAlias(
+                    ast::Defaultness::Final,
+                    Generics::default(),
                     Vec::new(),
                     Some(type_def.to_ty(cx, self.span, type_ident, generics)),
                 ),
                 tokens: None,
-            });
+            })
+        });
 
         let Generics { mut params, mut where_clause, span } =
             self.generics.to_generics(cx, self.span, type_ident, generics);
@@ -587,14 +587,14 @@ impl<'a> TraitDef<'a> {
                         span: self.span,
                         bound_generic_params: wb.bound_generic_params.clone(),
                         bounded_ty: wb.bounded_ty.clone(),
-                        bounds: wb.bounds.iter().cloned().collect(),
+                        bounds: wb.bounds.to_vec(),
                     })
                 }
                 ast::WherePredicate::RegionPredicate(ref rb) => {
                     ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                         span: self.span,
                         lifetime: rb.lifetime,
-                        bounds: rb.bounds.iter().cloned().collect(),
+                        bounds: rb.bounds.to_vec(),
                     })
                 }
                 ast::WherePredicate::EqPredicate(ref we) => {
@@ -688,18 +688,18 @@ impl<'a> TraitDef<'a> {
         attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
         let unused_qual = {
-            let word = syntax::attr::mk_nested_word_item(Ident::new(
+            let word = rustc_ast::attr::mk_nested_word_item(Ident::new(
                 Symbol::intern("unused_qualifications"),
                 self.span,
             ));
-            let list = syntax::attr::mk_list_item(Ident::new(sym::allow, self.span), vec![word]);
+            let list = rustc_ast::attr::mk_list_item(Ident::new(sym::allow, self.span), vec![word]);
             cx.attribute(list)
         };
 
         let mut a = vec![attr, unused_qual];
         a.extend(self.attributes.iter().cloned());
 
-        let unsafety = if self.is_unsafe { ast::Unsafety::Unsafe } else { ast::Unsafety::Normal };
+        let unsafety = if self.is_unsafe { ast::Unsafe::Yes(self.span) } else { ast::Unsafe::No };
 
         cx.item(
             self.span,
@@ -709,7 +709,7 @@ impl<'a> TraitDef<'a> {
                 unsafety,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
-                constness: ast::Constness::NotConst,
+                constness: ast::Const::No,
                 generics: trait_generics,
                 of_trait: opt_trait_ref,
                 self_ty: self_type,
@@ -824,7 +824,8 @@ fn find_repr_type_name(sess: &ParseSess, type_attrs: &[ast::Attribute]) -> &'sta
                 attr::ReprPacked(_)
                 | attr::ReprSimd
                 | attr::ReprAlign(_)
-                | attr::ReprTransparent => continue,
+                | attr::ReprTransparent
+                | attr::ReprNoNiche => continue,
 
                 attr::ReprC => "i32",
 
@@ -938,7 +939,7 @@ impl<'a> MethodDef<'a> {
         explicit_self: Option<ast::ExplicitSelf>,
         arg_types: Vec<(Ident, P<ast::Ty>)>,
         body: P<Expr>,
-    ) -> ast::AssocItem {
+    ) -> P<ast::AssocItem> {
         // Create the generics that aren't for `Self`.
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
 
@@ -955,10 +956,10 @@ impl<'a> MethodDef<'a> {
         let ret_type = self.get_ret_ty(cx, trait_, generics, type_ident);
 
         let method_ident = cx.ident_of(self.name, trait_.span);
-        let fn_decl = cx.fn_decl(args, ast::FunctionRetTy::Ty(ret_type));
+        let fn_decl = cx.fn_decl(args, ast::FnRetTy::Ty(ret_type));
         let body_block = cx.block_expr(body);
 
-        let unsafety = if self.is_unsafe { ast::Unsafety::Unsafe } else { ast::Unsafety::Normal };
+        let unsafety = if self.is_unsafe { ast::Unsafe::Yes(trait_.span) } else { ast::Unsafe::No };
 
         let trait_lo_sp = trait_.span.shrink_to_lo();
 
@@ -966,19 +967,18 @@ impl<'a> MethodDef<'a> {
             header: ast::FnHeader { unsafety, ext: ast::Extern::None, ..ast::FnHeader::default() },
             decl: fn_decl,
         };
+        let def = ast::Defaultness::Final;
 
         // Create the method.
-        ast::AssocItem {
+        P(ast::AssocItem {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
-            generics: fn_generics,
             span: trait_.span,
             vis: respan(trait_lo_sp, ast::VisibilityKind::Inherited),
-            defaultness: ast::Defaultness::Final,
             ident: method_ident,
-            kind: ast::AssocItemKind::Fn(sig, Some(body_block)),
+            kind: ast::AssocItemKind::Fn(def, sig, fn_generics, Some(body_block)),
             tokens: None,
-        }
+        })
     }
 
     /// ```
@@ -1056,8 +1056,9 @@ impl<'a> MethodDef<'a> {
                     self_: field,
                     other: other_fields
                         .iter_mut()
-                        .map(|l| match l.next().unwrap() {
-                            (.., ex, _) => ex,
+                        .map(|l| {
+                            let (.., ex, _) = l.next().unwrap();
+                            ex
                         })
                         .collect(),
                     attrs,

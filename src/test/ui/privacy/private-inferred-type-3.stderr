@@ -4,7 +4,7 @@ error: type `fn() {ext::priv_fn}` is private
 LL |     ext::m!();
    |     ^^^^^^^^^^
    |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: static `PRIV_STATIC` is private
   --> $DIR/private-inferred-type-3.rs:16:5
@@ -12,7 +12,7 @@ error: static `PRIV_STATIC` is private
 LL |     ext::m!();
    |     ^^^^^^^^^^
    |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `ext::PrivEnum` is private
   --> $DIR/private-inferred-type-3.rs:16:5
@@ -20,7 +20,7 @@ error: type `ext::PrivEnum` is private
 LL |     ext::m!();
    |     ^^^^^^^^^^
    |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `fn() {<u8 as ext::PrivTrait>::method}` is private
   --> $DIR/private-inferred-type-3.rs:16:5
@@ -28,7 +28,7 @@ error: type `fn() {<u8 as ext::PrivTrait>::method}` is private
 LL |     ext::m!();
    |     ^^^^^^^^^^
    |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `fn(u8) -> ext::PrivTupleStruct {ext::PrivTupleStruct}` is private
   --> $DIR/private-inferred-type-3.rs:16:5
@@ -36,7 +36,7 @@ error: type `fn(u8) -> ext::PrivTupleStruct {ext::PrivTupleStruct}` is private
 LL |     ext::m!();
    |     ^^^^^^^^^^
    |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `fn(u8) -> ext::PubTupleStruct {ext::PubTupleStruct}` is private
   --> $DIR/private-inferred-type-3.rs:16:5
@@ -44,7 +44,7 @@ error: type `fn(u8) -> ext::PubTupleStruct {ext::PubTupleStruct}` is private
 LL |     ext::m!();
    |     ^^^^^^^^^^
    |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `for<'r> fn(&'r ext::Pub<u8>) {ext::Pub::<u8>::priv_method}` is private
   --> $DIR/private-inferred-type-3.rs:16:5
@@ -52,7 +52,7 @@ error: type `for<'r> fn(&'r ext::Pub<u8>) {ext::Pub::<u8>::priv_method}` is priv
 LL |     ext::m!();
    |     ^^^^^^^^^^
    |
-   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 7 previous errors
 

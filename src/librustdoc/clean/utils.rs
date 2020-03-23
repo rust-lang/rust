@@ -1,7 +1,7 @@
 use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
-    inline, Clean, Crate, Deprecation, ExternalCrate, FnDecl, FunctionRetTy, Generic, GenericArg,
+    inline, Clean, Crate, Deprecation, ExternalCrate, FnDecl, FnRetTy, Generic, GenericArg,
     GenericArgs, GenericBound, Generics, GetDefId, ImportSource, Item, ItemEnum, MacroKind, Path,
     PathSegment, Primitive, PrimitiveType, ResolvedPath, Span, Stability, Type, TypeBinding,
     TypeKind, Visibility, WherePredicate,
@@ -16,7 +16,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_span;
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 
@@ -39,7 +38,7 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     }
     externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
-    // Clean the crate, translating the entire libsyntax AST to one that is
+    // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
     let mut module = module.clean(cx);
     let mut masked_crates = FxHashSet::default();
@@ -122,9 +121,7 @@ pub fn external_generic_args(
     let args: Vec<_> = substs
         .iter()
         .filter_map(|kind| match kind.unpack() {
-            GenericArgKind::Lifetime(lt) => {
-                lt.clean(cx).and_then(|lt| Some(GenericArg::Lifetime(lt)))
-            }
+            GenericArgKind::Lifetime(lt) => lt.clean(cx).map(|lt| GenericArg::Lifetime(lt)),
             GenericArgKind::Type(_) if skip_self => {
                 skip_self = false;
                 None
@@ -139,7 +136,7 @@ pub fn external_generic_args(
 
     match trait_did {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
-        Some(did) if cx.tcx.lang_items().fn_trait_kind(did).is_some() => {
+        Some(did) if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() => {
             assert!(ty_kind.is_some());
             let inputs = match ty_kind {
                 Some(ty::Tuple(ref tys)) => tys.iter().map(|t| t.expect_ty().clean(cx)).collect(),
@@ -187,7 +184,7 @@ pub fn get_real_types(
     arg: &Type,
     cx: &DocContext<'_>,
     recurse: i32,
-) -> FxHashSet<Type> {
+) -> FxHashSet<(Type, TypeKind)> {
     let arg_s = arg.print().to_string();
     let mut res = FxHashSet::default();
     if recurse >= 10 {
@@ -212,7 +209,11 @@ pub fn get_real_types(
                                 if !adds.is_empty() {
                                     res.extend(adds);
                                 } else if !ty.is_full_generic() {
-                                    res.insert(ty);
+                                    if let Some(did) = ty.def_id() {
+                                        if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
+                                            res.insert((ty, kind));
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -228,13 +229,21 @@ pub fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     } else if !ty.is_full_generic() {
-                        res.insert(ty.clone());
+                        if let Some(did) = ty.def_id() {
+                            if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
+                                res.insert((ty.clone(), kind));
+                            }
+                        }
                     }
                 }
             }
         }
     } else {
-        res.insert(arg.clone());
+        if let Some(did) = arg.def_id() {
+            if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
+                res.insert((arg.clone(), kind));
+            }
+        }
         if let Some(gens) = arg.generics() {
             for gen in gens.iter() {
                 if gen.is_full_generic() {
@@ -242,8 +251,10 @@ pub fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     }
-                } else {
-                    res.insert(gen.clone());
+                } else if let Some(did) = gen.def_id() {
+                    if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
+                        res.insert((gen.clone(), kind));
+                    }
                 }
             }
         }
@@ -259,7 +270,7 @@ pub fn get_all_types(
     generics: &Generics,
     decl: &FnDecl,
     cx: &DocContext<'_>,
-) -> (Vec<Type>, Vec<Type>) {
+) -> (Vec<(Type, TypeKind)>, Vec<(Type, TypeKind)>) {
     let mut all_types = FxHashSet::default();
     for arg in decl.inputs.values.iter() {
         if arg.type_.is_self_type() {
@@ -269,15 +280,23 @@ pub fn get_all_types(
         if !args.is_empty() {
             all_types.extend(args);
         } else {
-            all_types.insert(arg.type_.clone());
+            if let Some(did) = arg.type_.def_id() {
+                if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
+                    all_types.insert((arg.type_.clone(), kind));
+                }
+            }
         }
     }
 
     let ret_types = match decl.output {
-        FunctionRetTy::Return(ref return_type) => {
+        FnRetTy::Return(ref return_type) => {
             let mut ret = get_real_types(generics, &return_type, cx, 0);
             if ret.is_empty() {
-                ret.insert(return_type.clone());
+                if let Some(did) = return_type.def_id() {
+                    if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
+                        ret.insert((return_type.clone(), kind));
+                    }
+                }
             }
             ret.into_iter().collect()
         }
@@ -458,7 +477,7 @@ pub fn name_from_pat(p: &hir::Pat) -> String {
     }
 }
 
-pub fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
+pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     match n.val {
         ty::ConstKind::Unevaluated(def_id, _, promoted) => {
             let mut s = if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
@@ -488,17 +507,18 @@ pub fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
 }
 
 pub fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<String> {
-    let value =
-        cx.tcx.const_eval_poly(def_id).ok().and_then(|value| match (value.val, &value.ty.kind) {
-            (_, ty::Ref(..)) => None,
-            (ty::ConstKind::Value(ConstValue::Scalar(_)), ty::Adt(_, _)) => None,
-            (ty::ConstKind::Value(ConstValue::Scalar(_)), _) => {
-                Some(print_const_with_custom_print_scalar(cx, value))
+    cx.tcx.const_eval_poly(def_id).ok().and_then(|val| {
+        let ty = cx.tcx.type_of(def_id);
+        match (val, &ty.kind) {
+            (_, &ty::Ref(..)) => None,
+            (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
+            (ConstValue::Scalar(_), _) => {
+                let const_ = ty::Const::from_value(cx.tcx, val, ty);
+                Some(print_const_with_custom_print_scalar(cx, const_))
             }
             _ => None,
-        });
-
-    value
+        }
+    })
 }
 
 fn format_integer_with_underscore_sep(num: &str) -> String {

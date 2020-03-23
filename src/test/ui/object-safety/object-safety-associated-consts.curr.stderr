@@ -1,11 +1,15 @@
 error[E0038]: the trait `Bar` cannot be made into an object
-  --> $DIR/object-safety-associated-consts.rs:12:1
+  --> $DIR/object-safety-associated-consts.rs:12:30
    |
+LL | trait Bar {
+   |       --- this trait cannot be made into an object...
 LL |     const X: usize;
-   |           - the trait cannot contain associated consts like `X`
+   |           - ...because it contains this associated `const`
 ...
 LL | fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` cannot be made into an object
+   |                              ^^^^^^^^ the trait `Bar` cannot be made into an object
+   |
+   = help: consider moving `X` to another trait
 
 error: aborting due to previous error
 

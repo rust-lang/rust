@@ -6,6 +6,8 @@ LL |                 S::f::<i64>();
 ...
 LL | impl_add!(a b);
    | --------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0107]: wrong number of type arguments: expected 0, found 1
   --> $DIR/issue-53251.rs:11:24
@@ -15,6 +17,8 @@ LL |                 S::f::<i64>();
 ...
 LL | impl_add!(a b);
    | --------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

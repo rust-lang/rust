@@ -23,8 +23,58 @@ impl<'tcx> FreeRegionMap<'tcx> {
     // (with the exception that `'static: 'x` is not notable)
     pub fn relate_regions(&mut self, sub: Region<'tcx>, sup: Region<'tcx>) {
         debug!("relate_regions(sub={:?}, sup={:?})", sub, sup);
-        if is_free_or_static(sub) && is_free(sup) {
+        if self.is_free_or_static(sub) && self.is_free(sup) {
             self.relation.add(sub, sup)
+        }
+    }
+
+    /// Tests whether `r_a <= r_b`.
+    ///
+    /// Both regions must meet `is_free_or_static`.
+    ///
+    /// Subtle: one tricky case that this code gets correct is as
+    /// follows. If we know that `r_b: 'static`, then this function
+    /// will return true, even though we don't know anything that
+    /// directly relates `r_a` and `r_b`.
+    ///
+    /// Also available through the `FreeRegionRelations` trait below.
+    pub fn sub_free_regions(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        r_a: Region<'tcx>,
+        r_b: Region<'tcx>,
+    ) -> bool {
+        assert!(self.is_free_or_static(r_a) && self.is_free_or_static(r_b));
+        let re_static = tcx.lifetimes.re_static;
+        if self.check_relation(re_static, r_b) {
+            // `'a <= 'static` is always true, and not stored in the
+            // relation explicitly, so check if `'b` is `'static` (or
+            // equivalent to it)
+            true
+        } else {
+            self.check_relation(r_a, r_b)
+        }
+    }
+
+    /// Check whether `r_a <= r_b` is found in the relation.
+    fn check_relation(&self, r_a: Region<'tcx>, r_b: Region<'tcx>) -> bool {
+        r_a == r_b || self.relation.contains(&r_a, &r_b)
+    }
+
+    /// True for free regions other than `'static`.
+    pub fn is_free(&self, r: Region<'_>) -> bool {
+        match *r {
+            ty::ReEarlyBound(_) | ty::ReFree(_) => true,
+            _ => false,
+        }
+    }
+
+    /// True if `r` is a free region or static of the sort that this
+    /// free region map can be used with.
+    pub fn is_free_or_static(&self, r: Region<'_>) -> bool {
+        match *r {
+            ty::ReStatic => true,
+            _ => self.is_free(r),
         }
     }
 
@@ -39,13 +89,13 @@ impl<'tcx> FreeRegionMap<'tcx> {
         r_b: Region<'tcx>,
     ) -> Region<'tcx> {
         debug!("lub_free_regions(r_a={:?}, r_b={:?})", r_a, r_b);
-        assert!(is_free(r_a));
-        assert!(is_free(r_b));
+        assert!(self.is_free(r_a));
+        assert!(self.is_free(r_b));
         let result = if r_a == r_b {
             r_a
         } else {
             match self.relation.postdom_upper_bound(&r_a, &r_b) {
-                None => tcx.mk_region(ty::ReStatic),
+                None => tcx.lifetimes.re_static,
                 Some(r) => *r,
             }
         };
@@ -60,31 +110,18 @@ impl<'tcx> FreeRegionMap<'tcx> {
 pub trait FreeRegionRelations<'tcx> {
     /// Tests whether `r_a <= r_b`. Both must be free regions or
     /// `'static`.
-    fn sub_free_regions(&self, shorter: ty::Region<'tcx>, longer: ty::Region<'tcx>) -> bool;
+    fn sub_free_regions(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        shorter: ty::Region<'tcx>,
+        longer: ty::Region<'tcx>,
+    ) -> bool;
 }
 
 impl<'tcx> FreeRegionRelations<'tcx> for FreeRegionMap<'tcx> {
-    fn sub_free_regions(&self, r_a: Region<'tcx>, r_b: Region<'tcx>) -> bool {
-        assert!(is_free_or_static(r_a) && is_free_or_static(r_b));
-        if let ty::ReStatic = r_b {
-            true // `'a <= 'static` is just always true, and not stored in the relation explicitly
-        } else {
-            r_a == r_b || self.relation.contains(&r_a, &r_b)
-        }
-    }
-}
-
-fn is_free(r: Region<'_>) -> bool {
-    match *r {
-        ty::ReEarlyBound(_) | ty::ReFree(_) => true,
-        _ => false,
-    }
-}
-
-fn is_free_or_static(r: Region<'_>) -> bool {
-    match *r {
-        ty::ReStatic => true,
-        _ => is_free(r),
+    fn sub_free_regions(&self, tcx: TyCtxt<'tcx>, r_a: Region<'tcx>, r_b: Region<'tcx>) -> bool {
+        // invoke the "inherent method"
+        self.sub_free_regions(tcx, r_a, r_b)
     }
 }
 

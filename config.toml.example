@@ -315,7 +315,7 @@
 # `0` - no debug info
 # `1` - line tables only
 # `2` - full debug info with variable and type information
-# Can be overriden for specific subsets of Rust code (rustc, std or tools).
+# Can be overridden for specific subsets of Rust code (rustc, std or tools).
 # Debuginfo for tests run with compiletest is not controlled by this option
 # and needs to be enabled separately with `debuginfo-level-tests`.
 #debuginfo-level = if debug { 2 } else { 0 }
@@ -395,6 +395,15 @@
 # rustc to execute.
 #lld = false
 
+# Indicates whether LLD will be used to link Rust crates during bootstrap on
+# supported platforms. The LLD from the bootstrap distribution will be used
+# and not the LLD compiled during the bootstrap.
+#
+# LLD will not be used if we're cross linking or running tests.
+#
+# Explicitly setting the linker for a target will override this option.
+#use-lld = false
+
 # Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
 # sysroot.
 #llvm-tools = false
@@ -435,6 +444,10 @@
 # Use LLVM libunwind as the implementation for Rust's unwinder.
 #llvm-libunwind = false
 
+# Enable Windows Control Flow Guard checks in the standard library.
+# This only applies from stage 1 onwards, and only for Windows targets.
+#control-flow-guard = false
+
 # =============================================================================
 # Options for specific targets
 #
@@ -463,6 +476,7 @@
 # Linker to be used to link Rust code. Note that the
 # default value is platform specific, and if not specified it may also depend on
 # what platform is crossing to what platform.
+# Setting this will override the `use-lld` option for Rust code.
 #linker = "cc"
 
 # Path to the `llvm-config` binary of the installation of a custom LLVM to link

@@ -6,12 +6,12 @@ use super::{
 
 use crate::ty::layout::{Align, Size};
 
+use rustc_ast::ast::Mutability;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_target::abi::HasDataLayout;
 use std::borrow::Cow;
 use std::iter;
 use std::ops::{Deref, DerefMut, Range};
-use syntax::ast::Mutability;
 
 // NOTE: When adding new fields, make sure to adjust the `Snapshot` impl in
 // `src/librustc_mir/interpret/snapshot.rs`.
@@ -41,6 +41,7 @@ pub struct Allocation<Tag = (), Extra = ()> {
     /// The size of the allocation. Currently, must always equal `bytes.len()`.
     pub size: Size,
     /// The alignment of the allocation to detect unaligned reads.
+    /// (`Align` guarantees that this is a power of two.)
     pub align: Align,
     /// `true` if the allocation is mutable.
     /// Also used by codegen to determine if a static should be put into mutable memory,
@@ -314,7 +315,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
                 &self.get_bytes(cx, ptr, size_with_null)?[..size]
             }
             // This includes the case where `offset` is out-of-bounds to begin with.
-            None => throw_unsup!(UnterminatedCString(ptr.erase_tag())),
+            None => throw_ub!(UnterminatedCString(ptr.erase_tag())),
         })
     }
 
@@ -472,7 +473,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         val: ScalarMaybeUndef<Tag>,
     ) -> InterpResult<'tcx> {
         let ptr_size = cx.data_layout().pointer_size;
-        self.write_scalar(cx, ptr.into(), val, ptr_size)
+        self.write_scalar(cx, ptr, val, ptr_size)
     }
 }
 
@@ -573,7 +574,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     fn check_defined(&self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
         self.undef_mask
             .is_range_defined(ptr.offset, ptr.offset + size)
-            .or_else(|idx| throw_unsup!(ReadUndefBytes(idx)))
+            .or_else(|idx| throw_ub!(InvalidUndefBytes(Some(Pointer::new(ptr.alloc_id, idx)))))
     }
 
     pub fn mark_definedness(&mut self, ptr: Pointer<Tag>, size: Size, new_state: bool) {
@@ -598,7 +599,7 @@ impl AllocationDefinedness {
     pub fn all_bytes_undef(&self) -> bool {
         // The `ranges` are run-length encoded and of alternating definedness.
         // So if `ranges.len() > 1` then the second block is a range of defined.
-        self.initial == false && self.ranges.len() == 1
+        !self.initial && self.ranges.len() == 1
     }
 }
 
@@ -610,7 +611,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         // a naive undef mask copying algorithm would repeatedly have to read the undef mask from
         // the source and write it to the destination. Even if we optimized the memory accesses,
         // we'd be doing all of this `repeat` times.
-        // Therefor we precompute a compressed version of the undef mask of the source value and
+        // Therefore we precompute a compressed version of the undef mask of the source value and
         // then write it back `repeat` times without computing any more information from the source.
 
         // A precomputed cache for ranges of defined/undefined bits
@@ -818,9 +819,9 @@ impl UndefMask {
             // First set all bits except the first `bita`,
             // then unset the last `64 - bitb` bits.
             let range = if bitb == 0 {
-                u64::max_value() << bita
+                u64::MAX << bita
             } else {
-                (u64::max_value() << bita) & (u64::max_value() >> (64 - bitb))
+                (u64::MAX << bita) & (u64::MAX >> (64 - bitb))
             };
             if new_state {
                 self.blocks[blocka] |= range;
@@ -832,21 +833,21 @@ impl UndefMask {
         // across block boundaries
         if new_state {
             // Set `bita..64` to `1`.
-            self.blocks[blocka] |= u64::max_value() << bita;
+            self.blocks[blocka] |= u64::MAX << bita;
             // Set `0..bitb` to `1`.
             if bitb != 0 {
-                self.blocks[blockb] |= u64::max_value() >> (64 - bitb);
+                self.blocks[blockb] |= u64::MAX >> (64 - bitb);
             }
             // Fill in all the other blocks (much faster than one bit at a time).
             for block in (blocka + 1)..blockb {
-                self.blocks[block] = u64::max_value();
+                self.blocks[block] = u64::MAX;
             }
         } else {
             // Set `bita..64` to `0`.
-            self.blocks[blocka] &= !(u64::max_value() << bita);
+            self.blocks[blocka] &= !(u64::MAX << bita);
             // Set `0..bitb` to `0`.
             if bitb != 0 {
-                self.blocks[blockb] &= !(u64::max_value() >> (64 - bitb));
+                self.blocks[blockb] &= !(u64::MAX >> (64 - bitb));
             }
             // Fill in all the other blocks (much faster than one bit at a time).
             for block in (blocka + 1)..blockb {

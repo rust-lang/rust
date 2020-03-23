@@ -16,7 +16,6 @@ use crate::flags::Flags;
 pub use crate::flags::Subcommand;
 use build_helper::t;
 use serde::Deserialize;
-use toml;
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -83,6 +82,7 @@ pub struct Config {
     pub llvm_use_linker: Option<String>,
     pub llvm_allow_old_toolchain: Option<bool>,
 
+    pub use_lld: bool,
     pub lld_enabled: bool,
     pub lldb_enabled: bool,
     pub llvm_tools_enabled: bool,
@@ -116,6 +116,7 @@ pub struct Config {
     pub targets: Vec<Interned<String>>,
     pub local_rebuild: bool,
     pub jemalloc: bool,
+    pub control_flow_guard: bool,
 
     // dist misc
     pub dist_sign_folder: Option<PathBuf>,
@@ -176,6 +177,15 @@ pub struct Target {
     pub no_std: bool,
 }
 
+impl Target {
+    pub fn from_triple(triple: &str) -> Self {
+        let mut target: Self = Default::default();
+        if triple.contains("-none") || triple.contains("nvptx") {
+            target.no_std = true;
+        }
+        target
+    }
+}
 /// Structure of the `config.toml` file that configuration is read from.
 ///
 /// This structure uses `Decodable` to automatically decode a TOML configuration
@@ -322,6 +332,7 @@ struct Rust {
     save_toolstates: Option<String>,
     codegen_backends: Option<Vec<String>>,
     lld: Option<bool>,
+    use_lld: Option<bool>,
     llvm_tools: Option<bool>,
     lldb: Option<bool>,
     deny_warnings: Option<bool>,
@@ -332,6 +343,7 @@ struct Rust {
     jemalloc: Option<bool>,
     test_compare_mode: Option<bool>,
     llvm_libunwind: Option<bool>,
+    control_flow_guard: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -350,6 +362,7 @@ struct TomlTarget {
     musl_root: Option<String>,
     wasi_root: Option<String>,
     qemu_rootfs: Option<String>,
+    no_std: Option<bool>,
 }
 
 impl Config {
@@ -440,7 +453,7 @@ impl Config {
                     }
                 }
             })
-            .unwrap_or_else(|| TomlConfig::default());
+            .unwrap_or_else(TomlConfig::default);
 
         let build = toml.build.clone().unwrap_or_default();
         // set by bootstrap.py
@@ -539,7 +552,7 @@ impl Config {
             config.llvm_ldflags = llvm.ldflags.clone();
             set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
             config.llvm_use_linker = llvm.use_linker.clone();
-            config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.clone();
+            config.llvm_allow_old_toolchain = llvm.allow_old_toolchain;
         }
 
         if let Some(ref rust) = toml.rust {
@@ -566,6 +579,7 @@ impl Config {
             if let Some(true) = rust.incremental {
                 config.incremental = true;
             }
+            set(&mut config.use_lld, rust.use_lld);
             set(&mut config.lld_enabled, rust.lld);
             set(&mut config.lldb_enabled, rust.lldb);
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);
@@ -578,6 +592,7 @@ impl Config {
             set(&mut config.rust_verify_llvm_ir, rust.verify_llvm_ir);
             config.rust_thin_lto_import_instr_limit = rust.thin_lto_import_instr_limit;
             set(&mut config.rust_remap_debuginfo, rust.remap_debuginfo);
+            set(&mut config.control_flow_guard, rust.control_flow_guard);
 
             if let Some(ref backends) = rust.codegen_backends {
                 config.rust_codegen_backends =
@@ -590,7 +605,7 @@ impl Config {
 
         if let Some(ref t) = toml.target {
             for (triple, cfg) in t {
-                let mut target = Target::default();
+                let mut target = Target::from_triple(triple);
 
                 if let Some(ref s) = cfg.llvm_config {
                     target.llvm_config = Some(config.src.join(s));
@@ -601,12 +616,15 @@ impl Config {
                 if let Some(ref s) = cfg.android_ndk {
                     target.ndk = Some(config.src.join(s));
                 }
+                if let Some(s) = cfg.no_std {
+                    target.no_std = s;
+                }
                 target.cc = cfg.cc.clone().map(PathBuf::from);
                 target.cxx = cfg.cxx.clone().map(PathBuf::from);
                 target.ar = cfg.ar.clone().map(PathBuf::from);
                 target.ranlib = cfg.ranlib.clone().map(PathBuf::from);
                 target.linker = cfg.linker.clone().map(PathBuf::from);
-                target.crt_static = cfg.crt_static.clone();
+                target.crt_static = cfg.crt_static;
                 target.musl_root = cfg.musl_root.clone().map(PathBuf::from);
                 target.wasi_root = cfg.wasi_root.clone().map(PathBuf::from);
                 target.qemu_rootfs = cfg.qemu_rootfs.clone().map(PathBuf::from);

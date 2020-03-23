@@ -1,10 +1,10 @@
 use crate::base::ExtCtxt;
 
+use rustc_ast::ast::{self, AttrVec, BlockCheckMode, Expr, Ident, PatKind, UnOp};
+use rustc_ast::attr;
+use rustc_ast::ptr::P;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
-use syntax::ast::{self, AttrVec, BlockCheckMode, Expr, Ident, PatKind, UnOp};
-use syntax::attr;
-use syntax::ptr::P;
 
 use rustc_span::Span;
 
@@ -507,7 +507,7 @@ impl<'a> ExtCtxt<'a> {
             span,
             ast::ExprKind::Closure(
                 ast::CaptureBy::Ref,
-                ast::IsAsync::NotAsync,
+                ast::Async::No,
                 ast::Movability::Movable,
                 fn_decl,
                 body,
@@ -519,7 +519,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn lambda(&self, span: Span, ids: Vec<ast::Ident>, body: P<ast::Expr>) -> P<ast::Expr> {
         let fn_decl = self.fn_decl(
             ids.iter().map(|id| self.param(span, *id, self.ty(span, ast::TyKind::Infer))).collect(),
-            ast::FunctionRetTy::Default(span),
+            ast::FnRetTy::Default(span),
         );
 
         // FIXME -- We are using `span` as the span of the `|...|`
@@ -530,7 +530,7 @@ impl<'a> ExtCtxt<'a> {
             span,
             ast::ExprKind::Closure(
                 ast::CaptureBy::Ref,
-                ast::IsAsync::NotAsync,
+                ast::Async::No,
                 ast::Movability::Movable,
                 fn_decl,
                 body,
@@ -569,7 +569,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     // FIXME: unused `self`
-    pub fn fn_decl(&self, inputs: Vec<ast::Param>, output: ast::FunctionRetTy) -> P<ast::FnDecl> {
+    pub fn fn_decl(&self, inputs: Vec<ast::Param>, output: ast::FnRetTy) -> P<ast::FnDecl> {
         P(ast::FnDecl { inputs, output })
     }
 
@@ -634,7 +634,7 @@ impl<'a> ExtCtxt<'a> {
         mutbl: ast::Mutability,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Static(ty, mutbl, expr))
+        self.item(span, name, Vec::new(), ast::ItemKind::Static(ty, mutbl, Some(expr)))
     }
 
     pub fn item_const(
@@ -644,7 +644,8 @@ impl<'a> ExtCtxt<'a> {
         ty: P<ast::Ty>,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Const(ty, expr))
+        let def = ast::Defaultness::Final;
+        self.item(span, name, Vec::new(), ast::ItemKind::Const(def, ty, Some(expr)))
     }
 
     pub fn attribute(&self, mi: ast::MetaItem) -> ast::Attribute {

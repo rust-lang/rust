@@ -4,7 +4,7 @@ error: variant is never constructed: `Bar`
 LL |     Bar(B),
    |     ^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/unused-struct-variant.rs:1:9
    |
 LL | #![deny(unused)]

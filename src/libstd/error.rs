@@ -88,7 +88,7 @@ pub trait Error: Debug + Display {
     /// fn main() {
     ///     match get_super_error() {
     ///         Err(e) => {
-    ///             println!("Error: {}", e.description());
+    ///             println!("Error: {}", e);
     ///             println!("Caused by: {}", e.source().unwrap());
     ///         }
     ///         _ => println!("No error"),
@@ -135,7 +135,7 @@ pub trait Error: Debug + Display {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.41.0", reason = "use the Display impl or to_string()")]
+    #[rustc_deprecated(since = "1.42.0", reason = "use the Display impl or to_string()")]
     fn description(&self) -> &str {
         "description() is deprecated; use Display"
     }
@@ -551,6 +551,9 @@ impl Error for char::ParseCharError {
         self.__description()
     }
 }
+
+#[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
+impl Error for alloc::collections::TryReserveError {}
 
 // Copied from `any.rs`.
 impl dyn Error + 'static {

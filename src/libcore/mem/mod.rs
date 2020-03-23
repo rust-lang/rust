@@ -58,7 +58,9 @@ pub use crate::intrinsics::transmute;
 ///
 /// # Examples
 ///
-/// Leak an I/O object, never closing the file:
+/// The canonical safe use of `mem::forget` is to circumvent a value's destructor
+/// implemented by the `Drop` trait. For example, this will leak a `File`, i.e. reclaim
+/// the space taken by the variable but never close the underlying system resource:
 ///
 /// ```no_run
 /// use std::mem;
@@ -68,9 +70,40 @@ pub use crate::intrinsics::transmute;
 /// mem::forget(file);
 /// ```
 ///
-/// The practical use cases for `forget` are rather specialized and mainly come
-/// up in unsafe or FFI code. However, [`ManuallyDrop`] is usually preferred
-/// for such cases, e.g.:
+/// This is useful when the ownership of the underlying resource was previously
+/// transferred to code outside of Rust, for example by transmitting the raw
+/// file descriptor to C code.
+///
+/// # Relationship with `ManuallyDrop`
+///
+/// While `mem::forget` can also be used to transfer *memory* ownership, doing so is error-prone.
+/// [`ManuallyDrop`] should be used instead. Consider, for example, this code:
+///
+/// ```
+/// use std::mem;
+///
+/// let mut v = vec![65, 122];
+/// // Build a `String` using the contents of `v`
+/// let s = unsafe { String::from_raw_parts(v.as_mut_ptr(), v.len(), v.capacity()) };
+/// // leak `v` because its memory is now managed by `s`
+/// mem::forget(v);  // ERROR - v is invalid and must not be passed to a function
+/// assert_eq!(s, "Az");
+/// // `s` is implicitly dropped and its memory deallocated.
+/// ```
+///
+/// There are two issues with the above example:
+///
+/// * If more code were added between the construction of `String` and the invocation of
+///   `mem::forget()`, a panic within it would cause a double free because the same memory
+///   is handled by both `v` and `s`.
+/// * After calling `v.as_mut_ptr()` and transmitting the ownership of the data to `s`,
+///   the `v` value is invalid. Even when a value is just moved to `mem::forget` (which won't
+///   inspect it), some types have strict requirements on their values that
+///   make them invalid when dangling or no longer owned. Using invalid values in any
+///   way, including passing them to or returning them from functions, constitutes
+///   undefined behavior and may break the assumptions made by the compiler.
+///
+/// Switching to `ManuallyDrop` avoids both issues:
 ///
 /// ```
 /// use std::mem::ManuallyDrop;
@@ -80,24 +113,24 @@ pub use crate::intrinsics::transmute;
 /// // does not get dropped!
 /// let mut v = ManuallyDrop::new(v);
 /// // Now disassemble `v`. These operations cannot panic, so there cannot be a leak.
-/// let ptr = v.as_mut_ptr();
-/// let cap = v.capacity();
+/// let (ptr, len, cap) = (v.as_mut_ptr(), v.len(), v.capacity());
 /// // Finally, build a `String`.
-/// let s = unsafe { String::from_raw_parts(ptr, 2, cap) };
+/// let s = unsafe { String::from_raw_parts(ptr, len, cap) };
 /// assert_eq!(s, "Az");
 /// // `s` is implicitly dropped and its memory deallocated.
 /// ```
 ///
-/// Using `ManuallyDrop` here has two advantages:
+/// `ManuallyDrop` robustly prevents double-free because we disable `v`'s destructor
+/// before doing anything else. `mem::forget()` doesn't allow this because it consumes its
+/// argument, forcing us to call it only after extracting anything we need from `v`. Even
+/// if a panic were introduced between construction of `ManuallyDrop` and building the
+/// string (which cannot happen in the code as shown), it would result in a leak and not a
+/// double free. In other words, `ManuallyDrop` errs on the side of leaking instead of
+/// erring on the side of (double-)dropping.
 ///
-/// * We do not "touch" `v` after disassembling it. For some types, operations
-///   such as passing ownership (to a funcion like `mem::forget`) requires them to actually
-///   be fully owned right now; that is a promise we do not want to make here as we are
-///   in the process of transferring ownership to the new `String` we are building.
-/// * In case of an unexpected panic, `ManuallyDrop` is not dropped, but if the panic
-///   occurs before `mem::forget` was called we might end up dropping invalid data,
-///   or double-dropping. In other words, `ManuallyDrop` errs on the side of leaking
-///   instead of erring on the side of dropping.
+/// Also, `ManuallyDrop` prevents us from having to "touch" `v` after transferring the
+/// ownership to `s` - the final step of interacting with `v` to dispoe of it without
+/// running its destructor is entirely avoided.
 ///
 /// [drop]: fn.drop.html
 /// [uninit]: fn.uninitialized.html
@@ -109,8 +142,9 @@ pub use crate::intrinsics::transmute;
 /// [ub]: ../../reference/behavior-considered-undefined.html
 /// [`ManuallyDrop`]: struct.ManuallyDrop.html
 #[inline]
+#[rustc_const_unstable(feature = "const_forget", issue = "69616")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn forget<T>(t: T) {
+pub const fn forget<T>(t: T) {
     ManuallyDrop::new(t);
 }
 
@@ -302,6 +336,54 @@ pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
     intrinsics::size_of_val(val)
 }
 
+/// Returns the size of the pointed-to value in bytes.
+///
+/// This is usually the same as `size_of::<T>()`. However, when `T` *has* no
+/// statically-known size, e.g., a slice [`[T]`][slice] or a [trait object],
+/// then `size_of_val_raw` can be used to get the dynamically-known size.
+///
+/// # Safety
+///
+/// This function is only safe to call if the following conditions hold:
+///
+/// - If `T` is `Sized`, this function is always safe to call.
+/// - If the unsized tail of `T` is:
+///     - a [slice], then the length of the slice tail must be an intialized
+///       integer, and the size of the *entire value*
+///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+///     - a [trait object], then the vtable part of the pointer must point
+///       to a valid vtable acquired by an unsizing coersion, and the size
+///       of the *entire value* (dynamic tail length + statically sized prefix)
+///       must fit in `isize`.
+///     - an (unstable) [extern type], then this function is always safe to
+///       call, but may panic or otherwise return the wrong value, as the
+///       extern type's layout is not known. This is the same behavior as
+///       [`size_of_val`] on a reference to an extern type tail.
+///     - otherwise, it is conservatively not allowed to call this function.
+///
+/// [slice]: ../../std/primitive.slice.html
+/// [trait object]: ../../book/ch17-02-trait-objects.html
+/// [extern type]: ../../unstable-book/language-features/extern-types.html
+///
+/// # Examples
+///
+/// ```
+/// #![feature(layout_for_ptr)]
+/// use std::mem;
+///
+/// assert_eq!(4, mem::size_of_val(&5i32));
+///
+/// let x: [u8; 13] = [0; 13];
+/// let y: &[u8] = &x;
+/// assert_eq!(13, unsafe { mem::size_of_val_raw(y) });
+/// ```
+#[inline]
+#[cfg(not(bootstrap))]
+#[unstable(feature = "layout_for_ptr", issue = "69835")]
+pub unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
+    intrinsics::size_of_val(val)
+}
+
 /// Returns the [ABI]-required minimum alignment of a type.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
@@ -387,6 +469,50 @@ pub const fn align_of<T>() -> usize {
 #[allow(deprecated)]
 pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
     min_align_of_val(val)
+}
+
+/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
+///
+/// Every reference to a value of the type `T` must be a multiple of this number.
+///
+/// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
+///
+/// # Safety
+///
+/// This function is only safe to call if the following conditions hold:
+///
+/// - If `T` is `Sized`, this function is always safe to call.
+/// - If the unsized tail of `T` is:
+///     - a [slice], then the length of the slice tail must be an intialized
+///       integer, and the size of the *entire value*
+///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+///     - a [trait object], then the vtable part of the pointer must point
+///       to a valid vtable acquired by an unsizing coersion, and the size
+///       of the *entire value* (dynamic tail length + statically sized prefix)
+///       must fit in `isize`.
+///     - an (unstable) [extern type], then this function is always safe to
+///       call, but may panic or otherwise return the wrong value, as the
+///       extern type's layout is not known. This is the same behavior as
+///       [`align_of_val`] on a reference to an extern type tail.
+///     - otherwise, it is conservatively not allowed to call this function.
+///
+/// [slice]: ../../std/primitive.slice.html
+/// [trait object]: ../../book/ch17-02-trait-objects.html
+/// [extern type]: ../../unstable-book/language-features/extern-types.html
+///
+/// # Examples
+///
+/// ```
+/// #![feature(layout_for_ptr)]
+/// use std::mem;
+///
+/// assert_eq!(4, unsafe { mem::align_of_val_raw(&5i32) });
+/// ```
+#[inline]
+#[cfg(not(bootstrap))]
+#[unstable(feature = "layout_for_ptr", issue = "69835")]
+pub unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
+    intrinsics::min_align_of_val(val)
 }
 
 /// Returns `true` if dropping values of type `T` matters.
@@ -489,14 +615,17 @@ pub const fn needs_drop<T>() -> bool {
 ///
 /// let _x: &i32 = unsafe { mem::zeroed() }; // Undefined behavior!
 /// ```
-#[inline]
+#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_zeroed"]
 pub unsafe fn zeroed<T>() -> T {
+    #[cfg(not(bootstrap))]
+    intrinsics::assert_zero_valid::<T>();
+    #[cfg(bootstrap)]
     intrinsics::panic_if_uninhabited::<T>();
-    intrinsics::init()
+    MaybeUninit::zeroed().assume_init()
 }
 
 /// Bypasses Rust's normal memory-initialization checks by pretending to
@@ -521,15 +650,18 @@ pub unsafe fn zeroed<T>() -> T {
 /// [uninit]: union.MaybeUninit.html#method.uninit
 /// [assume_init]: union.MaybeUninit.html#method.assume_init
 /// [inv]: union.MaybeUninit.html#initialization-invariant
-#[inline]
+#[inline(always)]
 #[rustc_deprecated(since = "1.39.0", reason = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_uninitialized"]
 pub unsafe fn uninitialized<T>() -> T {
+    #[cfg(not(bootstrap))]
+    intrinsics::assert_uninit_valid::<T>();
+    #[cfg(bootstrap)]
     intrinsics::panic_if_uninhabited::<T>();
-    intrinsics::uninit()
+    MaybeUninit::uninit().assume_init()
 }
 
 /// Swaps the values at two mutable locations, without deinitializing either one.
@@ -863,6 +995,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// assert_ne!(mem::discriminant(&Foo::B(3)), mem::discriminant(&Foo::C(3)));
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
-pub fn discriminant<T>(v: &T) -> Discriminant<T> {
+#[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
+pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
     Discriminant(intrinsics::discriminant_value(v), PhantomData)
 }

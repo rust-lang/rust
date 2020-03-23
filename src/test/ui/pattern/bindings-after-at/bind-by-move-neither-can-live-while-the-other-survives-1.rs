@@ -3,33 +3,38 @@
 // where one side is by-ref and the other is by-move.
 
 #![feature(bindings_after_at)]
+#![feature(move_ref_pattern)]
 
-struct X { x: () }
+struct X {
+    x: (),
+}
 
 fn main() {
     let x = Some(X { x: () });
     match x {
-        Some(ref _y @ _z) => { }, //~ ERROR cannot bind by-move and by-ref in the same pattern
-        None => panic!()
+        Some(ref _y @ _z) => {} //~ ERROR cannot move out of value because it is borrowed
+        None => panic!(),
     }
 
     let x = Some(X { x: () });
     match x {
-        Some(_z @ ref _y) => { }, //~ ERROR cannot bind by-move with sub-bindings
+        Some(_z @ ref _y) => {}
         //~^ ERROR borrow of moved value
-        None => panic!()
+        //~| ERROR borrow of moved value
+        None => panic!(),
     }
 
     let mut x = Some(X { x: () });
     match x {
-        Some(ref mut _y @ _z) => { }, //~ ERROR cannot bind by-move and by-ref in the same pattern
-        None => panic!()
+        Some(ref mut _y @ _z) => {} //~ ERROR cannot move out of value because it is borrowed
+        None => panic!(),
     }
 
     let mut x = Some(X { x: () });
     match x {
-        Some(_z @ ref mut _y) => { }, //~ ERROR cannot bind by-move with sub-bindings
+        Some(_z @ ref mut _y) => {}
         //~^ ERROR borrow of moved value
-        None => panic!()
+        //~| ERROR borrow of moved value
+        None => panic!(),
     }
 }

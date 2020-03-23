@@ -72,7 +72,7 @@ pub trait TypeRelation<'tcx>: Sized {
         b: &T,
     ) -> RelateResult<'tcx, T>;
 
-    // Overrideable relations. You shouldn't typically call these
+    // Overridable relations. You shouldn't typically call these
     // directly, instead call `relate()`, which in turn calls
     // these. This is both more uniform but also allows us to add
     // additional hooks for other types in the future if needed
@@ -287,7 +287,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
             Err(TypeError::Traits(expected_found(relation, &a.def_id, &b.def_id)))
         } else {
             let substs = relate_substs(relation, None, a.substs, b.substs)?;
-            Ok(ty::TraitRef { def_id: a.def_id, substs: substs })
+            Ok(ty::TraitRef { def_id: a.def_id, substs })
         }
     }
 }
@@ -303,7 +303,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
             Err(TypeError::Traits(expected_found(relation, &a.def_id, &b.def_id)))
         } else {
             let substs = relate_substs(relation, None, a.substs, b.substs)?;
-            Ok(ty::ExistentialTraitRef { def_id: a.def_id, substs: substs })
+            Ok(ty::ExistentialTraitRef { def_id: a.def_id, substs })
         }
     }
 }
@@ -440,7 +440,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
                         (Some(sz_a_val), Some(sz_b_val)) => Err(TypeError::FixedArraySize(
                             expected_found(relation, &sz_a_val, &sz_b_val),
                         )),
-                        _ => return Err(err),
+                        _ => Err(err),
                     }
                 }
             }

@@ -4,8 +4,6 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::Write;
 
-use term;
-
 use super::{
     bench::fmt_bench_samples,
     cli::TestOpts,
@@ -171,7 +169,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
 
     if !quiet {
         if ntest != 0 || nbench != 0 {
-            writeln!(output, "")?;
+            writeln!(output)?;
         }
 
         writeln!(output, "{}, {}", plural(ntest, "test"), plural(nbench, "benchmark"))?;

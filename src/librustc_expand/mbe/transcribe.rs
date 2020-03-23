@@ -2,15 +2,16 @@ use crate::base::ExtCtxt;
 use crate::mbe;
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 
+use rustc_ast::ast::MacCall;
+use rustc_ast::mut_visit::{self, MutVisitor};
+use rustc_ast::token::{self, NtTT, Token};
+use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::pluralize;
 use rustc_span::hygiene::{ExpnId, Transparency};
+use rustc_span::symbol::MacroRulesNormalizedIdent;
 use rustc_span::Span;
-use syntax::ast::{Ident, Mac};
-use syntax::mut_visit::{self, MutVisitor};
-use syntax::token::{self, NtTT, Token};
-use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 
 use smallvec::{smallvec, SmallVec};
 use std::mem;
@@ -23,7 +24,7 @@ impl MutVisitor for Marker {
         *span = span.apply_mark(self.0, self.1)
     }
 
-    fn visit_mac(&mut self, mac: &mut Mac) {
+    fn visit_mac(&mut self, mac: &mut MacCall) {
         mut_visit::noop_visit_mac(mac, self)
     }
 }
@@ -81,7 +82,7 @@ impl Iterator for Frame {
 /// Along the way, we do some additional error checking.
 pub(super) fn transcribe(
     cx: &ExtCtxt<'_>,
-    interp: &FxHashMap<Ident, NamedMatch>,
+    interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     src: Vec<mbe::TokenTree>,
     transparency: Transparency,
 ) -> TokenStream {
@@ -119,9 +120,9 @@ pub(super) fn transcribe(
         let tree = if let Some(tree) = stack.last_mut().unwrap().next() {
             // If it still has a TokenTree we have not looked at yet, use that tree.
             tree
-        }
-        // The else-case never produces a value for `tree` (it `continue`s or `return`s).
-        else {
+        } else {
+            // This else-case never produces a value for `tree` (it `continue`s or `return`s).
+
             // Otherwise, if we have just reached the end of a sequence and we can keep repeating,
             // go back to the beginning of the sequence.
             if let Frame::Sequence { idx, sep, .. } = stack.last_mut().unwrap() {
@@ -155,8 +156,7 @@ pub(super) fn transcribe(
                     }
 
                     // Step back into the parent Delimited.
-                    let tree =
-                        TokenTree::Delimited(span, forest.delim, TokenStream::new(result).into());
+                    let tree = TokenTree::Delimited(span, forest.delim, TokenStream::new(result));
                     result = result_stack.pop().unwrap();
                     result.push(tree.into());
                 }
@@ -224,9 +224,10 @@ pub(super) fn transcribe(
             }
 
             // Replace the meta-var with the matched token tree from the invocation.
-            mbe::TokenTree::MetaVar(mut sp, mut ident) => {
+            mbe::TokenTree::MetaVar(mut sp, mut orignal_ident) => {
                 // Find the matched nonterminal from the macro invocation, and use it to replace
                 // the meta-var.
+                let ident = MacroRulesNormalizedIdent::new(orignal_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
                     if let MatchedNonterminal(ref nt) = cur_matched {
                         // FIXME #2887: why do we apply a mark when matching a token tree meta-var
@@ -250,9 +251,9 @@ pub(super) fn transcribe(
                     // If we aren't able to match the meta-var, we push it back into the result but
                     // with modified syntax context. (I believe this supports nested macros).
                     marker.visit_span(&mut sp);
-                    marker.visit_ident(&mut ident);
+                    marker.visit_ident(&mut orignal_ident);
                     result.push(TokenTree::token(token::Dollar, sp).into());
-                    result.push(TokenTree::Token(Token::from_ast_ident(ident)).into());
+                    result.push(TokenTree::Token(Token::from_ast_ident(orignal_ident)).into());
                 }
             }
 
@@ -288,8 +289,8 @@ pub(super) fn transcribe(
 /// into the right place in nested matchers. If we attempt to descend too far, the macro writer has
 /// made a mistake, and we return `None`.
 fn lookup_cur_matched<'a>(
-    ident: Ident,
-    interpolations: &'a FxHashMap<Ident, NamedMatch>,
+    ident: MacroRulesNormalizedIdent,
+    interpolations: &'a FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     repeats: &[(usize, usize)],
 ) -> Option<&'a NamedMatch> {
     interpolations.get(&ident).map(|matched| {
@@ -317,7 +318,7 @@ enum LockstepIterSize {
 
     /// A `MetaVar` with an actual `MatchedSeq`. The length of the match and the name of the
     /// meta-var are returned.
-    Constraint(usize, Ident),
+    Constraint(usize, MacroRulesNormalizedIdent),
 
     /// Two `Constraint`s on the same sequence had different lengths. This is an error.
     Contradiction(String),
@@ -361,7 +362,7 @@ impl LockstepIterSize {
 /// multiple nested matcher sequences.
 fn lockstep_iter_size(
     tree: &mbe::TokenTree,
-    interpolations: &FxHashMap<Ident, NamedMatch>,
+    interpolations: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     repeats: &[(usize, usize)],
 ) -> LockstepIterSize {
     use mbe::TokenTree;
@@ -377,6 +378,7 @@ fn lockstep_iter_size(
             })
         }
         TokenTree::MetaVar(_, name) | TokenTree::MetaVarDecl(_, name, _) => {
+            let name = MacroRulesNormalizedIdent::new(name);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match matched {
                     MatchedNonterminal(_) => LockstepIterSize::Unconstrained,

@@ -1,3 +1,4 @@
+#![feature(alloc_layout_extra)]
 #![feature(bool_to_option)]
 #![feature(bound_cloned)]
 #![feature(box_syntax)]
@@ -13,12 +14,10 @@
 #![feature(hashmap_internals)]
 #![feature(try_find)]
 #![feature(is_sorted)]
-#![feature(iter_once_with)]
 #![feature(pattern)]
 #![feature(range_is_empty)]
 #![feature(raw)]
 #![feature(saturating_neg)]
-#![cfg_attr(bootstrap, feature(slice_patterns))]
 #![feature(sort_internals)]
 #![feature(slice_partition_at_index)]
 #![feature(specialization)]
@@ -42,6 +41,7 @@
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
 #![feature(leading_trailing_ones)]
+#![feature(const_forget)]
 
 extern crate test;
 

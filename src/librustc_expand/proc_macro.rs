@@ -1,13 +1,13 @@
 use crate::base::{self, *};
 use crate::proc_macro_server;
 
+use rustc_ast::ast::{self, ItemKind, MetaItemKind, NestedMetaItem};
+use rustc_ast::token;
+use rustc_ast::tokenstream::{self, TokenStream};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, FatalError};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
-use syntax::ast::{self, ItemKind, MetaItemKind, NestedMetaItem};
-use syntax::token;
-use syntax::tokenstream::{self, TokenStream};
 
 const EXEC_STRATEGY: pm::bridge::server::SameThread = pm::bridge::server::SameThread;
 
@@ -79,7 +79,7 @@ impl MultiItemModifier for ProcMacroDerive {
         span: Span,
         _meta_item: &ast::MetaItem,
         item: Annotatable,
-    ) -> Vec<Annotatable> {
+    ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         let item = match item {
             Annotatable::Arm(..)
             | Annotatable::Field(..)
@@ -99,7 +99,7 @@ impl MultiItemModifier for ProcMacroDerive {
                     "proc-macro derives may only be \
                                     applied to a struct, enum, or union",
                 );
-                return Vec::new();
+                return ExpandResult::Ready(Vec::new());
             }
         };
         match item.kind {
@@ -110,7 +110,7 @@ impl MultiItemModifier for ProcMacroDerive {
                     "proc-macro derives may only be \
                                     applied to a struct, enum, or union",
                 );
-                return Vec::new();
+                return ExpandResult::Ready(Vec::new());
             }
         }
 
@@ -158,7 +158,7 @@ impl MultiItemModifier for ProcMacroDerive {
             FatalError.raise();
         }
 
-        items
+        ExpandResult::Ready(items)
     }
 }
 

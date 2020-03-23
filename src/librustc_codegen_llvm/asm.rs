@@ -12,7 +12,6 @@ use rustc_span::Span;
 
 use libc::{c_char, c_uint};
 use log::debug;
-use std::ffi::{CStr, CString};
 
 impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn codegen_inline_asm(
@@ -29,11 +28,17 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let mut indirect_outputs = vec![];
         for (i, (out, &place)) in ia.outputs.iter().zip(&outputs).enumerate() {
             if out.is_rw {
-                inputs.push(self.load_operand(place).immediate());
+                let operand = self.load_operand(place);
+                if let OperandValue::Immediate(_) = operand.val {
+                    inputs.push(operand.immediate());
+                }
                 ext_constraints.push(i.to_string());
             }
             if out.is_indirect {
-                indirect_outputs.push(self.load_operand(place).immediate());
+                let operand = self.load_operand(place);
+                if let OperandValue::Immediate(_) = operand.val {
+                    indirect_outputs.push(operand.immediate());
+                }
             } else {
                 output_types.push(place.layout.llvm_type(self.cx()));
             }
@@ -60,7 +65,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             .chain(ia.inputs.iter().map(|s| s.to_string()))
             .chain(ext_constraints)
             .chain(clobbers)
-            .chain(arch_clobbers.iter().map(|s| s.to_string()))
+            .chain(arch_clobbers.iter().map(|s| (*s).to_string()))
             .collect::<Vec<String>>()
             .join(",");
 
@@ -74,12 +79,11 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             _ => self.type_struct(&output_types, false),
         };
 
-        let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
-        let constraint_cstr = CString::new(all_constraints).unwrap();
+        let asm = ia.asm.as_str();
         let r = inline_asm_call(
             self,
             &asm,
-            &constraint_cstr,
+            &all_constraints,
             &inputs,
             output_type,
             ia.volatile,
@@ -119,22 +123,22 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 
 impl AsmMethods for CodegenCx<'ll, 'tcx> {
     fn codegen_global_asm(&self, ga: &hir::GlobalAsm) {
-        let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
+        let asm = ga.asm.as_str();
         unsafe {
-            llvm::LLVMRustAppendModuleInlineAsm(self.llmod, asm.as_ptr());
+            llvm::LLVMRustAppendModuleInlineAsm(self.llmod, asm.as_ptr().cast(), asm.len());
         }
     }
 }
 
 fn inline_asm_call(
     bx: &mut Builder<'a, 'll, 'tcx>,
-    asm: &CStr,
-    cons: &CStr,
+    asm: &str,
+    cons: &str,
     inputs: &[&'ll Value],
     output: &'ll llvm::Type,
     volatile: bool,
     alignstack: bool,
-    dia: ::syntax::ast::AsmDialect,
+    dia: ::rustc_ast::ast::AsmDialect,
 ) -> Option<&'ll Value> {
     let volatile = if volatile { llvm::True } else { llvm::False };
     let alignstack = if alignstack { llvm::True } else { llvm::False };
@@ -151,13 +155,15 @@ fn inline_asm_call(
     let fty = bx.cx.type_func(&argtys[..], output);
     unsafe {
         // Ask LLVM to verify that the constraints are well-formed.
-        let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr());
+        let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr().cast(), cons.len());
         debug!("constraint verification result: {:?}", constraints_ok);
         if constraints_ok {
             let v = llvm::LLVMRustInlineAsm(
                 fty,
-                asm.as_ptr(),
-                cons.as_ptr(),
+                asm.as_ptr().cast(),
+                asm.len(),
+                cons.as_ptr().cast(),
+                cons.len(),
                 volatile,
                 alignstack,
                 llvm::AsmDialect::from_generic(dia),

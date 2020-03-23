@@ -1,13 +1,16 @@
+use super::ty::{AllowPlus, RecoverQPath};
 use super::{Parser, TokenType};
 use crate::maybe_whole;
+use rustc_ast::ast::{
+    self, AngleBracketedArgs, Ident, ParenthesizedArgs, Path, PathSegment, QSelf,
+};
+use rustc_ast::ast::{
+    AnonConst, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode, GenericArg,
+};
+use rustc_ast::token::{self, Token};
 use rustc_errors::{pluralize, Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};
-use syntax::ast::{self, AngleBracketedArgs, Ident, ParenthesizedArgs, Path, PathSegment, QSelf};
-use syntax::ast::{
-    AnonConst, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode, GenericArg,
-};
-use syntax::token::{self, Token};
 
 use log::debug;
 use std::mem;
@@ -47,7 +50,7 @@ impl<'a> Parser<'a> {
     /// `<T as U>::F::a<S>` (without disambiguator)
     /// `<T as U>::F::a::<S>` (with disambiguator)
     pub(super) fn parse_qpath(&mut self, style: PathStyle) -> PResult<'a, (QSelf, Path)> {
-        let lo = self.prev_span;
+        let lo = self.prev_token.span;
         let ty = self.parse_ty()?;
 
         // `path` will contain the prefix of the path up to the `>`,
@@ -58,7 +61,7 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(kw::As) {
             let path_lo = self.token.span;
             path = self.parse_path(PathStyle::Type)?;
-            path_span = path_lo.to(self.prev_span);
+            path_span = path_lo.to(self.prev_token.span);
         } else {
             path_span = self.token.span.to(self.token.span);
             path = ast::Path { segments: Vec::new(), span: path_span };
@@ -71,12 +74,47 @@ impl<'a> Parser<'a> {
             debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
         }
 
-        self.expect(&token::ModSep)?;
+        if !self.recover_colon_before_qpath_proj() {
+            self.expect(&token::ModSep)?;
+        }
 
         let qself = QSelf { ty, path_span, position: path.segments.len() };
         self.parse_path_segments(&mut path.segments, style)?;
 
-        Ok((qself, Path { segments: path.segments, span: lo.to(self.prev_span) }))
+        Ok((qself, Path { segments: path.segments, span: lo.to(self.prev_token.span) }))
+    }
+
+    /// Recover from an invalid single colon, when the user likely meant a qualified path.
+    /// We avoid emitting this if not followed by an identifier, as our assumption that the user
+    /// intended this to be a qualified path may not be correct.
+    ///
+    /// ```ignore (diagnostics)
+    /// <Bar as Baz<T>>:Qux
+    ///                ^ help: use double colon
+    /// ```
+    fn recover_colon_before_qpath_proj(&mut self) -> bool {
+        if self.token.kind != token::Colon
+            || self.look_ahead(1, |t| !t.is_ident() || t.is_reserved_ident())
+        {
+            return false;
+        }
+
+        self.bump(); // colon
+
+        self.diagnostic()
+            .struct_span_err(
+                self.prev_token.span,
+                "found single colon before projection in qualified path",
+            )
+            .span_suggestion(
+                self.prev_token.span,
+                "use double colon",
+                "::".to_string(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
+
+        true
     }
 
     /// Parses simple paths.
@@ -98,7 +136,7 @@ impl<'a> Parser<'a> {
             path
         });
 
-        let lo = self.meta_var_span.unwrap_or(self.token.span);
+        let lo = self.token.span;
         let mut segments = Vec::new();
         let mod_sep_ctxt = self.token.span.ctxt();
         if self.eat(&token::ModSep) {
@@ -106,7 +144,7 @@ impl<'a> Parser<'a> {
         }
         self.parse_path_segments(&mut segments, style)?;
 
-        Ok(Path { segments, span: lo.to(self.prev_span) })
+        Ok(Path { segments, span: lo.to(self.prev_token.span) })
     }
 
     pub(super) fn parse_path_segments(
@@ -183,13 +221,13 @@ impl<'a> Parser<'a> {
                     let (args, constraints) =
                         self.parse_generic_args_with_leading_angle_bracket_recovery(style, lo)?;
                     self.expect_gt()?;
-                    let span = lo.to(self.prev_span);
+                    let span = lo.to(self.prev_token.span);
                     AngleBracketedArgs { args, constraints, span }.into()
                 } else {
                     // `(T, U) -> R`
                     let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
-                    let span = ident.span.to(self.prev_span);
-                    let output = self.parse_ret_ty(false, false)?;
+                    let span = ident.span.to(self.prev_token.span);
+                    let output = self.parse_ret_ty(AllowPlus::No, RecoverQPath::No)?;
                     ParenthesizedArgs { inputs, output, span }.into()
                 };
 
@@ -202,11 +240,10 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_path_segment_ident(&mut self) -> PResult<'a, Ident> {
-        match self.token.kind {
-            token::Ident(name, _) if name.is_path_segment_keyword() => {
-                let span = self.token.span;
+        match self.token.ident() {
+            Some((ident, false)) if ident.is_path_segment_keyword() => {
                 self.bump();
-                Ok(Ident::new(name, span))
+                Ok(ident)
             }
             _ => self.parse_ident(),
         }
@@ -375,13 +412,13 @@ impl<'a> Parser<'a> {
                     AssocTyConstraintKind::Equality { ty: self.parse_ty()? }
                 } else if self.eat(&token::Colon) {
                     AssocTyConstraintKind::Bound {
-                        bounds: self.parse_generic_bounds(Some(self.prev_span))?,
+                        bounds: self.parse_generic_bounds(Some(self.prev_token.span))?,
                     }
                 } else {
                     unreachable!();
                 };
 
-                let span = lo.to(self.prev_span);
+                let span = lo.to(self.prev_token.span);
 
                 // Gate associated type bounds, e.g., `Iterator<Item: Ord>`.
                 if let AssocTyConstraintKind::Bound { .. } = kind {
@@ -434,9 +471,9 @@ impl<'a> Parser<'a> {
         // FIXME: we would like to report this in ast_validation instead, but we currently do not
         // preserve ordering of generic parameters with respect to associated type binding, so we
         // lose that information after parsing.
-        if misplaced_assoc_ty_constraints.len() > 0 {
+        if !misplaced_assoc_ty_constraints.is_empty() {
             let mut err = self.struct_span_err(
-                args_lo.to(self.prev_span),
+                args_lo.to(self.prev_token.span),
                 "associated type bindings must be declared after generic parameters",
             );
             for span in misplaced_assoc_ty_constraints {

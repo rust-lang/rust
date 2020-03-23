@@ -8,7 +8,7 @@ where
     Ty: TyLayoutMethods<'a, C> + Copy,
     C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
 {
-    arg.layout.homogeneous_aggregate(cx).unit().and_then(|unit| {
+    arg.layout.homogeneous_aggregate(cx).ok().and_then(|ha| ha.unit()).and_then(|unit| {
         // Ensure we have at most eight uniquely addressable members.
         if arg.layout.size > unit.size.checked_mul(8, cx).unwrap() {
             return None;

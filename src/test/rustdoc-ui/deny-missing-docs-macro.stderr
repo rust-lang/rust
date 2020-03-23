@@ -4,7 +4,7 @@ error: missing documentation for macro
 LL | macro_rules! foo {
    | ^^^^^^^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/deny-missing-docs-macro.rs:3:9
    |
 LL | #![deny(missing_docs)]

@@ -2,17 +2,19 @@ use crate::check::regionck::RegionCtxt;
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::util::common::ErrorReported;
-use rustc::infer::outlives::env::OutlivesEnvironment;
-use rustc::infer::{InferOk, SuppressRegionErrors};
 use rustc::middle::region;
-use rustc::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::ty::{self, Predicate, Ty, TyCtxt};
 use rustc_errors::struct_span_err;
-
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::{InferOk, RegionckMode, TyCtxtInferExt};
+use rustc_infer::traits::TraitEngineExt as _;
 use rustc_span::Span;
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::query::dropck_outlives::AtExt;
+use rustc_trait_selection::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 
 /// This function confirms that the `Drop` implementation identified by
 /// `drop_impl_did` is not any more specialized than the type it is
@@ -137,7 +139,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
             drop_impl_did,
             &region_scope_tree,
             &outlives_env,
-            SuppressRegionErrors::default(),
+            RegionckMode::default(),
         );
         Ok(())
     })

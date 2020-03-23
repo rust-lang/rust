@@ -40,7 +40,7 @@ struct Consumer<T, Addition> {
     tail: UnsafeCell<*mut Node<T>>, // where to pop from
     tail_prev: AtomicPtr<Node<T>>,  // where to pop from
     cache_bound: usize,             // maximum cache size
-    cached_nodes: AtomicUsize,      // number of nodes marked as cachable
+    cached_nodes: AtomicUsize,      // number of nodes marked as cacheable
     addition: Addition,
 }
 

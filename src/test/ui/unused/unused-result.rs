@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![deny(unused_results, unused_must_use)]
-//~^ NOTE: lint level defined here
-//~| NOTE: lint level defined here
+//~^ NOTE: the lint level is defined here
+//~| NOTE: the lint level is defined here
 
 #[must_use]
 enum MustUse { Test }

@@ -13,12 +13,12 @@ LL | / const OUT_OF_BOUNDS_PTR: NonNull<u8> = { unsafe {
 LL | |     let ptr: &[u8; 256] = mem::transmute(&0u8); // &0 gets promoted so it does not dangle
 LL | |     // Use address-of-element for pointer arithmetic. This could wrap around to NULL!
 LL | |     let out_of_bounds_ptr = &ptr[255];
-   | |                             ^^^^^^^^^ Memory access failed: pointer must be in-bounds at offset 256, but is outside bounds of allocation 8 which has size 1
+   | |                             ^^^^^^^^^ Memory access failed: pointer must be in-bounds at offset 256, but is outside bounds of alloc8 which has size 1
 LL | |     mem::transmute(out_of_bounds_ptr)
 LL | | } };
    | |____-
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/ub-nonnull.rs:14:8
    |
 LL | #[deny(const_err)] // this triggers a `const_err` so validation does not even happen
@@ -43,8 +43,8 @@ LL | const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-nonnull.rs:32:1
    |
-LL | const UNINIT: NonZeroU8 = unsafe { Transmute { uninit: () }.out };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected something greater or equal to 1
+LL | const UNINIT: NonZeroU8 = unsafe { MaybeUninit { uninit: () }.init };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes at .0, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 

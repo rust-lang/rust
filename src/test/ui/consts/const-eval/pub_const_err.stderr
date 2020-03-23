@@ -6,7 +6,7 @@ LL | pub const Z: u32 = 0 - 1;
    |                    |
    |                    attempt to subtract with overflow
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/pub_const_err.rs:2:9
    |
 LL | #![warn(const_err)]

@@ -1,4 +1,6 @@
+fn main() {}
+
 extern {
     /// hi
-    //~^ ERROR expected item after doc comment
+    //~^ ERROR found a documentation comment that doesn't document anything
 }

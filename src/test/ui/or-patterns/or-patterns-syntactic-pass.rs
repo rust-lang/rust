@@ -3,7 +3,7 @@
 
 // check-pass
 
-#![feature(or_patterns)] //~ WARNING the feature `or_patterns` is incomplete
+#![feature(or_patterns)]
 
 fn main() {}
 

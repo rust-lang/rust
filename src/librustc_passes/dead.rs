@@ -15,9 +15,8 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{Node, PatKind, TyKind};
 use rustc_session::lint;
 
-use rustc_span;
+use rustc_ast::{ast, attr};
 use rustc_span::symbol::sym;
-use syntax::{ast, attr};
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live Node::Item that is a
@@ -211,9 +210,9 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -392,7 +391,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     let trait_item = self.krate.trait_item(trait_item_ref.id);
                     match trait_item.kind {
                         hir::TraitItemKind::Const(_, Some(_))
-                        | hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => {
+                        | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => {
                             if has_allow_dead_code_or_lang_attr(
                                 self.tcx,
                                 trait_item.hir_id,
@@ -554,13 +553,10 @@ impl DeadVisitor<'tcx> {
         node_type: &str,
         participle: &str,
     ) {
-        if !name.as_str().starts_with("_") {
-            self.tcx.lint_hir(
-                lint::builtin::DEAD_CODE,
-                id,
-                span,
-                &format!("{} is never {}: `{}`", node_type, participle, name),
-            );
+        if !name.as_str().starts_with('_') {
+            self.tcx.struct_span_lint_hir(lint::builtin::DEAD_CODE, id, span, |lint| {
+                lint.build(&format!("{} is never {}: `{}`", node_type, participle, name)).emit()
+            });
         }
     }
 }
@@ -572,8 +568,8 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     /// on inner functions when the outer function is already getting
     /// an error. We could do this also by checking the parents, but
     /// this is how the code is setup and it seems harmless enough.
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
-        NestedVisitorMap::All(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::All(self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
@@ -605,13 +601,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 hir::ItemKind::Struct(..) => "constructed", // Issue #52325
                 _ => "used",
             };
-            self.warn_dead_code(
-                item.hir_id,
-                span,
-                item.ident.name,
-                item.kind.descriptive_variant(),
-                participle,
-            );
+            self.warn_dead_code(item.hir_id, span, item.ident.name, item.kind.descr(), participle);
         } else {
             // Only continue if we didn't warn
             intravisit::walk_item(self, item);
@@ -671,7 +661,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 }
                 self.visit_nested_body(body_id)
             }
-            hir::ImplItemKind::Method(_, body_id) => {
+            hir::ImplItemKind::Fn(_, body_id) => {
                 if !self.symbol_is_live(impl_item.hir_id) {
                     let span = self.tcx.sess.source_map().def_span(impl_item.span);
                     self.warn_dead_code(
@@ -692,11 +682,11 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         match trait_item.kind {
             hir::TraitItemKind::Const(_, Some(body_id))
-            | hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(body_id)) => {
+            | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)) => {
                 self.visit_nested_body(body_id)
             }
             hir::TraitItemKind::Const(_, None)
-            | hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_))
+            | hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
             | hir::TraitItemKind::Type(..) => {}
         }
     }

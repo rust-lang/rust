@@ -38,15 +38,6 @@ macro_rules! err_ub_format {
 }
 
 #[macro_export]
-macro_rules! err_panic {
-    ($($tt:tt)*) => {
-        $crate::mir::interpret::InterpError::Panic(
-            $crate::mir::interpret::PanicInfo::$($tt)*
-        )
-    };
-}
-
-#[macro_export]
 macro_rules! err_exhaust {
     ($($tt:tt)*) => {
         $crate::mir::interpret::InterpError::ResourceExhaustion(
@@ -55,9 +46,10 @@ macro_rules! err_exhaust {
     };
 }
 
+// In the `throw_*` macros, avoid `return` to make them work with `try {}`.
 #[macro_export]
 macro_rules! throw_unsup {
-    ($($tt:tt)*) => { return Err(err_unsup!($($tt)*).into()) };
+    ($($tt:tt)*) => { Err::<!, _>(err_unsup!($($tt)*))? };
 }
 
 #[macro_export]
@@ -67,12 +59,12 @@ macro_rules! throw_unsup_format {
 
 #[macro_export]
 macro_rules! throw_inval {
-    ($($tt:tt)*) => { return Err(err_inval!($($tt)*).into()) };
+    ($($tt:tt)*) => { Err::<!, _>(err_inval!($($tt)*))? };
 }
 
 #[macro_export]
 macro_rules! throw_ub {
-    ($($tt:tt)*) => { return Err(err_ub!($($tt)*).into()) };
+    ($($tt:tt)*) => { Err::<!, _>(err_ub!($($tt)*))? };
 }
 
 #[macro_export]
@@ -81,19 +73,14 @@ macro_rules! throw_ub_format {
 }
 
 #[macro_export]
-macro_rules! throw_panic {
-    ($($tt:tt)*) => { return Err(err_panic!($($tt)*).into()) };
-}
-
-#[macro_export]
 macro_rules! throw_exhaust {
-    ($($tt:tt)*) => { return Err(err_exhaust!($($tt)*).into()) };
+    ($($tt:tt)*) => { Err::<!, _>(err_exhaust!($($tt)*))? };
 }
 
 #[macro_export]
 macro_rules! throw_machine_stop {
     ($($tt:tt)*) => {
-        return Err($crate::mir::interpret::InterpError::MachineStop(Box::new($($tt)*)).into())
+        Err::<!, _>($crate::mir::interpret::InterpError::MachineStop(Box::new($($tt)*)))?
     };
 }
 
@@ -104,9 +91,9 @@ mod queries;
 mod value;
 
 pub use self::error::{
-    struct_error, AssertMessage, ConstEvalErr, ConstEvalRawResult, ConstEvalResult, ErrorHandled,
-    FrameInfo, InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, PanicInfo,
-    ResourceExhaustionInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
+    struct_error, ConstEvalErr, ConstEvalRawResult, ConstEvalResult, ErrorHandled, FrameInfo,
+    InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, ResourceExhaustionInfo,
+    UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
 
 pub use self::value::{get_slice_bytes, ConstValue, RawConst, Scalar, ScalarMaybeUndef};
@@ -121,6 +108,7 @@ use crate::ty::layout::{self, Size};
 use crate::ty::subst::GenericArgKind;
 use crate::ty::{self, Instance, Ty, TyCtxt};
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
+use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
@@ -131,7 +119,6 @@ use std::fmt;
 use std::io;
 use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicU32, Ordering};
-use syntax::ast::LitKind;
 
 /// Uniquely identifies one of the following:
 /// - A constant
@@ -162,6 +149,10 @@ pub struct LitToConstInput<'tcx> {
 /// Error type for `tcx.lit_to_const`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
 pub enum LitToConstError {
+    /// The literal's inferred type did not match the expected `ty` in the input.
+    /// This is used for graceful error handling (`delay_span_bug`) in
+    /// type checking (`AstConv::ast_const_to_const`).
+    TypeError,
     UnparseableFloat,
     Reported,
 }
@@ -171,7 +162,13 @@ pub struct AllocId(pub u64);
 
 impl fmt::Debug for AllocId {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "alloc{}", self.0)
+        fmt::Display::fmt(self, fmt)
+    }
+}
+
+impl fmt::Display for AllocId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "alloc{}", self.0)
     }
 }
 
@@ -358,12 +355,6 @@ impl<'s> AllocDecodingSession<'s> {
         });
 
         Ok(alloc_id)
-    }
-}
-
-impl fmt::Display for AllocId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
     }
 }
 

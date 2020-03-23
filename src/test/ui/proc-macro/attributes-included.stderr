@@ -4,7 +4,7 @@ warning: unused variable: `a`
 LL |     let a: i32 = "foo";
    |         ^ help: consider prefixing with an underscore: `_a`
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/attributes-included.rs:4:9
    |
 LL | #![warn(unused)]

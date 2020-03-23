@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): MyTrait` is not satisfied
-  --> $DIR/reservation-impl-no-use.rs:12:26
+  --> $DIR/reservation-impl-no-use.rs:10:26
    |
 LL | trait MyTrait { fn foo(&self); }
    |                 -------------- required by `MyTrait::foo`

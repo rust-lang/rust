@@ -1,23 +1,5 @@
-error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/copy-and-move-mixed.rs:11:9
-   |
-LL |     let a @ NC(b, c) = NC(C, C);
-   |         ^^^^^^^^^^^^ binds an already bound by-move value by moving it
-
-error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/copy-and-move-mixed.rs:15:9
-   |
-LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^ binds an already bound by-move value by moving it
-
-error[E0007]: cannot bind by-move with sub-bindings
-  --> $DIR/copy-and-move-mixed.rs:15:19
-   |
-LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
-   |                   ^^^^^^^^^^^^ binds an already bound by-move value by moving it
-
 error[E0382]: use of moved value
-  --> $DIR/copy-and-move-mixed.rs:11:19
+  --> $DIR/copy-and-move-mixed.rs:12:19
    |
 LL |     let a @ NC(b, c) = NC(C, C);
    |         ----------^-   -------- move occurs because value has type `NC<C, C>`, which does not implement the `Copy` trait
@@ -45,7 +27,6 @@ LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
    |
    = note: move occurs because value has type `NC<C, C>`, which does not implement the `Copy` trait
 
-error: aborting due to 6 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0007, E0382.
-For more information about an error, try `rustc --explain E0007`.
+For more information about this error, try `rustc --explain E0382`.

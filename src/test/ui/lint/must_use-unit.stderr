@@ -4,7 +4,7 @@ error: unused return value of `foo` that must be used
 LL |     foo();
    |     ^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/must_use-unit.rs:2:9
    |
 LL | #![deny(unused_must_use)]

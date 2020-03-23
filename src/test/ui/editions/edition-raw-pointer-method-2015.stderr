@@ -4,7 +4,7 @@ error: type annotations needed
 LL |     let _ = y.is_null();
    |               ^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/edition-raw-pointer-method-2015.rs:5:8
    |
 LL | #[deny(warnings)]

@@ -5,10 +5,8 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use rustc::hir::map::Map;
 use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::middle::privacy;
-use rustc::session::config;
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
@@ -17,10 +15,10 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_hir::intravisit;
-use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirIdSet, Node};
+use rustc_session::config;
 use rustc_target::spec::abi::Abi;
 
 // Returns true if the given item must be inlined because it may be
@@ -32,9 +30,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>, attrs: Codegen
     }
 
     match item.kind {
-        hir::ItemKind::Fn(ref sig, ..) if sig.header.is_const() => {
-            return true;
-        }
+        hir::ItemKind::Fn(ref sig, ..) if sig.header.is_const() => true,
         hir::ItemKind::Impl { .. } | hir::ItemKind::Fn(..) => {
             let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
             generics.requires_monomorphization(tcx)
@@ -48,12 +44,12 @@ fn method_might_be_inlined(
     impl_item: &hir::ImplItem<'_>,
     impl_src: DefId,
 ) -> bool {
-    let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id.owner_def_id());
+    let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id.owner.to_def_id());
     let generics = tcx.generics_of(tcx.hir().local_def_id(impl_item.hir_id));
     if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {
         return true;
     }
-    if let hir::ImplItemKind::Method(method_sig, _) = &impl_item.kind {
+    if let hir::ImplItemKind::Fn(method_sig, _) = &impl_item.kind {
         if method_sig.header.is_const() {
             return true;
         }
@@ -83,9 +79,9 @@ struct ReachableContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type Map = intravisit::ErasedMap<'tcx>;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<'_, Self::Map> {
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
     }
 
@@ -162,14 +158,14 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             },
             Some(Node::TraitItem(trait_method)) => match trait_method.kind {
                 hir::TraitItemKind::Const(_, ref default) => default.is_some(),
-                hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => true,
-                hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_))
+                hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => true,
+                hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
                 | hir::TraitItemKind::Type(..) => false,
             },
             Some(Node::ImplItem(impl_item)) => {
                 match impl_item.kind {
                     hir::ImplItemKind::Const(..) => true,
-                    hir::ImplItemKind::Method(..) => {
+                    hir::ImplItemKind::Fn(..) => {
                         let attrs = self.tcx.codegen_fn_attrs(def_id);
                         let generics = self.tcx.generics_of(def_id);
                         if generics.requires_monomorphization(self.tcx) || attrs.requests_inline() {
@@ -278,11 +274,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Node::TraitItem(trait_method) => {
                 match trait_method.kind {
                     hir::TraitItemKind::Const(_, None)
-                    | hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_)) => {
+                    | hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_)) => {
                         // Keep going, nothing to get exported
                     }
                     hir::TraitItemKind::Const(_, Some(body_id))
-                    | hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(body_id)) => {
+                    | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)) => {
                         self.visit_nested_body(body_id);
                     }
                     hir::TraitItemKind::Type(..) => {}
@@ -292,7 +288,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 hir::ImplItemKind::Const(_, body) => {
                     self.visit_nested_body(body);
                 }
-                hir::ImplItemKind::Method(_, body) => {
+                hir::ImplItemKind::Fn(_, body) => {
                     let did = self.tcx.hir().get_parent_did(search_item);
                     if method_might_be_inlined(self.tcx, impl_item, did) {
                         self.visit_nested_body(body)
@@ -362,12 +358,12 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
                     return;
                 }
 
-                let provided_trait_methods = self.tcx.provided_trait_methods(trait_def_id);
-                self.worklist.reserve(provided_trait_methods.len());
-                for default_method in provided_trait_methods {
-                    let hir_id = self.tcx.hir().as_local_hir_id(default_method.def_id).unwrap();
-                    self.worklist.push(hir_id);
-                }
+                // FIXME(#53488) remove `let`
+                let tcx = self.tcx;
+                self.worklist.extend(
+                    tcx.provided_trait_methods(trait_def_id)
+                        .map(|assoc| tcx.hir().as_local_hir_id(assoc.def_id).unwrap()),
+                );
             }
         }
     }

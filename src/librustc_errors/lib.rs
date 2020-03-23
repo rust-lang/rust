@@ -4,9 +4,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
-#![feature(optin_builtin_traits)]
 
 pub use emitter::ColorConfig;
 
@@ -146,7 +144,7 @@ pub struct SubstitutionPart {
 impl CodeSuggestion {
     /// Returns the assembled code suggestions, whether they should be shown with an underline
     /// and whether the substitution only differs in capitalization.
-    pub fn splice_lines(&self, cm: &SourceMap) -> Vec<(String, Vec<SubstitutionPart>, bool)> {
+    pub fn splice_lines(&self, sm: &SourceMap) -> Vec<(String, Vec<SubstitutionPart>, bool)> {
         use rustc_span::{CharPos, Pos};
 
         fn push_trailing(
@@ -165,7 +163,7 @@ impl CodeSuggestion {
                         None => buf.push_str(&line[lo..]),
                     }
                 }
-                if let None = hi_opt {
+                if hi_opt.is_none() {
                     buf.push('\n');
                 }
             }
@@ -178,7 +176,7 @@ impl CodeSuggestion {
             .filter(|subst| {
                 // Suggestions coming from macros can have malformed spans. This is a heavy
                 // handed approach to avoid ICEs by ignoring the suggestion outright.
-                let invalid = subst.parts.iter().any(|item| cm.is_valid_span(item.span).is_err());
+                let invalid = subst.parts.iter().any(|item| sm.is_valid_span(item.span).is_err());
                 if invalid {
                     debug!("splice_lines: suggestion contains an invalid span: {:?}", subst);
                 }
@@ -195,8 +193,13 @@ impl CodeSuggestion {
                 let hi = substitution.parts.iter().map(|part| part.span.hi()).max()?;
                 let bounding_span = Span::with_root_ctxt(lo, hi);
                 // The different spans might belong to different contexts, if so ignore suggestion.
-                let lines = cm.span_to_lines(bounding_span).ok()?;
+                let lines = sm.span_to_lines(bounding_span).ok()?;
                 assert!(!lines.lines.is_empty());
+
+                // We can't splice anything if the source is unavailable.
+                if !sm.ensure_source_file_source_present(lines.file.clone()) {
+                    return None;
+                }
 
                 // To build up the result, we do this for each span:
                 // - push the line segment trailing the previous span
@@ -207,36 +210,36 @@ impl CodeSuggestion {
                 // - splice in the span substitution
                 //
                 // Finally push the trailing line segment of the last span
-                let fm = &lines.file;
-                let mut prev_hi = cm.lookup_char_pos(bounding_span.lo());
+                let sf = &lines.file;
+                let mut prev_hi = sm.lookup_char_pos(bounding_span.lo());
                 prev_hi.col = CharPos::from_usize(0);
 
-                let mut prev_line = fm.get_line(lines.lines[0].line_index);
+                let mut prev_line = sf.get_line(lines.lines[0].line_index);
                 let mut buf = String::new();
 
                 for part in &substitution.parts {
-                    let cur_lo = cm.lookup_char_pos(part.span.lo());
+                    let cur_lo = sm.lookup_char_pos(part.span.lo());
                     if prev_hi.line == cur_lo.line {
                         push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, Some(&cur_lo));
                     } else {
                         push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
                         // push lines between the previous and current span (if any)
                         for idx in prev_hi.line..(cur_lo.line - 1) {
-                            if let Some(line) = fm.get_line(idx) {
+                            if let Some(line) = sf.get_line(idx) {
                                 buf.push_str(line.as_ref());
                                 buf.push('\n');
                             }
                         }
-                        if let Some(cur_line) = fm.get_line(cur_lo.line - 1) {
+                        if let Some(cur_line) = sf.get_line(cur_lo.line - 1) {
                             let end = std::cmp::min(cur_line.len(), cur_lo.col.to_usize());
                             buf.push_str(&cur_line[..end]);
                         }
                     }
                     buf.push_str(&part.snippet);
-                    prev_hi = cm.lookup_char_pos(part.span.hi());
-                    prev_line = fm.get_line(prev_hi.line - 1);
+                    prev_hi = sm.lookup_char_pos(part.span.hi());
+                    prev_line = sf.get_line(prev_hi.line - 1);
                 }
-                let only_capitalization = is_case_difference(cm, &buf, bounding_span);
+                let only_capitalization = is_case_difference(sm, &buf, bounding_span);
                 // if the replacement already ends with a newline, don't print the next line
                 if !buf.ends_with('\n') {
                     push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);
@@ -336,9 +339,9 @@ pub struct HandlerFlags {
     /// If true, immediately print bugs registered with `delay_span_bug`.
     /// (rustc: see `-Z report-delayed-bugs`)
     pub report_delayed_bugs: bool,
-    /// show macro backtraces even for non-local macros.
-    /// (rustc: see `-Z external-macro-backtrace`)
-    pub external_macro_backtrace: bool,
+    /// Show macro backtraces.
+    /// (rustc: see `-Z macro-backtrace`)
+    pub macro_backtrace: bool,
     /// If true, identical diagnostics are reported only once.
     pub deduplicate_diagnostics: bool,
 }
@@ -365,27 +368,27 @@ impl Handler {
         color_config: ColorConfig,
         can_emit_warnings: bool,
         treat_err_as_bug: Option<usize>,
-        cm: Option<Lrc<SourceMap>>,
+        sm: Option<Lrc<SourceMap>>,
     ) -> Self {
         Self::with_tty_emitter_and_flags(
             color_config,
-            cm,
+            sm,
             HandlerFlags { can_emit_warnings, treat_err_as_bug, ..Default::default() },
         )
     }
 
     pub fn with_tty_emitter_and_flags(
         color_config: ColorConfig,
-        cm: Option<Lrc<SourceMap>>,
+        sm: Option<Lrc<SourceMap>>,
         flags: HandlerFlags,
     ) -> Self {
         let emitter = Box::new(EmitterWriter::stderr(
             color_config,
-            cm,
+            sm,
             false,
             false,
             None,
-            flags.external_macro_backtrace,
+            flags.macro_backtrace,
         ));
         Self::with_emitter_and_flags(emitter, flags)
     }
@@ -446,22 +449,12 @@ impl Handler {
     }
 
     /// Stash a given diagnostic with the given `Span` and `StashKey` as the key for later stealing.
-    /// If the diagnostic with this `(span, key)` already exists, this will result in an ICE.
     pub fn stash_diagnostic(&self, span: Span, key: StashKey, diag: Diagnostic) {
         let mut inner = self.inner.borrow_mut();
-        if let Some(mut old_diag) = inner.stashed_diagnostics.insert((span, key), diag) {
-            // We are removing a previously stashed diagnostic which should not happen.
-            old_diag.level = Bug;
-            old_diag.note(&format!(
-                "{}:{}: already existing stashed diagnostic with (span = {:?}, key = {:?})",
-                file!(),
-                line!(),
-                span,
-                key
-            ));
-            inner.emit_diag_at_span(old_diag, span);
-            panic!(ExplicitBug);
-        }
+        // FIXME(Centril, #69537): Consider reintroducing panic on overwriting a stashed diagnostic
+        // if/when we have a more robust macro-friendly replacement for `(span, key)` as a key.
+        // See the PR for a discussion.
+        inner.stashed_diagnostics.insert((span, key), diag);
     }
 
     /// Steal a previously stashed diagnostic with the given `Span` and `StashKey` as the key.
@@ -788,8 +781,12 @@ impl HandlerInner {
                 .emitted_diagnostic_codes
                 .iter()
                 .filter_map(|x| match &x {
-                    DiagnosticId::Error(s) if registry.find_description(s).is_some() => {
-                        Some(s.clone())
+                    DiagnosticId::Error(s) => {
+                        if let Ok(Some(_explanation)) = registry.try_find_description(s) {
+                            Some(s.clone())
+                        } else {
+                            None
+                        }
                     }
                     _ => None,
                 })

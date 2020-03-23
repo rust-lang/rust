@@ -341,7 +341,6 @@ function getSearchElement() {
     function handleEscape(ev) {
         var help = getHelpElement();
         var search = getSearchElement();
-        hideModal();
         if (hasClass(help, "hidden") === false) {
             displayHelp(false, ev, help);
         } else if (hasClass(search, "hidden") === false) {
@@ -373,7 +372,6 @@ function getSearchElement() {
             case "s":
             case "S":
                 displayHelp(false, ev);
-                hideModal();
                 ev.preventDefault();
                 focusSearchBar();
                 break;
@@ -386,7 +384,6 @@ function getSearchElement() {
 
             case "?":
                 if (ev.shiftKey) {
-                    hideModal();
                     displayHelp(true, ev);
                 }
                 break;
@@ -526,13 +523,14 @@ function getSearchElement() {
     }
 
     function initSearch(rawSearchIndex) {
-        var currentResults, index, searchIndex;
         var MAX_LEV_DISTANCE = 3;
         var MAX_RESULTS = 200;
         var GENERICS_DATA = 1;
         var NAME = 0;
         var INPUTS_DATA = 0;
         var OUTPUT_DATA = 1;
+        var NO_TYPE_FILTER = -1;
+        var currentResults, index, searchIndex;
         var params = getQueryStringParams();
 
         // Populate search bar with query string search term when provided,
@@ -559,7 +557,7 @@ function getSearchElement() {
                         return i;
                     }
                 }
-                return -1;
+                return NO_TYPE_FILTER;
             }
 
             var valLower = query.query.toLowerCase(),
@@ -722,6 +720,13 @@ function getSearchElement() {
                 };
             }
 
+            function getObjectFromId(id) {
+                if (typeof id === "number") {
+                    return searchIndex[id];
+                }
+                return {'name': id};
+            }
+
             function checkGenerics(obj, val) {
                 // The names match, but we need to be sure that all generics kinda
                 // match as well.
@@ -738,8 +743,10 @@ function getSearchElement() {
                         for (var y = 0; y < vlength; ++y) {
                             var lev = { pos: -1, lev: MAX_LEV_DISTANCE + 1};
                             var elength = elems.length;
+                            var firstGeneric = getObjectFromId(val.generics[y]).name;
                             for (var x = 0; x < elength; ++x) {
-                                var tmp_lev = levenshtein(elems[x], val.generics[y]);
+                                var tmp_lev = levenshtein(getObjectFromId(elems[x]).name,
+                                                          firstGeneric);
                                 if (tmp_lev < lev.lev) {
                                     lev.lev = tmp_lev;
                                     lev.pos = x;
@@ -774,8 +781,9 @@ function getSearchElement() {
 
                                 for (var y = 0; allFound === true && y < val.generics.length; ++y) {
                                     allFound = false;
+                                    var firstGeneric = getObjectFromId(val.generics[y]).name;
                                     for (x = 0; allFound === false && x < elems.length; ++x) {
-                                        allFound = elems[x] === val.generics[y];
+                                        allFound = getObjectFromId(elems[x]).name === firstGeneric;
                                     }
                                     if (allFound === true) {
                                         elems.splice(x - 1, 1);
@@ -832,16 +840,22 @@ function getSearchElement() {
                 return lev_distance + 1;
             }
 
-            function findArg(obj, val, literalSearch) {
+            function findArg(obj, val, literalSearch, typeFilter) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
 
-                if (obj && obj.type && obj.type[INPUTS_DATA] &&
-                      obj.type[INPUTS_DATA].length > 0) {
+                if (obj && obj.type && obj.type[INPUTS_DATA] && obj.type[INPUTS_DATA].length > 0) {
                     var length = obj.type[INPUTS_DATA].length;
                     for (var i = 0; i < length; i++) {
-                        var tmp = checkType(obj.type[INPUTS_DATA][i], val, literalSearch);
-                        if (literalSearch === true && tmp === true) {
-                            return true;
+                        var tmp = obj.type[INPUTS_DATA][i];
+                        if (typePassesFilter(typeFilter, tmp[1]) === false) {
+                            continue;
+                        }
+                        tmp = checkType(tmp, val, literalSearch);
+                        if (literalSearch === true) {
+                            if (tmp === true) {
+                                return true;
+                            }
+                            continue;
                         }
                         lev_distance = Math.min(tmp, lev_distance);
                         if (lev_distance === 0) {
@@ -852,20 +866,20 @@ function getSearchElement() {
                 return literalSearch === true ? false : lev_distance;
             }
 
-            function checkReturned(obj, val, literalSearch) {
+            function checkReturned(obj, val, literalSearch, typeFilter) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
 
                 if (obj && obj.type && obj.type.length > OUTPUT_DATA) {
                     var ret = obj.type[OUTPUT_DATA];
-                    if (!obj.type[OUTPUT_DATA].length) {
+                    if (typeof ret[0] === "string") {
                         ret = [ret];
                     }
                     for (var x = 0; x < ret.length; ++x) {
-                        var r = ret[x];
-                        if (typeof r === "string") {
-                            r = [r];
+                        var tmp = ret[x];
+                        if (typePassesFilter(typeFilter, tmp[1]) === false) {
+                            continue;
                         }
-                        var tmp = checkType(r, val, literalSearch);
+                        tmp = checkType(tmp, val, literalSearch);
                         if (literalSearch === true) {
                             if (tmp === true) {
                                 return true;
@@ -920,7 +934,7 @@ function getSearchElement() {
 
             function typePassesFilter(filter, type) {
                 // No filter
-                if (filter < 0) return true;
+                if (filter <= NO_TYPE_FILTER) return true;
 
                 // Exact match
                 if (filter === type) return true;
@@ -929,11 +943,13 @@ function getSearchElement() {
                 var name = itemTypes[type];
                 switch (itemTypes[filter]) {
                     case "constant":
-                        return (name == "associatedconstant");
+                        return name === "associatedconstant";
                     case "fn":
-                        return (name == "method" || name == "tymethod");
+                        return name === "method" || name === "tymethod";
                     case "type":
-                        return (name == "primitive" || name == "keyword");
+                        return name === "primitive" || name === "associatedtype";
+                    case "trait":
+                        return name === "traitalias";
                 }
 
                 // No match
@@ -962,42 +978,33 @@ function getSearchElement() {
                     if (filterCrates !== undefined && searchIndex[i].crate !== filterCrates) {
                         continue;
                     }
-                    in_args = findArg(searchIndex[i], val, true);
-                    returned = checkReturned(searchIndex[i], val, true);
+                    in_args = findArg(searchIndex[i], val, true, typeFilter);
+                    returned = checkReturned(searchIndex[i], val, true, typeFilter);
                     ty = searchIndex[i];
                     fullId = generateId(ty);
 
-                    if (searchWords[i] === val.name) {
-                        // filter type: ... queries
-                        if (typePassesFilter(typeFilter, searchIndex[i].ty) &&
-                            results[fullId] === undefined)
-                        {
-                            results[fullId] = {id: i, index: -1};
-                        }
-                    } else if ((in_args === true || returned === true) &&
-                               typePassesFilter(typeFilter, searchIndex[i].ty)) {
-                        if (in_args === true || returned === true) {
-                            if (in_args === true) {
-                                results_in_args[fullId] = {
-                                    id: i,
-                                    index: -1,
-                                    dontValidate: true,
-                                };
-                            }
-                            if (returned === true) {
-                                results_returned[fullId] = {
-                                    id: i,
-                                    index: -1,
-                                    dontValidate: true,
-                                };
-                            }
-                        } else {
-                            results[fullId] = {
-                                id: i,
-                                index: -1,
-                                dontValidate: true,
-                            };
-                        }
+                    if (searchWords[i] === val.name
+                        && typePassesFilter(typeFilter, searchIndex[i].ty)
+                        && results[fullId] === undefined) {
+                        results[fullId] = {
+                            id: i,
+                            index: -1,
+                            dontValidate: true,
+                        };
+                    }
+                    if (in_args === true && results_in_args[fullId] === undefined) {
+                        results_in_args[fullId] = {
+                            id: i,
+                            index: -1,
+                            dontValidate: true,
+                        };
+                    }
+                    if (returned === true && results_returned[fullId] === undefined) {
+                        results_returned[fullId] = {
+                            id: i,
+                            index: -1,
+                            dontValidate: true,
+                        };
                     }
                 }
                 query.inputs = [val];
@@ -1028,7 +1035,7 @@ function getSearchElement() {
 
                     // allow searching for void (no output) functions as well
                     var typeOutput = type.length > OUTPUT_DATA ? type[OUTPUT_DATA].name : "";
-                    returned = checkReturned(ty, output, true);
+                    returned = checkReturned(ty, output, true, NO_TYPE_FILTER);
                     if (output.name === "*" || returned === true) {
                         in_args = false;
                         var is_module = false;
@@ -1129,16 +1136,8 @@ function getSearchElement() {
                             lev += 1;
                         }
                     }
-                    if ((in_args = findArg(ty, valGenerics)) <= MAX_LEV_DISTANCE) {
-                        if (typePassesFilter(typeFilter, ty.ty) === false) {
-                            in_args = MAX_LEV_DISTANCE + 1;
-                        }
-                    }
-                    if ((returned = checkReturned(ty, valGenerics)) <= MAX_LEV_DISTANCE) {
-                        if (typePassesFilter(typeFilter, ty.ty) === false) {
-                            returned = MAX_LEV_DISTANCE + 1;
-                        }
-                    }
+                    in_args = findArg(ty, valGenerics, false, typeFilter);
+                    returned = checkReturned(ty, valGenerics, false, typeFilter);
 
                     lev += lev_add;
                     if (lev > 0 && val.length > 3 && searchWords[j].indexOf(val) > -1) {
@@ -1364,14 +1363,15 @@ function getSearchElement() {
             var href;
             var type = itemTypes[item.ty];
             var name = item.name;
+            var path = item.path;
 
             if (type === "mod") {
-                displayPath = item.path + "::";
-                href = rootPath + item.path.replace(/::/g, "/") + "/" +
+                displayPath = path + "::";
+                href = rootPath + path.replace(/::/g, "/") + "/" +
                        name + "/index.html";
             } else if (type === "primitive" || type === "keyword") {
                 displayPath = "";
-                href = rootPath + item.path.replace(/::/g, "/") +
+                href = rootPath + path.replace(/::/g, "/") +
                        "/" + type + "." + name + ".html";
             } else if (type === "externcrate") {
                 displayPath = "";
@@ -1380,14 +1380,27 @@ function getSearchElement() {
                 var myparent = item.parent;
                 var anchor = "#" + type + "." + name;
                 var parentType = itemTypes[myparent.ty];
+                var pageType = parentType;
+                var pageName = myparent.name;
+
                 if (parentType === "primitive") {
                     displayPath = myparent.name + "::";
+                } else if (type === "structfield" && parentType === "variant") {
+                    // Structfields belonging to variants are special: the
+                    // final path element is the enum name.
+                    var splitPath = item.path.split("::");
+                    var enumName = splitPath.pop();
+                    path = splitPath.join("::");
+                    displayPath = path + "::" + enumName + "::" + myparent.name + "::";
+                    anchor = "#variant." + myparent.name + ".field." + name;
+                    pageType = "enum";
+                    pageName = enumName;
                 } else {
-                    displayPath = item.path + "::" + myparent.name + "::";
+                    displayPath = path + "::" + myparent.name + "::";
                 }
-                href = rootPath + item.path.replace(/::/g, "/") +
-                       "/" + parentType +
-                       "." + myparent.name +
+                href = rootPath + path.replace(/::/g, "/") +
+                       "/" + pageType +
+                       "." + pageName +
                        ".html" + anchor;
             } else {
                 displayPath = item.path + "::";
@@ -1668,7 +1681,7 @@ function getSearchElement() {
                 //              (String) name]
                 var paths = rawSearchIndex[crate].p;
 
-                // convert `paths` into an object form
+                // convert `rawPaths` entries into object form
                 var len = paths.length;
                 for (i = 0; i < len; ++i) {
                     paths[i] = {ty: paths[i][0], name: paths[i][1]};
@@ -2488,31 +2501,6 @@ function getSearchElement() {
             });
         }
         lineNumbersFunc(e);
-    });
-
-    function showModal(content) {
-        var modal = document.createElement("div");
-        modal.id = "important";
-        addClass(modal, "modal");
-        modal.innerHTML = "<div class=\"modal-content\"><div class=\"close\" id=\"modal-close\">✕" +
-                          "</div><div class=\"whiter\"></div><span class=\"docblock\">" + content +
-                          "</span></div>";
-        document.getElementsByTagName("body")[0].appendChild(modal);
-        document.getElementById("modal-close").onclick = hideModal;
-        modal.onclick = hideModal;
-    }
-
-    function hideModal() {
-        var modal = document.getElementById("important");
-        if (modal) {
-            modal.parentNode.removeChild(modal);
-        }
-    }
-
-    onEachLazy(document.getElementsByClassName("important-traits"), function(e) {
-        e.onclick = function() {
-            showModal(e.lastElementChild.innerHTML);
-        };
     });
 
     // In the search display, allows to switch between tabs.

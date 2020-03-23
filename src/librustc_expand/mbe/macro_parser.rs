@@ -76,14 +76,13 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::mbe::{self, TokenTree};
 
+use rustc_ast::ast::Name;
+use rustc_ast::ptr::P;
+use rustc_ast::token::{self, DocComment, Nonterminal, Token};
+use rustc_ast_pretty::pprust;
 use rustc_parse::parser::{FollowedByType, Parser, PathStyle};
-use rustc_parse::Directory;
-use rustc_span::symbol::{kw, sym, Symbol};
-use syntax::ast::{Ident, Name};
-use syntax::print::pprust;
-use syntax::sess::ParseSess;
-use syntax::token::{self, DocComment, Nonterminal, Token};
-use syntax::tokenstream::TokenStream;
+use rustc_session::parse::ParseSess;
+use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent, Symbol};
 
 use rustc_errors::{FatalError, PResult};
 use rustc_span::Span;
@@ -91,6 +90,7 @@ use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use std::borrow::Cow;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -273,9 +273,10 @@ crate enum ParseResult<T> {
     Error(rustc_span::Span, String),
 }
 
-/// A `ParseResult` where the `Success` variant contains a mapping of `Ident`s to `NamedMatch`es.
-/// This represents the mapping of metavars to the token trees they bind to.
-crate type NamedParseResult = ParseResult<FxHashMap<Ident, NamedMatch>>;
+/// A `ParseResult` where the `Success` variant contains a mapping of
+/// `MacroRulesNormalizedIdent`s to `NamedMatch`es. This represents the mapping
+/// of metavars to the token trees they bind to.
+crate type NamedParseResult = ParseResult<FxHashMap<MacroRulesNormalizedIdent, NamedMatch>>;
 
 /// Count how many metavars are named in the given matcher `ms`.
 pub(super) fn count_names(ms: &[TokenTree]) -> usize {
@@ -368,7 +369,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
         sess: &ParseSess,
         m: &TokenTree,
         res: &mut I,
-        ret_val: &mut FxHashMap<Ident, NamedMatch>,
+        ret_val: &mut FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     ) -> Result<(), (rustc_span::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => {
@@ -386,7 +387,9 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                     return Err((span, "missing fragment specifier".to_string()));
                 }
             }
-            TokenTree::MetaVarDecl(sp, bind_name, _) => match ret_val.entry(bind_name) {
+            TokenTree::MetaVarDecl(sp, bind_name, _) => match ret_val
+                .entry(MacroRulesNormalizedIdent::new(bind_name))
+            {
                 Vacant(spot) => {
                     spot.insert(res.next().unwrap());
                 }
@@ -612,28 +615,9 @@ fn inner_parse_loop<'root, 'tt>(
     Success(())
 }
 
-/// Use the given sequence of token trees (`ms`) as a matcher. Match the given token stream `tts`
-/// against it and return the match.
-///
-/// # Parameters
-///
-/// - `sess`: The session into which errors are emitted
-/// - `tts`: The tokenstream we are matching against the pattern `ms`
-/// - `ms`: A sequence of token trees representing a pattern against which we are matching
-/// - `directory`: Information about the file locations (needed for the black-box parser)
-/// - `recurse_into_modules`: Whether or not to recurse into modules (needed for the black-box
-///   parser)
-pub(super) fn parse(
-    sess: &ParseSess,
-    tts: TokenStream,
-    ms: &[TokenTree],
-    directory: Option<Directory<'_>>,
-    recurse_into_modules: bool,
-) -> NamedParseResult {
-    // Create a parser that can be used for the "black box" parts.
-    let mut parser =
-        Parser::new(sess, tts, directory, recurse_into_modules, true, rustc_parse::MACRO_ARGUMENTS);
-
+/// Use the given sequence of token trees (`ms`) as a matcher. Match the token
+/// stream from the given `parser` against it and return the match.
+pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> NamedParseResult {
     // A queue of possible matcher positions. We initialize it with the matcher position in which
     // the "dot" is before the first token of the first token tree in `ms`. `inner_parse_loop` then
     // processes all of these possible matcher positions and produces possible next positions into
@@ -658,7 +642,7 @@ pub(super) fn parse(
         // parsing from the black-box parser done. The result is that `next_items` will contain a
         // bunch of possible next matcher positions in `next_items`.
         match inner_parse_loop(
-            sess,
+            parser.sess,
             &mut cur_items,
             &mut next_items,
             &mut eof_items,
@@ -683,7 +667,7 @@ pub(super) fn parse(
             if eof_items.len() == 1 {
                 let matches =
                     eof_items[0].matches.iter_mut().map(|dv| Lrc::make_mut(dv).pop().unwrap());
-                return nameize(sess, ms, matches);
+                return nameize(parser.sess, ms, matches);
             } else if eof_items.len() > 1 {
                 return Error(
                     parser.token.span,
@@ -708,9 +692,14 @@ pub(super) fn parse(
         // unnecessary implicit clone later in Rc::make_mut.
         drop(eof_items);
 
+        // If there are no possible next positions AND we aren't waiting for the black-box parser,
+        // then there is a syntax error.
+        if bb_items.is_empty() && next_items.is_empty() {
+            return Failure(parser.token.clone(), "no rules expected this token in macro call");
+        }
         // Another possibility is that we need to call out to parse some rust nonterminal
         // (black-box) parser. However, if there is not EXACTLY ONE of these, something is wrong.
-        if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
+        else if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
             let nts = bb_items
                 .iter()
                 .map(|item| match item.top_elts.get_tt(item.idx) {
@@ -732,16 +721,11 @@ pub(super) fn parse(
                 ),
             );
         }
-        // If there are no possible next positions AND we aren't waiting for the black-box parser,
-        // then there is a syntax error.
-        else if bb_items.is_empty() && next_items.is_empty() {
-            return Failure(parser.token.take(), "no rules expected this token in macro call");
-        }
         // Dump all possible `next_items` into `cur_items` for the next iteration.
         else if !next_items.is_empty() {
             // Now process the next token
             cur_items.extend(next_items.drain(..));
-            parser.bump();
+            parser.to_mut().bump();
         }
         // Finally, we have the case where we need to call the black-box parser to get some
         // nonterminal.
@@ -753,7 +737,7 @@ pub(super) fn parse(
                 let match_cur = item.match_cur;
                 item.push_match(
                     match_cur,
-                    MatchedNonterminal(Lrc::new(parse_nt(&mut parser, span, ident.name))),
+                    MatchedNonterminal(Lrc::new(parse_nt(parser.to_mut(), span, ident.name))),
                 );
                 item.idx += 1;
                 item.match_cur += 1;
@@ -769,11 +753,8 @@ pub(super) fn parse(
 
 /// The token is an identifier, but not `_`.
 /// We prohibit passing `_` to macros expecting `ident` for now.
-fn get_macro_name(token: &Token) -> Option<(Name, bool)> {
-    match token.kind {
-        token::Ident(name, is_raw) if name != kw::Underscore => Some((name, is_raw)),
-        _ => None,
-    }
+fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
+    token.ident().filter(|(ident, _)| ident.name != kw::Underscore)
 }
 
 /// Checks whether a non-terminal may begin with a particular token.
@@ -796,8 +777,8 @@ fn may_begin_with(token: &Token, name: Name) -> bool {
             && !token.is_keyword(kw::Let)
         }
         sym::ty => token.can_begin_type(),
-        sym::ident => get_macro_name(token).is_some(),
-        sym::literal => token.can_begin_literal_or_bool(),
+        sym::ident => get_macro_ident(token).is_some(),
+        sym::literal => token.can_begin_literal_maybe_minus(),
         sym::vis => match token.kind {
             // The follow-set of :vis + "priv" keyword + interpolated
             token::Comma | token::Ident(..) | token::Interpolated(_) => true,
@@ -875,8 +856,6 @@ fn parse_nt(p: &mut Parser<'_>, sp: Span, name: Symbol) -> Nonterminal {
     if name == sym::tt {
         return token::NtTT(p.parse_token_tree());
     }
-    // check at the beginning and the parser checks after each bump
-    p.process_potential_macro_variable();
     match parse_nt_inner(p, sp, name) {
         Ok(nt) => nt,
         Err(mut err) => {
@@ -903,10 +882,9 @@ fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a,
         sym::ty => token::NtTy(p.parse_ty()?),
         // this could be handled like a token, since it is one
         sym::ident => {
-            if let Some((name, is_raw)) = get_macro_name(&p.token) {
-                let span = p.token.span;
+            if let Some((ident, is_raw)) = get_macro_ident(&p.token) {
                 p.bump();
-                token::NtIdent(Ident::new(name, span), is_raw)
+                token::NtIdent(ident, is_raw)
             } else {
                 let token_str = pprust::token_to_string(&p.token);
                 let msg = &format!("expected ident, found {}", &token_str);
@@ -914,7 +892,7 @@ fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a,
             }
         }
         sym::path => token::NtPath(p.parse_path(PathStyle::Type)?),
-        sym::meta => token::NtMeta(p.parse_attr_item()?),
+        sym::meta => token::NtMeta(P(p.parse_attr_item()?)),
         sym::vis => token::NtVis(p.parse_visibility(FollowedByType::Yes)?),
         sym::lifetime => {
             if p.check_lifetime() {

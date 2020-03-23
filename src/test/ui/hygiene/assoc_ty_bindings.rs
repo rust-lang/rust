@@ -12,8 +12,8 @@ trait Derived: Base {
 }
 
 macro mac() {
-    type A = Base<AssocTy = u8>;
-    type B = Derived<AssocTy = u8>;
+    type A = dyn Base<AssocTy = u8>;
+    type B = dyn Derived<AssocTy = u8>;
 
     impl Base for u8 {
         type AssocTy = u8;

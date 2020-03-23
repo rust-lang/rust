@@ -15,8 +15,11 @@ LL |     3i32.test();
    |          ^^^^ method not found in `i32`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `test`, perhaps you need to implement it:
-           candidate #1: `Foo`
+note: `Foo` defines an item `test`, perhaps you need to implement it
+  --> $DIR/trivial-bounds-leak.rs:4:1
+   |
+LL | pub trait Foo {
+   | ^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/trivial-bounds-leak.rs:25:15

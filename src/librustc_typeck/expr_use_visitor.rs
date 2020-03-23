@@ -7,12 +7,12 @@ pub use self::ConsumeMode::*;
 // Export these here so that Clippy can use them.
 pub use mc::{Place, PlaceBase, Projection};
 
-use rustc::infer::InferCtxt;
 use rustc::ty::{self, adjustment, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::PatKind;
+use rustc_infer::infer::InferCtxt;
 
 use crate::mem_categorization as mc;
 use rustc_span::Span;
@@ -519,7 +519,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             for &var_id in upvars.keys() {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath { hir_id: var_id },
-                    closure_expr_id: closure_def_id.to_local(),
+                    closure_expr_id: closure_def_id.expect_local(),
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let captured_place = return_if_err!(self.cat_captured_var(

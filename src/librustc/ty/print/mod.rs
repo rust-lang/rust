@@ -97,7 +97,7 @@ pub trait Printer<'tcx>: Sized {
         args: &[GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error>;
 
-    // Defaults (should not be overriden):
+    // Defaults (should not be overridden):
 
     fn default_print_def_path(
         self,

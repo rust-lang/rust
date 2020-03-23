@@ -1,5 +1,5 @@
 pub use self::Level::*;
-use crate::node_id::{NodeId, NodeMap};
+use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_span::edition::Edition;
 use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
@@ -190,6 +190,7 @@ pub enum BuiltinLintDiagnostics {
     UnusedImports(String, Vec<(Span, String)>),
     RedundantImport(Vec<(Span, bool)>, Ident),
     DeprecatedMacro(Option<Symbol>, Span),
+    UnusedDocComment(Span),
 }
 
 /// Lints that are buffered up early on in the `Session` before the

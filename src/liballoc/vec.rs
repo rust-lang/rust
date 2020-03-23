@@ -4,6 +4,8 @@
 //! Vectors have `O(1)` indexing, amortized `O(1)` push (to the end) and
 //! `O(1)` pop (from the end).
 //!
+//! Vectors ensure they never allocate more than `isize::MAX` bytes.
+//!
 //! # Examples
 //!
 //! You can explicitly create a [`Vec<T>`] with [`new`]:
@@ -315,7 +317,7 @@ impl<T> Vec<T> {
     /// let mut vec: Vec<i32> = Vec::new();
     /// ```
     #[inline]
-    #[rustc_const_stable(feature = "const_vec_new", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_vec_new", since = "1.39.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn new() -> Vec<T> {
         Vec { buf: RawVec::NEW, len: 0 }
@@ -402,7 +404,10 @@ impl<T> Vec<T> {
     ///
     /// * `ptr` needs to have been previously allocated via [`String`]/`Vec<T>`
     ///   (at least, it's highly likely to be incorrect if it wasn't).
-    /// * `ptr`'s `T` needs to have the same size and alignment as it was allocated with.
+    /// * `T` needs to have the same size and alignment as what `ptr` was allocated with.
+    ///   (`T` having a less strict alignment is not sufficient, the alignment really
+    ///   needs to be equal to satsify the [`dealloc`] requirement that memory must be
+    ///   allocated and deallocated with the same layout.)
     /// * `length` needs to be less than or equal to `capacity`.
     /// * `capacity` needs to be the capacity that the pointer was allocated with.
     ///
@@ -421,6 +426,7 @@ impl<T> Vec<T> {
     /// function.
     ///
     /// [`String`]: ../../std/string/struct.String.html
+    /// [`dealloc`]: ../../alloc/alloc/trait.GlobalAlloc.html#tymethod.dealloc
     ///
     /// # Examples
     ///
@@ -1371,6 +1377,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec2, [2, 3]);
     /// ```
     #[inline]
+    #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
     pub fn split_off(&mut self, at: usize) -> Self {
         assert!(at <= self.len(), "`at` out of bounds");
@@ -1470,8 +1477,9 @@ impl<T: Clone> Vec<T> {
     /// difference, with each additional slot filled with `value`.
     /// If `new_len` is less than `len`, the `Vec` is simply truncated.
     ///
-    /// This method requires [`Clone`] to be able clone the passed value. If
-    /// you need more flexibility (or want to rely on [`Default`] instead of
+    /// This method requires `T` to implement [`Clone`],
+    /// in order to be able to clone the passed value.
+    /// If you need more flexibility (or want to rely on [`Default`] instead of
     /// [`Clone`]), use [`resize_with`].
     ///
     /// # Examples
@@ -1652,7 +1660,7 @@ struct SetLenOnDrop<'a> {
 impl<'a> SetLenOnDrop<'a> {
     #[inline]
     fn new(len: &'a mut usize) -> Self {
-        SetLenOnDrop { local_len: *len, len: len }
+        SetLenOnDrop { local_len: *len, len }
     }
 
     #[inline]
@@ -2619,11 +2627,21 @@ impl<T: Clone> Clone for IntoIter<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
     fn drop(&mut self) {
-        // destroy the remaining elements
-        for _x in self.by_ref() {}
+        struct DropGuard<'a, T>(&'a mut IntoIter<T>);
 
-        // RawVec handles deallocation
-        let _ = unsafe { RawVec::from_raw_parts(self.buf.as_ptr(), self.cap) };
+        impl<T> Drop for DropGuard<'_, T> {
+            fn drop(&mut self) {
+                // RawVec handles deallocation
+                let _ = unsafe { RawVec::from_raw_parts(self.0.buf.as_ptr(), self.0.cap) };
+            }
+        }
+
+        let guard = DropGuard(self);
+        // destroy the remaining elements
+        unsafe {
+            ptr::drop_in_place(guard.0.as_mut_slice());
+        }
+        // now `guard` will be dropped and do the rest
     }
 }
 
@@ -2700,23 +2718,42 @@ impl<T> DoubleEndedIterator for Drain<'_, T> {
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T> Drop for Drain<'_, T> {
     fn drop(&mut self) {
-        // exhaust self first
-        self.for_each(drop);
+        /// Continues dropping the remaining elements in the `Drain`, then moves back the
+        /// un-`Drain`ed elements to restore the original `Vec`.
+        struct DropGuard<'r, 'a, T>(&'r mut Drain<'a, T>);
 
-        if self.tail_len > 0 {
-            unsafe {
-                let source_vec = self.vec.as_mut();
-                // memmove back untouched tail, update to new length
-                let start = source_vec.len();
-                let tail = self.tail_start;
-                if tail != start {
-                    let src = source_vec.as_ptr().add(tail);
-                    let dst = source_vec.as_mut_ptr().add(start);
-                    ptr::copy(src, dst, self.tail_len);
+        impl<'r, 'a, T> Drop for DropGuard<'r, 'a, T> {
+            fn drop(&mut self) {
+                // Continue the same loop we have below. If the loop already finished, this does
+                // nothing.
+                self.0.for_each(drop);
+
+                if self.0.tail_len > 0 {
+                    unsafe {
+                        let source_vec = self.0.vec.as_mut();
+                        // memmove back untouched tail, update to new length
+                        let start = source_vec.len();
+                        let tail = self.0.tail_start;
+                        if tail != start {
+                            let src = source_vec.as_ptr().add(tail);
+                            let dst = source_vec.as_mut_ptr().add(start);
+                            ptr::copy(src, dst, self.0.tail_len);
+                        }
+                        source_vec.set_len(start + self.0.tail_len);
+                    }
                 }
-                source_vec.set_len(start + self.tail_len);
             }
         }
+
+        // exhaust self first
+        while let Some(item) = self.next() {
+            let guard = DropGuard(self);
+            drop(item);
+            mem::forget(guard);
+        }
+
+        // Drop a `DropGuard` to move back the non-drained tail of `self`.
+        DropGuard(self);
     }
 }
 
@@ -2866,7 +2903,7 @@ where
     /// The filter test predicate.
     pred: F,
     /// A flag that indicates a panic has occurred in the filter test prodicate.
-    /// This is used as a hint in the drop implmentation to prevent consumption
+    /// This is used as a hint in the drop implementation to prevent consumption
     /// of the remainder of the `DrainFilter`. Any unprocessed items will be
     /// backshifted in the `vec`, but no further items will be dropped or
     /// tested by the filter predicate.

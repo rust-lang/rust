@@ -1,30 +1,42 @@
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-convert-unsafe-trait-obj.rs:16:25
    |
+LL | trait Trait: Sized {}
+   |       -----  ----- ...because it requires `Self: Sized`
+   |       |
+   |       this trait cannot be made into an object...
+...
 LL |     let t: &dyn Trait = &S;
    |                         ^^ the trait `Trait` cannot be made into an object
    |
-   = note: the trait cannot require that `Self : Sized`
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Trait>` for `&S`
    = note: required by cast to type `&dyn Trait`
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-convert-unsafe-trait-obj.rs:17:17
    |
+LL | trait Trait: Sized {}
+   |       -----  ----- ...because it requires `Self: Sized`
+   |       |
+   |       this trait cannot be made into an object...
+...
 LL |     takes_trait(&S);
    |                 ^^ the trait `Trait` cannot be made into an object
    |
-   = note: the trait cannot require that `Self : Sized`
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Trait>` for `&S`
    = note: required by cast to type `&dyn Trait`
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-convert-unsafe-trait-obj.rs:15:5
    |
+LL | trait Trait: Sized {}
+   |       -----  ----- ...because it requires `Self: Sized`
+   |       |
+   |       this trait cannot be made into an object...
+...
 LL |     &S as &dyn Trait;
    |     ^^ the trait `Trait` cannot be made into an object
    |
-   = note: the trait cannot require that `Self : Sized`
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Trait>` for `&S`
    = note: required by cast to type `&dyn Trait`
 

@@ -1,0 +1,15 @@
+error[E0499]: cannot borrow `foo[_]` as mutable more than once at a time
+  --> $DIR/suggest-split-at-mut.rs:4:13
+   |
+LL |     let a = &mut foo[2];
+   |             ----------- first mutable borrow occurs here
+LL |     let b = &mut foo[3];
+   |             ^^^^^^^^^^^ second mutable borrow occurs here
+LL |     *a = 5;
+   |     ------ first borrow later used here
+   |
+   = help: consider using `.split_at_mut(position)` or similar method to obtain two mutable non-overlapping sub-slices
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0499`.

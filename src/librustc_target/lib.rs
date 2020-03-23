@@ -8,10 +8,14 @@
 //! LLVM.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![feature(box_syntax)]
 #![feature(bool_to_option)]
+#![feature(const_if_match)]
+#![feature(const_fn)]
+#![feature(const_panic)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(slice_patterns))]
+#![feature(never_type)]
+#![feature(associated_type_bounds)]
+#![feature(exhaustive_patterns)]
 
 #[macro_use]
 extern crate log;

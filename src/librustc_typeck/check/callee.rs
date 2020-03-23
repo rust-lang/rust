@@ -3,18 +3,18 @@ use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
 use crate::type_error_struct;
 
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::{infer, traits};
+use rustc_ast::ast::Ident;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::{infer, traits};
 use rustc_span::Span;
 use rustc_target::spec::abi;
-use syntax::ast::Ident;
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
@@ -105,12 +105,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
                 if self.closure_kind(def_id, substs).is_none() {
-                    let closure_ty = self.closure_sig(def_id, substs);
-                    let fn_sig = self
+                    let closure_sig = substs.as_closure().sig(def_id, self.tcx);
+                    let closure_sig = self
                         .replace_bound_vars_with_fresh_vars(
                             call_expr.span,
                             infer::FnCall,
-                            &closure_ty,
+                            &closure_sig,
                         )
                         .0;
                     let adjustments = autoderef.adjust_steps(self, Needs::None);
@@ -121,12 +121,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             callee_expr,
                             adjusted_ty,
                             adjustments,
-                            fn_sig,
+                            fn_sig: closure_sig,
                             closure_def_id: def_id,
                             closure_substs: substs,
                         },
                     );
-                    return Some(CallStep::DeferredClosure(fn_sig));
+                    return Some(CallStep::DeferredClosure(closure_sig));
                 }
             }
 

@@ -146,7 +146,7 @@ crate fn program_clauses_for_env<'tcx>(
 
     debug!("program_clauses_for_env: closure = {:#?}", closure);
 
-    return tcx.mk_clauses(closure.into_iter());
+    tcx.mk_clauses(closure.into_iter())
 }
 
 crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
@@ -161,7 +161,7 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
     }
 
     // Compute the bounds on `Self` and the type parameters.
-    let ty::InstantiatedPredicates { predicates } =
+    let ty::InstantiatedPredicates { predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
 
     let clauses = predicates
@@ -185,12 +185,12 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
 
     let node_kind = match node {
         Node::TraitItem(item) => match item.kind {
-            TraitItemKind::Method(..) => NodeKind::Fn,
+            TraitItemKind::Fn(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         },
 
         Node::ImplItem(item) => match item.kind {
-            ImplItemKind::Method(..) => NodeKind::Fn,
+            ImplItemKind::Fn(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         },
 

@@ -7,15 +7,15 @@ LL | #![feature(const_generics, const_compare_raw_pointers)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0308]: mismatched types
-  --> $DIR/raw-ptr-const-param.rs:7:38
+  --> $DIR/raw-ptr-const-param.rs:7:40
    |
-LL |     let _: Const<{15 as *const _}> = Const::<{10 as *const _}>;
-   |            -----------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{pointer}`, found `{pointer}`
+LL |     let _: Const<{ 15 as *const _ }> = Const::<{ 10 as *const _ }>;
+   |            -------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{0xf as *const u32}`, found `{0xa as *const u32}`
    |            |
    |            expected due to this
    |
-   = note: expected struct `Const<{pointer}>`
-              found struct `Const<{pointer}>`
+   = note: expected struct `Const<{0xf as *const u32}>`
+              found struct `Const<{0xa as *const u32}>`
 
 error: aborting due to previous error
 

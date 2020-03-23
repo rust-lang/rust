@@ -1,11 +1,15 @@
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/issue-48027.rs:6:6
    |
+LL | trait Bar {
+   |       --- this trait cannot be made into an object...
 LL |     const X: usize;
-   |           - the trait cannot contain associated consts like `X`
+   |           - ...because it contains this associated `const`
 ...
 LL | impl dyn Bar {}
    |      ^^^^^^^ the trait `Bar` cannot be made into an object
+   |
+   = help: consider moving `X` to another trait
 
 error[E0283]: type annotations needed
   --> $DIR/issue-48027.rs:3:32

@@ -4,7 +4,7 @@ error[E0658]: `loop` is not allowed in a `const`
 LL | const FOO: () = loop { break; };
    |                 ^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
 error[E0658]: `loop` is not allowed in a `const`
@@ -13,7 +13,7 @@ error[E0658]: `loop` is not allowed in a `const`
 LL |     [FOO; { let x; loop { x = 5; break; } x }];
    |                    ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors

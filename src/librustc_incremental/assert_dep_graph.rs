@@ -38,6 +38,7 @@ use rustc::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 use rustc::dep_graph::{DepGraphQuery, DepKind, DepNode};
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{Direction, NodeIndex, INCOMING, OUTGOING};
 use rustc_hir as hir;
@@ -45,11 +46,10 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use syntax::ast;
 
 use std::env;
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{BufWriter, Write};
 
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
@@ -68,7 +68,7 @@ pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
         let (if_this_changed, then_this_would_need) = {
             let mut visitor =
                 IfThisChanged { tcx, if_this_changed: vec![], then_this_would_need: vec![] };
-            visitor.process_attrs(hir::CRATE_HIR_ID, &tcx.hir().krate().attrs);
+            visitor.process_attrs(hir::CRATE_HIR_ID, &tcx.hir().krate().item.attrs);
             tcx.hir().krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
             (visitor.if_this_changed, visitor.then_this_would_need)
         };
@@ -120,7 +120,7 @@ impl IfThisChanged<'tcx> {
             if attr.check_name(sym::rustc_if_this_changed) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
-                    None => def_path_hash.to_dep_node(DepKind::Hir),
+                    None => DepNode::from_def_path_hash(def_path_hash, DepKind::hir_owner),
                     Some(n) => match DepNode::from_label_string(&n.as_str(), def_path_hash) {
                         Ok(n) => n,
                         Err(()) => {
@@ -162,8 +162,8 @@ impl IfThisChanged<'tcx> {
 impl Visitor<'tcx> for IfThisChanged<'tcx> {
     type Map = Map<'tcx>;
 
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, Self::Map> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
@@ -235,7 +235,7 @@ fn dump_graph(tcx: TyCtxt<'_>) {
     {
         // dump a .txt file with just the edges:
         let txt_path = format!("{}.txt", path);
-        let mut file = File::create(&txt_path).unwrap();
+        let mut file = BufWriter::new(File::create(&txt_path).unwrap());
         for &(ref source, ref target) in &edges {
             write!(file, "{:?} -> {:?}\n", source, target).unwrap();
         }

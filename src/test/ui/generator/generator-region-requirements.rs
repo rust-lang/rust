@@ -8,7 +8,7 @@ fn dangle(x: &mut i32) -> &'static mut i32 {
         x
     };
     loop {
-        match Pin::new(&mut g).resume() {
+        match Pin::new(&mut g).resume(()) {
             GeneratorState::Complete(c) => return c,
             //~^ ERROR explicit lifetime required
             GeneratorState::Yielded(_) => (),

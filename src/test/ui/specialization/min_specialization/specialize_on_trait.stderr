@@ -1,0 +1,11 @@
+error: cannot specialize on trait `SpecMarker`
+  --> $DIR/specialize_on_trait.rs:15:1
+   |
+LL | / impl<T: SpecMarker> X for T {
+LL | |
+LL | |     fn f() {}
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

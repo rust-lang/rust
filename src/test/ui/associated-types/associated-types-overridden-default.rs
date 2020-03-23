@@ -1,3 +1,8 @@
+// check-pass
+
+// Before RFC 2532, overriding one assoc. type default required overriding all
+// provided defaults.
+
 #![feature(associated_type_defaults)]
 
 pub trait Tr {
@@ -9,7 +14,9 @@ pub trait Tr {
 
 impl Tr for () {
     type Assoc = ();
-    //~^ ERROR need to be reimplemented as `Assoc` was overridden: `Assoc2`, `C`, `foo`
 }
 
-fn main() {}
+fn main() {
+    let _: <() as Tr>::Assoc = ();
+    let _: <() as Tr>::Assoc2 = ();
+}

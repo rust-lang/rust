@@ -680,13 +680,20 @@ fn characteristic_def_id_of_mono_item<'tcx>(
 
             if tcx.trait_of_item(def_id).is_some() {
                 let self_ty = instance.substs.type_at(0);
-                // This is an implementation of a trait method.
+                // This is a default implementation of a trait method.
                 return characteristic_def_id_of_type(self_ty).or(Some(def_id));
             }
 
             if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
-                // This is a method within an inherent impl, find out what the
-                // self-type is:
+                if tcx.sess.opts.incremental.is_some()
+                    && tcx.trait_id_of_impl(impl_def_id) == tcx.lang_items().drop_trait()
+                {
+                    // Put `Drop::drop` into the same cgu as `drop_in_place`
+                    // since `drop_in_place` is the only thing that can
+                    // call it.
+                    return None;
+                }
+                // This is a method within an impl, find out what the self-type is:
                 let impl_self_ty = tcx.subst_and_normalize_erasing_regions(
                     instance.substs,
                     ty::ParamEnv::reveal_all(),

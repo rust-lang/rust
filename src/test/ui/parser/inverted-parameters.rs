@@ -21,6 +21,7 @@ fn pattern((i32, i32) (a, b)) {}
 fn fizz(i32) {}
 //~^ ERROR expected one of `:`, `@`
 //~| HELP if this was a parameter name, give it a type
+//~| HELP if this is a `self` type, give it a parameter name
 //~| HELP if this is a type, explicitly ignore the parameter name
 
 fn missing_colon(quux S) {}

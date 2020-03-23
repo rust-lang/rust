@@ -5,12 +5,15 @@ LL |     type Assoc: Partial<Self>;
    |          ----- associated type defined here
 ...
 LL | impl<T> Complete for T {
-   | ----------------------
-   | |    |
-   | |    help: consider restricting this bound: `T: std::marker::Copy`
-   | in this `impl` item
+   | ---------------------- in this `impl` item
 LL |     type Assoc = T;
    |     ^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |
+help: consider restricting this type parameter with `T: std::marker::Copy`
+  --> $DIR/issue-43784-associated-type.rs:13:6
+   |
+LL | impl<T> Complete for T {
+   |      ^
 
 error: aborting due to previous error
 

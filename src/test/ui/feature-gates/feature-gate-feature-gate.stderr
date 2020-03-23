@@ -4,7 +4,7 @@ error: unstable feature
 LL | #![feature(intrinsics)]
    |            ^^^^^^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/feature-gate-feature-gate.rs:1:11
    |
 LL | #![forbid(unstable_features)]

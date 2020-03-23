@@ -1,12 +1,12 @@
-use rustc::infer::canonical::QueryOutlivesConstraint;
-use rustc::infer::canonical::QueryRegionConstraints;
-use rustc::infer::outlives::env::RegionBoundPairs;
-use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
-use rustc::infer::region_constraints::{GenericKind, VerifyBound};
-use rustc::infer::{self, InferCtxt, SubregionOrigin};
 use rustc::mir::ConstraintCategory;
 use rustc::ty::subst::GenericArgKind;
 use rustc::ty::{self, TyCtxt};
+use rustc_infer::infer::canonical::QueryOutlivesConstraint;
+use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_infer::infer::outlives::env::RegionBoundPairs;
+use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
+use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
+use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_span::DUMMY_SP;
 
 use crate::borrow_check::{
@@ -160,7 +160,8 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) {
-        if let ty::ReEmpty = a {
+        // FIXME -- this is not the fix I would prefer
+        if let ty::ReEmpty(ty::UniverseIndex::ROOT) = a {
             return;
         }
         let b = self.to_region_vid(b);
@@ -175,7 +176,8 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         a: ty::Region<'tcx>,
         bound: VerifyBound<'tcx>,
     ) {
-        if let ty::ReEmpty = a {
+        // FIXME: I'd prefer if NLL had a notion of empty
+        if let ty::ReEmpty(ty::UniverseIndex::ROOT) = a {
             return;
         }
         let type_test = self.verify_to_type_test(kind, a, bound);

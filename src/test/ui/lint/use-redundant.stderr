@@ -4,7 +4,7 @@ warning: unused import: `m1::*`
 LL | use m1::*;
    |     ^^^^^
    |
-note: lint level defined here
+note: the lint level is defined here
   --> $DIR/use-redundant.rs:2:9
    |
 LL | #![warn(unused_imports)]

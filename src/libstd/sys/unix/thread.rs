@@ -255,8 +255,9 @@ pub mod guard {
 
     #[cfg(target_os = "macos")]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
-        let stackaddr = libc::pthread_get_stackaddr_np(libc::pthread_self()) as usize
-            - libc::pthread_get_stacksize_np(libc::pthread_self());
+        let th = libc::pthread_self();
+        let stackaddr =
+            libc::pthread_get_stackaddr_np(th) as usize - libc::pthread_get_stacksize_np(th);
         Some(stackaddr as *mut libc::c_void)
     }
 
@@ -426,8 +427,8 @@ pub mod guard {
 }
 
 // glibc >= 2.15 has a __pthread_get_minstack() function that returns
-// PTHREAD_STACK_MIN plus however many bytes are needed for thread-local
-// storage.  We need that information to avoid blowing up when a small stack
+// PTHREAD_STACK_MIN plus bytes needed for thread-local storage.
+// We need that information to avoid blowing up when a small stack
 // is created in an application with big thread-local storage requirements.
 // See #6233 for rationale and details.
 #[cfg(target_os = "linux")]

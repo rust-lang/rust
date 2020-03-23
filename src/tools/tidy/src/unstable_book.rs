@@ -1,4 +1,4 @@
-use crate::features::{CollectedFeatures, Feature, Features, Status};
+use crate::features::{CollectedFeatures, Features, Status};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -73,25 +73,11 @@ fn collect_unstable_book_lib_features_section_file_names(base_src_path: &Path) -
 
 pub fn check(path: &Path, features: CollectedFeatures, bad: &mut bool) {
     let lang_features = features.lang;
-    let mut lib_features = features
+    let lib_features = features
         .lib
         .into_iter()
         .filter(|&(ref name, _)| !lang_features.contains_key(name))
         .collect::<Features>();
-
-    // This library feature is defined in the `compiler_builtins` crate, which
-    // has been moved out-of-tree. Now it can no longer be auto-discovered by
-    // `tidy`, because we need to filter out its (submodule) directory. Manually
-    // add it to the set of known library features so we can still generate docs.
-    lib_features.insert(
-        "compiler_builtins_lib".to_owned(),
-        Feature {
-            level: Status::Unstable,
-            since: None,
-            has_gate_test: false,
-            tracking_issue: None,
-        },
-    );
 
     // Library features
     let unstable_lib_feature_names = collect_unstable_feature_names(&lib_features);

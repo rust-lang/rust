@@ -157,6 +157,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         }
     }
 }
+
 impl PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
     fn region_should_not_be_omitted(&self, _region: ty::Region<'_>) -> bool {
         false
@@ -191,7 +192,8 @@ impl PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
 
 impl Write for AbsolutePathPrinter<'_> {
     fn write_str(&mut self, s: &str) -> std::fmt::Result {
-        Ok(self.path.push_str(s))
+        self.path.push_str(s);
+        Ok(())
     }
 }
 

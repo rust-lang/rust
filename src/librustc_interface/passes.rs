@@ -5,43 +5,40 @@ use crate::util;
 use log::{info, log_enabled, warn};
 use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
-use rustc::hir::map;
-use rustc::lint;
+use rustc::hir::map::Definitions;
 use rustc::middle;
 use rustc::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
-use rustc::session::config::{self, CrateType, Input, OutputFilenames, OutputType};
-use rustc::session::config::{PpMode, PpSourceMode};
-use rustc::session::search_paths::PathKind;
-use rustc::session::Session;
-use rustc::traits;
 use rustc::ty::steal::Steal;
 use rustc::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc::util::common::ErrorReported;
-use rustc_builtin_macros;
+use rustc_ast::mut_visit::MutVisitor;
+use rustc_ast::{self, ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_codegen_utils::link::filename_for_metadata;
+use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::sync::{par_iter, Lrc, Once, ParallelIterator, WorkerLocal};
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_incremental;
+use rustc_hir::Crate;
 use rustc_lint::LintStore;
 use rustc_mir as mir;
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
-use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
+use rustc_session::config::{
+    self, CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode,
+};
+use rustc_session::lint;
+use rustc_session::output::{filename_for_input, filename_for_metadata};
+use rustc_session::search_paths::PathKind;
+use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
-use rustc_traits;
+use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
-use syntax::mut_visit::MutVisitor;
-use syntax::util::node_count::NodeCounter;
-use syntax::{self, ast, visit};
 
 use rustc_serialize::json;
 use tempfile::Builder as TempFileBuilder;
@@ -49,7 +46,7 @@ use tempfile::Builder as TempFileBuilder;
 use std::any::Any;
 use std::cell::RefCell;
 use std::ffi::OsString;
-use std::io::{self, Write};
+use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::{env, fs, iter, mem};
@@ -83,7 +80,7 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
 }
 
 fn count_nodes(krate: &ast::Crate) -> usize {
-    let mut counter = NodeCounter::new();
+    let mut counter = rustc_ast_passes::node_count::NodeCounter::new();
     visit::walk_crate(&mut counter, krate);
     counter.count
 }
@@ -193,7 +190,7 @@ pub fn register_plugins<'a>(
     }
 
     sess.time("recursion_limit", || {
-        middle::recursion_limit::update_limits(sess, &krate);
+        middle::limits::update_limits(sess, &krate);
     });
 
     let mut lint_store = rustc_lint::new_lint_store(
@@ -214,14 +211,7 @@ pub fn register_plugins<'a>(
     Ok((krate, Lrc::new(lint_store)))
 }
 
-fn configure_and_expand_inner<'a>(
-    sess: &'a Session,
-    lint_store: &'a LintStore,
-    mut krate: ast::Crate,
-    crate_name: &str,
-    resolver_arenas: &'a ResolverArenas<'a>,
-    metadata_loader: &'a MetadataLoaderDyn,
-) -> Result<(ast::Crate, Resolver<'a>)> {
+fn pre_expansion_lint(sess: &Session, lint_store: &LintStore, krate: &ast::Crate) {
     sess.time("pre_AST_expansion_lint_checks", || {
         rustc_lint::check_ast_crate(
             sess,
@@ -232,6 +222,17 @@ fn configure_and_expand_inner<'a>(
             rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
         );
     });
+}
+
+fn configure_and_expand_inner<'a>(
+    sess: &'a Session,
+    lint_store: &'a LintStore,
+    mut krate: ast::Crate,
+    crate_name: &str,
+    resolver_arenas: &'a ResolverArenas<'a>,
+    metadata_loader: &'a MetadataLoaderDyn,
+) -> Result<(ast::Crate, Resolver<'a>)> {
+    pre_expansion_lint(sess, lint_store, &krate);
 
     let mut resolver = Resolver::new(sess, &krate, crate_name, metadata_loader, &resolver_arenas);
     rustc_builtin_macros::register_builtin_macros(&mut resolver, sess.edition());
@@ -295,7 +296,8 @@ fn configure_and_expand_inner<'a>(
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
-        let mut ecx = ExtCtxt::new(&sess.parse_sess, cfg, &mut resolver);
+        let extern_mod_loaded = |k: &ast::Crate| pre_expansion_lint(sess, lint_store, k);
+        let mut ecx = ExtCtxt::new(&sess.parse_sess, cfg, &mut resolver, Some(&extern_mod_loaded));
 
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
@@ -310,6 +312,8 @@ fn configure_and_expand_inner<'a>(
             ecx.parse_sess.missing_fragment_specifiers.borrow().iter().cloned().collect();
         missing_fragment_specifiers.sort();
 
+        let recursion_limit_hit = ecx.reduced_recursion_limit.is_some();
+
         for span in missing_fragment_specifiers {
             let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
             let msg = "missing fragment specifier";
@@ -318,8 +322,15 @@ fn configure_and_expand_inner<'a>(
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }
-        krate
-    });
+
+        if recursion_limit_hit {
+            // If we hit a recursion limit, exit early to avoid later passes getting overwhelmed
+            // with a large AST
+            Err(ErrorReported)
+        } else {
+            Ok(krate)
+        }
+    })?;
 
     sess.time("maybe_building_test_harness", || {
         rustc_builtin_macros::test_harness::inject(
@@ -427,7 +438,7 @@ pub fn lower_to_hir<'res, 'tcx>(
     dep_graph: &'res DepGraph,
     krate: &'res ast::Crate,
     arena: &'tcx Arena<'tcx>,
-) -> Result<map::Forest<'tcx>> {
+) -> Crate<'tcx> {
     // Lower AST to HIR.
     let hir_crate = rustc_ast_lowering::lower_crate(
         sess,
@@ -441,8 +452,6 @@ pub fn lower_to_hir<'res, 'tcx>(
     if sess.opts.debugging_opts.hir_stats {
         hir_stats::print_hir_stats(&hir_crate);
     }
-
-    let hir_forest = map::Forest::new(hir_crate, &dep_graph);
 
     sess.time("early_lint_checks", || {
         rustc_lint::check_ast_crate(
@@ -460,7 +469,7 @@ pub fn lower_to_hir<'res, 'tcx>(
         rustc_span::hygiene::clear_syntax_context_map();
     }
 
-    Ok(hir_forest)
+    hir_crate
 }
 
 // Returns all the paths that correspond to generated files.
@@ -478,12 +487,7 @@ fn generated_output_paths(
             // by appending `.rlib`, `.exe`, etc., so we can skip this transformation.
             OutputType::Exe if !exact_name => {
                 for crate_type in sess.crate_types.borrow().iter() {
-                    let p = ::rustc_codegen_utils::link::filename_for_input(
-                        sess,
-                        *crate_type,
-                        crate_name,
-                        outputs,
-                    );
+                    let p = filename_for_input(sess, *crate_type, crate_name, outputs);
                     out_filenames.push(p);
                 }
             }
@@ -575,7 +579,7 @@ fn write_out_deps(
             });
         }
 
-        let mut file = fs::File::create(&deps_filename)?;
+        let mut file = BufWriter::new(fs::File::create(&deps_filename)?);
         for path in out_filenames {
             writeln!(file, "{}: {}\n", path.display(), files.join(" "))?;
         }
@@ -683,7 +687,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     rustc_ty::provide(providers);
     rustc_metadata::provide(providers);
     rustc_lint::provide(providers);
-    rustc_codegen_utils::provide(providers);
+    rustc_symbol_mangling::provide(providers);
     rustc_codegen_ssa::provide(providers);
 }
 
@@ -702,15 +706,16 @@ impl<'tcx> QueryContext<'tcx> {
         ty::tls::enter_global(self.0, |tcx| f(tcx))
     }
 
-    pub fn print_stats(&self) {
-        self.0.queries.print_stats()
+    pub fn print_stats(&mut self) {
+        self.enter(|tcx| ty::query::print_stats(tcx))
     }
 }
 
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     lint_store: Lrc<LintStore>,
-    hir_forest: &'tcx map::Forest<'tcx>,
+    krate: &'tcx Crate<'tcx>,
+    dep_graph: DepGraph,
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
@@ -718,10 +723,7 @@ pub fn create_global_ctxt<'tcx>(
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
-    let defs = mem::take(&mut resolver_outputs.definitions);
-
-    // Construct the HIR map.
-    let hir_map = map::map_crate(sess, &*resolver_outputs.cstore, &hir_forest, defs);
+    let defs: &'tcx Definitions = arena.alloc(mem::take(&mut resolver_outputs.definitions));
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
@@ -747,7 +749,9 @@ pub fn create_global_ctxt<'tcx>(
                 extern_providers,
                 arena,
                 resolver_outputs,
-                hir_map,
+                krate,
+                defs,
+                dep_graph,
                 query_result_on_disk_cache,
                 &crate_name,
                 &outputs,
@@ -767,6 +771,8 @@ pub fn create_global_ctxt<'tcx>(
 /// miscellaneous analysis passes on the crate.
 fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     assert_eq!(cnum, LOCAL_CRATE);
+
+    rustc::hir::map::check_crate(tcx);
 
     let sess = tcx.sess;
     let mut entry_point = None;

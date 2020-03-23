@@ -13,6 +13,10 @@ impl Handler {
     pub unsafe fn new() -> Handler {
         make_handler()
     }
+
+    fn null() -> Handler {
+        Handler { _data: crate::ptr::null_mut() }
+    }
 }
 
 impl Drop for Handler {
@@ -41,8 +45,9 @@ mod imp {
     use libc::{mmap, munmap};
     use libc::{sigaction, sighandler_t, SA_ONSTACK, SA_SIGINFO, SIGBUS, SIG_DFL};
     use libc::{sigaltstack, SIGSTKSZ, SS_DISABLE};
-    use libc::{MAP_ANON, MAP_PRIVATE, PROT_READ, PROT_WRITE, SIGSEGV};
+    use libc::{MAP_ANON, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE, SIGSEGV};
 
+    use crate::sys::unix::os::page_size;
     use crate::sys_common::thread_info;
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -108,13 +113,20 @@ mod imp {
     }
 
     static mut MAIN_ALTSTACK: *mut libc::c_void = ptr::null_mut();
+    static mut NEED_ALTSTACK: bool = false;
 
     pub unsafe fn init() {
         let mut action: sigaction = mem::zeroed();
-        action.sa_flags = SA_SIGINFO | SA_ONSTACK;
-        action.sa_sigaction = signal_handler as sighandler_t;
-        sigaction(SIGSEGV, &action, ptr::null_mut());
-        sigaction(SIGBUS, &action, ptr::null_mut());
+        for &signal in &[SIGSEGV, SIGBUS] {
+            sigaction(signal, ptr::null_mut(), &mut action);
+            // Configure our signal handler if one is not already set.
+            if action.sa_sigaction == SIG_DFL {
+                action.sa_flags = SA_SIGINFO | SA_ONSTACK;
+                action.sa_sigaction = signal_handler as sighandler_t;
+                sigaction(signal, &action, ptr::null_mut());
+                NEED_ALTSTACK = true;
+            }
+        }
 
         let handler = make_handler();
         MAIN_ALTSTACK = handler._data;
@@ -126,12 +138,22 @@ mod imp {
     }
 
     unsafe fn get_stackp() -> *mut libc::c_void {
-        let stackp =
-            mmap(ptr::null_mut(), SIGSTKSZ, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        let stackp = mmap(
+            ptr::null_mut(),
+            SIGSTKSZ + page_size(),
+            PROT_READ | PROT_WRITE,
+            MAP_PRIVATE | MAP_ANON,
+            -1,
+            0,
+        );
         if stackp == MAP_FAILED {
             panic!("failed to allocate an alternative stack");
         }
-        stackp
+        let guard_result = libc::mprotect(stackp, page_size(), PROT_NONE);
+        if guard_result != 0 {
+            panic!("failed to set up alternative stack guard page");
+        }
+        stackp.add(page_size())
     }
 
     #[cfg(any(
@@ -152,6 +174,9 @@ mod imp {
     }
 
     pub unsafe fn make_handler() -> Handler {
+        if !NEED_ALTSTACK {
+            return Handler::null();
+        }
         let mut stack = mem::zeroed();
         sigaltstack(ptr::null(), &mut stack);
         // Configure alternate signal stack, if one is not already set.
@@ -160,7 +185,7 @@ mod imp {
             sigaltstack(&stack, ptr::null_mut());
             Handler { _data: stack.ss_sp as *mut libc::c_void }
         } else {
-            Handler { _data: ptr::null_mut() }
+            Handler::null()
         }
     }
 
@@ -176,7 +201,9 @@ mod imp {
                 ss_size: SIGSTKSZ,
             };
             sigaltstack(&stack, ptr::null_mut());
-            munmap(handler._data, SIGSTKSZ);
+            // We know from `get_stackp` that the alternate stack we installed is part of a mapping
+            // that started one page earlier, so walk back a page and unmap from there.
+            munmap(handler._data.sub(page_size()), SIGSTKSZ + page_size());
         }
     }
 }
@@ -191,14 +218,12 @@ mod imp {
     target_os = "openbsd"
 )))]
 mod imp {
-    use crate::ptr;
-
     pub unsafe fn init() {}
 
     pub unsafe fn cleanup() {}
 
     pub unsafe fn make_handler() -> super::Handler {
-        super::Handler { _data: ptr::null_mut() }
+        super::Handler::null()
     }
 
     pub unsafe fn drop_handler(_handler: &mut super::Handler) {}

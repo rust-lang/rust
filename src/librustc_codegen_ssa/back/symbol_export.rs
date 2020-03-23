@@ -3,19 +3,18 @@ use std::sync::Arc;
 
 use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::middle::exported_symbols::{metadata_symbol_name, ExportedSymbol, SymbolExportLevel};
-use rustc::session::config::{self, Sanitizer};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::Instance;
 use rustc::ty::{SymbolName, TyCtxt};
-use rustc_codegen_utils::symbol_names;
+use rustc_ast::expand::allocator::ALLOCATOR_METHODS;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
-use syntax::expand::allocator::ALLOCATOR_METHODS;
+use rustc_session::config::{self, Sanitizer};
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types.borrow())
@@ -88,7 +87,7 @@ fn reachable_non_generics_provider(
                 // Only consider nodes that actually have exported symbols.
                 Node::Item(&hir::Item { kind: hir::ItemKind::Static(..), .. })
                 | Node::Item(&hir::Item { kind: hir::ItemKind::Fn(..), .. })
-                | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Method(..), .. }) => {
+                | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) => {
                     let def_id = tcx.hir().local_def_id(hir_id);
                     let generics = tcx.generics_of(def_id);
                     if !generics.requires_monomorphization(tcx) &&
@@ -423,17 +422,21 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
     // This is something instantiated in an upstream crate, so we have to use
     // the slower (because uncached) version of computing the symbol name.
     match symbol {
-        ExportedSymbol::NonGeneric(def_id) => symbol_names::symbol_name_for_instance_in_crate(
-            tcx,
-            Instance::mono(tcx, def_id),
-            instantiating_crate,
-        ),
-        ExportedSymbol::Generic(def_id, substs) => symbol_names::symbol_name_for_instance_in_crate(
-            tcx,
-            Instance::new(def_id, substs),
-            instantiating_crate,
-        ),
-        ExportedSymbol::DropGlue(ty) => symbol_names::symbol_name_for_instance_in_crate(
+        ExportedSymbol::NonGeneric(def_id) => {
+            rustc_symbol_mangling::symbol_name_for_instance_in_crate(
+                tcx,
+                Instance::mono(tcx, def_id),
+                instantiating_crate,
+            )
+        }
+        ExportedSymbol::Generic(def_id, substs) => {
+            rustc_symbol_mangling::symbol_name_for_instance_in_crate(
+                tcx,
+                Instance::new(def_id, substs),
+                instantiating_crate,
+            )
+        }
+        ExportedSymbol::DropGlue(ty) => rustc_symbol_mangling::symbol_name_for_instance_in_crate(
             tcx,
             Instance::resolve_drop_in_place(tcx, ty),
             instantiating_crate,

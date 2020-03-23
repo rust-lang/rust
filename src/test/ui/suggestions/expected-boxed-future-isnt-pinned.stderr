@@ -1,0 +1,20 @@
+error[E0308]: mismatched types
+  --> $DIR/expected-boxed-future-isnt-pinned.rs:11:5
+   |
+LL | fn foo<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
+   |        - this type parameter                            ----------------------- expected `std::pin::Pin<std::boxed::Box<(dyn std::future::Future<Output = i32> + std::marker::Send + 'static)>>` because of return type
+LL |     // We could instead use an `async` block, but this way we have no std spans.
+LL |     x
+   |     ^
+   |     |
+   |     expected struct `std::pin::Pin`, found type parameter `F`
+   |     help: you need to pin and box this expression: `Box::pin(x)`
+   |
+   = note:      expected struct `std::pin::Pin<std::boxed::Box<(dyn std::future::Future<Output = i32> + std::marker::Send + 'static)>>`
+           found type parameter `F`
+   = help: type parameters must be constrained to match other types
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

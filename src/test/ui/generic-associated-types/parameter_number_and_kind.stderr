@@ -4,7 +4,7 @@ error: type-generic associated types are not yet implemented
 LL |     type D<T>;
    |     ^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: for more information, see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error: type-generic associated types are not yet implemented
   --> $DIR/parameter_number_and_kind.rs:11:5
@@ -12,7 +12,7 @@ error: type-generic associated types are not yet implemented
 LL |     type E<'a, T>;
    |     ^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: for more information, see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error: type-generic associated types are not yet implemented
   --> $DIR/parameter_number_and_kind.rs:14:5
@@ -20,7 +20,7 @@ error: type-generic associated types are not yet implemented
 LL |     type FOk<T> = Self::E<'static, T>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: for more information, see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error: type-generic associated types are not yet implemented
   --> $DIR/parameter_number_and_kind.rs:19:5
@@ -28,7 +28,7 @@ error: type-generic associated types are not yet implemented
 LL |     type FErr2<T> = Self::E<'static, T, u32>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/44265
+   = note: for more information, see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error[E0107]: wrong number of lifetime arguments: expected 1, found 2
   --> $DIR/parameter_number_and_kind.rs:16:35

@@ -1,7 +1,7 @@
 // check-pass
 
 #![feature(stmt_expr_attributes)]
-#![warn(unused_attributes)] //~ NOTE lint level defined here
+#![warn(unused_attributes)] //~ NOTE the lint level is defined here
 
 fn main() {
     // fold_stmt (Item)

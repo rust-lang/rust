@@ -3,24 +3,23 @@
     html_playground_url = "https://play.rust-lang.org/"
 )]
 #![feature(rustc_private)]
-#![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(set_stdio)]
 #![feature(test)]
 #![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
-#![feature(drain_filter)]
 #![feature(never_type)]
-#![feature(unicode_internals)]
 #![recursion_limit = "256"]
 
 extern crate env_logger;
 extern crate getopts;
 extern crate rustc;
+extern crate rustc_ast;
+extern crate rustc_ast_pretty;
+extern crate rustc_attr;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
@@ -28,6 +27,7 @@ extern crate rustc_expand;
 extern crate rustc_feature;
 extern crate rustc_hir;
 extern crate rustc_index;
+extern crate rustc_infer;
 extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
@@ -38,8 +38,8 @@ extern crate rustc_resolve;
 extern crate rustc_session;
 extern crate rustc_span as rustc_span;
 extern crate rustc_target;
+extern crate rustc_trait_selection;
 extern crate rustc_typeck;
-extern crate syntax;
 extern crate test as testing;
 #[macro_use]
 extern crate log;
@@ -49,8 +49,8 @@ use std::env;
 use std::panic;
 use std::process;
 
-use rustc::session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
-use rustc::session::{early_error, early_warn};
+use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
+use rustc_session::{early_error, early_warn};
 
 #[macro_use]
 mod externalfiles;

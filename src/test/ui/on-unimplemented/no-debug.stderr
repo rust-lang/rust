@@ -7,6 +7,7 @@ LL |     println!("{:?} {:?}", Foo, Bar);
    = help: the trait `std::fmt::Debug` is not implemented for `Foo`
    = note: add `#[derive(Debug)]` or manually implement `std::fmt::Debug`
    = note: required by `std::fmt::Debug::fmt`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `no_debug::Bar` doesn't implement `std::fmt::Debug`
   --> $DIR/no-debug.rs:10:32
@@ -16,6 +17,7 @@ LL |     println!("{:?} {:?}", Foo, Bar);
    |
    = help: the trait `std::fmt::Debug` is not implemented for `no_debug::Bar`
    = note: required by `std::fmt::Debug::fmt`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `Foo` doesn't implement `std::fmt::Display`
   --> $DIR/no-debug.rs:11:23
@@ -26,6 +28,7 @@ LL |     println!("{} {}", Foo, Bar);
    = help: the trait `std::fmt::Display` is not implemented for `Foo`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
    = note: required by `std::fmt::Display::fmt`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `no_debug::Bar` doesn't implement `std::fmt::Display`
   --> $DIR/no-debug.rs:11:28
@@ -36,6 +39,7 @@ LL |     println!("{} {}", Foo, Bar);
    = help: the trait `std::fmt::Display` is not implemented for `no_debug::Bar`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
    = note: required by `std::fmt::Display::fmt`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

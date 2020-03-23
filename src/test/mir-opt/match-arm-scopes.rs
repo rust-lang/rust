@@ -28,10 +28,7 @@ const CASES: &[(bool, bool, bool, i32)] = &[
 
 fn main() {
     for &(cond, items_1, items_2, result) in CASES {
-        assert_eq!(
-            complicated_match(cond, (items_1, items_2, String::new())),
-            result,
-        );
+        assert_eq!(complicated_match(cond, (items_1, items_2, String::new())), result,);
     }
 }
 
@@ -64,31 +61,38 @@ fn main() {
 // }
 // bb0: {
 //     FakeRead(ForMatchedPlace, _2);
-//     switchInt((_2.0: bool)) -> [false: bb2, otherwise: bb5];
+//     switchInt((_2.0: bool)) -> [false: bb2, otherwise: bb3];
 // }
 // bb1 (cleanup): {
 //     resume;
 // }
-// bb2: {
-//     falseEdges -> [real: bb8, imaginary: bb3];
+// bb2: {                               // pre-binding for arm 1 first pattern
+//     falseEdges -> [real: bb9, imaginary: bb4];
 // }
 // bb3: {
-//     falseEdges -> [real: bb17, imaginary: bb4];
+//     switchInt((_2.1: bool)) -> [false: bb4, otherwise: bb5];
 // }
-// bb4: {
-//     falseEdges -> [real: bb25, imaginary: bb26];
+// bb4: {                               // pre-binding for arm 1 second pattern
+//     falseEdges -> [real: bb18, imaginary: bb6];
 // }
 // bb5: {
-//     switchInt((_2.1: bool)) -> [false: bb3, otherwise: bb6];
+//     switchInt((_2.0: bool)) -> [false: bb7, otherwise: bb6];
 // }
-// bb6: {
-//     switchInt((_2.0: bool)) -> [false: bb26, otherwise: bb4];
+// bb6: {                               // pre-binding for arm 2 first pattern
+//     falseEdges -> [real: bb26, imaginary: bb7];
 // }
-// bb7: {                               // arm 1
+// bb7: {                               // bindings for arm 2 - second pattern
+//     StorageLive(_15);
+//     _15 = (_2.1: bool);
+//     StorageLive(_16);
+//     _16 = move (_2.2: std::string::String);
+//     goto -> bb25;
+// }
+// bb8: {                               // arm 1
 //     _0 = const 1i32;
-//     drop(_7) -> [return: bb23, unwind: bb13];
+//     drop(_7) -> [return: bb24, unwind: bb14];
 // }
-// bb8: {                               // guard - first time
+// bb9: {                               // guard - first time
 //     StorageLive(_6);
 //     _6 = &(_2.1: bool);
 //     StorageLive(_8);
@@ -99,34 +103,34 @@ fn main() {
 //     StorageLive(_10);
 //     _10 = _1;
 //     FakeRead(ForMatchedPlace, _10);
-//     switchInt(_10) -> [false: bb10, otherwise: bb9];
+//     switchInt(_10) -> [false: bb11, otherwise: bb10];
 // }
-// bb9: {
-//     falseEdges -> [real: bb11, imaginary: bb10];
+// bb10: {
+//     falseEdges -> [real: bb12, imaginary: bb11];
 // }
-// bb10: {                              // `else` block - first time
+// bb11: {                              // `else` block - first time
 //     _9 = (*_6);
 //     StorageDead(_10);
-//     switchInt(move _9) -> [false: bb16, otherwise: bb15];
+//     switchInt(move _9) -> [false: bb17, otherwise: bb16];
 // }
-// bb11: {                              // `return 3` - first time
+// bb12: {                              // `return 3` - first time
 //     _0 = const 3i32;
 //     StorageDead(_10);
 //     StorageDead(_9);
 //     StorageDead(_8);
 //     StorageDead(_6);
-//     goto -> bb14;
+//     goto -> bb15;
 // }
-// bb12: {
+// bb13: {
 //     return;
 // }
-// bb13 (cleanup): {
+// bb14 (cleanup): {
 //     drop(_2) -> bb1;
 // }
-// bb14: {
-//     drop(_2) -> [return: bb12, unwind: bb1];
-// }
 // bb15: {
+//     drop(_2) -> [return: bb13, unwind: bb1];
+// }
+// bb16: {
 //     StorageDead(_9);
 //     FakeRead(ForMatchGuard, _3);
 //     FakeRead(ForMatchGuard, _4);
@@ -136,15 +140,15 @@ fn main() {
 //     _5 = (_2.1: bool);
 //     StorageLive(_7);
 //     _7 = move (_2.2: std::string::String);
-//     goto -> bb7;
+//     goto -> bb8;
 // }
-// bb16: {                              // guard otherwise case - first time
+// bb17: {                              // guard otherwise case - first time
 //     StorageDead(_9);
 //     StorageDead(_8);
 //     StorageDead(_6);
-//     falseEdges -> [real: bb5, imaginary: bb3];
+//     falseEdges -> [real: bb3, imaginary: bb4];
 // }
-// bb17: {                              // guard - second time
+// bb18: {                              // guard - second time
 //     StorageLive(_6);
 //     _6 = &(_2.0: bool);
 //     StorageLive(_8);
@@ -155,25 +159,25 @@ fn main() {
 //     StorageLive(_13);
 //     _13 = _1;
 //     FakeRead(ForMatchedPlace, _13);
-//     switchInt(_13) -> [false: bb19, otherwise: bb18];
+//     switchInt(_13) -> [false: bb20, otherwise: bb19];
 // }
-// bb18: {
-//     falseEdges -> [real: bb20, imaginary: bb19];
+// bb19: {
+//     falseEdges -> [real: bb21, imaginary: bb20];
 // }
-// bb19: {                              // `else` block - second time
+// bb20: {                              // `else` block - second time
 //     _12 = (*_6);
 //     StorageDead(_13);
-//     switchInt(move _12) -> [false: bb22, otherwise: bb21];
+//     switchInt(move _12) -> [false: bb23, otherwise: bb22];
 // }
-// bb20: {
+// bb21: {
 //     _0 = const 3i32;
 //     StorageDead(_13);
 //     StorageDead(_12);
 //     StorageDead(_8);
 //     StorageDead(_6);
-//     goto -> bb14;
+//     goto -> bb15;
 // }
-// bb21: {                              // bindings for arm 1
+// bb22: {                              // bindings for arm 1
 //     StorageDead(_12);
 //     FakeRead(ForMatchGuard, _3);
 //     FakeRead(ForMatchGuard, _4);
@@ -183,46 +187,40 @@ fn main() {
 //     _5 = (_2.0: bool);
 //     StorageLive(_7);
 //     _7 = move (_2.2: std::string::String);
-//     goto -> bb7;
+//     goto -> bb8;
 // }
-// bb22: {                              // Guard otherwise case - second time
+// bb23: {                              // Guard otherwise case - second time
 //     StorageDead(_12);
 //     StorageDead(_8);
 //     StorageDead(_6);
-//     falseEdges -> [real: bb6, imaginary: bb4];
+//     falseEdges -> [real: bb5, imaginary: bb6];
 // }
-// bb23: {                              // rest of arm 1
+// bb24: {                              // rest of arm 1
 //     StorageDead(_7);
 //     StorageDead(_5);
 //     StorageDead(_8);
 //     StorageDead(_6);
 //     goto -> bb28;
 // }
-// bb24: {                              // arm 2
+// bb25: {                              // arm 2
 //     _0 = const 2i32;
-//     drop(_16) -> [return: bb27, unwind: bb13];
+//     drop(_16) -> [return: bb27, unwind: bb14];
 // }
-// bb25: {                              // bindings for arm 2 - first pattern
+// bb26: {                              // bindings for arm 2 - first pattern
 //     StorageLive(_15);
 //     _15 = (_2.1: bool);
 //     StorageLive(_16);
 //     _16 = move (_2.2: std::string::String);
-//     goto -> bb24;
+//     goto -> bb25;
 // }
-// bb26: {                              // bindings for arm 2 - second pattern
-//     StorageLive(_15);
-//     _15 = (_2.1: bool);
-//     StorageLive(_16);
-//     _16 = move (_2.2: std::string::String);
-//     goto -> bb24;
-// }
+
 // bb27: {                              // rest of arm 2
 //     StorageDead(_16);
 //     StorageDead(_15);
 //     goto -> bb28;
 // }
 // bb28: {
-//     drop(_2) -> [return: bb12, unwind: bb1];
+//     drop(_2) -> [return: bb13, unwind: bb1];
 // }
 // END rustc.complicated_match.SimplifyCfg-initial.after.mir
 // START rustc.complicated_match.ElaborateDrops.after.mir

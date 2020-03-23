@@ -114,6 +114,8 @@ LL |         priv_fn;
 ...
 LL |     m::m!();
    |     -------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `m::PrivEnum` is private
   --> $DIR/private-inferred-type.rs:41:9
@@ -123,6 +125,8 @@ LL |         PrivEnum::Variant;
 ...
 LL |     m::m!();
    |     -------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `fn() {<u8 as m::PrivTrait>::method}` is private
   --> $DIR/private-inferred-type.rs:43:9
@@ -132,6 +136,8 @@ LL |         <u8 as PrivTrait>::method;
 ...
 LL |     m::m!();
    |     -------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `fn(u8) -> m::PrivTupleStruct {m::PrivTupleStruct}` is private
   --> $DIR/private-inferred-type.rs:45:9
@@ -141,6 +147,8 @@ LL |         PrivTupleStruct;
 ...
 LL |     m::m!();
    |     -------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `fn(u8) -> m::PubTupleStruct {m::PubTupleStruct}` is private
   --> $DIR/private-inferred-type.rs:47:9
@@ -150,6 +158,8 @@ LL |         PubTupleStruct;
 ...
 LL |     m::m!();
    |     -------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `for<'r> fn(&'r m::Pub<u8>) {m::Pub::<u8>::priv_method}` is private
   --> $DIR/private-inferred-type.rs:49:18
@@ -159,6 +169,8 @@ LL |         Pub(0u8).priv_method();
 ...
 LL |     m::m!();
    |     -------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trait `m::Trait` is private
   --> $DIR/private-inferred-type.rs:118:5

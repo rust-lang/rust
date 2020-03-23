@@ -8,6 +8,7 @@ LL | bar!();
    | ------- in this macro invocation
    |
    = help: add `#![feature(allow_internal_unstable)]` to the crate attributes to enable
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

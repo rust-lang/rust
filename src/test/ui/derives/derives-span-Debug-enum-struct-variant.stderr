@@ -8,6 +8,7 @@ LL |      x: Error
    = note: add `#[derive(Debug)]` or manually implement `std::fmt::Debug`
    = note: required because of the requirements on the impl of `std::fmt::Debug` for `&Error`
    = note: required for the cast to the object type `dyn std::fmt::Debug`
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

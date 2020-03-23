@@ -1,7 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use std::collections::HashSet;
-use syn;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{braced, parse_macro_input, Ident, LitStr, Token};
 
@@ -104,6 +103,7 @@ pub fn symbols(input: TokenStream) -> TokenStream {
             #value,
         });
         keyword_stream.extend(quote! {
+            #[allow(non_upper_case_globals)]
             pub const #name: Symbol = Symbol::new(#counter);
         });
         counter += 1;
@@ -121,6 +121,8 @@ pub fn symbols(input: TokenStream) -> TokenStream {
             #value,
         });
         symbols_stream.extend(quote! {
+            #[allow(rustc::default_hash_types)]
+            #[allow(non_upper_case_globals)]
             pub const #name: Symbol = Symbol::new(#counter);
         });
         counter += 1;
@@ -150,6 +152,7 @@ pub fn symbols(input: TokenStream) -> TokenStream {
             () => {
                 #symbols_stream
 
+                #[allow(non_upper_case_globals)]
                 pub const digits_array: &[Symbol; 10] = &[
                     #digits_stream
                 ];

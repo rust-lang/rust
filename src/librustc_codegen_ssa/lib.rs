@@ -1,11 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
-#![feature(box_syntax)]
-#![feature(core_intrinsics)]
-#![feature(libc)]
-#![cfg_attr(bootstrap, feature(slice_patterns))]
-#![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
@@ -26,12 +21,12 @@ use rustc::dep_graph::WorkProduct;
 use rustc::middle::cstore::{CrateSource, LibSource, NativeLibrary};
 use rustc::middle::dependency_format::Dependencies;
 use rustc::middle::lang_items::LangItem;
-use rustc::session::config::{OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc::ty::query::Providers;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::CrateNum;
+use rustc_session::config::{OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc_span::symbol::Symbol;
 use std::path::{Path, PathBuf};
 

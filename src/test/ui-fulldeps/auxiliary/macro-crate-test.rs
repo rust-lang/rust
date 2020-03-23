@@ -4,7 +4,7 @@
 #![crate_type = "proc-macro"]
 #![feature(rustc_private)]
 
-extern crate syntax;
+extern crate rustc_ast;
 extern crate rustc;
 extern crate rustc_driver;
 extern crate proc_macro;

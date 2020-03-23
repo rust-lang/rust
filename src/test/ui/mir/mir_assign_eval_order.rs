@@ -12,7 +12,7 @@ fn evaluate_reborrow_before_assign() {
     let y = &mut &2;
     let z = &3;
     // There's an implicit reborrow of `x` on the right-hand side of the
-    // assignement. Note that writing an explicit reborrow would not show this
+    // assignment. Note that writing an explicit reborrow would not show this
     // bug, as now there would be two reborrows on the right-hand side and at
     // least one of them would happen before the left-hand side is evaluated.
     *{ x = z; &mut *y } = x;

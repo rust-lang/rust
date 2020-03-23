@@ -28,7 +28,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![cfg_attr(test, feature(test))]
 #![feature(bool_to_option)]
-#![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
@@ -56,6 +55,7 @@ mod unused;
 
 use rustc::ty::query::Providers;
 use rustc::ty::TyCtxt;
+use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint::builtin::{
@@ -63,7 +63,6 @@ use rustc_session::lint::builtin::{
     INTRA_DOC_LINK_RESOLUTION_FAILURE, MISSING_DOC_CODE_EXAMPLES, PRIVATE_DOC_TESTS,
 };
 use rustc_span::Span;
-use syntax::ast;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
@@ -95,7 +94,7 @@ fn lint_mod(tcx: TyCtxt<'_>, module_def_id: DefId) {
 
 macro_rules! pre_expansion_lint_passes {
     ($macro:path, $args:tt) => {
-        $macro!($args, [KeywordIdents: KeywordIdents, UnusedDocComment: UnusedDocComment,]);
+        $macro!($args, [KeywordIdents: KeywordIdents,]);
     };
 }
 
@@ -114,7 +113,8 @@ macro_rules! early_lint_passes {
                 WhileTrue: WhileTrue,
                 NonAsciiIdents: NonAsciiIdents,
                 IncompleteFeatures: IncompleteFeatures,
-                RedundantSemicolon: RedundantSemicolon,
+                RedundantSemicolons: RedundantSemicolons,
+                UnusedDocComment: UnusedDocComment,
             ]
         );
     };
@@ -274,7 +274,8 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         UNUSED_EXTERN_CRATES,
         UNUSED_FEATURES,
         UNUSED_LABELS,
-        UNUSED_PARENS
+        UNUSED_PARENS,
+        REDUNDANT_SEMICOLONS
     );
 
     add_lint_group!(
@@ -306,6 +307,8 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     store.register_renamed("unstable_name_collision", "unstable_name_collisions");
     store.register_renamed("unused_doc_comment", "unused_doc_comments");
     store.register_renamed("async_idents", "keyword_idents");
+    store.register_renamed("exceeding_bitshifts", "arithmetic_overflow");
+    store.register_renamed("redundant_semicolon", "redundant_semicolons");
     store.register_removed("unknown_features", "replaced by an error");
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
     store.register_removed("negate_unsigned", "cast a signed value instead");
@@ -324,47 +327,58 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     );
     store.register_removed(
         "hr_lifetime_in_assoc_type",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/33685",
+        "converted into hard error, see issue #33685 \
+         <https://github.com/rust-lang/rust/issues/33685> for more information",
     );
     store.register_removed(
         "inaccessible_extern_crate",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36886",
+        "converted into hard error, see issue #36886 \
+         <https://github.com/rust-lang/rust/issues/36886> for more information",
     );
     store.register_removed(
         "super_or_self_in_global_path",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36888",
+        "converted into hard error, see issue #36888 \
+         <https://github.com/rust-lang/rust/issues/36888> for more information",
     );
     store.register_removed(
         "overlapping_inherent_impls",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36889",
+        "converted into hard error, see issue #36889 \
+         <https://github.com/rust-lang/rust/issues/36889> for more information",
     );
     store.register_removed(
         "illegal_floating_point_constant_pattern",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36890",
+        "converted into hard error, see issue #36890 \
+         <https://github.com/rust-lang/rust/issues/36890> for more information",
     );
     store.register_removed(
         "illegal_struct_or_enum_constant_pattern",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36891",
+        "converted into hard error, see issue #36891 \
+         <https://github.com/rust-lang/rust/issues/36891> for more information",
     );
     store.register_removed(
         "lifetime_underscore",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36892",
+        "converted into hard error, see issue #36892 \
+         <https://github.com/rust-lang/rust/issues/36892> for more information",
     );
     store.register_removed(
         "extra_requirement_in_impl",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/37166",
+        "converted into hard error, see issue #37166 \
+         <https://github.com/rust-lang/rust/issues/37166> for more information",
     );
     store.register_removed(
         "legacy_imports",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/38260",
+        "converted into hard error, see issue #38260 \
+         <https://github.com/rust-lang/rust/issues/38260> for more information",
     );
     store.register_removed(
         "coerce_never",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/48950",
+        "converted into hard error, see issue #48950 \
+         <https://github.com/rust-lang/rust/issues/48950> for more information",
     );
     store.register_removed(
         "resolve_trait_on_defaulted_unit",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/48950",
+        "converted into hard error, see issue #48950 \
+         <https://github.com/rust-lang/rust/issues/48950> for more information",
     );
     store.register_removed(
         "private_no_mangle_fns",
@@ -377,35 +391,43 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     store.register_removed("bad_repr", "replaced with a generic attribute input check");
     store.register_removed(
         "duplicate_matcher_binding_name",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/57742",
+        "converted into hard error, see issue #57742 \
+         <https://github.com/rust-lang/rust/issues/57742> for more information",
     );
     store.register_removed(
         "incoherent_fundamental_impls",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/46205",
+        "converted into hard error, see issue #46205 \
+         <https://github.com/rust-lang/rust/issues/46205> for more information",
     );
     store.register_removed(
         "legacy_constructor_visibility",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/39207",
+        "converted into hard error, see issue #39207 \
+         <https://github.com/rust-lang/rust/issues/39207> for more information",
     );
     store.register_removed(
         "legacy_directory_ownership",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/37872",
+        "converted into hard error, see issue #37872 \
+         <https://github.com/rust-lang/rust/issues/37872> for more information",
     );
     store.register_removed(
         "safe_extern_statics",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/36247",
+        "converted into hard error, see issue #36247 \
+         <https://github.com/rust-lang/rust/issues/36247> for more information",
     );
     store.register_removed(
         "parenthesized_params_in_types_and_modules",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/42238",
+        "converted into hard error, see issue #42238 \
+         <https://github.com/rust-lang/rust/issues/42238> for more information",
     );
     store.register_removed(
         "duplicate_macro_exports",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/35896",
+        "converted into hard error, see issue #35896 \
+         <https://github.com/rust-lang/rust/issues/35896> for more information",
     );
     store.register_removed(
         "nested_impl_trait",
-        "converted into hard error, see https://github.com/rust-lang/rust/issues/59014",
+        "converted into hard error, see issue #59014 \
+         <https://github.com/rust-lang/rust/issues/59014> for more information",
     );
     store.register_removed("plugin_as_library", "plugins have been deprecated and retired");
 }

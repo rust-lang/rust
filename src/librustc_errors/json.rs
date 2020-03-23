@@ -36,7 +36,7 @@ pub struct JsonEmitter {
     pretty: bool,
     ui_testing: bool,
     json_rendered: HumanReadableErrorType,
-    external_macro_backtrace: bool,
+    macro_backtrace: bool,
 }
 
 impl JsonEmitter {
@@ -45,23 +45,23 @@ impl JsonEmitter {
         source_map: Lrc<SourceMap>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
-            dst: Box::new(io::stderr()),
+            dst: Box::new(io::BufWriter::new(io::stderr())),
             registry,
             sm: source_map,
             pretty,
             ui_testing: false,
             json_rendered,
-            external_macro_backtrace,
+            macro_backtrace,
         }
     }
 
     pub fn basic(
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
         JsonEmitter::stderr(
@@ -69,7 +69,7 @@ impl JsonEmitter {
             Lrc::new(SourceMap::new(file_path_mapping)),
             pretty,
             json_rendered,
-            external_macro_backtrace,
+            macro_backtrace,
         )
     }
 
@@ -79,7 +79,7 @@ impl JsonEmitter {
         source_map: Lrc<SourceMap>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        external_macro_backtrace: bool,
+        macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
             dst,
@@ -88,7 +88,7 @@ impl JsonEmitter {
             pretty,
             ui_testing: false,
             json_rendered,
-            external_macro_backtrace,
+            macro_backtrace,
         }
     }
 
@@ -104,7 +104,8 @@ impl Emitter for JsonEmitter {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
         } else {
             writeln!(&mut self.dst, "{}", as_json(&data))
-        };
+        }
+        .and_then(|_| self.dst.flush());
         if let Err(e) = result {
             panic!("failed to print diagnostics: {:?}", e);
         }
@@ -116,7 +117,8 @@ impl Emitter for JsonEmitter {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
         } else {
             writeln!(&mut self.dst, "{}", as_json(&data))
-        };
+        }
+        .and_then(|_| self.dst.flush());
         if let Err(e) = result {
             panic!("failed to print notification: {:?}", e);
         }
@@ -245,13 +247,7 @@ impl Diagnostic {
         let buf = BufWriter::default();
         let output = buf.clone();
         je.json_rendered
-            .new_emitter(
-                Box::new(buf),
-                Some(je.sm.clone()),
-                false,
-                None,
-                je.external_macro_backtrace,
-            )
+            .new_emitter(Box::new(buf), Some(je.sm.clone()), false, None, je.macro_backtrace)
             .ui_testing(je.ui_testing)
             .emit_diagnostic(diag);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
@@ -379,13 +375,13 @@ impl DiagnosticSpan {
 
 impl DiagnosticSpanLine {
     fn line_from_source_file(
-        fm: &rustc_span::SourceFile,
+        sf: &rustc_span::SourceFile,
         index: usize,
         h_start: usize,
         h_end: usize,
     ) -> DiagnosticSpanLine {
         DiagnosticSpanLine {
-            text: fm.get_line(index).map_or(String::new(), |l| l.into_owned()),
+            text: sf.get_line(index).map_or(String::new(), |l| l.into_owned()),
             highlight_start: h_start,
             highlight_end: h_end,
         }
@@ -398,13 +394,18 @@ impl DiagnosticSpanLine {
         je.sm
             .span_to_lines(span)
             .map(|lines| {
-                let fm = &*lines.file;
+                // We can't get any lines if the source is unavailable.
+                if !je.sm.ensure_source_file_source_present(lines.file.clone()) {
+                    return vec![];
+                }
+
+                let sf = &*lines.file;
                 lines
                     .lines
                     .iter()
                     .map(|line| {
                         DiagnosticSpanLine::line_from_source_file(
-                            fm,
+                            sf,
                             line.line_index,
                             line.start_col.0 + 1,
                             line.end_col.0 + 1,
@@ -423,10 +424,10 @@ impl DiagnosticCode {
                 DiagnosticId::Error(s) => s,
                 DiagnosticId::Lint(s) => s,
             };
-            let explanation =
-                je.registry.as_ref().and_then(|registry| registry.find_description(&s));
+            let je_result =
+                je.registry.as_ref().map(|registry| registry.try_find_description(&s)).unwrap();
 
-            DiagnosticCode { code: s, explanation }
+            DiagnosticCode { code: s, explanation: je_result.unwrap_or(None) }
         })
     }
 }

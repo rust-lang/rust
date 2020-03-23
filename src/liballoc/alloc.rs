@@ -165,13 +165,19 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for Global {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
-        NonNull::new(alloc(layout)).ok_or(AllocErr)
+    fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+        if layout.size() == 0 {
+            Ok((layout.dangling(), 0))
+        } else {
+            unsafe { NonNull::new(alloc(layout)).ok_or(AllocErr).map(|p| (p, layout.size())) }
+        }
     }
 
     #[inline]
     unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-        dealloc(ptr.as_ptr(), layout)
+        if layout.size() != 0 {
+            dealloc(ptr.as_ptr(), layout)
+        }
     }
 
     #[inline]
@@ -180,13 +186,29 @@ unsafe impl AllocRef for Global {
         ptr: NonNull<u8>,
         layout: Layout,
         new_size: usize,
-    ) -> Result<NonNull<u8>, AllocErr> {
-        NonNull::new(realloc(ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
+    ) -> Result<(NonNull<u8>, usize), AllocErr> {
+        match (layout.size(), new_size) {
+            (0, 0) => Ok((layout.dangling(), 0)),
+            (0, _) => self.alloc(Layout::from_size_align_unchecked(new_size, layout.align())),
+            (_, 0) => {
+                self.dealloc(ptr, layout);
+                Ok((layout.dangling(), 0))
+            }
+            (_, _) => NonNull::new(realloc(ptr.as_ptr(), layout, new_size))
+                .ok_or(AllocErr)
+                .map(|p| (p, new_size)),
+        }
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
-        NonNull::new(alloc_zeroed(layout)).ok_or(AllocErr)
+    fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+        if layout.size() == 0 {
+            Ok((layout.dangling(), 0))
+        } else {
+            unsafe {
+                NonNull::new(alloc_zeroed(layout)).ok_or(AllocErr).map(|p| (p, layout.size()))
+            }
+        }
     }
 }
 
@@ -200,21 +222,27 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
         align as *mut u8
     } else {
         let layout = Layout::from_size_align_unchecked(size, align);
-        let ptr = alloc(layout);
-        if !ptr.is_null() { ptr } else { handle_alloc_error(layout) }
+        match Global.alloc(layout) {
+            Ok((ptr, _)) => ptr.as_ptr(),
+            Err(_) => handle_alloc_error(layout),
+        }
     }
 }
 
 #[cfg_attr(not(test), lang = "box_free")]
 #[inline]
+// This signature has to be the same as `Box`, otherwise an ICE will happen.
+// When an additional parameter to `Box` is added (like `A: AllocRef`), this has to be added here as
+// well.
+// For example if `Box` is changed to  `struct Box<T: ?Sized, A: AllocRef>(Unique<T>, A)`,
+// this function has to be changed to `fn box_free<T: ?Sized, A: AllocRef>(Unique<T>, A)` as well.
 pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
-    let ptr = ptr.as_ptr();
-    let size = size_of_val(&*ptr);
-    let align = min_align_of_val(&*ptr);
+    let size = size_of_val(ptr.as_ref());
+    let align = min_align_of_val(ptr.as_ref());
     // We do not allocate for Box<T> when T is ZST, so deallocation is also not necessary.
     if size != 0 {
         let layout = Layout::from_size_align_unchecked(size, align);
-        dealloc(ptr as *mut u8, layout);
+        Global.dealloc(ptr.cast().into(), layout);
     }
 }
 

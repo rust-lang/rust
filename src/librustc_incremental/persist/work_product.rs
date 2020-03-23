@@ -2,8 +2,8 @@
 
 use crate::persist::fs::*;
 use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
-use rustc::session::Session;
 use rustc_fs_util::link_or_copy;
+use rustc_session::Session;
 use std::fs as std_fs;
 use std::path::PathBuf;
 
@@ -13,9 +13,7 @@ pub fn copy_cgu_workproducts_to_incr_comp_cache_dir(
     files: &[(WorkProductFileKind, PathBuf)],
 ) -> Option<(WorkProductId, WorkProduct)> {
     debug!("copy_cgu_workproducts_to_incr_comp_cache_dir({:?},{:?})", cgu_name, files);
-    if sess.opts.incremental.is_none() {
-        return None;
-    }
+    sess.opts.incremental.as_ref()?;
 
     let saved_files = files
         .iter()

@@ -2,7 +2,7 @@ error: unexpected `self` parameter in function
   --> $DIR/trait-fn.rs:4:20
    |
 LL |     fn c(foo: u32, self) {}
-   |                    ^^^^ must be the first associated function parameter
+   |                    ^^^^ must be the first parameter of an associated function
 
 error: aborting due to previous error
 
