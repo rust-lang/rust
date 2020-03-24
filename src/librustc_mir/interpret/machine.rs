@@ -7,7 +7,7 @@ use std::hash::Hash;
 
 use rustc::mir;
 use rustc::ty::{self, Ty};
-use rustc_span::Span;
+use rustc_span::{def_id::DefId, Span};
 
 use super::{
     AllocId, Allocation, AllocationExtra, Frame, ImmTy, InterpCx, InterpResult, Memory, MemoryKind,
@@ -79,7 +79,7 @@ pub trait AllocMap<K: Hash + Eq, V> {
 /// and some use case dependent behaviour can instead be applied.
 pub trait Machine<'mir, 'tcx>: Sized {
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
-    type MemoryKinds: ::std::fmt::Debug + MayLeak + Eq + 'static;
+    type MemoryKind: ::std::fmt::Debug + MayLeak + Eq + 'static;
 
     /// Tag tracked alongside every pointer. This is used to implement "Stacked Borrows"
     /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
@@ -105,16 +105,17 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Memory's allocation map
     type MemoryMap: AllocMap<
             AllocId,
-            (MemoryKind<Self::MemoryKinds>, Allocation<Self::PointerTag, Self::AllocExtra>),
+            (MemoryKind<Self::MemoryKind>, Allocation<Self::PointerTag, Self::AllocExtra>),
         > + Default
         + Clone;
 
-    /// The memory kind to use for copied statics -- or None if statics should not be mutated
-    /// and thus any such attempt will cause a `ModifiedStatic` error to be raised.
+    /// The memory kind to use for copied global memory (held in `tcx`) --
+    /// or None if such memory should not be mutated and thus any such attempt will cause
+    /// a `ModifiedStatic` error to be raised.
     /// Statics are copied under two circumstances: When they are mutated, and when
-    /// `tag_allocation` or `find_foreign_static` (see below) returns an owned allocation
+    /// `tag_allocation` (see below) returns an owned allocation
     /// that is added to the memory so that the work is not done twice.
-    const STATIC_KIND: Option<Self::MemoryKinds>;
+    const GLOBAL_KIND: Option<Self::MemoryKind>;
 
     /// Whether memory accesses should be alignment-checked.
     const CHECK_ALIGN: bool;
@@ -207,11 +208,15 @@ pub trait Machine<'mir, 'tcx>: Sized {
         Ok(())
     }
 
-    /// Called before a `Static` value is accessed.
+    /// Called before a global allocation is accessed.
+    /// `def_id` is `Some` if this is the "lazy" allocation of a static.
     #[inline]
-    fn before_access_static(
+    fn before_access_global(
         _memory_extra: &Self::MemoryExtra,
+        _alloc_id: AllocId,
         _allocation: &Allocation,
+        _def_id: Option<DefId>,
+        _is_write: bool,
     ) -> InterpResult<'tcx> {
         Ok(())
     }
@@ -231,10 +236,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// it contains (in relocations) tagged.  The way we construct allocations is
     /// to always first construct it without extra and then add the extra.
     /// This keeps uniform code paths for handling both allocations created by CTFE
-    /// for statics, and allocations created by Miri during evaluation.
+    /// for globals, and allocations created by Miri during evaluation.
     ///
     /// `kind` is the kind of the allocation being tagged; it can be `None` when
-    /// it's a static and `STATIC_KIND` is `None`.
+    /// it's a global and `GLOBAL_KIND` is `None`.
     ///
     /// This should avoid copying if no work has to be done! If this returns an owned
     /// allocation (because a copy had to be done to add tags or metadata), machine memory will
@@ -243,20 +248,20 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ///
     /// Also return the "base" tag to use for this allocation: the one that is used for direct
     /// accesses to this allocation. If `kind == STATIC_KIND`, this tag must be consistent
-    /// with `tag_static_base_pointer`.
+    /// with `tag_global_base_pointer`.
     fn init_allocation_extra<'b>(
         memory_extra: &Self::MemoryExtra,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
-        kind: Option<MemoryKind<Self::MemoryKinds>>,
+        kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag);
 
-    /// Return the "base" tag for the given *static* allocation: the one that is used for direct
-    /// accesses to this static/const/fn allocation. If `id` is not a static allocation,
+    /// Return the "base" tag for the given *global* allocation: the one that is used for direct
+    /// accesses to this static/const/fn allocation. If `id` is not a global allocation,
     /// this will return an unusable tag (i.e., accesses will be UB)!
     ///
     /// Expects `id` to be already canonical, if needed.
-    fn tag_static_base_pointer(memory_extra: &Self::MemoryExtra, id: AllocId) -> Self::PointerTag;
+    fn tag_global_base_pointer(memory_extra: &Self::MemoryExtra, id: AllocId) -> Self::PointerTag;
 
     /// Executes a retagging operation
     #[inline]

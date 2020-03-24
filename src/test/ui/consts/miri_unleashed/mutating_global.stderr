@@ -1,0 +1,29 @@
+warning: skipping const checks
+  --> $DIR/mutating_global.rs:9:9
+   |
+LL |         GLOBAL = 99
+   |         ^^^^^^
+
+warning: skipping const checks
+  --> $DIR/mutating_global.rs:9:9
+   |
+LL |         GLOBAL = 99
+   |         ^^^^^^
+
+error: any use of this value will cause an error
+  --> $DIR/mutating_global.rs:9:9
+   |
+LL | / const MUTATING_GLOBAL: () = {
+LL | |     unsafe {
+LL | |         GLOBAL = 99
+   | |         ^^^^^^^^^^^ modifying a static's initial value from another static's initializer
+LL | |
+LL | |
+LL | |     }
+LL | | };
+   | |__-
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: aborting due to previous error
+

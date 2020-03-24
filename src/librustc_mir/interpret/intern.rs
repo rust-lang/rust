@@ -16,7 +16,7 @@ use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, Scalar
 pub trait CompileTimeMachine<'mir, 'tcx> = Machine<
     'mir,
     'tcx,
-    MemoryKinds = !,
+    MemoryKind = !,
     PointerTag = (),
     ExtraFnVal = !,
     FrameExtra = (),
@@ -104,7 +104,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
         MemoryKind::Stack | MemoryKind::Vtable | MemoryKind::CallerLocation => {}
     }
     // Set allocation mutability as appropriate. This is used by LLVM to put things into
-    // read-only memory, and also by Miri when evluating other constants/statics that
+    // read-only memory, and also by Miri when evaluating other globals that
     // access this one.
     if mode == InternMode::Static {
         // When `ty` is `None`, we assume no interior mutability.
