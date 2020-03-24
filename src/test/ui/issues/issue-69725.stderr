@@ -1,5 +1,5 @@
 error[E0599]: no method named `clone` found for struct `issue_69725::Struct<A>` in the current scope
-  --> $DIR/issue-69725.rs:7:32
+  --> $DIR/issue-69725.rs:12:32
    |
 LL |     let _ = Struct::<A>::new().clone();
    |                                ^^^^^ method not found in `issue_69725::Struct<A>`
@@ -8,6 +8,14 @@ LL |     let _ = Struct::<A>::new().clone();
    |
 LL | pub struct Struct<A>(A);
    | ------------------------ doesn't satisfy `issue_69725::Struct<A>: std::clone::Clone`
+   | 
+  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+   |
+LL |     fn clone(&self) -> Self;
+   |        -----
+   |        |
+   |        the method is available for `std::sync::Arc<issue_69725::Struct<A>>` here
+   |        the method is available for `std::rc::Rc<issue_69725::Struct<A>>` here
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
            `A: std::clone::Clone`
