@@ -1,4 +1,4 @@
-use crate::infer::{InferCtxt, ShallowResolver};
+use crate::infer::{InferCtxt, TyOrConstInferVar};
 use rustc::ty::error::ExpectedFound;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TypeFoldable};
 use rustc_data_structures::obligation_forest::ProcessResult;
@@ -73,7 +73,10 @@ pub struct FulfillmentContext<'tcx> {
 #[derive(Clone, Debug)]
 pub struct PendingPredicateObligation<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
-    pub stalled_on: Vec<ty::InferTy>,
+    // FIXME(eddyb) look into whether this could be a `SmallVec`.
+    // Judging by the comment in `process_obligation`, the 1-element case
+    // is common so this could be a `SmallVec<[TyOrConstInferVar<'tcx>; 1]>`.
+    pub stalled_on: Vec<TyOrConstInferVar<'tcx>>,
 }
 
 // `PendingPredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -266,8 +269,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             // Match arms are in order of frequency, which matters because this
             // code is so hot. 1 and 0 dominate; 2+ is fairly rare.
             1 => {
-                let infer = pending_obligation.stalled_on[0];
-                ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(infer)
+                let infer_var = pending_obligation.stalled_on[0];
+                self.selcx.infcx().ty_or_const_infer_var_changed(infer_var)
             }
             0 => {
                 // In this case we haven't changed, but wish to make a change.
@@ -277,8 +280,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 // This `for` loop was once a call to `all()`, but this lower-level
                 // form was a perf win. See #64545 for details.
                 (|| {
-                    for &infer in &pending_obligation.stalled_on {
-                        if ShallowResolver::new(self.selcx.infcx()).shallow_resolve_changed(infer) {
+                    for &infer_var in &pending_obligation.stalled_on {
+                        if self.selcx.infcx().ty_or_const_infer_var_changed(infer_var) {
                             return true;
                         }
                     }
@@ -308,13 +311,6 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         }
 
         debug!("process_obligation: obligation = {:?} cause = {:?}", obligation, obligation.cause);
-
-        fn infer_ty(ty: Ty<'tcx>) -> ty::InferTy {
-            match ty.kind {
-                ty::Infer(infer) => infer,
-                _ => panic!(),
-            }
-        }
 
         match obligation.predicate {
             ty::Predicate::Trait(ref data, _) => {
@@ -467,7 +463,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     obligation.cause.span,
                 ) {
                     None => {
-                        pending_obligation.stalled_on = vec![infer_ty(ty)];
+                        pending_obligation.stalled_on =
+                            vec![TyOrConstInferVar::maybe_from_ty(ty).unwrap()];
                         ProcessResult::Unchanged
                     }
                     Some(os) => ProcessResult::Changed(mk_pending(os)),
@@ -483,8 +480,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     None => {
                         // None means that both are unresolved.
                         pending_obligation.stalled_on = vec![
-                            infer_ty(subtype.skip_binder().a),
-                            infer_ty(subtype.skip_binder().b),
+                            TyOrConstInferVar::maybe_from_ty(subtype.skip_binder().a).unwrap(),
+                            TyOrConstInferVar::maybe_from_ty(subtype.skip_binder().b).unwrap(),
                         ];
                         ProcessResult::Unchanged
                     }
@@ -534,20 +531,23 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     }
 }
 
-/// Returns the set of type variables contained in a trait ref
+/// Returns the set of type inference variables contained in a trait ref.
 fn trait_ref_type_vars<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
-    t: ty::PolyTraitRef<'tcx>,
-) -> Vec<ty::InferTy> {
-    t.skip_binder() // ok b/c this check doesn't care about regions
+    trait_ref: ty::PolyTraitRef<'tcx>,
+) -> Vec<TyOrConstInferVar<'tcx>> {
+    trait_ref
+        .skip_binder() // ok b/c this check doesn't care about regions
+        // FIXME(eddyb) walk over `GenericArg` to support const infer vars.
         .input_types()
-        .map(|t| selcx.infcx().resolve_vars_if_possible(&t))
-        .filter(|t| t.has_infer_types())
-        .flat_map(|t| t.walk())
-        .filter_map(|t| match t.kind {
-            ty::Infer(infer) => Some(infer),
-            _ => None,
-        })
+        .map(|ty| selcx.infcx().resolve_vars_if_possible(&ty))
+        // FIXME(eddyb) try using `maybe_walk` to skip *all* subtrees that
+        // don't contain inference variables, not just the outermost level.
+        // FIXME(eddyb) use `has_infer_types_or_const`.
+        .filter(|ty| ty.has_infer_types())
+        .flat_map(|ty| ty.walk())
+        // FIXME(eddyb) use `TyOrConstInferVar::maybe_from_generic_arg`.
+        .filter_map(TyOrConstInferVar::maybe_from_ty)
         .collect()
 }
 
