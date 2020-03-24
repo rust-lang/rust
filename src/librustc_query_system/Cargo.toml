@@ -12,10 +12,8 @@ doctest = false
 [dependencies]
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
 rustc-rayon-core = "0.3.0"
-rustc_ast = { path = "../librustc_ast" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
-rustc_hir = { path = "../librustc_hir" }
 rustc_index = { path = "../librustc_index" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }

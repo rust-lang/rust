@@ -7,7 +7,7 @@ use crate::query::job::{QueryJobId, QueryJobInfo};
 use crate::query::plumbing::CycleError;
 use crate::query::QueryState;
 use rustc_data_structures::profiling::ProfileCategory;
-use rustc_hir::def_id::DefId;
+use rustc_span::def_id::DefId;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
