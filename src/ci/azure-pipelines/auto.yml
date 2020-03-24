@@ -76,7 +76,7 @@ jobs:
       # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
       x86_64-apple:
         SCRIPT: ./x.py test
-        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.8
         MACOSX_STD_DEPLOYMENT_TARGET: 10.7
@@ -85,7 +85,7 @@ jobs:
 
       dist-x86_64-apple:
         SCRIPT: ./x.py dist
-        RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
+        INITIAL_RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.7
         NO_LLVM_ASSERTIONS: 1
@@ -94,7 +94,7 @@ jobs:
 
       dist-x86_64-apple-alt:
         SCRIPT: ./x.py dist
-        RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc
+        INITIAL_RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.7
         NO_LLVM_ASSERTIONS: 1
@@ -111,22 +111,22 @@ jobs:
     matrix:
       # 32/64 bit MSVC tests
       x86_64-msvc-1:
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
         SCRIPT: make ci-subset-1
         # FIXME(#59637)
         NO_DEBUG_ASSERTIONS: 1
         NO_LLVM_ASSERTIONS: 1
       x86_64-msvc-2:
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
         SCRIPT: make ci-subset-2
       i686-msvc-1:
-        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+        INITIAL_RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
         SCRIPT: make ci-subset-1
         # FIXME(#59637)
         NO_DEBUG_ASSERTIONS: 1
         NO_LLVM_ASSERTIONS: 1
       i686-msvc-2:
-        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+        INITIAL_RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
         SCRIPT: make ci-subset-2
         # FIXME(#59637)
         NO_DEBUG_ASSERTIONS: 1
@@ -134,10 +134,10 @@ jobs:
       # MSVC aux tests
       x86_64-msvc-aux:
         RUST_CHECK_TARGET: check-aux EXCLUDE_CARGO=1
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
       x86_64-msvc-cargo:
         SCRIPT: python x.py test src/tools/cargotest src/tools/cargo
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
         VCVARS_BAT: vcvars64.bat
         # FIXME(#59637)
         NO_DEBUG_ASSERTIONS: 1
@@ -145,7 +145,7 @@ jobs:
       # MSVC tools tests
       x86_64-msvc-tools:
         SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json
 
       # 32/64-bit MinGW builds.
       #
@@ -161,31 +161,31 @@ jobs:
       # came from the mingw-w64 SourceForge download site. Unfortunately
       # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
       i686-mingw-1:
-        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+        INITIAL_RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
         SCRIPT: make ci-mingw-subset-1
         CUSTOM_MINGW: 1
         # FIXME(#59637)
         NO_DEBUG_ASSERTIONS: 1
         NO_LLVM_ASSERTIONS: 1
       i686-mingw-2:
-        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+        INITIAL_RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
         SCRIPT: make ci-mingw-subset-2
         CUSTOM_MINGW: 1
       x86_64-mingw-1:
         SCRIPT: make ci-mingw-subset-1
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
         CUSTOM_MINGW: 1
         # FIXME(#59637)
         NO_DEBUG_ASSERTIONS: 1
         NO_LLVM_ASSERTIONS: 1
       x86_64-mingw-2:
         SCRIPT: make ci-mingw-subset-2
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
         CUSTOM_MINGW: 1
 
       # 32/64 bit MSVC and GNU deployment
       dist-x86_64-msvc:
-        RUST_CONFIGURE_ARGS: >-
+        INITIAL_RUST_CONFIGURE_ARGS: >-
           --build=x86_64-pc-windows-msvc
           --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
           --enable-full-tools
@@ -193,7 +193,7 @@ jobs:
         SCRIPT: python x.py dist
         DIST_REQUIRE_ALL_TOOLS: 1
       dist-i686-msvc:
-        RUST_CONFIGURE_ARGS: >-
+        INITIAL_RUST_CONFIGURE_ARGS: >-
           --build=i686-pc-windows-msvc
           --target=i586-pc-windows-msvc
           --enable-full-tools
@@ -201,17 +201,17 @@ jobs:
         SCRIPT: python x.py dist
         DIST_REQUIRE_ALL_TOOLS: 1
       dist-i686-mingw:
-        RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools --enable-profiler
+        INITIAL_RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools --enable-profiler
         SCRIPT: python x.py dist
         CUSTOM_MINGW: 1
         DIST_REQUIRE_ALL_TOOLS: 1
       dist-x86_64-mingw:
         SCRIPT: python x.py dist
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler
         CUSTOM_MINGW: 1
         DIST_REQUIRE_ALL_TOOLS: 1
 
       # "alternate" deployment, see .travis.yml for more info
       dist-x86_64-msvc-alt:
-        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
         SCRIPT: python x.py dist
