@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
 use crate::completion::{CompletionContext, Completions};
+use ra_syntax::SmolStr;
 
 /// Complete fields in fields literals.
 pub(super) fn complete_record_literal(acc: &mut Completions, ctx: &CompletionContext) {
@@ -11,7 +12,7 @@ pub(super) fn complete_record_literal(acc: &mut Completions, ctx: &CompletionCon
         _ => return,
     };
 
-    let already_present_names: Vec<String> = ctx
+    let already_present_names: Vec<SmolStr> = ctx
         .record_lit_syntax
         .as_ref()
         .and_then(|record_literal| record_literal.record_field_list())
@@ -20,13 +21,13 @@ pub(super) fn complete_record_literal(acc: &mut Completions, ctx: &CompletionCon
             fields
                 .into_iter()
                 .filter_map(|field| field.name_ref())
-                .map(|name_ref| name_ref.to_string())
+                .map(|name_ref| name_ref.text().clone())
                 .collect()
         })
         .unwrap_or_default();
 
     for (field, field_ty) in ty.variant_fields(ctx.db, variant) {
-        if !already_present_names.contains(&field.name(ctx.db).to_string()) {
+        if !already_present_names.contains(&SmolStr::from(field.name(ctx.db).to_string())) {
             acc.add_field(ctx, field, &field_ty);
         }
     }
