@@ -1,12 +1,10 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 
 use cranelift_codegen::{
     entity::SecondaryMap,
-    ir::{self, entities::AnyEntity, function::DisplayFunctionAnnotations},
+    ir::{entities::AnyEntity, function::DisplayFunctionAnnotations},
     write::{FuncWriter, PlainWriter},
-    ValueLabelsRanges,
 };
 
 use crate::prelude::*;
@@ -103,7 +101,7 @@ impl CommentWriter {
         self.global_comments.push(comment.into());
     }
 
-    pub fn add_comment<'s, S: Into<Cow<'s, str>>, E: Into<AnyEntity>>(
+    pub fn add_comment<S: Into<String> + AsRef<str>, E: Into<AnyEntity>>(
         &mut self,
         entity: E,
         comment: S,
@@ -112,10 +110,10 @@ impl CommentWriter {
         match self.entity_comments.entry(entity.into()) {
             Entry::Occupied(mut occ) => {
                 occ.get_mut().push('\n');
-                occ.get_mut().push_str(comment.into().as_ref());
+                occ.get_mut().push_str(comment.as_ref());
             }
             Entry::Vacant(vac) => {
-                vac.insert(comment.into().into_owned());
+                vac.insert(comment.into());
             }
         }
     }
@@ -192,7 +190,7 @@ impl<'a, 'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         self.clif_comments.add_global_comment(comment);
     }
 
-    pub fn add_comment<'s, S: Into<Cow<'s, str>>, E: Into<AnyEntity>>(
+    pub fn add_comment<S: Into<String> + AsRef<str>, E: Into<AnyEntity>>(
         &mut self,
         entity: E,
         comment: S,
@@ -206,9 +204,9 @@ pub fn write_clif_file<'tcx>(
     tcx: TyCtxt<'tcx>,
     postfix: &str,
     instance: Instance<'tcx>,
-    func: &ir::Function,
+    func: &cranelift_codegen::ir::Function,
     mut clif_comments: &CommentWriter,
-    value_ranges: Option<&ValueLabelsRanges>,
+    value_ranges: Option<&cranelift_codegen::ValueLabelsRanges>,
 ) {
     use std::io::Write;
 

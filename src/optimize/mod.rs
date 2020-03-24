@@ -5,6 +5,7 @@ mod stack2reg;
 
 pub fn optimize_function<'tcx>(
     tcx: TyCtxt<'tcx>,
+    #[cfg_attr(not(debug_assertions), allow(unused_variables))]
     instance: Instance<'tcx>,
     ctx: &mut Context,
     cold_blocks: &EntitySet<Block>,

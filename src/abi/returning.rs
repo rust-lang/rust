@@ -43,6 +43,9 @@ pub(super) fn codegen_return_param(
         PassMode::ByRef { sized: false } => todo!(),
     };
 
+    #[cfg(not(debug_assertions))]
+    let _ = ret_param;
+
     #[cfg(debug_assertions)]
     crate::abi::comments::add_arg_comment(
         fx,

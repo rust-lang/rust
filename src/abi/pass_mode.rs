@@ -130,7 +130,9 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
 pub(super) fn cvalue_for_param<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     start_block: Block,
+    #[cfg_attr(not(debug_assertions), allow(unused_variables))]
     local: Option<mir::Local>,
+    #[cfg_attr(not(debug_assertions), allow(unused_variables))]
     local_field: Option<usize>,
     arg_ty: Ty<'tcx>,
 ) -> Option<CValue<'tcx>> {

@@ -37,6 +37,7 @@ impl Pointer {
         }
     }
 
+    #[cfg(debug_assertions)]
     pub fn base_and_offset(self) -> (PointerBase, Offset32) {
         (self.base, self.offset)
     }
