@@ -76,7 +76,6 @@ fn get_chaining_hints(
     }
 
     let ty = sema.type_of_expr(&expr)?;
-    let label = ty.display_truncated(sema.db, options.max_length).to_string();
     if ty.is_unknown() {
         return None;
     }
@@ -96,6 +95,7 @@ fn get_chaining_hints(
     let next = tokens.next()?.kind();
     let next_next = tokens.next()?.kind();
     if next == SyntaxKind::WHITESPACE && next_next == SyntaxKind::DOT {
+        let label = ty.display_truncated(sema.db, options.max_length).to_string();
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
             kind: InlayKind::ChainingHint,
@@ -1105,7 +1105,7 @@ fn main() {
             r#"
             struct A(B);
             impl A { fn into_b(self) -> B { self.0 } }
-            struct B(C)
+            struct B(C);
             impl B { fn into_c(self) -> C { self.0 } }
             struct C;
 
@@ -1118,12 +1118,12 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
-                range: [231; 268),
+                range: [232; 269),
                 kind: ChainingHint,
                 label: "B",
             },
             InlayHint {
-                range: [231; 238),
+                range: [232; 239),
                 kind: ChainingHint,
                 label: "A",
             },
@@ -1136,7 +1136,7 @@ fn main() {
             r#"
             struct A(B);
             impl A { fn into_b(self) -> B { self.0 } }
-            struct B(C)
+            struct B(C);
             impl B { fn into_c(self) -> C { self.0 } }
             struct C;
 
