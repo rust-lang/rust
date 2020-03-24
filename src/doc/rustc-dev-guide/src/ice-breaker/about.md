@@ -58,8 +58,8 @@ To tag an issue as appropriate for an ICE-breaker group, you give
 team. For example:
 
 ```text
-@rustbot ping icebreakers-llvm
-@rustbot ping icebreakers-cleanup-crew
+@rustbot ping llvm
+@rustbot ping cleanup
 ```
 
 **Note though that this should only be done by compiler team members
