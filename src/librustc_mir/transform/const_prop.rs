@@ -337,14 +337,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) -> ConstPropagator<'mir, 'tcx> {
         let def_id = source.def_id();
         let substs = &InternalSubsts::identity_for_item(tcx, def_id);
-        let mut param_env = tcx.param_env(def_id);
-
-        // If we're evaluating inside a monomorphic function, then use `Reveal::All` because
-        // we want to see the same instances that codegen will see. This allows us to `resolve()`
-        // specializations.
-        if !substs.needs_subst() {
-            param_env = param_env.with_reveal_all();
-        }
+        let param_env = tcx.param_env(def_id).with_reveal_all();
 
         let span = tcx.def_span(def_id);
         let mut ecx = InterpCx::new(tcx.at(span), param_env, ConstPropMachine, ());
