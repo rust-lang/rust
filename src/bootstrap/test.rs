@@ -1141,6 +1141,8 @@ impl Step for Compiletest {
             let llvm_config = builder.ensure(native::Llvm { target: builder.config.build });
             if !builder.config.dry_run {
                 let llvm_version = output(Command::new(&llvm_config).arg("--version"));
+                // Remove trailing newline from llvm-config output.
+                let llvm_version = llvm_version.trim_end();
                 cmd.arg("--llvm-version").arg(llvm_version);
             }
             if !builder.is_rust_llvm(target) {

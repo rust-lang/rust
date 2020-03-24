@@ -191,6 +191,7 @@ impl EarlyProps {
                 return true;
             }
             if let Some(ref actual_version) = config.llvm_version {
+                let actual_version = version_to_int(actual_version);
                 if line.starts_with("min-llvm-version") {
                     let min_version = line
                         .trim_end()
@@ -199,7 +200,7 @@ impl EarlyProps {
                         .expect("Malformed llvm version directive");
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    &actual_version[..] < min_version
+                    actual_version < version_to_int(min_version)
                 } else if line.starts_with("min-system-llvm-version") {
                     let min_version = line
                         .trim_end()
@@ -208,7 +209,7 @@ impl EarlyProps {
                         .expect("Malformed llvm version directive");
                     // Ignore if using system LLVM and actual version
                     // is smaller the minimum required version
-                    config.system_llvm && &actual_version[..] < min_version
+                    config.system_llvm && actual_version < version_to_int(min_version)
                 } else if line.starts_with("ignore-llvm-version") {
                     // Syntax is: "ignore-llvm-version <version1> [- <version2>]"
                     let range_components = line
@@ -219,15 +220,15 @@ impl EarlyProps {
                         .take(3) // 3 or more = invalid, so take at most 3.
                         .collect::<Vec<&str>>();
                     match range_components.len() {
-                        1 => &actual_version[..] == range_components[0],
+                        1 => actual_version == version_to_int(range_components[0]),
                         2 => {
-                            let v_min = range_components[0];
-                            let v_max = range_components[1];
+                            let v_min = version_to_int(range_components[0]);
+                            let v_max = version_to_int(range_components[1]);
                             if v_max < v_min {
                                 panic!("Malformed LLVM version range: max < min")
                             }
                             // Ignore if version lies inside of range.
-                            &actual_version[..] >= v_min && &actual_version[..] <= v_max
+                            actual_version >= v_min && actual_version <= v_max
                         }
                         _ => panic!("Malformed LLVM version directive"),
                     }
@@ -236,6 +237,20 @@ impl EarlyProps {
                 }
             } else {
                 false
+            }
+        }
+
+        fn version_to_int(version: &str) -> u32 {
+            let version_without_suffix = version.split('-').next().unwrap();
+            let components: Vec<u32> = version_without_suffix
+                .split('.')
+                .map(|s| s.parse().expect("Malformed version component"))
+                .collect();
+            match components.len() {
+                1 => components[0] * 10000,
+                2 => components[0] * 10000 + components[1] * 100,
+                3 => components[0] * 10000 + components[1] * 100 + components[2],
+                _ => panic!("Malformed version"),
             }
         }
     }
