@@ -44,13 +44,15 @@ impl MetadataLoader for CraneliftMetadataLoader {
         _target: &Target,
         path: &Path,
     ) -> Result<owning_ref::ErasedBoxRef<[u8]>, String> {
-        use object::Object;
+        use object::{Object, ObjectSection};
         let file = std::fs::read(path).map_err(|e| format!("read:{:?}", e))?;
         let file = object::File::parse(&file).map_err(|e| format!("parse: {:?}", e))?;
         let buf = file
-            .section_data_by_name(".rustc")
+            .section_by_name(".rustc")
             .ok_or("no .rustc section")?
-            .into_owned();
+            .data()
+            .map_err(|e| format!("failed to read .rustc section: {:?}", e))?
+            .to_owned();
         let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
         Ok(rustc_erase_owner!(buf.map_owner_box()))
     }

@@ -20,7 +20,7 @@ byteorder = "1.2.7"
 indexmap = "1.0.2"
 
 [dependencies.object]
-version = "0.17.0"
+version = "0.18.0"
 default-features = false
 features = ["read", "std", "write"] # We don't need WASM support
 
