@@ -377,11 +377,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     gated!(fundamental, Whitelisted, template!(Word), experimental!(fundamental)),
     gated!(
-        // RFC #1445.
-        structural_match, Whitelisted, template!(Word),
-        "the semantics of constant patterns is not yet settled",
-    ),
-    gated!(
         may_dangle, Normal, template!(Word), dropck_eyepatch,
         "`may_dangle` has unstable semantics and may be removed in the future",
     ),

@@ -14,25 +14,25 @@ fn main() {
     #[derive(PartialEq, Eq)]
     struct SM;
 
-    // Check that SM is #[structural_match]:
+    // Check that SM is structural-match:
     const CSM: SM = SM;
     match SM {
         CSM => count += 1,
     };
 
-    // Check that PhantomData<T> is #[structural_match] even if T is not.
+    // Check that PhantomData<T> is structural-match even if T is not.
     const CPD1: PhantomData<NotSM> = PhantomData;
     match PhantomData {
         CPD1 => count += 1,
     };
 
-    // Check that PhantomData<T> is #[structural_match] when T is.
+    // Check that PhantomData<T> is structural-match when T is.
     const CPD2: PhantomData<SM> = PhantomData;
     match PhantomData {
         CPD2 => count += 1,
     };
 
-    // Check that a type which has a PhantomData is `#[structural_match]`.
+    // Check that a type which has a PhantomData is structural-match.
     #[derive(PartialEq, Eq, Default)]
     struct Foo {
         alpha: PhantomData<NotSM>,

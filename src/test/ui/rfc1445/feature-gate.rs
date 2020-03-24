@@ -1,4 +1,4 @@
-// Test that structural match is only permitted with a feature gate,
+// Test that use of structural-match traits is only permitted with a feature gate,
 // and that if a feature gate is supplied, it permits the type to be
 // used in a match.
 

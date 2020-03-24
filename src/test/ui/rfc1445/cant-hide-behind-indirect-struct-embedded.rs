@@ -1,6 +1,6 @@
 // This is part of a set of tests exploring the different ways a
-// `#[structural_match]` ADT might try to hold a
-// non-`#[structural_match]` in hidden manner that lets matches
+// structural-match ADT might try to hold a
+// non-structural-match in hidden manner that lets matches
 // through that we had intended to reject.
 //
 // See discussion on rust-lang/rust#62307 and rust-lang/rust#62339

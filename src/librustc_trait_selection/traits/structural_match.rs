@@ -14,9 +14,9 @@ pub enum NonStructuralMatchTy<'tcx> {
 }
 
 /// This method traverses the structure of `ty`, trying to find an
-/// instance of an ADT (i.e. struct or enum) that was declared without
-/// the `#[structural_match]` attribute, or a generic type parameter
-/// (which cannot be determined to be `structural_match`).
+/// instance of an ADT (i.e. struct or enum) that doesn't implement
+/// the structural-match traits, or a generic type parameter
+/// (which cannot be determined to be structural-match).
 ///
 /// The "structure of a type" includes all components that would be
 /// considered when doing a pattern match on a constant of that
@@ -30,8 +30,8 @@ pub enum NonStructuralMatchTy<'tcx> {
 ///    instantiated generic like `PhantomData<T>`.
 ///
 /// The reason we do this search is Rust currently require all ADTs
-/// reachable from a constant's type to be annotated with
-/// `#[structural_match]`, an attribute which essentially says that
+/// reachable from a constant's type to implement the
+/// structural-match traits, which essentially say that
 /// the implementation of `PartialEq::eq` behaves *equivalently* to a
 /// comparison against the unfolded structure.
 ///

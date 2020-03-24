@@ -1,5 +1,5 @@
-// Issue 62307 pointed out a case where the checking for
-// `#[structural_match]` was too shallow.
+// Issue 62307 pointed out a case where the structural-match checking
+// was too shallow.
 //
 // Here we check similar behavior for non-empty arrays of types that
 // do not derive `Eq`.
