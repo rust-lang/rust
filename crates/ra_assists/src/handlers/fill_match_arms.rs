@@ -30,8 +30,8 @@ use ast::{MatchArm, Pat};
 //
 // fn handle(action: Action) {
 //     match action {
-//         Action::Move { distance } => (),
-//         Action::Stop => (),
+//         Action::Move { distance } => {}
+//         Action::Stop => {}
 //     }
 // }
 // ```
@@ -57,7 +57,7 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
             .into_iter()
             .filter_map(|variant| build_pat(ctx.db, module, variant))
             .filter(|variant_pat| is_variant_missing(&mut arms, variant_pat))
-            .map(|pat| make::match_arm(iter::once(pat), make::expr_unit()))
+            .map(|pat| make::match_arm(iter::once(pat), make::expr_empty_block()))
             .collect()
     } else if let Some(enum_defs) = resolve_tuple_of_enum_def(&ctx.sema, &expr) {
         // Partial fill not currently supported for tuple of enums.
@@ -86,7 +86,7 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
                 ast::Pat::from(make::tuple_pat(patterns))
             })
             .filter(|variant_pat| is_variant_missing(&mut arms, variant_pat))
-            .map(|pat| make::match_arm(iter::once(pat), make::expr_unit()))
+            .map(|pat| make::match_arm(iter::once(pat), make::expr_empty_block()))
             .collect()
     } else {
         return None;
@@ -192,8 +192,8 @@ mod tests {
             fn main() {
                 match A::As<|> {
                     A::As,
-                    A::Bs{x,y:Some(_)} => (),
-                    A::Cs(_, Some(_)) => (),
+                    A::Bs{x,y:Some(_)} => {}
+                    A::Cs(_, Some(_)) => {}
                 }
             }
             "#,
@@ -227,8 +227,8 @@ mod tests {
             }
             fn main() {
                 match A::As<|> {
-                    A::Bs{x,y:Some(_)} => (),
-                    A::Cs(_, Some(_)) => (),
+                    A::Bs{x,y:Some(_)} => {}
+                    A::Cs(_, Some(_)) => {}
                 }
             }
             "#,
@@ -240,9 +240,9 @@ mod tests {
             }
             fn main() {
                 match <|>A::As {
-                    A::Bs{x,y:Some(_)} => (),
-                    A::Cs(_, Some(_)) => (),
-                    A::As => (),
+                    A::Bs{x,y:Some(_)} => {}
+                    A::Cs(_, Some(_)) => {}
+                    A::As => {}
                 }
             }
             "#,
@@ -261,7 +261,7 @@ mod tests {
             }
             fn main() {
                 match A::As<|> {
-                    A::Cs(_) | A::Bs => (),
+                    A::Cs(_) | A::Bs => {}
                 }
             }
             "#,
@@ -273,8 +273,8 @@ mod tests {
             }
             fn main() {
                 match <|>A::As {
-                    A::Cs(_) | A::Bs => (),
-                    A::As => (),
+                    A::Cs(_) | A::Bs => {}
+                    A::As => {}
                 }
             }
             "#,
@@ -299,8 +299,8 @@ mod tests {
             }
             fn main() {
                 match A::As<|> {
-                    A::Bs if 0 < 1 => (),
-                    A::Ds(_value) => (),
+                    A::Bs if 0 < 1 => {}
+                    A::Ds(_value) => { let x = 1; }
                     A::Es(B::Xs) => (),
                 }
             }
@@ -319,11 +319,11 @@ mod tests {
             }
             fn main() {
                 match <|>A::As {
-                    A::Bs if 0 < 1 => (),
-                    A::Ds(_value) => (),
+                    A::Bs if 0 < 1 => {}
+                    A::Ds(_value) => { let x = 1; }
                     A::Es(B::Xs) => (),
-                    A::As => (),
-                    A::Cs => (),
+                    A::As => {}
+                    A::Cs => {}
                 }
             }
             "#,
@@ -360,11 +360,11 @@ mod tests {
             fn main() {
                 let a = A::As;
                 match <|>a {
-                    A::As => (),
-                    A::Bs => (),
-                    A::Cs(_) => (),
-                    A::Ds(_, _) => (),
-                    A::Es { x, y } => (),
+                    A::As => {}
+                    A::Bs => {}
+                    A::Cs(_) => {}
+                    A::Ds(_, _) => {}
+                    A::Es { x, y } => {}
                 }
             }
             "#,
@@ -405,10 +405,10 @@ mod tests {
                 let a = A::One;
                 let b = B::One;
                 match <|>(a, b) {
-                    (A::One, B::One) => (),
-                    (A::One, B::Two) => (),
-                    (A::Two, B::One) => (),
-                    (A::Two, B::Two) => (),
+                    (A::One, B::One) => {}
+                    (A::One, B::Two) => {}
+                    (A::Two, B::One) => {}
+                    (A::Two, B::Two) => {}
                 }
             }
             "#,
@@ -449,10 +449,10 @@ mod tests {
                 let a = A::One;
                 let b = B::One;
                 match <|>(&a, &b) {
-                    (A::One, B::One) => (),
-                    (A::One, B::Two) => (),
-                    (A::Two, B::One) => (),
-                    (A::Two, B::Two) => (),
+                    (A::One, B::One) => {}
+                    (A::One, B::Two) => {}
+                    (A::Two, B::One) => {}
+                    (A::Two, B::Two) => {}
                 }
             }
             "#,
@@ -477,7 +477,7 @@ mod tests {
                 let a = A::One;
                 let b = B::One;
                 match (a<|>, b) {
-                    (A::Two, B::One) => (),
+                    (A::Two, B::One) => {}
                 }
             }
             "#,
@@ -502,10 +502,10 @@ mod tests {
                 let a = A::One;
                 let b = B::One;
                 match (a<|>, b) {
-                    (A::Two, B::One) => (),
-                    (A::One, B::One) => (),
-                    (A::One, B::Two) => (),
-                    (A::Two, B::Two) => (),
+                    (A::Two, B::One) => {}
+                    (A::One, B::One) => {}
+                    (A::One, B::Two) => {}
+                    (A::Two, B::Two) => {}
                 }
             }
             "#,
@@ -555,7 +555,7 @@ mod tests {
 
             fn foo(a: &A) {
                 match <|>a {
-                    A::As => (),
+                    A::As => {}
                 }
             }
             "#,
@@ -580,7 +580,7 @@ mod tests {
 
             fn foo(a: &mut A) {
                 match <|>a {
-                    A::Es { x, y } => (),
+                    A::Es { x, y } => {}
                 }
             }
             "#,
@@ -611,7 +611,7 @@ mod tests {
 
             fn main() {
                 match E::X {
-                    <|>_ => {},
+                    <|>_ => {}
                 }
             }
             "#,
@@ -620,8 +620,8 @@ mod tests {
 
             fn main() {
                 match <|>E::X {
-                    E::X => (),
-                    E::Y => (),
+                    E::X => {}
+                    E::Y => {}
                 }
             }
             "#,
@@ -648,8 +648,8 @@ mod tests {
 
             fn main() {
                 match <|>X {
-                    X => (),
-                    foo::E::Y => (),
+                    X => {}
+                    foo::E::Y => {}
                 }
             }
             "#,

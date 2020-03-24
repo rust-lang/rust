@@ -87,6 +87,9 @@ pub fn block_from_expr(e: ast::Expr) -> ast::Block {
 pub fn expr_unit() -> ast::Expr {
     expr_from_text("()")
 }
+pub fn expr_empty_block() -> ast::Expr {
+    expr_from_text("{}")
+}
 pub fn expr_unimplemented() -> ast::Expr {
     expr_from_text("unimplemented!()")
 }
