@@ -296,11 +296,11 @@ impl ast::UseTree {
 }
 
 #[must_use]
-pub fn strip_attrs_and_docs<N: ast::AttrsOwner>(node: &N) -> N {
-    N::cast(strip_attrs_and_docs_inner(node.syntax().clone())).unwrap()
+pub fn remove_attrs_and_docs<N: ast::AttrsOwner>(node: &N) -> N {
+    N::cast(remove_attrs_and_docs_inner(node.syntax().clone())).unwrap()
 }
 
-fn strip_attrs_and_docs_inner(mut node: SyntaxNode) -> SyntaxNode {
+fn remove_attrs_and_docs_inner(mut node: SyntaxNode) -> SyntaxNode {
     while let Some(start) =
         node.children_with_tokens().find(|it| it.kind() == ATTR || it.kind() == COMMENT)
     {
