@@ -24,7 +24,7 @@ Compiler
 - [You can now pass multiple lint flags to rustc to override the previous
   flags.][67885] For example; `rustc -D unused -A unused-variables` denies
   everything in the `unused` lint group unused except `unused-variables` which
-  is explicitly allowed. Passing `rustc -A unused-variables -D unused` denies
+  is explicitly allowed. However, passing `rustc -A unused-variables -D unused` denies
   everything in the `unused` lint group **including** `unused-variables` since
   the allow flag is specified before the deny flag (and therefore overridden).
 - [rustc will now prefer your system MinGW libraries over its bundled libraries
@@ -35,13 +35,13 @@ Libraries
 ---------
 - [`Arc<[T; N]>`, `Box<[T; N]>`, and `Rc<[T; N]>`, now implement
   `TryFrom<Arc<[T]>>`,`TryFrom<Box<[T]>>`, and `TryFrom<Rc<[T]>>`
-  respectively.][69538] Where `N` is `0..=32`.
+  respectively.][69538] These conversions succeed when `N` is `0..=32`.
 - [All `to_be_bytes`, `to_le_bytes`, `to_ne_bytes`, `from_be_bytes`,
   `from_le_bytes`, and `from_ne_bytes` methods for integers are
   now `const`.][69373]
 - [You can now use associated constants on floats and integers directly, rather
   than having to import the module.][68952] e.g. You can now write `u32::MAX` or
-  `f32::NAN` no imports.
+  `f32::NAN` with no imports.
 - [`u8::is_ascii` is now `const`.][68984]
 - [`String` now implements `AsMut<str>`.][68742]
 - [Added the `primitive` module to `std` and `core`.][67637] This module
