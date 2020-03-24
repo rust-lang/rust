@@ -1,11 +1,12 @@
 use std::convert::TryFrom;
+use std::fmt;
 
 use rustc_apfloat::{
     ieee::{Double, Single},
     Float,
 };
 use rustc_macros::HashStable;
-use std::fmt;
+use rustc_target::abi::TargetDataLayout;
 
 use crate::ty::{
     layout::{HasDataLayout, Size},
@@ -200,68 +201,54 @@ impl<'tcx, Tag> Scalar<Tag> {
         Scalar::Raw { data: 0, size: 0 }
     }
 
-    #[inline]
-    pub fn ptr_offset(self, i: Size, cx: &impl HasDataLayout) -> InterpResult<'tcx, Self> {
-        let dl = cx.data_layout();
+    #[inline(always)]
+    fn ptr_op(
+        self,
+        dl: &TargetDataLayout,
+        f_int: impl FnOnce(u64) -> InterpResult<'tcx, u64>,
+        f_ptr: impl FnOnce(Pointer<Tag>) -> InterpResult<'tcx, Pointer<Tag>>,
+    ) -> InterpResult<'tcx, Self> {
         match self {
             Scalar::Raw { data, size } => {
                 assert_eq!(u64::from(size), dl.pointer_size.bytes());
-                Ok(Scalar::Raw {
-                    data: u128::from(dl.offset(u64::try_from(data).unwrap(), i.bytes())?),
-                    size,
-                })
+                Ok(Scalar::Raw { data: u128::from(f_int(u64::try_from(data).unwrap())?), size })
             }
-            Scalar::Ptr(ptr) => ptr.offset(i, dl).map(Scalar::Ptr),
+            Scalar::Ptr(ptr) => Ok(Scalar::Ptr(f_ptr(ptr)?)),
         }
+    }
+
+    #[inline]
+    pub fn ptr_offset(self, i: Size, cx: &impl HasDataLayout) -> InterpResult<'tcx, Self> {
+        let dl = cx.data_layout();
+        self.ptr_op(dl, |int| dl.offset(int, i.bytes()), |ptr| ptr.offset(i, dl))
     }
 
     #[inline]
     pub fn ptr_wrapping_offset(self, i: Size, cx: &impl HasDataLayout) -> Self {
         let dl = cx.data_layout();
-        match self {
-            Scalar::Raw { data, size } => {
-                assert_eq!(u64::from(size), dl.pointer_size.bytes());
-                Scalar::Raw {
-                    data: u128::from(
-                        dl.overflowing_offset(u64::try_from(data).unwrap(), i.bytes()).0,
-                    ),
-                    size,
-                }
-            }
-            Scalar::Ptr(ptr) => Scalar::Ptr(ptr.wrapping_offset(i, dl)),
-        }
+        self.ptr_op(
+            dl,
+            |int| Ok(dl.overflowing_offset(int, i.bytes()).0),
+            |ptr| Ok(ptr.wrapping_offset(i, dl)),
+        )
+        .unwrap()
     }
 
     #[inline]
     pub fn ptr_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> InterpResult<'tcx, Self> {
         let dl = cx.data_layout();
-        match self {
-            Scalar::Raw { data, size } => {
-                assert_eq!(u64::from(size), dl.pointer_size.bytes());
-                Ok(Scalar::Raw {
-                    data: u128::from(dl.signed_offset(u64::try_from(data).unwrap(), i)?),
-                    size,
-                })
-            }
-            Scalar::Ptr(ptr) => ptr.signed_offset(i, dl).map(Scalar::Ptr),
-        }
+        self.ptr_op(dl, |int| dl.signed_offset(int, i), |ptr| ptr.signed_offset(i, dl))
     }
 
     #[inline]
     pub fn ptr_wrapping_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> Self {
         let dl = cx.data_layout();
-        match self {
-            Scalar::Raw { data, size } => {
-                assert_eq!(u64::from(size), dl.pointer_size.bytes());
-                Scalar::Raw {
-                    data: u128::from(
-                        dl.overflowing_signed_offset(u64::try_from(data).unwrap(), i128::from(i)).0,
-                    ),
-                    size,
-                }
-            }
-            Scalar::Ptr(ptr) => Scalar::Ptr(ptr.wrapping_signed_offset(i, dl)),
-        }
+        self.ptr_op(
+            dl,
+            |int| Ok(dl.overflowing_signed_offset(int, i).0),
+            |ptr| Ok(ptr.wrapping_signed_offset(i, dl)),
+        )
+        .unwrap()
     }
 
     #[inline]
