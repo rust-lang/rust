@@ -168,16 +168,15 @@ where
     /// This function is inlined because that results in a noticeable speed-up
     /// for some compile-time benchmarks.
     #[inline(always)]
-    fn try_start<'a, 'b, Q, K>(
+    fn try_start<'a, 'b, Q>(
         tcx: CTX,
         span: Span,
         key: &C::Key,
         mut lookup: QueryLookup<'a, CTX, C::Key, C::Sharded>,
     ) -> TryGetJob<'b, CTX, C>
     where
-        K: DepKind,
         Q: QueryDescription<CTX, Key = C::Key, Value = C::Value, Cache = C>,
-        CTX: QueryContext<DepKind = K>,
+        CTX: QueryContext,
     {
         let lock = &mut *lookup.lock;
 
@@ -391,7 +390,7 @@ where
     Q: QueryDescription<CTX>,
     CTX: QueryContext,
 {
-    let job = match JobOwner::try_start::<Q, _>(tcx, span, &key, lookup) {
+    let job = match JobOwner::try_start::<Q>(tcx, span, &key, lookup) {
         TryGetJob::NotYetStarted(job) => job,
         TryGetJob::Cycle(result) => return result,
         #[cfg(parallel_compiler)]
@@ -697,7 +696,7 @@ where
                 // Cache hit, do nothing
             },
             |key, lookup| {
-                let job = match JobOwner::try_start::<Q, _>(self, span, &key, lookup) {
+                let job = match JobOwner::try_start::<Q>(self, span, &key, lookup) {
                     TryGetJob::NotYetStarted(job) => job,
                     TryGetJob::Cycle(_) => return,
                     #[cfg(parallel_compiler)]
