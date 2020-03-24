@@ -282,12 +282,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         }
         // If the static allocation is mutable or if it has relocations (it may be legal to mutate
         // the memory behind that in the future), then we can't const prop it.
-        // FIXME: we only check statics here (that have a `DefId`), not other mutable allocations.
-        // Why that?
-        if def_id.is_some()
-            && (allocation.mutability == Mutability::Mut || allocation.relocations().len() > 0)
-        {
-            throw_machine_stop_str!("can't eval mutable statics in ConstProp");
+        if allocation.mutability == Mutability::Mut {
+            throw_machine_stop_str!("can't eval mutable globals in ConstProp");
+        }
+        if def_id.is_some() && allocation.relocations().len() > 0 {
+            throw_machine_stop_str!("can't eval statics with pointers in ConstProp");
         }
 
         Ok(())
