@@ -16,7 +16,7 @@ has explicitly opted out via a negative impl.
 [`Sync`]: https://doc.rust-lang.org/std/marker/trait.Sync.html
 
 ```rust,ignore
-impl !Type for Trait
+impl !Trait for Type
 ```
 
 Example:
