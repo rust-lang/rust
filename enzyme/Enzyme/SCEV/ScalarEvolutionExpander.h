@@ -14,7 +14,7 @@
 #ifndef FAKELLVM_ANALYSIS_SCALAREVOLUTIONEXPANDER_H
 #define FAKELLVM_ANALYSIS_SCALAREVOLUTIONEXPANDER_H
 
-#include "./ScalarEvolution.h"
+#include "SCEV/ScalarEvolution.h"
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"

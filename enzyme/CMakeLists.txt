@@ -41,6 +41,14 @@ find_package(LLVM REQUIRED CONFIG)
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 include(AddLLVM)
 
+find_file(ScalarEvH llvm/Analysis/ScalarEvolution.h ${LLVM_INCLUDE_DIRS})
+message("found scalarevh here " ${ScalarEvH})
+
+file(READ ${ScalarEvH} INPUT_TEXT)
+string(REPLACE private public INPUT_TEXT "${INPUT_TEXT}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/include/SCEV/ScalarEvolution.h" "${INPUT_TEXT}")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
+
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS})
 message("found llvm include directory here " ${LLVM_INCLUDE_DIRS})
