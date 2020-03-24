@@ -162,8 +162,10 @@ crate fn placeholder_type_error(
         // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
         sugg.push((arg.span, (*type_name).to_string()));
     } else {
+        let last = generics.iter().last().unwrap();
         sugg.push((
-            generics.iter().last().unwrap().span.shrink_to_hi(),
+            // Account for bounds, we want `fn foo<T: E, K>(_: K)` not `fn foo<T, K: E>(_: K)`.
+            last.bounds_span().unwrap_or(last.span).shrink_to_hi(),
             format!(", {}", type_name),
         ));
     }
