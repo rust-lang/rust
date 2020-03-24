@@ -38,6 +38,7 @@ rustc_mir_build = { path = "../librustc_mir_build" }
 rustc_passes = { path = "../librustc_passes" }
 rustc_typeck = { path = "../librustc_typeck" }
 rustc_lint = { path = "../librustc_lint" }
+rustc_coverage = { path = "../librustc_coverage" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_plugin_impl = { path = "../librustc_plugin_impl" }
 rustc_privacy = { path = "../librustc_privacy" }

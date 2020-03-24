@@ -46,6 +46,7 @@ use rustc_session::{early_error, early_warn};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
 
+use log::debug;
 use std::borrow::Cow;
 use std::cmp::max;
 use std::default::Default;
@@ -337,7 +338,9 @@ pub fn run_compiler(
                 }
             }
 
+            debug!("before death");
             queries.expansion()?;
+            debug!("AFTER DEATH (we don't get here?)");
             if callbacks.after_expansion(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }

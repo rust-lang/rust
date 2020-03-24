@@ -3614,6 +3614,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_coverage"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "rustc",
+ "rustc_ast",
+ "rustc_resolve",
+ "rustc_span",
+]
+
+[[package]]
 name = "rustc_data_structures"
 version = "0.0.0"
 dependencies = [
@@ -3798,6 +3809,7 @@ dependencies = [
  "rustc_builtin_macros",
  "rustc_codegen_llvm",
  "rustc_codegen_ssa",
+ "rustc_coverage",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_expand",
