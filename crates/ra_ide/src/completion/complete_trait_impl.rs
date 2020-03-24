@@ -193,7 +193,7 @@ fn add_const_impl(
 }
 
 fn make_const_compl_syntax(const_: &ast::ConstDef) -> String {
-    let const_ = edit::strip_attrs_and_docs(const_);
+    let const_ = edit::remove_attrs_and_docs(const_);
 
     let const_start = const_.syntax().text_range().start();
     let const_end = const_.syntax().text_range().end();

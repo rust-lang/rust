@@ -151,7 +151,7 @@ fn add_missing_impl_members_inner(
                 ast::ImplItem::FnDef(def) => ast::ImplItem::FnDef(add_body(def)),
                 _ => it,
             })
-            .map(|it| edit::strip_attrs_and_docs(&it));
+            .map(|it| edit::remove_attrs_and_docs(&it));
         let new_impl_item_list = impl_item_list.append_items(items);
         let cursor_position = {
             let first_new_item = new_impl_item_list.impl_items().nth(n_existing_items).unwrap();
