@@ -47,7 +47,7 @@ Libraries
 - [Added the `primitive` module to `std` and `core`.][67637] This module
   reexports Rust's primitive types. This is mainly useful for use in macros
   where you want avoid these types being shadowed.
-- [The some of the trait bounds on `HashMap` and `HashSet`.][67642]
+- [Relaxed some of the trait bounds on `HashMap` and `HashSet`.][67642]
 - [`string::FromUtf8Error` now implements `Clone + Eq`.][68738]
 
 Stabilized APIs
