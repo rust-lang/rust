@@ -73,10 +73,18 @@
                         "type": "string"
                     },
                     "args": {
-                        "type": "array"
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     },
                     "env": {
-                        "type": "object"
+                        "type": "object",
+                        "patternProperties": {
+                            ".+": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             }
