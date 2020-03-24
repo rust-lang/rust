@@ -951,6 +951,12 @@ pub trait Read {
 #[repr(transparent)]
 pub struct IoSliceMut<'a>(sys::io::IoSliceMut<'a>);
 
+#[stable(feature = "iovec-send-sync", since = "1.44.0")]
+unsafe impl<'a> Send for IoSliceMut<'a> {}
+
+#[stable(feature = "iovec-send-sync", since = "1.44.0")]
+unsafe impl<'a> Sync for IoSliceMut<'a> {}
+
 #[stable(feature = "iovec", since = "1.36.0")]
 impl<'a> fmt::Debug for IoSliceMut<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1053,6 +1059,12 @@ impl<'a> DerefMut for IoSliceMut<'a> {
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct IoSlice<'a>(sys::io::IoSlice<'a>);
+
+#[stable(feature = "iovec-send-sync", since = "1.44.0")]
+unsafe impl<'a> Send for IoSlice<'a> {}
+
+#[stable(feature = "iovec-send-sync", since = "1.44.0")]
+unsafe impl<'a> Sync for IoSlice<'a> {}
 
 #[stable(feature = "iovec", since = "1.36.0")]
 impl<'a> fmt::Debug for IoSlice<'a> {
