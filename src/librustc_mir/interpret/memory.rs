@@ -668,7 +668,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
             if alloc.undef_mask().is_range_defined(i, i + Size::from_bytes(1)).is_ok() {
                 // this `as usize` is fine, since `i` came from a `usize`
-                let i = usize::try_from(i.bytes()).unwrap();
+                let i = i.bytes_usize();
 
                 // Checked definedness (and thus range) and relocations. This access also doesn't
                 // influence interpreter execution but is only for debugging.
@@ -693,8 +693,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             let mut pos = Size::ZERO;
             let relocation_width = (self.pointer_size().bytes() - 1) * 3;
             for (i, target_id) in relocations {
-                // this `as usize` is fine, since we can't print more chars than `usize::MAX`
-                write!(msg, "{:1$}", "", ((i - pos) * 3).bytes() as usize).unwrap();
+                write!(msg, "{:1$}", "", ((i - pos) * 3).bytes_usize()).unwrap();
                 let target = format!("({})", target_id);
                 // this `as usize` is fine, since we can't print more chars than `usize::MAX`
                 write!(msg, "└{0:─^1$}┘ ", target, relocation_width as usize).unwrap();
@@ -924,16 +923,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 for i in 0..length {
                     ptr::copy(
                         src_bytes,
-                        dest_bytes.offset(isize::try_from((size * i).bytes()).unwrap()), // `Size` multiplication
-                        usize::try_from(size.bytes()).unwrap(),
+                        dest_bytes.add((size * i).bytes_usize()), // `Size` multiplication
+                        size.bytes_usize(),
                     );
                 }
             } else {
                 for i in 0..length {
                     ptr::copy_nonoverlapping(
                         src_bytes,
-                        dest_bytes.offset(isize::try_from((size * i).bytes()).unwrap()), // `Size` multiplication
-                        usize::try_from(size.bytes()).unwrap(),
+                        dest_bytes.add((size * i).bytes_usize()), // `Size` multiplication
+                        size.bytes_usize(),
                     );
                 }
             }

@@ -110,7 +110,7 @@ impl<Tag> Allocation<Tag> {
 
     pub fn undef(size: Size, align: Align) -> Self {
         Allocation {
-            bytes: vec![0; usize::try_from(size.bytes()).unwrap()],
+            bytes: vec![0; size.bytes_usize()],
             relocations: Relocations::new(),
             undef_mask: UndefMask::new(size, false),
             size,
@@ -153,7 +153,7 @@ impl Allocation<(), ()> {
 /// Raw accessors. Provide access to otherwise private bytes.
 impl<Tag, Extra> Allocation<Tag, Extra> {
     pub fn len(&self) -> usize {
-        usize::try_from(self.size.bytes()).unwrap()
+        self.size.bytes_usize()
     }
 
     /// Looks at a slice which may describe undefined bytes or describe a relocation. This differs
@@ -192,7 +192,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
             size.bytes(),
             self.len()
         );
-        usize::try_from(offset.bytes()).unwrap()..end
+        offset.bytes_usize()..end
     }
 
     /// The last argument controls whether we error out when there are undefined
@@ -290,7 +290,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
     ) -> InterpResult<'tcx, &[u8]> {
-        let offset = usize::try_from(ptr.offset.bytes()).unwrap();
+        let offset = ptr.offset.bytes_usize();
         Ok(match self.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
                 let size_with_null = Size::from_bytes(size) + Size::from_bytes(1);
