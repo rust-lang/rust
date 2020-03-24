@@ -55,7 +55,7 @@ fn main() {
 //   StorageLive(_2);
 //   _2 = Box(std::vec::Vec<u32>);
 //   _4 = &mut (*_2);
-//   ((*_4).0: alloc::raw_vec::RawVec<u32>) = const alloc::raw_vec::RawVec::<u32>::NEW;
+//   ((*_4).0: alloc::raw_vec::RawVec<u32>) = const ByRef { alloc: Allocation { bytes: [4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), undef_mask: UndefMask { blocks: [65535], len: Size { raw: 16 } }, size: Size { raw: 16 }, align: Align { pow2: 3 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }: alloc::raw_vec::RawVec::<u32>;
 //   ((*_4).1: usize) = const 0usize;
 //   _1 = move _2;
 //   StorageDead(_2);
