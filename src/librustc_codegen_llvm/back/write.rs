@@ -16,7 +16,9 @@ use crate::ModuleLlvm;
 use log::debug;
 use rustc::bug;
 use rustc::ty::TyCtxt;
-use rustc_codegen_ssa::back::write::{run_assembler, CodegenContext, EmbedBitcode, ModuleConfig};
+use rustc_codegen_ssa::back::write::{
+    run_assembler, BitcodeSection, CodegenContext, EmitObj, ModuleConfig,
+};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, RLIB_BYTECODE_EXTENSION};
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -651,7 +653,7 @@ pub(crate) unsafe fn codegen(
             let thin = ThinBuffer::new(llmod);
             let data = thin.data();
 
-            if config.emit_bc || config.obj_is_bitcode {
+            if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
                 let _timer = cgcx.prof.generic_activity_with_arg(
                     "LLVM_module_codegen_emit_bitcode",
                     &module.name[..],
@@ -662,7 +664,7 @@ pub(crate) unsafe fn codegen(
                 }
             }
 
-            if config.embed_bitcode == EmbedBitcode::Full {
+            if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
                 let _timer = cgcx.prof.generic_activity_with_arg(
                     "LLVM_module_codegen_embed_bitcode",
                     &module.name[..],
@@ -682,7 +684,7 @@ pub(crate) unsafe fn codegen(
                     diag_handler.err(&msg);
                 }
             }
-        } else if config.embed_bitcode == EmbedBitcode::Marker {
+        } else if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Marker) {
             embed_bitcode(cgcx, llcx, llmod, None);
         }
 
@@ -732,9 +734,9 @@ pub(crate) unsafe fn codegen(
             })?;
         }
 
-        let config_emit_normal_obj = config.emit_obj && !config.obj_is_bitcode;
+        let config_emit_object_code = matches!(config.emit_obj, EmitObj::ObjectCode(_));
 
-        if config.emit_asm || (config_emit_normal_obj && config.no_integrated_as) {
+        if config.emit_asm || (config_emit_object_code && config.no_integrated_as) {
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg("LLVM_module_codegen_emit_asm", &module.name[..]);
@@ -743,13 +745,13 @@ pub(crate) unsafe fn codegen(
             // We can't use the same module for asm and binary output, because that triggers
             // various errors like invalid IR or broken binaries, so we might have to clone the
             // module to produce the asm output
-            let llmod = if config.emit_obj { llvm::LLVMCloneModule(llmod) } else { llmod };
+            let llmod = if config_emit_object_code { llvm::LLVMCloneModule(llmod) } else { llmod };
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(diag_handler, tm, cpm, llmod, &path, llvm::FileType::AssemblyFile)
             })?;
         }
 
-        if config_emit_normal_obj {
+        if config_emit_object_code {
             if !config.no_integrated_as {
                 let _timer = cgcx
                     .prof
@@ -775,14 +777,10 @@ pub(crate) unsafe fn codegen(
                     drop(fs::remove_file(&assembly));
                 }
             }
-        }
-
-        if config.obj_is_bitcode {
-            if config.emit_obj {
-                debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
-                if let Err(e) = link_or_copy(&bc_out, &obj_out) {
-                    diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
-                }
+        } else if config.emit_obj == EmitObj::Bitcode {
+            debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
+            if let Err(e) = link_or_copy(&bc_out, &obj_out) {
+                diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
             }
 
             if !config.emit_bc {
@@ -796,7 +794,7 @@ pub(crate) unsafe fn codegen(
         drop(handlers);
     }
     Ok(module.into_compiled_module(
-        config.emit_obj,
+        config.emit_obj != EmitObj::None,
         config.emit_bc,
         config.emit_bc_compressed,
         &cgcx.output_filenames,
