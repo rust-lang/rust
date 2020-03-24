@@ -110,9 +110,9 @@ async function bootstrap(config: Config, state: PersistentState): Promise<string
 }
 
 async function bootstrapExtension(config: Config, state: PersistentState): Promise<void> {
-    if (config.releaseTag === undefined) return;
+    if (config.package.releaseTag === undefined) return;
     if (config.channel === "stable") {
-        if (config.releaseTag === NIGHTLY_TAG) {
+        if (config.package.releaseTag === NIGHTLY_TAG) {
             vscode.window.showWarningMessage(`You are running a nightly version of rust-analyzer extension.
 To switch to stable, uninstall the extension and re-install it from the marketplace`);
         }
@@ -185,7 +185,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         }
         return explicitPath;
     };
-    if (config.releaseTag === undefined) return "rust-analyzer";
+    if (config.package.releaseTag === undefined) return "rust-analyzer";
 
     let binaryName: string | undefined = undefined;
     if (process.arch === "x64" || process.arch === "x32") {
@@ -211,21 +211,21 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         await state.updateServerVersion(undefined);
     }
 
-    if (state.serverVersion === config.packageJsonVersion) return dest;
+    if (state.serverVersion === config.package.version) return dest;
 
     if (config.askBeforeDownload) {
         const userResponse = await vscode.window.showInformationMessage(
-            `Language server version ${config.packageJsonVersion} for rust-analyzer is not installed.`,
+            `Language server version ${config.package.version} for rust-analyzer is not installed.`,
             "Download now"
         );
         if (userResponse !== "Download now") return dest;
     }
 
-    const release = await fetchRelease(config.releaseTag);
+    const release = await fetchRelease(config.package.releaseTag);
     const artifact = release.assets.find(artifact => artifact.name === binaryName);
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
     await download(artifact.browser_download_url, dest, "Downloading rust-analyzer server", { mode: 0o755 });
-    await state.updateServerVersion(config.packageJsonVersion);
+    await state.updateServerVersion(config.package.version);
     return dest;
 }

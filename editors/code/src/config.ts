@@ -38,17 +38,11 @@ export class Config {
     ]
         .map(opt => `${this.rootSection}.${opt}`);
 
-    readonly packageJsonVersion: string = vscode
-        .extensions
-        .getExtension(this.extensionId)!
-        .packageJSON
-        .version;
-
-    readonly releaseTag: string | undefined = vscode
-        .extensions
-        .getExtension(this.extensionId)!
-        .packageJSON
-        .releaseTag ?? undefined;
+    readonly package: {
+        version: string;
+        releaseTag: string | undefined;
+        enableProposedApi: boolean | undefined;
+    } = vscode.extensions.getExtension(this.extensionId)!.packageJSON;
 
     private cfg!: vscode.WorkspaceConfiguration;
 
@@ -62,7 +56,7 @@ export class Config {
         const enableLogging = this.cfg.get("trace.extension") as boolean;
         log.setEnabled(enableLogging);
         log.debug(
-            "Extension version:", this.packageJsonVersion,
+            "Extension version:", this.package.version,
             "using configuration:", this.cfg
         );
     }

@@ -99,8 +99,10 @@ export async function createClient(config: Config, serverPath: string): Promise<
     // Note that while the CallHierarchyFeature is stable the LSP protocol is not.
     res.registerFeature(new CallHierarchyFeature(res));
 
-    if (config.highlightingSemanticTokens) {
-        res.registerFeature(new SemanticTokensFeature(res));
+    if (config.package.enableProposedApi) {
+        if (config.highlightingSemanticTokens) {
+            res.registerFeature(new SemanticTokensFeature(res));
+        }
     }
 
     return res;
