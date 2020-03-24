@@ -293,7 +293,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         let offset = usize::try_from(ptr.offset.bytes()).unwrap();
         Ok(match self.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
-                let size_with_null = Size::from_bytes(size.checked_add(1).unwrap());
+                let size_with_null = Size::add(Size::from_bytes(size), Size::from_bytes(1));
                 // Go through `get_bytes` for checks and AllocationExtra hooks.
                 // We read the null, so we include it in the request, but we want it removed
                 // from the result, so we do subslicing.
