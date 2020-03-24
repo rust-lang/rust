@@ -35,25 +35,42 @@ get_filename_component(LLVM_ABSOLUTE_LIT
 message("found llvm lit " ${LLVM_EXTERNAL_LIT})
 
 
+
 list(INSERT CMAKE_PREFIX_PATH 0 "${LLVM_DIR}")
 message("CMAKE_PREFIX_PATH " ${CMAKE_PREFIX_PATH})
 find_package(LLVM REQUIRED CONFIG)
+
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 include(AddLLVM)
-
-find_file(ScalarEvH llvm/Analysis/ScalarEvolution.h ${LLVM_INCLUDE_DIRS})
-message("found scalarevh here " ${ScalarEvH})
-
-file(READ ${ScalarEvH} INPUT_TEXT)
-string(REPLACE private public INPUT_TEXT "${INPUT_TEXT}")
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/include/SCEV/ScalarEvolution.h" "${INPUT_TEXT}")
-include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
 
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS})
 message("found llvm include directory here " ${LLVM_INCLUDE_DIRS})
 message("found llvm definitions " ${LLVM_DEFINITIONS})
 message("found llvm version " ${LLVM_VERSION_MAJOR})
+
+
+message("llvm-config is " ${LLVM_TOOLS_BINARY_DIR}/llvm-config)
+
+execute_process(COMMAND ${LLVM_TOOLS_BINARY_DIR}/llvm-config --includedir OUTPUT_VARIABLE LLVM_IDIR)
+string(REGEX REPLACE "\n$" "" LLVM_IDIR "${LLVM_IDIR}")
+message("first llvm include directory" ${LLVM_IDIR})
+
+file(READ ${LLVM_IDIR}/llvm/Analysis/ScalarEvolution.h INPUT_TEXT)
+string(REPLACE private public INPUT_TEXT "${INPUT_TEXT}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/include/SCEV/ScalarEvolution.h" "${INPUT_TEXT}")
+
+file(READ ${LLVM_IDIR}/llvm/Analysis/ScalarEvolutionExpander.h INPUT_TEXT)
+string(REPLACE "#define LLVM_ANALYSIS_SCALAREVOLUTIONEXPANDER_H" "#define LLVM_ANALYSIS_SCALAREVOLUTIONEXPANDER_H\n#include \"SCEV/ScalarEvolution.h\""  INPUT_TEXT "${INPUT_TEXT}")
+string(REPLACE "LLVM_ANALYSIS" "FAKELLVM_ANALYSIS" INPUT_TEXT "${INPUT_TEXT}")
+string(REPLACE "class SCEVExpander" "namespace fake {\n  class SCEVExpander" INPUT_TEXT "${INPUT_TEXT}")
+string(REPLACE "};\n}" "};\n}}" INPUT_TEXT "${INPUT_TEXT}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/include/SCEV/ScalarEvolutionExpander.h" "${INPUT_TEXT}")
+
+
+
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
+
 
 add_subdirectory(Enzyme)
 add_subdirectory(test)

@@ -67,7 +67,7 @@
     }
 
     if (inLoop) {
-        auto latches = fake::SCEVExpander::getLatches(LI.getLoopFor(BB), lc.exitBlocks);
+        auto latches = getLatches(LI.getLoopFor(BB), lc.exitBlocks);
 
         if (std::find(latches.begin(), latches.end(), BB) != latches.end() && std::find(lc.exitBlocks.begin(), lc.exitBlocks.end(), branchingBlock) != lc.exitBlocks.end()) {
             BasicBlock* incB = BasicBlock::Create(BB->getContext(), "merge" + reverseBlocks[lc.header]->getName()+"_" + branchingBlock->getName(), BB->getParent());
@@ -784,7 +784,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
 
         loopContexts[L].latchMerge = nullptr;
 
-        fake::SCEVExpander::getExitBlocks(L, loopContexts[L].exitBlocks);
+        getExitBlocks(L, loopContexts[L].exitBlocks);
         //if (loopContexts[L].exitBlocks.size() == 0) {
         //    llvm::errs() << "newFunc: " << *BB->getParent() << "\n";
         //    llvm::errs() << "L: " << *L << "\n";
@@ -796,7 +796,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         assert(CanonicalIV);
         loopContexts[L].var = CanonicalIV;
         loopContexts[L].incvar = pair.second;
-        removeRedundantIVs(L, loopContexts[L].header, loopContexts[L].preheader, CanonicalIV, SE, gutils, pair.second, fake::SCEVExpander::getLatches(L, loopContexts[L].exitBlocks));
+        removeRedundantIVs(L, loopContexts[L].header, loopContexts[L].preheader, CanonicalIV, SE, gutils, pair.second, getLatches(L, loopContexts[L].exitBlocks));
         loopContexts[L].antivaralloc = IRBuilder<>(gutils.inversionAllocs).CreateAlloca(CanonicalIV->getType(), nullptr, CanonicalIV->getName()+"'ac");
         loopContexts[L].antivaralloc->setAlignment(cast<IntegerType>(CanonicalIV->getType())->getBitWidth() / 8);
 

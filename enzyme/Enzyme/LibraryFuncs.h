@@ -26,7 +26,7 @@ static inline
 bool isAllocationFunction(const llvm::Function &F, const llvm::TargetLibraryInfo &TLI) {
 	llvm::LibFunc libfunc;
 	if (!TLI.getLibFunc(F, libfunc)) return false;
-	
+
 	switch (libfunc) {
   		case LibFunc_malloc: // malloc(unsigned int);
 		case LibFunc_valloc: // valloc(unsigned int);
@@ -88,7 +88,7 @@ bool isDeallocationFunction(const llvm::Function &F, const llvm::TargetLibraryIn
 		if (F.getName() == "free") return true;
 		return false;
 	}
-	
+
 	switch (libfunc) {
 		// void free(void*);
 		case LibFunc_free:
@@ -220,7 +220,13 @@ CallInst* freeKnownAllocation(llvm::IRBuilder <>& builder, llvm::Value* tofree, 
 
     Type *VoidTy = Type::getVoidTy(tofree->getContext());
     Type *IntPtrTy = Type::getInt8PtrTy(tofree->getContext());
-    Constant* freevalue = allocationfn.getParent()->getOrInsertFunction(freename, FunctionType::get(VoidTy, {IntPtrTy}, false));
+
+    #if LLVM_VERSION_MAJOR >= 9
+    Value* freevalue = allocationfn.getParent()->getOrInsertFunction(freename, FunctionType::get(VoidTy, {IntPtrTy}, false)).getCallee();
+    #else
+    Value* freevalue = allocationfn.getParent()->getOrInsertFunction(freename, FunctionType::get(VoidTy, {IntPtrTy}, false));
+    #endif
+
 
 	CallInst* freecall = cast<CallInst>(CallInst::Create(freevalue, {builder.CreatePointerCast(tofree, IntPtrTy)}, "", builder.GetInsertBlock()));
     freecall->setTailCall();

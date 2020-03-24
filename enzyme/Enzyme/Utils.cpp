@@ -1,6 +1,6 @@
 /*
  * Utils.cpp
- * 
+ *
  * Copyright (C) 2019 William S. Moses (enzyme@wsmoses.com) - All Rights Reserved
  *
  * For commercial use of this code please contact the author(s) above.
@@ -38,7 +38,7 @@ static inline std::string tofltstr(Type* T) {
     }
 }
 
-//! Create function for type that is equivalent to memcpy but adds to destination rather 
+//! Create function for type that is equivalent to memcpy but adds to destination rather
 //! than a direct copy; dst, src, numelems
 Function* getOrInsertDifferentialFloatMemcpy(Module& M, PointerType* T, unsigned dstalign, unsigned srcalign) {
     Type* elementType = T->getElementType();
@@ -46,10 +46,14 @@ Function* getOrInsertDifferentialFloatMemcpy(Module& M, PointerType* T, unsigned
     std::string name = "__enzyme_memcpyadd_" + tofltstr(elementType) + "da" + std::to_string(dstalign) + "sa" + std::to_string(srcalign);
     FunctionType* FT = FunctionType::get(Type::getVoidTy(M.getContext()), { T, T, Type::getInt64Ty(M.getContext()) }, false);
 
+    #if LLVM_VERSION_MAJOR >= 9
+    Function* F = cast<Function>(M.getOrInsertFunction(name, FT).getCallee());
+    #else
     Function* F = cast<Function>(M.getOrInsertFunction(name, FT));
+    #endif
 
     if (!F->empty()) return F;
-    
+
     F->setLinkage(Function::LinkageTypes::InternalLinkage);
     F->addFnAttr(Attribute::ArgMemOnly);
     F->addFnAttr(Attribute::NoUnwind);
@@ -83,7 +87,7 @@ Function* getOrInsertDifferentialFloatMemcpy(Module& M, PointerType* T, unsigned
     dstl->setAlignment(dstalign);
     StoreInst* dsts = B.CreateStore(Constant::getNullValue(elementType), dsti);
     dsts->setAlignment(dstalign);
-    
+
     Value* srci = B.CreateGEP(src, { idx }, "src.i");
     LoadInst* srcl = B.CreateLoad(srci, "src.i.l");
     srcl->setAlignment(srcalign);
@@ -94,7 +98,7 @@ Function* getOrInsertDifferentialFloatMemcpy(Module& M, PointerType* T, unsigned
     idx->addIncoming(next,  body);
     B.CreateCondBr(B.CreateICmpEQ(num, next), end, body);
     }
-    
+
     {
     IRBuilder<> B(end);
     B.CreateRetVoid();

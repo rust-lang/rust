@@ -32,6 +32,7 @@
 #include "llvm/IR/Type.h"
 
 #include "llvm/Transforms/Utils/ValueMapper.h"
+#include "llvm/IR/Instructions.h"
 
 llvm::Function* preprocessForClone(llvm::Function *F, llvm::AAResults &AA, llvm::TargetLibraryInfo &TLI);
 
@@ -48,4 +49,65 @@ void forceRecursiveInlining(llvm::Function *NewF, const llvm::Function* F);
 
 void optimizeIntermediate(GradientUtils* gutils, bool topLevel, llvm::Function *F);
 
+static inline void getExitBlocks(const llvm::Loop *L, llvm::SmallPtrSetImpl<llvm::BasicBlock*>& ExitBlocks) {
+    llvm::SmallVector<llvm::BasicBlock *, 8> PotentialExitBlocks;
+    L->getExitBlocks(PotentialExitBlocks);
+    for(auto a:PotentialExitBlocks) {
+
+        llvm::SmallVector<llvm::BasicBlock*, 4> tocheck;
+        llvm::SmallPtrSet<llvm::BasicBlock*, 4> checked;
+        tocheck.push_back(a);
+
+        bool isExit = false;
+
+        while(tocheck.size()) {
+            auto foo = tocheck.back();
+            tocheck.pop_back();
+            if (checked.count(foo)) {
+                isExit = true;
+                goto exitblockcheck;
+            }
+            checked.insert(foo);
+            if(auto bi = llvm::dyn_cast<llvm::BranchInst>(foo->getTerminator())) {
+                for(auto nb : bi->successors()) {
+                    if (L->contains(nb)) continue;
+                    tocheck.push_back(nb);
+                }
+            } else if (llvm::isa<llvm::UnreachableInst>(foo->getTerminator())) {
+                continue;
+            } else {
+                isExit = true;
+                goto exitblockcheck;
+            }
+        }
+
+
+        exitblockcheck:
+        if (isExit) {
+            ExitBlocks.insert(a);
+        }
+    }
+}
+
+static inline llvm::SmallVector<llvm::BasicBlock*, 3> getLatches(const llvm::Loop *L, const llvm::SmallPtrSetImpl<llvm::BasicBlock*>& ExitBlocks ) {
+    llvm::BasicBlock *Preheader = L->getLoopPreheader();
+    if (!Preheader) {
+        llvm::errs() << *L->getHeader()->getParent() << "\n";
+        llvm::errs() << *L->getHeader() << "\n";
+        llvm::errs() << *L << "\n";
+    }
+    assert(Preheader && "requires preheader");
+
+    // Find latch, defined as a (perhaps unique) block in loop that branches to exit block
+    llvm::SmallVector<llvm::BasicBlock *, 3> Latches;
+    for (llvm::BasicBlock* ExitBlock : ExitBlocks) {
+        for (llvm::BasicBlock* pred : llvm::predecessors(ExitBlock)) {
+            if (L->contains(pred)) {
+                if (std::find(Latches.begin(), Latches.end(), pred) != Latches.end()) continue;
+                Latches.push_back(pred);
+            }
+        }
+    }
+    return Latches;
+}
 #endif

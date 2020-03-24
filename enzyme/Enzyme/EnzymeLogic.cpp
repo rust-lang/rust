@@ -1467,9 +1467,9 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
 
   const std::map<Instruction*, bool> can_modref_map = compute_uncacheable_load_map(gutils, AA, TLI, _uncacheable_argsPP);
 
-  for (auto &iter : can_modref_map) {
-    //llvm::errs() << "isneeded: " << iter.second << " augmented can_modref_map: " << *iter.first << " fn: " << iter.first->getParent()->getParent()->getName() << "\n";
-  }
+  //for (auto &iter : can_modref_map) {
+  //  llvm::errs() << "isneeded: " << iter.second << " augmented can_modref_map: " << *iter.first << " fn: " << iter.first->getParent()->getParent()->getName() << "\n";
+  //}
 
 
   cachedfunctions.insert_or_assign(tup, AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping, uncacheable_args_map, can_modref_map));
