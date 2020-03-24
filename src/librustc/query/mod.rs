@@ -1117,7 +1117,7 @@ rustc_queries! {
         query normalize_generic_arg_after_erasing_regions(
             goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
         ) -> GenericArg<'tcx> {
-            desc { "normalizing `{:?}`", goal }
+            desc { "normalizing `{}`", goal.value }
         }
 
         query implied_outlives_bounds(

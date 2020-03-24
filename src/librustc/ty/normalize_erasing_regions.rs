@@ -94,14 +94,12 @@ impl TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.tcx
-            .normalize_generic_arg_after_erasing_regions(self.param_env.and(ty.into()))
-            .expect_ty()
+        let arg = self.param_env.and(ty.into());
+        self.tcx.normalize_generic_arg_after_erasing_regions(arg).expect_ty()
     }
 
     fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        self.tcx
-            .normalize_generic_arg_after_erasing_regions(self.param_env.and(c.into()))
-            .expect_const()
+        let arg = self.param_env.and(c.into());
+        self.tcx.normalize_generic_arg_after_erasing_regions(arg).expect_const()
     }
 }
