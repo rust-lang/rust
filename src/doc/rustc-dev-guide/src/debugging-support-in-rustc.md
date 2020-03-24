@@ -268,6 +268,45 @@ Focus is to let macros decide what to do. This can be achieved by having some ki
 that lets the macro tell the compiler where the line marker should be. This affects where you
 set the breakpoints and what happens when you step it.
 
+## Source file checksums in debug info
+
+Both DWARF and CodeView (PDB) support embedding a cryptographic hash of each source file that
+contributed to the associated binary.
+
+The cryptographic hash can be used by a debugger to verify that the source file matches the
+executable. If the source file does not match, the debugger can provide a warning to the user.
+
+The hash can also be used to prove that a given source file has not been modified since it was
+used to compile an executable. Because MD5 and SHA1 both have demonstrated vulnerabilities,
+using SHA256 is recommended for this application.
+
+The Rust compiler stores the hash for each source file in the corresponding `SourceFile` in
+the `SourceMap`. The hashes of input files to external crates are stored in `rlib` metadata.
+
+A default hashing algorithm is set in the target specification. This allows the target to
+specify the best hash available, since not all targets support all hash algorithms.
+
+The hashing algorithm for a target can also be overridden with the `-Z source-file-checksum=`
+command-line option.
+
+#### DWARF 5
+DWARF version 5 supports embedding an MD5 hash to validate the source file version in use.
+DWARF 5 - Section 6.2.4.1 opcode DW_LNCT_MD5
+
+#### LLVM
+LLVM IR supports MD5 and SHA1 (and SHA256 in LLVM 11+) source file checksums in the DIFile node.
+
+[LLVM DIFile documentation](https://llvm.org/docs/LangRef.html#difile)
+
+#### Microsoft Visual C++ Compiler /ZH option
+The MSVC compiler supports embedding MD5, SHA1, or SHA256 hashes in the PDB using the `/ZH`
+compiler option.
+
+[MSVC /ZH documentation](https://docs.microsoft.com/en-us/cpp/build/reference/zh)
+
+#### Clang
+Clang always embeds an MD5 checksum, though this does not appear in documentation.
+
 ## Future work
 
 #### Name mangling changes
@@ -294,10 +333,6 @@ Both debuggers expression evaluation implement both a superset and a subset of R
 They implement just the expression language but they also add some extensions like GDB has
 convenience variables. Therefore, if you are taking this route then you not only need
 to do this bridge but may have to add some mode to let the compiler understand some extensions.
-
-#### Windows debugging (PDB) is missing
-
-This is a complete unknown.
 
 [Tom Tromey discusses debugging support in rustc]: https://www.youtube.com/watch?v=elBxMRSNYr4
 [Debugging the Compiler]: compiler-debugging.md
