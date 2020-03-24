@@ -14,3 +14,5 @@
 extern crate invalid_punct_ident;
 
 invalid_punct!(); //~ ERROR proc macro panicked
+
+fn main() {}

@@ -1,8 +1,13 @@
 error[E0005]: refutable pattern in local binding: `None` not covered
-  --> $DIR/E0005.rs:3:9
+  --> $DIR/E0005.rs:8:9
    |
 LL |     let Some(y) = x;
    |         ^^^^^^^ pattern `None` not covered
+   | 
+  ::: $SRC_DIR/libcore/option.rs:LL:COL
+   |
+LL |     None,
+   |     ---- not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html

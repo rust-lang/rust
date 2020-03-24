@@ -2,9 +2,19 @@ error: `#[test]` attribute is only allowed on non associated functions
   --> $DIR/test-attr-non-associated-functions.rs:9:5
    |
 LL | /     fn new() -> A {
+LL | |
 LL | |         A {}
 LL | |     }
    | |_____^
 
-error: aborting due to previous error
+error: `#[test]` attribute is only allowed on non associated functions
+  --> $DIR/test-attr-non-associated-functions.rs:14:5
+   |
+LL | /     fn recovery_witness() -> A {
+LL | |
+LL | |         A {}
+LL | |     }
+   | |_____^
+
+error: aborting due to 2 previous errors
 

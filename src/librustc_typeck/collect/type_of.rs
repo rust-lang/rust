@@ -188,12 +188,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         Node::Field(field) => icx.to_ty(&field.ty),
 
         Node::Expr(&Expr { kind: ExprKind::Closure(.., gen), .. }) => {
-            if gen.is_some() {
-                return tcx.typeck_tables_of(def_id).node_type(hir_id);
-            }
-
             let substs = InternalSubsts::identity_for_item(tcx, def_id);
-            tcx.mk_closure(def_id, substs)
+            if let Some(movability) = gen {
+                tcx.mk_generator(def_id, substs, movability)
+            } else {
+                tcx.mk_closure(def_id, substs)
+            }
         }
 
         Node::AnonConst(_) => {
@@ -235,29 +235,31 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     };
 
                     if let Some(path) = path {
-                        let arg_index = path
+                        // We've encountered an `AnonConst` in some path, so we need to
+                        // figure out which generic parameter it corresponds to and return
+                        // the relevant type.
+
+                        let (arg_index, segment) = path
                             .segments
                             .iter()
-                            .filter_map(|seg| seg.args.as_ref())
-                            .map(|generic_args| generic_args.args)
-                            .find_map(|args| {
+                            .filter_map(|seg| seg.args.as_ref().map(|args| (args.args, seg)))
+                            .find_map(|(args, seg)| {
                                 args.iter()
                                     .filter(|arg| arg.is_const())
                                     .enumerate()
                                     .filter(|(_, arg)| arg.id() == hir_id)
-                                    .map(|(index, _)| index)
+                                    .map(|(index, _)| (index, seg))
                                     .next()
                             })
                             .unwrap_or_else(|| {
                                 bug!("no arg matching AnonConst in path");
                             });
 
-                        // We've encountered an `AnonConst` in some path, so we need to
-                        // figure out which generic parameter it corresponds to and return
-                        // the relevant type.
-                        let generics = match path.res {
-                            Res::Def(DefKind::Ctor(..), def_id)
-                            | Res::Def(DefKind::AssocTy, def_id) => {
+                        // Try to use the segment resolution if it is valid, otherwise we
+                        // default to the path resolution.
+                        let res = segment.res.filter(|&r| r != Res::Err).unwrap_or(path.res);
+                        let generics = match res {
+                            Res::Def(DefKind::Ctor(..), def_id) => {
                                 tcx.generics_of(tcx.parent(def_id).unwrap())
                             }
                             Res::Def(_, def_id) => tcx.generics_of(def_id),
@@ -265,8 +267,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 tcx.sess.delay_span_bug(
                                     DUMMY_SP,
                                     &format!(
-                                        "unexpected const parent path def, parent: {:?}, def: {:?}",
-                                        parent_node, res
+                                        "unexpected anon const res {:?} in path: {:?}",
+                                        res, path,
                                     ),
                                 );
                                 return tcx.types.err;
@@ -291,8 +293,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 tcx.sess.delay_span_bug(
                                     DUMMY_SP,
                                     &format!(
-                                        "missing generic parameter for `AnonConst`, parent {:?}",
-                                        parent_node
+                                        "missing generic parameter for `AnonConst`, parent: {:?}, res: {:?}",
+                                        parent_node, res
                                     ),
                                 );
                                 tcx.types.err
