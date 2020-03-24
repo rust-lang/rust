@@ -2,9 +2,13 @@
 // ignore-wasm32-bare compiled with panic=abort by default
 
 #![feature(option_expect_none, option_unwrap_none)]
+#![allow(unconditional_panic)]
 
 //! Test that panic locations for `#[track_caller]` functions in std have the correct
 //! location reported.
+
+use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::ops::{Index, IndexMut};
 
 fn main() {
     // inspect the `PanicInfo` we receive to ensure the right file is the source
@@ -35,4 +39,22 @@ fn main() {
     let fine: Result<(), ()> = Ok(());
     assert_panicked(|| fine.unwrap_err());
     assert_panicked(|| fine.expect_err(""));
+
+    let mut small = [0]; // the implementation backing str, vec, etc
+    assert_panicked(move || { small.index(1); });
+    assert_panicked(move || { small[1]; });
+    assert_panicked(move || { small.index_mut(1); });
+    assert_panicked(move || { small[1] += 1; });
+
+    let sorted: BTreeMap<bool, bool> = Default::default();
+    assert_panicked(|| { sorted.index(&false); });
+    assert_panicked(|| { sorted[&false]; });
+
+    let unsorted: HashMap<bool, bool> = Default::default();
+    assert_panicked(|| { unsorted.index(&false); });
+    assert_panicked(|| { unsorted[&false]; });
+
+    let weirdo: VecDeque<()> = Default::default();
+    assert_panicked(|| { weirdo.index(1); });
+    assert_panicked(|| { weirdo[1]; });
 }
