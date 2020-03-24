@@ -19,6 +19,7 @@ case $1 in
         ./prepare.sh
         ;;
     "commit")
+        git add rust-toolchain
         git commit -m "Rustup to $(rustc -V)"
         ;;
     *)

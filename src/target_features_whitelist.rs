@@ -1,6 +1,6 @@
 use rustc_span::symbol::{sym, Symbol};
 
-use rustc::session::Session;
+use rustc_session::Session;
 
 // Copied from https://github.com/rust-lang/rust/blob/f69b07144a151f46aaee1b6230ba4160e9394562/src/librustc_codegen_llvm/llvm_util.rs#L93-L264
 

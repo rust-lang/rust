@@ -1,7 +1,7 @@
 use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::mir::mono::CodegenUnit;
-use rustc::session::config::{DebugInfo, OutputType};
+use rustc_session::config::{DebugInfo, OutputType};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_codegen_ssa::back::linker::LinkerInfo;
 use rustc_codegen_ssa::CrateInfo;

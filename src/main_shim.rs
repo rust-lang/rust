@@ -4,7 +4,7 @@ use crate::prelude::*;
 /// users main function.
 pub fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<impl Backend + 'static>) {
     use rustc::middle::lang_items::StartFnLangItem;
-    use rustc::session::config::EntryFnType;
+    use rustc_session::config::EntryFnType;
 
     let (main_def_id, use_start_lang_item) = match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, entry_ty)) => (

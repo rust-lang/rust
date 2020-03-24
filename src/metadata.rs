@@ -3,7 +3,7 @@ use std::fs::File;
 use std::path::Path;
 
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
-use rustc::session::config;
+use rustc_session::config;
 use rustc::ty::TyCtxt;
 use rustc_codegen_ssa::METADATA_FILENAME;
 use rustc_data_structures::owning_ref::{self, OwningRef};

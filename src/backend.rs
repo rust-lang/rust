@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
-use rustc::session::Session;
+use rustc_session::Session;
 
 use cranelift_module::{FuncId, Module};
 

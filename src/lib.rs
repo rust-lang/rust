@@ -6,7 +6,6 @@ extern crate libc;
 extern crate tempfile;
 extern crate rustc;
 extern crate rustc_codegen_ssa;
-extern crate rustc_codegen_utils;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_fs_util;
@@ -16,6 +15,7 @@ extern crate rustc_index;
 extern crate rustc_mir;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 extern crate rustc_ast;
 
@@ -23,10 +23,10 @@ use std::any::Any;
 
 use rustc::dep_graph::{DepGraph, WorkProduct, WorkProductId};
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
-use rustc::session::config::OutputFilenames;
+use rustc_session::config::OutputFilenames;
 use rustc::ty::query::Providers;
 use rustc::util::common::ErrorReported;
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_codegen_ssa::traits::CodegenBackend;
 
 use cranelift_codegen::settings;
 
@@ -72,7 +72,7 @@ mod prelude {
     pub use rustc::bug;
     pub use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
     pub use rustc::mir::{self, interpret::AllocId, mono::MonoItem, *};
-    pub use rustc::session::{
+    pub use rustc_session::{
         config::{CrateType, Lto},
         Session,
     };
@@ -203,12 +203,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        rustc_codegen_utils::check_for_rustc_errors_attr(tcx);
-
         let res = driver::codegen_crate(tcx, metadata, need_metadata_module);
 
         rustc_incremental::assert_module_sources::assert_module_sources(tcx);
-        rustc_codegen_utils::symbol_names_test::report_symbol_names(tcx);
+        rustc_symbol_mangling::test::report_symbol_names(tcx);
 
         res
     }
@@ -296,7 +294,7 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
 
     // FIXME(CraneStation/cranelift#732) fix LICM in presence of jump tables
     /*
-    use rustc::session::config::OptLevel;
+    use rustc_session::config::OptLevel;
     match sess.opts.optimize {
         OptLevel::No => {
             flags_builder.set("opt_level", "fastest").unwrap();

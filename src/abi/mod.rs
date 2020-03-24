@@ -32,7 +32,7 @@ pub fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> t
             sig
         }
         ty::Closure(def_id, substs) => {
-            let sig = substs.as_closure().sig(def_id, tcx);
+            let sig = substs.as_closure().sig();
 
             let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
             sig.map_bound(|sig| tcx.mk_fn_sig(
@@ -43,8 +43,8 @@ pub fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> t
                 sig.abi
             ))
         }
-        ty::Generator(def_id, substs, _) => {
-            let sig = substs.as_generator().poly_sig(def_id, tcx);
+        ty::Generator(_def_id, substs, _) => {
+            let sig = substs.as_generator().poly_sig();
 
             let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
             let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
