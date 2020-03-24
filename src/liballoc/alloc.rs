@@ -2,7 +2,7 @@
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
-use core::intrinsics::{min_align_of_val, size_of_val};
+use core::intrinsics::{self, min_align_of_val, size_of_val};
 use core::ptr::{NonNull, Unique};
 use core::usize;
 
@@ -165,11 +165,19 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for Global {
     #[inline]
-    fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        if layout.size() == 0 {
+    fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<(NonNull<u8>, usize), AllocErr> {
+        let new_size = layout.size();
+        if new_size == 0 {
             Ok((layout.dangling(), 0))
         } else {
-            unsafe { NonNull::new(alloc(layout)).ok_or(AllocErr).map(|p| (p, layout.size())) }
+            unsafe {
+                let raw_ptr = match init {
+                    AllocInit::Uninitialized => alloc(layout),
+                    AllocInit::Zeroed => alloc_zeroed(layout),
+                };
+                let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
+                Ok((ptr, new_size))
+            }
         }
     }
 
@@ -181,33 +189,77 @@ unsafe impl AllocRef for Global {
     }
 
     #[inline]
-    unsafe fn realloc(
+    unsafe fn grow(
         &mut self,
         ptr: NonNull<u8>,
         layout: Layout,
         new_size: usize,
+        placement: ReallocPlacement,
+        init: AllocInit,
     ) -> Result<(NonNull<u8>, usize), AllocErr> {
-        match (layout.size(), new_size) {
-            (0, 0) => Ok((layout.dangling(), 0)),
-            (0, _) => self.alloc(Layout::from_size_align_unchecked(new_size, layout.align())),
-            (_, 0) => {
-                self.dealloc(ptr, layout);
-                Ok((layout.dangling(), 0))
+        let old_size = layout.size();
+        debug_assert!(
+            new_size >= old_size,
+            "`new_size` must be greater than or equal to `layout.size()`"
+        );
+
+        if old_size == new_size {
+            return Ok((ptr, new_size));
+        }
+
+        match placement {
+            ReallocPlacement::MayMove => {
+                if old_size == 0 {
+                    self.alloc(Layout::from_size_align_unchecked(new_size, layout.align()), init)
+                } else {
+                    // `realloc` probably checks for `new_size > old_size` or something similar.
+                    // `new_size` must be greater than or equal to `old_size` due to the safety constraint,
+                    // and `new_size` == `old_size` was caught before
+                    intrinsics::assume(new_size > old_size);
+                    let ptr =
+                        NonNull::new(realloc(ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)?;
+                    let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+                    init.initialize_offset(ptr, new_layout, old_size);
+                    Ok((ptr, new_size))
+                }
             }
-            (_, _) => NonNull::new(realloc(ptr.as_ptr(), layout, new_size))
-                .ok_or(AllocErr)
-                .map(|p| (p, new_size)),
+            ReallocPlacement::InPlace => Err(AllocErr),
         }
     }
 
     #[inline]
-    fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        if layout.size() == 0 {
-            Ok((layout.dangling(), 0))
-        } else {
-            unsafe {
-                NonNull::new(alloc_zeroed(layout)).ok_or(AllocErr).map(|p| (p, layout.size()))
+    unsafe fn shrink(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+        placement: ReallocPlacement,
+    ) -> Result<(NonNull<u8>, usize), AllocErr> {
+        let old_size = layout.size();
+        debug_assert!(
+            new_size <= old_size,
+            "`new_size` must be smaller than or equal to `layout.size()`"
+        );
+
+        if old_size == new_size {
+            return Ok((ptr, new_size));
+        }
+
+        match placement {
+            ReallocPlacement::MayMove => {
+                let ptr = if new_size == 0 {
+                    self.dealloc(ptr, layout);
+                    layout.dangling()
+                } else {
+                    // `realloc` probably checks for `new_size > old_size` or something similar.
+                    // `new_size` must be smaller than or equal to `old_size` due to the safety constraint,
+                    // and `new_size` == `old_size` was caught before
+                    intrinsics::assume(new_size < old_size);
+                    NonNull::new(realloc(ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)?
+                };
+                Ok((ptr, new_size))
             }
+            ReallocPlacement::InPlace => Err(AllocErr),
         }
     }
 }
@@ -218,14 +270,10 @@ unsafe impl AllocRef for Global {
 #[lang = "exchange_malloc"]
 #[inline]
 unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
-    if size == 0 {
-        align as *mut u8
-    } else {
-        let layout = Layout::from_size_align_unchecked(size, align);
-        match Global.alloc(layout) {
-            Ok((ptr, _)) => ptr.as_ptr(),
-            Err(_) => handle_alloc_error(layout),
-        }
+    let layout = Layout::from_size_align_unchecked(size, align);
+    match Global.alloc(layout, AllocInit::Uninitialized) {
+        Ok((ptr, _)) => ptr.as_ptr(),
+        Err(_) => handle_alloc_error(layout),
     }
 }
 
@@ -239,11 +287,8 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
     let size = size_of_val(ptr.as_ref());
     let align = min_align_of_val(ptr.as_ref());
-    // We do not allocate for Box<T> when T is ZST, so deallocation is also not necessary.
-    if size != 0 {
-        let layout = Layout::from_size_align_unchecked(size, align);
-        Global.dealloc(ptr.cast().into(), layout);
-    }
+    let layout = Layout::from_size_align_unchecked(size, align);
+    Global.dealloc(ptr.cast().into(), layout)
 }
 
 /// Abort on memory allocation error or failure.

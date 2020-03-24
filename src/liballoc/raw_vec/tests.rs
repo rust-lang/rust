@@ -1,4 +1,5 @@
 use super::*;
+use core::ptr::NonNull;
 
 #[test]
 fn allocator_param() {
@@ -20,12 +21,16 @@ fn allocator_param() {
         fuel: usize,
     }
     unsafe impl AllocRef for BoundedAlloc {
-        fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
+        fn alloc(
+            &mut self,
+            layout: Layout,
+            init: AllocInit,
+        ) -> Result<(NonNull<u8>, usize), AllocErr> {
             let size = layout.size();
             if size > self.fuel {
                 return Err(AllocErr);
             }
-            match Global.alloc(layout) {
+            match Global.alloc(layout, init) {
                 ok @ Ok(_) => {
                     self.fuel -= size;
                     ok
