@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::fmt;
 
 use rustc_span::DUMMY_SP;
 
@@ -11,6 +12,26 @@ pub enum TerminationInfo {
     UnsupportedInIsolation(String),
     ExperimentalUb { msg: String, url: String }
 }
+
+impl fmt::Debug for TerminationInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use TerminationInfo::*;
+        match self {
+            Exit(code) =>
+                write!(f, "the evaluated program completed with exit code {}", code),
+            Abort(None) =>
+                write!(f, "the evaluated program aborted execution"),
+            Abort(Some(msg)) =>
+                write!(f, "the evaluated program aborted execution: {}", msg),
+            UnsupportedInIsolation(msg) =>
+                write!(f, "{}", msg),
+            ExperimentalUb { msg, .. } =>
+                write!(f, "{}", msg),
+        }
+    }
+}
+
+impl MachineStopType for TerminationInfo {}
 
 /// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {
@@ -25,21 +46,18 @@ pub fn report_error<'tcx, 'mir>(
 ) -> Option<i64> {
     use InterpError::*;
 
-    e.print_backtrace();
-    let (title, msg, helps) = match e.kind {
-        MachineStop(info) => {
+    let (title, helps) = match e.kind {
+        MachineStop(ref info) => {
             let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
             use TerminationInfo::*;
-            let (title, msg) = match info {
+            let title = match info {
                 Exit(code) => return Some(*code),
-                Abort(None) =>
-                    ("abnormal termination", format!("the evaluated program aborted execution")),
-                Abort(Some(msg)) =>
-                    ("abnormal termination", format!("the evaluated program aborted execution: {}", msg)),
-                UnsupportedInIsolation(msg) =>
-                    ("unsupported operation", format!("{}", msg)),
-                ExperimentalUb { msg, .. } =>
-                    ("Undefined Behavior", format!("{}", msg)),
+                Abort(_) =>
+                    "abnormal termination",
+                UnsupportedInIsolation(_) =>
+                    "unsupported operation",
+                ExperimentalUb { .. } =>
+                    "Undefined Behavior",
             };
             let helps = match info {
                 UnsupportedInIsolation(_) =>
@@ -51,16 +69,16 @@ pub fn report_error<'tcx, 'mir>(
                     ],
                 _ => vec![],
             };
-            (title, msg, helps)
+            (title, helps)
         }
         _ => {
-            let (title, msg) = match e.kind {
+            let title = match e.kind {
                 Unsupported(_) =>
-                    ("unsupported operation", e.to_string()),
+                    "unsupported operation",
                 UndefinedBehavior(_) =>
-                    ("Undefined Behavior", e.to_string()),
+                    "Undefined Behavior",
                 ResourceExhaustion(_) =>
-                    ("resource exhaustion", e.to_string()),
+                    "resource exhaustion",
                 _ =>
                     bug!("This error should be impossible in Miri: {}", e),
             };
@@ -76,9 +94,12 @@ pub fn report_error<'tcx, 'mir>(
                     ],
                 _ => vec![],
             };
-            (title, msg, helps)
+            (title, helps)
         }
     };
+
+    e.print_backtrace();
+    let msg = e.to_string();
     report_msg(ecx, &format!("{}: {}", title, msg), msg, &helps, true)
 }
 
