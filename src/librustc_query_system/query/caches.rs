@@ -1,6 +1,6 @@
 use crate::dep_graph::DepNodeIndex;
 use crate::query::config::QueryContext;
-use crate::query::plumbing::{QueryLookup, QueryState, QueryStateShard};
+use crate::query::plumbing::{QueryLookup, QueryState};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
@@ -21,19 +21,15 @@ pub trait QueryCache<CTX: QueryContext>: Default {
     /// It returns the shard index and a lock guard to the shard,
     /// which will be used if the query is not in the cache and we need
     /// to compute it.
-    fn lookup<R, GetCache, OnHit, OnMiss>(
+    fn lookup<R, OnHit, OnMiss>(
         &self,
         state: &QueryState<CTX, Self>,
-        get_cache: GetCache,
         key: Self::Key,
         // `on_hit` can be called while holding a lock to the query state shard.
         on_hit: OnHit,
         on_miss: OnMiss,
     ) -> R
     where
-        GetCache: for<'a> Fn(
-            &'a mut QueryStateShard<CTX, Self::Key, Self::Sharded>,
-        ) -> &'a mut Self::Sharded,
         OnHit: FnOnce(&Self::Value, DepNodeIndex) -> R,
         OnMiss: FnOnce(Self::Key, QueryLookup<'_, CTX, Self::Key, Self::Sharded>) -> R;
 
@@ -76,24 +72,21 @@ impl<CTX: QueryContext, K: Eq + Hash, V: Clone> QueryCache<CTX> for DefaultCache
     type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<R, GetCache, OnHit, OnMiss>(
+    fn lookup<R, OnHit, OnMiss>(
         &self,
         state: &QueryState<CTX, Self>,
-        get_cache: GetCache,
         key: K,
         on_hit: OnHit,
         on_miss: OnMiss,
     ) -> R
     where
-        GetCache:
-            for<'a> Fn(&'a mut QueryStateShard<CTX, K, Self::Sharded>) -> &'a mut Self::Sharded,
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
         OnMiss: FnOnce(K, QueryLookup<'_, CTX, K, Self::Sharded>) -> R,
     {
         let mut lookup = state.get_lookup(&key);
         let lock = &mut *lookup.lock;
 
-        let result = get_cache(lock).raw_entry().from_key_hashed_nocheck(lookup.key_hash, &key);
+        let result = lock.cache.raw_entry().from_key_hashed_nocheck(lookup.key_hash, &key);
 
         if let Some((_, value)) = result { on_hit(&value.0, value.1) } else { on_miss(key, lookup) }
     }

@@ -30,17 +30,11 @@ use std::ptr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct QueryStateShard<CTX: QueryContext, K, C> {
-    cache: C,
+    pub(super) cache: C,
     active: FxHashMap<K, QueryResult<CTX>>,
 
     /// Used to generate unique ids for active jobs.
     jobs: u32,
-}
-
-impl<CTX: QueryContext, K, C> QueryStateShard<CTX, K, C> {
-    fn get_cache(&mut self) -> &mut C {
-        &mut self.cache
-    }
 }
 
 impl<CTX: QueryContext, K, C: Default> Default for QueryStateShard<CTX, K, C> {
@@ -372,7 +366,6 @@ where
 {
     state.cache.lookup(
         state,
-        QueryStateShard::<CTX, C::Key, C::Sharded>::get_cache,
         key,
         |value, index| {
             if unlikely!(tcx.profiler().enabled()) {
