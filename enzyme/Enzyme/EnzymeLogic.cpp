@@ -94,7 +94,7 @@ std::map<Instruction*, bool> compute_uncacheable_load_map(GradientUtils* gutils,
             can_modref = true;
           }
           //llvm::errs() << " + argument (can_modref=" << can_modref << ") " << *op << " object: " << *obj << " arg: " << *arg << "e\n";
-        //TODO this case (alloca goes out of scope/allocation is freed and we dont force it to continue needs to be forcibly cached)
+          //TODO this case (alloca goes out of scope/allocation is freed and we dont force it to continue needs to be forcibly cached)
         } else {
           // NOTE(TFK): In the case where the underlying object for the pointer operand is from a Load or Call we need
           //  to check if we need to cache. Likely, we need to play it safe in this case and cache.
@@ -347,7 +347,7 @@ std::string to_string(const std::map<Argument*, bool>& us) {
 }
 
 // Determine if a value is needed in the reverse pass. We only use this logic in the top level function right now.
-bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLevel, std::map<Value*, bool> seen = {}) {
+bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, Value* inst, bool topLevel, std::map<Value*, bool> seen = {}) {
   if (seen.find(inst) != seen.end()) return seen[inst];
 
   //Inductively claim we aren't needed (and try to find contradiction)
@@ -369,7 +369,7 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
             return seen[inst] = true;
         }
 
-        if (is_value_needed_in_reverse(gutils, user, topLevel, seen)) {
+        if (is_value_needed_in_reverse(TR, gutils, user, topLevel, seen)) {
             //llvm::errs() << " had to use in reverse since used in " << *inst << " use: " << *use << "\n";
             return seen[inst] = true;
         }
@@ -379,24 +379,26 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
     //The following are types we know we don't need to compute adjoints
 
     // A pointer is only needed in the reverse pass if its non-store uses are needed in the reverse pass
-    //   Moreover, when considering a load of, the value a need for loaded by the pointer means this value must be cessary for the reverse pass if the load itself is not necessary for the reverse
-    //      (in order to perform that load again)
-    if (!inst->getType()->isFPOrFPVectorTy()) {
+    //   Moreover, we only need this pointer in the reverse pass if all of its non-store users are not already cached for the reverse pass
+    if (!inst->getType()->isFPOrFPVectorTy() && TR.query(inst)[{}].isPossiblePointer()) {
         //continue;
         bool unknown = true;
         for (auto zu : inst->users()) {
-            if (isa<LoadInst>(zu) || isa<CastInst>(zu) || isa<PHINode>(zu)) {
-                if (is_value_needed_in_reverse(gutils, zu, topLevel, seen)) {
-                    //llvm::errs() << " had to use in reverse since sub use " << *zu << " of " << *inst << "\n";
-                    return seen[inst] = true;
-                }
-                continue;
-            }
+            // Stores to a pointer are not needed for the reverse pass
             if (auto si = dyn_cast<StoreInst>(zu)) {
                 if (si->getPointerOperand() == inst) {
                     continue;
                 }
             }
+
+            if (isa<LoadInst>(zu) || isa<CastInst>(zu) || isa<PHINode>(zu)) {
+                if (is_value_needed_in_reverse(TR, gutils, zu, topLevel, seen)) {
+                    //llvm::errs() << " had to use in reverse since sub use " << *zu << " of " << *inst << "\n";
+                    return seen[inst] = true;
+                }
+                continue;
+            }
+
             if (isa<CallInst>(zu)) {
                 //llvm::errs() << " had to use in reverse since call use " << *zu << " of " << *inst << "\n";
                 return seen[inst] = true;
@@ -427,7 +429,7 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
     }
 
     if (isa<LoadInst>(user) || isa<CastInst>(user) || isa<PHINode>(user)) {
-        if (!is_value_needed_in_reverse(gutils, user, topLevel, seen)) {
+        if (!is_value_needed_in_reverse(TR, gutils, user, topLevel, seen)) {
             continue;
         }
     }
@@ -466,7 +468,11 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
     }
 
     //! Note it is important that return check comes before this as it may not have a new instruction
-    if (gutils->isConstantInstruction(gutils->getNewFromOriginal(user))) {
+
+    // nonconstant
+    if (isa<CallInst>(user) && (gutils->originalToNewFn.find(user) == gutils->originalToNewFn.end() || isa<ExtractValueInst>(gutils->getNewFromOriginal(user)))) {
+
+    } else if (gutils->isConstantInstruction(gutils->getNewFromOriginal(user))) {
         //llvm::errs() << " skipping constant use : " << *user << " of " <<  *inst << "\n";
         continue;
     }
@@ -584,10 +590,62 @@ public:
     BasicBlock* parent = LI.getParent();
     Type*  type = LI.getType();
 
+    //! Store inverted pointer loads that need to be cached for use in reverse pass
+    if (!type->isEmptyTy() && !type->isFPOrFPVectorTy() && TR.query(gutils->getOriginal(&LI))[{}].isPossiblePointer()) {
+      PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[&LI]);
+      assert(placeholder->getType() == type);
+      gutils->invertedPointers.erase(&LI);
+
+      //TODO consider optimizing when you know it isnt a pointer and thus don't need to store
+      if (!constantval) {
+        IRBuilder<> BuilderZ(placeholder);
+        Value* newip = nullptr;
+
+        switch(mode) {
+
+          case DerivativeMode::Forward:
+          case DerivativeMode::Both:{
+            newip = gutils->invertPointerM(&LI, BuilderZ);
+            assert(newip->getType() == type);
+
+            if (mode == DerivativeMode::Forward && gutils->can_modref_map->find(orig)->second) {
+              gutils->addMalloc(BuilderZ, newip, getIndex(orig, "shadow"));
+            }
+            placeholder->replaceAllUsesWith(newip);
+            gutils->erase(placeholder);
+            gutils->invertedPointers[&LI] = newip;
+            break;
+          }
+
+          case DerivativeMode::Reverse:{
+            //only make shadow where caching needed
+            if (gutils->can_modref_map->find(orig)->second) {
+              newip = gutils->addMalloc(BuilderZ, placeholder, getIndex(orig, "shadow"));
+              assert(newip->getType() == type);
+              gutils->invertedPointers[&LI] = newip;
+            } else {
+              newip = gutils->invertPointerM(&LI, BuilderZ);
+              assert(newip->getType() == type);
+              placeholder->replaceAllUsesWith(newip);
+              gutils->erase(placeholder);
+              gutils->invertedPointers[&LI] = newip;
+            }
+            break;
+          }
+        }
+
+      } else {
+        gutils->erase(placeholder);
+      }
+    }
+
+    // Allow forcing cache reads to be on or off using flags.
+    assert(!(cache_reads_always && cache_reads_never) && "Both cache_reads_always and cache_reads_never are true. This doesn't make sense.");
+
     Instruction* inst = &LI;
 
     //! Store loads that need to be cached for use in reverse pass
-    if (gutils->can_modref_map->find(orig)->second) {
+    if (cache_reads_always || (!cache_reads_never && gutils->can_modref_map->find(orig)->second && is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(&LI), /*toplevel*/mode == DerivativeMode::Both))) {
       IRBuilder<> BuilderZ(LI.getNextNode());
       auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
       inst = gutils->addMalloc(BuilderZ, &LI, getIndex(orig, "self"));
@@ -609,51 +667,6 @@ public:
         gutils->originalInstructions.insert(inst);
       } else {
         assert(inst == &LI);
-      }
-    }
-
-    //! Store inverted pointer loads that need to be cached for use in reverse pass
-    if (!type->isEmptyTy() && !type->isFPOrFPVectorTy()) {
-      PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[inst]);
-      assert(placeholder->getType() == type);
-      gutils->invertedPointers.erase(inst);
-
-      if (!constantval) {
-        IRBuilder<> BuilderZ(placeholder);
-        Value* newip = nullptr;
-
-        switch(mode) {
-
-          case DerivativeMode::Forward:
-          case DerivativeMode::Both:{
-            assert(inst == &LI);
-            newip = gutils->invertPointerM(inst, BuilderZ);
-            assert(newip->getType() == type);
-            if (mode == DerivativeMode::Forward) {
-              gutils->addMalloc(BuilderZ, newip, getIndex(orig, "shadow"));
-            }
-            placeholder->replaceAllUsesWith(newip);
-            gutils->erase(placeholder);
-            gutils->invertedPointers[inst] = newip;
-            break;
-          }
-
-          case DerivativeMode::Reverse:{
-            //only make shadow where caching needed ??
-            // TODO: unclear whether the regular load is appropriate for shadow here
-            if (true || gutils->can_modref_map->find(orig)->second) {
-              newip = gutils->addMalloc(BuilderZ, placeholder, getIndex(orig, "shadow"));
-              assert(newip->getType() == type);
-              gutils->invertedPointers[inst] = newip;
-            } else {
-              gutils->erase(placeholder);
-            }
-            break;
-          }
-        }
-
-      } else {
-        gutils->erase(placeholder);
       }
     }
 
@@ -1281,6 +1294,50 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
   llvm::InstVisitor<DerivativeMaker<const AugmentedReturn*>>::visitCallInst(call);
 }
 
+// TODO note this doesn't go through [loop, unreachable], and we could get more performance by doing this
+// can consider doing some domtree magic potentially
+static inline SmallPtrSet<BasicBlock*, 4> getGuaranteedUnreachable(Function* F) {
+  SmallPtrSet<BasicBlock*, 4> knownUnreachables;
+  std::deque<BasicBlock*> todo;
+  for(auto &BB : *F) { todo.push_back(&BB); }
+
+  while(!todo.empty()) {
+    BasicBlock* next = todo.front();
+    todo.pop_front();
+
+    if (knownUnreachables.find(next) != knownUnreachables.end()) continue;
+
+    if (isa<ReturnInst>(next->getTerminator())) continue;
+
+    if (isa<UnreachableInst>(next->getTerminator())) {
+      knownUnreachables.insert(next);
+      for (BasicBlock *Pred : predecessors(next)) {
+        todo.push_back(Pred);
+      }
+      continue;
+    }
+
+    bool unreachable = true;
+    for (BasicBlock *Succ : successors(next)) {
+      if (knownUnreachables.find(Succ) == knownUnreachables.end()) {
+        unreachable = false;
+        break;
+      }
+    }
+
+    if (!unreachable) continue;
+    knownUnreachables.insert(next);
+    for (BasicBlock *Pred : predecessors(next)) {
+      todo.push_back(Pred);
+    }
+    continue;
+  }
+
+  return knownUnreachables;
+}
+
+
+
 //! return structtype if recursive function
 const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &global_AA,
                                              bool differentialReturn, bool returnUsed, const NewFnTypeInfo& oldTypeInfo,
@@ -1355,7 +1412,9 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
   std::map<AugmentedStruct, unsigned> returnMapping;
   AAResults AA(TLI);
   //AA.addAAResult(global_AA);
+
   GradientUtils *gutils = GradientUtils::CreateFromClone(todiff, TLI, TA, AA, constant_args, /*returnUsed*/returnUsed, /*differentialReturn*/differentialReturn, returnMapping);
+  const SmallPtrSet<BasicBlock*, 4> guaranteedUnreachable = getGuaranteedUnreachable(gutils->oldFunc);
 
   gutils->forceContexts();
 
@@ -1389,7 +1448,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
   gutils->forceActiveDetection(AA, TR);
 
 
-  gutils->forceAugmentedReturns();
+  gutils->forceAugmentedReturns(TR, guaranteedUnreachable);
 
   // Convert uncacheable args from the input function to the preprocessed function
   std::map<Argument*, bool> _uncacheable_argsPP;
@@ -1406,28 +1465,12 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
   const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map =
       compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, AA, gutils, _uncacheable_argsPP);
 
-  std::map<Instruction*, bool> can_modref_map_mutable = compute_uncacheable_load_map(gutils, AA, TLI, _uncacheable_argsPP);
-  for (auto &iter : can_modref_map_mutable) {
-      if (iter.second) {
-        //iter.first->getParent()->getParent()->dump();
-        bool is_needed = is_value_needed_in_reverse(gutils, iter.first, /*toplevel*/false);
-        iter.second = is_needed;
-        //llvm::errs() << "isneeded: " << is_needed << " augmented can_modref_map: " << *iter.first << " fn: " << gutils->oldFunc->getName() << "\n";
-      } else {
-        //llvm::errs() << "augmented can_modref_map: " << *iter.first << "\n";
-      }
+  const std::map<Instruction*, bool> can_modref_map = compute_uncacheable_load_map(gutils, AA, TLI, _uncacheable_argsPP);
+
+  for (auto &iter : can_modref_map) {
+    //llvm::errs() << "isneeded: " << iter.second << " augmented can_modref_map: " << *iter.first << " fn: " << iter.first->getParent()->getParent()->getName() << "\n";
   }
 
-  // Allow forcing cache reads to be on or off using flags.
-  assert(!(cache_reads_always && cache_reads_never) && "Both cache_reads_always and cache_reads_never are true. This doesn't make sense.");
-  if (cache_reads_always || cache_reads_never) {
-    bool is_needed = cache_reads_always ? true : false;
-    for (auto iter = can_modref_map_mutable.begin(); iter != can_modref_map_mutable.end(); iter++) {
-      can_modref_map_mutable[iter->first] = is_needed;
-    }
-  }
-
-  const std::map<Instruction*, bool> can_modref_map = can_modref_map_mutable;
 
   cachedfunctions.insert_or_assign(tup, AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping, uncacheable_args_map, can_modref_map));
   cachedfinished[tup] = false;
@@ -1491,9 +1534,11 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
   for(BasicBlock* BB: gutils->originalBlocks) {
       auto term = BB->getTerminator();
       assert(term);
-      if (isa<ReturnInst>(term) || isa<BranchInst>(term) || isa<SwitchInst>(term)) {
-      } else if (isa<UnreachableInst>(term)) {
 
+      // Don't create derivatives for code that results in termination
+      if (guaranteedUnreachable.find(gutils->getOriginal(BB)) != guaranteedUnreachable.end()) continue;
+
+      if (isa<ReturnInst>(term) || isa<BranchInst>(term) || isa<SwitchInst>(term)) {
       } else {
         assert(BB);
         assert(BB->getParent());
@@ -1503,7 +1548,6 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
         assert(0 && "unknown terminator inst");
       }
 
-      if (!isa<UnreachableInst>(term))
       for (BasicBlock::reverse_iterator I = BB->rbegin(), E = BB->rend(); I != E;) {
         Instruction* inst = &*I;
         assert(inst);
@@ -1921,7 +1965,7 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
     }
 }
 
-bool shouldAugmentCall(CallInst* op, GradientUtils* gutils) {
+static bool shouldAugmentCall(CallInst* op, const GradientUtils* gutils) {
   Function *called = op->getCalledFunction();
 
   bool modifyPrimal = !called || !called->hasFnAttribute(Attribute::ReadNone);
@@ -1977,7 +2021,7 @@ void handleAugmentedCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, c
         return;
 
     if (called && (called->getName()=="malloc" || called->getName()=="_Znwm")) {
-        if (is_value_needed_in_reverse(gutils, gutils->getOriginal(op), /*topLevel*/false)) {
+        if (is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/false)) {
             IRBuilder<> BuilderZ(op);
             gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), "self") );
         }
@@ -2029,6 +2073,7 @@ void handleAugmentedCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, c
 
         auto argType = op->getArgOperand(i)->getType();
 
+        //if (!argType->isFPOrFPVectorTy() && TR.query(gutils->getOriginal(op->getArgOperand(i)))[{}].isPossiblePointer()) {
         if (!argType->isFPOrFPVectorTy()) {
             argsInverted.push_back(DIFFE_TYPE::DUP_ARG);
             args.push_back(gutils->invertPointerM(op->getArgOperand(i), BuilderZ));
@@ -2259,7 +2304,7 @@ void handleGradientCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, co
     // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE TO FREE'ing
       Instruction* inst = op;
       if (!topLevel) {
-        if (is_value_needed_in_reverse(gutils, gutils->getOriginal(op), /*topLevel*/topLevel)) {
+        if (is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/topLevel)) {
             IRBuilder<> BuilderZ(op);
             inst = gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), "self") );
             inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), constval ? "const" : "active")}));
@@ -3032,7 +3077,7 @@ badfn:;
         gutils->nonconstant_values.insert(dcall);
 
     if (!gutils->isConstantValue(op)) {
-      if (!op->getType()->isFPOrFPVectorTy()) {
+      if (!op->getType()->isFPOrFPVectorTy() && TR.query(gutils->getOriginal(op))[{}].isPossiblePointer()) {
         gutils->invertedPointers[dcall] = gutils->invertedPointers[op];
         gutils->invertedPointers.erase(op);
       } else {
@@ -3055,48 +3100,6 @@ badfn:;
   } else {
     gutils->replaceableCalls.insert(op);
   }
-}
-
-// TODO note this doesn't go through [loop, unreachable], and we could get more performance by doing this
-// can consider doing some domtree magic potentially
-SmallPtrSet<BasicBlock*, 4> getGuaranteedUnreachable(Function* F) {
-  SmallPtrSet<BasicBlock*, 4> knownUnreachables;
-  std::deque<BasicBlock*> todo;
-  for(auto &BB : *F) { todo.push_back(&BB); }
-
-  while(!todo.empty()) {
-    BasicBlock* next = todo.front();
-    todo.pop_front();
-
-    if (knownUnreachables.find(next) != knownUnreachables.end()) continue;
-
-    if (isa<ReturnInst>(next->getTerminator())) continue;
-
-    if (isa<UnreachableInst>(next->getTerminator())) {
-      knownUnreachables.insert(next);
-      for (BasicBlock *Pred : predecessors(next)) {
-        todo.push_back(Pred);
-      }
-      continue;
-    }
-
-    bool unreachable = true;
-    for (BasicBlock *Succ : successors(next)) {
-      if (knownUnreachables.find(Succ) == knownUnreachables.end()) {
-        unreachable = false;
-        break;
-      }
-    }
-
-    if (!unreachable) continue;
-    knownUnreachables.insert(next);
-    for (BasicBlock *Pred : predecessors(next)) {
-      todo.push_back(Pred);
-    }
-    continue;
-  }
-
-  return knownUnreachables;
 }
 
 Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI,
@@ -3208,7 +3211,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(todiff, TLI, TA, AA, constant_args, returnValue ? ( dretPtr ? ReturnType::ArgsWithTwoReturns: ReturnType::ArgsWithReturn ) : ReturnType::Args, differentialReturn, additionalArg);
   cachedfunctions[tup] = gutils->newFunc;
 
-  SmallPtrSet<BasicBlock*, 4> guaranteedUnreachable = getGuaranteedUnreachable(gutils->oldFunc);
+  const SmallPtrSet<BasicBlock*, 4> guaranteedUnreachable = getGuaranteedUnreachable(gutils->oldFunc);
 
   SmallPtrSet<Value*, 4> assumeTrue;
   SmallPtrSet<Value*, 4> assumeFalse;
@@ -3281,7 +3284,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   TypeResults TR = TA.analyzeFunction(typeInfo, gutils->oldFunc);
 
   gutils->forceActiveDetection(AA, TR);
-  gutils->forceAugmentedReturns();
+  gutils->forceAugmentedReturns(TR, guaranteedUnreachable);
 
   std::map<std::pair<Instruction*,std::string>,unsigned> mapping;
   if (augmenteddata) mapping = augmenteddata->tapeIndices;
@@ -3304,28 +3307,16 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map = (augmenteddata) ? augmenteddata->uncacheable_args_map :
       compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, AA, gutils, _uncacheable_argsPP);
 
-  std::map<Instruction*, bool> can_modref_map_mutable = compute_uncacheable_load_map(gutils, AA, TLI, _uncacheable_argsPP);
-
+  const std::map<Instruction*, bool> can_modref_map =  augmenteddata ? augmenteddata->can_modref_map : compute_uncacheable_load_map(gutils, AA, TLI, _uncacheable_argsPP);
+  /*
     for (auto &iter : can_modref_map_mutable) {
       if (iter.second) {
-        bool is_needed = is_value_needed_in_reverse(gutils, iter.first, topLevel);
-        iter.second = is_needed;
         //llvm::errs() << "isneeded: " << is_needed << " gradient can_modref_map: " << *iter.first << " fn: " << gutils->oldFunc->getName() << "\n";
       } else {
         //llvm::errs() << "gradient can_modref_map: " << *iter.first << "\n";
       }
     }
-
-  // Allow forcing cache reads to be on or off using flags.
-  assert(!(cache_reads_always && cache_reads_never) && "Both cache_reads_always and cache_reads_never are true. This doesn't make sense.");
-  if (cache_reads_always || cache_reads_never) {
-    bool is_needed = cache_reads_always ? true : false;
-    for (auto iter = can_modref_map_mutable.begin(); iter != can_modref_map_mutable.end(); iter++) {
-      can_modref_map_mutable[iter->first] = is_needed;
-    }
-  }
-
-  const std::map<Instruction*, bool> can_modref_map = augmenteddata ? augmenteddata->can_modref_map : can_modref_map_mutable;
+  */
 
   gutils->can_modref_map = &can_modref_map;
 

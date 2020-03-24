@@ -102,7 +102,7 @@ public:
   const std::map<Instruction*, bool>* can_modref_map;
 
 
-  Value* getNewFromOriginal(Value* originst) {
+  Value* getNewFromOriginal(Value* originst) const {
     assert(originst);
     auto f = originalToNewFn.find(originst);
     if (f == originalToNewFn.end()) {
@@ -120,10 +120,10 @@ public:
     assert(f->second);
     return f->second;
   }
-  Instruction* getNewFromOriginal(Instruction* newinst) {
+  Instruction* getNewFromOriginal(Instruction* newinst) const {
     return cast<Instruction>(getNewFromOriginal((Value*)newinst));
   }
-  Value* getOriginal(Value* newinst) {
+  Value* getOriginal(Value* newinst) const {
     for(auto v: originalToNewFn) {
         if (v.second == newinst) return const_cast<Value*>(v.first);
     }
@@ -131,22 +131,14 @@ public:
     assert(0 && "could not invert new inst");
     report_fatal_error("could not invert new inst");
   }
-  Instruction* getOriginal(Instruction* newinst) {
+  Instruction* getOriginal(Instruction* newinst) const {
     return cast<Instruction>(getOriginal((Value*)newinst));
   }
-  CallInst* getOriginal(CallInst* newinst) {
+  CallInst* getOriginal(CallInst* newinst) const {
     return cast<CallInst>(getOriginal((Value*)newinst));
   }
-  BasicBlock* getOriginal(BasicBlock* newinst) {
+  BasicBlock* getOriginal(BasicBlock* newinst) const {
     return cast<BasicBlock>(getOriginal((Value*)newinst));
-  }
-
-  Value* getOriginalPointer(Value* newinst) {
-    for(auto v: originalToNewFn) {
-        if (invertedPointers[v.second] == newinst) return const_cast<Value*>(v.first);
-    }
-    assert(0 && "could not invert new pointer inst");
-    report_fatal_error("could not invert new pointer inst");
   }
 
 private:
@@ -918,11 +910,11 @@ public:
       //llvm::errs() << "post cleanup: " << *newFunc << "\n";
   }
 
-  llvm::StringRef getAttribute(Argument* arg, std::string attr) {
+  llvm::StringRef getAttribute(Argument* arg, std::string attr) const {
     return arg->getParent()->getAttributes().getParamAttr(arg->getArgNo(), attr).getValueAsString();
   }
 
-  bool isConstantValue(Value* val) {
+  bool isConstantValue(Value* val) const {
     if (auto inst = dyn_cast<Instruction>(val)) {
         if (originalInstructions.find(inst) == originalInstructions.end()) return true;
         if (auto md = inst->getMetadata("enzyme_activity_value")) {
@@ -971,7 +963,7 @@ public:
     exit(1);
   }
 
-  bool isConstantInstruction(Instruction* inst) {
+  bool isConstantInstruction(Instruction* inst) const {
     if (originalInstructions.find(inst) == originalInstructions.end()) return true;
 
     if (MDNode* md = inst->getMetadata("enzyme_activity_inst")) {
@@ -988,13 +980,14 @@ public:
     exit(1);
   }
 
-  void forceAugmentedReturns() {
+
+  void forceAugmentedReturns(TypeResults &TR, const SmallPtrSetImpl<BasicBlock*>& guaranteedUnreachable) {
       for(BasicBlock* BB: this->originalBlocks) {
         LoopContext loopContext;
         this->getContext(BB, loopContext);
 
-        auto term = BB->getTerminator();
-        if (isa<UnreachableInst>(term)) continue;
+        // Don't create derivatives for code that results in termination
+        if (guaranteedUnreachable.find(getOriginal(BB)) != guaranteedUnreachable.end()) continue;
 
         for (auto I = BB->begin(), E = BB->end(); I != E;) {
           Instruction* inst = &*I;
@@ -1011,6 +1004,8 @@ public:
           if (inst->getType()->isEmptyTy()) continue;
 
           if (inst->getType()->isFPOrFPVectorTy()) continue; //!op->getType()->isPointerTy() && !op->getType()->isIntegerTy()) {
+
+          if (!TR.query(getOriginal(inst))[{}].isPossiblePointer()) continue;
 
           if (isa<LoadInst>(inst)) {
               IRBuilder<> BuilderZ(getNextNonDebugInstruction(inst));

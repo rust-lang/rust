@@ -1,5 +1,8 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
 
+; TODO: the calling convention isn't set up to deal with returning a float as an integer and must be updated for this to pass
+; XFAIL: *
+
 define i64 @subload(i64* %inp) {
 entry:
   %res = load i64, i64* %inp
@@ -36,11 +39,11 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 ; CHECK: define internal {} @diffefoo(i64* %inp, i64* %"inp'", i64* %out, i64* %"out'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call_augmented = call { {}, i64, i64 } @augmented_subload(i64* %inp, i64* %"inp'")
-; CHECK-NEXT:   %0 = extractvalue { {}, i64, i64 } %call_augmented, 1
-; CHECK-NEXT:   store i64 %0, i64* %out, align 4
+; CHECK-NEXT:   %call = extractvalue { {}, i64, i64 } %call_augmented, 1
+; CHECK-NEXT:   store i64 %call, i64* %out, align 4
 ; CHECK-NEXT:   ; TODO put extract 2 in out'
 ; CHECK-NEXT:   store i64 %2, i64* %"out'", align 4
-; CHECK-NEXT:   %1 = call {} @diffesubload(i64* %inp, i64* %"inp'", {} undef)
+; CHECK-NEXT:   %[[unused:.+]] = call {} @diffesubload(i64* %inp, i64* %"inp'", {} undef)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

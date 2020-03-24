@@ -114,13 +114,13 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %a0 = ptrtoint double* %argres to i64
 ; CHECK-NEXT:   %0 = bitcast i64* %"lhs'" to double**
-; CHECK-NEXT:   %"a2'ipl3" = load double*, double** %0, align 8
+; CHECK-NEXT:   %[[a2p:.+]] = load double*, double** %0, align 8
 ; CHECK-NEXT:   %a2 = load i64, i64* %lhs, align 8
 ; CHECK-NEXT:   %a3 = inttoptr i64 %a2 to double*
 ; CHECK-NEXT:   %cond.i.i.i = select i1 %cmp.i.i.i, i64 %a2, i64 0
 ; CHECK-NEXT:   %cmp17 = icmp eq i64 %cond.i.i.i, %a0
 ; CHECK-NEXT:   %idx = zext i1 %cmp17 to i64
-; CHECK-NEXT:   %"arrayidx.i.i814'ipge" = getelementptr inbounds double, double* %"a2'ipl3", i64 %idx
+; CHECK-NEXT:   %"arrayidx.i.i814'ipge" = getelementptr inbounds double, double* %[[a2p]], i64 %idx
 ; CHECK-NEXT:   %arrayidx.i.i814 = getelementptr inbounds double, double* %a3, i64 %idx
 ; CHECK-NEXT:   %a4 = bitcast double* %arrayidx.i.i814 to i64*
 ; CHECK-NEXT:   %a51 = load i64, i64* %a4, align 8
