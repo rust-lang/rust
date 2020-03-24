@@ -171,7 +171,15 @@ fn main() {
         emit_codepoints(&mut emitter, &ranges);
 
         modules.push((property.to_lowercase().to_string(), emitter.file));
-        println!("{:15}: {} bytes, {} codepoints", property, emitter.bytes_used, datapoints,);
+        println!(
+            "{:15}: {} bytes, {} codepoints in {} ranges ({} - {})",
+            property,
+            emitter.bytes_used,
+            datapoints,
+            ranges.len(),
+            ranges.first().unwrap().start,
+            ranges.last().unwrap().end
+        );
         total_bytes += emitter.bytes_used;
     }
 
