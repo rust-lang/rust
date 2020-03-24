@@ -114,13 +114,6 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
         let blksize_t_layout = this.libc_ty_layout("blksize_t")?;
         let uint32_t_layout = this.libc_ty_layout("uint32_t")?;
 
-        // We need to add 32 bits of padding after `st_rdev` if we are on a 64-bit target.
-        let pad_layout = if this.tcx.sess.target.ptr_width == 64 {
-            uint32_t_layout
-        } else {
-            this.layout_of(this.tcx.mk_unit())?
-        };
-
         let imms = [
             immty_from_uint_checked(0u128, dev_t_layout)?, // st_dev
             immty_from_uint_checked(mode, mode_t_layout)?, // st_mode
@@ -129,7 +122,7 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
             immty_from_uint_checked(0u128, uid_t_layout)?, // st_uid
             immty_from_uint_checked(0u128, gid_t_layout)?, // st_gid
             immty_from_uint_checked(0u128, dev_t_layout)?, // st_rdev
-            immty_from_uint_checked(0u128, pad_layout)?, // padding for 64-bit targets
+            immty_from_uint_checked(0u128, uint32_t_layout)?, // padding
             immty_from_uint_checked(access_sec, time_t_layout)?, // st_atime
             immty_from_uint_checked(access_nsec, long_layout)?, // st_atime_nsec
             immty_from_uint_checked(modified_sec, time_t_layout)?, // st_mtime
