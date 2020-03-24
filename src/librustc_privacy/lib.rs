@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
         span: Span,            // span of the field pattern, e.g., `x: 0`
         def: &'tcx ty::AdtDef, // definition of the struct or enum
         field: &'tcx ty::FieldDef,
-        in_update_syntax: bool
+        in_update_syntax: bool,
     ) {
         // definition of the field
         let ident = Ident::new(kw::Invalid, use_ctxt);
