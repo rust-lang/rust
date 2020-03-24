@@ -1503,9 +1503,13 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl, &generics, Some(ident.span))
         }
 
-        ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(ref fn_decl, _, _), .. }) => {
+        ForeignItem(&hir::ForeignItem {
+            kind: ForeignItemKind::Fn(ref fn_decl, _, _),
+            ident,
+            ..
+        }) => {
             let abi = tcx.hir().get_foreign_abi(hir_id);
-            compute_sig_of_foreign_fn_decl(tcx, def_id, fn_decl, abi)
+            compute_sig_of_foreign_fn_decl(tcx, def_id, fn_decl, abi, ident)
         }
 
         Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor_hir_id().is_some() => {
@@ -2118,6 +2122,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     def_id: DefId,
     decl: &'tcx hir::FnDecl<'tcx>,
     abi: abi::Abi,
+    ident: Ident,
 ) -> ty::PolyFnSig<'tcx> {
     let unsafety = if abi == abi::Abi::RustIntrinsic {
         intrinsic_operation_unsafety(&tcx.item_name(def_id).as_str())
@@ -2130,7 +2135,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         abi,
         decl,
         &hir::Generics::empty(),
-        None,
+        Some(ident.span),
     );
 
     // Feature gate SIMD types in FFI, since I am not sure that the
