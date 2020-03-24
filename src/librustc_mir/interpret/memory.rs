@@ -9,7 +9,6 @@
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
-use std::ops::{Add, Mul};
 use std::ptr;
 
 use rustc::ty::layout::{Align, HasDataLayout, Size, TargetDataLayout};
@@ -880,7 +879,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let src_bytes =
             self.get_raw(src.alloc_id)?.get_bytes_with_undef_and_ptr(&tcx, src, size)?.as_ptr();
         let dest_bytes =
-            self.get_raw_mut(dest.alloc_id)?.get_bytes_mut(&tcx, dest, Size::mul(size, length))?;
+            self.get_raw_mut(dest.alloc_id)?.get_bytes_mut(&tcx, dest, size * length)?; // `Size` multiplication
 
         // If `dest_bytes` is empty we just optimize to not run anything for zsts.
         // See #67539
@@ -901,7 +900,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             // touched if the bytes stay undef for the whole interpreter execution. On contemporary
             // operating system this can avoid physically allocating the page.
             let dest_alloc = self.get_raw_mut(dest.alloc_id)?;
-            dest_alloc.mark_definedness(dest, Size::mul(size, length), false);
+            dest_alloc.mark_definedness(dest, size * length, false); // `Size` multiplication
             dest_alloc.mark_relocation_range(relocations);
             return Ok(());
         }
@@ -914,8 +913,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         unsafe {
             if src.alloc_id == dest.alloc_id {
                 if nonoverlapping {
-                    if (src.offset <= dest.offset && Size::add(src.offset, size) > dest.offset)
-                        || (dest.offset <= src.offset && Size::add(dest.offset, size) > src.offset)
+                    // `Size` additions
+                    if (src.offset <= dest.offset && src.offset + size > dest.offset)
+                        || (dest.offset <= src.offset && dest.offset + size > src.offset)
                     {
                         throw_ub_format!("copy_nonoverlapping called on overlapping ranges")
                     }
@@ -924,7 +924,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 for i in 0..length {
                     ptr::copy(
                         src_bytes,
-                        dest_bytes.offset(isize::try_from(Size::mul(size, i).bytes()).unwrap()),
+                        dest_bytes.offset(isize::try_from((size * i).bytes()).unwrap()), // `Size` multiplication
                         usize::try_from(size.bytes()).unwrap(),
                     );
                 }
@@ -932,7 +932,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 for i in 0..length {
                     ptr::copy_nonoverlapping(
                         src_bytes,
-                        dest_bytes.offset(isize::try_from(Size::mul(size, i).bytes()).unwrap()),
+                        dest_bytes.offset(isize::try_from((size * i).bytes()).unwrap()), // `Size` multiplication
                         usize::try_from(size.bytes()).unwrap(),
                     );
                 }

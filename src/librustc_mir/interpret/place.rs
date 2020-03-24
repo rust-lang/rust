@@ -4,7 +4,6 @@
 
 use std::convert::TryFrom;
 use std::hash::Hash;
-use std::ops::Mul;
 
 use rustc::mir;
 use rustc::mir::interpret::truncate;
@@ -444,7 +443,7 @@ where
                     // This can only be reached in ConstProp and non-rustc-MIR.
                     throw_ub!(BoundsCheckFailed { len, index });
                 }
-                let offset = Size::mul(stride, index);
+                let offset = stride * index; // `Size` multiplication
                 // All fields have the same layout.
                 let field_layout = base.layout.field(self, 0)?;
 
@@ -469,7 +468,8 @@ where
         };
         let layout = base.layout.field(self, 0)?;
         let dl = &self.tcx.data_layout;
-        Ok((0..len).map(move |i| base.offset(Size::mul(stride, i), MemPlaceMeta::None, layout, dl)))
+        // `Size` multiplication
+        Ok((0..len).map(move |i| base.offset(stride * i, MemPlaceMeta::None, layout, dl)))
     }
 
     fn mplace_subslice(
@@ -493,7 +493,7 @@ where
         // Not using layout method because that works with usize, and does not work with slices
         // (that have count 0 in their layout).
         let from_offset = match base.layout.fields {
-            layout::FieldPlacement::Array { stride, .. } => Size::mul(stride, from), // `Size` multiplication is checked
+            layout::FieldPlacement::Array { stride, .. } => stride * from, // `Size` multiplication is checked
             _ => bug!("Unexpected layout of index access: {:#?}", base.layout),
         };
 

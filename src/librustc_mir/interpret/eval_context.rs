@@ -1,7 +1,6 @@
 use std::cell::Cell;
 use std::fmt::Write;
 use std::mem;
-use std::ops::Add;
 
 use rustc::ich::StableHashingContext;
 use rustc::mir;
@@ -454,7 +453,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // here. But this is where the add would go.)
 
                 // Return the sum of sizes and max of aligns.
-                let size = Size::add(sized_size, unsized_size);
+                let size = sized_size + unsized_size; // `Size` addition
 
                 // Choose max of two known alignments (combined value must
                 // be aligned according to more restrictive of the two).

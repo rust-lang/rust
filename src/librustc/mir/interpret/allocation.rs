@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::iter;
-use std::ops::{Add, Deref, DerefMut, Mul, Range, Sub};
+use std::ops::{Deref, DerefMut, Range};
 
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -183,7 +183,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// Returns the range of this allocation that was meant.
     #[inline]
     fn check_bounds(&self, offset: Size, size: Size) -> Range<usize> {
-        let end = Size::add(offset, size); // This does overflow checking.
+        let end = offset + size; // This does overflow checking.
         let end = usize::try_from(end.bytes()).expect("access too big for this host architecture");
         assert!(
             end <= self.len(),
@@ -293,7 +293,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         let offset = usize::try_from(ptr.offset.bytes()).unwrap();
         Ok(match self.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
-                let size_with_null = Size::add(Size::from_bytes(size), Size::from_bytes(1));
+                let size_with_null = Size::from_bytes(size) + Size::from_bytes(1);
                 // Go through `get_bytes` for checks and AllocationExtra hooks.
                 // We read the null, so we include it in the request, but we want it removed
                 // from the result, so we do subslicing.
@@ -474,7 +474,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
         // the beginning of this range.
         let start = ptr.offset.bytes().saturating_sub(cx.data_layout().pointer_size.bytes() - 1);
-        let end = Size::add(ptr.offset, size); // This does overflow checking.
+        let end = ptr.offset + size; // This does overflow checking.
         self.relocations.range(Size::from_bytes(start)..end)
     }
 
@@ -519,7 +519,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
             )
         };
         let start = ptr.offset;
-        let end = Size::add(start, size);
+        let end = start + size; // `Size` addition
 
         // Mark parts of the outermost relocations as undefined if they partially fall outside the
         // given range.
@@ -558,7 +558,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     #[inline]
     fn check_defined(&self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
         self.undef_mask
-            .is_range_defined(ptr.offset, Size::add(ptr.offset, size))
+            .is_range_defined(ptr.offset, ptr.offset + size) // `Size` addition
             .or_else(|idx| throw_ub!(InvalidUndefBytes(Some(Pointer::new(ptr.alloc_id, idx)))))
     }
 
@@ -566,7 +566,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         if size.bytes() == 0 {
             return;
         }
-        self.undef_mask.set_range(ptr.offset, Size::add(ptr.offset, size), new_state);
+        self.undef_mask.set_range(ptr.offset, ptr.offset + size, new_state);
     }
 }
 
@@ -611,7 +611,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
 
         for i in 1..size.bytes() {
             // FIXME: optimize to bitshift the current undef block's bits and read the top bit.
-            if self.undef_mask.get(Size::add(src.offset, Size::from_bytes(i))) == cur {
+            if self.undef_mask.get(src.offset + Size::from_bytes(i)) == cur {
                 cur_len += 1;
             } else {
                 ranges.push(cur_len);
@@ -638,7 +638,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         if defined.ranges.len() <= 1 {
             self.undef_mask.set_range_inbounds(
                 dest.offset,
-                Size::add(dest.offset, Size::mul(size, repeat)),
+                dest.offset + size * repeat, // `Size` operations
                 defined.initial,
             );
             return;
@@ -716,10 +716,10 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         for i in 0..length {
             new_relocations.extend(relocations.iter().map(|&(offset, reloc)| {
                 // compute offset for current repetition
-                let dest_offset = Size::add(dest.offset, Size::mul(size, i));
+                let dest_offset = dest.offset + size * i; // `Size` operations
                 (
                     // shift offsets from source allocation to destination allocation
-                    Size::sub(Size::add(offset, dest_offset), src.offset),
+                    (offset + dest_offset) - src.offset, // `Size` operations
                     reloc,
                 )
             }));
@@ -867,7 +867,7 @@ impl UndefMask {
         }
         let start = self.len;
         self.len += amount;
-        self.set_range_inbounds(start, Size::add(start, amount), new_state);
+        self.set_range_inbounds(start, start + amount, new_state); // `Size` operation
     }
 }
 

@@ -1,5 +1,4 @@
 use std::convert::TryFrom;
-use std::ops::Mul;
 
 use rustc::mir::interpret::{InterpResult, Pointer, PointerArithmetic, Scalar};
 use rustc::ty::layout::{Align, HasDataLayout, LayoutOf, Size};
@@ -57,7 +56,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `get_vtable` in `rust_codegen_llvm/meth.rs`.
         // /////////////////////////////////////////////////////////////////////////////////////////
         let vtable = self.memory.allocate(
-            Size::mul(ptr_size, u64::try_from(methods.len()).unwrap().checked_add(3).unwrap()),
+            ptr_size * u64::try_from(methods.len()).unwrap().checked_add(3).unwrap(),
             ptr_align,
             MemoryKind::Vtable,
         );
@@ -110,8 +109,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
         let ptr_size = self.pointer_size();
         // Skip over the 'drop_ptr', 'size', and 'align' fields.
-        let vtable_slot =
-            vtable.ptr_offset(Size::mul(ptr_size, idx.checked_add(3).unwrap()), self)?;
+        let vtable_slot = vtable.ptr_offset(ptr_size * idx.checked_add(3).unwrap(), self)?;
         let vtable_slot = self
             .memory
             .check_ptr_access(vtable_slot, ptr_size, self.tcx.data_layout.pointer_align.abi)?

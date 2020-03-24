@@ -6,10 +6,10 @@
 
 use std::convert::TryFrom;
 use std::fmt::Write;
-use std::ops::{Mul, RangeInclusive};
+use std::ops::RangeInclusive;
 
 use rustc::ty;
-use rustc::ty::layout::{self, LayoutOf, Size, TyLayout, VariantIdx};
+use rustc::ty::layout::{self, LayoutOf, TyLayout, VariantIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_span::symbol::{sym, Symbol};
@@ -747,8 +747,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
                 // This is the element type size.
                 let layout = self.ecx.layout_of(tys)?;
-                // This is the size in bytes of the whole array.
-                let size = Size::mul(layout.size, len);
+                // This is the size in bytes of the whole array. (This checks for overflow.)
+                let size = layout.size * len;
                 // Size is not 0, get a pointer.
                 let ptr = self.ecx.force_ptr(mplace.ptr)?;
 
