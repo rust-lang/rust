@@ -393,6 +393,7 @@ E0701: include_str!("./error_codes/E0701.md"),
 E0704: include_str!("./error_codes/E0704.md"),
 E0705: include_str!("./error_codes/E0705.md"),
 E0706: include_str!("./error_codes/E0706.md"),
+E0710: include_str!("./error_codes/E0710.md"),
 E0712: include_str!("./error_codes/E0712.md"),
 E0713: include_str!("./error_codes/E0713.md"),
 E0714: include_str!("./error_codes/E0714.md"),
@@ -604,7 +605,6 @@ E0748: include_str!("./error_codes/E0748.md"),
     E0708, // `async` non-`move` closures with parameters are not currently
            // supported
 //  E0709, // multiple different lifetimes used in arguments of `async fn`
-    E0710, // an unknown tool name found in scoped lint
     E0711, // a feature has been declared with conflicting stability attributes
     E0717, // rustc_promotable without stability attribute
 //  E0721, // `await` keyword
