@@ -24,8 +24,12 @@ pub struct EnvVars<'tcx> {
 impl<'tcx> EnvVars<'tcx> {
     pub(crate) fn init<'mir>(
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
-        excluded_env_vars: Vec<String>,
+        mut excluded_env_vars: Vec<String>,
     ) -> InterpResult<'tcx> {
+        if ecx.tcx.sess.target.target.target_os.to_lowercase() == "windows" {
+            // Exclude `TERM` var to avoid terminfo trying to open the termcap file.
+            excluded_env_vars.push("TERM".to_owned());
+        }
         if ecx.machine.communicate {
             let target_os = ecx.tcx.sess.target.target.target_os.as_str();
             for (name, value) in env::vars() {
