@@ -33,4 +33,26 @@ jobs:
         profile: minimal
 
     - name: Test
-      run: cargo test --features serde
+      run: cargo test --all-features
+
+  rustdoc:
+    name: Docs
+    runs-on: ubuntu-latest
+
+    env:
+      RUSTFLAGS: -D warnings
+      RUSTUP_MAX_RETRIES: 10
+      CARGO_NET_RETRY: 10
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+
+    - name: Rustdoc
+      run: cargo doc --all-features
