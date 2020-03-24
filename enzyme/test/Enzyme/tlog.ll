@@ -123,7 +123,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %4 = fmul fast double %3, %conv_unwrap4
 ; CHECK-NEXT:   %5 = fadd fast double %"x'de.0", %4
 ; CHECK-NEXT:   %6 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %7 = select i1 %6, double 0.000000e+00, double %"add'de.0"
+; CHECK-NEXT:   %7 = select{{( fast)?}} i1 %6, double 0.000000e+00, double %"add'de.0"
 ; CHECK-NEXT:   br i1 %6, label %invertentry, label %incinvertfor.body
 
 ; CHECK: incinvertfor.body:                                ; preds = %invertfor.body

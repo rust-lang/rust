@@ -122,7 +122,7 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %cond.i28, %.pre
 ; CHECK-NEXT:   %[[gepz:.+]] = getelementptr i1, i1* %cmp.i_malloccache, i64 %[[iv]]
 ; CHECK-NEXT:   store i1 %cmp.i, i1* %[[gepz]]
-; CHECK-NEXT:   %cond.i = select i1 %cmp.i, double %cond.i28, double %.pre
+; CHECK-NEXT:   %cond.i = select{{( fast)?}} i1 %cmp.i, double %cond.i28, double %.pre
 ; CHECK-NEXT:   %indvars.iv.next = add nuw i64 %[[idxadd]], 1
 ; CHECK-NEXT:   %[[pcond:.+]] = icmp eq i64 %indvars.iv.next, %n
 ; CHECK-NEXT:   br i1 %[[pcond]], label %invertfor.cond.cleanup, label %for.body.for.body_crit_edge
@@ -144,8 +144,8 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[nm210]], %invertfor.cond.cleanup ], [ %[[subd:.+]], %incinvertfor.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %[[gep1:.+]] = getelementptr i1, i1* %cmp.i_malloccache, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[reload:.+]] = load i1, i1* %[[gep1]]
-; CHECK-NEXT:   %[[diffecond]] = select i1 %[[reload]], double %"cond.i'de.0", double 0.000000e+00
-; CHECK-NEXT:   %[[diffepre:.+]] = select i1 %[[reload]], double 0.000000e+00, double %"cond.i'de.0"
+; CHECK-NEXT:   %[[diffecond]] = select{{( fast)?}} i1 %[[reload]], double %"cond.i'de.0", double 0.000000e+00
+; CHECK-NEXT:   %[[diffepre:.+]] = select{{( fast)?}} i1 %[[reload]], double 0.000000e+00, double %"cond.i'de.0"
 ; CHECK-NEXT:   %[[idx2:.+]] = add i64 %[[antivar]], 1
 ; CHECK-NEXT:   %"arrayidx9.phi.trans.insert'ipg" = getelementptr double, double* %"x'", i64 %[[idx2]]
 ; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %"arrayidx9.phi.trans.insert'ipg"

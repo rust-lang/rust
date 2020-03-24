@@ -495,7 +495,7 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   %B22 = shufflevector <2 x double> %preb2, <2 x double> undef, <2 x i32> zeroinitializer
 ; CHECK-NEXT:   store <2 x double> %B11, <2 x double>* %Bref, align 16
 ; CHECK-NEXT:   %"Bref'ipc" = bitcast i8* %"malloccall'mi" to <2 x double>*
-; CHECK-NEXT:   %call_augmented = call { { <2 x double> }, <2 x double> } @augmented_loadmul(<2 x double>* %W, <2 x double>* %"W'", <2 x double>* %Bref, <2 x double>* %"Bref'ipc")
+; CHECK-NEXT:   %call_augmented = call { { <2 x double> }, <2 x double> } @augmented_loadmul(<2 x double>* %W, <2 x double>* %"W'", <2 x double>* %Bref, <2 x double>*{{( nonnull)?}} %"Bref'ipc")
 ; CHECK-NEXT:   %subcache = extractvalue { { <2 x double> }, <2 x double> } %call_augmented, 0
 ; CHECK-NEXT:   %subcache.fca.0.extract = extractvalue { <2 x double> } %subcache, 0
 ; CHECK-NEXT:   %call = extractvalue { { <2 x double> }, <2 x double> } %call_augmented, 1

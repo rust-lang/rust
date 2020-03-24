@@ -90,9 +90,9 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   %arr = bitcast i8* %malloccall to double*
 ; CHECK-NEXT:   store double %inp, double* %arr, align 8
 ; CHECK-NEXT:   %"arr'ipc1" = bitcast i8* %"malloccall'mi" to double*
-; CHECK-NEXT:   %call.i_augmented = call { {}, double* } @augmented_sub(double* %arr, double* %"arr'ipc1")
+; CHECK-NEXT:   %call.i_augmented = call { {}, double* } @augmented_sub(double* %arr, double*{{( nonnull)?}} %"arr'ipc1")
 ; CHECK-NEXT:   %"arr'ipc" = bitcast i8* %"malloccall'mi" to double*
-; CHECK-NEXT:   %1 = call {} @diffesub(double* %arr, double* %"arr'ipc", {} undef)
+; CHECK-NEXT:   %1 = call {} @diffesub(double* %arr, double*{{( nonnull)?}} %"arr'ipc", {} undef)
 ; CHECK-NEXT:   %"arr'ipc2" = bitcast i8* %"malloccall'mi" to double*
 ; CHECK-NEXT:   %2 = load double, double* %"arr'ipc2", align 8
 ; CHECK-NEXT:   %"arr'ipc3" = bitcast i8* %"malloccall'mi" to double*

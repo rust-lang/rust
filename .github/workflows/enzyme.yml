@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm: ["7", "8", "9"]
+        llvm: ["7", "9"] # 8
         build: ["Release", "Debug"] # "RelWithDebInfo"
         os: [ubuntu-18.04]
     

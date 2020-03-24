@@ -4,6 +4,8 @@
 
 #if LLVM_VERSION_MAJOR >= 9
 #include "ScalarEvolutionExpander9.cpp"
-#else
+#elif LLVM_VERSION_MAJOR >= 7
 #include "ScalarEvolutionExpander8.cpp"
+#else
+#include "ScalarEvolutionExpander6.cpp"
 #endif

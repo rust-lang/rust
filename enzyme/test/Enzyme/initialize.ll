@@ -131,7 +131,7 @@ attributes #5 = { nounwind }
 !6 = !{!7, !7, i64 0}
 !7 = !{!"double", !4, i64 0}
 
-; CHECK: define dso_local double @derivative(double %x, i32 %n) local_unnamed_addr #0 {
+; CHECK: define dso_local double @derivative(double %x, i32 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:  %"array'ipa.i" = alloca double*, align 8
 ; CHECK-NEXT:  %array.i = alloca double*, align 8
@@ -140,17 +140,17 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:  %1 = bitcast double** %"array'ipa.i" to i64*
 ; CHECK-NEXT:  store i64 0, i64* %1, align 8
 ; CHECK-NEXT:  %2 = bitcast double** %array.i to i8*
-; CHECK-NEXT:  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %2) #6
-; CHECK-NEXT:  %[[aug:.+]] = call fastcc i8* @augmented_allocateAndSet(double** nonnull %array.i, double** nonnull %"array'ipa.i", double %x, i32 %n) #6
+; CHECK-NEXT:  call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %2)
+; CHECK-NEXT:  %[[aug:.+]] = call fastcc i8* @augmented_allocateAndSet(double** nonnull %array.i, double** nonnull %"array'ipa.i", double %x, i32 %n)
 ; CHECK-NEXT:  %[[oldret:.+]] = insertvalue { i8* } undef, i8* %[[aug]], 0
 ; CHECK-NEXT:  %"'ipl.i" = load double*, double** %"array'ipa.i", align 8
-; CHECK-NEXT:  tail call fastcc void @diffeget(double* %"'ipl.i") #6
-; CHECK-NEXT:  %[[ret:.+]] = tail call fastcc double @diffeallocateAndSet(i32 %n, { i8* } %[[oldret]]) #6
+; CHECK-NEXT:  tail call fastcc void @diffeget(double* %"'ipl.i")
+; CHECK-NEXT:  %[[ret:.+]] = tail call fastcc double @diffeallocateAndSet(i32 %n, { i8* } %[[oldret]])
 ; CHECK-NEXT:  call void @llvm.lifetime.end.p0i8(i64 8, i8* nonnull %0)
 ; CHECK-NEXT:  ret double %[[ret]]
 ; CHECK-NEXT:}
 
-; CHECK: define internal {{(dso_local )?}}fastcc void @diffeget(double* nocapture %"x'") unnamed_addr #5 {
+; CHECK: define internal {{(dso_local )?}}fastcc void @diffeget(double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds double, double* %"x'", i64 3
 ; CHECK-NEXT:   %0 = load double, double* %[[arrayidx]], align 8
@@ -159,7 +159,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}fastcc i8* @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n) unnamed_addr #0 {
+; CHECK: define internal {{(dso_local )?}}fastcc i8* @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %conv = zext i32 %n to i64
 ; CHECK-NEXT:   %mul = shl nuw nsw i64 %conv, 3
@@ -176,7 +176,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret i8* %"call'mi"
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}fastcc double @diffeallocateAndSet(i32 %n, { i8* } %tapeArg) unnamed_addr #0 {
+; CHECK: define internal {{(dso_local )?}}fastcc double @diffeallocateAndSet(i32 %n, { i8* } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[pointer:.+]] = extractvalue { i8* } %tapeArg, 0
 ; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr inbounds i8, i8* %[[pointer]], i64 24

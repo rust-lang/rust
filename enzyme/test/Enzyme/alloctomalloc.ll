@@ -502,7 +502,7 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %"malloccall'mi", i8 0, i64 16, i1 false)
 ; CHECK-NEXT:   %tmp.i = bitcast i8* %malloccall to <2 x double>*
 ; CHECK-NEXT:   %"tmp.i'ipc" = bitcast i8* %"malloccall'mi" to <2 x double>*
-; CHECK-NEXT:   %subcast_augmented = call { {}, <2 x double>*, <2 x double>* } @augmented_subcast(<2 x double>* %tmp.i, <2 x double>* %"tmp.i'ipc")
+; CHECK-NEXT:   %subcast_augmented = call { {}, <2 x double>*, <2 x double>* } @augmented_subcast(<2 x double>* %tmp.i, <2 x double>*{{( nonnull)?}} %"tmp.i'ipc")
 ; CHECK-NEXT:   %antiptr_subcast = extractvalue { {}, <2 x double>*, <2 x double>* } %subcast_augmented, 2
 ; CHECK-NEXT:   %subcast = extractvalue { {}, <2 x double>*, <2 x double>* } %subcast_augmented, 1
 ; CHECK-NEXT:   %unused_augmented = call { {} } @augmented_get2(%"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'")

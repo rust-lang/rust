@@ -247,7 +247,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   br label %invertfor.body
 
 ; CHECK: invertfor.cond.cleanup:                           ; preds = %for.body
-; CHECK-NEXT:   %1 = select i1 %cmp7, float %differeturn, float 0.000000e+00
+; CHECK-NEXT:   %1 = select{{( fast)?}} i1 %cmp7, float %differeturn, float 0.000000e+00
 ; CHECK-NEXT:   br i1 %cmp7, label %mergeinvertfor.body_for.cond.cleanup.loopexit, label %invertentry
 
 ; CHECK: invertfor.body:                                   ; preds = %incinvertfor.body, %mergeinvertfor.body_for.cond.cleanup.loopexit
@@ -256,7 +256,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   %_unwrap3 = trunc i64 %"iv'ac.0" to i32
 ; CHECK-NEXT:   %2 = call {} @diffelookup(float* %a, float* %"a'", i32 %_unwrap3, i32 %bound, float %"add'de.0", {} undef)
 ; CHECK-NEXT:   %3 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %4 = select i1 %3, float 0.000000e+00, float %"add'de.0"
+; CHECK-NEXT:   %4 = select{{( fast)?}} i1 %3, float 0.000000e+00, float %"add'de.0"
 ; CHECK-NEXT:   br i1 %3, label %invertentry, label %incinvertfor.body
 
 ; CHECK: incinvertfor.body:                                ; preds = %invertfor.body

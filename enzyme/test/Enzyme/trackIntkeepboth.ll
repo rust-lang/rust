@@ -100,7 +100,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %lhs_unwrap = bitcast %"class.Eigen::Matrix"* %W to i64*
 ; CHECK-NEXT:   %"lhs'ipc" = bitcast %"class.Eigen::Matrix"* %"W'" to i64*
 ; CHECK-NEXT:   %"res'ipc" = bitcast i8* %"call.i.i4.i.i.i.i'mi" to double*
-; CHECK-NEXT:   %0 = call {} @diffesubfn(i64* %lhs_unwrap, i64* %"lhs'ipc", double* %res, double* %"res'ipc", i1 true)
+; CHECK-NEXT:   %0 = call {} @diffesubfn(i64* %lhs_unwrap, i64* %"lhs'ipc", double* %res, double*{{( nonnull)?}} %"res'ipc", i1 true)
 ; CHECK-NEXT:   %"z3'ipc" = bitcast double* %"arrayidx.i.i.i.i.i.i.i'ipge" to i64*
 ; CHECK-NEXT:   store i64 0, i64* %"z3'ipc", align 8
 ; CHECK-NEXT:   %"z2'ipc" = bitcast i8* %"call.i.i4.i.i.i.i'mi" to <2 x double>*

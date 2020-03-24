@@ -132,12 +132,12 @@ attributes #5 = { nounwind }
 !7 = !{!"double", !4, i64 0}
 
 
-; CHECK: define dso_local {{(dso_local )?}}double @derivative(double %x, i32 %n) local_unnamed_addr #0 {
+; CHECK: define dso_local {{(dso_local )?}}double @derivative(double %x, i32 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"array'ipa.i" = alloca double*, align 8
 ; CHECK-NEXT:   %array.i = alloca double*, align 8
 ; CHECK-NEXT:   %0 = bitcast double** %"array'ipa.i" to i8*
-; CHECK-NEXT:   call void @llvm.lifetime.start.p0i8(i64 8, i8* %0)
+; CHECK-NEXT:   call void @llvm.lifetime.start.p0i8(i64 8, i8*{{( nonnull)?}} %0)
 ; CHECK-NEXT:   %1 = bitcast double** %"array'ipa.i" to i64*
 ; CHECK-NEXT:   store i64 0, i64* %1, align 8
 ; CHECK-NEXT:   %2 = bitcast double** %array.i to i8*
@@ -147,7 +147,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   %"'ipl.i" = load double*, double** %"array'ipa.i", align 8
 ; CHECK-NEXT:   call void @diffeget(double* %"'ipl.i")
 ; CHECK-NEXT:   %[[result:.+]] = call double @diffeallocateAndSet({ i8* } %oldret)
-; CHECK-NEXT:   call void @llvm.lifetime.end.p0i8(i64 8, i8* %0)
+; CHECK-NEXT:   call void @llvm.lifetime.end.p0i8(i64 8, i8*{{( nonnull)?}} %0)
 ; CHECK-NEXT:   ret double %[[result]]
 ; CHECK-NEXT: }
 

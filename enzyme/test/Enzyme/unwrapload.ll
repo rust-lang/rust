@@ -171,9 +171,9 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[linv]], %"add'de.0"
 ; CHECK-NEXT:   store double %[[tostore]], double* %"gepk3'ipg", align 8
 ; CHECK-NEXT:   %[[eq:.+]] = icmp eq i64 %"iv1'ac.0", 0
-; CHECK-NEXT:   %[[dadd]] = select i1 %[[eq]], double 0.000000e+00, double %"add'de.0"
+; CHECK-NEXT:   %[[dadd]] = select{{( fast)?}} i1 %[[eq]], double 0.000000e+00, double %"add'de.0"
 ; CHECK-NEXT:   %[[fdadd:.+]] = fadd fast double %"res1'de.0", %"add'de.0"
-; CHECK-NEXT:   %[[dres]] = select i1 %[[eq]], double %[[fdadd]], double %"res1'de.0"
+; CHECK-NEXT:   %[[dres]] = select{{( fast)?}} i1 %[[eq]], double %[[fdadd]], double %"res1'de.0"
 ; CHECK-NEXT:   br i1 %[[eq]], label %invertloop1, label %incinvertloop2
 
 ; CHECK: incinvertloop2:                                   ; preds = %invertloop2

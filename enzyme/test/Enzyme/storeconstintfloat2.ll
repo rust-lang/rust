@@ -108,7 +108,7 @@ loopexit:                                         ; preds = %while.body.i.i.i
 ; CHECK-NEXT:   %14 = fadd fast double %"add10.i.i.i'de.0", %m0diffeload.i1
 ; CHECK-NEXT:   %15 = icmp eq i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   %16 = fadd fast double %"x.promoted'de.0", %14
-; CHECK-NEXT:   %17 = select i1 %15, double %16, double %"x.promoted'de.0"
+; CHECK-NEXT:   %17 = select{{( fast)?}} i1 %15, double %16, double %"x.promoted'de.0"
 ; CHECK-NEXT:   br i1 %15, label %invertentry, label %incinvertwhile.body.i.i.i
 
 ; CHECK: incinvertwhile.body.i.i.i:
