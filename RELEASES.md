@@ -23,7 +23,7 @@ Compiler
 --------
 - [You can now pass multiple lint flags to rustc to override the previous
   flags.][67885] For example; `rustc -D unused -A unused-variables` denies
-  everything in the `unused` lint group unused except `unused-variables` which
+  everything in the `unused` lint group except `unused-variables` which
   is explicitly allowed. However, passing `rustc -A unused-variables -D unused` denies
   everything in the `unused` lint group **including** `unused-variables` since
   the allow flag is specified before the deny flag (and therefore overridden).
