@@ -10,7 +10,11 @@ export function activateInlayHints(ctx: Ctx) {
     const maybeUpdater = {
         updater: null as null | HintsUpdater,
         onConfigChange() {
-            if (!ctx.config.inlayHints.typeHints && !ctx.config.inlayHints.parameterHints) {
+            if (
+                !ctx.config.inlayHints.typeHints &&
+                !ctx.config.inlayHints.parameterHints &&
+                !ctx.config.inlayHints.chainingHints
+            ) {
                 return this.dispose();
             }
             if (!this.updater) this.updater = new HintsUpdater(ctx);
@@ -63,6 +67,22 @@ const paramHints = {
     }
 };
 
+const chainingHints = {
+    decorationType: vscode.window.createTextEditorDecorationType({
+        after: {
+            color: new vscode.ThemeColor('rust_analyzer.inlayHint'),
+            fontStyle: "normal",
+        }
+    }),
+
+    toDecoration(hint: ra.InlayHint.ChainingHint, conv: lc.Protocol2CodeConverter): vscode.DecorationOptions {
+        return {
+            range: conv.asRange(hint.range),
+            renderOptions: { after: { contentText: ` ${hint.label}` } }
+        };
+    }
+};
+
 class HintsUpdater implements Disposable {
     private sourceFiles = new Map<string, RustSourceFile>(); // map Uri -> RustSourceFile
     private readonly disposables: Disposable[] = [];
@@ -95,7 +115,7 @@ class HintsUpdater implements Disposable {
 
     dispose() {
         this.sourceFiles.forEach(file => file.inlaysRequest?.cancel());
-        this.ctx.visibleRustEditors.forEach(editor => this.renderDecorations(editor, { param: [], type: [] }));
+        this.ctx.visibleRustEditors.forEach(editor => this.renderDecorations(editor, { param: [], type: [], chaining: [] }));
         this.disposables.forEach(d => d.dispose());
     }
 
@@ -154,10 +174,11 @@ class HintsUpdater implements Disposable {
     private renderDecorations(editor: RustEditor, decorations: InlaysDecorations) {
         editor.setDecorations(typeHints.decorationType, decorations.type);
         editor.setDecorations(paramHints.decorationType, decorations.param);
+        editor.setDecorations(chainingHints.decorationType, decorations.chaining);
     }
 
     private hintsToDecorations(hints: ra.InlayHint[]): InlaysDecorations {
-        const decorations: InlaysDecorations = { type: [], param: [] };
+        const decorations: InlaysDecorations = { type: [], param: [], chaining: [] };
         const conv = this.ctx.client.protocol2CodeConverter;
 
         for (const hint of hints) {
@@ -168,6 +189,10 @@ class HintsUpdater implements Disposable {
                 }
                 case ra.InlayHint.Kind.ParamHint: {
                     decorations.param.push(paramHints.toDecoration(hint, conv));
+                    continue;
+                }
+                case ra.InlayHint.Kind.ChainingHint: {
+                    decorations.chaining.push(chainingHints.toDecoration(hint, conv));
                     continue;
                 }
             }
@@ -196,6 +221,7 @@ class HintsUpdater implements Disposable {
 interface InlaysDecorations {
     type: vscode.DecorationOptions[];
     param: vscode.DecorationOptions[];
+    chaining: vscode.DecorationOptions[];
 }
 
 interface RustSourceFile {

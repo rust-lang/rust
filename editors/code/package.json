@@ -333,6 +333,11 @@
                     "default": true,
                     "description": "Whether to show inlay type hints"
                 },
+                "rust-analyzer.inlayHints.chainingHints": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether to show inlay type hints for method chains"
+                },
                 "rust-analyzer.inlayHints.parameterHints": {
                     "type": "boolean",
                     "default": true,

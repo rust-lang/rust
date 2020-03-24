@@ -185,6 +185,7 @@ These contain extended information on the hovered language item.
 Two types of inlay hints are displayed currently:
 
 * type hints, displaying the minimal information on the type of the expression (if the information is available)
+* method chaining hints, type information for multi-line method chains
 * parameter name hints, displaying the names of the parameters in the corresponding methods
 
 #### VS Code
@@ -192,6 +193,7 @@ Two types of inlay hints are displayed currently:
 In VS Code, the following settings can be used to configure the inlay hints:
 
 * `rust-analyzer.inlayHints.typeHints` - enable hints for inferred types.
+* `rust-analyzer.inlayHints.chainingHints` - enable hints for inferred types on method chains.
 * `rust-analyzer.inlayHints.parameterHints` - enable hints for function parameters.
 * `rust-analyzer.inlayHints.maxLength` — shortens the hints if their length exceeds the value specified. If no value is specified (`null`), no shortening is applied.
 
