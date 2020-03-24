@@ -414,18 +414,23 @@ fn loop_turn(
                     log::error!("unexpected response: {:?}", resp)
                 }
 
-                if Some(resp.id) == loop_state.configuration_request_id {
+                if Some(&resp.id) == loop_state.configuration_request_id.as_ref() {
                     loop_state.configuration_request_id = None;
+                    log::debug!("config update response: '{:?}", resp);
                     let Response { error, result, .. } = resp;
-                    match (error, result) {
+
+                    match (
+                        error,
+                        result.map(|result| serde_json::from_value::<Vec<ServerConfig>>(result)),
+                    ) {
                         (Some(err), _) => {
                             log::error!("failed to fetch the server settings: {:?}", err)
                         }
-                        (None, Some(result)) => {
-                            let new_config = serde_json::from_value::<Vec<ServerConfig>>(result)?
+                        (None, Some(Ok(new_config))) => {
+                            let new_config = new_config
                                 .first()
                                 .expect(
-                                    "The client is expected to always send a non-empty config data",
+                                    "the client is expected to always send a non-empty config data",
                                 )
                                 .to_owned();
                             world_state.update_configuration(
@@ -433,6 +438,9 @@ fn loop_turn(
                                 get_options(&new_config, text_document_caps),
                                 get_feature_flags(&new_config, connection),
                             );
+                        }
+                        (None, Some(Err(e))) => {
+                            log::error!("failed to parse client config response: {}", e)
                         }
                         (None, None) => {
                             log::error!("received empty server settings response from the client")
