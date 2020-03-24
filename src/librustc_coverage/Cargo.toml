@@ -14,3 +14,4 @@ rustc = { path = "../librustc" }
 rustc_resolve = { path = "../librustc_resolve" }
 rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
+smallvec = { version = "1.0", features = ["union", "may_dangle"] }

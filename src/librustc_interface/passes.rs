@@ -15,6 +15,7 @@ use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self, ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_coverage::coverage;
 use rustc_data_structures::sync::{par_iter, Lrc, Once, ParallelIterator, WorkerLocal};
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::PResult;
@@ -93,8 +94,8 @@ declare_box_region_type!(
 
 /// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
-/// harness if one is to be provided, injection of a dependency on the
-/// standard library and prelude, and name resolution.
+/// harness if one is to be provided, and injection of a dependency on the
+/// standard library and prelude.
 ///
 /// Returns `None` if we're aborting after handling -W help.
 pub fn configure_and_expand(
@@ -135,6 +136,43 @@ pub fn configure_and_expand(
         resolver.into_outputs()
     });
     result.map(|k| (k, resolver))
+}
+
+/// If enabled by command line option, this pass injects coverage statements into the AST to
+/// increment region counters and generate a coverage report at program exit.
+/// The AST Crate cannot be resolved until after the AST is instrumented.
+pub fn instrument(krate: ast::Crate, resolver: &mut Resolver<'_>) -> Result<ast::Crate> {
+    coverage::instrument(krate, resolver)
+}
+
+/// Performs name resolution on the expanded and optionally instrumented crate.
+pub fn resolve_crate(
+    sess: Lrc<Session>,
+    krate: ast::Crate,
+    resolver: &mut Resolver<'_>,
+) -> Result<ast::Crate> {
+    let sess = &*sess;
+
+    resolver.resolve_crate(&krate);
+
+    // FIXME(richkadel): Run tests and confirm that check_crate must go after resolve_crate(),
+    // and if not, can/should I move it into configure_and_expand_inner() (which would mean
+    // running this before instrumentation, if that's OK).
+
+    // FIXME(richkadel): original comment here with small modification:
+
+    // Needs to go *after* expansion and name resolution, to be able to check the results of macro
+    // expansion.
+    sess.time("complete_gated_feature_checking", || {
+        rustc_ast_passes::feature_gate::check_crate(
+            &krate,
+            &sess.parse_sess,
+            &sess.features_untracked(),
+            sess.opts.unstable_features,
+        );
+    });
+
+    Ok(krate)
 }
 
 impl BoxedResolver {
@@ -405,20 +443,9 @@ fn configure_and_expand_inner<'a>(
     }
 
     if sess.opts.debugging_opts.ast_json {
+        // Note this version of the AST will not include injected code, such as coverage counters.
         println!("{}", json::as_json(&krate));
     }
-
-    resolver.resolve_crate(&krate);
-
-    // Needs to go *after* expansion to be able to check the results of macro expansion.
-    sess.time("complete_gated_feature_checking", || {
-        rustc_ast_passes::feature_gate::check_crate(
-            &krate,
-            &sess.parse_sess,
-            &sess.features_untracked(),
-            sess.opts.unstable_features,
-        );
-    });
 
     // Add all buffered lints from the `ParseSess` to the `Session`.
     sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
@@ -427,6 +454,16 @@ fn configure_and_expand_inner<'a>(
             resolver.lint_buffer().add_early_lint(early_lint);
         }
     });
+
+    // // Needs to go *after* expansion, to be able to check the results of macro expansion.
+    // sess.time("complete_gated_feature_checking", || {
+    //     rustc_ast_passes::feature_gate::check_crate(
+    //         &krate,
+    //         &sess.parse_sess,
+    //         &sess.features_untracked(),
+    //         sess.opts.unstable_features,
+    //     );
+    // });
 
     Ok((krate, resolver))
 }

@@ -447,6 +447,7 @@ pub mod thread;
 pub mod ascii;
 pub mod backtrace;
 pub mod collections;
+pub mod coverage;
 pub mod env;
 pub mod error;
 pub mod ffi;

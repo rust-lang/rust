@@ -440,7 +440,6 @@ impl Session {
     }
 
     pub fn init_features(&self, features: rustc_feature::Features) {
-        debug!("ABOUT TO PANIC?")
         self.features.set(features);
     }
 
