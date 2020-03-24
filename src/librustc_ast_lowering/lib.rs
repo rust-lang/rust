@@ -40,6 +40,7 @@ use rustc_ast::ast;
 use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal, Token};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
@@ -69,6 +70,7 @@ use log::{debug, trace};
 use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeMap;
 use std::mem;
+use std::sync::Mutex;
 
 macro_rules! arena_vec {
     ($this:expr; $($x:expr),*) => ({
@@ -171,6 +173,9 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     allow_try_trait: Option<Lrc<[Symbol]>>,
     allow_gen_future: Option<Lrc<[Symbol]>>,
+
+    /// `true` if `rustc` was invoked with an option to inject code coverage instrumentation.
+    is_instrumenting_for_coverage: bool,
 }
 
 pub trait Resolver {
@@ -300,6 +305,7 @@ pub fn lower_crate<'a, 'hir>(
         in_scope_lifetimes: Vec::new(),
         allow_try_trait: Some([sym::try_trait][..].into()),
         allow_gen_future: Some([sym::gen_future][..].into()),
+        is_instrumenting_for_coverage: false,
     }
     .lower_crate(krate)
 }
@@ -393,6 +399,148 @@ impl Visitor<'_> for ImplTraitTypeIdVisitor<'_> {
         visit::walk_path_segment(self, path_span, path_segment)
     }
 }
+
+struct CoverageRegion {
+    region: Span,
+    counter_hash: u128,
+}
+
+static mut COVERAGE_REGIONS: Option<Mutex<Vec<CoverageRegion>>> = None;
+
+impl CoverageRegion {
+
+    /// Generates a unique coverage region identifier to associate with
+    /// a counter. The counter increment statement is injected into the
+    /// code at the start of a coverage region.
+    // TODO(richkadel): This function will need additional arguments and/or context
+    // data from which to generate the hash values.
+    fn generate_hash(region: &Span) -> u128 {
+        // THIS IS NOT THREAD SAFE, BUT WILL BE REPLACED WITH HASH FUNCTION ANYWAY.
+        // Seems like lazy_static is not used in the compiler at all.
+        static mut NEXT_COUNTER_ID: Option<Mutex<u128>> = None;
+        let counter_hash = {
+            let counter_id = unsafe {
+                &match NEXT_COUNTER_ID.as_ref() {
+                    Some(counter_id) => counter_id,
+                    None => {
+                        NEXT_COUNTER_ID = Some(Mutex::new(0));
+                        NEXT_COUNTER_ID.as_ref().unwrap()
+                    }
+                }
+            };
+            let mut locked_counter_id = counter_id.lock().unwrap();
+            *locked_counter_id += 1;
+            *locked_counter_id
+        };
+
+        let coverage_regions = unsafe {
+            &match COVERAGE_REGIONS.as_ref() {
+                Some(coverage_regions) => coverage_regions,
+                None => {
+                    COVERAGE_REGIONS = Some(Mutex::new(vec![]));
+                    COVERAGE_REGIONS.as_ref().unwrap()
+                }
+            }
+        };
+        let mut locked_coverage_regions = coverage_regions.lock().unwrap();
+        locked_coverage_regions.push(CoverageRegion {
+            region: region.clone(),
+            counter_hash,
+        });
+
+        // return the counter hash value
+        counter_hash
+    }
+
+    pub fn write_coverage_regions(/* filename param? */) {
+        unsafe {
+            if let Some(coverage_regions) = COVERAGE_REGIONS.as_ref() {
+                let locked_coverage_regions = coverage_regions.lock().unwrap();
+                for coverage in locked_coverage_regions.iter() {
+                    println!("{}: {:?}", coverage.counter_hash, coverage.region);
+                }
+            }
+        }
+    }
+}
+
+struct CoverageInjector<'tcx, 'lowering, 'hir> {
+    lctx: &'tcx mut LoweringContext<'lowering, 'hir>,
+    span: Span,
+}
+
+impl<'tcx, 'lowering, 'hir> CoverageInjector<'tcx, 'lowering, 'hir> {
+    fn at(lctx: &'tcx mut LoweringContext<'lowering, 'hir>, before: &Span) -> CoverageInjector<'tcx, 'lowering, 'hir> {
+        CoverageInjector {
+            lctx,
+            span: before.shrink_to_lo(),
+        }
+    }
+
+    fn next_ast_node_id(&mut self) -> NodeId {
+        self.lctx.resolver.next_node_id()
+    }
+
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+
+    fn expr(&mut self, kind: ExprKind) -> P<Expr> {
+        P(Expr {
+            kind,
+            span: self.span(),
+            attrs: AttrVec::new(),
+            id: self.next_ast_node_id(),
+        })
+    }
+
+    fn path_segment(&mut self, string: &str) -> PathSegment {
+        PathSegment {
+            ident: Ident::from_str_and_span(string, self.span()),
+            id: self.next_ast_node_id(),
+            args: None,
+        }
+    }
+
+    fn coverage_count_fn_path(&mut self) -> P<Expr> {
+        let path = Path {
+            span: self.span(),
+            segments: vec![
+                self.path_segment("coverage"),
+                self.path_segment("count"),
+            ],
+        };
+        self.expr(ExprKind::Path(None, path))
+    }
+
+    fn coverage_counter_hash_lit(&mut self, counter_hash: u128) -> P<Expr> {
+        let token = token::Lit::new(token::Integer, sym::integer(counter_hash), /*suffix=*/None);
+        let kind = LitKind::Int(
+            counter_hash, 
+            LitIntType::Unsigned(UintTy::U128), // TODO: this should not be necessary (should be "Unsuffixed" per JSON)
+        );
+        let lit = Lit { token, kind, span: self.span() };
+        self.expr(ExprKind::Lit(lit))
+    }
+
+    fn call(&mut self, fn_path: P<Expr>, args: Vec<P<Expr>>) -> P<Expr> {
+        self.expr(ExprKind::Call(fn_path, args))
+    }
+
+    fn counter_stmt(&mut self, coverage_span: &Span) -> Stmt {
+        let counter_hash = CoverageRegion::generate_hash(coverage_span);
+        let coverage_count_fn = self.coverage_count_fn_path();
+        let args = vec![ self.coverage_counter_hash_lit(counter_hash) ];
+        let call = self.call(coverage_count_fn, args);
+
+        Stmt {
+            id: self.next_ast_node_id(),
+            span: self.span(),
+            kind: StmtKind::Semi(call)
+        }
+    }
+}
+
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_crate(mut self, c: &Crate) -> hir::Crate<'hir> {
@@ -521,11 +669,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
+        self.is_instrumenting_for_coverage = match self.sess.opts.debugging_opts.instrument_coverage {
+            Some(opt) => opt,
+            None => false,
+        };
+
         self.lower_node_id(CRATE_NODE_ID);
         debug_assert!(self.node_id_to_hir_id[CRATE_NODE_ID] == hir::CRATE_HIR_ID);
 
         visit::walk_crate(&mut MiscCollector { lctx: &mut self, hir_id_owner: None }, c);
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
+
+        if self.is_instrumenting_for_coverage {
+            CoverageRegion::write_coverage_regions();
+        }
 
         let module = self.lower_mod(&c.module);
         let attrs = self.lower_attrs(&c.attrs);
@@ -2207,6 +2364,33 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_block_noalloc(&mut self, b: &Block, targeted_by_break: bool) -> hir::Block<'hir> {
         let mut stmts = vec![];
         let mut expr: Option<&'hir _> = None;
+
+        // THIS COVERAGE CODE MAY NEED TO BE IN A DIFFERENT LOCATION? BUT SEEMS LIKE IT SHOULD
+        // WORK FOR BASIC BLOCKS THAT DON'T `break`, `continue`, or `return` in any nested
+        // branches. For those, we need to add additional counters beyond the code that might be
+        // skipped.
+        if self.is_instrumenting_for_coverage && ! b.stmts.is_empty() {
+            let inject_site = &b.stmts[0].span;
+            let mut coverage_injector = CoverageInjector::at(self, inject_site);
+            let counter_stmt = coverage_injector.counter_stmt(&b.span);
+            stmts.extend(self.lower_stmt(&counter_stmt));
+            // TODO(richkadel): The span should stop at the first occurrence of an early return
+            // (if any), and if there is one, a new counter should be inserted just after the branch
+            // that ended in the early return, and a new span should start from just after that
+            // injected counter, and ending at the end of the block, or at another early return if
+            // there is another.
+
+            // ALSO! There are language constructs that have statement spans that don't require
+            // braces if only one statement, in which case, they PROBABLY don't hit "Block", and
+            // therefore, I need to insert the counters in other parts of the AST as well, while
+            // also virtually inserting the curly braces:
+            //   * closures: |...| stmt  ->   |...| { coverage::counter(n); stmt }
+            //   * match arms: match variant { pat => stmt,  -> match variant { pat => coverage::counter(n); stmt }
+            // any others?
+
+            // There may be existing checks of similar types. See for instance "targeted_by_break"
+            // in this file.
+        }
 
         for (index, stmt) in b.stmts.iter().enumerate() {
             if index == b.stmts.len() - 1 {
