@@ -712,11 +712,6 @@ pub struct TargetOptions {
     // will 'just work'.
     pub obj_is_bitcode: bool,
 
-    // LLVM can't produce object files for this target. Instead, we'll make LLVM
-    // emit assembly and then use `gcc` to turn that assembly into an object
-    // file
-    pub no_integrated_as: bool,
-
     /// Don't use this field; instead use the `.min_atomic_width()` method.
     pub min_atomic_width: Option<u64>,
 
@@ -872,7 +867,6 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_elf_tls: false,
             obj_is_bitcode: false,
-            no_integrated_as: false,
             min_atomic_width: None,
             max_atomic_width: None,
             atomic_cas: true,
@@ -1187,7 +1181,6 @@ impl Target {
         key!(main_needs_argc_argv, bool);
         key!(has_elf_tls, bool);
         key!(obj_is_bitcode, bool);
-        key!(no_integrated_as, bool);
         key!(max_atomic_width, Option<u64>);
         key!(min_atomic_width, Option<u64>);
         key!(atomic_cas, bool);
@@ -1415,7 +1408,6 @@ impl ToJson for Target {
         target_option_val!(main_needs_argc_argv);
         target_option_val!(has_elf_tls);
         target_option_val!(obj_is_bitcode);
-        target_option_val!(no_integrated_as);
         target_option_val!(min_atomic_width);
         target_option_val!(max_atomic_width);
         target_option_val!(atomic_cas);

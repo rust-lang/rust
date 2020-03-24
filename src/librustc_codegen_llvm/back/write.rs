@@ -16,9 +16,7 @@ use crate::ModuleLlvm;
 use log::debug;
 use rustc::bug;
 use rustc::ty::TyCtxt;
-use rustc_codegen_ssa::back::write::{
-    run_assembler, BitcodeSection, CodegenContext, EmitObj, ModuleConfig,
-};
+use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, RLIB_BYTECODE_EXTENSION};
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -734,18 +732,21 @@ pub(crate) unsafe fn codegen(
             })?;
         }
 
-        let config_emit_object_code = matches!(config.emit_obj, EmitObj::ObjectCode(_));
-
-        if config.emit_asm || (config_emit_object_code && config.no_integrated_as) {
+        if config.emit_asm {
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg("LLVM_module_codegen_emit_asm", &module.name[..]);
             let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
 
-            // We can't use the same module for asm and binary output, because that triggers
-            // various errors like invalid IR or broken binaries, so we might have to clone the
-            // module to produce the asm output
-            let llmod = if config_emit_object_code { llvm::LLVMCloneModule(llmod) } else { llmod };
+            // We can't use the same module for asm and object code output,
+            // because that triggers various errors like invalid IR or broken
+            // binaries. So we must clone the module to produce the asm output
+            // if we are also producing object code.
+            let llmod = if let EmitObj::ObjectCode(_) = config.emit_obj {
+                llvm::LLVMCloneModule(llmod)
+            } else {
+                llmod
+            };
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(diag_handler, tm, cpm, llmod, &path, llvm::FileType::AssemblyFile)
             })?;
@@ -753,34 +754,19 @@ pub(crate) unsafe fn codegen(
 
         match config.emit_obj {
             EmitObj::ObjectCode(_) => {
-                if !config.no_integrated_as {
-                    let _timer = cgcx.prof.generic_activity_with_arg(
-                        "LLVM_module_codegen_emit_obj",
-                        &module.name[..],
-                    );
-                    with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                        write_output_file(
-                            diag_handler,
-                            tm,
-                            cpm,
-                            llmod,
-                            &obj_out,
-                            llvm::FileType::ObjectFile,
-                        )
-                    })?;
-                } else {
-                    let _timer = cgcx.prof.generic_activity_with_arg(
-                        "LLVM_module_codegen_asm_to_obj",
-                        &module.name[..],
-                    );
-                    let assembly =
-                        cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
-                    run_assembler(cgcx, diag_handler, &assembly, &obj_out);
-
-                    if !config.emit_asm && !cgcx.save_temps {
-                        drop(fs::remove_file(&assembly));
-                    }
-                }
+                let _timer = cgcx
+                    .prof
+                    .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
+                with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                    write_output_file(
+                        diag_handler,
+                        tm,
+                        cpm,
+                        llmod,
+                        &obj_out,
+                        llvm::FileType::ObjectFile,
+                    )
+                })?;
             }
 
             EmitObj::Bitcode => {
@@ -802,6 +788,7 @@ pub(crate) unsafe fn codegen(
 
         drop(handlers);
     }
+
     Ok(module.into_compiled_module(
         config.emit_obj != EmitObj::None,
         config.emit_bc,

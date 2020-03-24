@@ -452,10 +452,6 @@ fn test_codegen_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.cg.no_integrated_as = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
     opts.cg.no_redzone = Some(true);
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 

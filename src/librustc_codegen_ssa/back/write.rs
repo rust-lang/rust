@@ -1,5 +1,4 @@
-use super::command::Command;
-use super::link::{self, get_linker, remove};
+use super::link::{self, remove};
 use super::linker::LinkerInfo;
 use super::lto::{self, SerializedModule};
 use super::symbol_export::symbol_name_for_instance_in_crate;
@@ -116,7 +115,6 @@ pub struct ModuleConfig {
     pub merge_functions: bool,
     pub inline_threshold: Option<usize>,
     pub new_llvm_pass_manager: Option<bool>,
-    pub no_integrated_as: bool,
 }
 
 impl ModuleConfig {
@@ -140,7 +138,6 @@ impl ModuleConfig {
             emit_ir: false,
             emit_asm: false,
             emit_obj: EmitObj::None,
-            no_integrated_as: false,
 
             verify_llvm_ir: false,
             no_prepopulate_passes: false,
@@ -202,12 +199,6 @@ impl ModuleConfig {
     }
 }
 
-/// Assembler name and command used by codegen when no_integrated_as is enabled
-pub struct AssemblerCommand {
-    name: PathBuf,
-    cmd: Command,
-}
-
 // HACK(eddyb) work around `#[derive]` producing wrong bounds for `Clone`.
 pub struct TargetMachineFactory<B: WriteBackendMethods>(
     pub Arc<dyn Fn() -> Result<B::TargetMachine, String> + Send + Sync>,
@@ -260,8 +251,6 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub cgu_reuse_tracker: CguReuseTracker,
     // Channel back to the main control thread to send messages to
     pub coordinator_send: Sender<Box<dyn Any + Send>>,
-    // The assembler command if no_integrated_as option is enabled, None otherwise
-    pub assembler_cmd: Option<Arc<AssemblerCommand>>,
 }
 
 impl<B: WriteBackendMethods> CodegenContext<B> {
@@ -414,9 +403,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         };
 
     modules_config.emit_pre_lto_bc = need_pre_lto_bitcode_for_incr_comp(sess);
-
-    modules_config.no_integrated_as =
-        tcx.sess.opts.cg.no_integrated_as || tcx.sess.target.target.options.no_integrated_as;
 
     for output_type in sess.opts.output_types.keys() {
         match *output_type {
@@ -1030,17 +1016,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
     }));
 
-    let assembler_cmd = if modules_config.no_integrated_as {
-        // HACK: currently we use linker (gcc) as our assembler
-        let (linker, flavor) = link::linker_and_flavor(sess);
-
-        let (name, mut cmd) = get_linker(sess, &linker, flavor);
-        cmd.args(&sess.target.target.options.asm_args);
-        Some(Arc::new(AssemblerCommand { name, cmd }))
-    } else {
-        None
-    };
-
     let ol = if tcx.sess.opts.debugging_opts.no_codegen
         || !tcx.sess.opts.output_types.should_codegen()
     {
@@ -1076,7 +1051,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),
         target_arch: tcx.sess.target.target.arch.clone(),
         debuginfo: tcx.sess.opts.debuginfo,
-        assembler_cmd,
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -1608,44 +1582,6 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
             Some(execute_work_item(&cgcx, work))
         };
     });
-}
-
-pub fn run_assembler<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
-    handler: &Handler,
-    assembly: &Path,
-    object: &Path,
-) {
-    let assembler = cgcx.assembler_cmd.as_ref().expect("cgcx.assembler_cmd is missing?");
-
-    let pname = &assembler.name;
-    let mut cmd = assembler.cmd.clone();
-    cmd.arg("-c").arg("-o").arg(object).arg(assembly);
-    debug!("{:?}", cmd);
-
-    match cmd.output() {
-        Ok(prog) => {
-            if !prog.status.success() {
-                let mut note = prog.stderr.clone();
-                note.extend_from_slice(&prog.stdout);
-
-                handler
-                    .struct_err(&format!(
-                        "linking with `{}` failed: {}",
-                        pname.display(),
-                        prog.status
-                    ))
-                    .note(&format!("{:?}", &cmd))
-                    .note(str::from_utf8(&note[..]).unwrap())
-                    .emit();
-                handler.abort_if_errors();
-            }
-        }
-        Err(e) => {
-            handler.err(&format!("could not exec the linker `{}`: {}", pname.display(), e));
-            handler.abort_if_errors();
-        }
-    }
 }
 
 enum SharedEmitterMessage {
