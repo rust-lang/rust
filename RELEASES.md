@@ -1,3 +1,122 @@
+Version 1.43.0 (2020-04-23)
+==========================
+
+Language
+--------
+- [Fixed using binary operations with `&{number}` (e.g. `&1.0`) not having
+  the correctly inferred type.][68129]
+
+**Syntax only changes**
+- [Allow `type Foo: Ord` syntactically.][69361]
+- [Unify item parsing & filter illegal item kinds.][69366]
+- [Fuse associated and extern items up to defaultness.][69194]
+- [Permit attributes on `if` expressions.][69201]
+- [Syntactically allow `self` in all `fn` contexts.][68764]
+- [Merge `fn` syntax + cleanup item parsing.][68728]
+
+These are still rejected *semantically*, so you will likely receive an error but
+these changes can be seen and parsed by procedural macros and
+conditional compilation.
+
+
+Compiler
+--------
+- [You can now pass multiple lint flags to rustc to override the previous
+  flags.][67885] For example; `rustc -D unused -A unused-variables` denies
+  everything in the `unused` lint group unused except `unused-variables` which
+  is explicitly allowed. Passing `rustc -A unused-variables -D unused` denies
+  everything in the `unused` lint group **including** `unused-variables` since
+  the allow flag is specified before the deny flag (and therefore overridden).
+- [rustc will now prefer your system MinGW libraries over its bundled libraries
+  if they are available on `windows-gnu`.][67429]
+- [rustc now buffers errors/warnings printed in JSON.][69227]
+
+Libraries
+---------
+- [`Arc<[T; N]>`, `Box<[T; N]>`, and `Rc<[T; N]>`, now implement
+  `TryFrom<Arc<[T]>>`,`TryFrom<Box<[T]>>`, and `TryFrom<Rc<[T]>>`
+  respectively.][69538] Where `N` is `0..=32`.
+- [All `to_be_bytes`, `to_le_bytes`, `to_ne_bytes`, `from_be_bytes`,
+  `from_le_bytes`, and `from_ne_bytes` methods for integers are
+  now `const`.][69373]
+- [You can now use associated constants on floats and integers directly, rather
+  than having to import the module.][68952] e.g. You can now write `u32::MAX` or
+  `f32::NAN` no imports.
+- [`u8::is_ascii` is now `const`.][68984]
+- [`String` now implements `AsMut<str>`.][68742]
+- [Added the `primitive` module to `std` and `core`.][67637] This module
+  reexports Rust's primitive types. This is mainly useful for use in macros
+  where you want avoid these types being shadowed.
+- [The some of the trait bounds on `HashMap` and `HashSet`.][67642]
+- [`string::FromUtf8Error` now implements `Clone + Eq`.][68738]
+
+Stabilized APIs
+---------------
+- [`Once::is_completed`]
+- [`f32::LOG10_2`]
+- [`f32::LOG2_10`]
+- [`f64::LOG10_2`]
+- [`f64::LOG2_10`]
+- [`iter::once_with`]
+
+Misc
+----
+- [Certain checks in the `const_err` lint were deemed unrelated to const
+  evaluation][69185], and have been moved to the `unconditional_panic` and
+  `arithmetic_overflow` lints.
+
+Internal Only
+-------------
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of `rustc` and
+related tools.
+
+- [All components are now built with `opt-level=3` instead of `2`.][67878]
+- [Improved how rustc generates drop code.][67332]
+- [Improved performance from `#[inline]`-ing certain hot functions.][69256]
+- [traits: preallocate 2 Vecs of known initial size][69022]
+- [Avoid exponential behaviour when relating types][68772]
+- [Skip `Drop` terminators for enum variants without drop glue][68943]
+- [Improve performance of coherence checks][68966]
+- [Deduplicate types in the generator witness][68672]
+- [Invert control in struct_lint_level.][68725]
+
+[67332]: https://github.com/rust-lang/rust/pull/67332/
+[67429]: https://github.com/rust-lang/rust/pull/67429/
+[67637]: https://github.com/rust-lang/rust/pull/67637/
+[67642]: https://github.com/rust-lang/rust/pull/67642/
+[67878]: https://github.com/rust-lang/rust/pull/67878/
+[67885]: https://github.com/rust-lang/rust/pull/67885/
+[68129]: https://github.com/rust-lang/rust/pull/68129/
+[68672]: https://github.com/rust-lang/rust/pull/68672/
+[68725]: https://github.com/rust-lang/rust/pull/68725/
+[68728]: https://github.com/rust-lang/rust/pull/68728/
+[68738]: https://github.com/rust-lang/rust/pull/68738/
+[68742]: https://github.com/rust-lang/rust/pull/68742/
+[68764]: https://github.com/rust-lang/rust/pull/68764/
+[68772]: https://github.com/rust-lang/rust/pull/68772/
+[68943]: https://github.com/rust-lang/rust/pull/68943/
+[68952]: https://github.com/rust-lang/rust/pull/68952/
+[68966]: https://github.com/rust-lang/rust/pull/68966/
+[68984]: https://github.com/rust-lang/rust/pull/68984/
+[69022]: https://github.com/rust-lang/rust/pull/69022/
+[69185]: https://github.com/rust-lang/rust/pull/69185/
+[69194]: https://github.com/rust-lang/rust/pull/69194/
+[69201]: https://github.com/rust-lang/rust/pull/69201/
+[69227]: https://github.com/rust-lang/rust/pull/69227/
+[69256]: https://github.com/rust-lang/rust/pull/69256/
+[69361]: https://github.com/rust-lang/rust/pull/69361/
+[69366]: https://github.com/rust-lang/rust/pull/69366/
+[69373]: https://github.com/rust-lang/rust/pull/69373/
+[69538]: https://github.com/rust-lang/rust/pull/69538/
+[`Once::is_completed`]: https://doc.rust-lang.org/std/sync/struct.Once.html#method.is_completed
+[`f32::LOG10_2`]: https://doc.rust-lang.org/std/f32/consts/constant.LOG10_2.html
+[`f32::LOG2_10`]: https://doc.rust-lang.org/std/f32/consts/constant.LOG2_10.html
+[`f64::LOG10_2`]: https://doc.rust-lang.org/std/f64/consts/constant.LOG10_2.html
+[`f64::LOG2_10`]: https://doc.rust-lang.org/std/f64/consts/constant.LOG2_10.html
+[`iter::once_with`]: https://doc.rust-lang.org/std/iter/fn.once_with.html
+
+
 Version 1.42.0 (2020-03-12)
 ==========================
 
