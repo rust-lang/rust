@@ -12,6 +12,7 @@ use crate::interpret::{ConstEvalErr, InterpErrorInfo, Machine};
 pub enum ConstEvalErrKind {
     NeedsRfc(String),
     ConstAccessesStatic,
+    ModifiedGlobal,
     AssertFailure(AssertKind<u64>),
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
 }
@@ -33,6 +34,9 @@ impl fmt::Display for ConstEvalErrKind {
                 write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg)
             }
             ConstAccessesStatic => write!(f, "constant accesses static"),
+            ModifiedGlobal => {
+                write!(f, "modifying a static's initial value from another static's initializer")
+            }
             AssertFailure(ref msg) => write!(f, "{:?}", msg),
             Panic { msg, line, col, file } => {
                 write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col)

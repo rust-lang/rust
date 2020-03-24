@@ -290,7 +290,7 @@ where
     Tag: ::std::fmt::Debug + Copy + Eq + Hash + 'static,
     M: Machine<'mir, 'tcx, PointerTag = Tag>,
     // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
-    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
+    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKind>, Allocation<Tag, M::AllocExtra>)>,
     M::AllocExtra: AllocationExtra<Tag>,
 {
     /// Take a value, which represents a (thin or wide) reference, and make it a place.
@@ -1015,7 +1015,7 @@ where
     pub fn allocate(
         &mut self,
         layout: TyLayout<'tcx>,
-        kind: MemoryKind<M::MemoryKinds>,
+        kind: MemoryKind<M::MemoryKind>,
     ) -> MPlaceTy<'tcx, M::PointerTag> {
         let ptr = self.memory.allocate(layout.size, layout.align.abi, kind);
         MPlaceTy::from_aligned_ptr(ptr, layout)
@@ -1025,9 +1025,9 @@ where
     pub fn allocate_str(
         &mut self,
         str: &str,
-        kind: MemoryKind<M::MemoryKinds>,
+        kind: MemoryKind<M::MemoryKind>,
     ) -> MPlaceTy<'tcx, M::PointerTag> {
-        let ptr = self.memory.allocate_static_bytes(str.as_bytes(), kind);
+        let ptr = self.memory.allocate_bytes(str.as_bytes(), kind);
         let meta = Scalar::from_uint(str.len() as u128, self.pointer_size());
         let mplace = MemPlace {
             ptr: ptr.into(),
@@ -1118,7 +1118,7 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         // This must be an allocation in `tcx`
         assert!(self.tcx.alloc_map.lock().get(raw.alloc_id).is_some());
-        let ptr = self.tag_static_base_pointer(Pointer::from(raw.alloc_id));
+        let ptr = self.tag_global_base_pointer(Pointer::from(raw.alloc_id));
         let layout = self.layout_of(raw.ty)?;
         Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
     }

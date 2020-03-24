@@ -453,9 +453,6 @@ pub enum UnsupportedOpInfo {
     ReadForeignStatic(DefId),
     /// Could not find MIR for a function.
     NoMirFor(DefId),
-    /// Modified a static during const-eval.
-    /// FIXME: move this to `ConstEvalErrKind` through a machine hook.
-    ModifiedStatic,
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsBytes,
     /// Encountered raw bytes where we needed a pointer.
@@ -471,12 +468,6 @@ impl fmt::Debug for UnsupportedOpInfo {
                 write!(f, "tried to read from foreign (extern) static {:?}", did)
             }
             NoMirFor(did) => write!(f, "could not load MIR for {:?}", did),
-            ModifiedStatic => write!(
-                f,
-                "tried to modify a static's initial value from another static's \
-                    initializer"
-            ),
-
             ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes",),
             ReadBytesAsPointer => write!(f, "unable to turn bytes into a pointer"),
         }

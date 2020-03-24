@@ -517,7 +517,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         layout: Option<TyLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let tag_scalar = |scalar| match scalar {
-            Scalar::Ptr(ptr) => Scalar::Ptr(self.tag_static_base_pointer(ptr)),
+            Scalar::Ptr(ptr) => Scalar::Ptr(self.tag_global_base_pointer(ptr)),
             Scalar::Raw { data, size } => Scalar::Raw { data, size },
         };
         // Early-return cases.
@@ -547,7 +547,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen.
-                let ptr = self.tag_static_base_pointer(Pointer::new(id, offset));
+                let ptr = self.tag_global_base_pointer(Pointer::new(id, offset));
                 Operand::Indirect(MemPlace::from_ptr(ptr, layout.align.abi))
             }
             ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x).into()),
@@ -559,7 +559,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Size::from_bytes(start as u64), // offset: `start`
                 );
                 Operand::Immediate(Immediate::new_slice(
-                    self.tag_static_base_pointer(ptr).into(),
+                    self.tag_global_base_pointer(ptr).into(),
                     (end - start) as u64, // len: `end - start`
                     self,
                 ))

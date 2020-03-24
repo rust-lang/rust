@@ -984,6 +984,7 @@ pub struct GlobalCtxt<'tcx> {
     /// Stores the value of constants (and deduplicates the actual memory)
     allocation_interner: ShardedHashMap<&'tcx Allocation, ()>,
 
+    /// Stores memory for globals (statics/consts).
     pub alloc_map: Lock<interpret::AllocMap<'tcx>>,
 
     layout_interner: ShardedHashMap<&'tcx LayoutDetails, ()>,
