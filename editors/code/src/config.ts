@@ -1,29 +1,10 @@
 import * as vscode from 'vscode';
 import { log } from "./util";
 
-export interface InlayHintOptions {
-    typeHints: boolean;
-    parameterHints: boolean;
-    maxLength: number | null;
-}
-
-export interface CargoWatchOptions {
-    enable: boolean;
-    arguments: string[];
-    command: string;
-    allTargets: boolean;
-}
-
-export interface CargoFeatures {
-    noDefaultFeatures: boolean;
-    allFeatures: boolean;
-    features: string[];
-    loadOutDirsFromCheck: boolean;
-}
-
 export type UpdatesChannel = "stable" | "nightly";
 
 export const NIGHTLY_TAG = "nightly";
+
 export class Config {
     readonly extensionId = "matklad.rust-analyzer";
 
@@ -44,25 +25,24 @@ export class Config {
         enableProposedApi: boolean | undefined;
     } = vscode.extensions.getExtension(this.extensionId)!.packageJSON;
 
-    private cfg!: vscode.WorkspaceConfiguration;
+    readonly globalStoragePath: string;
 
-    constructor(private readonly ctx: vscode.ExtensionContext) {
-        vscode.workspace.onDidChangeConfiguration(this.onConfigChange, this, ctx.subscriptions);
-        this.refreshConfig();
+    constructor(ctx: vscode.ExtensionContext) {
+        this.globalStoragePath = ctx.globalStoragePath;
+        vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
+        this.refreshLogging();
     }
 
-    private refreshConfig() {
-        this.cfg = vscode.workspace.getConfiguration(this.rootSection);
-        const enableLogging = this.cfg.get("trace.extension") as boolean;
-        log.setEnabled(enableLogging);
+    private refreshLogging() {
+        log.setEnabled(this.traceExtension);
         log.debug(
             "Extension version:", this.package.version,
             "using configuration:", this.cfg
         );
     }
 
-    private async onConfigChange(event: vscode.ConfigurationChangeEvent) {
-        this.refreshConfig();
+    private async onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent) {
+        this.refreshLogging();
 
         const requiresReloadOpt = this.requiresReloadOpts.find(
             opt => event.affectsConfiguration(opt)
@@ -80,49 +60,53 @@ export class Config {
         }
     }
 
-    get globalStoragePath(): string { return this.ctx.globalStoragePath; }
-
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
     // https://stackoverflow.com/questions/60135780/what-is-the-best-way-to-type-check-the-configuration-for-vscode-extension
 
-    get serverPath() { return this.cfg.get("serverPath") as null | string; }
-    get channel() { return this.cfg.get<"stable" | "nightly">("updates.channel")!; }
-    get askBeforeDownload() { return this.cfg.get("updates.askBeforeDownload") as boolean; }
-    get highlightingSemanticTokens() { return this.cfg.get("highlighting.semanticTokens") as boolean; }
-    get highlightingOn() { return this.cfg.get("highlightingOn") as boolean; }
-    get rainbowHighlightingOn() { return this.cfg.get("rainbowHighlightingOn") as boolean; }
-    get lruCapacity() { return this.cfg.get("lruCapacity") as null | number; }
-    get inlayHints(): InlayHintOptions {
-        return {
-            typeHints: this.cfg.get("inlayHints.typeHints") as boolean,
-            parameterHints: this.cfg.get("inlayHints.parameterHints") as boolean,
-            maxLength: this.cfg.get("inlayHints.maxLength") as null | number,
-        };
-    }
-    get excludeGlobs() { return this.cfg.get("excludeGlobs") as string[]; }
-    get useClientWatching() { return this.cfg.get("useClientWatching") as boolean; }
-    get featureFlags() { return this.cfg.get("featureFlags") as Record<string, boolean>; }
-    get rustfmtArgs() { return this.cfg.get("rustfmtArgs") as string[]; }
-    get loadOutDirsFromCheck() { return this.cfg.get("loadOutDirsFromCheck") as boolean; }
-
-    get cargoWatchOptions(): CargoWatchOptions {
-        return {
-            enable: this.cfg.get("cargo-watch.enable") as boolean,
-            arguments: this.cfg.get("cargo-watch.arguments") as string[],
-            allTargets: this.cfg.get("cargo-watch.allTargets") as boolean,
-            command: this.cfg.get("cargo-watch.command") as string,
-        };
+    private get cfg(): vscode.WorkspaceConfiguration {
+        return vscode.workspace.getConfiguration(this.rootSection);
     }
 
-    get cargoFeatures(): CargoFeatures {
-        return {
-            noDefaultFeatures: this.cfg.get("cargoFeatures.noDefaultFeatures") as boolean,
-            allFeatures: this.cfg.get("cargoFeatures.allFeatures") as boolean,
-            features: this.cfg.get("cargoFeatures.features") as string[],
-            loadOutDirsFromCheck: this.cfg.get("cargoFeatures.loadOutDirsFromCheck") as boolean,
-        };
-    }
+    get serverPath() { return this.cfg.get<null | string>("serverPath")!; }
+    get channel() { return this.cfg.get<UpdatesChannel>("updates.channel")!; }
+    get askBeforeDownload() { return this.cfg.get<boolean>("updates.askBeforeDownload")!; }
+    get highlightingSemanticTokens() { return this.cfg.get<boolean>("highlighting.semanticTokens")!; }
+    get highlightingOn() { return this.cfg.get<boolean>("highlightingOn")!; }
+    get rainbowHighlightingOn() { return this.cfg.get<boolean>("rainbowHighlightingOn")!; }
+    get lruCapacity() { return this.cfg.get<null | number>("lruCapacity")!; }
+    get excludeGlobs() { return this.cfg.get<string[]>("excludeGlobs")!; }
+    get useClientWatching() { return this.cfg.get<boolean>("useClientWatching")!; }
+    get featureFlags() { return this.cfg.get<Record<string, boolean>>("featureFlags")!; }
+    get rustfmtArgs() { return this.cfg.get<string[]>("rustfmtArgs")!; }
+    get loadOutDirsFromCheck() { return this.cfg.get<boolean>("loadOutDirsFromCheck")!; }
+    get traceExtension() { return this.cfg.get<boolean>("trace.extension")!; }
 
     // for internal use
-    get withSysroot() { return this.cfg.get("withSysroot", true) as boolean; }
+    get withSysroot() { return this.cfg.get<boolean>("withSysroot", true)!; }
+
+    get inlayHints() {
+        return {
+            typeHints: this.cfg.get<boolean>("inlayHints.typeHints")!,
+            parameterHints: this.cfg.get<boolean>("inlayHints.parameterHints")!,
+            maxLength: this.cfg.get<null | number>("inlayHints.maxLength")!,
+        };
+    }
+
+    get cargoWatchOptions() {
+        return {
+            enable: this.cfg.get<boolean>("cargo-watch.enable")!,
+            arguments: this.cfg.get<string[]>("cargo-watch.arguments")!,
+            allTargets: this.cfg.get<boolean>("cargo-watch.allTargets")!,
+            command: this.cfg.get<string>("cargo-watch.command")!,
+        };
+    }
+
+    get cargoFeatures() {
+        return {
+            noDefaultFeatures: this.cfg.get<boolean>("cargoFeatures.noDefaultFeatures")!,
+            allFeatures: this.cfg.get<boolean>("cargoFeatures.allFeatures")!,
+            features: this.cfg.get<string[]>("cargoFeatures.features")!,
+            loadOutDirsFromCheck: this.cfg.get<boolean>("cargoFeatures.loadOutDirsFromCheck")!,
+        };
+    }
 }
