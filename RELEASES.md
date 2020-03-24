@@ -46,7 +46,7 @@ Libraries
 - [`u8::is_ascii` is now `const`.][68984]
 - [`String` now implements `AsMut<str>`.][68742]
 - [Added the `primitive` module to `std` and `core`.][67637] This module
-  reexports Rust's primitive types. This is mainly useful for use in macros
+  reexports Rust's primitive types. This is mainly useful in macros
   where you want avoid these types being shadowed.
 - [Relaxed some of the trait bounds on `HashMap` and `HashSet`.][67642]
 - [`string::FromUtf8Error` now implements `Clone + Eq`.][68738]
