@@ -19,20 +19,3 @@ pub mod query;
 pub trait HashStableContext {
     fn debug_dep_tasks(&self) -> bool;
 }
-
-/// Something that can provide a stable hashing context.
-pub trait HashStableContextProvider<Ctxt> {
-    fn get_stable_hashing_context(&self) -> Ctxt;
-}
-
-impl<Ctxt, T: HashStableContextProvider<Ctxt>> HashStableContextProvider<Ctxt> for &T {
-    fn get_stable_hashing_context(&self) -> Ctxt {
-        (**self).get_stable_hashing_context()
-    }
-}
-
-impl<Ctxt, T: HashStableContextProvider<Ctxt>> HashStableContextProvider<Ctxt> for &mut T {
-    fn get_stable_hashing_context(&self) -> Ctxt {
-        (**self).get_stable_hashing_context()
-    }
-}

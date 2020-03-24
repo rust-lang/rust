@@ -2,12 +2,11 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepContext, DepKind, DepNode};
+use crate::dep_graph::{DepKind, DepNode};
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use crate::query::caches::QueryCache;
 use crate::query::config::{QueryContext, QueryDescription};
 use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId};
-use crate::HashStableContextProvider;
 
 #[cfg(not(parallel_compiler))]
 use rustc_data_structures::cold_path;
@@ -382,7 +381,7 @@ where
 }
 
 #[inline(always)]
-fn try_execute_query<Q, CTX, K>(
+fn try_execute_query<Q, CTX>(
     tcx: CTX,
     span: Span,
     key: Q::Key,
@@ -390,9 +389,7 @@ fn try_execute_query<Q, CTX, K>(
 ) -> Q::Value
 where
     Q: QueryDescription<CTX>,
-    CTX: QueryContext<DepKind = K>,
-    CTX: HashStableContextProvider<<CTX as DepContext>::StableHashingContext>,
-    K: DepKind,
+    CTX: QueryContext,
 {
     let job = match JobOwner::try_start::<Q, _>(tcx, span, &key, lookup) {
         TryGetJob::NotYetStarted(job) => job,
@@ -408,7 +405,7 @@ where
     // expensive for some `DepKind`s.
     if !tcx.dep_graph().is_fully_enabled() {
         let null_dep_node = DepNode::new_no_params(DepKind::NULL);
-        return force_query_with_job::<Q, _, _>(tcx, key, job, null_dep_node).0;
+        return force_query_with_job::<Q, _>(tcx, key, job, null_dep_node).0;
     }
 
     if Q::ANON {
@@ -460,7 +457,7 @@ where
         }
     }
 
-    let (result, dep_node_index) = force_query_with_job::<Q, _, _>(tcx, key, job, dep_node);
+    let (result, dep_node_index) = force_query_with_job::<Q, _>(tcx, key, job, dep_node);
     tcx.dep_graph().read_index(dep_node_index);
     result
 }
@@ -554,7 +551,7 @@ fn incremental_verify_ich<Q, CTX>(
 }
 
 #[inline(always)]
-fn force_query_with_job<Q, CTX, K>(
+fn force_query_with_job<Q, CTX>(
     tcx: CTX,
     key: Q::Key,
     job: JobOwner<'_, CTX, Q::Cache>,
@@ -562,9 +559,7 @@ fn force_query_with_job<Q, CTX, K>(
 ) -> (Q::Value, DepNodeIndex)
 where
     Q: QueryDescription<CTX>,
-    CTX: QueryContext<DepKind = K>,
-    CTX: HashStableContextProvider<<CTX as DepContext>::StableHashingContext>,
-    K: DepKind,
+    CTX: QueryContext,
 {
     // If the following assertion triggers, it can have two reasons:
     // 1. Something is wrong with DepNode creation, either here or
@@ -631,11 +626,9 @@ pub trait QueryGetter: QueryContext {
     );
 }
 
-impl<CTX, K> QueryGetter for CTX
+impl<CTX> QueryGetter for CTX
 where
-    CTX: QueryContext<DepKind = K>,
-    CTX: HashStableContextProvider<<CTX as DepContext>::StableHashingContext>,
-    K: DepKind,
+    CTX: QueryContext,
 {
     #[inline(never)]
     fn get_query<Q: QueryDescription<Self>>(self, span: Span, key: Q::Key) -> Q::Value {
@@ -649,7 +642,7 @@ where
                 self.dep_graph().read_index(index);
                 value.clone()
             },
-            |key, lookup| try_execute_query::<Q, _, _>(self, span, key, lookup),
+            |key, lookup| try_execute_query::<Q, _>(self, span, key, lookup),
         )
     }
 
@@ -710,7 +703,7 @@ where
                     #[cfg(parallel_compiler)]
                     TryGetJob::JobCompleted(_) => return,
                 };
-                force_query_with_job::<Q, _, _>(self, key, job, dep_node);
+                force_query_with_job::<Q, _>(self, key, job, dep_node);
             },
         );
     }

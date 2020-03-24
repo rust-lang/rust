@@ -8,7 +8,6 @@ use rustc_errors::Diagnostic;
 use rustc_hir::def_id::DefId;
 
 mod dep_node;
-mod safe;
 
 pub(crate) use rustc_query_system::dep_graph::DepNodeParams;
 pub use rustc_query_system::dep_graph::{
@@ -17,8 +16,6 @@ pub use rustc_query_system::dep_graph::{
 };
 
 pub use dep_node::{label_strs, DepConstructor, DepKind, DepNode, DepNodeExt};
-pub use safe::AssertDepGraphSafe;
-pub use safe::DepGraphSafe;
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
 pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
@@ -187,19 +184,5 @@ fn def_id_corresponds_to_hir_dep_node(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 impl rustc_query_system::HashStableContext for StableHashingContext<'_> {
     fn debug_dep_tasks(&self) -> bool {
         self.sess().opts.debugging_opts.dep_tasks
-    }
-}
-
-impl rustc_query_system::HashStableContextProvider<StableHashingContext<'tcx>> for TyCtxt<'tcx> {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'tcx> {
-        self.create_stable_hashing_context()
-    }
-}
-
-impl rustc_query_system::HashStableContextProvider<StableHashingContext<'a>>
-    for StableHashingContext<'a>
-{
-    fn get_stable_hashing_context(&self) -> Self {
-        self.clone()
     }
 }

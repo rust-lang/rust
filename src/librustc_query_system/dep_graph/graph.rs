@@ -20,10 +20,9 @@ use std::sync::atomic::Ordering::Relaxed;
 use super::debug::EdgeFilter;
 use super::prev::PreviousDepGraph;
 use super::query::DepGraphQuery;
-use super::safe::DepGraphSafe;
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepContext, DepKind, DepNode, WorkProductId};
-use crate::{HashStableContext, HashStableContextProvider};
+use crate::HashStableContext;
 
 #[derive(Clone)]
 pub struct DepGraph<K: DepKind> {
@@ -191,18 +190,14 @@ impl<K: DepKind> DepGraph<K> {
     ///   `arg` parameter.
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/incremental-compilation.html
-    pub fn with_task<H, C, A, R>(
+    pub fn with_task<Ctxt: DepContext<DepKind = K>, A, R>(
         &self,
         key: DepNode<K>,
-        cx: C,
+        cx: Ctxt,
         arg: A,
-        task: fn(C, A) -> R,
-        hash_result: impl FnOnce(&mut H, &R) -> Option<Fingerprint>,
-    ) -> (R, DepNodeIndex)
-    where
-        C: DepGraphSafe + HashStableContextProvider<H>,
-        H: HashStableContext,
-    {
+        task: fn(Ctxt, A) -> R,
+        hash_result: impl FnOnce(&mut Ctxt::StableHashingContext, &R) -> Option<Fingerprint>,
+    ) -> (R, DepNodeIndex) {
         self.with_task_impl(
             key,
             cx,
@@ -223,13 +218,13 @@ impl<K: DepKind> DepGraph<K> {
         )
     }
 
-    fn with_task_impl<H, C, A, R>(
+    fn with_task_impl<Ctxt: DepContext<DepKind = K>, A, R>(
         &self,
         key: DepNode<K>,
-        cx: C,
+        cx: Ctxt,
         arg: A,
         no_tcx: bool,
-        task: fn(C, A) -> R,
+        task: fn(Ctxt, A) -> R,
         create_task: fn(DepNode<K>) -> Option<TaskDeps<K>>,
         finish_task_and_alloc_depnode: fn(
             &CurrentDepGraph<K>,
@@ -237,12 +232,8 @@ impl<K: DepKind> DepGraph<K> {
             Fingerprint,
             Option<TaskDeps<K>>,
         ) -> DepNodeIndex,
-        hash_result: impl FnOnce(&mut H, &R) -> Option<Fingerprint>,
-    ) -> (R, DepNodeIndex)
-    where
-        C: DepGraphSafe + HashStableContextProvider<H>,
-        H: HashStableContext,
-    {
+        hash_result: impl FnOnce(&mut Ctxt::StableHashingContext, &R) -> Option<Fingerprint>,
+    ) -> (R, DepNodeIndex) {
         if let Some(ref data) = self.data {
             let task_deps = create_task(key).map(Lock::new);
 
@@ -251,7 +242,7 @@ impl<K: DepKind> DepGraph<K> {
             // anyway so that
             //  - we make sure that the infrastructure works and
             //  - we can get an idea of the runtime cost.
-            let mut hcx = cx.get_stable_hashing_context();
+            let mut hcx = cx.create_stable_hashing_context();
 
             let result = if no_tcx {
                 task(cx, arg)
@@ -335,18 +326,14 @@ impl<K: DepKind> DepGraph<K> {
 
     /// Executes something within an "eval-always" task which is a task
     /// that runs whenever anything changes.
-    pub fn with_eval_always_task<H, C, A, R>(
+    pub fn with_eval_always_task<Ctxt: DepContext<DepKind = K>, A, R>(
         &self,
         key: DepNode<K>,
-        cx: C,
+        cx: Ctxt,
         arg: A,
-        task: fn(C, A) -> R,
-        hash_result: impl FnOnce(&mut H, &R) -> Option<Fingerprint>,
-    ) -> (R, DepNodeIndex)
-    where
-        C: DepGraphSafe + HashStableContextProvider<H>,
-        H: HashStableContext,
-    {
+        task: fn(Ctxt, A) -> R,
+        hash_result: impl FnOnce(&mut Ctxt::StableHashingContext, &R) -> Option<Fingerprint>,
+    ) -> (R, DepNodeIndex) {
         self.with_task_impl(
             key,
             cx,

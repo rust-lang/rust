@@ -194,8 +194,6 @@ impl<'a> StableHashingContextProvider<'a> for StableHashingContext<'a> {
     }
 }
 
-impl<'a> crate::dep_graph::DepGraphSafe for StableHashingContext<'a> {}
-
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
     fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {
         panic!("Node IDs should not appear in incremental state");

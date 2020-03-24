@@ -3,7 +3,6 @@ mod dep_node;
 mod graph;
 mod prev;
 mod query;
-mod safe;
 mod serialized;
 
 pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
@@ -11,8 +10,6 @@ pub use graph::WorkProductFileKind;
 pub use graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, WorkProduct};
 pub use prev::PreviousDepGraph;
 pub use query::DepGraphQuery;
-pub use safe::AssertDepGraphSafe;
-pub use safe::DepGraphSafe;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -23,7 +20,7 @@ use rustc_errors::Diagnostic;
 use std::fmt;
 use std::hash::Hash;
 
-pub trait DepContext: Copy + DepGraphSafe {
+pub trait DepContext: Copy {
     type DepKind: self::DepKind;
     type StableHashingContext: crate::HashStableContext;
 
