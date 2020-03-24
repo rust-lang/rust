@@ -8,8 +8,6 @@ pub use self::Variance::*;
 
 use crate::arena::Arena;
 use crate::hir::exports::ExportMap;
-use crate::hir::map as hir_map;
-use crate::ich::Fingerprint;
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::Canonical;
 use crate::middle::cstore::CrateStoreDyn;
@@ -28,6 +26,7 @@ use rustc_ast::ast::{self, Ident, Name};
 use rustc_ast::node_id::{NodeId, NodeMap, NodeSet};
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
@@ -124,7 +123,7 @@ mod sty;
 // Data types
 
 pub struct ResolverOutputs {
-    pub definitions: hir_map::Definitions,
+    pub definitions: rustc_hir::definitions::Definitions,
     pub cstore: Box<CrateStoreDyn>,
     pub extern_crate_map: NodeMap<CrateNum>,
     pub trait_map: TraitMap<NodeId>,
@@ -2986,7 +2985,7 @@ impl<'tcx> TyCtxt<'tcx> {
             let def_key = self.def_key(id);
             match def_key.disambiguated_data.data {
                 // The name of a constructor is that of its parent.
-                hir_map::DefPathData::Ctor => {
+                rustc_hir::definitions::DefPathData::Ctor => {
                     self.item_name(DefId { krate: id.krate, index: def_key.parent.unwrap() })
                 }
                 _ => def_key.disambiguated_data.data.get_opt_name().unwrap_or_else(|| {

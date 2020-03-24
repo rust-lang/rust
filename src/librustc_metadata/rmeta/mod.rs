@@ -2,7 +2,6 @@ use decoder::Metadata;
 use table::{Table, TableBuilder};
 
 use rustc::hir::exports::Export;
-use rustc::hir::map;
 use rustc::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLibrary};
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::middle::lang_items;
@@ -194,7 +193,7 @@ crate struct CrateRoot<'tcx> {
     native_libraries: Lazy<[NativeLibrary]>,
     foreign_modules: Lazy<[ForeignModule]>,
     source_map: Lazy<[rustc_span::SourceFile]>,
-    def_path_table: Lazy<map::definitions::DefPathTable>,
+    def_path_table: Lazy<rustc_hir::definitions::DefPathTable>,
     impls: Lazy<[TraitImpls]>,
     interpret_alloc_index: Lazy<[u32]>,
 

@@ -1,6 +1,5 @@
 use super::{AllocId, CheckInAllocMsg, Pointer, RawConst, ScalarMaybeUndef};
 
-use crate::hir::map::definitions::DefPathData;
 use crate::mir::interpret::ConstValue;
 use crate::ty::layout::{Align, LayoutError, Size};
 use crate::ty::query::TyCtxtAt;
@@ -11,6 +10,7 @@ use backtrace::Backtrace;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
+use rustc_hir::definitions::DefPathData;
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::{def_id::DefId, Pos, Span};
