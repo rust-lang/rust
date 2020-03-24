@@ -5,7 +5,7 @@ use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
-    match_ast, SmolStr, TextRange, NodeOrToken, SyntaxKind, Direction
+    match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange,
 };
 
 use crate::{FileId, FunctionSignature};
@@ -20,12 +20,7 @@ pub struct InlayHintsOptions {
 
 impl Default for InlayHintsOptions {
     fn default() -> Self {
-        Self { 
-            type_hints: true, 
-            parameter_hints: true, 
-            chaining_hints: true,
-            max_length: None 
-        }
+        Self { type_hints: true, parameter_hints: true, chaining_hints: true, max_length: None }
     }
 }
 
@@ -86,7 +81,8 @@ fn get_chaining_hints(
         return None;
     }
 
-    let mut tokens = expr.syntax()
+    let mut tokens = expr
+        .syntax()
         .siblings_with_tokens(Direction::Next)
         .filter_map(NodeOrToken::into_token)
         .filter(|t| match t.kind() {
@@ -99,7 +95,7 @@ fn get_chaining_hints(
     // Ignoring extra whitespace and comments
     let next = tokens.next()?.kind();
     let next_next = tokens.next()?.kind();
-    if next == SyntaxKind::WHITESPACE && next_next == SyntaxKind::DOT { 
+    if next == SyntaxKind::WHITESPACE && next_next == SyntaxKind::DOT {
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
             kind: InlayKind::ChainingHint,
@@ -1190,11 +1186,11 @@ fn main() {
     fn generic_chaining_hints() {
         let (analysis, file_id) = single_file(
             r#"
-            struct A<T>(T); 
+            struct A<T>(T);
             struct B<T>(T);
             struct C<T>(T);
             struct X<T,R>(T, R);
-            
+
             impl<T> A<T> {
                 fn new(t: T) -> Self { A(t) }
                 fn into_b(self) -> B<T> { B(self.0) }
@@ -1211,12 +1207,12 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
-                range: [416; 465),
+                range: [403; 452),
                 kind: ChainingHint,
                 label: "B<X<i32, bool>>",
             },
             InlayHint {
-                range: [416; 435),
+                range: [403; 422),
                 kind: ChainingHint,
                 label: "A<X<i32, bool>>",
             },
