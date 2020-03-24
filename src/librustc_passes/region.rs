@@ -720,6 +720,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         let outer_ec = mem::replace(&mut self.expr_and_pat_count, 0);
         let outer_cx = self.cx;
         let outer_ts = mem::take(&mut self.terminating_scopes);
+        let outer_pessimistic_yield = mem::replace(&mut self.pessimistic_yield, false);
         self.terminating_scopes.insert(body.value.hir_id.local_id);
 
         if let Some(root_id) = self.cx.root_id {
@@ -771,6 +772,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         self.expr_and_pat_count = outer_ec;
         self.cx = outer_cx;
         self.terminating_scopes = outer_ts;
+        self.pessimistic_yield = outer_pessimistic_yield;
     }
 
     fn visit_arm(&mut self, a: &'tcx Arm<'tcx>) {
