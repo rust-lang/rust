@@ -19,7 +19,7 @@ use rustc::traits::select;
 use rustc::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::ty::relate::RelateResult;
-use rustc::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
+use rustc::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 pub use rustc::ty::IntVarValue;
 use rustc::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc::ty::{ConstVid, FloatVid, IntVid, TyVid};
@@ -501,6 +501,7 @@ impl NLLRegionVariableOrigin {
     }
 }
 
+// FIXME(eddyb) investigate overlap between this and `TyOrConstInferVar`.
 #[derive(Copy, Clone, Debug)]
 pub enum FixupError<'tcx> {
     UnresolvedIntTy(IntVid),
@@ -1347,8 +1348,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        let mut r = ShallowResolver::new(self);
-        value.fold_with(&mut r)
+        value.fold_with(&mut ShallowResolver { infcx: self })
     }
 
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
@@ -1551,22 +1551,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // variables, thus we don't need to substitute back the original values.
         self.tcx.const_eval_resolve(param_env, def_id, substs, promoted, span)
     }
-}
-
-pub struct ShallowResolver<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
-}
-
-impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
-    #[inline(always)]
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
-        ShallowResolver { infcx }
-    }
 
     /// If `typ` is a type variable of some kind, resolve it one level
     /// (but do not resolve types found in the result). If `typ` is
     /// not a type variable, just return it unmodified.
-    pub fn shallow_resolve(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
+    // FIXME(eddyb) inline into `ShallowResolver::visit_ty`.
+    fn shallow_resolve_ty(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
         match typ.kind {
             ty::Infer(ty::TyVar(v)) => {
                 // Not entirely obvious: if `typ` is a type variable,
@@ -1580,69 +1570,133 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
                 // depth.
                 //
                 // Note: if these two lines are combined into one we get
-                // dynamic borrow errors on `self.infcx.inner`.
-                let known = self.infcx.inner.borrow_mut().type_variables.probe(v).known();
-                known.map(|t| self.fold_ty(t)).unwrap_or(typ)
+                // dynamic borrow errors on `self.inner`.
+                let known = self.inner.borrow_mut().type_variables.probe(v).known();
+                known.map(|t| self.shallow_resolve_ty(t)).unwrap_or(typ)
             }
 
             ty::Infer(ty::IntVar(v)) => self
-                .infcx
                 .inner
                 .borrow_mut()
                 .int_unification_table
                 .probe_value(v)
-                .map(|v| v.to_type(self.infcx.tcx))
+                .map(|v| v.to_type(self.tcx))
                 .unwrap_or(typ),
 
             ty::Infer(ty::FloatVar(v)) => self
-                .infcx
                 .inner
                 .borrow_mut()
                 .float_unification_table
                 .probe_value(v)
-                .map(|v| v.to_type(self.infcx.tcx))
+                .map(|v| v.to_type(self.tcx))
                 .unwrap_or(typ),
 
             _ => typ,
         }
     }
 
-    // `resolver.shallow_resolve_changed(ty)` is equivalent to
-    // `resolver.shallow_resolve(ty) != ty`, but more efficient. It's always
-    // inlined, despite being large, because it has only two call sites that
-    // are extremely hot.
+    /// `ty_or_const_infer_var_changed` is equivalent to one of these two:
+    ///   * `shallow_resolve(ty) != ty` (where `ty.kind = ty::Infer(_)`)
+    ///   * `shallow_resolve(ct) != ct` (where `ct.kind = ty::ConstKind::Infer(_)`)
+    ///
+    /// However, `ty_or_const_infer_var_changed` is more efficient. It's always
+    /// inlined, despite being large, because it has only two call sites that
+    /// are extremely hot (both in `traits::fulfill`'s checking of `stalled_on`
+    /// inference variables), and it handles both `Ty` and `ty::Const` without
+    /// having to resort to storing full `GenericArg`s in `stalled_on`.
     #[inline(always)]
-    pub fn shallow_resolve_changed(&self, infer: ty::InferTy) -> bool {
-        match infer {
-            ty::TyVar(v) => {
+    pub fn ty_or_const_infer_var_changed(&self, infer_var: TyOrConstInferVar<'tcx>) -> bool {
+        match infer_var {
+            TyOrConstInferVar::Ty(v) => {
                 use self::type_variable::TypeVariableValue;
 
-                // If `inlined_probe` returns a `Known` value its `kind` never
-                // matches `infer`.
-                match self.infcx.inner.borrow_mut().type_variables.inlined_probe(v) {
+                // If `inlined_probe` returns a `Known` value, it never equals
+                // `ty::Infer(ty::TyVar(v))`.
+                match self.inner.borrow_mut().type_variables.inlined_probe(v) {
                     TypeVariableValue::Unknown { .. } => false,
                     TypeVariableValue::Known { .. } => true,
                 }
             }
 
-            ty::IntVar(v) => {
-                // If inlined_probe_value returns a value it's always a
+            TyOrConstInferVar::TyInt(v) => {
+                // If `inlined_probe_value` returns a value it's always a
                 // `ty::Int(_)` or `ty::UInt(_)`, which never matches a
                 // `ty::Infer(_)`.
-                self.infcx.inner.borrow_mut().int_unification_table.inlined_probe_value(v).is_some()
+                self.inner.borrow_mut().int_unification_table.inlined_probe_value(v).is_some()
             }
 
-            ty::FloatVar(v) => {
-                // If inlined_probe_value returns a value it's always a
+            TyOrConstInferVar::TyFloat(v) => {
+                // If `probe_value` returns a value it's always a
                 // `ty::Float(_)`, which never matches a `ty::Infer(_)`.
                 //
                 // Not `inlined_probe_value(v)` because this call site is colder.
-                self.infcx.inner.borrow_mut().float_unification_table.probe_value(v).is_some()
+                self.inner.borrow_mut().float_unification_table.probe_value(v).is_some()
             }
 
-            _ => unreachable!(),
+            TyOrConstInferVar::Const(v) => {
+                // If `probe_value` returns a `Known` value, it never equals
+                // `ty::ConstKind::Infer(ty::InferConst::Var(v))`.
+                //
+                // Not `inlined_probe_value(v)` because this call site is colder.
+                match self.inner.borrow_mut().const_unification_table.probe_value(v).val {
+                    ConstVariableValue::Unknown { .. } => false,
+                    ConstVariableValue::Known { .. } => true,
+                }
+            }
         }
     }
+}
+
+/// Helper for `ty_or_const_infer_var_changed` (see comment on that), currently
+/// used only for `traits::fulfill`'s list of `stalled_on` inference variables.
+#[derive(Copy, Clone, Debug)]
+pub enum TyOrConstInferVar<'tcx> {
+    /// Equivalent to `ty::Infer(ty::TyVar(_))`.
+    Ty(TyVid),
+    /// Equivalent to `ty::Infer(ty::IntVar(_))`.
+    TyInt(IntVid),
+    /// Equivalent to `ty::Infer(ty::FloatVar(_))`.
+    TyFloat(FloatVid),
+
+    /// Equivalent to `ty::ConstKind::Infer(ty::InferConst::Var(_))`.
+    Const(ConstVid<'tcx>),
+}
+
+impl TyOrConstInferVar<'tcx> {
+    /// Tries to extract an inference variable from a type or a constant, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    pub fn maybe_from_generic_arg(arg: GenericArg<'tcx>) -> Option<Self> {
+        match arg.unpack() {
+            GenericArgKind::Type(ty) => Self::maybe_from_ty(ty),
+            GenericArgKind::Const(ct) => Self::maybe_from_const(ct),
+            GenericArgKind::Lifetime(_) => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a type, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`).
+    pub fn maybe_from_ty(ty: Ty<'tcx>) -> Option<Self> {
+        match ty.kind {
+            ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
+            ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
+            ty::Infer(ty::FloatVar(v)) => Some(TyOrConstInferVar::TyFloat(v)),
+            _ => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a constant, returns `None`
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    pub fn maybe_from_const(ct: &'tcx ty::Const<'tcx>) -> Option<Self> {
+        match ct.val {
+            ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
+            _ => None,
+        }
+    }
+}
+
+struct ShallowResolver<'a, 'tcx> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
@@ -1651,7 +1705,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.shallow_resolve(ty)
+        self.infcx.shallow_resolve_ty(ty)
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
