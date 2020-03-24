@@ -68,6 +68,12 @@ impl ItemScope {
         self.impls.iter().copied()
     }
 
+    pub fn visbility_of(&self, def: ModuleDefId) -> Option<Visibility> {
+        self.name_of(ItemInNs::Types(def))
+            .or_else(|| self.name_of(ItemInNs::Values(def)))
+            .map(|(_, v)| v)
+    }
+
     /// Iterate over all module scoped macros
     pub(crate) fn macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
         self.visible.iter().filter_map(|(name, def)| def.take_macros().map(|macro_| (name, macro_)))
