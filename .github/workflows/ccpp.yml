@@ -16,7 +16,9 @@ jobs:
     
     steps:
     - name: add llvm 
-      run: sudo apt-get install -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools clang-${{ matrix.llvm }} libeigen3-dev libboost-dev
+      run: |
+          sudo apt-get remove  -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
+          sudo apt-get install -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools clang-${{ matrix.llvm }} libeigen3-dev libboost-dev
     - uses: actions/checkout@v1
       with:
           fetch-depth: 1

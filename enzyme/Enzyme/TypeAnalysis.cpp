@@ -875,7 +875,7 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
         #if LLVM_VERSION_MAJOR > 6
         APInt ai(function->getParent()->getDataLayout().getIndexSizeInBits(gep.getPointerAddressSpace()), 0);
         #else
-        APInt ai(function->getParent()->getDataLayout().getIndexSize(gep.getPointerAddressSpace()) * 8, 0);
+        APInt ai(function->getParent()->getDataLayout().getPointerSize(gep.getPointerAddressSpace()) * 8, 0);
         #endif
         g2->accumulateConstantOffset(function->getParent()->getDataLayout(), ai);
         delete g2;//->eraseFromParent();

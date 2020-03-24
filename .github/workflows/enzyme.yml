@@ -10,13 +10,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm: ["7", "8"]
+        llvm: ["7", "8", "9"]
         build: ["Release", "Debug"] # "RelWithDebInfo"
         os: [ubuntu-18.04]
     
     steps:
     - name: add llvm 
-      run: sudo apt-get install -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
+      run: |
+          sudo apt-get remove  -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
+          sudo apt-get install -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
     - uses: actions/checkout@v1
       with:
           fetch-depth: 1
