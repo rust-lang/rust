@@ -9,8 +9,8 @@ use hir_def::{
 };
 
 use crate::{
-    Adt, AssocItem, AttrDef, DefWithBody, EnumVariant, GenericDef, Local, ModuleDef, StructField,
-    VariantDef,
+    code_model::ItemInNs, Adt, AssocItem, AttrDef, DefWithBody, EnumVariant, GenericDef, Local,
+    MacroDef, ModuleDef, StructField, VariantDef,
 };
 
 macro_rules! from_id {
@@ -226,5 +226,22 @@ impl From<AssocItem> for GenericDefId {
 impl From<(DefWithBodyId, PatId)> for Local {
     fn from((parent, pat_id): (DefWithBodyId, PatId)) -> Self {
         Local { parent, pat_id }
+    }
+}
+
+impl From<MacroDef> for ItemInNs {
+    fn from(macro_def: MacroDef) -> Self {
+        ItemInNs::Macros(macro_def.into())
+    }
+}
+
+impl From<ModuleDef> for ItemInNs {
+    fn from(module_def: ModuleDef) -> Self {
+        match module_def {
+            ModuleDef::Static(_) | ModuleDef::Const(_) | ModuleDef::Function(_) => {
+                ItemInNs::Values(module_def.into())
+            }
+            _ => ItemInNs::Types(module_def.into()),
+        }
     }
 }

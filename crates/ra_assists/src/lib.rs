@@ -165,7 +165,6 @@ mod helpers {
 
     use ra_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
     use ra_ide_db::{symbol_index::SymbolsDatabase, RootDatabase};
-    use ra_syntax::TextRange;
     use test_utils::{add_cursor, assert_eq_text, extract_range_or_offset, RangeOrOffset};
 
     use crate::{AssistCtx, AssistHandler};
@@ -175,8 +174,7 @@ mod helpers {
         let (mut db, file_id) = RootDatabase::with_single_file(text);
         // FIXME: ideally, this should be done by the above `RootDatabase::with_single_file`,
         // but it looks like this might need specialization? :(
-        let local_roots = vec![db.file_source_root(file_id)];
-        db.set_local_roots(Arc::new(local_roots));
+        db.set_local_roots(Arc::new(vec![db.file_source_root(file_id)]));
         (db, file_id)
     }
 
@@ -206,11 +204,24 @@ mod helpers {
     }
 
     fn check(assist: AssistHandler, before: &str, expected: ExpectedResult) {
-        let (range_or_offset, before) = extract_range_or_offset(before);
-        let range: TextRange = range_or_offset.into();
+        let (text_without_caret, file_with_caret_id, range_or_offset, db) =
+            if before.contains("//-") {
+                let (mut db, position) = RootDatabase::with_position(before);
+                db.set_local_roots(Arc::new(vec![db.file_source_root(position.file_id)]));
+                (
+                    db.file_text(position.file_id).as_ref().to_owned(),
+                    position.file_id,
+                    RangeOrOffset::Offset(position.offset),
+                    db,
+                )
+            } else {
+                let (range_or_offset, text_without_caret) = extract_range_or_offset(before);
+                let (db, file_id) = with_single_file(&text_without_caret);
+                (text_without_caret, file_id, range_or_offset, db)
+            };
 
-        let (db, file_id) = with_single_file(&before);
-        let frange = FileRange { file_id, range };
+        let frange = FileRange { file_id: file_with_caret_id, range: range_or_offset.into() };
+
         let sema = Semantics::new(&db);
         let assist_ctx = AssistCtx::new(&sema, frange, true);
 
@@ -218,7 +229,7 @@ mod helpers {
             (Some(assist), ExpectedResult::After(after)) => {
                 let action = assist.0[0].action.clone().unwrap();
 
-                let mut actual = action.edit.apply(&before);
+                let mut actual = action.edit.apply(&text_without_caret);
                 match action.cursor_position {
                     None => {
                         if let RangeOrOffset::Offset(before_cursor_pos) = range_or_offset {
@@ -237,7 +248,7 @@ mod helpers {
             (Some(assist), ExpectedResult::Target(target)) => {
                 let action = assist.0[0].action.clone().unwrap();
                 let range = action.target.expect("expected target on action");
-                assert_eq_text!(&before[range], target);
+                assert_eq_text!(&text_without_caret[range], target);
             }
             (Some(_), ExpectedResult::NotApplicable) => panic!("assist should not be applicable!"),
             (None, ExpectedResult::After(_)) | (None, ExpectedResult::Target(_)) => {

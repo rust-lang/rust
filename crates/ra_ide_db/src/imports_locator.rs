@@ -1,7 +1,7 @@
 //! This module contains an import search funcionality that is provided to the ra_assists module.
 //! Later, this should be moved away to a separate crate that is accessible from the ra_assists module.
 
-use hir::{ModuleDef, Semantics};
+use hir::{MacroDef, ModuleDef, Semantics};
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, SyntaxKind::NAME};
 
@@ -10,6 +10,7 @@ use crate::{
     symbol_index::{self, FileSymbol, Query},
     RootDatabase,
 };
+use either::Either;
 
 pub struct ImportsLocator<'a> {
     sema: Semantics<'a, RootDatabase>,
@@ -20,7 +21,7 @@ impl<'a> ImportsLocator<'a> {
         Self { sema: Semantics::new(db) }
     }
 
-    pub fn find_imports(&mut self, name_to_import: &str) -> Vec<ModuleDef> {
+    pub fn find_imports(&mut self, name_to_import: &str) -> Vec<Either<ModuleDef, MacroDef>> {
         let _p = profile("search_for_imports");
         let db = self.sema.db;
 
@@ -43,7 +44,8 @@ impl<'a> ImportsLocator<'a> {
             .chain(lib_results.into_iter())
             .filter_map(|import_candidate| self.get_name_definition(&import_candidate))
             .filter_map(|name_definition_to_import| match name_definition_to_import {
-                Definition::ModuleDef(module_def) => Some(module_def),
+                Definition::ModuleDef(module_def) => Some(Either::Left(module_def)),
+                Definition::Macro(macro_def) => Some(Either::Right(macro_def)),
                 _ => None,
             })
             .collect()

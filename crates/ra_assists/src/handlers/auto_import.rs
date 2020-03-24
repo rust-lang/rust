@@ -17,6 +17,7 @@ use crate::{
     utils::insert_use_statement,
     AssistId,
 };
+use either::Either;
 
 // Assist: auto_import
 //
@@ -58,6 +59,7 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
     group.finish()
 }
 
+#[derive(Debug)]
 struct AutoImportAssets {
     import_candidate: ImportCandidate,
     module_with_name_to_import: Module,
@@ -127,14 +129,14 @@ impl AutoImportAssets {
         ImportsLocator::new(db)
             .find_imports(&self.get_search_query())
             .into_iter()
-            .filter_map(|module_def| match &self.import_candidate {
+            .filter_map(|candidate| match &self.import_candidate {
                 ImportCandidate::TraitAssocItem(assoc_item_type, _) => {
-                    let located_assoc_item = match module_def {
-                        ModuleDef::Function(located_function) => located_function
+                    let located_assoc_item = match candidate {
+                        Either::Left(ModuleDef::Function(located_function)) => located_function
                             .as_assoc_item(db)
                             .map(|assoc| assoc.container(db))
                             .and_then(Self::assoc_to_trait),
-                        ModuleDef::Const(located_const) => located_const
+                        Either::Left(ModuleDef::Const(located_const)) => located_const
                             .as_assoc_item(db)
                             .map(|assoc| assoc.container(db))
                             .and_then(Self::assoc_to_trait),
@@ -153,10 +155,11 @@ impl AutoImportAssets {
                             |_, assoc| Self::assoc_to_trait(assoc.container(db)),
                         )
                         .map(ModuleDef::from)
+                        .map(Either::Left)
                 }
                 ImportCandidate::TraitMethod(function_callee, _) => {
                     let located_assoc_item =
-                        if let ModuleDef::Function(located_function) = module_def {
+                        if let Either::Left(ModuleDef::Function(located_function)) = candidate {
                             located_function
                                 .as_assoc_item(db)
                                 .map(|assoc| assoc.container(db))
@@ -179,10 +182,18 @@ impl AutoImportAssets {
                             },
                         )
                         .map(ModuleDef::from)
+                        .map(Either::Left)
                 }
-                _ => Some(module_def),
+                _ => Some(candidate),
             })
-            .filter_map(|module_def| self.module_with_name_to_import.find_use_path(db, module_def))
+            .filter_map(|candidate| match candidate {
+                Either::Left(module_def) => {
+                    self.module_with_name_to_import.find_use_path(db, module_def)
+                }
+                Either::Right(macro_def) => {
+                    self.module_with_name_to_import.find_use_path(db, macro_def)
+                }
+            })
             .filter(|use_path| !use_path.segments.is_empty())
             .take(20)
             .collect::<BTreeSet<_>>()
@@ -436,6 +447,30 @@ mod tests {
                 pub fn test_function() {};
             }
             ",
+        );
+    }
+
+    #[test]
+    fn macro_import() {
+        check_assist(
+            auto_import,
+            r"
+                    //- /lib.rs crate:crate_with_macro
+                    #[macro_export]
+                    macro_rules! foo {
+                        () => ()
+                    }
+
+                    //- /main.rs crate:main deps:crate_with_macro
+                    fn main() {
+                        foo<|>
+                    }",
+            r"use crate_with_macro::foo;
+
+fn main() {
+    foo<|>
+}
+",
         );
     }
 
