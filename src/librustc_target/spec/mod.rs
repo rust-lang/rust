@@ -771,9 +771,6 @@ pub struct TargetOptions {
     /// rather than "default"
     pub default_hidden_visibility: bool,
 
-    /// Whether or not bitcode is embedded in object files
-    pub embed_bitcode: bool,
-
     /// Whether a .debug_gdb_scripts section will be added to the output object file
     pub emit_debug_gdb_scripts: bool,
 
@@ -893,7 +890,6 @@ impl Default for TargetOptions {
             no_builtins: false,
             codegen_backend: "llvm".to_string(),
             default_hidden_visibility: false,
-            embed_bitcode: false,
             emit_debug_gdb_scripts: true,
             requires_uwtable: false,
             simd_types_indirect: true,
@@ -1208,7 +1204,6 @@ impl Target {
         key!(no_builtins, bool);
         key!(codegen_backend);
         key!(default_hidden_visibility, bool);
-        key!(embed_bitcode, bool);
         key!(emit_debug_gdb_scripts, bool);
         key!(requires_uwtable, bool);
         key!(simd_types_indirect, bool);
@@ -1437,7 +1432,6 @@ impl ToJson for Target {
         target_option_val!(no_builtins);
         target_option_val!(codegen_backend);
         target_option_val!(default_hidden_visibility);
-        target_option_val!(embed_bitcode);
         target_option_val!(emit_debug_gdb_scripts);
         target_option_val!(requires_uwtable);
         target_option_val!(simd_types_indirect);

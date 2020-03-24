@@ -149,15 +149,14 @@ impl ModuleConfig {
         self.new_llvm_pass_manager = sess.opts.debugging_opts.new_llvm_pass_manager;
         self.obj_is_bitcode =
             sess.target.target.options.obj_is_bitcode || sess.opts.cg.linker_plugin_lto.enabled();
-        self.embed_bitcode =
-            if sess.target.target.options.embed_bitcode || sess.opts.debugging_opts.embed_bitcode {
-                match sess.opts.optimize {
-                    config::OptLevel::No | config::OptLevel::Less => EmbedBitcode::Marker,
-                    _ => EmbedBitcode::Full,
-                }
-            } else {
-                EmbedBitcode::None
-            };
+        self.embed_bitcode = if sess.opts.debugging_opts.embed_bitcode {
+            match sess.opts.optimize {
+                config::OptLevel::No | config::OptLevel::Less => EmbedBitcode::Marker,
+                _ => EmbedBitcode::Full,
+            }
+        } else {
+            EmbedBitcode::None
+        };
 
         // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3. Otherwise configure other optimization aspects
