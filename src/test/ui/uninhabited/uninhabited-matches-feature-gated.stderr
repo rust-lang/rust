@@ -1,13 +1,18 @@
 error[E0004]: non-exhaustive patterns: `Err(_)` not covered
-  --> $DIR/uninhabited-matches-feature-gated.rs:6:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:11:19
    |
 LL |     let _ = match x {
    |                   ^ pattern `Err(_)` not covered
+   | 
+  ::: $SRC_DIR/libcore/result.rs:LL:COL
+   |
+LL |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+   |     --- not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `&Void` is non-empty
-  --> $DIR/uninhabited-matches-feature-gated.rs:15:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:20:19
    |
 LL | enum Void {}
    | ------------ `Void` defined here
@@ -18,7 +23,7 @@ LL |     let _ = match x {};
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `(Void,)` is non-empty
-  --> $DIR/uninhabited-matches-feature-gated.rs:18:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:23:19
    |
 LL |     let _ = match x {};
    |                   ^
@@ -26,7 +31,7 @@ LL |     let _ = match x {};
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `[Void; 1]` is non-empty
-  --> $DIR/uninhabited-matches-feature-gated.rs:21:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:26:19
    |
 LL |     let _ = match x {};
    |                   ^
@@ -34,7 +39,7 @@ LL |     let _ = match x {};
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
-  --> $DIR/uninhabited-matches-feature-gated.rs:24:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:29:19
    |
 LL |     let _ = match x {
    |                   ^ pattern `&[_, ..]` not covered
@@ -42,18 +47,28 @@ LL |     let _ = match x {
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `Err(_)` not covered
-  --> $DIR/uninhabited-matches-feature-gated.rs:32:19
+  --> $DIR/uninhabited-matches-feature-gated.rs:37:19
    |
 LL |     let _ = match x {
    |                   ^ pattern `Err(_)` not covered
+   | 
+  ::: $SRC_DIR/libcore/result.rs:LL:COL
+   |
+LL |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+   |     --- not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0005]: refutable pattern in local binding: `Err(_)` not covered
-  --> $DIR/uninhabited-matches-feature-gated.rs:37:9
+  --> $DIR/uninhabited-matches-feature-gated.rs:42:9
    |
 LL |     let Ok(x) = x;
    |         ^^^^^ pattern `Err(_)` not covered
+   | 
+  ::: $SRC_DIR/libcore/result.rs:LL:COL
+   |
+LL |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+   |     --- not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html

@@ -256,6 +256,7 @@ define_per_def_tables! {
     kind: Table<DefIndex, Lazy<EntryKind>>,
     visibility: Table<DefIndex, Lazy<ty::Visibility>>,
     span: Table<DefIndex, Lazy<Span>>,
+    ident_span: Table<DefIndex, Lazy<Span>>,
     attributes: Table<DefIndex, Lazy<[ast::Attribute]>>,
     children: Table<DefIndex, Lazy<[DefIndex]>>,
     stability: Table<DefIndex, Lazy<attr::Stability>>,
