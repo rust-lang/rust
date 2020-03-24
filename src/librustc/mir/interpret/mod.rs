@@ -97,8 +97,8 @@ mod value;
 
 pub use self::error::{
     struct_error, ConstEvalErr, ConstEvalRawResult, ConstEvalResult, ErrorHandled, FrameInfo,
-    InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, ResourceExhaustionInfo,
-    UndefinedBehaviorInfo, UnsupportedOpInfo,
+    InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, MachineStopType,
+    ResourceExhaustionInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
 
 pub use self::value::{get_slice_bytes, ConstValue, RawConst, Scalar, ScalarMaybeUndef};
@@ -156,7 +156,7 @@ pub struct LitToConstInput<'tcx> {
 pub enum LitToConstError {
     /// The literal's inferred type did not match the expected `ty` in the input.
     /// This is used for graceful error handling (`delay_span_bug`) in
-    /// type checking (`AstConv::ast_const_to_const`).
+    /// type checking (`Const::from_anon_const`).
     TypeError,
     UnparseableFloat,
     Reported,

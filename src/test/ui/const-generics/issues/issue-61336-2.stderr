@@ -6,17 +6,19 @@ LL | #![feature(const_generics)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error: array lengths can't depend on generic parameters
-  --> $DIR/issue-61336-2.rs:5:9
+error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+  --> $DIR/issue-61336-2.rs:9:5
    |
-LL |     [x; {N}]
-   |         ^^^
-
-error: array lengths can't depend on generic parameters
-  --> $DIR/issue-61336-2.rs:10:9
+LL |     [x; { N }]
+   |     ^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |
-LL |     [x; {N}]
-   |         ^^^
+help: consider restricting this type parameter with `T: std::marker::Copy`
+  --> $DIR/issue-61336-2.rs:8:6
+   |
+LL | fn g<T, const N: usize>(x: T) -> [T; N] {
+   |      ^
+   = note: the `Copy` trait is required because the repeated element will be copied
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0277`.

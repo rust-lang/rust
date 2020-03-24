@@ -1486,7 +1486,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     sig.header.unsafety,
                     sig.header.abi,
                     &sig.decl,
-                    &generics.params[..],
+                    &generics,
                     Some(ident.span),
                 ),
             }
@@ -1497,14 +1497,9 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             ident,
             generics,
             ..
-        }) => AstConv::ty_of_fn(
-            &icx,
-            header.unsafety,
-            header.abi,
-            decl,
-            &generics.params[..],
-            Some(ident.span),
-        ),
+        }) => {
+            AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl, &generics, Some(ident.span))
+        }
 
         ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(ref fn_decl, _, _), .. }) => {
             let abi = tcx.hir().get_foreign_abi(hir_id);
@@ -2127,7 +2122,14 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     } else {
         hir::Unsafety::Unsafe
     };
-    let fty = AstConv::ty_of_fn(&ItemCtxt::new(tcx, def_id), unsafety, abi, decl, &[], None);
+    let fty = AstConv::ty_of_fn(
+        &ItemCtxt::new(tcx, def_id),
+        unsafety,
+        abi,
+        decl,
+        &hir::Generics::empty(),
+        None,
+    );
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw

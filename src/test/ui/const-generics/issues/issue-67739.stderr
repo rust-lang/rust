@@ -1,8 +1,0 @@
-error: array lengths can't depend on generic parameters
-  --> $DIR/issue-67739.rs:12:15
-   |
-LL |         [0u8; mem::size_of::<Self::Associated>()];
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-

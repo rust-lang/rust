@@ -1,15 +1,21 @@
 // check-pass
-#![feature(const_eval_limit)]
-#![const_eval_limit="1000"]
 
-const CONSTANT: usize = limit();
+#![feature(const_eval_limit)]
+#![feature(const_loop, const_if_match)]
+
+// This needs to be higher than the number of loop iterations since each pass through the loop may
+// hit more than one terminator.
+#![const_eval_limit="4000"]
+
+const X: usize = {
+    let mut x = 0;
+    while x != 1000 {
+        x += 1;
+    }
+
+    x
+};
 
 fn main() {
-    assert_eq!(CONSTANT, 1764);
-}
-
-const fn limit() -> usize {
-    let x = 42;
-
-    x * 42
+    assert_eq!(X, 1000);
 }

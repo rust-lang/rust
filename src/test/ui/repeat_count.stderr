@@ -29,6 +29,12 @@ LL |     let e = [0; "foo"];
    |                 ^^^^^ expected `usize`, found `&str`
 
 error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:28:17
+   |
+LL |     let g = [0; G { g: () }];
+   |                 ^^^^^^^^^^^ expected `usize`, found struct `main::G`
+
+error[E0308]: mismatched types
   --> $DIR/repeat_count.rs:19:17
    |
 LL |     let f = [0; -4_isize];
@@ -49,12 +55,6 @@ help: you can convert an `isize` to `usize` and panic if the converted value wou
    |
 LL |     let f = [0_usize; (-1_isize).try_into().unwrap()];
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:28:17
-   |
-LL |     let g = [0; G { g: () }];
-   |                 ^^^^^^^^^^^ expected `usize`, found struct `main::G`
 
 error: aborting due to 8 previous errors
 

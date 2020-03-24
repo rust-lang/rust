@@ -1003,7 +1003,14 @@ fn typeck_tables_of_with_fallback<'tcx>(
         let fcx = if let (Some(header), Some(decl)) = (fn_header, fn_decl) {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
                 let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
-                AstConv::ty_of_fn(&fcx, header.unsafety, header.abi, decl, &[], None)
+                AstConv::ty_of_fn(
+                    &fcx,
+                    header.unsafety,
+                    header.abi,
+                    decl,
+                    &hir::Generics::empty(),
+                    None,
+                )
             } else {
                 tcx.fn_sig(def_id)
             };
@@ -3279,13 +3286,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    /// Returns the `DefId` of the constant parameter that the provided expression is a path to.
-    pub fn const_param_def_id(&self, hir_c: &hir::AnonConst) -> Option<DefId> {
-        AstConv::const_param_def_id(self, &self.tcx.hir().body(hir_c.body).value)
-    }
-
-    pub fn to_const(&self, ast_c: &hir::AnonConst, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
-        AstConv::ast_const_to_const(self, ast_c, ty)
+    pub fn to_const(&self, ast_c: &hir::AnonConst) -> &'tcx ty::Const<'tcx> {
+        let c = self.tcx.hir().local_def_id(ast_c.hir_id).expect_local();
+        ty::Const::from_anon_const(self.tcx, c)
     }
 
     // If the type given by the user has free regions, save it for later, since
@@ -5512,7 +5515,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.to_ty(ty).into()
                     }
                     (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
-                        self.to_const(&ct.value, self.tcx.type_of(param.def_id)).into()
+                        self.to_const(&ct.value).into()
                     }
                     _ => unreachable!(),
                 },

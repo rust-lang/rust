@@ -229,7 +229,7 @@ crate enum ExprKind<'tcx> {
     },
     Repeat {
         value: ExprRef<'tcx>,
-        count: u64,
+        count: &'tcx Const<'tcx>,
     },
     Array {
         fields: Vec<ExprRef<'tcx>>,

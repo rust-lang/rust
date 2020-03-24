@@ -135,10 +135,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                 // replace all free regions with 'erased
                 self.tcx().lifetimes.re_erased
             }
-
-            ty::ReClosureBound(..) => {
-                bug!("encountered unexpected region: {:?}", r,);
-            }
         }
     }
 

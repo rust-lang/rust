@@ -3116,6 +3116,7 @@ dependencies = [
  "rustc_hir",
  "rustc_index",
  "rustc_macros",
+ "rustc_query_system",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -4019,6 +4020,22 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_typeck",
+]
+
+[[package]]
+name = "rustc_query_system"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "parking_lot 0.9.0",
+ "rustc_ast",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_hir",
+ "rustc_index",
+ "rustc_macros",
+ "serialize",
+ "smallvec 1.0.0",
 ]
 
 [[package]]

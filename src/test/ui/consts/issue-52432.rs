@@ -6,5 +6,4 @@ fn main() {
     //~| ERROR: type annotations needed
     [(); &(static || {}) as *const _ as usize];
     //~^ ERROR: closures cannot be static
-    //~| ERROR: evaluation of constant value failed
 }

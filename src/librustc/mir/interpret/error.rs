@@ -14,7 +14,7 @@ use rustc_hir as hir;
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::{def_id::DefId, Pos, Span};
-use std::{any::Any, fmt};
+use std::{any::Any, fmt, mem};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
@@ -449,9 +449,6 @@ impl fmt::Debug for UndefinedBehaviorInfo {
 pub enum UnsupportedOpInfo {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
-    /// When const-prop encounters a situation it does not support, it raises this error.
-    /// This must not allocate for performance reasons (hence `str`, not `String`).
-    ConstPropUnsupported(&'static str),
     /// Accessing an unsupported foreign static.
     ReadForeignStatic(DefId),
     /// Could not find MIR for a function.
@@ -470,9 +467,6 @@ impl fmt::Debug for UnsupportedOpInfo {
         use UnsupportedOpInfo::*;
         match self {
             Unsupported(ref msg) => write!(f, "{}", msg),
-            ConstPropUnsupported(ref msg) => {
-                write!(f, "Constant propagation encountered an unsupported situation: {}", msg)
-            }
             ReadForeignStatic(did) => {
                 write!(f, "tried to read from foreign (extern) static {:?}", did)
             }
@@ -494,8 +488,10 @@ impl fmt::Debug for UnsupportedOpInfo {
 pub enum ResourceExhaustionInfo {
     /// The stack grew too big.
     StackFrameLimitReached,
-    /// The program ran into an infinite loop.
-    InfiniteLoop,
+    /// The program ran for too long.
+    ///
+    /// The exact limit is set by the `const_eval_limit` attribute.
+    StepLimitReached,
 }
 
 impl fmt::Debug for ResourceExhaustionInfo {
@@ -505,12 +501,33 @@ impl fmt::Debug for ResourceExhaustionInfo {
             StackFrameLimitReached => {
                 write!(f, "reached the configured maximum number of stack frames")
             }
-            InfiniteLoop => write!(
-                f,
-                "duplicate interpreter state observed here, const evaluation will never \
-                    terminate"
-            ),
+            StepLimitReached => {
+                write!(f, "exceeded interpreter step limit (see `#[const_eval_limit]`)")
+            }
         }
+    }
+}
+
+/// A trait to work around not having trait object upcasting.
+pub trait AsAny: Any {
+    fn as_any(&self) -> &dyn Any;
+}
+
+impl<T: Any> AsAny for T {
+    #[inline(always)]
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+/// A trait for machine-specific errors (or other "machine stop" conditions).
+pub trait MachineStopType: AsAny + fmt::Debug + Send {}
+impl MachineStopType for String {}
+
+impl dyn MachineStopType {
+    #[inline(always)]
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        self.as_any().downcast_ref()
     }
 }
 
@@ -527,7 +544,7 @@ pub enum InterpError<'tcx> {
     ResourceExhaustion(ResourceExhaustionInfo),
     /// Stop execution for a machine-controlled reason. This is never raised by
     /// the core engine itself.
-    MachineStop(Box<dyn Any + Send>),
+    MachineStop(Box<dyn MachineStopType>),
 }
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
@@ -547,7 +564,7 @@ impl fmt::Debug for InterpError<'_> {
             InvalidProgram(ref msg) => write!(f, "{:?}", msg),
             UndefinedBehavior(ref msg) => write!(f, "{:?}", msg),
             ResourceExhaustion(ref msg) => write!(f, "{:?}", msg),
-            MachineStop(_) => bug!("unhandled MachineStop"),
+            MachineStop(ref msg) => write!(f, "{:?}", msg),
         }
     }
 }
@@ -558,8 +575,9 @@ impl InterpError<'_> {
     /// waste of resources.
     pub fn allocates(&self) -> bool {
         match self {
-            InterpError::MachineStop(_)
-            | InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
+            // Zero-sized boxes do not allocate.
+            InterpError::MachineStop(b) => mem::size_of_val::<dyn MachineStopType>(&**b) > 0,
+            InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
             | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationFailure(_))
             | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_)) => true,
             _ => false,

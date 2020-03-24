@@ -39,6 +39,24 @@ use crate::transform::{MirPass, MirSource};
 /// The maximum number of bytes that we'll allocate space for a return value.
 const MAX_ALLOC_LIMIT: u64 = 1024;
 
+/// Macro for machine-specific `InterpError` without allocation.
+/// (These will never be shown to the user, but they help diagnose ICEs.)
+macro_rules! throw_machine_stop_str {
+    ($($tt:tt)*) => {{
+        // We make a new local type for it. The type itself does not carry any information,
+        // but its vtable (for the `MachineStopType` trait) does.
+        struct Zst;
+        // Debug-printing this type shows the desired string.
+        impl std::fmt::Debug for Zst {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, $($tt)*)
+            }
+        }
+        impl rustc::mir::interpret::MachineStopType for Zst {}
+        throw_machine_stop!(Zst)
+    }};
+}
+
 pub struct ConstProp;
 
 impl<'tcx> MirPass<'tcx> for ConstProp {
@@ -192,7 +210,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
         _unwind: Option<BasicBlock>,
     ) -> InterpResult<'tcx> {
-        throw_unsup!(ConstPropUnsupported("calling intrinsics isn't supported in ConstProp"))
+        throw_machine_stop_str!("calling intrinsics isn't supported in ConstProp")
     }
 
     fn assert_panic(
@@ -204,7 +222,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     fn ptr_to_int(_mem: &Memory<'mir, 'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx, u64> {
-        throw_unsup!(ConstPropUnsupported("ptr-to-int casts aren't supported in ConstProp"))
+        throw_unsup!(ReadPointerAsBytes)
     }
 
     fn binary_ptr_op(
@@ -214,10 +232,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _right: ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
         // We can't do this because aliasing of memory can differ between const eval and llvm
-        throw_unsup!(ConstPropUnsupported(
-            "pointer arithmetic or comparisons aren't supported \
-            in ConstProp"
-        ))
+        throw_machine_stop_str!("pointer arithmetic or comparisons aren't supported in ConstProp")
     }
 
     #[inline(always)]
@@ -238,7 +253,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        throw_unsup!(ConstPropUnsupported("can't const prop `box` keyword"))
+        throw_machine_stop_str!("can't const prop heap allocations")
     }
 
     fn access_local(
@@ -249,7 +264,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         let l = &frame.locals[local];
 
         if l.value == LocalValue::Uninitialized {
-            throw_unsup!(ConstPropUnsupported("tried to access an uninitialized local"));
+            throw_machine_stop_str!("tried to access an uninitialized local")
         }
 
         l.access()
@@ -262,7 +277,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         // if the static allocation is mutable or if it has relocations (it may be legal to mutate
         // the memory behind that in the future), then we can't const prop it
         if allocation.mutability == Mutability::Mut || allocation.relocations().len() > 0 {
-            throw_unsup!(ConstPropUnsupported("can't eval mutable statics in ConstProp"));
+            throw_machine_stop_str!("can't eval mutable statics in ConstProp")
         }
 
         Ok(())

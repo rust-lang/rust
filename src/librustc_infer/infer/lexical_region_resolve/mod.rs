@@ -493,12 +493,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     /// term "concrete regions").
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
         let r = match (a, b) {
-            (&ty::ReClosureBound(..), _)
-            | (_, &ty::ReClosureBound(..))
-            | (&ReLateBound(..), _)
-            | (_, &ReLateBound(..))
-            | (&ReErased, _)
-            | (_, &ReErased) => {
+            (&ReLateBound(..), _) | (_, &ReLateBound(..)) | (&ReErased, _) | (_, &ReErased) => {
                 bug!("cannot relate region: LUB({:?}, {:?})", a, b);
             }
 

@@ -1,9 +1,10 @@
-use rustc::mir::{self, ClearCrossCrate, Local, LocalInfo, Location, ReadOnlyBodyAndCache};
+use rustc::mir::{self, ClearCrossCrate, Local, LocalInfo, Location};
 use rustc::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_index::vec::Idx;
+use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 
@@ -338,10 +339,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 match self.local_names[local] {
                     Some(name) if !local_decl.from_compiler_desugaring() => {
-                        let suggestion = match local_decl.local_info {
+                        let label = match local_decl.local_info {
                             LocalInfo::User(ClearCrossCrate::Set(
                                 mir::BindingForm::ImplicitSelf(_),
-                            )) => Some(suggest_ampmut_self(self.infcx.tcx, local_decl)),
+                            )) => {
+                                let (span, suggestion) =
+                                    suggest_ampmut_self(self.infcx.tcx, local_decl);
+                                Some((true, span, suggestion))
+                            }
 
                             LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
                                 mir::VarBindingForm {
@@ -349,13 +354,38 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     opt_ty_info,
                                     ..
                                 },
-                            ))) => Some(suggest_ampmut(
-                                self.infcx.tcx,
-                                self.body,
-                                local,
-                                local_decl,
-                                opt_ty_info,
-                            )),
+                            ))) => {
+                                // check if the RHS is from desugaring
+                                let locations = self.body.find_assignments(local);
+                                let opt_assignment_rhs_span = locations
+                                    .first()
+                                    .map(|&location| self.body.source_info(location).span);
+                                let opt_desugaring_kind =
+                                    opt_assignment_rhs_span.and_then(|span| span.desugaring_kind());
+                                match opt_desugaring_kind {
+                                    // on for loops, RHS points to the iterator part
+                                    Some(DesugaringKind::ForLoop) => Some((
+                                        false,
+                                        opt_assignment_rhs_span.unwrap(),
+                                        format!(
+                                            "this iterator yields `{SIGIL}` {DESC}s",
+                                            SIGIL = pointer_sigil,
+                                            DESC = pointer_desc
+                                        ),
+                                    )),
+                                    // don't create labels for compiler-generated spans
+                                    Some(_) => None,
+                                    None => {
+                                        let (span, suggestion) = suggest_ampmut(
+                                            self.infcx.tcx,
+                                            local_decl,
+                                            opt_assignment_rhs_span,
+                                            opt_ty_info,
+                                        );
+                                        Some((true, span, suggestion))
+                                    }
+                                }
+                            }
 
                             LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
                                 mir::VarBindingForm {
@@ -365,7 +395,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             ))) => {
                                 let pattern_span = local_decl.source_info.span;
                                 suggest_ref_mut(self.infcx.tcx, pattern_span)
-                                    .map(|replacement| (pattern_span, replacement))
+                                    .map(|replacement| (true, pattern_span, replacement))
                             }
 
                             LocalInfo::User(ClearCrossCrate::Clear) => {
@@ -375,13 +405,22 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             _ => unreachable!(),
                         };
 
-                        if let Some((err_help_span, suggested_code)) = suggestion {
-                            err.span_suggestion(
-                                err_help_span,
-                                &format!("consider changing this to be a mutable {}", pointer_desc),
-                                suggested_code,
-                                Applicability::MachineApplicable,
-                            );
+                        match label {
+                            Some((true, err_help_span, suggested_code)) => {
+                                err.span_suggestion(
+                                    err_help_span,
+                                    &format!(
+                                        "consider changing this to be a mutable {}",
+                                        pointer_desc
+                                    ),
+                                    suggested_code,
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            Some((false, err_label_span, message)) => {
+                                err.span_label(err_label_span, &message);
+                            }
+                            None => {}
                         }
                         err.span_label(
                             span,
@@ -581,14 +620,11 @@ fn suggest_ampmut_self<'tcx>(
 // by trying (3.), then (2.) and finally falling back on (1.).
 fn suggest_ampmut<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: ReadOnlyBodyAndCache<'_, 'tcx>,
-    local: Local,
     local_decl: &mir::LocalDecl<'tcx>,
+    opt_assignment_rhs_span: Option<Span>,
     opt_ty_info: Option<Span>,
 ) -> (Span, String) {
-    let locations = body.find_assignments(local);
-    if !locations.is_empty() {
-        let assignment_rhs_span = body.source_info(locations[0]).span;
+    if let Some(assignment_rhs_span) = opt_assignment_rhs_span {
         if let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span) {
             if let (true, Some(ws_pos)) =
                 (src.starts_with("&'"), src.find(|c: char| -> bool { c.is_whitespace() }))

@@ -940,8 +940,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// inference variables with some region from the closure
     /// signature -- this is not always possible, so this is a
     /// fallible process. Presuming we do find a suitable region, we
-    /// will represent it with a `ReClosureBound`, which is a
-    /// `RegionKind` variant that can be allocated in the gcx.
+    /// will use it's *external name*, which will be a `RegionKind`
+    /// variant that can be used in query responses such as
+    /// `ReEarlyBound`.
     fn try_promote_type_test_subject(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
@@ -991,14 +992,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // find an equivalent.
             let upper_bound = self.non_local_universal_upper_bound(region_vid);
             if self.region_contains(region_vid, upper_bound) {
-                tcx.mk_region(ty::ReClosureBound(upper_bound))
+                self.definitions[upper_bound].external_name.unwrap_or(r)
             } else {
-                // In the case of a failure, use a `ReVar`
-                // result. This will cause the `lift` later on to
-                // fail.
+                // In the case of a failure, use a `ReVar` result. This will
+                // cause the `has_local_value` later on to return `None`.
                 r
             }
         });
+
         debug!("try_promote_type_test_subject: folded ty = {:?}", ty);
 
         // `has_local_value` will only be true if we failed to promote some region.
@@ -2029,15 +2030,6 @@ pub trait ClosureRegionRequirementsExt<'tcx> {
         closure_def_id: DefId,
         closure_substs: SubstsRef<'tcx>,
     ) -> Vec<QueryOutlivesConstraint<'tcx>>;
-
-    fn subst_closure_mapping<T>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        closure_mapping: &IndexVec<RegionVid, ty::Region<'tcx>>,
-        value: &T,
-    ) -> T
-    where
-        T: TypeFoldable<'tcx>;
 }
 
 impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx> {
@@ -2094,7 +2086,6 @@ impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx
                     }
 
                     ClosureOutlivesSubject::Ty(ty) => {
-                        let ty = self.subst_closure_mapping(tcx, closure_mapping, &ty);
                         debug!(
                             "apply_requirements: ty={:?} \
                              outlived_region={:?} \
@@ -2106,23 +2097,5 @@ impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx
                 }
             })
             .collect()
-    }
-
-    fn subst_closure_mapping<T>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        closure_mapping: &IndexVec<RegionVid, ty::Region<'tcx>>,
-        value: &T,
-    ) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        tcx.fold_regions(value, &mut false, |r, _depth| {
-            if let ty::ReClosureBound(vid) = r {
-                closure_mapping[*vid]
-            } else {
-                bug!("subst_closure_mapping: encountered non-closure bound free region {:?}", r)
-            }
-        })
     }
 }
