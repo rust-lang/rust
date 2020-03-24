@@ -9,6 +9,7 @@ doctest = false
 
 [dependencies]
 arrayvec = "0.5.1"
+smallvec = "1.2.0"
 ena = "0.13.1"
 log = "0.4.8"
 rustc-hash = "1.1.0"

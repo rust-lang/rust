@@ -6,7 +6,7 @@ use hir_expand::{db::AstDatabase, name::Name, HirFileId, InFile};
 use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
 use stdx::format_to;
 
-pub use hir_def::diagnostics::UnresolvedModule;
+pub use hir_def::{diagnostics::UnresolvedModule, expr::MatchArm};
 pub use hir_expand::diagnostics::{AstDiagnostic, Diagnostic, DiagnosticSink};
 
 #[derive(Debug)]
@@ -59,6 +59,24 @@ impl AstDiagnostic for MissingFields {
         let root = db.parse_or_expand(self.source().file_id).unwrap();
         let node = self.source().value.to_node(&root);
         ast::RecordFieldList::cast(node).unwrap()
+    }
+}
+
+#[derive(Debug)]
+pub struct MissingMatchArms {
+    pub file: HirFileId,
+    pub arms: AstPtr<ast::MatchArmList>,
+}
+
+impl Diagnostic for MissingMatchArms {
+    fn message(&self) -> String {
+        String::from("Missing match arm")
+    }
+    fn source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.arms.into() }
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
     }
 }
 

@@ -14,9 +14,10 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     db::HirDatabase,
-    diagnostics::{MissingFields, MissingOkInTailExpr},
+    diagnostics::{MissingFields, MissingMatchArms, MissingOkInTailExpr},
     utils::variant_data,
     ApplicationTy, InferenceResult, Ty, TypeCtor,
+    _match::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
 };
 
 pub use hir_def::{
@@ -52,12 +53,60 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         for e in body.exprs.iter() {
             if let (id, Expr::RecordLit { path, fields, spread }) = e {
                 self.validate_record_literal(id, path, fields, *spread, db);
+            } else if let (id, Expr::Match { expr, arms }) = e {
+                self.validate_match(id, *expr, arms, db, self.infer.clone());
             }
         }
 
         let body_expr = &body[body.body_expr];
-        if let Expr::Block { statements: _, tail: Some(t) } = body_expr {
+        if let Expr::Block { tail: Some(t), .. } = body_expr {
             self.validate_results_in_tail_expr(body.body_expr, *t, db);
+        }
+    }
+
+    fn validate_match(
+        &mut self,
+        id: ExprId,
+        expr: ExprId,
+        arms: &[MatchArm],
+        db: &dyn HirDatabase,
+        infer: Arc<InferenceResult>,
+    ) {
+        let (body, source_map): (Arc<Body>, Arc<BodySourceMap>) =
+            db.body_with_source_map(self.func.into());
+
+        let match_expr: &hir_def::expr::Expr = &body[expr];
+
+        let cx = MatchCheckCtx { body: body.clone(), match_expr, infer, db };
+        let pats = arms.iter().map(|arm| arm.pat);
+
+        let mut seen = Matrix::empty();
+        for pat in pats {
+            // If we had a NotUsefulMatchArm diagnostic, we could
+            // check the usefulness of each pattern as we added it
+            // to the matrix here.
+            let v = PatStack::from_pattern(pat);
+            seen.push(&cx, v);
+        }
+
+        match is_useful(&cx, &seen, &PatStack::from_wild()) {
+            Usefulness::Useful => (),
+            // if a wildcard pattern is not useful, then all patterns are covered
+            Usefulness::NotUseful => return,
+        }
+
+        if let Ok(source_ptr) = source_map.expr_syntax(id) {
+            if let Some(expr) = source_ptr.value.left() {
+                let root = source_ptr.file_syntax(db.upcast());
+                if let ast::Expr::MatchExpr(match_expr) = expr.to_node(&root) {
+                    if let Some(arms) = match_expr.match_arm_list() {
+                        self.sink.push(MissingMatchArms {
+                            file: source_ptr.file_id,
+                            arms: AstPtr::new(&arms),
+                        })
+                    }
+                }
+            }
         }
     }
 
