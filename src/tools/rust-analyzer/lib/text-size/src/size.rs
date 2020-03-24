@@ -57,7 +57,7 @@ impl TextSize {
     /// assert_eq!(str_size, TextSize::from(13));
     /// ```
     #[inline]
-    pub fn of(text: impl LenTextSize) -> TextSize {
+    pub fn of<T: LenTextSize>(text: T) -> TextSize {
         text.len_text_size()
     }
 
