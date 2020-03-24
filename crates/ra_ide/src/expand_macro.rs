@@ -3,10 +3,9 @@
 use hir::Semantics;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
-    algo::{find_node_at_offset, replace_descendants},
-    ast, AstNode, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, WalkEvent, T,
+    algo::{find_node_at_offset, SyntaxRewriter},
+    ast, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, WalkEvent, T,
 };
-use rustc_hash::FxHashMap;
 
 use crate::FilePosition;
 
@@ -37,7 +36,7 @@ fn expand_macro_recur(
     let mut expanded = sema.expand(macro_call)?;
 
     let children = expanded.descendants().filter_map(ast::MacroCall::cast);
-    let mut replaces: FxHashMap<SyntaxElement, SyntaxElement> = FxHashMap::default();
+    let mut rewriter = SyntaxRewriter::default();
 
     for child in children.into_iter() {
         if let Some(new_node) = expand_macro_recur(sema, &child) {
@@ -47,12 +46,13 @@ fn expand_macro_recur(
             if expanded == *child.syntax() {
                 expanded = new_node;
             } else {
-                replaces.insert(child.syntax().clone().into(), new_node.into());
+                rewriter.replace(child.syntax(), &new_node)
             }
         }
     }
 
-    Some(replace_descendants(&expanded, |n| replaces.get(n).cloned()))
+    let res = rewriter.rewrite(&expanded);
+    Some(res)
 }
 
 // FIXME: It would also be cool to share logic here and in the mbe tests,

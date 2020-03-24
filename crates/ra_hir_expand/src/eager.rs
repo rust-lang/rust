@@ -26,8 +26,8 @@ use crate::{
 };
 
 use ra_parser::FragmentKind;
-use ra_syntax::{algo::replace_descendants, SyntaxElement, SyntaxNode};
-use std::{collections::HashMap, sync::Arc};
+use ra_syntax::{algo::SyntaxRewriter, SyntaxNode};
+use std::sync::Arc;
 
 pub fn expand_eager_macro(
     db: &dyn AstDatabase,
@@ -95,10 +95,10 @@ fn eager_macro_recur(
     curr: InFile<SyntaxNode>,
     macro_resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
 ) -> Option<SyntaxNode> {
-    let mut original = curr.value.clone();
+    let original = curr.value.clone();
 
     let children = curr.value.descendants().filter_map(ast::MacroCall::cast);
-    let mut replaces: HashMap<SyntaxElement, SyntaxElement> = HashMap::default();
+    let mut rewriter = SyntaxRewriter::default();
 
     // Collect replacement
     for child in children {
@@ -119,12 +119,9 @@ fn eager_macro_recur(
             }
         };
 
-        replaces.insert(child.syntax().clone().into(), insert.into());
+        rewriter.replace(child.syntax(), &insert);
     }
 
-    if !replaces.is_empty() {
-        original = replace_descendants(&original, |n| replaces.get(n).cloned());
-    }
-
-    Some(original)
+    let res = rewriter.rewrite(&original);
+    Some(res)
 }

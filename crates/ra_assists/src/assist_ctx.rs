@@ -11,6 +11,7 @@ use ra_syntax::{
 use ra_text_edit::TextEditBuilder;
 
 use crate::{AssistAction, AssistId, AssistLabel, GroupLabel, ResolvedAssist};
+use algo::SyntaxRewriter;
 
 #[derive(Clone, Debug)]
 pub(crate) struct Assist(pub(crate) Vec<AssistInfo>);
@@ -233,6 +234,11 @@ impl ActionBuilder {
 
     pub(crate) fn replace_ast<N: AstNode>(&mut self, old: N, new: N) {
         algo::diff(old.syntax(), new.syntax()).into_text_edit(&mut self.edit)
+    }
+    pub(crate) fn rewrite(&mut self, rewriter: SyntaxRewriter) {
+        let node = rewriter.rewrite_root().unwrap();
+        let new = rewriter.rewrite(&node);
+        algo::diff(&node, &new).into_text_edit(&mut self.edit)
     }
 
     fn build(self) -> AssistAction {
