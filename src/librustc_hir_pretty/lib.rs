@@ -15,6 +15,10 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::vec;
 
+pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: hir::HirId) -> String {
+    to_string(&map, |s| s.print_node(map.find(hir_id).unwrap()))
+}
+
 pub enum AnnNode<'a> {
     Name(&'a ast::Name),
     Block(&'a hir::Block<'a>),
@@ -50,6 +54,20 @@ impl PpAnn for hir::Crate<'_> {
     fn try_fetch_item(&self, item: hir::HirId) -> Option<&hir::Item<'_>> {
         Some(self.item(item))
     }
+    fn nested(&self, state: &mut State<'_>, nested: Nested) {
+        match nested {
+            Nested::Item(id) => state.print_item(self.item(id.id)),
+            Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
+            Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
+            Nested::Body(id) => state.print_expr(&self.body(id).value),
+            Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat),
+        }
+    }
+}
+
+/// Identical to the `PpAnn` implementation for `hir::Crate`,
+/// except it avoids creating a dependency on the whole crate.
+impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
         match nested {
             Nested::Item(id) => state.print_item(self.item(id.id)),

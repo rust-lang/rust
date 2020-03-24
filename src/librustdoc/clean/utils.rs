@@ -578,7 +578,7 @@ pub fn print_const_expr(cx: &DocContext<'_>, body: hir::BodyId) -> String {
         None
     };
 
-    snippet.unwrap_or_else(|| cx.tcx.hir().hir_to_pretty_string(body.hir_id))
+    snippet.unwrap_or_else(|| rustc_hir_pretty::id_to_string(&cx.tcx.hir(), body.hir_id))
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt

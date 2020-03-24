@@ -265,7 +265,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let &ty::Adt(adt_def, ..) = t {
                     if adt_def.is_enum() {
                         if let hir::ExprKind::Call(ref expr, _) = call_expr.kind {
-                            unit_variant = Some(self.tcx.hir().hir_to_pretty_string(expr.hir_id))
+                            unit_variant =
+                                self.tcx.sess.source_map().span_to_snippet(expr.span).ok();
                         }
                     }
                 }

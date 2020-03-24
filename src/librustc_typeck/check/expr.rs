@@ -1671,20 +1671,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let (Some(len), Ok(user_index)) =
             (len.try_eval_usize(self.tcx, self.param_env), field.as_str().parse::<u64>())
         {
-            let base = self
-                .tcx
-                .sess
-                .source_map()
-                .span_to_snippet(base.span)
-                .unwrap_or_else(|_| self.tcx.hir().hir_to_pretty_string(base.hir_id));
-            let help = "instead of using tuple indexing, use array indexing";
-            let suggestion = format!("{}[{}]", base, field);
-            let applicability = if len < user_index {
-                Applicability::MachineApplicable
-            } else {
-                Applicability::MaybeIncorrect
-            };
-            err.span_suggestion(expr.span, help, suggestion, applicability);
+            if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
+                let help = "instead of using tuple indexing, use array indexing";
+                let suggestion = format!("{}[{}]", base, field);
+                let applicability = if len < user_index {
+                    Applicability::MachineApplicable
+                } else {
+                    Applicability::MaybeIncorrect
+                };
+                err.span_suggestion(expr.span, help, suggestion, applicability);
+            }
         }
     }
 
@@ -1695,15 +1691,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base: &hir::Expr<'_>,
         field: ast::Ident,
     ) {
-        let base = self
-            .tcx
-            .sess
-            .source_map()
-            .span_to_snippet(base.span)
-            .unwrap_or_else(|_| self.tcx.hir().hir_to_pretty_string(base.hir_id));
-        let msg = format!("`{}` is a raw pointer; try dereferencing it", base);
-        let suggestion = format!("(*{}).{}", base, field);
-        err.span_suggestion(expr.span, &msg, suggestion, Applicability::MaybeIncorrect);
+        if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
+            let msg = format!("`{}` is a raw pointer; try dereferencing it", base);
+            let suggestion = format!("(*{}).{}", base, field);
+            err.span_suggestion(expr.span, &msg, suggestion, Applicability::MaybeIncorrect);
+        }
     }
 
     fn no_such_field_err<T: Display>(
