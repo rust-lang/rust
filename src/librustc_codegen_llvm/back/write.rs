@@ -16,7 +16,7 @@ use crate::ModuleLlvm;
 use log::debug;
 use rustc::bug;
 use rustc::ty::TyCtxt;
-use rustc_codegen_ssa::back::write::{run_assembler, CodegenContext, ModuleConfig};
+use rustc_codegen_ssa::back::write::{run_assembler, CodegenContext, EmbedBitcode, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, RLIB_BYTECODE_EXTENSION};
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -634,30 +634,24 @@ pub(crate) unsafe fn codegen(
             f(cpm)
         }
 
-        // If we don't have the integrated assembler, then we need to emit asm
-        // from LLVM and use `gcc` to create the object file.
-        let asm_to_obj = config.emit_obj && config.no_integrated_as;
-
-        // Change what we write and cleanup based on whether obj files are
-        // just llvm bitcode. In that case write bitcode, and possibly
-        // delete the bitcode if it wasn't requested. Don't generate the
-        // machine code, instead copy the .o file from the .bc
-        let write_bc = config.emit_bc || config.obj_is_bitcode;
-        let rm_bc = !config.emit_bc && config.obj_is_bitcode;
-        let write_obj = config.emit_obj && !config.obj_is_bitcode && !asm_to_obj;
-        let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode;
+        // Two things to note:
+        // - If object files are just LLVM bitcode we write bitcode, copy it to
+        //   the .o file, and delete the bitcode if it wasn't otherwise
+        //   requested.
+        // - If we don't have the integrated assembler then we need to emit
+        //   asm from LLVM and use `gcc` to create the object file.
 
         let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
         let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
 
-        if write_bc || config.emit_bc_compressed || config.embed_bitcode {
+        if config.bitcode_needed() {
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg("LLVM_module_codegen_make_bitcode", &module.name[..]);
             let thin = ThinBuffer::new(llmod);
             let data = thin.data();
 
-            if write_bc {
+            if config.emit_bc || config.obj_is_bitcode {
                 let _timer = cgcx.prof.generic_activity_with_arg(
                     "LLVM_module_codegen_emit_bitcode",
                     &module.name[..],
@@ -668,7 +662,7 @@ pub(crate) unsafe fn codegen(
                 }
             }
 
-            if config.embed_bitcode {
+            if config.embed_bitcode == EmbedBitcode::Full {
                 let _timer = cgcx.prof.generic_activity_with_arg(
                     "LLVM_module_codegen_embed_bitcode",
                     &module.name[..],
@@ -688,81 +682,75 @@ pub(crate) unsafe fn codegen(
                     diag_handler.err(&msg);
                 }
             }
-        } else if config.embed_bitcode_marker {
+        } else if config.embed_bitcode == EmbedBitcode::Marker {
             embed_bitcode(cgcx, llcx, llmod, None);
         }
 
-        {
-            if config.emit_ir {
-                let _timer = cgcx
-                    .prof
-                    .generic_activity_with_arg("LLVM_module_codegen_emit_ir", &module.name[..]);
-                let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
-                let out_c = path_to_c_string(&out);
+        if config.emit_ir {
+            let _timer = cgcx
+                .prof
+                .generic_activity_with_arg("LLVM_module_codegen_emit_ir", &module.name[..]);
+            let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
+            let out_c = path_to_c_string(&out);
 
-                extern "C" fn demangle_callback(
-                    input_ptr: *const c_char,
-                    input_len: size_t,
-                    output_ptr: *mut c_char,
-                    output_len: size_t,
-                ) -> size_t {
-                    let input = unsafe {
-                        slice::from_raw_parts(input_ptr as *const u8, input_len as usize)
-                    };
+            extern "C" fn demangle_callback(
+                input_ptr: *const c_char,
+                input_len: size_t,
+                output_ptr: *mut c_char,
+                output_len: size_t,
+            ) -> size_t {
+                let input =
+                    unsafe { slice::from_raw_parts(input_ptr as *const u8, input_len as usize) };
 
-                    let input = match str::from_utf8(input) {
-                        Ok(s) => s,
-                        Err(_) => return 0,
-                    };
+                let input = match str::from_utf8(input) {
+                    Ok(s) => s,
+                    Err(_) => return 0,
+                };
 
-                    let output = unsafe {
-                        slice::from_raw_parts_mut(output_ptr as *mut u8, output_len as usize)
-                    };
-                    let mut cursor = io::Cursor::new(output);
+                let output = unsafe {
+                    slice::from_raw_parts_mut(output_ptr as *mut u8, output_len as usize)
+                };
+                let mut cursor = io::Cursor::new(output);
 
-                    let demangled = match rustc_demangle::try_demangle(input) {
-                        Ok(d) => d,
-                        Err(_) => return 0,
-                    };
+                let demangled = match rustc_demangle::try_demangle(input) {
+                    Ok(d) => d,
+                    Err(_) => return 0,
+                };
 
-                    if write!(cursor, "{:#}", demangled).is_err() {
-                        // Possible only if provided buffer is not big enough
-                        return 0;
-                    }
-
-                    cursor.position() as size_t
+                if write!(cursor, "{:#}", demangled).is_err() {
+                    // Possible only if provided buffer is not big enough
+                    return 0;
                 }
 
-                let result = llvm::LLVMRustPrintModule(llmod, out_c.as_ptr(), demangle_callback);
-                result.into_result().map_err(|()| {
-                    let msg = format!("failed to write LLVM IR to {}", out.display());
-                    llvm_err(diag_handler, &msg)
-                })?;
+                cursor.position() as size_t
             }
 
-            if config.emit_asm || asm_to_obj {
-                let _timer = cgcx
-                    .prof
-                    .generic_activity_with_arg("LLVM_module_codegen_emit_asm", &module.name[..]);
-                let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
+            let result = llvm::LLVMRustPrintModule(llmod, out_c.as_ptr(), demangle_callback);
+            result.into_result().map_err(|()| {
+                let msg = format!("failed to write LLVM IR to {}", out.display());
+                llvm_err(diag_handler, &msg)
+            })?;
+        }
 
-                // We can't use the same module for asm and binary output, because that triggers
-                // various errors like invalid IR or broken binaries, so we might have to clone the
-                // module to produce the asm output
-                let llmod = if config.emit_obj { llvm::LLVMCloneModule(llmod) } else { llmod };
-                with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                    write_output_file(
-                        diag_handler,
-                        tm,
-                        cpm,
-                        llmod,
-                        &path,
-                        llvm::FileType::AssemblyFile,
-                    )
-                })?;
-            }
+        let config_emit_normal_obj = config.emit_obj && !config.obj_is_bitcode;
 
-            if write_obj {
+        if config.emit_asm || (config_emit_normal_obj && config.no_integrated_as) {
+            let _timer = cgcx
+                .prof
+                .generic_activity_with_arg("LLVM_module_codegen_emit_asm", &module.name[..]);
+            let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
+
+            // We can't use the same module for asm and binary output, because that triggers
+            // various errors like invalid IR or broken binaries, so we might have to clone the
+            // module to produce the asm output
+            let llmod = if config.emit_obj { llvm::LLVMCloneModule(llmod) } else { llmod };
+            with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                write_output_file(diag_handler, tm, cpm, llmod, &path, llvm::FileType::AssemblyFile)
+            })?;
+        }
+
+        if config_emit_normal_obj {
+            if !config.no_integrated_as {
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
@@ -776,7 +764,7 @@ pub(crate) unsafe fn codegen(
                         llvm::FileType::ObjectFile,
                     )
                 })?;
-            } else if asm_to_obj {
+            } else {
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_asm_to_obj", &module.name[..]);
@@ -789,17 +777,19 @@ pub(crate) unsafe fn codegen(
             }
         }
 
-        if copy_bc_to_obj {
-            debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
-            if let Err(e) = link_or_copy(&bc_out, &obj_out) {
-                diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
+        if config.obj_is_bitcode {
+            if config.emit_obj {
+                debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
+                if let Err(e) = link_or_copy(&bc_out, &obj_out) {
+                    diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
+                }
             }
-        }
 
-        if rm_bc {
-            debug!("removing_bitcode {:?}", bc_out);
-            if let Err(e) = fs::remove_file(&bc_out) {
-                diag_handler.err(&format!("failed to remove bitcode: {}", e));
+            if !config.emit_bc {
+                debug!("removing_bitcode {:?}", bc_out);
+                if let Err(e) = fs::remove_file(&bc_out) {
+                    diag_handler.err(&format!("failed to remove bitcode: {}", e));
+                }
             }
         }
 

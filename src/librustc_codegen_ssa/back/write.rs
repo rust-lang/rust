@@ -51,6 +51,14 @@ use std::thread;
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
 
+/// The kind of bitcode to embed in object files.
+#[derive(PartialEq)]
+pub enum EmbedBitcode {
+    None,
+    Marker,
+    Full,
+}
+
 /// Module-specific configuration for `optimize_and_codegen`.
 pub struct ModuleConfig {
     /// Names of additional optimization passes to run.
@@ -74,7 +82,6 @@ pub struct ModuleConfig {
     pub emit_no_opt_bc: bool,
     pub emit_bc: bool,
     pub emit_bc_compressed: bool,
-    pub emit_lto_bc: bool,
     pub emit_ir: bool,
     pub emit_asm: bool,
     pub emit_obj: bool,
@@ -94,8 +101,7 @@ pub struct ModuleConfig {
     // emscripten's ecc compiler, when used as the linker.
     pub obj_is_bitcode: bool,
     pub no_integrated_as: bool,
-    pub embed_bitcode: bool,
-    pub embed_bitcode_marker: bool,
+    pub embed_bitcode: EmbedBitcode,
 }
 
 impl ModuleConfig {
@@ -116,13 +122,11 @@ impl ModuleConfig {
             emit_pre_lto_bc: false,
             emit_bc: false,
             emit_bc_compressed: false,
-            emit_lto_bc: false,
             emit_ir: false,
             emit_asm: false,
             emit_obj: false,
             obj_is_bitcode: false,
-            embed_bitcode: false,
-            embed_bitcode_marker: false,
+            embed_bitcode: EmbedBitcode::None,
             no_integrated_as: false,
 
             verify_llvm_ir: false,
@@ -145,16 +149,15 @@ impl ModuleConfig {
         self.new_llvm_pass_manager = sess.opts.debugging_opts.new_llvm_pass_manager;
         self.obj_is_bitcode =
             sess.target.target.options.obj_is_bitcode || sess.opts.cg.linker_plugin_lto.enabled();
-        let embed_bitcode =
-            sess.target.target.options.embed_bitcode || sess.opts.debugging_opts.embed_bitcode;
-        if embed_bitcode {
-            match sess.opts.optimize {
-                config::OptLevel::No | config::OptLevel::Less => {
-                    self.embed_bitcode_marker = embed_bitcode;
+        self.embed_bitcode =
+            if sess.target.target.options.embed_bitcode || sess.opts.debugging_opts.embed_bitcode {
+                match sess.opts.optimize {
+                    config::OptLevel::No | config::OptLevel::Less => EmbedBitcode::Marker,
+                    _ => EmbedBitcode::Full,
                 }
-                _ => self.embed_bitcode = embed_bitcode,
-            }
-        }
+            } else {
+                EmbedBitcode::None
+            };
 
         // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3. Otherwise configure other optimization aspects
@@ -190,7 +193,10 @@ impl ModuleConfig {
     }
 
     pub fn bitcode_needed(&self) -> bool {
-        self.emit_bc || self.obj_is_bitcode || self.emit_bc_compressed || self.embed_bitcode
+        self.emit_bc
+            || self.obj_is_bitcode
+            || self.emit_bc_compressed
+            || self.embed_bitcode == EmbedBitcode::Full
     }
 }
 
@@ -379,7 +385,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         modules_config.emit_no_opt_bc = true;
         modules_config.emit_pre_lto_bc = true;
         modules_config.emit_bc = true;
-        modules_config.emit_lto_bc = true;
         metadata_config.emit_bc = true;
         allocator_config.emit_bc = true;
     }
