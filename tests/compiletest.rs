@@ -110,6 +110,8 @@ fn get_target() -> String {
 fn test_runner(_tests: &[&()]) {
     // Add a test env var to do environment communication tests.
     std::env::set_var("MIRI_ENV_VAR_TEST", "0");
+    // Let the tests know where to store temp files (they might run for a different target, which can make this hard to find).
+    std::env::set_var("MIRI_TEMP", std::env::temp_dir());
 
     let target = get_target();
     miri_pass("tests/run-pass", &target);

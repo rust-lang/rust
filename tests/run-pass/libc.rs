@@ -2,19 +2,24 @@
 // compile-flags: -Zmiri-disable-isolation
 
 #![feature(rustc_private)]
+#![allow(unused)] // necessary on macos due to conditional compilation
 
-#[allow(unused)] // necessary on macos due to conditional compilation
+use std::path::PathBuf;
+
 extern crate libc;
+
+fn tmp() -> PathBuf {
+    std::env::var("MIRI_TEMP").map(PathBuf::from).unwrap_or_else(|_| std::env::temp_dir())
+}
 
 #[cfg(not(target_os = "macos"))]
 fn test_posix_fadvise() {
     use std::convert::TryInto;
-    use std::env::temp_dir;
     use std::fs::{File, remove_file};
     use std::io::Write;
     use std::os::unix::io::AsRawFd;
 
-    let path = temp_dir().join("miri_test_libc.txt");
+    let path = tmp().join("miri_test_libc.txt");
     // Cleanup before test
     remove_file(&path).ok();
 

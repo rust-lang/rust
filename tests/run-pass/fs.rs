@@ -16,10 +16,13 @@ fn main() {
     test_directory();
 }
 
+fn tmp() -> PathBuf {
+    std::env::var("MIRI_TEMP").map(PathBuf::from).unwrap_or_else(|_| std::env::temp_dir())
+}
+
 /// Prepare: compute filename and make sure the file does not exist.
 fn prepare(filename: &str) -> PathBuf {
-    let tmp = std::env::temp_dir();
-    let path = tmp.join(filename);
+    let path = tmp().join(filename);
     // Clean the paths for robustness.
     remove_file(&path).ok();
     path
@@ -27,8 +30,7 @@ fn prepare(filename: &str) -> PathBuf {
 
 /// Prepare directory: compute directory name and make sure it does not exist.
 fn prepare_dir(dirname: &str) -> PathBuf {
-    let tmp = std::env::temp_dir();
-    let path = tmp.join(&dirname);
+    let path = tmp().join(&dirname);
     // Clean the directory for robustness.
     remove_dir_all(&path).ok();
     path
@@ -142,7 +144,10 @@ fn test_symlink() {
     let symlink_path = prepare("miri_test_fs_symlink.txt");
 
     // Creating a symbolic link should succeed.
+    #[cfg(unix)]
     std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_file(&path, &symlink_path).unwrap();
     // Test that the symbolic link has the same contents as the file.
     let mut symlink_file = File::open(&symlink_path).unwrap();
     let mut contents = Vec::new();

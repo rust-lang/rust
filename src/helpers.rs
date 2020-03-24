@@ -1,6 +1,13 @@
 use std::ffi::{OsStr, OsString};
+use std::path::{Path, PathBuf};
 use std::{iter, mem};
 use std::convert::TryFrom;
+use std::borrow::Cow;
+
+#[cfg(unix)]
+use std::os::unix::ffi::{OsStrExt, OsStringExt};
+#[cfg(windows)]
+use std::os::windows::ffi::{OsStrExt, OsStringExt};
 
 use rustc::mir;
 use rustc::ty::{
@@ -477,7 +484,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     {
         #[cfg(unix)]
         fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
-            Ok(std::os::unix::ffi::OsStrExt::from_bytes(bytes))
+            Ok(OsStr::from_bytes(bytes))
         }
         #[cfg(not(unix))]
         fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
@@ -500,7 +507,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     {
         #[cfg(windows)]
         pub fn u16vec_to_osstring<'tcx, 'a>(u16_vec: Vec<u16>) -> InterpResult<'tcx, OsString> {
-            Ok(std::os::windows::ffi::OsStringExt::from_wide(&u16_vec[..]))
+            Ok(OsString::from_wide(&u16_vec[..]))
         }
         #[cfg(not(windows))]
         pub fn u16vec_to_osstring<'tcx, 'a>(u16_vec: Vec<u16>) -> InterpResult<'tcx, OsString> {
@@ -512,7 +519,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let u16_vec = self.eval_context_ref().memory.read_wide_str(scalar)?;
         u16vec_to_osstring(u16_vec)
     }
-
 
     /// Helper function to write an OsStr as a null-terminated sequence of bytes, which is what
     /// the Unix APIs usually handle. This function returns `Ok((false, length))` without trying
@@ -527,7 +533,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, (bool, u64)> {
         #[cfg(unix)]
         fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
-            Ok(std::os::unix::ffi::OsStrExt::as_bytes(os_str))
+            Ok(os_str.as_bytes())
         }
         #[cfg(not(unix))]
         fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
@@ -566,7 +572,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, (bool, u64)> {
         #[cfg(windows)]
         fn os_str_to_u16vec<'tcx>(os_str: &OsStr) -> InterpResult<'tcx, Vec<u16>> {
-            Ok(std::os::windows::ffi::OsStrExt::encode_wide(os_str).collect())
+            Ok(os_str.encode_wide().collect())
         }
         #[cfg(not(windows))]
         fn os_str_to_u16vec<'tcx>(os_str: &OsStr) -> InterpResult<'tcx, Vec<u16>> {
@@ -592,7 +598,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Store the UTF-16 string.
         let char_size = Size::from_bytes(2);
         for (idx, c) in u16_vec.into_iter().chain(iter::once(0x0000)).enumerate() {
-            let place = this.mplace_field(mplace, idx as u64)?; 
+            let place = this.mplace_field(mplace, u64::try_from(idx).unwrap())?; 
             this.write_scalar(Scalar::from_uint(c, char_size), place.into())?;
         }
         Ok((true, string_length))
@@ -613,6 +619,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
+    /// Allocate enough memory to store the given `OsStr` as a null-terminated sequence of bytes.
     fn alloc_os_str_as_c_str(
         &mut self,
         os_str: &OsStr,
@@ -627,6 +634,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         arg_place.ptr.assert_ptr()
     }
 
+    /// Allocate enough memory to store the given `OsStr` as a null-terminated sequence of `u16`.
     fn alloc_os_str_as_wide_str(
         &mut self,
         os_str: &OsStr,
@@ -639,6 +647,82 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind);
         assert!(self.write_os_str_to_wide_str(os_str, arg_place, size).unwrap().0);
         arg_place.ptr.assert_ptr()
+    }
+
+    /// Read a null-terminated sequence of bytes, and perform path separator conversion if needed.
+    fn read_path_from_c_str<'a>(&'a self, scalar: Scalar<Tag>) -> InterpResult<'tcx, Cow<'a, Path>>
+    where
+        'tcx: 'a,
+        'mir: 'a,
+    {
+        let this = self.eval_context_ref();
+        let os_str = this.read_os_str_from_c_str(scalar)?;
+
+        #[cfg(windows)]
+        return Ok(if this.tcx.sess.target.target.target_os == "windows" {
+            // Windows-on-Windows, all fine.
+            Cow::Borrowed(Path::new(os_str))
+        } else {
+            // Unix target, Windows host. Need to convert target '/' to host '\'.
+            let converted = os_str
+                .encode_wide()
+                .map(|wchar| if wchar == '/' as u16 { '\\' as u16 } else { wchar })
+                .collect::<Vec<_>>();
+            Cow::Owned(PathBuf::from(OsString::from_wide(&converted)))
+        });
+        #[cfg(unix)]
+        return Ok(if this.tcx.sess.target.target.target_os == "windows" {
+            // Windows target, Unix host. Need to convert target '\' to host '/'.
+            let converted = os_str
+                .as_bytes()
+                .iter()
+                .map(|&wchar| if wchar == '/' as u8 { '\\' as u8 } else { wchar })
+                .collect::<Vec<_>>();
+            Cow::Owned(PathBuf::from(OsString::from_vec(converted)))
+        } else {
+            // Unix-on-Unix, all is fine.
+            Cow::Borrowed(Path::new(os_str))
+        });
+    }
+
+    /// Write a Path to the machine memory, adjusting path separators if needed.
+    fn write_path_to_c_str(
+        &mut self,
+        path: &Path,
+        scalar: Scalar<Tag>,
+        size: u64,
+    ) -> InterpResult<'tcx, (bool, u64)> {
+        let this = self.eval_context_mut();
+
+        #[cfg(windows)]
+        let os_str = if this.tcx.sess.target.target.target_os == "windows" {
+            // Windows-on-Windows, all fine.
+            Cow::Borrowed(path.as_os_str())
+        } else {
+            // Unix target, Windows host. Need to convert host '\\' to target '/'.
+            let converted = path
+                .as_os_str()
+                .encode_wide()
+                .map(|wchar| if wchar == '\\' as u16 { '/' as u16 } else { wchar })
+                .collect::<Vec<_>>();
+            Cow::Owned(OsString::from_wide(&converted))
+        };
+        #[cfg(unix)]
+        let os_str = if this.tcx.sess.target.target.target_os == "windows" {
+            // Windows target, Unix host. Need to convert host '/' to target '\'.
+            let converted = path
+                .as_os_str()
+                .as_bytes()
+                .iter()
+                .map(|&wchar| if wchar == '/' as u8 { '\\' as u8 } else { wchar })
+                .collect::<Vec<_>>();
+            Cow::Owned(OsString::from_vec(converted))
+        } else {
+            // Unix-on-Unix, all is fine.
+            Cow::Borrowed(path.as_os_str())
+        };
+
+        this.write_os_str_to_c_str(&os_str, scalar, size)
     }
 }
 
