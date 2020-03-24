@@ -57,9 +57,9 @@ pub struct QueryState<CTX: QueryContext, C: QueryCache<CTX>> {
 }
 
 impl<CTX: QueryContext, C: QueryCache<CTX>> QueryState<CTX, C> {
-    pub(super) fn get_lookup<'tcx, K2: Hash>(
+    pub(super) fn get_lookup<'tcx>(
         &'tcx self,
-        key: &K2,
+        key: &C::Key,
     ) -> QueryLookup<'tcx, CTX, C::Key, C::Sharded> {
         // We compute the key's hash once and then use it for both the
         // shard lookup and the hashmap lookup. This relies on the fact

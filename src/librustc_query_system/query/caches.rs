@@ -8,12 +8,12 @@ use std::default::Default;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-pub trait CacheSelector<CTX: QueryContext, K, V> {
+pub trait CacheSelector<CTX: QueryContext, K: Hash, V> {
     type Cache: QueryCache<CTX, Key = K, Value = V>;
 }
 
 pub trait QueryCache<CTX: QueryContext>: Default {
-    type Key;
+    type Key: Hash;
     type Value;
     type Sharded: Default;
 
