@@ -4,7 +4,7 @@ Version 1.43.0 (2020-04-23)
 Language
 --------
 - [Fixed using binary operations with `&{number}` (e.g. `&1.0`) not having
-  the correctly inferred type.][68129]
+  the type inferred correctly.][68129]
 
 **Syntax only changes**
 - [Allow `type Foo: Ord` syntactically.][69361]
