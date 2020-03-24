@@ -1,5 +1,5 @@
 use {
-    crate::TextSized,
+    crate::LenTextSize,
     std::{
         convert::TryFrom,
         fmt, iter,
@@ -42,8 +42,8 @@ impl fmt::Debug for TextSize {
 impl TextSize {
     /// The text size of some text-like object.
     #[inline]
-    pub fn of(text: impl TextSized) -> TextSize {
-        text.text_size()
+    pub fn of(text: impl LenTextSize) -> TextSize {
+        text.len_text_size()
     }
 
     /// A size of zero.
