@@ -60,6 +60,15 @@ Stabilized APIs
 - [`f64::LOG2_10`]
 - [`iter::once_with`]
 
+Cargo
+-----
+- [You can now set config `[profile]`s in your `.cargo/config`, or through
+  your environment.][cargo/7823]
+- [Cargo will now set `CARGO_BIN_EXE_<name>` pointing to a binary's
+  executable path when running integration tests or benchmarks.][cargo/7697]
+  `<name>` is the name of your binary as-is e.g. If you wanted the executable
+  path for a binary named `my-program`you would use `env!("CARGO_BIN_EXE_my-program")`.
+
 Misc
 ----
 - [Certain checks in the `const_err` lint were deemed unrelated to const
@@ -110,6 +119,8 @@ related tools.
 [69366]: https://github.com/rust-lang/rust/pull/69366/
 [69373]: https://github.com/rust-lang/rust/pull/69373/
 [69538]: https://github.com/rust-lang/rust/pull/69538/
+[cargo/7823]: https://github.com/rust-lang/cargo/pull/7823
+[cargo/7697]: https://github.com/rust-lang/cargo/pull/7697
 [`Once::is_completed`]: https://doc.rust-lang.org/std/sync/struct.Once.html#method.is_completed
 [`f32::LOG10_2`]: https://doc.rust-lang.org/std/f32/consts/constant.LOG10_2.html
 [`f32::LOG2_10`]: https://doc.rust-lang.org/std/f32/consts/constant.LOG2_10.html
