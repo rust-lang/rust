@@ -13,7 +13,9 @@ use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::ReStatic;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{OutlivesPredicate, ReLateBound, ReVar, RegionKind, RegionOutlivesPredicate};
+use rustc_middle::ty::{
+    OutlivesPredicate, ReLateBound, ReVar, RegionKind, RegionOutlivesPredicate,
+};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::Span;
 

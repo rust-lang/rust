@@ -2335,7 +2335,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn collect_predicates_for_types(
         &mut self,
-        param_env: ty::ParamEnv<'tcx>,
+        mut param_env: ty::ParamEnv<'tcx>,
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         trait_def_id: DefId,
@@ -2359,6 +2359,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .skip_binder()
             .iter()
             .flat_map(|ty| {
+                let param_env = if let ty::GeneratorWitness(_, predicates) = ty.kind {
+                    let predicates: Vec<_> = param_env
+                        .caller_bounds
+                        .to_vec()
+                        .into_iter()
+                        .chain(
+                            predicates
+                                .skip_binder()
+                                .into_iter()
+                                .map(|&p| ty::Binder::bind(p).to_predicate()),
+                        )
+                        .collect();
+                    param_env.caller_bounds = self.infcx.tcx.mk_predicates(predicates.iter());
+                    param_env
+                } else {
+                    param_env
+                };
                 // binder moved -\
                 let ty: ty::Binder<Ty<'tcx>> = ty::Binder::bind(ty); // <----/
 
