@@ -8,6 +8,8 @@ use {
 
 /// A range in text, represented as a pair of [`TextSize`][struct@TextSize].
 ///
+/// It is a logic error for `start` to be greater than `end`.
+///
 /// # Translation from `text_unit`
 ///
 /// - `TextRange::from_to(from, to)`        ⟹ `TextRange::new(from, to)`
@@ -40,6 +42,19 @@ impl TextRange {
     /// # Panics
     ///
     /// Panics if `end < start`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use text_size::*;
+    /// let start = TextSize::from(5);
+    /// let end = TextSize::from(10);
+    /// let range = TextRange::new(start, end);
+    ///
+    /// assert_eq!(range.start(), start);
+    /// assert_eq!(range.end(), end);
+    /// assert_eq!(range.len(), end - start);
+    /// ```
     #[inline]
     pub fn new(start: TextSize, end: TextSize) -> TextRange {
         assert!(start <= end);
@@ -47,12 +62,37 @@ impl TextRange {
     }
 
     /// Create a new `TextRange` with the given `start` and `len` (`start..start + len`).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use text_size::*;
+    /// let text = "0123456789";
+    ///
+    /// let start = TextSize::from(2);
+    /// let length = TextSize::from(5);
+    /// let range = TextRange::from_len(start, length);
+    ///
+    /// assert_eq!(range, TextRange::new(start, start + length));
+    /// assert_eq!(&text[range], "23456")
+    /// ```
     #[inline]
     pub fn from_len(start: TextSize, len: TextSize) -> TextRange {
         TextRange::new(start, start + len)
     }
 
     /// Create a zero-length range at the specified offset (`offset..offset`).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use text_size::*;
+    /// let point: TextSize;
+    /// # point = TextSize::from(3);
+    /// let range = TextRange::empty(point);
+    /// assert!(range.is_empty());
+    /// assert_eq!(range, TextRange::new(point, point));
+    /// ```
     #[inline]
     pub const fn empty(offset: TextSize) -> TextRange {
         TextRange {
@@ -62,6 +102,19 @@ impl TextRange {
     }
 
     /// Create a range up to the given end (`..end`).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use text_size::*;
+    /// let point: TextSize;
+    /// # point = TextSize::from(12);
+    /// let range = TextRange::up_to(point);
+    ///
+    /// assert_eq!(range.len(), point);
+    /// assert_eq!(range, TextRange::new(TextSize::zero(), point));
+    /// assert_eq!(range, TextRange::from_len(TextSize::zero(), point));
+    /// ```
     #[inline]
     pub const fn up_to(end: TextSize) -> TextRange {
         let start = TextSize::zero();
@@ -105,6 +158,17 @@ impl TextRange {
     /// Check if this range contains an offset.
     ///
     /// The end index is considered excluded.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use text_size::*;
+    /// let (start, end): (TextSize, TextSize);
+    /// # start = 10.into(); end = 20.into();
+    /// let range = TextRange::new(start, end);
+    /// assert!(range.contains(start));
+    /// assert!(!range.contains(end));
+    /// ```
     pub fn contains(self, offset: TextSize) -> bool {
         self.start() <= offset && offset < self.end()
     }
@@ -112,17 +176,55 @@ impl TextRange {
     /// Check if this range contains an offset.
     ///
     /// The end index is considered included.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use text_size::*;
+    /// let (start, end): (TextSize, TextSize);
+    /// # start = 10.into(); end = 20.into();
+    /// let range = TextRange::new(start, end);
+    /// assert!(range.contains_inclusive(start));
+    /// assert!(range.contains_inclusive(end));
+    /// ```
     pub fn contains_inclusive(self, offset: TextSize) -> bool {
         self.start() <= offset && offset <= self.end()
     }
 
     /// Check if this range completely contains another range.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use text_size::*;
+    /// let larger = TextRange::new(0.into(), 20.into());
+    /// let smaller = TextRange::new(5.into(), 15.into());
+    /// assert!(larger.contains_range(smaller));
+    /// assert!(!smaller.contains_range(larger));
+    ///
+    /// // a range always contains itself
+    /// assert!(larger.contains_range(larger));
+    /// assert!(smaller.contains_range(smaller));
+    /// ```
     pub fn contains_range(self, other: TextRange) -> bool {
         self.start() <= other.start() && other.end() <= self.end()
     }
 
     /// The range covered by both ranges, if it exists.
     /// If the ranges touch but do not overlap, the output range is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use text_size::*;
+    /// assert_eq!(
+    ///     TextRange::intersect(
+    ///         TextRange::new(0.into(), 10.into()),
+    ///         TextRange::new(5.into(), 15.into()),
+    ///     ),
+    ///     Some(TextRange::new(5.into(), 10.into())),
+    /// );
+    /// ```
     pub fn intersect(self, other: TextRange) -> Option<TextRange> {
         let start = cmp::max(self.start(), other.start());
         let end = cmp::min(self.end(), other.end());
@@ -133,6 +235,19 @@ impl TextRange {
     }
 
     /// Extends the range to cover `other` as well.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use text_size::*;
+    /// assert_eq!(
+    ///     TextRange::cover(
+    ///         TextRange::new(0.into(), 5.into()),
+    ///         TextRange::new(15.into(), 20.into()),
+    ///     ),
+    ///     TextRange::new(0.into(), 20.into()),
+    /// );
+    /// ```
     pub fn cover(self, other: TextRange) -> TextRange {
         let start = cmp::min(self.start(), other.start());
         let end = cmp::max(self.end(), other.end());
@@ -140,6 +255,16 @@ impl TextRange {
     }
 
     /// Extends the range to cover `other` offsets as well.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use text_size::*;
+    /// assert_eq!(
+    ///     TextRange::empty(TextSize::zero()).cover_offset(20.into()),
+    ///     TextRange::new(0.into(), 20.into()),
+    /// )
+    /// ```
     pub fn cover_offset(self, offset: TextSize) -> TextRange {
         self.cover(TextRange::empty(offset))
     }
