@@ -266,14 +266,14 @@ fn test_split_off_empty() {
 fn test_split_off_past_end() {
     let orig = "Hello, world!";
     let mut split = String::from(orig);
-    split.split_off(orig.len() + 1);
+    let _ = split.split_off(orig.len() + 1);
 }
 
 #[test]
 #[should_panic]
 fn test_split_off_mid_char() {
     let mut orig = String::from("山");
-    orig.split_off(1);
+    let _ = orig.split_off(1);
 }
 
 #[test]

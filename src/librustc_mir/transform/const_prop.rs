@@ -25,7 +25,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_session::lint;
-use rustc_span::Span;
+use rustc_span::{def_id::DefId, Span};
 use rustc_trait_selection::traits;
 
 use crate::const_eval::error_to_const_error;
@@ -162,7 +162,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
 struct ConstPropMachine;
 
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
-    type MemoryKinds = !;
+    type MemoryKind = !;
     type PointerTag = ();
     type ExtraFnVal = !;
 
@@ -172,7 +172,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
 
-    const STATIC_KIND: Option<!> = None;
+    const GLOBAL_KIND: Option<!> = None;
 
     const CHECK_ALIGN: bool = false;
 
@@ -247,7 +247,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     #[inline(always)]
-    fn tag_static_base_pointer(_memory_extra: &(), _id: AllocId) -> Self::PointerTag {}
+    fn tag_global_base_pointer(_memory_extra: &(), _id: AllocId) -> Self::PointerTag {}
 
     fn box_alloc(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -270,14 +270,23 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         l.access()
     }
 
-    fn before_access_static(
+    fn before_access_global(
         _memory_extra: &(),
+        _alloc_id: AllocId,
         allocation: &Allocation<Self::PointerTag, Self::AllocExtra>,
+        def_id: Option<DefId>,
+        is_write: bool,
     ) -> InterpResult<'tcx> {
-        // if the static allocation is mutable or if it has relocations (it may be legal to mutate
-        // the memory behind that in the future), then we can't const prop it
-        if allocation.mutability == Mutability::Mut || allocation.relocations().len() > 0 {
-            throw_machine_stop_str!("can't eval mutable statics in ConstProp")
+        if is_write {
+            throw_machine_stop_str!("can't write to global");
+        }
+        // If the static allocation is mutable or if it has relocations (it may be legal to mutate
+        // the memory behind that in the future), then we can't const prop it.
+        if allocation.mutability == Mutability::Mut {
+            throw_machine_stop_str!("can't eval mutable globals in ConstProp");
+        }
+        if def_id.is_some() && allocation.relocations().len() > 0 {
+            throw_machine_stop_str!("can't eval statics with pointers in ConstProp");
         }
 
         Ok(())
