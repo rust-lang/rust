@@ -60,7 +60,6 @@ extern crate rustc_trait_selection;
 #[allow(unused_extern_crates)]
 extern crate rustc_typeck;
 
-use rustc::session::Session;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::LintId;
 use rustc_session::Session;
