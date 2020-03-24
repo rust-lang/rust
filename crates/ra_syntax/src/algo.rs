@@ -1,6 +1,9 @@
 //! FIXME: write short doc here
 
-use std::ops::RangeInclusive;
+use std::{
+    fmt,
+    ops::{self, RangeInclusive},
+};
 
 use itertools::Itertools;
 use ra_text_edit::TextEditBuilder;
@@ -222,42 +225,119 @@ fn _replace_children(
     with_children(parent, new_children)
 }
 
+#[derive(Default)]
+pub struct SyntaxRewriter<'a> {
+    f: Option<Box<dyn Fn(&SyntaxElement) -> Option<SyntaxElement> + 'a>>,
+    //FIXME: add debug_assertions that all elements are in fact from the same file.
+    replacements: FxHashMap<SyntaxElement, Replacement>,
+}
+
+impl fmt::Debug for SyntaxRewriter<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SyntaxRewriter").field("replacements", &self.replacements).finish()
+    }
+}
+
+impl<'a> SyntaxRewriter<'a> {
+    pub fn from_fn(f: impl Fn(&SyntaxElement) -> Option<SyntaxElement> + 'a) -> SyntaxRewriter<'a> {
+        SyntaxRewriter { f: Some(Box::new(f)), replacements: FxHashMap::default() }
+    }
+    pub fn delete<T: Clone + Into<SyntaxElement>>(&mut self, what: &T) {
+        let what = what.clone().into();
+        let replacement = Replacement::Delete;
+        self.replacements.insert(what, replacement);
+    }
+    pub fn replace<T: Clone + Into<SyntaxElement>>(&mut self, what: &T, with: &T) {
+        let what = what.clone().into();
+        let replacement = Replacement::Single(with.clone().into());
+        self.replacements.insert(what, replacement);
+    }
+    pub fn replace_ast<T: AstNode>(&mut self, what: &T, with: &T) {
+        self.replace(what.syntax(), with.syntax())
+    }
+
+    pub fn rewrite(&self, node: &SyntaxNode) -> SyntaxNode {
+        if self.f.is_none() && self.replacements.is_empty() {
+            return node.clone();
+        }
+        self.rewrite_children(node)
+    }
+
+    pub fn rewrite_ast<N: AstNode>(self, node: &N) -> N {
+        N::cast(self.rewrite(node.syntax())).unwrap()
+    }
+
+    pub fn rewrite_root(&self) -> Option<SyntaxNode> {
+        assert!(self.f.is_none());
+        self.replacements
+            .keys()
+            .map(|element| match element {
+                SyntaxElement::Node(it) => it.clone(),
+                SyntaxElement::Token(it) => it.parent(),
+            })
+            .fold1(|a, b| least_common_ancestor(&a, &b).unwrap())
+    }
+
+    fn replacement(&self, element: &SyntaxElement) -> Option<Replacement> {
+        if let Some(f) = &self.f {
+            assert!(self.replacements.is_empty());
+            return f(element).map(Replacement::Single);
+        }
+        self.replacements.get(element).cloned()
+    }
+
+    fn rewrite_children(&self, node: &SyntaxNode) -> SyntaxNode {
+        //  FIXME: this could be made much faster.
+        let new_children =
+            node.children_with_tokens().flat_map(|it| self.rewrite_self(&it)).collect::<Vec<_>>();
+        with_children(node, new_children)
+    }
+
+    fn rewrite_self(
+        &self,
+        element: &SyntaxElement,
+    ) -> Option<NodeOrToken<rowan::GreenNode, rowan::GreenToken>> {
+        if let Some(replacement) = self.replacement(&element) {
+            return match replacement {
+                Replacement::Single(NodeOrToken::Node(it)) => {
+                    Some(NodeOrToken::Node(it.green().clone()))
+                }
+                Replacement::Single(NodeOrToken::Token(it)) => {
+                    Some(NodeOrToken::Token(it.green().clone()))
+                }
+                Replacement::Delete => None,
+            };
+        }
+        let res = match element {
+            NodeOrToken::Token(it) => NodeOrToken::Token(it.green().clone()),
+            NodeOrToken::Node(it) => NodeOrToken::Node(self.rewrite_children(it).green().clone()),
+        };
+        Some(res)
+    }
+}
+
+impl<'a> ops::AddAssign for SyntaxRewriter<'_> {
+    fn add_assign(&mut self, rhs: SyntaxRewriter) {
+        assert!(rhs.f.is_none());
+        self.replacements.extend(rhs.replacements)
+    }
+}
+
+#[derive(Clone, Debug)]
+enum Replacement {
+    Delete,
+    Single(SyntaxElement),
+}
+
 /// Replaces descendants in the node, according to the mapping.
 ///
 /// This is a type-unsafe low-level editing API, if you need to use it, prefer
 /// to create a type-safe abstraction on top of it instead.
-pub fn replace_descendants(
+pub fn _replace_descendants(
     parent: &SyntaxNode,
     map: impl Fn(&SyntaxElement) -> Option<SyntaxElement>,
 ) -> SyntaxNode {
-    _replace_descendants(parent, &map)
-}
-
-fn _replace_descendants(
-    parent: &SyntaxNode,
-    map: &dyn Fn(&SyntaxElement) -> Option<SyntaxElement>,
-) -> SyntaxNode {
-    //  FIXME: this could be made much faster.
-    let new_children = parent.children_with_tokens().map(|it| go(map, it)).collect::<Vec<_>>();
-    return with_children(parent, new_children);
-
-    fn go(
-        map: &dyn Fn(&SyntaxElement) -> Option<SyntaxElement>,
-        element: SyntaxElement,
-    ) -> NodeOrToken<rowan::GreenNode, rowan::GreenToken> {
-        if let Some(replacement) = map(&element) {
-            return match replacement {
-                NodeOrToken::Node(it) => NodeOrToken::Node(it.green().clone()),
-                NodeOrToken::Token(it) => NodeOrToken::Token(it.green().clone()),
-            };
-        }
-        match element {
-            NodeOrToken::Token(it) => NodeOrToken::Token(it.green().clone()),
-            NodeOrToken::Node(it) => {
-                NodeOrToken::Node(_replace_descendants(&it, map).green().clone())
-            }
-        }
-    }
+    SyntaxRewriter::from_fn(map).rewrite(parent)
 }
 
 fn with_children(

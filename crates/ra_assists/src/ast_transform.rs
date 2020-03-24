@@ -3,7 +3,10 @@ use rustc_hash::FxHashMap;
 
 use hir::{PathResolution, SemanticsScope};
 use ra_ide_db::RootDatabase;
-use ra_syntax::ast::{self, AstNode};
+use ra_syntax::{
+    algo::SyntaxRewriter,
+    ast::{self, AstNode},
+};
 
 pub trait AstTransform<'a> {
     fn get_substitution(&self, node: &ra_syntax::SyntaxNode) -> Option<ra_syntax::SyntaxNode>;
@@ -153,15 +156,14 @@ impl<'a> QualifyPaths<'a> {
 }
 
 pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: N) -> N {
-    let syntax = node.syntax();
-    let result = ra_syntax::algo::replace_descendants(syntax, |element| match element {
+    SyntaxRewriter::from_fn(|element| match element {
         ra_syntax::SyntaxElement::Node(n) => {
             let replacement = transformer.get_substitution(&n)?;
             Some(replacement.into())
         }
         _ => None,
-    });
-    N::cast(result).unwrap()
+    })
+    .rewrite_ast(&node)
 }
 
 impl<'a> AstTransform<'a> for QualifyPaths<'a> {

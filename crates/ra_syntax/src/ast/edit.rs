@@ -4,7 +4,6 @@
 use std::{iter, ops::RangeInclusive};
 
 use arrayvec::ArrayVec;
-use rustc_hash::FxHashMap;
 
 use crate::{
     algo,
@@ -17,6 +16,7 @@ use crate::{
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken, T,
 };
+use algo::{neighbor, SyntaxRewriter};
 
 impl ast::BinExpr {
     #[must_use]
@@ -255,6 +255,28 @@ impl ast::UseItem {
         }
         self.clone()
     }
+
+    pub fn remove(&self) -> SyntaxRewriter<'static> {
+        let mut res = SyntaxRewriter::default();
+        res.delete(self.syntax());
+        let next_ws = self
+            .syntax()
+            .next_sibling_or_token()
+            .and_then(|it| it.into_token())
+            .and_then(ast::Whitespace::cast);
+        if let Some(next_ws) = next_ws {
+            let ws_text = next_ws.syntax().text();
+            if ws_text.starts_with('\n') {
+                let rest = &ws_text[1..];
+                if rest.is_empty() {
+                    res.delete(next_ws.syntax())
+                } else {
+                    res.replace(next_ws.syntax(), &make::tokens::whitespace(rest));
+                }
+            }
+        }
+        res
+    }
 }
 
 impl ast::UseTree {
@@ -292,6 +314,22 @@ impl ast::UseTree {
             }
             Some(res)
         }
+    }
+
+    pub fn remove(&self) -> SyntaxRewriter<'static> {
+        let mut res = SyntaxRewriter::default();
+        res.delete(self.syntax());
+        for &dir in [Direction::Next, Direction::Prev].iter() {
+            if let Some(nb) = neighbor(self, dir) {
+                self.syntax()
+                    .siblings_with_tokens(dir)
+                    .skip(1)
+                    .take_while(|it| it.as_node() != Some(nb.syntax()))
+                    .for_each(|el| res.delete(&el));
+                return res;
+            }
+        }
+        res
     }
 }
 
@@ -343,28 +381,24 @@ impl IndentLevel {
     }
 
     fn _increase_indent(self, node: SyntaxNode) -> SyntaxNode {
-        let replacements: FxHashMap<SyntaxElement, SyntaxElement> = node
-            .descendants_with_tokens()
+        let mut rewriter = SyntaxRewriter::default();
+        node.descendants_with_tokens()
             .filter_map(|el| el.into_token())
             .filter_map(ast::Whitespace::cast)
             .filter(|ws| {
                 let text = ws.syntax().text();
                 text.contains('\n')
             })
-            .map(|ws| {
-                (
-                    ws.syntax().clone().into(),
-                    make::tokens::whitespace(&format!(
-                        "{}{:width$}",
-                        ws.syntax().text(),
-                        "",
-                        width = self.0 as usize * 4
-                    ))
-                    .into(),
-                )
-            })
-            .collect();
-        algo::replace_descendants(&node, |n| replacements.get(n).cloned())
+            .for_each(|ws| {
+                let new_ws = make::tokens::whitespace(&format!(
+                    "{}{:width$}",
+                    ws.syntax().text(),
+                    "",
+                    width = self.0 as usize * 4
+                ));
+                rewriter.replace(ws.syntax(), &new_ws)
+            });
+        rewriter.rewrite(&node)
     }
 
     pub fn decrease_indent<N: AstNode>(self, node: N) -> N {
@@ -372,27 +406,21 @@ impl IndentLevel {
     }
 
     fn _decrease_indent(self, node: SyntaxNode) -> SyntaxNode {
-        let replacements: FxHashMap<SyntaxElement, SyntaxElement> = node
-            .descendants_with_tokens()
+        let mut rewriter = SyntaxRewriter::default();
+        node.descendants_with_tokens()
             .filter_map(|el| el.into_token())
             .filter_map(ast::Whitespace::cast)
             .filter(|ws| {
                 let text = ws.syntax().text();
                 text.contains('\n')
             })
-            .map(|ws| {
-                (
-                    ws.syntax().clone().into(),
-                    make::tokens::whitespace(
-                        &ws.syntax()
-                            .text()
-                            .replace(&format!("\n{:1$}", "", self.0 as usize * 4), "\n"),
-                    )
-                    .into(),
-                )
-            })
-            .collect();
-        algo::replace_descendants(&node, |n| replacements.get(n).cloned())
+            .for_each(|ws| {
+                let new_ws = make::tokens::whitespace(
+                    &ws.syntax().text().replace(&format!("\n{:1$}", "", self.0 as usize * 4), "\n"),
+                );
+                rewriter.replace(ws.syntax(), &new_ws)
+            });
+        rewriter.rewrite(&node)
     }
 }
 
@@ -442,12 +470,11 @@ pub trait AstNodeEdit: AstNode + Sized {
         &self,
         replacement_map: impl IntoIterator<Item = (D, D)>,
     ) -> Self {
-        let map = replacement_map
-            .into_iter()
-            .map(|(from, to)| (from.syntax().clone().into(), to.syntax().clone().into()))
-            .collect::<FxHashMap<SyntaxElement, _>>();
-        let new_syntax = algo::replace_descendants(self.syntax(), |n| map.get(n).cloned());
-        Self::cast(new_syntax).unwrap()
+        let mut rewriter = SyntaxRewriter::default();
+        for (from, to) in replacement_map {
+            rewriter.replace(from.syntax(), to.syntax())
+        }
+        rewriter.rewrite_ast(self)
     }
 }
 

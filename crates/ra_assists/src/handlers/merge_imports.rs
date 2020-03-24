@@ -1,9 +1,9 @@
 use std::iter::successors;
 
 use ra_syntax::{
-    algo::neighbor,
+    algo::{neighbor, SyntaxRewriter},
     ast::{self, edit::AstNodeEdit, make},
-    AstNode, AstToken, Direction, InsertPosition, SyntaxElement, TextRange, T,
+    AstNode, Direction, InsertPosition, SyntaxElement, T,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -22,9 +22,10 @@ use crate::{Assist, AssistCtx, AssistId};
 // ```
 pub(crate) fn merge_imports(ctx: AssistCtx) -> Option<Assist> {
     let tree: ast::UseTree = ctx.find_node_at_offset()?;
-    let (new_tree, to_delete) = if let Some(use_item) =
-        tree.syntax().parent().and_then(ast::UseItem::cast)
-    {
+    let mut rewriter = SyntaxRewriter::default();
+    let mut offset = ctx.frange.range.start();
+
+    if let Some(use_item) = tree.syntax().parent().and_then(ast::UseItem::cast) {
         let (merged, to_delete) = next_prev()
             .filter_map(|dir| neighbor(&use_item, dir))
             .filter_map(|it| Some((it.clone(), it.use_tree()?)))
@@ -32,42 +33,28 @@ pub(crate) fn merge_imports(ctx: AssistCtx) -> Option<Assist> {
                 Some((try_merge_trees(&tree, &use_tree)?, use_item.clone()))
             })?;
 
-        let mut range = to_delete.syntax().text_range();
-        let next_ws = to_delete
-            .syntax()
-            .next_sibling_or_token()
-            .and_then(|it| it.into_token())
-            .and_then(ast::Whitespace::cast);
-        if let Some(ws) = next_ws {
-            range = range.extend_to(&ws.syntax().text_range())
+        rewriter.replace_ast(&tree, &merged);
+        rewriter += to_delete.remove();
+
+        if to_delete.syntax().text_range().end() < offset {
+            offset -= to_delete.syntax().text_range().len();
         }
-        (merged, range)
     } else {
         let (merged, to_delete) = next_prev()
             .filter_map(|dir| neighbor(&tree, dir))
             .find_map(|use_tree| Some((try_merge_trees(&tree, &use_tree)?, use_tree.clone())))?;
 
-        let mut range = to_delete.syntax().text_range();
-        if let Some((dir, nb)) = next_prev().find_map(|dir| Some((dir, neighbor(&to_delete, dir)?)))
-        {
-            let nb_range = nb.syntax().text_range();
-            if dir == Direction::Prev {
-                range = TextRange::from_to(nb_range.end(), range.end());
-            } else {
-                range = TextRange::from_to(range.start(), nb_range.start());
-            }
+        rewriter.replace_ast(&tree, &merged);
+        rewriter += to_delete.remove();
+
+        if to_delete.syntax().text_range().end() < offset {
+            offset -= to_delete.syntax().text_range().len();
         }
-        (merged, range)
     };
 
-    let mut offset = ctx.frange.range.start();
     ctx.add_assist(AssistId("merge_imports"), "Merge imports", |edit| {
-        edit.replace_ast(tree, new_tree);
-        edit.delete(to_delete);
-
-        if to_delete.end() <= offset {
-            offset -= to_delete.len();
-        }
+        edit.rewrite(rewriter);
+        // FIXME: we only need because our diff is imprecise
         edit.set_cursor(offset);
     })
 }
@@ -156,7 +143,7 @@ use std::fmt::Debug;
 use std::fmt<|>::Display;
 ",
             r"
-use std::fmt<|>::{Display, Debug};
+use std::fmt:<|>:{Display, Debug};
 ",
         );
     }
@@ -178,7 +165,57 @@ use std::{fmt<|>::{Debug, Display}};
 use std::{fmt::Debug, fmt<|>::Display};
 ",
             r"
-use std::{fmt<|>::{Display, Debug}};
+use std::{fmt::<|>{Display, Debug}};
+",
+        );
+    }
+
+    #[test]
+    fn removes_just_enough_whitespace() {
+        check_assist(
+            merge_imports,
+            r"
+use foo<|>::bar;
+use foo::baz;
+
+/// Doc comment
+",
+            r"
+use foo<|>::{bar, baz};
+
+/// Doc comment
+",
+        );
+    }
+
+    #[test]
+    fn works_with_trailing_comma() {
+        check_assist(
+            merge_imports,
+            r"
+use {
+    foo<|>::bar,
+    foo::baz,
+};
+",
+            r"
+use {
+    foo<|>::{bar, baz},
+};
+",
+        );
+        check_assist(
+            merge_imports,
+            r"
+use {
+    foo::baz,
+    foo<|>::bar,
+};
+",
+            r"
+use {
+    foo::{bar<|>, baz},
+};
 ",
         );
     }
