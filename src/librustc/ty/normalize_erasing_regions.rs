@@ -4,8 +4,8 @@
 //!
 //! The methods in this file use a `TypeFolder` to recursively process
 //! contents, invoking the underlying
-//! `normalize_ty_after_erasing_regions` query for each type found
-//! within. (This underlying query is what is cached.)
+//! `normalize_generic_arg_after_erasing_regions` query for each type
+//! or constant found within. (This underlying query is what is cached.)
 
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::subst::{Subst, SubstsRef};
@@ -94,6 +94,12 @@ impl TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.tcx.normalize_ty_after_erasing_regions(self.param_env.and(ty))
+        let arg = self.param_env.and(ty.into());
+        self.tcx.normalize_generic_arg_after_erasing_regions(arg).expect_ty()
+    }
+
+    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        let arg = self.param_env.and(c.into());
+        self.tcx.normalize_generic_arg_after_erasing_regions(arg).expect_const()
     }
 }
