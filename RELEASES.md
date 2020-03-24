@@ -35,7 +35,8 @@ Libraries
 ---------
 - [`Arc<[T; N]>`, `Box<[T; N]>`, and `Rc<[T; N]>`, now implement
   `TryFrom<Arc<[T]>>`,`TryFrom<Box<[T]>>`, and `TryFrom<Rc<[T]>>`
-  respectively.][69538] These conversions succeed when `N` is `0..=32`.
+  respectively.][69538] **Note** These conversions are only available when `N`
+  is `0..=32`.
 - [All `to_be_bytes`, `to_le_bytes`, `to_ne_bytes`, `from_be_bytes`,
   `from_le_bytes`, and `from_ne_bytes` methods for integers are
   now `const`.][69373]
