@@ -163,7 +163,7 @@ pub(super) fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
     query_state: &QueryState<TyCtxt<'tcx>, C>,
     string_cache: &mut QueryKeyStringCache,
 ) where
-    C: QueryCache<TyCtxt<'tcx>>,
+    C: QueryCache,
     C::Key: Debug + Clone,
 {
     tcx.prof.with_profiler(|profiler| {

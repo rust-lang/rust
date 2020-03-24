@@ -42,14 +42,14 @@ impl<CTX: QueryContext, K, C: Default> Default for QueryStateShard<CTX, K, C> {
     }
 }
 
-pub struct QueryState<CTX: QueryContext, C: QueryCache<CTX>> {
+pub struct QueryState<CTX: QueryContext, C: QueryCache> {
     cache: C,
     shards: Sharded<QueryStateShard<CTX, C::Key, C::Sharded>>,
     #[cfg(debug_assertions)]
     pub cache_hits: AtomicUsize,
 }
 
-impl<CTX: QueryContext, C: QueryCache<CTX>> QueryState<CTX, C> {
+impl<CTX: QueryContext, C: QueryCache> QueryState<CTX, C> {
     pub(super) fn get_lookup<'tcx>(
         &'tcx self,
         key: &C::Key,
@@ -77,7 +77,7 @@ enum QueryResult<CTX: QueryContext> {
     Poisoned,
 }
 
-impl<CTX: QueryContext, C: QueryCache<CTX>> QueryState<CTX, C> {
+impl<CTX: QueryContext, C: QueryCache> QueryState<CTX, C> {
     pub fn iter_results<R>(
         &self,
         f: impl for<'a> FnOnce(
@@ -122,7 +122,7 @@ impl<CTX: QueryContext, C: QueryCache<CTX>> QueryState<CTX, C> {
     }
 }
 
-impl<CTX: QueryContext, C: QueryCache<CTX>> Default for QueryState<CTX, C> {
+impl<CTX: QueryContext, C: QueryCache> Default for QueryState<CTX, C> {
     fn default() -> QueryState<CTX, C> {
         QueryState {
             cache: C::default(),
@@ -144,7 +144,7 @@ pub struct QueryLookup<'tcx, CTX: QueryContext, K, C> {
 /// This will poison the relevant query if dropped.
 struct JobOwner<'tcx, CTX: QueryContext, C>
 where
-    C: QueryCache<CTX>,
+    C: QueryCache,
     C::Key: Eq + Hash + Clone + Debug,
     C::Value: Clone,
 {
@@ -155,7 +155,7 @@ where
 
 impl<'tcx, CTX: QueryContext, C> JobOwner<'tcx, CTX, C>
 where
-    C: QueryCache<CTX>,
+    C: QueryCache,
     C::Key: Eq + Hash + Clone + Debug,
     C::Value: Clone,
 {
@@ -292,7 +292,7 @@ where
     (result, diagnostics.into_inner())
 }
 
-impl<'tcx, CTX: QueryContext, C: QueryCache<CTX>> Drop for JobOwner<'tcx, CTX, C>
+impl<'tcx, CTX: QueryContext, C: QueryCache> Drop for JobOwner<'tcx, CTX, C>
 where
     C::Key: Eq + Hash + Clone + Debug,
     C::Value: Clone,
@@ -326,7 +326,7 @@ pub struct CycleError<Q> {
 }
 
 /// The result of `try_start`.
-enum TryGetJob<'tcx, CTX: QueryContext, C: QueryCache<CTX>>
+enum TryGetJob<'tcx, CTX: QueryContext, C: QueryCache>
 where
     C::Key: Eq + Hash + Clone + Debug,
     C::Value: Clone,
@@ -358,7 +358,7 @@ fn try_get_cached<CTX, C, R, OnHit, OnMiss>(
     on_miss: OnMiss,
 ) -> R
 where
-    C: QueryCache<CTX>,
+    C: QueryCache,
     CTX: QueryContext,
     OnHit: FnOnce(&C::Value, DepNodeIndex) -> R,
     OnMiss: FnOnce(C::Key, QueryLookup<'_, CTX, C::Key, C::Sharded>) -> R,
@@ -385,7 +385,7 @@ fn try_execute_query<Q, CTX>(
     tcx: CTX,
     span: Span,
     key: Q::Key,
-    lookup: QueryLookup<'_, CTX, Q::Key, <Q::Cache as QueryCache<CTX>>::Sharded>,
+    lookup: QueryLookup<'_, CTX, Q::Key, <Q::Cache as QueryCache>::Sharded>,
 ) -> Q::Value
 where
     Q: QueryDescription<CTX>,

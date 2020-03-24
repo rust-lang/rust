@@ -8,11 +8,11 @@ use std::default::Default;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-pub trait CacheSelector<CTX: QueryContext, K: Hash, V> {
-    type Cache: QueryCache<CTX, Key = K, Value = V>;
+pub trait CacheSelector<K: Hash, V> {
+    type Cache: QueryCache<Key = K, Value = V>;
 }
 
-pub trait QueryCache<CTX: QueryContext>: Default {
+pub trait QueryCache: Default {
     type Key: Hash;
     type Value;
     type Sharded: Default;
@@ -21,7 +21,7 @@ pub trait QueryCache<CTX: QueryContext>: Default {
     /// It returns the shard index and a lock guard to the shard,
     /// which will be used if the query is not in the cache and we need
     /// to compute it.
-    fn lookup<R, OnHit, OnMiss>(
+    fn lookup<CTX: QueryContext, R, OnHit, OnMiss>(
         &self,
         state: &QueryState<CTX, Self>,
         key: Self::Key,
@@ -33,7 +33,7 @@ pub trait QueryCache<CTX: QueryContext>: Default {
         OnHit: FnOnce(&Self::Value, DepNodeIndex) -> R,
         OnMiss: FnOnce(Self::Key, QueryLookup<'_, CTX, Self::Key, Self::Sharded>) -> R;
 
-    fn complete(
+    fn complete<CTX: QueryContext>(
         &self,
         tcx: CTX,
         lock_sharded_storage: &mut Self::Sharded,
@@ -54,7 +54,7 @@ pub trait QueryCache<CTX: QueryContext>: Default {
 
 pub struct DefaultCacheSelector;
 
-impl<CTX: QueryContext, K: Eq + Hash, V: Clone> CacheSelector<CTX, K, V> for DefaultCacheSelector {
+impl<K: Eq + Hash, V: Clone> CacheSelector<K, V> for DefaultCacheSelector {
     type Cache = DefaultCache<K, V>;
 }
 
@@ -66,13 +66,13 @@ impl<K, V> Default for DefaultCache<K, V> {
     }
 }
 
-impl<CTX: QueryContext, K: Eq + Hash, V: Clone> QueryCache<CTX> for DefaultCache<K, V> {
+impl<K: Eq + Hash, V: Clone> QueryCache for DefaultCache<K, V> {
     type Key = K;
     type Value = V;
     type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<R, OnHit, OnMiss>(
+    fn lookup<CTX: QueryContext, R, OnHit, OnMiss>(
         &self,
         state: &QueryState<CTX, Self>,
         key: K,
@@ -92,7 +92,7 @@ impl<CTX: QueryContext, K: Eq + Hash, V: Clone> QueryCache<CTX> for DefaultCache
     }
 
     #[inline]
-    fn complete(
+    fn complete<CTX: QueryContext>(
         &self,
         _: CTX,
         lock_sharded_storage: &mut Self::Sharded,
