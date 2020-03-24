@@ -27,6 +27,13 @@ error[E0004]: non-exhaustive patterns: `Tuple(_)` and `Struct { .. }` not covere
    |
 LL |     match x {}
    |           ^ patterns `Tuple(_)` and `Struct { .. }` not covered
+   | 
+  ::: $DIR/auxiliary/uninhabited.rs:17:23
+   |
+LL |     #[non_exhaustive] Tuple(!),
+   |                       ----- not covered
+LL |     #[non_exhaustive] Struct { x: ! }
+   |                       ------ not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
