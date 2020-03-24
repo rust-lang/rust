@@ -3622,6 +3622,7 @@ dependencies = [
  "rustc_ast",
  "rustc_resolve",
  "rustc_span",
+ "smallvec 1.0.0",
 ]
 
 [[package]]

@@ -8,7 +8,6 @@ use rustc::ty::{GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc_ast::{self, ast};
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_coverage::coverage;
 use rustc_data_structures::sync::{Lrc, Once, WorkerLocal};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::Crate;
@@ -18,7 +17,6 @@ use rustc_session::config::{OutputFilenames, OutputType};
 use rustc_session::{output::find_crate_name, Session};
 use rustc_span::symbol::sym;
 
-use log::debug;
 use std::any::Any;
 use std::cell::{Ref, RefCell, RefMut};
 use std::mem;
@@ -77,8 +75,9 @@ pub struct Queries<'tcx> {
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
-    expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
+    unresolved_expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     instrument: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
+    expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
     lower_to_hir: Query<(&'tcx Crate<'tcx>, Steal<ResolverOutputs>)>,
     prepare_outputs: Query<OutputFilenames>,
@@ -97,6 +96,7 @@ impl<'tcx> Queries<'tcx> {
             parse: Default::default(),
             crate_name: Default::default(),
             register_plugins: Default::default(),
+            unresolved_expansion: Default::default(),
             expansion: Default::default(),
             instrument: Default::default(),
             dep_graph: Default::default(),
@@ -115,9 +115,7 @@ impl<'tcx> Queries<'tcx> {
     }
 
     pub fn dep_graph_future(&self) -> Result<&Query<Option<DepGraphFuture>>> {
-        debug!("query dep_graph_future");
         self.dep_graph_future.compute(|| {
-            debug!("compute query dep_graph_future");
             Ok(self
                 .session()
                 .opts
@@ -127,9 +125,7 @@ impl<'tcx> Queries<'tcx> {
     }
 
     pub fn parse(&self) -> Result<&Query<ast::Crate>> {
-        debug!("query parse");
         self.parse.compute(|| {
-            debug!("compute query parse");
             passes::parse(self.session(), &self.compiler.input).map_err(|mut parse_error| {
                 parse_error.emit();
                 ErrorReported
@@ -138,9 +134,7 @@ impl<'tcx> Queries<'tcx> {
     }
 
     pub fn register_plugins(&self) -> Result<&Query<(ast::Crate, Lrc<LintStore>)>> {
-        debug!("query register_plugins");
         self.register_plugins.compute(|| {
-            debug!("compute query register_plugins");
             let crate_name = self.crate_name()?.peek().clone();
             let krate = self.parse()?.take();
 
@@ -165,9 +159,7 @@ impl<'tcx> Queries<'tcx> {
     }
 
     pub fn crate_name(&self) -> Result<&Query<String>> {
-        debug!("query crate_name");
         self.crate_name.compute(|| {
-            debug!("compute query crate_name");
             Ok(match self.compiler.crate_name {
                 Some(ref crate_name) => crate_name.clone(),
                 None => {
@@ -179,16 +171,15 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn expansion(
+    /// Expands built-ins and other macros, but does not perform name resolution, pending potential
+    /// instrumentation.
+    pub fn unresolved_expansion(
         &self,
     ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
-        debug!("query expansion");
-        self.expansion.compute(|| {
-            debug!("compute query expansion");
+        self.unresolved_expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let (krate, lint_store) = self.register_plugins()?.take();
             let _timer = self.session().timer("configure_and_expand");
-debug!("just before death");
             passes::configure_and_expand(
                 self.session().clone(),
                 lint_store.clone(),
@@ -197,16 +188,53 @@ debug!("just before death");
                 &crate_name,
             )
             .map(|(krate, resolver)| {
-debug!("NEVER GET HERE");
                 (krate, Steal::new(Rc::new(RefCell::new(resolver))), lint_store)
             })
         })
     }
 
+    /// Returns a modified ast::Crate with injected instrumentation code, if requested by command
+    /// line option.
+    ///
+    /// The `instrument` pass/query depends on (and implies) `unresolved_expansion`.
+    pub fn instrument(
+        &self,
+    ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
+        self.instrument.compute(|| {
+            let (krate, boxed_resolver, lint_store) = self.unresolved_expansion()?.take();
+            let instrument_coverage = match self.session().opts.debugging_opts.instrument_coverage {
+                Some(opt) => opt,
+                None => false,
+            };
+            if instrument_coverage {
+                boxed_resolver.borrow().borrow_mut().access(|resolver| {
+                    let _timer = self.session().timer("instrument_coverage");
+                    passes::instrument(krate, resolver)
+                })
+            } else {
+                Ok(krate)
+            }
+            .map(|krate| (krate, boxed_resolver, lint_store))
+        })
+    }
+
+    /// Updates the ast::Crate, first querying `instrument`, which queries `unresolved_expansion`.
+    /// After all expansions and instrumentation, performs name resolution on the final AST.
+    pub fn expansion(
+        &self,
+    ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
+        self.expansion.compute(|| {
+            let (krate, boxed_resolver, lint_store) = self.instrument()?.take();
+            let result = boxed_resolver.borrow().borrow_mut().access(|resolver| {
+                let _timer = self.session().timer("resolve_expansion");
+                passes::resolve_crate(self.session().clone(), krate, resolver)
+            });
+            result.map(|krate| (krate, boxed_resolver, lint_store))
+        })
+    }
+
     pub fn dep_graph(&self) -> Result<&Query<DepGraph>> {
-        debug!("query dep_graph");
         self.dep_graph.compute(|| {
-            debug!("compute query dep_graph");
             Ok(match self.dep_graph_future()?.take() {
                 None => DepGraph::new_disabled(),
                 Some(future) => {
@@ -225,42 +253,10 @@ debug!("NEVER GET HERE");
         })
     }
 
-    /// Instrumentation is optional (typically included based on `rustc` option). The
-    /// `instrument` pass/query depends on (and implies) `expansion`. To ensure the instrumentation
-    /// pass is executed (if requested), replace queries to `expansion` with queries to
-    /// `instrument`. The query results are the same. If instrumentation is not requested,
-    /// `expansion` will be queried and returned. If instrumentation is requested, `instrument`
-    /// will query `expansion`, inject instrumentation code (modifying the crate and updating the
-    /// `next_node_id()` in the resolver), and then return the query result from `expansion`, with
-    /// the changes to crate and resolver.
-    pub fn instrument(&'tcx self) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
-        debug!("query instrument (depends on expansion), will instrument coverage if requested");
-        let expansion = self.expansion();
-        let instrument_coverage = match self.session().opts.debugging_opts.instrument_coverage {
-            Some(opt) => opt,
-            None => false,
-        };
-        if instrument_coverage {
-            self.instrument.compute(|| {
-                debug!("compute query instrument (depends on expansion), will instrument coverage if requested");
-                let (mut krate, boxed_resolver, lint_store) = expansion?.take();
-                let resolver = boxed_resolver.steal();
-                resolver.borrow_mut().access(|resolver| {
-                    coverage::instrument(&mut krate, resolver)
-                });
-                Ok((krate, Steal::new(resolver), lint_store))
-            })
-        } else {
-            expansion
-        }
-    }
-
     pub fn lower_to_hir(&'tcx self) -> Result<&Query<(&'tcx Crate<'tcx>, Steal<ResolverOutputs>)>> {
-        debug!("query lower_to_hir");
         self.lower_to_hir.compute(|| {
-            debug!("compute query lower_to_hir");
-            let instrument_result = self.instrument()?;
-            let peeked = instrument_result.peek();
+            let expansion_result = self.expansion()?;
+            let peeked = expansion_result.peek();
             let krate = &peeked.0;
             let resolver = peeked.1.steal();
             let lint_store = &peeked.2;
@@ -280,9 +276,7 @@ debug!("NEVER GET HERE");
     }
 
     pub fn prepare_outputs(&self) -> Result<&Query<OutputFilenames>> {
-        debug!("query prepare_outputs");
         self.prepare_outputs.compute(|| {
-            debug!("compute query prepare_outputs");
             let expansion_result = self.expansion()?;
             let (krate, boxed_resolver, _) = &*expansion_result.peek();
             let crate_name = self.crate_name()?;
@@ -298,9 +292,7 @@ debug!("NEVER GET HERE");
     }
 
     pub fn global_ctxt(&'tcx self) -> Result<&Query<QueryContext<'tcx>>> {
-        debug!("query global_ctxt");
         self.global_ctxt.compute(|| {
-            debug!("compute query global_ctxt");
             let crate_name = self.crate_name()?.peek().clone();
             let outputs = self.prepare_outputs()?.peek().clone();
             let lint_store = self.expansion()?.peek().2.clone();
@@ -323,9 +315,7 @@ debug!("NEVER GET HERE");
     }
 
     pub fn ongoing_codegen(&'tcx self) -> Result<&Query<Box<dyn Any>>> {
-        debug!("query ongoing_codegen");
         self.ongoing_codegen.compute(|| {
-            debug!("compute query ongoing_codegen");
             let outputs = self.prepare_outputs()?;
             self.global_ctxt()?.peek_mut().enter(|tcx| {
                 tcx.analysis(LOCAL_CRATE).ok();
@@ -413,7 +403,6 @@ pub struct Linker {
 
 impl Linker {
     pub fn link(self) -> Result<()> {
-        debug!("Linker::link");
         let codegen_results =
             self.codegen_backend.join_codegen(self.ongoing_codegen, &self.sess, &self.dep_graph)?;
         let prof = self.sess.prof.clone();
