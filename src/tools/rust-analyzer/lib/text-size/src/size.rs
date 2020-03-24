@@ -41,6 +41,21 @@ impl fmt::Debug for TextSize {
 
 impl TextSize {
     /// The text size of some text-like object.
+    ///
+    /// Accepts `char`, `&str`, and references to any custom string-like type
+    /// that dereferences to `str`. Types that don't dereference to `str` but
+    /// want to be usable in this constructor can implement [`TextSized`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use text_size::*;
+    /// let char_size = TextSize::of('🦀');
+    /// assert_eq!(char_size, TextSize::from(4));
+    ///
+    /// let str_size = TextSize::of("rust-analyzer");
+    /// assert_eq!(str_size, TextSize::from(13));
+    /// ```
     #[inline]
     pub fn of(text: impl TextSized) -> TextSize {
         text.text_size()
