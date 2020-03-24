@@ -1,5 +1,5 @@
 use {
-    crate::TextSized,
+    crate::LenTextSize,
     std::{
         convert::TryFrom,
         fmt, iter,
@@ -57,8 +57,8 @@ impl TextSize {
     /// assert_eq!(str_size, TextSize::from(13));
     /// ```
     #[inline]
-    pub fn of(text: impl TextSized) -> TextSize {
-        text.text_size()
+    pub fn of(text: impl LenTextSize) -> TextSize {
+        text.len_text_size()
     }
 
     /// A size of zero.
