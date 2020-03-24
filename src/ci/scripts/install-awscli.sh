@@ -28,7 +28,7 @@ if isLinux; then
     pipflags="--user"
 
     sudo apt-get install -y python3-setuptools
-    echo "##vso[task.prependpath]$HOME/.local/bin"
+    ciCommandAddPath "${HOME}/.local/bin"
 fi
 
 mkdir -p "${DEPS_DIR}"
