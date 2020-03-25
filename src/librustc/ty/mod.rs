@@ -707,6 +707,14 @@ extern "C" {
     type OpaqueListContents;
 }
 
+#[repr(C)]
+struct ListHeader {
+    len: usize,
+
+    flags: TypeFlags,
+    outer_exclusive_binder: ty::DebruijnIndex,
+}
+
 /// A wrapper for slices with the additional invariant
 /// that the slice is interned and no other slice with
 /// the same contents can exist in the same context.
@@ -715,7 +723,7 @@ extern "C" {
 /// Note: `Slice` was already taken by the `Ty`.
 #[repr(C)]
 pub struct List<T> {
-    len: usize,
+    header: ListHeader,
     data: [T; 0],
     opaque: OpaqueListContents,
 }
@@ -729,24 +737,30 @@ impl<T: Copy> List<T> {
         assert!(mem::size_of::<T>() != 0);
         assert!(!slice.is_empty());
 
-        // Align up the size of the len (usize) field
+        // Align up the size of the `header: ListHeader` field.
         let align = mem::align_of::<T>();
         let align_mask = align - 1;
-        let offset = mem::size_of::<usize>();
+        let offset = mem::size_of::<ListHeader>();
         let offset = (offset + align_mask) & !align_mask;
 
         let size = offset + slice.len() * mem::size_of::<T>();
 
         let mem = arena
             .dropless
-            .alloc_raw(size, cmp::max(mem::align_of::<T>(), mem::align_of::<usize>()));
+            .alloc_raw(size, cmp::max(mem::align_of::<T>(), mem::align_of::<ListHeader>()));
         unsafe {
             let result = &mut *(mem.as_mut_ptr() as *mut List<T>);
-            // Write the length
-            result.len = slice.len();
+            // Write the header.
+            result.header = ListHeader {
+                len: slice.len(),
 
-            // Write the elements
-            let arena_slice = slice::from_raw_parts_mut(result.data.as_mut_ptr(), result.len);
+                flags: TypeFlags::empty(),
+                outer_exclusive_binder: ty::INNERMOST,
+            };
+
+            // Write the elements.
+            let arena_slice =
+                slice::from_raw_parts_mut(result.data.as_mut_ptr(), result.header.len);
             arena_slice.copy_from_slice(slice);
 
             result
@@ -815,7 +829,7 @@ impl<T> Deref for List<T> {
 impl<T> AsRef<[T]> for List<T> {
     #[inline(always)]
     fn as_ref(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.data.as_ptr(), self.len) }
+        unsafe { slice::from_raw_parts(self.data.as_ptr(), self.header.len) }
     }
 }
 
@@ -834,10 +848,15 @@ impl<T> List<T> {
     #[inline(always)]
     pub fn empty<'a>() -> &'a List<T> {
         #[repr(align(64), C)]
-        struct EmptySlice([u8; 64]);
-        static EMPTY_SLICE: EmptySlice = EmptySlice([0; 64]);
+        struct EmptyList(ListHeader);
+        static EMPTY_LIST: EmptyList = EmptyList(ListHeader {
+            len: 0,
+
+            flags: TypeFlags::empty(),
+            outer_exclusive_binder: ty::INNERMOST,
+        });
         assert!(mem::align_of::<T>() <= 64);
-        unsafe { &*(&EMPTY_SLICE as *const _ as *const List<T>) }
+        unsafe { &*(&EMPTY_LIST as *const _ as *const List<T>) }
     }
 }
 
