@@ -150,7 +150,7 @@ impl<CTX: QueryContext> QueryLatch<CTX> {
         let query_map = tcx.try_collect_active_jobs().unwrap();
 
         // Get the current executing query (waiter) and find the waitee amongst its parents
-        let mut current_job = tcx.read_query_job(|query| query);
+        let mut current_job = tcx.current_query_job();
         let mut cycle = Vec::new();
 
         while let Some(job) = current_job {
@@ -222,23 +222,18 @@ impl<CTX: QueryContext> QueryLatch<CTX> {
 impl<CTX: QueryContext> QueryLatch<CTX> {
     /// Awaits for the query job to complete.
     pub(super) fn wait_on(&self, tcx: CTX, span: Span) -> Result<(), CycleError<CTX::Query>> {
-        tcx.read_query_job(move |query| {
-            let waiter = Lrc::new(QueryWaiter {
-                query,
-                span,
-                cycle: Lock::new(None),
-                condvar: Condvar::new(),
-            });
-            self.wait_on_inner(&waiter);
-            // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
-            // although another thread may still have a Lrc reference so we cannot
-            // use Lrc::get_mut
-            let mut cycle = waiter.cycle.lock();
-            match cycle.take() {
-                None => Ok(()),
-                Some(cycle) => Err(cycle),
-            }
-        })
+        let query = tcx.current_query_job();
+        let waiter =
+            Lrc::new(QueryWaiter { query, span, cycle: Lock::new(None), condvar: Condvar::new() });
+        self.wait_on_inner(&waiter);
+        // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
+        // although another thread may still have a Lrc reference so we cannot
+        // use Lrc::get_mut
+        let mut cycle = waiter.cycle.lock();
+        match cycle.take() {
+            None => Ok(()),
+            Some(cycle) => Err(cycle),
+        }
     }
 }
 

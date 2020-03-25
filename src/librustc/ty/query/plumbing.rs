@@ -32,8 +32,8 @@ impl QueryContext for TyCtxt<'tcx> {
         &self.dep_graph
     }
 
-    fn read_query_job<R>(&self, op: impl FnOnce(Option<QueryJobId<Self::DepKind>>) -> R) -> R {
-        tls::with_related_context(*self, move |icx| op(icx.query))
+    fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>> {
+        tls::with_related_context(*self, |icx| icx.query)
     }
 
     fn try_collect_active_jobs(

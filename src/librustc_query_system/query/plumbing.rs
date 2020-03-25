@@ -211,7 +211,8 @@ where
 
                 let global_id = QueryJobId::new(id, lookup.shard, Q::DEP_KIND);
 
-                let job = tcx.read_query_job(|query| QueryJob::new(id, span, query));
+                let job = tcx.current_query_job();
+                let job = QueryJob::new(id, span, job);
 
                 entry.insert(QueryResult::Started(job));
 

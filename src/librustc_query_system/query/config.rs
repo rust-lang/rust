@@ -43,7 +43,7 @@ pub trait QueryContext: DepContext {
     fn dep_graph(&self) -> &DepGraph<Self::DepKind>;
 
     /// Get the query information from the TLS context.
-    fn read_query_job<R>(&self, op: impl FnOnce(Option<QueryJobId<Self::DepKind>>) -> R) -> R;
+    fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>>;
 
     fn try_collect_active_jobs(
         &self,
