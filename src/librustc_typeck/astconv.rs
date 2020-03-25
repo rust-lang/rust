@@ -2883,16 +2883,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let bare_fn_ty =
             ty::Binder::bind(tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi));
 
-        if !self.allow_ty_infer() {
+        if let (false, Some(ident_span)) = (self.allow_ty_infer(), ident_span) {
             // We always collect the spans for placeholder types when evaluating `fn`s, but we
             // only want to emit an error complaining about them if infer types (`_`) are not
-            // allowed. `allow_ty_infer` gates this behavior.
+            // allowed. `allow_ty_infer` gates this behavior. We check for the presence of
+            // `ident_span` to not emit an error twice when we have `fn foo(_: fn() -> _)`.
             crate::collect::placeholder_type_error(
                 tcx,
-                ident_span.map(|sp| sp.shrink_to_hi()).unwrap_or(DUMMY_SP),
+                ident_span.shrink_to_hi(),
                 &generics.params[..],
                 visitor.0,
-                ident_span.is_some(),
+                true,
             );
         }
 
