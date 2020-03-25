@@ -21,9 +21,11 @@ use super::on_lookup_result_bits;
 use crate::dataflow::drop_flag_effects;
 
 mod borrowed_locals;
+mod liveness;
 mod storage_liveness;
 
 pub use self::borrowed_locals::*;
+pub use self::liveness::MaybeLiveLocals;
 pub use self::storage_liveness::*;
 
 pub(super) mod borrows;

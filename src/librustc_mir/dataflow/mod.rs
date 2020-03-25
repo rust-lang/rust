@@ -10,8 +10,8 @@ pub use self::framework::{
 };
 pub use self::impls::{
     borrows::Borrows, DefinitelyInitializedPlaces, EverInitializedPlaces, MaybeBorrowedLocals,
-    MaybeInitializedPlaces, MaybeMutBorrowedLocals, MaybeRequiresStorage, MaybeStorageLive,
-    MaybeUninitializedPlaces,
+    MaybeInitializedPlaces, MaybeLiveLocals, MaybeMutBorrowedLocals, MaybeRequiresStorage,
+    MaybeStorageLive, MaybeUninitializedPlaces,
 };
 
 use self::move_paths::MoveData;
