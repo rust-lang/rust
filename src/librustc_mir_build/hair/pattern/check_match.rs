@@ -360,7 +360,7 @@ fn check_arms<'p, 'tcx>(
     let mut catchall = None;
     for (arm_index, (pat, id, has_guard)) in arms.iter().copied().enumerate() {
         let v = PatStack::from_pattern(pat);
-        match is_useful(cx, &seen, &v, LeaveOutWitness, id, true) {
+        match is_useful(cx, &seen, &v, LeaveOutWitness, id, has_guard, true) {
             NotUseful => {
                 match source {
                     hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => bug!(),
@@ -410,7 +410,10 @@ fn check_not_useful<'p, 'tcx>(
 ) -> Result<(), Vec<super::Pat<'tcx>>> {
     let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(ty));
     let v = PatStack::from_pattern(wild_pattern);
-    match is_useful(cx, matrix, &v, ConstructWitness, hir_id, true) {
+
+    // false is given for `is_under_guard` argument due to the wildcard
+    // pattern not having a guard
+    match is_useful(cx, matrix, &v, ConstructWitness, hir_id, false, true) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
         UsefulWithWitness(pats) => Err(if pats.is_empty() {
             bug!("Exhaustiveness check returned no witnesses")
