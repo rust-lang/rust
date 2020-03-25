@@ -234,6 +234,10 @@ impl Module {
             .collect()
     }
 
+    pub fn visibility_of(self, db: &dyn HirDatabase, def: &ModuleDef) -> Option<Visibility> {
+        db.crate_def_map(self.id.krate)[self.id.local_id].scope.visbility_of(def.clone().into())
+    }
+
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
         let _p = profile("Module::diagnostics");
         let crate_def_map = db.crate_def_map(self.id.krate);

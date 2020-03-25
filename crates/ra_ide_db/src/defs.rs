@@ -6,12 +6,12 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    Adt, FieldSource, HasSource, ImplDef, Local, MacroDef, Module, ModuleDef, Name, PathResolution,
-    Semantics, StructField, TypeParam,
+    HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef, Name, PathResolution, Semantics,
+    StructField, TypeParam, Visibility,
 };
 use ra_prof::profile;
 use ra_syntax::{
-    ast::{self, AstNode, VisibilityOwner},
+    ast::{self, AstNode},
     match_ast,
 };
 use test_utils::tested_by;
@@ -41,28 +41,13 @@ impl Definition {
         }
     }
 
-    pub fn visibility(&self, db: &RootDatabase) -> Option<ast::Visibility> {
+    pub fn visibility(&self, db: &RootDatabase) -> Option<Visibility> {
+        let module = self.module(db);
+
         match self {
             Definition::Macro(_) => None,
-            Definition::StructField(sf) => match sf.source(db).value {
-                FieldSource::Named(it) => it.visibility(),
-                FieldSource::Pos(it) => it.visibility(),
-            },
-            Definition::ModuleDef(def) => match def {
-                ModuleDef::Module(it) => it.declaration_source(db)?.value.visibility(),
-                ModuleDef::Function(it) => it.source(db).value.visibility(),
-                ModuleDef::Adt(adt) => match adt {
-                    Adt::Struct(it) => it.source(db).value.visibility(),
-                    Adt::Union(it) => it.source(db).value.visibility(),
-                    Adt::Enum(it) => it.source(db).value.visibility(),
-                },
-                ModuleDef::Const(it) => it.source(db).value.visibility(),
-                ModuleDef::Static(it) => it.source(db).value.visibility(),
-                ModuleDef::Trait(it) => it.source(db).value.visibility(),
-                ModuleDef::TypeAlias(it) => it.source(db).value.visibility(),
-                ModuleDef::EnumVariant(_) => None,
-                ModuleDef::BuiltinType(_) => None,
-            },
+            Definition::StructField(sf) => Some(sf.visibility(db)),
+            Definition::ModuleDef(def) => module?.visibility_of(db, def),
             Definition::SelfType(_) => None,
             Definition::Local(_) => None,
             Definition::TypeParam(_) => None,

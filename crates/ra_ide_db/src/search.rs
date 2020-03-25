@@ -6,7 +6,7 @@
 
 use std::mem;
 
-use hir::{DefWithBody, HasSource, ModuleSource, Semantics};
+use hir::{DefWithBody, HasSource, Module, ModuleSource, Semantics, Visibility};
 use once_cell::unsync::Lazy;
 use ra_db::{FileId, FileRange, SourceDatabaseExt};
 use ra_prof::profile;
@@ -123,51 +123,47 @@ impl Definition {
             return SearchScope::new(res);
         }
 
-        let vis = self.visibility(db).as_ref().map(|v| v.syntax().to_string()).unwrap_or_default();
+        let vis = self.visibility(db);
 
-        if vis.as_str() == "pub(super)" {
-            if let Some(parent_module) = module.parent(db) {
-                let mut res = FxHashMap::default();
-                let parent_src = parent_module.definition_source(db);
-                let file_id = parent_src.file_id.original_file(db);
+        // FIXME:
+        // The following logic are wrong that it does not search
+        // for submodules within other files recursively.
 
-                match parent_src.value {
-                    ModuleSource::Module(m) => {
-                        let range = Some(m.syntax().text_range());
-                        res.insert(file_id, range);
-                    }
-                    ModuleSource::SourceFile(_) => {
-                        res.insert(file_id, None);
-                        res.extend(parent_module.children(db).map(|m| {
-                            let src = m.definition_source(db);
-                            (src.file_id.original_file(db), None)
-                        }));
-                    }
+        if let Some(Visibility::Module(module)) = vis.and_then(|it| it.into()) {
+            let module: Module = module.into();
+            let mut res = FxHashMap::default();
+            let src = module.definition_source(db);
+            let file_id = src.file_id.original_file(db);
+
+            match src.value {
+                ModuleSource::Module(m) => {
+                    let range = Some(m.syntax().text_range());
+                    res.insert(file_id, range);
                 }
-                return SearchScope::new(res);
+                ModuleSource::SourceFile(_) => {
+                    res.insert(file_id, None);
+                    res.extend(module.children(db).map(|m| {
+                        let src = m.definition_source(db);
+                        (src.file_id.original_file(db), None)
+                    }));
+                }
             }
+            return SearchScope::new(res);
         }
 
-        if vis.as_str() != "" {
+        if let Some(Visibility::Public) = vis {
             let source_root_id = db.file_source_root(file_id);
             let source_root = db.source_root(source_root_id);
             let mut res = source_root.walk().map(|id| (id, None)).collect::<FxHashMap<_, _>>();
 
-            // FIXME: add "pub(in path)"
-
-            if vis.as_str() == "pub(crate)" {
-                return SearchScope::new(res);
+            let krate = module.krate();
+            for rev_dep in krate.reverse_dependencies(db) {
+                let root_file = rev_dep.root_file(db);
+                let source_root_id = db.file_source_root(root_file);
+                let source_root = db.source_root(source_root_id);
+                res.extend(source_root.walk().map(|id| (id, None)));
             }
-            if vis.as_str() == "pub" {
-                let krate = module.krate();
-                for rev_dep in krate.reverse_dependencies(db) {
-                    let root_file = rev_dep.root_file(db);
-                    let source_root_id = db.file_source_root(root_file);
-                    let source_root = db.source_root(source_root_id);
-                    res.extend(source_root.walk().map(|id| (id, None)));
-                }
-                return SearchScope::new(res);
-            }
+            return SearchScope::new(res);
         }
 
         let mut res = FxHashMap::default();

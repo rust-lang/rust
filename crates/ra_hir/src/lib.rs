@@ -54,7 +54,7 @@ pub use crate::{
         Adt, AsAssocItem, AssocItem, AssocItemContainer, AttrDef, Const, Crate, CrateDependency,
         DefWithBody, Docs, Enum, EnumVariant, FieldSource, Function, GenericDef, HasAttrs,
         HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef, ScopeDef, Static, Struct,
-        StructField, Trait, Type, TypeAlias, TypeParam, Union, VariantDef,
+        StructField, Trait, Type, TypeAlias, TypeParam, Union, VariantDef, Visibility,
     },
     has_source::HasSource,
     semantics::{original_range, PathResolution, Semantics, SemanticsScope},
