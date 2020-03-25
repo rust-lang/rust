@@ -1281,13 +1281,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         let source_map = self.tcx.sess.source_map();
 
-        let is_async_fn = self
-            .tcx
-            .parent(inner_generator)
-            .map(|parent_did| self.tcx.asyncness(parent_did))
-            .map(|parent_asyncness| parent_asyncness == hir::IsAsync::Async)
-            .unwrap_or(false);
-        let is_async_move = self
+        let is_async = self
             .tcx
             .hir()
             .as_local_hir_id(inner_generator)
@@ -1299,7 +1293,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 _ => false,
             })
             .unwrap_or(false);
-        let await_or_yield = if is_async_fn || is_async_move { "await" } else { "yield" };
+        let await_or_yield = if is_async { "await" } else { "yield" };
+        let future_or_generator = if is_async { "future" } else { "generator" };
 
         // Special case the primary error message when send or sync is the trait that was
         // not implemented.
@@ -1312,7 +1307,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
             err.clear_code();
             err.set_primary_message(format!(
-                "future cannot be {} between threads safely",
+                "{} cannot be {} between threads safely",
+                future_or_generator,
                 trait_verb
             ));
 
@@ -1335,14 +1331,18 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             format!("future created by async closure is not {}", trait_name),
                     }
                 ))
-                .unwrap_or_else(|| format!("future is not {}", trait_name));
+                .unwrap_or_else(|| format!("{} is not {}", future_or_generator, trait_name));
 
             span.push_span_label(original_span, message);
             err.set_span(span);
 
-            format!("is not {}", trait_name)
+            format!("{} is not {}", future_or_generator, trait_name)
         } else {
-            format!("does not implement `{}`", trait_ref.print_only_trait_path())
+            format!(
+                "{} does not implement `{}`",
+                future_or_generator,
+                trait_ref.print_only_trait_path()
+            )
         };
 
         // Look at the last interior type to get a span for the `.await`.
@@ -1370,10 +1370,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         err.span_note(
             span,
-            &format!(
-                "future {} as this value is used across an {}",
-                trait_explanation, await_or_yield,
-            ),
+            &format!("{} as this value is used across an {}", trait_explanation, await_or_yield),
         );
 
         if let Some(expr_id) = expr {
