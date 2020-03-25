@@ -255,7 +255,11 @@ pub fn const_eval_validated_provider<'tcx>(
     }
 
     tcx.const_eval_raw(key).and_then(|val| {
-        trace!("const_eval_raw succeeded. val.alloc_id = {:?}. val.ty = {:?}", val.alloc_id, val.ty);
+        trace!(
+            "const_eval_raw succeeded. val.alloc_id = {:?}. val.ty = {:?}",
+            val.alloc_id,
+            val.ty
+        );
         validate_and_turn_into_const(tcx, val, key)
     })
 }
@@ -277,7 +281,9 @@ pub fn const_eval_raw_provider<'tcx>(
         key.param_env.reveal = Reveal::UserFacing;
         match tcx.const_eval_raw(key) {
             // try again with reveal all as requested
-            Err(ErrorHandled::TooGeneric) => { trace!("const_eval_raw: retrying with RevealAll"); }
+            Err(ErrorHandled::TooGeneric) => {
+                trace!("const_eval_raw: retrying with RevealAll");
+            }
             // deduplicate calls
             other => return other,
         }

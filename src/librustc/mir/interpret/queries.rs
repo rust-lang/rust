@@ -1,9 +1,9 @@
 use super::{ConstEvalResult, ErrorHandled, GlobalId};
 
 use crate::mir;
+use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::{self, TyCtxt};
-use crate::ty::fold::TypeFoldable;
 use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 
