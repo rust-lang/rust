@@ -34,14 +34,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             "GetEnvironmentStringsW" => {
                 let result = this.GetEnvironmentStringsW()?;
-                // If the function succeeds, the return value is a pointer to the environment block of the current process.
                 this.write_scalar(result, dest)?;
             }
 
             "FreeEnvironmentStringsW" => {
                 let result = this.FreeEnvironmentStringsW(args[0])?;
-                // If the function succeeds, the return value is nonzero.
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
             // File related shims

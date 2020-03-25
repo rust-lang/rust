@@ -1,9 +1,6 @@
-#![allow(non_snake_case)]
-
 use std::ffi::{OsString, OsStr};
 use std::env;
 use std::convert::TryFrom;
-use std::collections::hash_map::Values;
 
 use crate::stacked_borrows::Tag;
 use crate::rustc_target::abi::LayoutOf;
@@ -46,10 +43,6 @@ impl<'tcx> EnvVars<'tcx> {
             }
         }
         ecx.update_environ()
-    }
-
-    fn values(&self) -> InterpResult<'tcx, Values<'_, OsString, Pointer<Tag>>> {
-        Ok(self.map.values())
     }
 }
 
@@ -115,11 +108,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         })
     }
 
+    #[allow(non_snake_case)]
     fn GetEnvironmentVariableW(
         &mut self,
-        name_op: OpTy<'tcx, Tag>, // LPCWSTR lpName
-        buf_op: OpTy<'tcx, Tag>, // LPWSTR  lpBuffer
-        size_op: OpTy<'tcx, Tag>, // DWORD   nSize
+        name_op: OpTy<'tcx, Tag>, // LPCWSTR
+        buf_op: OpTy<'tcx, Tag>,  // LPWSTR
+        size_op: OpTy<'tcx, Tag>, // DWORD
     ) -> InterpResult<'tcx, u64> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetEnvironmentVariableW");
@@ -134,7 +128,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let var_ptr = Scalar::from(var_ptr.offset(Size::from_bytes(name_offset_bytes), this)?);
 
                 let var_size = u64::try_from(this.read_os_str_from_wide_str(var_ptr)?.len()).unwrap();
-                // `buf_size` represent size in characters.
+                // `buf_size` represents the size in characters.
                 let buf_size = u64::try_from(this.read_scalar(size_op)?.to_u32()?).unwrap();
                 let return_val = if var_size.checked_add(1).unwrap() > buf_size {
                     // If lpBuffer is not large enough to hold the data, the return value is the buffer size, in characters,
@@ -157,6 +151,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         })
     }
 
+    #[allow(non_snake_case)]
     fn GetEnvironmentStringsW(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetEnvironmentStringsW");
@@ -164,24 +159,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Info on layout of environment blocks in Windows: 
         // https://docs.microsoft.com/en-us/windows/win32/procthread/environment-variables
         let mut env_vars = std::ffi::OsString::new();
-        for &item in this.machine.env_vars.values()? {
+        for &item in this.machine.env_vars.map.values() {
             let env_var = this.read_os_str_from_wide_str(Scalar::from(item))?;
             env_vars.push(env_var);
             env_vars.push("\0");
         }
         // Allocate environment block & Store environment variables to environment block.
         // Final null terminator(block terminator) is added by `alloc_os_str_to_wide_str`.
+        // FIXME: MemoryKind should be `MiMemoryKind::Machine`,
+        //        but using it results in a Stacked Borrows error when running MIRI on 'tests/run-pass/env.rs'
+        //        For now, use `MiriMemoryKind::WinHeap` instead.
         let envblock_ptr = this.alloc_os_str_as_wide_str(&env_vars, MiriMemoryKind::WinHeap.into());
-
+        // If the function succeeds, the return value is a pointer to the environment block of the current process.
         Ok(envblock_ptr.into())
     }
 
-    fn FreeEnvironmentStringsW(&mut self, env_block_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, bool> {
+    #[allow(non_snake_case)]
+    fn FreeEnvironmentStringsW(&mut self, env_block_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "FreeEnvironmentStringsW");
 
         let env_block_ptr = this.read_scalar(env_block_op)?.not_undef()?;
-        Ok(this.memory.deallocate(this.force_ptr(env_block_ptr)?, None, MiriMemoryKind::WinHeap.into()).is_ok())
+        // FIXME: MemoryKind should be `MiMemoryKind::Machine`,
+        //        but using it results in a Stacked Borrows error when running MIRI on 'tests/run-pass/env.rs'
+        //        For now, use `MiriMemoryKind::WinHeap` instead.
+        let result = this.memory.deallocate(this.force_ptr(env_block_ptr)?, None, MiriMemoryKind::WinHeap.into());
+        // If the function succeeds, the return value is nonzero.
+        Ok(result.is_ok() as i32)
     }
 
     fn setenv(
@@ -220,10 +224,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
+    #[allow(non_snake_case)]
     fn SetEnvironmentVariableW(
         &mut self,
-        name_op: OpTy<'tcx, Tag>, // LPCWSTR lpName,
-        value_op: OpTy<'tcx, Tag>, // LPCWSTR lpValue,
+        name_op: OpTy<'tcx, Tag>,  // LPCWSTR
+        value_op: OpTy<'tcx, Tag>, // LPCWSTR
     ) -> InterpResult<'tcx, i32> {
         let mut this = self.eval_context_mut();
         this.assert_target_os("windows", "SetEnvironmentVariableW");
@@ -233,14 +238,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         if this.is_null(name_ptr)? {
             // ERROR CODE is not clearly explained in docs.. For now, throw UB instead.
-            throw_ub_format!("Pointer to environment variable name is NULL");
+            throw_ub_format!("pointer to environment variable name is NULL");
         }
         
         let name = this.read_os_str_from_wide_str(name_ptr)?;
         if name.is_empty() {
-            throw_unsup_format!("Environment variable name is an empty string");
+            throw_unsup_format!("environment variable name is an empty string");
         } else if name.to_string_lossy().contains('=') {
-            throw_unsup_format!("Environment variable name contains '='");
+            throw_unsup_format!("environment variable name contains '='");
         } else if this.is_null(value_ptr)? {
             // Delete environment variable `{name}`
             if let Some(var) = this.machine.env_vars.map.remove(&name) {
