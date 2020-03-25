@@ -667,7 +667,7 @@ impl<'tcx> TyCtxt<'tcx> {
         dep_node: &DepNode,
         dep_node_index: DepNodeIndex,
     ) {
-        use crate::ich::Fingerprint;
+        use rustc_data_structures::fingerprint::Fingerprint;
 
         assert!(
             Some(self.dep_graph.fingerprint_of(dep_node_index))

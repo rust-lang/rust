@@ -1,17 +1,17 @@
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
-use crate::hir::map::definitions::DefPathHash;
-use crate::ich::{CachingSourceMapView, Fingerprint};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
 use rustc_ast::ast::Ident;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, Once};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
+use rustc_hir::definitions::DefPathHash;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{
     opaque, Decodable, Decoder, Encodable, Encoder, SpecializedDecoder, SpecializedEncoder,
@@ -20,6 +20,7 @@ use rustc_serialize::{
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::hygiene::{ExpnId, SyntaxContext};
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
+use rustc_span::CachingSourceMapView;
 use rustc_span::{BytePos, SourceFile, Span, DUMMY_SP};
 use std::mem;
 

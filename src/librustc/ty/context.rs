@@ -4,9 +4,6 @@ use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepConstructor};
 use crate::hir::exports::Export;
-use crate::hir::map as hir_map;
-use crate::hir::map::definitions::Definitions;
-use crate::hir::map::{DefPathData, DefPathHash};
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintSource};
@@ -56,6 +53,7 @@ use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
+use rustc_hir::definitions::{DefPathData, DefPathHash, Definitions};
 use rustc_hir::{HirId, Node, TraitCandidate};
 use rustc_hir::{ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet};
 use rustc_index::vec::{Idx, IndexVec};
@@ -1236,7 +1234,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.features_query(LOCAL_CRATE)
     }
 
-    pub fn def_key(self, id: DefId) -> hir_map::DefKey {
+    pub fn def_key(self, id: DefId) -> rustc_hir::definitions::DefKey {
         if let Some(id) = id.as_local() { self.hir().def_key(id) } else { self.cstore.def_key(id) }
     }
 
@@ -1245,7 +1243,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// Note that if `id` is not local to this crate, the result will
     ///  be a non-local `DefPath`.
-    pub fn def_path(self, id: DefId) -> hir_map::DefPath {
+    pub fn def_path(self, id: DefId) -> rustc_hir::definitions::DefPath {
         if let Some(id) = id.as_local() {
             self.hir().def_path(id)
         } else {
@@ -1260,7 +1258,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn def_path_hash(self, def_id: DefId) -> hir_map::DefPathHash {
+    pub fn def_path_hash(self, def_id: DefId) -> rustc_hir::definitions::DefPathHash {
         if let Some(def_id) = def_id.as_local() {
             self.definitions.def_path_hash(def_id)
         } else {

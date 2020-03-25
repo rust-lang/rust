@@ -1,5 +1,4 @@
-use crate::hir::map::definitions::{DefPathHash, Definitions};
-use crate::ich::{self, CachingSourceMapView};
+use crate::ich;
 use crate::middle::cstore::CrateStore;
 use crate::ty::{fast_reject, TyCtxt};
 
@@ -9,10 +8,11 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::definitions::{DefPathHash, Definitions};
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, SourceFile};
+use rustc_span::{BytePos, CachingSourceMapView, SourceFile};
 
 use smallvec::SmallVec;
 use std::cmp::Ord;

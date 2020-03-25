@@ -1,10 +1,11 @@
 //! This module contains `HashStable` implementations for various data types
 //! from rustc::ty in no particular order.
 
-use crate::ich::{Fingerprint, NodeIdHashingMode, StableHashingContext};
+use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::middle::region;
 use crate::mir;
 use crate::ty;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use std::cell::RefCell;
