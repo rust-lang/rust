@@ -18,7 +18,7 @@ fn allocate_zeroed() {
             assert_eq!(*i, 0);
             i = i.offset(1);
         }
-        Global.dealloc(memory);
+        Global.dealloc(memory.ptr(), layout);
     }
 }
 

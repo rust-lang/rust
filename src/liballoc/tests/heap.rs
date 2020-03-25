@@ -1,4 +1,4 @@
-use std::alloc::{AllocInit, AllocRef, Global, Layout, MemoryBlock, System};
+use std::alloc::{AllocInit, AllocRef, Global, Layout, System};
 
 /// Issue #45955 and #62251.
 #[test]
@@ -39,10 +39,7 @@ fn check_overalign_requests<T: AllocRef>(mut allocator: T) {
 
                 // Clean up
                 for &ptr in &pointers {
-                    allocator.dealloc(MemoryBlock::new(
-                        ptr,
-                        Layout::from_size_align(size, align).unwrap(),
-                    ))
+                    allocator.dealloc(ptr, Layout::from_size_align(size, align).unwrap())
                 }
             }
         }

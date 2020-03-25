@@ -4,7 +4,7 @@
 // pretty-expanded FIXME #23616
 #![feature(allocator_api)]
 
-use std::alloc::{handle_alloc_error, AllocInit, AllocRef, Global, Layout, MemoryBlock};
+use std::alloc::{handle_alloc_error, AllocInit, AllocRef, Global, Layout};
 use std::ptr::NonNull;
 
 struct arena(());
@@ -40,10 +40,7 @@ fn g(fcx: &Fcx) {
     let bcx = Bcx { fcx };
     let bcx2 = h(&bcx);
     unsafe {
-        Global.dealloc(MemoryBlock::new(
-            NonNull::new_unchecked(bcx2 as *const _ as *mut _),
-            Layout::new::<Bcx>(),
-        ));
+        Global.dealloc(NonNull::new_unchecked(bcx2 as *const _ as *mut _), Layout::new::<Bcx>());
     }
 }
 

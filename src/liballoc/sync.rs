@@ -6,7 +6,6 @@
 //!
 //! [arc]: struct.Arc.html
 
-use core::alloc::MemoryBlock;
 use core::any::Any;
 use core::array::LengthAtMost32;
 use core::borrow;
@@ -771,7 +770,7 @@ impl<T: ?Sized> Arc<T> {
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             acquire!(self.inner().weak);
-            Global.dealloc(MemoryBlock::new(self.ptr.cast(), Layout::for_value(self.ptr.as_ref())))
+            Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()))
         }
     }
 
@@ -910,7 +909,7 @@ impl<T> Arc<[T]> {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Global.dealloc(MemoryBlock::new(self.mem.cast(), self.layout));
+                    Global.dealloc(self.mem.cast(), self.layout);
                 }
             }
         }
@@ -1735,12 +1734,7 @@ impl<T: ?Sized> Drop for Weak<T> {
 
         if inner.weak.fetch_sub(1, Release) == 1 {
             acquire!(inner.weak);
-            unsafe {
-                Global.dealloc(MemoryBlock::new(
-                    self.ptr.cast(),
-                    Layout::for_value(self.ptr.as_ref()),
-                ))
-            }
+            unsafe { Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref())) }
         }
     }
 }

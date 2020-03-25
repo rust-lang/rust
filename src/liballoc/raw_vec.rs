@@ -5,7 +5,7 @@ use core::alloc::MemoryBlock;
 use core::cmp;
 use core::mem::{self, MaybeUninit};
 use core::ops::Drop;
-use core::ptr::Unique;
+use core::ptr::{NonNull, Unique};
 use core::slice;
 
 use crate::alloc::{
@@ -197,7 +197,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         &mut self.alloc
     }
 
-    fn current_memory(&self) -> Option<MemoryBlock> {
+    fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {
         if mem::size_of::<T>() == 0 || self.cap == 0 {
             None
         } else {
@@ -207,7 +207,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
                 let align = mem::align_of::<T>();
                 let size = mem::size_of::<T>() * self.cap;
                 let layout = Layout::from_size_align_unchecked(size, align);
-                Some(MemoryBlock::new(self.ptr.cast().into(), layout))
+                Some((self.ptr.cast().into(), layout))
             }
         }
     }
@@ -472,7 +472,6 @@ impl<T, A: AllocRef> RawVec<T, A> {
     fn set_memory(&mut self, memory: MemoryBlock) {
         self.ptr = memory.ptr().cast().into();
         self.cap = Self::capacity_from_bytes(memory.size());
-        drop(memory);
     }
 
     /// Single method to handle all possibilities of growing the buffer.
@@ -488,7 +487,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
             // 0, getting to here necessarily means the `RawVec` is overfull.
             return Err(CapacityOverflow);
         }
-        let layout = match strategy {
+        let new_layout = match strategy {
             Double => unsafe {
                 // Since we guarantee that we never allocate more than `isize::MAX` bytes,
                 // `elem_size * self.cap <= isize::MAX` as a precondition, so this can't overflow.
@@ -522,22 +521,20 @@ impl<T, A: AllocRef> RawVec<T, A> {
             }
         };
 
-        let memory = if let Some(mut memory) = self.current_memory() {
-            debug_assert_eq!(memory.align(), layout.align());
+        let memory = if let Some((ptr, old_layout)) = self.current_memory() {
+            debug_assert_eq!(old_layout.align(), new_layout.align());
             unsafe {
                 self.alloc
-                    .grow(&mut memory, layout.size(), placement, init)
-                    .map_err(|_| AllocError { layout, non_exhaustive: () })?
-            };
-            memory
+                    .grow(ptr, old_layout, new_layout.size(), placement, init)
+                    .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?
+            }
         } else {
             match placement {
-                MayMove => self.alloc.alloc(layout, init),
+                MayMove => self.alloc.alloc(new_layout, init),
                 InPlace => Err(AllocErr),
             }
-            .map_err(|_| AllocError { layout, non_exhaustive: () })?
+            .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?
         };
-
         self.set_memory(memory);
         Ok(())
     }
@@ -549,18 +546,17 @@ impl<T, A: AllocRef> RawVec<T, A> {
     ) -> Result<(), TryReserveError> {
         assert!(amount <= self.capacity(), "Tried to shrink to a larger capacity");
 
-        let mut memory = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
+        let (ptr, layout) = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
         let new_size = amount * mem::size_of::<T>();
 
-        unsafe {
-            self.alloc.shrink(&mut memory, new_size, placement).map_err(|_| {
+        let memory = unsafe {
+            self.alloc.shrink(ptr, layout, new_size, placement).map_err(|_| {
                 TryReserveError::AllocError {
-                    layout: Layout::from_size_align_unchecked(new_size, memory.align()),
+                    layout: Layout::from_size_align_unchecked(new_size, layout.align()),
                     non_exhaustive: (),
                 }
-            })?;
-        }
-
+            })?
+        };
         self.set_memory(memory);
         Ok(())
     }
@@ -593,8 +589,8 @@ impl<T> RawVec<T, Global> {
 unsafe impl<#[may_dangle] T, A: AllocRef> Drop for RawVec<T, A> {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     fn drop(&mut self) {
-        if let Some(memory) = self.current_memory() {
-            unsafe { self.alloc.dealloc(memory) }
+        if let Some((ptr, layout)) = self.current_memory() {
+            unsafe { self.alloc.dealloc(ptr, layout) }
         }
     }
 }

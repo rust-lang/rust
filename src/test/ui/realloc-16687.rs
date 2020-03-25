@@ -6,9 +6,7 @@
 
 #![feature(allocator_api)]
 
-use std::alloc::{
-    handle_alloc_error, AllocInit, AllocRef, Global, Layout, MemoryBlock, ReallocPlacement,
-};
+use std::alloc::{handle_alloc_error, AllocInit, AllocRef, Global, Layout, ReallocPlacement};
 use std::ptr::{self, NonNull};
 
 fn main() {
@@ -59,7 +57,7 @@ unsafe fn test_triangle() -> bool {
             println!("deallocate({:?}, {:?}", ptr, layout);
         }
 
-        Global.dealloc(MemoryBlock::new(NonNull::new_unchecked(ptr), layout));
+        Global.dealloc(NonNull::new_unchecked(ptr), layout);
     }
 
     unsafe fn reallocate(ptr: *mut u8, old: Layout, new: Layout) -> *mut u8 {
@@ -67,21 +65,19 @@ unsafe fn test_triangle() -> bool {
             println!("reallocate({:?}, old={:?}, new={:?})", ptr, old, new);
         }
 
-        let mut memory = MemoryBlock::new(NonNull::new_unchecked(ptr), old);
-        let result = if new.size() > old.size() {
+        let memory = if new.size() > old.size() {
             Global.grow(
-                &mut memory,
+                NonNull::new_unchecked(ptr),
+                old,
                 new.size(),
                 ReallocPlacement::MayMove,
                 AllocInit::Uninitialized,
             )
-        } else if new.size() < old.size() {
-            Global.shrink(&mut memory, new.size(), ReallocPlacement::MayMove)
         } else {
-            return ptr;
+            Global.shrink(NonNull::new_unchecked(ptr), old, new.size(), ReallocPlacement::MayMove)
         };
 
-        result.unwrap_or_else(|_| {
+        let memory = memory.unwrap_or_else(|_| {
             handle_alloc_error(Layout::from_size_align_unchecked(new.size(), old.align()))
         });
 
