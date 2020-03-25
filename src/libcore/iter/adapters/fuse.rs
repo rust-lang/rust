@@ -326,10 +326,14 @@ where
 
 unsafe impl<I> TrustedRandomAccess for Fuse<I>
 where
-    I: TrustedRandomAccess + FusedIterator,
+    I: TrustedRandomAccess,
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> I::Item {
-        self.as_inner_mut().get_unchecked(i)
+        match self.iter {
+            Some(ref mut iter) => iter.get_unchecked(i),
+            // SAFETY: the caller asserts there is an item at `i`, so we're not exhausted.
+            None => intrinsics::unreachable(),
+        }
     }
 
     fn may_have_side_effect() -> bool {
