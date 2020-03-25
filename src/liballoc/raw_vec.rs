@@ -568,7 +568,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
 }
 
 impl<T> RawVec<T, Global> {
-    /// Converts the entire buffer into `Box<[T]>` with the specified `len`.
+    /// Converts the entire buffer into `Box<[MaybeUninit<T>]>` with the specified `len`.
     ///
     /// Note that this will correctly reconstitute any `cap` changes
     /// that may have been performed. (See description of type for details.)
