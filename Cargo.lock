@@ -4047,7 +4047,6 @@ dependencies = [
  "rustc_errors",
  "rustc_index",
  "rustc_macros",
- "rustc_session",
  "rustc_span",
  "serialize",
  "smallvec 1.0.0",

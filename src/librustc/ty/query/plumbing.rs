@@ -13,15 +13,17 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, Handler, Level};
-use rustc_session::Session;
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 
 impl QueryContext for TyCtxt<'tcx> {
     type Query = Query<'tcx>;
 
-    fn session(&self) -> &Session {
-        &self.sess
+    fn incremental_verify_ich(&self) -> bool {
+        self.sess.opts.debugging_opts.incremental_verify_ich
+    }
+    fn verbose(&self) -> bool {
+        self.sess.verbose()
     }
 
     fn def_path_str(&self, def_id: DefId) -> String {

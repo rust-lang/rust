@@ -15,7 +15,6 @@ use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
-use rustc_session::Session;
 use std::borrow::Cow;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -33,8 +32,8 @@ pub trait QueryConfig<CTX> {
 pub trait QueryContext: DepContext {
     type Query: Clone + HashStable<Self::StableHashingContext>;
 
-    /// Access the session.
-    fn session(&self) -> &Session;
+    fn incremental_verify_ich(&self) -> bool;
+    fn verbose(&self) -> bool;
 
     /// Get string representation from DefPath.
     fn def_path_str(&self, def_id: DefId) -> String;
@@ -101,7 +100,7 @@ where
     M: QueryAccessors<CTX, Key = DefId>,
 {
     default fn describe(tcx: CTX, def_id: DefId) -> Cow<'static, str> {
-        if !tcx.session().verbose() {
+        if !tcx.verbose() {
             format!("processing `{}`", tcx.def_path_str(def_id)).into()
         } else {
             let name = ::std::any::type_name::<M>();
