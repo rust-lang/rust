@@ -173,11 +173,11 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     }
 
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
-        self.analyze(call.syntax()).resolve_method_call(call)
+        self.analyze(call.syntax()).resolve_method_call(self.db, call)
     }
 
     pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<StructField> {
-        self.analyze(field.syntax()).resolve_field(field)
+        self.analyze(field.syntax()).resolve_field(self.db, field)
     }
 
     pub fn resolve_record_field(
@@ -188,7 +188,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     }
 
     pub fn resolve_record_literal(&self, record_lit: &ast::RecordLit) -> Option<VariantDef> {
-        self.analyze(record_lit.syntax()).resolve_record_literal(record_lit)
+        self.analyze(record_lit.syntax()).resolve_record_literal(self.db, record_lit)
     }
 
     pub fn resolve_record_pattern(&self, record_pat: &ast::RecordPat) -> Option<VariantDef> {
