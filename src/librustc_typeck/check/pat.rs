@@ -835,7 +835,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 on_error();
                 return tcx.types.err;
             }
-            Res::Def(DefKind::AssocConst, _) | Res::Def(DefKind::AssocFn, _) => {
+            Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
                 report_unexpected_res(res);
                 return tcx.types.err;
             }
