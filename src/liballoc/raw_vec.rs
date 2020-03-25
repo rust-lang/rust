@@ -461,8 +461,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
     /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
     fn needs_to_grow(&self, used_capacity: usize, needed_extra_capacity: usize) -> bool {
-        mem::size_of::<T>() != 0
-            && needed_extra_capacity > self.capacity().wrapping_sub(used_capacity)
+        needed_extra_capacity > self.capacity().wrapping_sub(used_capacity)
     }
 
     fn capacity_from_bytes(excess: usize) -> usize {
