@@ -802,7 +802,7 @@ pub enum Variants {
         discr: Scalar,
         discr_kind: DiscriminantKind,
         discr_index: usize,
-        variants: IndexVec<VariantIdx, LayoutDetails>,
+        variants: IndexVec<VariantIdx, Layout>,
     },
 }
 
@@ -885,7 +885,7 @@ impl Niche {
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub struct LayoutDetails {
+pub struct Layout {
     /// Says where the fields are located within the layout.
     /// Primitives and uninhabited enums appear as unions without fields.
     pub fields: FieldPlacement,
@@ -916,12 +916,12 @@ pub struct LayoutDetails {
     pub size: Size,
 }
 
-impl LayoutDetails {
+impl Layout {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar.clone());
         let size = scalar.value.size(cx);
         let align = scalar.value.align(cx);
-        LayoutDetails {
+        Layout {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldPlacement::Union(0),
             abi: Abi::Scalar(scalar),
@@ -932,23 +932,24 @@ impl LayoutDetails {
     }
 }
 
-/// The details of the layout of a type, alongside the type itself.
+/// The layout of a type, alongside the type itself.
 /// Provides various type traversal APIs (e.g., recursing into fields).
 ///
-/// Note that the details are NOT guaranteed to always be identical
-/// to those obtained from `layout_of(ty)`, as we need to produce
+/// Note that the layout is NOT guaranteed to always be identical
+/// to that obtained from `layout_of(ty)`, as we need to produce
 /// layouts for which Rust types do not exist, such as enum variants
 /// or synthetic fields of enums (i.e., discriminants) and fat pointers.
+// FIXME: rename to TyAndLayout.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TyLayout<'a, Ty> {
     pub ty: Ty,
-    pub details: &'a LayoutDetails,
+    pub layout: &'a Layout,
 }
 
 impl<'a, Ty> Deref for TyLayout<'a, Ty> {
-    type Target = &'a LayoutDetails;
-    fn deref(&self) -> &&'a LayoutDetails {
-        &self.details
+    type Target = &'a Layout;
+    fn deref(&self) -> &&'a Layout {
+        &self.layout
     }
 }
 
@@ -1109,7 +1110,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
         };
         if !valid {
             // This is definitely not okay.
-            trace!("might_permit_raw_init({:?}, zero={}): not valid", self.details, zero);
+            trace!("might_permit_raw_init({:?}, zero={}): not valid", self.layout, zero);
             return Ok(false);
         }
 
