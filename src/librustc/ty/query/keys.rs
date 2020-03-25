@@ -5,7 +5,7 @@ use crate::mir;
 use crate::traits;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::query::caches::DefaultCacheSelector;
-use crate::ty::subst::SubstsRef;
+use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_span::symbol::Symbol;
@@ -191,6 +191,17 @@ impl<'tcx> Key for ty::PolyTraitRef<'tcx> {
     }
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(self.def_id())
+    }
+}
+
+impl<'tcx> Key for GenericArg<'tcx> {
+    type CacheSelector = DefaultCacheSelector;
+
+    fn query_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
     }
 }
 

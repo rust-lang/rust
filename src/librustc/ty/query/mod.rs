@@ -31,7 +31,7 @@ use crate::traits::specialization_graph;
 use crate::traits::Clauses;
 use crate::traits::{self, Vtable};
 use crate::ty::steal::Steal;
-use crate::ty::subst::SubstsRef;
+use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
 use crate::util::common::ErrorReported;
