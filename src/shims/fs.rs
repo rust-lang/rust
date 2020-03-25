@@ -802,7 +802,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("mkdir")?;
 
-        let _mode = if this.tcx.sess.target.target.target_os.as_str() == "macos" {
+        let _mode = if this.tcx.sess.target.target.target_os == "macos" {
             u32::from(this.read_scalar(mode_op)?.not_undef()?.to_u16()?)
         } else {
             this.read_scalar(mode_op)?.to_u32()?
