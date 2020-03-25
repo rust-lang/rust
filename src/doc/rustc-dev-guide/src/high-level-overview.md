@@ -60,8 +60,7 @@ crates export are "query definitions", but those are covered later
 on).
 
 Below `rustc` lie various crates that make up the parser and error
-reporting mechanism. For historical reasons, these crates do not have
-the `rustc_` prefix, but they are really just as much an internal part
+reporting mechanism. They are also an internal part
 of the compiler and not intended to be stable (though they do wind up
 getting used by some crates in the wild; a practice we hope to
 gradually phase out).
