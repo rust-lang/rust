@@ -230,14 +230,20 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
     p.eat(T![async]);
     p.eat(T![move]);
     params::param_list_closure(p);
-    if opt_fn_ret_type(p) && !p.at(T!['{']) {
-        p.error("expected `{`");
-    }
-
-    if p.at_ts(EXPR_FIRST) {
-        expr(p);
+    if opt_fn_ret_type(p) {
+        if p.at(T!['{']) {
+            // test lambda_ret_block
+            // fn main() { || -> i32 { 92 }(); }
+            block_expr(p, None);
+        } else {
+            p.error("expected `{`");
+        }
     } else {
-        p.error("expected expression");
+        if p.at_ts(EXPR_FIRST) {
+            expr(p);
+        } else {
+            p.error("expected expression");
+        }
     }
     m.complete(p, LAMBDA_EXPR)
 }
