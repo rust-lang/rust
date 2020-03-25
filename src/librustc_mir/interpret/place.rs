@@ -869,7 +869,7 @@ where
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
         assert!(
-            src.layout.details == dest.layout.details,
+            src.layout.layout == dest.layout.layout,
             "Layout mismatch when copying!\nsrc: {:#?}\ndest: {:#?}",
             src,
             dest
@@ -923,7 +923,7 @@ where
         src: OpTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        if src.layout.details == dest.layout.details {
+        if src.layout.layout == dest.layout.layout {
             // Fast path: Just use normal `copy_op`
             return self.copy_op(src, dest);
         }

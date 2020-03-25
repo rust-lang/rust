@@ -53,7 +53,7 @@ fn variant_discriminants<'tcx>(
     ty: Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> Vec<u128> {
-    match &layout.details.variants {
+    match &layout.variants {
         Variants::Single { index } => vec![index.as_u32() as u128],
         Variants::Multiple { variants, .. } => variants
             .iter_enumerated()
