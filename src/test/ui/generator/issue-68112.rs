@@ -31,7 +31,7 @@ fn test1() {
         yield;
     };
     require_send(send_gen);
-    //~^ ERROR future cannot be sent between threads
+    //~^ ERROR generator cannot be sent between threads
 }
 
 pub fn make_gen2<T>(t: T) -> impl Generator<Return = T> {
