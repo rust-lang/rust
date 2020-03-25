@@ -907,25 +907,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         let count = (niche_variants.end().as_u32()
                             - niche_variants.start().as_u32()
                             + 1) as u128;
-                        let mut niche_size = 0;
-                        if let Some((field_index, niche, niche_start, niche_scalar)) =
-                            variants[i].iter().enumerate().fold(None, |acc, (j, &field)| {
-                                let niche = match &field.largest_niche {
-                                    Some(niche) => niche,
-                                    _ => return acc,
-                                };
-                                let ns = niche.available(dl);
-                                if ns <= niche_size {
-                                    return acc;
-                                }
-                                match niche.reserve(self, count) {
-                                    Some(pair) => {
-                                        niche_size = ns;
-                                        Some((j, niche, pair.0, pair.1))
-                                    }
-                                    None => acc,
-                                }
-                            })
+                        if let Some((field_index, niche, (niche_start, niche_scalar))) = variants[i]
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(i, &field)| Some((i, field.largest_niche.as_ref()?)))
+                            .max_by_key(|(_, niche)| niche.available(dl))
+                            .and_then(|(i, niche)| Some((i, niche, niche.reserve(self, count)?)))
                         {
                             let mut align = dl.aggregate_align;
                             let st = variants
