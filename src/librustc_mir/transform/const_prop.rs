@@ -172,7 +172,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
 
-    const GLOBAL_KIND: Option<!> = None;
+    const GLOBAL_KIND: Option<!> = None; // no copying of globals from `tcx` to machine memory
 
     const CHECK_ALIGN: bool = false;
 

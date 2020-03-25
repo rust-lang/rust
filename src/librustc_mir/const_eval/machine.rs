@@ -178,7 +178,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
 
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
 
-    const GLOBAL_KIND: Option<!> = None; // no copying of globals allowed
+    const GLOBAL_KIND: Option<!> = None; // no copying of globals from `tcx` to machine memory
 
     // We do not check for alignment to avoid having to carry an `Align`
     // in `ConstValue::ByRef`.
