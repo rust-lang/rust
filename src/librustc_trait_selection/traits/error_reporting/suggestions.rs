@@ -10,7 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::Node;
+use rustc_hir::{GeneratorKind, AsyncGeneratorKind, Node};
 use rustc_middle::ty::TypeckTables;
 use rustc_middle::ty::{
     self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
@@ -1319,15 +1319,23 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             let original_span = err.span.primary_span().unwrap();
             let mut span = MultiSpan::from_span(original_span);
 
-            let message = if let Some(name) = outer_generator
-                .and_then(|generator_did| self.tcx.parent(generator_did))
-                .and_then(|parent_did| hir.as_local_hir_id(parent_did))
-                .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
-            {
-                format!("future returned by `{}` is not {}", name, trait_name)
-            } else {
-                format!("future is not {}", trait_name)
-            };
+            let message = outer_generator
+                .and_then(|generator_did| Some(
+                    match self.tcx.generator_kind(generator_did).unwrap() {
+                        GeneratorKind::Gen => format!("generator is not {}", trait_name),
+                        GeneratorKind::Async(AsyncGeneratorKind::Fn) =>
+                            self.tcx.parent(generator_did)
+                                .and_then(|parent_did| hir.as_local_hir_id(parent_did))
+                                .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
+                                .map(|name| format!("future returned by `{}` is not {}",
+                                                    name, trait_name))?,
+                        GeneratorKind::Async(AsyncGeneratorKind::Block) =>
+                            format!("future created by async block is not {}", trait_name),
+                        GeneratorKind::Async(AsyncGeneratorKind::Closure) =>
+                            format!("future created by async closure is not {}", trait_name),
+                    }
+                ))
+                .unwrap_or_else(|| format!("future is not {}", trait_name));
 
             span.push_span_label(original_span, message);
             err.set_span(span);
