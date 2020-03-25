@@ -90,6 +90,14 @@ Note that this is still experimental and only supported on the nightly channel:
 cargo fix -Z unstable-options --clippy
 ```
 
+#### Running only a single lint
+
+If you care only about the warnings of a single lint and want to ignore everything else, you
+can first deny all the clippy lints and then explicitly enable the lint(s) you care about:
+````
+cargo clippy -- -Aclippy::all -Wclippy::useless_format
+````
+
 ### Running Clippy from the command line without installing it
 
 To have cargo compile your crate with Clippy without Clippy installation
