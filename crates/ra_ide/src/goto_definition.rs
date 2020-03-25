@@ -104,6 +104,9 @@ mod tests {
         let (analysis, pos) = analysis_and_position(ra_fixture);
 
         let mut navs = analysis.goto_definition(pos).unwrap().unwrap().info;
+        if navs.len() == 0 {
+            panic!("unresolved reference")
+        }
         assert_eq!(navs.len(), 1);
 
         let nav = navs.pop().unwrap();
@@ -359,7 +362,7 @@ mod tests {
     fn goto_def_for_fields() {
         covers!(ra_ide_db::goto_def_for_fields);
         check_goto(
-            "
+            r"
             //- /lib.rs
             struct Foo {
                 spam: u32,
@@ -378,7 +381,7 @@ mod tests {
     fn goto_def_for_record_fields() {
         covers!(ra_ide_db::goto_def_for_record_fields);
         check_goto(
-            "
+            r"
             //- /lib.rs
             struct Foo {
                 spam: u32,
@@ -391,6 +394,23 @@ mod tests {
             }
             ",
             "spam RECORD_FIELD_DEF FileId(1) [17; 26) [17; 21)",
+            "spam: u32|spam",
+        );
+    }
+
+    #[test]
+    fn goto_def_for_record_fields_macros() {
+        check_goto(
+            r"
+            //- /lib.rs
+            macro_rules! m { () => { 92 };}
+            struct Foo { spam: u32 }
+
+            fn bar() -> Foo {
+                Foo { spam<|>: m!() }
+            }
+            ",
+            "spam RECORD_FIELD_DEF FileId(1) [45; 54) [45; 49)",
             "spam: u32|spam",
         );
     }

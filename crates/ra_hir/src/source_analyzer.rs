@@ -78,9 +78,15 @@ impl SourceAnalyzer {
         }
     }
 
-    fn expr_id(&self, expr: &ast::Expr) -> Option<ExprId> {
-        let src = InFile { file_id: self.file_id, value: expr };
-        self.body_source_map.as_ref()?.node_expr(src)
+    fn expr_id(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<ExprId> {
+        let src = match expr {
+            ast::Expr::MacroCall(call) => {
+                self.expand_expr(db, InFile::new(self.file_id, call.clone()))?
+            }
+            _ => InFile::new(self.file_id, expr.clone()),
+        };
+        let sm = self.body_source_map.as_ref()?;
+        sm.node_expr(src.as_ref())
     }
 
     fn pat_id(&self, pat: &ast::Pat) -> Option<PatId> {
@@ -104,14 +110,7 @@ impl SourceAnalyzer {
     }
 
     pub(crate) fn type_of(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<Type> {
-        let expr_id = match expr {
-            ast::Expr::MacroCall(call) => {
-                let expr = self.expand_expr(db, InFile::new(self.file_id, call.clone()))?;
-                self.body_source_map.as_ref()?.node_expr(expr.as_ref())
-            }
-            _ => self.expr_id(expr),
-        }?;
-
+        let expr_id = self.expr_id(db, expr)?;
         let ty = self.infer.as_ref()?[expr_id].clone();
         Type::new_with_resolver(db, &self.resolver, ty)
     }
@@ -122,13 +121,21 @@ impl SourceAnalyzer {
         Type::new_with_resolver(db, &self.resolver, ty)
     }
 
-    pub(crate) fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
-        let expr_id = self.expr_id(&call.clone().into())?;
+    pub(crate) fn resolve_method_call(
+        &self,
+        db: &dyn HirDatabase,
+        call: &ast::MethodCallExpr,
+    ) -> Option<Function> {
+        let expr_id = self.expr_id(db, &call.clone().into())?;
         self.infer.as_ref()?.method_resolution(expr_id).map(Function::from)
     }
 
-    pub(crate) fn resolve_field(&self, field: &ast::FieldExpr) -> Option<crate::StructField> {
-        let expr_id = self.expr_id(&field.clone().into())?;
+    pub(crate) fn resolve_field(
+        &self,
+        db: &dyn HirDatabase,
+        field: &ast::FieldExpr,
+    ) -> Option<crate::StructField> {
+        let expr_id = self.expr_id(db, &field.clone().into())?;
         self.infer.as_ref()?.field_resolution(expr_id).map(|it| it.into())
     }
 
@@ -138,7 +145,7 @@ impl SourceAnalyzer {
         field: &ast::RecordField,
     ) -> Option<(crate::StructField, Option<Local>)> {
         let (expr_id, local) = match field.expr() {
-            Some(it) => (self.expr_id(&it)?, None),
+            Some(it) => (self.expr_id(db, &it)?, None),
             None => {
                 let src = InFile { file_id: self.file_id, value: field };
                 let expr_id = self.body_source_map.as_ref()?.field_init_shorthand_expr(src)?;
@@ -159,9 +166,10 @@ impl SourceAnalyzer {
 
     pub(crate) fn resolve_record_literal(
         &self,
+        db: &dyn HirDatabase,
         record_lit: &ast::RecordLit,
     ) -> Option<crate::VariantDef> {
-        let expr_id = self.expr_id(&record_lit.clone().into())?;
+        let expr_id = self.expr_id(db, &record_lit.clone().into())?;
         self.infer.as_ref()?.variant_resolution_for_expr(expr_id).map(|it| it.into())
     }
 
@@ -207,7 +215,7 @@ impl SourceAnalyzer {
         path: &ast::Path,
     ) -> Option<PathResolution> {
         if let Some(path_expr) = path.syntax().parent().and_then(ast::PathExpr::cast) {
-            let expr_id = self.expr_id(&path_expr.into())?;
+            let expr_id = self.expr_id(db, &path_expr.into())?;
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_expr(expr_id) {
                 return Some(PathResolution::AssocItem(assoc.into()));
             }
