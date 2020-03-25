@@ -574,7 +574,8 @@ impl<T> RawVec<T, Global> {
     ///
     /// # Safety
     ///
-    /// * `len` must be smaller than or equal to `self.capacity()`
+    /// `shrink_to_fit(len)` must be called immediately prior to calling this function. This
+    /// implies, that `len` must be smaller than or equal to `self.capacity()`.
     pub unsafe fn into_box(self, len: usize) -> Box<[MaybeUninit<T>]> {
         debug_assert!(
             len <= self.capacity(),
