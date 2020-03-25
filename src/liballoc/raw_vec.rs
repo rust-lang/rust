@@ -483,14 +483,14 @@ impl<T, A: AllocRef> RawVec<T, A> {
         placement: ReallocPlacement,
         init: AllocInit,
     ) -> Result<(), TryReserveError> {
+        let elem_size = mem::size_of::<T>();
+        if elem_size == 0 {
+            // Since we return a capacity of `usize::MAX` when `elem_size` is
+            // 0, getting to here necessarily means the `RawVec` is overfull.
+            return Err(CapacityOverflow);
+        }
         let layout = match strategy {
             Double => unsafe {
-                let elem_size = mem::size_of::<T>();
-                if elem_size == 0 {
-                    // Since we return a capacity of `usize::MAX` when `elem_size` is
-                    // 0, getting to here necessarily means the `RawVec` is overfull.
-                    return Err(CapacityOverflow);
-                }
                 // Since we guarantee that we never allocate more than `isize::MAX` bytes,
                 // `elem_size * self.cap <= isize::MAX` as a precondition, so this can't overflow.
                 // Additionally the alignment will never be too large as to "not be satisfiable",
