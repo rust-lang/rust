@@ -12,12 +12,11 @@ error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
 LL |     [x; { N }]
    |     ^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |
-help: consider restricting this type parameter with `T: std::marker::Copy`
-  --> $DIR/issue-61336-2.rs:8:6
-   |
-LL | fn g<T, const N: usize>(x: T) -> [T; N] {
-   |      ^
    = note: the `Copy` trait is required because the repeated element will be copied
+help: consider restricting type parameter `T`
+   |
+LL | fn g<T: std::marker::Copy, const N: usize>(x: T) -> [T; N] {
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

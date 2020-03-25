@@ -1698,6 +1698,14 @@ pub fn suggest_constraining_type_param(
         err.span_label(param.span, &format!("this type parameter needs to be `{}`", constraint));
         return true;
     }
+    let mut suggest_restrict = |span| {
+        err.span_suggestion_verbose(
+            span,
+            MSG_RESTRICT_BOUND_FURTHER,
+            format!(" + {}", constraint),
+            Applicability::MachineApplicable,
+        );
+    };
 
     if param_name.starts_with("impl ") {
         // If there's an `impl Trait` used in argument position, suggest
@@ -1715,19 +1723,13 @@ pub fn suggest_constraining_type_param(
         //             |
         //             replace with: `impl Foo + Bar`
 
-        err.span_suggestion_verbose(
-            param.span.shrink_to_hi(),
-            MSG_RESTRICT_BOUND_FURTHER,
-            format!(" + {}", constraint),
-            Applicability::MachineApplicable,
-        );
-
+        suggest_restrict(param.span.shrink_to_hi());
         return true;
     }
 
     if generics.where_clause.predicates.is_empty()
         // Given `trait Base<T = String>: Super<T>` where `T: Copy`, suggest restricting in the
-        // `where` clause in stead of `trait Base<T: Copy = String>: Super<T>`.
+        // `where` clause instead of `trait Base<T: Copy = String>: Super<T>`.
         && !matches!(param.kind, hir::GenericParamKind::Type { default: Some(_), .. })
     {
         if let Some(bounds_span) = param.bounds_span() {
@@ -1744,13 +1746,7 @@ pub fn suggest_constraining_type_param(
             //          --
             //          |
             //          replace with: `T: Bar +`
-
-            err.span_suggestion_verbose(
-                bounds_span.shrink_to_hi(),
-                MSG_RESTRICT_BOUND_FURTHER,
-                format!(" + {}", constraint),
-                Applicability::MachineApplicable,
-            );
+            suggest_restrict(bounds_span.shrink_to_hi());
         } else {
             // If user hasn't provided any bounds, suggest adding a new one:
             //
@@ -1827,9 +1823,7 @@ pub fn suggest_constraining_type_param(
         // Account for `fn foo<T>(t: T) where T: Foo,` so we don't suggest two trailing commas.
         let mut trailing_comma = false;
         if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(where_clause_span) {
-            if snippet.ends_with(",") {
-                trailing_comma = true;
-            }
+            trailing_comma = snippet.ends_with(",");
         }
         let where_clause_span = if trailing_comma {
             let hi = where_clause_span.hi();
@@ -1839,24 +1833,7 @@ pub fn suggest_constraining_type_param(
         };
 
         match &param_spans[..] {
-            &[] => {
-                err.span_suggestion_verbose(
-                    where_clause_span,
-                    &msg_restrict_type_further,
-                    format!(", {}: {}", param_name, constraint),
-                    Applicability::MachineApplicable,
-                );
-            }
-
-            &[&param_span] => {
-                err.span_suggestion_verbose(
-                    param_span.shrink_to_hi(),
-                    MSG_RESTRICT_BOUND_FURTHER,
-                    format!(" + {}", constraint),
-                    Applicability::MachineApplicable,
-                );
-            }
-
+            &[&param_span] => suggest_restrict(param_span.shrink_to_hi()),
             _ => {
                 err.span_suggestion_verbose(
                     where_clause_span,

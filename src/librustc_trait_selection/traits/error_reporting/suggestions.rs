@@ -195,8 +195,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
-                | hir::Node::TraitItem(hir::TraitItem {
+                hir::Node::TraitItem(hir::TraitItem {
                     generics,
                     kind: hir::TraitItemKind::Fn(..),
                     ..
@@ -206,39 +205,29 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     kind: hir::ImplItemKind::Fn(..),
                     ..
                 })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(_, _, generics, _, _),
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Impl { generics, .. }, ..
-                }) if projection.is_some() => {
+                | hir::Node::Item(
+                    hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. }
+                    | hir::Item { kind: hir::ItemKind::Trait(_, _, generics, _, _), .. }
+                    | hir::Item { kind: hir::ItemKind::Impl { generics, .. }, .. },
+                ) if projection.is_some() => {
                     // Missing associated type bound.
                     suggest_restriction(&generics, "the associated type", err);
                     return;
                 }
 
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Struct(_, generics), .. })
-                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(_, generics), .. })
-                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Union(_, generics), .. })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(_, _, generics, ..),
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Impl { generics, .. }, ..
-                })
-                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::TyAlias(_, generics), ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::TraitAlias(generics, _), ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
-                    ..
-                })
+                hir::Node::Item(
+                    hir::Item { kind: hir::ItemKind::Struct(_, generics), .. }
+                    | hir::Item { kind: hir::ItemKind::Enum(_, generics), .. }
+                    | hir::Item { kind: hir::ItemKind::Union(_, generics), .. }
+                    | hir::Item { kind: hir::ItemKind::Trait(_, _, generics, ..), .. }
+                    | hir::Item { kind: hir::ItemKind::Impl { generics, .. }, .. }
+                    | hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. }
+                    | hir::Item { kind: hir::ItemKind::TyAlias(_, generics), .. }
+                    | hir::Item { kind: hir::ItemKind::TraitAlias(generics, _), .. }
+                    | hir::Item {
+                        kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }), ..
+                    },
+                )
                 | hir::Node::TraitItem(hir::TraitItem { generics, .. })
                 | hir::Node::ImplItem(hir::ImplItem { generics, .. })
                     if param_ty =>
