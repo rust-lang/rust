@@ -1020,7 +1020,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Adt(adt, substs) => (substs, adt),
             _ => span_bug!(pat.span, "struct pattern is not an ADT"),
         };
-        let kind_name = adt.variant_descr();
 
         // Index the struct fields' types.
         let field_map = variant
@@ -1074,7 +1073,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !inexistent_fields.is_empty() && !variant.recovered {
             self.error_inexistent_fields(
-                kind_name,
+                adt.variant_descr(),
                 &inexistent_fields,
                 &mut unmentioned_fields,
                 variant,
@@ -1088,13 +1087,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 pat.span,
                 E0638,
                 "`..` required with {} marked as non-exhaustive",
-                kind_name
+                adt.variant_descr()
             )
             .emit();
         }
 
         // Report an error if incorrect number of the fields were specified.
-        if kind_name == "union" {
+        if adt.is_union() {
             if fields.len() != 1 {
                 tcx.sess
                     .struct_span_err(pat.span, "union patterns should have exactly one field")
