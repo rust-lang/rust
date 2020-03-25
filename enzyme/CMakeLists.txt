@@ -45,16 +45,11 @@ include(AddLLVM)
 
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS})
-message("found llvm include directory here " ${LLVM_INCLUDE_DIRS})
+message("found llvm include directory here: " "${LLVM_INCLUDE_DIRS}")
 message("found llvm definitions " ${LLVM_DEFINITIONS})
 message("found llvm version " ${LLVM_VERSION_MAJOR})
 
-SET(llvmconfig ${LLVM_TOOLS_BINARY_DIR}/llvm-config)
-
-message("llvm-config is " ${llvmconfig})
-
-execute_process(COMMAND ${llvmconfig} --includedir OUTPUT_VARIABLE LLVM_IDIR)
-string(REGEX REPLACE "\n$" "" LLVM_IDIR "${LLVM_IDIR}")
+list(GET LLVM_INCLUDE_DIRS 0 LLVM_IDIR)
 message("first llvm include directory" ${LLVM_IDIR})
 
 file(READ ${LLVM_IDIR}/llvm/Analysis/ScalarEvolution.h INPUT_TEXT)
