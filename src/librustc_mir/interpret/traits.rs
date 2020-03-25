@@ -1,8 +1,10 @@
-use super::{FnVal, InterpCx, Machine, MemoryKind};
+use std::convert::TryFrom;
 
 use rustc::mir::interpret::{InterpResult, Pointer, PointerArithmetic, Scalar};
 use rustc::ty::layout::{Align, HasDataLayout, LayoutOf, Size};
 use rustc::ty::{self, Instance, Ty, TypeFoldable};
+
+use super::{FnVal, InterpCx, Machine, MemoryKind};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
@@ -54,7 +56,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `get_vtable` in `rust_codegen_llvm/meth.rs`.
         // /////////////////////////////////////////////////////////////////////////////////////////
         let vtable = self.memory.allocate(
-            ptr_size * (3 + methods.len() as u64),
+            ptr_size * u64::try_from(methods.len()).unwrap().checked_add(3).unwrap(),
             ptr_align,
             MemoryKind::Vtable,
         );
@@ -103,11 +105,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn get_vtable_slot(
         &self,
         vtable: Scalar<M::PointerTag>,
-        idx: usize,
+        idx: u64,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
         let ptr_size = self.pointer_size();
         // Skip over the 'drop_ptr', 'size', and 'align' fields.
-        let vtable_slot = vtable.ptr_offset(ptr_size * (idx as u64 + 3), self)?;
+        let vtable_slot = vtable.ptr_offset(ptr_size * idx.checked_add(3).unwrap(), self)?;
         let vtable_slot = self
             .memory
             .check_ptr_access(vtable_slot, ptr_size, self.tcx.data_layout.pointer_align.abi)?
@@ -169,10 +171,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .expect("cannot be a ZST");
         let alloc = self.memory.get_raw(vtable.alloc_id)?;
         let size = alloc.read_ptr_sized(self, vtable.offset(pointer_size, self)?)?.not_undef()?;
-        let size = self.force_bits(size, pointer_size)? as u64;
+        let size = u64::try_from(self.force_bits(size, pointer_size)?).unwrap();
         let align =
             alloc.read_ptr_sized(self, vtable.offset(pointer_size * 2, self)?)?.not_undef()?;
-        let align = self.force_bits(align, pointer_size)? as u64;
+        let align = u64::try_from(self.force_bits(align, pointer_size)?).unwrap();
 
         if size >= self.tcx.data_layout().obj_size_bound() {
             throw_ub_format!(

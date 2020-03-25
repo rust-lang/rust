@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use rustc::ty::adjustment::PointerCast;
 use rustc::ty::layout::{self, Size, TyLayout};
 use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
@@ -206,8 +208,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Char => {
                 // `u8` to `char` cast
-                assert_eq!(v as u8 as u128, v);
-                Ok(Scalar::from_uint(v, Size::from_bytes(4)))
+                Ok(Scalar::from_uint(u8::try_from(v).unwrap(), Size::from_bytes(4)))
             }
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
@@ -227,16 +228,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match dest_ty.kind {
             // float -> uint
             Uint(t) => {
-                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits() as usize);
-                let v = f.to_u128(width).value;
+                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits());
+                let v = f.to_u128(usize::try_from(width).unwrap()).value;
                 // This should already fit the bit width
-                Ok(Scalar::from_uint(v, Size::from_bits(width as u64)))
+                Ok(Scalar::from_uint(v, Size::from_bits(width)))
             }
             // float -> int
             Int(t) => {
-                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits() as usize);
-                let v = f.to_i128(width).value;
-                Ok(Scalar::from_int(v, Size::from_bits(width as u64)))
+                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits());
+                let v = f.to_i128(usize::try_from(width).unwrap()).value;
+                Ok(Scalar::from_int(v, Size::from_bits(width)))
             }
             // float -> f32
             Float(FloatTy::F32) => Ok(Scalar::from_f32(f.convert(&mut false).value)),
@@ -319,11 +320,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Example: `Arc<T>` -> `Arc<Trait>`
                 // here we need to increase the size of every &T thin ptr field to a fat ptr
                 for i in 0..src.layout.fields.count() {
-                    let dst_field = self.place_field(dest, i as u64)?;
+                    let dst_field = self.place_field(dest, i)?;
                     if dst_field.layout.is_zst() {
                         continue;
                     }
-                    let src_field = self.operand_field(src, i as u64)?;
+                    let src_field = self.operand_field(src, i)?;
                     if src_field.layout.ty == dst_field.layout.ty {
                         self.copy_op(src_field, dst_field)?;
                     } else {

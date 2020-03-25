@@ -29,11 +29,11 @@ fn numeric_intrinsic<'tcx, Tag>(
         Primitive::Int(integer, _) => integer.size(),
         _ => bug!("invalid `{}` argument: {:?}", name, bits),
     };
-    let extra = 128 - size.bits() as u128;
+    let extra = 128 - u128::from(size.bits());
     let bits_out = match name {
-        sym::ctpop => bits.count_ones() as u128,
-        sym::ctlz => bits.leading_zeros() as u128 - extra,
-        sym::cttz => (bits << extra).trailing_zeros() as u128 - extra,
+        sym::ctpop => u128::from(bits.count_ones()),
+        sym::ctlz => u128::from(bits.leading_zeros()) - extra,
+        sym::cttz => u128::from((bits << extra).trailing_zeros()) - extra,
         sym::bswap => (bits << extra).swap_bytes(),
         sym::bitreverse => (bits << extra).reverse_bits(),
         _ => bug!("not a numeric intrinsic: {}", name),
@@ -261,7 +261,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val_bits = self.force_bits(val, layout.size)?;
                 let raw_shift = self.read_scalar(args[1])?.not_undef()?;
                 let raw_shift_bits = self.force_bits(raw_shift, layout.size)?;
-                let width_bits = layout.size.bits() as u128;
+                let width_bits = u128::from(layout.size.bits());
                 let shift_bits = raw_shift_bits % width_bits;
                 let inv_shift_bits = (width_bits - shift_bits) % width_bits;
                 let result_bits = if intrinsic_name == sym::rotate_left {
@@ -350,8 +350,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 );
 
                 for i in 0..len {
-                    let place = self.place_field(dest, i)?;
-                    let value = if i == index { elem } else { self.operand_field(input, i)? };
+                    let place = self.place_index(dest, i)?;
+                    let value = if i == index { elem } else { self.operand_index(input, i)? };
                     self.copy_op(value, place)?;
                 }
             }
@@ -370,7 +370,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     "Return type `{}` must match vector element type `{}`",
                     dest.layout.ty, e_ty
                 );
-                self.copy_op(self.operand_field(args[0], index)?, dest)?;
+                self.copy_op(self.operand_index(args[0], index)?, dest)?;
             }
             _ => return Ok(false),
         }

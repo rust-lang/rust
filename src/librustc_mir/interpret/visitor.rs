@@ -28,7 +28,8 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
     ) -> InterpResult<'tcx, Self>;
 
     /// Projects to the n-th field.
-    fn project_field(self, ecx: &InterpCx<'mir, 'tcx, M>, field: u64) -> InterpResult<'tcx, Self>;
+    fn project_field(self, ecx: &InterpCx<'mir, 'tcx, M>, field: usize)
+    -> InterpResult<'tcx, Self>;
 }
 
 // Operands and memory-places are both values.
@@ -62,7 +63,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::
     }
 
     #[inline(always)]
-    fn project_field(self, ecx: &InterpCx<'mir, 'tcx, M>, field: u64) -> InterpResult<'tcx, Self> {
+    fn project_field(
+        self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+        field: usize,
+    ) -> InterpResult<'tcx, Self> {
         ecx.operand_field(self, field)
     }
 }
@@ -96,7 +101,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for MPlaceTy<'tcx,
     }
 
     #[inline(always)]
-    fn project_field(self, ecx: &InterpCx<'mir, 'tcx, M>, field: u64) -> InterpResult<'tcx, Self> {
+    fn project_field(
+        self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+        field: usize,
+    ) -> InterpResult<'tcx, Self> {
         ecx.mplace_field(self, field)
     }
 }
@@ -206,7 +215,7 @@ macro_rules! make_value_visitor {
                         // errors: Projecting to a field needs access to `ecx`.
                         let fields: Vec<InterpResult<'tcx, Self::V>> =
                             (0..offsets.len()).map(|i| {
-                                v.project_field(self.ecx(), i as u64)
+                                v.project_field(self.ecx(), i)
                             })
                             .collect();
                         self.visit_aggregate(v, fields.into_iter())?;
