@@ -110,11 +110,13 @@ async function bootstrap(config: Config, state: PersistentState): Promise<string
 }
 
 async function bootstrapExtension(config: Config, state: PersistentState): Promise<void> {
-    if (config.package.releaseTag === undefined) return;
+    if (config.package.releaseTag === null) return;
     if (config.channel === "stable") {
         if (config.package.releaseTag === NIGHTLY_TAG) {
-            vscode.window.showWarningMessage(`You are running a nightly version of rust-analyzer extension.
-To switch to stable, uninstall the extension and re-install it from the marketplace`);
+            void vscode.window.showWarningMessage(
+                `You are running a nightly version of rust-analyzer extension. ` +
+                `To switch to stable, uninstall the extension and re-install it from the marketplace`
+            );
         }
         return;
     };
@@ -185,7 +187,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         }
         return explicitPath;
     };
-    if (config.package.releaseTag === undefined) return "rust-analyzer";
+    if (config.package.releaseTag === null) return "rust-analyzer";
 
     let binaryName: string | undefined = undefined;
     if (process.arch === "x64" || process.arch === "ia32") {
