@@ -44,4 +44,6 @@ if [ "$TRAVIS_OS_NAME" == linux ]; then
 elif [ "$TRAVIS_OS_NAME" == osx ]; then
   # cross-test 64bit Windows from macOS
   MIRI_TEST_TARGET=x86_64-pc-windows-msvc run_tests
+  # cross-test 32bit GNU Windows from macOS
+  MIRI_TEST_TARGET=i686-pc-windows-gnu run_tests
 fi

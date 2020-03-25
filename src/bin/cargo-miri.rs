@@ -6,7 +6,7 @@ use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 19);
+const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 20);
 
 const CARGO_MIRI_HELP: &str = r#"Interprets bin crates and tests in Miri
 
