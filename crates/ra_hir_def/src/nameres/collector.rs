@@ -7,6 +7,7 @@ use hir_expand::{
     builtin_derive::find_builtin_derive,
     builtin_macro::find_builtin_macro,
     name::{name, AsName, Name},
+    proc_macro::ProcMacroExpander,
     HirFileId, MacroCallId, MacroDefId, MacroDefKind,
 };
 use ra_cfg::CfgOptions;
@@ -64,6 +65,9 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> Cr
         unexpanded_attribute_macros: Vec::new(),
         mod_dirs: FxHashMap::default(),
         cfg_options,
+
+        // FIXME: pass proc-macro from crate-graph
+        proc_macros: Default::default(),
     };
     collector.collect();
     collector.finish()
@@ -122,6 +126,7 @@ struct DefCollector<'a> {
     unexpanded_attribute_macros: Vec<DeriveDirective>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
+    proc_macros: Vec<(Name, ProcMacroExpander)>,
 }
 
 impl DefCollector<'_> {
@@ -176,6 +181,24 @@ impl DefCollector<'_> {
         // show unresolved imports in completion, etc
         for directive in unresolved_imports {
             self.record_resolved_import(&directive)
+        }
+
+        // Record proc-macros
+        self.collect_proc_macro();
+    }
+
+    fn collect_proc_macro(&mut self) {
+        let proc_macros = std::mem::take(&mut self.proc_macros);
+        for (name, expander) in proc_macros {
+            let krate = self.def_map.krate;
+
+            let macro_id = MacroDefId {
+                ast_id: None,
+                krate: Some(krate),
+                kind: MacroDefKind::CustomDerive(expander),
+            };
+
+            self.define_proc_macro(name.clone(), macro_id);
         }
     }
 
@@ -236,6 +259,18 @@ impl DefCollector<'_> {
     fn define_legacy_macro(&mut self, module_id: LocalModuleId, name: Name, mac: MacroDefId) {
         // Always shadowing
         self.def_map.modules[module_id].scope.define_legacy_macro(name, mac);
+    }
+
+    /// Define a proc macro
+    ///
+    /// A proc macro is similar to normal macro scope, but it would not visiable in legacy textual scoped.
+    /// And unconditionally exported.
+    fn define_proc_macro(&mut self, name: Name, macro_: MacroDefId) {
+        self.update(
+            self.def_map.root,
+            &[(name, PerNs::macros(macro_, Visibility::Public))],
+            Visibility::Public,
+        );
     }
 
     /// Import macros from `#[macro_use] extern crate`.
@@ -537,8 +572,9 @@ impl DefCollector<'_> {
             true
         });
         attribute_macros.retain(|directive| {
-            if let Some(call_id) =
-                directive.ast_id.as_call_id(self.db, |path| self.resolve_attribute_macro(&path))
+            if let Some(call_id) = directive
+                .ast_id
+                .as_call_id(self.db, |path| self.resolve_attribute_macro(&directive, &path))
             {
                 resolved.push((directive.module_id, call_id, 0));
                 res = ReachedFixedPoint::No;
@@ -562,9 +598,11 @@ impl DefCollector<'_> {
         res
     }
 
-    fn resolve_attribute_macro(&self, path: &ModPath) -> Option<MacroDefId> {
-        // FIXME this is currently super hacky, just enough to support the
-        // built-in derives
+    fn resolve_attribute_macro(
+        &self,
+        directive: &DeriveDirective,
+        path: &ModPath,
+    ) -> Option<MacroDefId> {
         if let Some(name) = path.as_ident() {
             // FIXME this should actually be handled with the normal name
             // resolution; the std lib defines built-in stubs for the derives,
@@ -573,7 +611,15 @@ impl DefCollector<'_> {
                 return Some(def_id);
             }
         }
-        None
+        let resolved_res = self.def_map.resolve_path_fp_with_macro(
+            self.db,
+            ResolveMode::Other,
+            directive.module_id,
+            &path,
+            BuiltinShadowMode::Module,
+        );
+
+        resolved_res.resolved_def.take_macros()
     }
 
     fn collect_macro_expansion(
@@ -776,7 +822,6 @@ impl ModCollector<'_, '_> {
         // FIXME: check attrs to see if this is an attribute macro invocation;
         // in which case we don't add the invocation, just a single attribute
         // macro invocation
-
         self.collect_derives(attrs, def);
 
         let name = def.name.clone();
@@ -955,6 +1000,7 @@ mod tests {
             unexpanded_attribute_macros: Vec::new(),
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
+            proc_macros: Default::default(),
         };
         collector.collect();
         collector.def_map
