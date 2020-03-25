@@ -48,6 +48,7 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     fn raw_items(&self, file_id: HirFileId) -> Arc<RawItems>;
 
     #[salsa::invoke(crate_def_map_wait)]
+    #[salsa::transparent]
     fn crate_def_map(&self, krate: CrateId) -> Arc<CrateDefMap>;
 
     #[salsa::invoke(CrateDefMap::crate_def_map_query)]
@@ -108,12 +109,6 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     #[salsa::invoke(Documentation::documentation_query)]
     fn documentation(&self, def: AttrDefId) -> Option<Documentation>;
 }
-
-// impl<T: DefDatabase> Upcast<dyn AstDatabase> for T {
-//     fn upcast(&self) -> &dyn AstDatabase {
-//         &*self
-//     }
-// }
 
 fn crate_def_map_wait(db: &impl DefDatabase, krate: CrateId) -> Arc<CrateDefMap> {
     let _p = profile("crate_def_map:wait");
