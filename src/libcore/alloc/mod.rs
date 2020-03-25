@@ -12,7 +12,7 @@ pub use self::layout::{Layout, LayoutErr};
 
 use crate::fmt;
 use crate::mem;
-use crate::ptr::{self, NonNull, Unique};
+use crate::ptr::{self, NonNull};
 
 /// The `AllocErr` error indicates an allocation failure
 /// that may be due to resource exhaustion or to
