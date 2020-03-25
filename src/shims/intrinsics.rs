@@ -36,6 +36,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let (dest, ret) = match ret {
             None => match intrinsic_name {
                 "miri_start_panic" => return this.handle_miri_start_panic(args, unwind),
+                "unreachable" => throw_ub!(Unreachable),
                 _ => throw_unsup_format!("unimplemented (diverging) intrinsic: {}", intrinsic_name),
             },
             Some(p) => p,
