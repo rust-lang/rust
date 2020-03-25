@@ -311,6 +311,7 @@ impl RootDatabase {
             hir::db::MacroDefQuery
             hir::db::ParseMacroQuery
             hir::db::MacroExpandQuery
+            hir::db::InternEagerExpansionQuery
 
             // DefDatabase
             hir::db::RawItemsQuery
@@ -359,14 +360,21 @@ impl RootDatabase {
             hir::db::ImplsInCrateQuery
             hir::db::ImplsForTraitQuery
             hir::db::InternTypeCtorQuery
+            hir::db::InternTypeParamIdQuery
             hir::db::InternChalkImplQuery
             hir::db::InternAssocTyValueQuery
             hir::db::AssociatedTyDataQuery
-            hir::db::AssociatedTyValueQuery
-            hir::db::TraitSolveQuery
             hir::db::TraitDatumQuery
             hir::db::StructDatumQuery
             hir::db::ImplDatumQuery
+            hir::db::AssociatedTyValueQuery
+            hir::db::TraitSolveQuery
+
+            // SymbolsDatabase
+            crate::symbol_index::FileSymbolsQuery
+
+            // LineIndexDatabase
+            crate::LineIndexQuery
         ];
         acc.sort_by_key(|it| std::cmp::Reverse(it.1));
         acc

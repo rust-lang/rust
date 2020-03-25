@@ -10,15 +10,16 @@ pub use hir_def::db::{
     TraitDataQuery, TypeAliasDataQuery, UnionDataQuery,
 };
 pub use hir_expand::db::{
-    AstDatabase, AstDatabaseStorage, AstIdMapQuery, InternMacroQuery, MacroArgQuery, MacroDefQuery,
-    MacroExpandQuery, ParseMacroQuery,
+    AstDatabase, AstDatabaseStorage, AstIdMapQuery, InternEagerExpansionQuery, InternMacroQuery,
+    MacroArgQuery, MacroDefQuery, MacroExpandQuery, ParseMacroQuery,
 };
 pub use hir_ty::db::{
     AssociatedTyDataQuery, AssociatedTyValueQuery, CallableItemSignatureQuery, FieldTypesQuery,
     GenericDefaultsQuery, GenericPredicatesForParamQuery, GenericPredicatesQuery, HirDatabase,
     HirDatabaseStorage, ImplDatumQuery, ImplSelfTyQuery, ImplTraitQuery, ImplsForTraitQuery,
     ImplsInCrateQuery, InferQueryQuery, InternAssocTyValueQuery, InternChalkImplQuery,
-    InternTypeCtorQuery, StructDatumQuery, TraitDatumQuery, TraitSolveQuery, TyQuery, ValueTyQuery,
+    InternTypeCtorQuery, InternTypeParamIdQuery, StructDatumQuery, TraitDatumQuery,
+    TraitSolveQuery, TyQuery, ValueTyQuery,
 };
 
 #[test]

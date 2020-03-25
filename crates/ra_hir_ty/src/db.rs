@@ -22,6 +22,7 @@ use hir_expand::name::Name;
 #[salsa::requires(salsa::Database)]
 pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(infer_wait)]
+    #[salsa::transparent]
     fn infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
 
     #[salsa::invoke(crate::infer::infer_query)]
