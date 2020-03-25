@@ -68,7 +68,7 @@ impl ItemScope {
         self.impls.iter().copied()
     }
 
-    pub fn visbility_of(&self, def: ModuleDefId) -> Option<Visibility> {
+    pub fn visibility_of(&self, def: ModuleDefId) -> Option<Visibility> {
         self.name_of(ItemInNs::Types(def))
             .or_else(|| self.name_of(ItemInNs::Values(def)))
             .map(|(_, v)| v)
