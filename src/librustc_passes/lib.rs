@@ -21,6 +21,7 @@ mod check_const;
 pub mod dead;
 mod diagnostic_items;
 pub mod entry;
+pub mod hir_id_validator;
 pub mod hir_stats;
 mod intrinsicck;
 mod lang_items;
