@@ -80,8 +80,7 @@ unsafe fn configure_llvm(sess: &Session) {
         if sess.print_llvm_passes() {
             add("-debug-pass=Structure", false);
         }
-
-        if sess.opts.debugging_opts.generate_arange_section {
+        if !sess.opts.debugging_opts.no_generate_arange_section {
             add("-generate-arange-section", false);
         }
         if get_major_version() >= 8 {

@@ -615,9 +615,7 @@ impl<'tcx> TyCtxt<'tcx> {
         debug_assert!(self.dep_graph.is_green(dep_node));
 
         // First we try to load the result from the on-disk cache.
-        let result = if Q::cache_on_disk(self, key.clone(), None)
-            && self.sess.opts.debugging_opts.incremental_queries
-        {
+        let result = if Q::cache_on_disk(self, key.clone(), None) {
             let prof_timer = self.prof.incr_cache_loading();
             let result = Q::try_load_from_disk(self, prev_dep_node_index);
             prof_timer.finish_with_query_invocation_id(dep_node_index.into());

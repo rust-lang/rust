@@ -546,8 +546,6 @@ fn test_debugging_options_tracking_hash() {
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.parse_only = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.incremental = Some(String::from("abc"));
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.dump_dep_graph = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.query_dep_graph = true;
@@ -559,8 +557,6 @@ fn test_debugging_options_tracking_hash() {
     opts.debugging_opts.trace_macros = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.keep_hygiene_data = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.keep_ast = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.print_mono_items = Some(String::from("abc"));
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
