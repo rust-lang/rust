@@ -47,7 +47,7 @@ pub enum AllocInit {
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[must_use = "`MemoryBlock` should be passed to `AllocRef::dealloc`"]
 pub struct MemoryBlock {
-    ptr: Unique<u8>,
+    ptr: NonNull<u8>,
     layout: Layout,
 }
 
@@ -63,15 +63,14 @@ impl MemoryBlock {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub const unsafe fn new(ptr: NonNull<u8>, layout: Layout) -> Self {
-        Self { ptr: Unique::new_unchecked(ptr.as_ptr()), layout }
+        Self { ptr, layout }
     }
 
     /// Acquires the underlying `NonNull<u8>` pointer.
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub const fn ptr(&self) -> NonNull<u8> {
-        // SAFETY: Unique<T> is always non-null
-        unsafe { NonNull::new_unchecked(self.ptr.as_ptr()) }
+        self.ptr
     }
 
     /// Returns the layout describing the memory block.
