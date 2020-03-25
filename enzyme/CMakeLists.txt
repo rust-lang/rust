@@ -2,7 +2,7 @@ project(Enzyme)
 
 cmake_minimum_required(VERSION 3.9)
 
-SET(CMAKE_CXX_FLAGS "-Wall -fPIC")
+SET(CMAKE_CXX_FLAGS "-Wall -fPIC -fno-rtti")
 SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -ggdb")
 SET(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
