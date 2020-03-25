@@ -978,15 +978,25 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         // ignore the inputs to a projection, as they may not appear
         // in the normalized form
         if self.just_constrained {
-            match t.kind {
-                ty::Projection(..) | ty::Opaque(..) => {
-                    return false;
-                }
-                _ => {}
+            if let ty::Projection(..) | ty::Opaque(..) = t.kind {
+                return false;
             }
         }
 
         t.super_visit_with(self)
+    }
+
+    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
+        // if we are only looking for "constrained" region, we have to
+        // ignore the inputs of an unevaluated const, as they may not appear
+        // in the normalized form
+        if self.just_constrained {
+            if let ty::ConstKind::Unevaluated(..) = c.val {
+                return false;
+            }
+        }
+
+        c.super_visit_with(self)
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {

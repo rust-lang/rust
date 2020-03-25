@@ -57,7 +57,7 @@ use crate::traits::query::{
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
 };
-use crate::ty::subst::SubstsRef;
+use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 
 use rustc_data_structures::fingerprint::Fingerprint;
