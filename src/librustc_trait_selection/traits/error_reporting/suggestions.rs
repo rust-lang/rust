@@ -126,8 +126,8 @@ crate trait InferCtxtExt<'tcx> {
         scope_span: &Option<Span>,
         expr: Option<hir::HirId>,
         snippet: String,
-        first_generator: DefId,
-        last_generator: Option<DefId>,
+        inner_generator: DefId,
+        outer_generator: Option<DefId>,
         trait_ref: ty::TraitRef<'_>,
         target_ty: Ty<'tcx>,
         tables: &ty::TypeckTables<'_>,
@@ -1003,8 +1003,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // - `BindingObligation` with `impl_send (Send requirement)
         //
         // The first obligation in the chain is the most useful and has the generator that captured
-        // the type. The last generator has information about where the bound was introduced. At
-        // least one generator should be present for this diagnostic to be modified.
+        // the type. The last generator (`outer_generator` below) has information about where the
+        // bound was introduced. At least one generator should be present for this diagnostic to be
+        // modified.
         let (mut trait_ref, mut target_ty) = match obligation.predicate {
             ty::Predicate::Trait(p, _) => {
                 (Some(p.skip_binder().trait_ref), Some(p.skip_binder().self_ty()))
@@ -1012,7 +1013,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             _ => (None, None),
         };
         let mut generator = None;
-        let mut last_generator = None;
+        let mut outer_generator = None;
         let mut next_code = Some(&obligation.cause.code);
         while let Some(code) = next_code {
             debug!("maybe_note_obligation_cause_for_async_await: code={:?}", code);
@@ -1029,7 +1030,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     match ty.kind {
                         ty::Generator(did, ..) => {
                             generator = generator.or(Some(did));
-                            last_generator = Some(did);
+                            outer_generator = Some(did);
                         }
                         ty::GeneratorWitness(..) => {}
                         _ if generator.is_none() => {
@@ -1133,7 +1134,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 *expr,
                 snippet,
                 generator_did,
-                last_generator,
+                outer_generator,
                 trait_ref,
                 target_ty,
                 tables,
@@ -1155,8 +1156,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         scope_span: &Option<Span>,
         expr: Option<hir::HirId>,
         snippet: String,
-        first_generator: DefId,
-        last_generator: Option<DefId>,
+        inner_generator: DefId,
+        outer_generator: Option<DefId>,
         trait_ref: ty::TraitRef<'_>,
         target_ty: Ty<'tcx>,
         tables: &ty::TypeckTables<'_>,
@@ -1167,14 +1168,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let is_async_fn = self
             .tcx
-            .parent(first_generator)
+            .parent(inner_generator)
             .map(|parent_did| self.tcx.asyncness(parent_did))
             .map(|parent_asyncness| parent_asyncness == hir::IsAsync::Async)
             .unwrap_or(false);
         let is_async_move = self
             .tcx
             .hir()
-            .as_local_hir_id(first_generator)
+            .as_local_hir_id(inner_generator)
             .and_then(|hir_id| self.tcx.hir().maybe_body_owned_by(hir_id))
             .map(|body_id| self.tcx.hir().body(body_id))
             .and_then(|body| body.generator_kind())
@@ -1203,7 +1204,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             let original_span = err.span.primary_span().unwrap();
             let mut span = MultiSpan::from_span(original_span);
 
-            let message = if let Some(name) = last_generator
+            let message = if let Some(name) = outer_generator
                 .and_then(|generator_did| self.tcx.parent(generator_did))
                 .and_then(|parent_did| hir.as_local_hir_id(parent_did))
                 .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
