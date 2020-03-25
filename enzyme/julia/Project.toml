@@ -1,0 +1,14 @@
+name = "Enzyme"
+uuid = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+authors = ["William Moses <wmoses@mit.edu>", "Valentin Churavy <vchuravy@mit.edu>"]
+version = "0.1.0"
+
+[deps]
+LLVM = "929cbde3-209d-540e-8aea-75f648917ca0"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+MCAnalyzer = "a81df072-f4bb-11e8-03d3-cfaeda626d18"
+
+[compat]
+julia = "1.3"
+LLVM = "1.3"
+MCAnalyzer = "0.1"
