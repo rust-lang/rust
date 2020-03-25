@@ -74,6 +74,11 @@ enum NicheFilledEnumWithAbsentVariant {
     C,
 }
 
+enum Option2<A, B> {
+    Some(A, B),
+    None
+}
+
 pub fn main() {
     assert_eq!(size_of::<u8>(), 1 as usize);
     assert_eq!(size_of::<u32>(), 4 as usize);
@@ -113,4 +118,6 @@ pub fn main() {
 
     assert_eq!(size_of::<Option<Option<(bool, &())>>>(), size_of::<(bool, &())>());
     assert_eq!(size_of::<Option<Option<(&(), bool)>>>(), size_of::<(bool, &())>());
+    assert_eq!(size_of::<Option<Option2<bool, &()>>>(), size_of::<(bool, &())>());
+    assert_eq!(size_of::<Option<Option2<&(), bool>>>(), size_of::<(bool, &())>());
 }
