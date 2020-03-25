@@ -1,5 +1,4 @@
 use crate::arena::Arena;
-use crate::hir::map::definitions::{self, DefPathHash};
 use crate::hir::map::{Entry, HirOwnerData, Map};
 use crate::hir::{Owner, OwnerNodes, ParentedNode};
 use crate::ich::StableHashingContext;
@@ -11,6 +10,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
+use rustc_hir::definitions::{self, DefPathHash};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};

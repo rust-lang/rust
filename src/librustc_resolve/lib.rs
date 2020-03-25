@@ -17,7 +17,6 @@ pub use rustc_hir::def::{Namespace, PerNS};
 use Determinacy::*;
 
 use rustc::hir::exports::ExportMap;
-use rustc::hir::map::{DefKey, Definitions};
 use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc::span_bug;
 use rustc::ty::query::Providers;
@@ -38,6 +37,7 @@ use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX};
+use rustc_hir::definitions::{DefKey, Definitions};
 use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
 use rustc_hir::{GlobMap, TraitMap};
 use rustc_metadata::creader::{CStore, CrateLoader};

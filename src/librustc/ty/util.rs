@@ -1,6 +1,5 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use crate::hir::map::DefPathData;
 use crate::ich::NodeIdHashingMode;
 use crate::mir::interpret::{sign_extend, truncate};
 use crate::ty::layout::{Integer, IntegerExt, Size};
@@ -17,6 +16,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::definitions::DefPathData;
 use rustc_macros::HashStable;
 use rustc_span::Span;
 use rustc_target::abi::TargetDataLayout;
