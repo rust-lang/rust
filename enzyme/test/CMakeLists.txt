@@ -9,3 +9,13 @@ set(ENZYME_TEST_DEPS LLVMEnzyme-${LLVM_VERSION_MAJOR})
 
 add_subdirectory(Enzyme)
 add_subdirectory(Integration)
+
+if(Julia_EXECUTABLE)
+  add_custom_target(check-enzyme-julia
+      COMMAND
+          env ENZYME_PATH=${ENZYME_BINARY_DIR}/Enzyme ${Julia_EXECUTABLE} --project=${ENZYME_SOURCE_DIR}/julia -e "using Pkg; pkg\"test\""
+      DEPENDS
+      LLVMEnzyme-${LLVM_VERSION_MAJOR}
+      VERBATIM
+  )
+endif()

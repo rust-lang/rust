@@ -46,6 +46,5 @@ jobs:
           make -j
       - name: "Julia tests"
         run: |
-            ENZYME_PATH=`pwd`/build/Enzyme julia -e 'using Pkg; pkg"test"'
-        env:
-          JULIA_PROJECT: "enzyme/julia"
+          cd build
+          make check-enzyme-julia

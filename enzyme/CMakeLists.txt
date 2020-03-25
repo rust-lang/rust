@@ -16,6 +16,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(ENZYME_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(ENZYME_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
+list(APPEND CMAKE_MODULE_PATH "${ENZYME_SOURCE_DIR}/cmake/modules")
 
 set(LLVM_SHLIBEXT "${CMAKE_SHARED_MODULE_SUFFIX}")
 message( LLVM_SHLIBEXT = ${LLVM_SHLIBEXT} )
@@ -64,10 +65,11 @@ string(REPLACE "class SCEVExpander" "namespace fake {\n  class SCEVExpander" INP
 string(REPLACE "};\n}" "};\n}}" INPUT_TEXT "${INPUT_TEXT}")
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/include/SCEV/ScalarEvolutionExpander.h" "${INPUT_TEXT}")
 
-
-
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
 
+# Look for Julia
+include(FindJulia)
+find_package(Julia)
 
 add_subdirectory(Enzyme)
 add_subdirectory(test)
