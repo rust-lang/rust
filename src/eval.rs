@@ -114,7 +114,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             ecx.layout_of(tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), u64::try_from(argvs.len()).unwrap()))?;
         let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Machine.into());
         for (idx, arg) in argvs.into_iter().enumerate() {
-            let place = ecx.mplace_field(argvs_place, u64::try_from(idx).unwrap())?;
+            let place = ecx.mplace_field(argvs_place, idx)?;
             ecx.write_scalar(arg, place.into())?;
         }
         ecx.memory.mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
@@ -154,7 +154,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             // Store the UTF-16 string. We just allocated so we know the bounds are fine.
             let char_size = Size::from_bytes(2);
             for (idx, &c) in cmd_utf16.iter().enumerate() {
-                let place = ecx.mplace_field(cmd_place, u64::try_from(idx).unwrap())?;
+                let place = ecx.mplace_field(cmd_place, idx)?;
                 ecx.write_scalar(Scalar::from_uint(c, char_size), place.into())?;
             }
         }

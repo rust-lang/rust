@@ -598,7 +598,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Store the UTF-16 string.
         let char_size = Size::from_bytes(2);
         for (idx, c) in u16_vec.into_iter().chain(iter::once(0x0000)).enumerate() {
-            let place = this.mplace_field(mplace, u64::try_from(idx).unwrap())?; 
+            let place = this.mplace_field(mplace, idx)?;
             this.write_scalar(Scalar::from_uint(c, char_size), place.into())?;
         }
         Ok((true, string_length))
