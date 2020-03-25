@@ -1023,12 +1023,19 @@ impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
         span: Span,            // span of the field pattern, e.g., `x: 0`
         def: &'tcx ty::AdtDef, // definition of the struct or enum
         field: &'tcx ty::FieldDef,
+        in_update_syntax: bool,
     ) {
         // definition of the field
         let ident = Ident::new(kw::Invalid, use_ctxt);
         let current_hir = self.current_item;
         let def_id = self.tcx.adjust_ident_and_get_scope(ident, def.did, current_hir).1;
         if !def.is_enum() && !field.vis.is_accessible_from(def_id, self.tcx) {
+            let label = if in_update_syntax {
+                format!("field `{}` is private", field.ident)
+            } else {
+                "private field".to_string()
+            };
+
             struct_span_err!(
                 self.tcx.sess,
                 span,
@@ -1038,7 +1045,7 @@ impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
                 def.variant_descr(),
                 self.tcx.def_path_str(def.did)
             )
-            .span_label(span, "private field")
+            .span_label(span, label)
             .emit();
         }
     }
@@ -1106,13 +1113,13 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                             Some(field) => (field.ident.span, field.span),
                             None => (base.span, base.span),
                         };
-                        self.check_field(use_ctxt, span, adt, variant_field);
+                        self.check_field(use_ctxt, span, adt, variant_field, true);
                     }
                 } else {
                     for field in fields {
                         let use_ctxt = field.ident.span;
                         let index = self.tcx.field_index(field.hir_id, self.tables);
-                        self.check_field(use_ctxt, field.span, adt, &variant.fields[index]);
+                        self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
                     }
                 }
             }
@@ -1131,7 +1138,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                 for field in fields {
                     let use_ctxt = field.ident.span;
                     let index = self.tcx.field_index(field.hir_id, self.tables);
-                    self.check_field(use_ctxt, field.span, adt, &variant.fields[index]);
+                    self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
                 }
             }
             _ => {}
