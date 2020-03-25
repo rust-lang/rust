@@ -12,7 +12,7 @@ note: future is not `Send` as this value is used across an await
   --> $DIR/issue-68112.rs:32:9
    |
 LL |         let non_send_fut = make_non_send_future1();
-   |             ------------ has type `impl std::future::Future`
+   |             ------------ created here
 LL |         let _ = non_send_fut.await;
 LL |         ready(0).await;
    |         ^^^^^^^^ await occurs here, with `non_send_fut` maybe used later

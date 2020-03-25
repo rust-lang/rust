@@ -1353,7 +1353,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             format!("{} occurs here, with `{}` maybe used later", await_or_yield, snippet),
         );
 
-        span.push_span_label(target_span, format!("has type `{}`", target_ty));
+        if target_ty.is_impl_trait() {
+            // It's not very useful to tell the user the type if it's opaque.
+            span.push_span_label(target_span, "created here".to_string());
+        } else {
+            span.push_span_label(target_span, format!("has type `{}`", target_ty));
+        }
 
         // If available, use the scope span to annotate the drop location.
         if let Some(scope_span) = scope_span {

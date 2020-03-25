@@ -12,7 +12,7 @@ note: future is not `Send` as this value is used across an yield
   --> $DIR/issue-68112.rs:31:9
    |
 LL |         let _non_send_gen = make_non_send_generator();
-   |             ------------- has type `impl std::ops::Generator`
+   |             ------------- created here
 LL |         yield;
    |         ^^^^^ yield occurs here, with `_non_send_gen` maybe used later
 LL |     };
