@@ -138,15 +138,14 @@ $category > $option = $value -- $comment
 For targets: `arm-unknown-linux-gnueabi`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
-- Path and misc options > Patches origin = Bundled, then local
-- Path and misc options > Local patch directory = /tmp/patches
+- Path and misc options > Patches origin = Bundled only
 - Target options > Target Architecture = arm
 - Target options > Architecture level = armv6 -- (+)
 - Target options > Floating point = software (no FPU) -- (\*)
 - Operating System > Target OS = linux
-- Operating System > Linux kernel version = 3.2.72 -- Precise kernel
-- C-library > glibc version = 2.16.0
-- C compiler > gcc version = 5.2.0
+- Operating System > Linux kernel version = 3.2.101
+- C-library > glibc version = 2.17.0
+- C compiler > gcc version = 8.3.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `arm-linux-gnueabihf.config`
@@ -154,17 +153,16 @@ For targets: `arm-unknown-linux-gnueabi`
 For targets: `arm-unknown-linux-gnueabihf`
 
 - Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
-- Path and misc options > Patches origin = Bundled, then local
-- Path and misc options > Local patch directory = /tmp/patches
+- Path and misc options > Patches origin = Bundled only
 - Target options > Target Architecture = arm
 - Target options > Architecture level = armv6 -- (+)
 - Target options > Use specific FPU = vfp -- (+)
 - Target options > Floating point = hardware (FPU) -- (\*)
 - Target options > Default instruction set mode = arm -- (+)
 - Operating System > Target OS = linux
-- Operating System > Linux kernel version = 3.2.72 -- Precise kernel
-- C-library > glibc version = 2.16.0
-- C compiler > gcc version = 5.2.0
+- Operating System > Linux kernel version = 3.2.101
+- C-library > glibc version = 2.17.0
+- C compiler > gcc version = 8.3.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `armv7-linux-gnueabihf.config`
