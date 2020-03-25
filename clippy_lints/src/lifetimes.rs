@@ -1,4 +1,3 @@
-use matches::matches;
 use rustc::hir::map::Map;
 use rustc::lint::in_external_macro;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

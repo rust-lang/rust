@@ -2,7 +2,6 @@ use std::cmp;
 
 use crate::utils::{is_copy, is_self_ty, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
-use matches::matches;
 use rustc::ty;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

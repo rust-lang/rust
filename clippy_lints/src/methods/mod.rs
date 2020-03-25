@@ -8,7 +8,6 @@ use std::fmt;
 use std::iter;
 
 use if_chain::if_chain;
-use matches::matches;
 use rustc::hir::map::Map;
 use rustc::lint::in_external_macro;
 use rustc::ty::{self, Predicate, Ty};

@@ -2,7 +2,6 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::utils::{higher, snippet, snippet_opt, snippet_with_macro_callsite};
-use matches::matches;
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{ast, token};
 use rustc_ast_pretty::pprust::token_kind_to_string;

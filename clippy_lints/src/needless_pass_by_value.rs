@@ -4,7 +4,6 @@ use crate::utils::{
     snippet, snippet_opt, span_lint_and_then,
 };
 use if_chain::if_chain;
-use matches::matches;
 use rustc::ty::{self, TypeFoldable};
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
