@@ -100,10 +100,11 @@ impl<T> RawVec<T, Global> {
 
     /// Reconstitutes a `RawVec` from a pointer and capacity.
     ///
-    /// # Undefined Behavior
+    /// # Safety
     ///
     /// The `ptr` must be allocated (on the system heap), and with the given `capacity`.
-    /// The `capacity` cannot exceed `isize::MAX` (only a concern on 32-bit systems).
+    /// The `capacity` cannot exceed `isize::MAX` for sized types. (only a concern on 32-bit
+    /// systems). ZSTs may have a capacity up to `usize::MAX`.
     /// If the `ptr` and `capacity` come from a `RawVec`, then this is guaranteed.
     #[inline]
     pub unsafe fn from_raw_parts(ptr: *mut T, capacity: usize) -> Self {
@@ -160,10 +161,11 @@ impl<T, A: AllocRef> RawVec<T, A> {
 
     /// Reconstitutes a `RawVec` from a pointer, capacity, and allocator.
     ///
-    /// # Undefined Behavior
+    /// # Safety
     ///
     /// The `ptr` must be allocated (via the given allocator `a`), and with the given `capacity`.
-    /// The `capacity` cannot exceed `isize::MAX` (only a concern on 32-bit systems).
+    /// The `capacity` cannot exceed `isize::MAX` for sized types. (only a concern on 32-bit
+    /// systems). ZSTs may have a capacity up to `usize::MAX`.
     /// If the `ptr` and `capacity` come from a `RawVec` created via `a`, then this is guaranteed.
     #[inline]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, a: A) -> Self {
