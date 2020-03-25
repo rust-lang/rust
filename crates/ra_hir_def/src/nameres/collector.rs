@@ -65,6 +65,9 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> Cr
         unexpanded_attribute_macros: Vec::new(),
         mod_dirs: FxHashMap::default(),
         cfg_options,
+
+        // FIXME: pass proc-macro from crate-graph
+        proc_macros: Default::default(),
     };
     collector.collect();
     collector.finish()
@@ -123,6 +126,7 @@ struct DefCollector<'a> {
     unexpanded_attribute_macros: Vec<DeriveDirective>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
+    proc_macros: Vec<(Name, ProcMacroExpander)>,
 }
 
 impl DefCollector<'_> {
@@ -177,6 +181,24 @@ impl DefCollector<'_> {
         // show unresolved imports in completion, etc
         for directive in unresolved_imports {
             self.record_resolved_import(&directive)
+        }
+
+        // Record proc-macros
+        self.collect_proc_macro();
+    }
+
+    fn collect_proc_macro(&mut self) {
+        let proc_macros = std::mem::take(&mut self.proc_macros);
+        for (name, expander) in proc_macros {
+            let krate = self.def_map.krate;
+
+            let macro_id = MacroDefId {
+                ast_id: None,
+                krate: Some(krate),
+                kind: MacroDefKind::CustomDerive(expander),
+            };
+
+            self.define_proc_macro(name.clone(), macro_id);
         }
     }
 
@@ -801,7 +823,6 @@ impl ModCollector<'_, '_> {
         // in which case we don't add the invocation, just a single attribute
         // macro invocation
         self.collect_derives(attrs, def);
-        self.collect_proc_macro(attrs);
 
         let name = def.name.clone();
         let container = ContainerId::ModuleId(module);
@@ -874,28 +895,6 @@ impl ModCollector<'_, '_> {
                 self.def_collector
                     .unexpanded_attribute_macros
                     .push(DeriveDirective { module_id: self.module_id, ast_id });
-            }
-        }
-    }
-
-    fn collect_proc_macro(&mut self, attrs: &Attrs) {
-        if let Some(derive_subtree) = attrs.by_key("proc_macro_derive").tt_values().next() {
-            if let Some(tt) = derive_subtree.token_trees.get(0) {
-                let ident = match &tt {
-                    tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => ident,
-                    _ => return, // anything else would be an error (which we currently ignore)
-                };
-                let name = ident.as_name();
-                let krate = self.def_collector.def_map.krate;
-                let expander = ProcMacroExpander::new(krate);
-
-                let macro_id = MacroDefId {
-                    ast_id: None,
-                    krate: Some(krate),
-                    kind: MacroDefKind::CustomDerive(expander),
-                };
-
-                self.def_collector.define_proc_macro(name.clone(), macro_id);
             }
         }
     }
@@ -1001,6 +1000,7 @@ mod tests {
             unexpanded_attribute_macros: Vec::new(),
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
+            proc_macros: Default::default(),
         };
         collector.collect();
         collector.def_map
