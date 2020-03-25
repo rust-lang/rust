@@ -258,7 +258,7 @@ LL |     fn f4_also_moved(ref mut a @ ref mut b @ c: U) {}
    |                                  |           value moved into `c` here
    |                                  value borrowed, by `b`, here
 
-error[E0499]: cannot borrow `_` as mutable more than once at a time
+error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:28:21
    |
 LL |     let ref mut a @ ref mut b = U;
@@ -270,7 +270,7 @@ LL |     let ref mut a @ ref mut b = U;
 LL |     drop(a);
    |          - first borrow later used here
 
-error[E0499]: cannot borrow `_` as mutable more than once at a time
+error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:38:21
    |
 LL |     let ref mut a @ ref mut b = U;
@@ -318,7 +318,7 @@ LL |     let a @ &mut (ref mut b, ref mut c) = &mut (U, U);
    |         |                    value borrowed here after move
    |         value moved here
 
-error[E0499]: cannot borrow `_` as mutable more than once at a time
+error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:95:24
    |
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
@@ -330,7 +330,7 @@ LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
 LL |             *a = Err(U);
    |             ----------- first borrow later used here
 
-error[E0499]: cannot borrow `_` as mutable more than once at a time
+error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:95:53
    |
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
@@ -342,7 +342,7 @@ LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
 LL |             *a = Err(U);
    |             ----------- first borrow later used here
 
-error[E0499]: cannot borrow `_` as mutable more than once at a time
+error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:107:24
    |
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
@@ -354,7 +354,7 @@ LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
 LL |             drop(a);
    |                  - first borrow later used here
 
-error[E0499]: cannot borrow `_` as mutable more than once at a time
+error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:107:53
    |
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
