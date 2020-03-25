@@ -1,5 +1,4 @@
 use if_chain::if_chain;
-use matches::matches;
 use rustc::ty;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;

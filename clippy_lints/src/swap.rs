@@ -4,7 +4,6 @@ use crate::utils::{
     span_lint_and_then, walk_ptrs_ty, SpanlessEq,
 };
 use if_chain::if_chain;
-use matches::matches;
 use rustc::ty;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, StmtKind};

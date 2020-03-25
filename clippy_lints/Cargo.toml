@@ -21,7 +21,6 @@ cargo_metadata = "0.9.0"
 if_chain = "1.0.0"
 itertools = "0.9"
 lazy_static = "1.0.2"
-matches = "0.1.7"
 pulldown-cmark = { version = "0.7", default-features = false }
 quine-mc_cluskey = "0.2.2"
 regex-syntax = "0.6"

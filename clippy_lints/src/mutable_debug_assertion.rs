@@ -1,6 +1,5 @@
 use crate::utils::{is_direct_expn_of, span_lint};
 use if_chain::if_chain;
-use matches::matches;
 use rustc::hir::map::Map;
 use rustc::ty;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};

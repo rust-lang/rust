@@ -1,5 +1,4 @@
 use crate::utils::{differing_macro_contexts, higher, snippet_block_with_applicability, span_lint, span_lint_and_sugg};
-use matches::matches;
 use rustc::hir::map::Map;
 use rustc::lint::in_external_macro;
 use rustc_errors::Applicability;

@@ -25,7 +25,6 @@ use std::borrow::Cow;
 use std::mem;
 
 use if_chain::if_chain;
-use matches::matches;
 use rustc::hir::map::Map;
 use rustc::traits;
 use rustc::ty::{

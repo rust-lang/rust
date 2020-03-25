@@ -3,7 +3,6 @@ use crate::utils::{
     span_lint_hir_and_then, walk_ptrs_ty_depth,
 };
 use if_chain::if_chain;
-use matches::matches;
 use rustc::mir::{
     self, traversal,
     visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor as _},

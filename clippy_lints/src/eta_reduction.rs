@@ -1,5 +1,4 @@
 use if_chain::if_chain;
-use matches::matches;
 use rustc::lint::in_external_macro;
 use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
