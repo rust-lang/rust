@@ -329,17 +329,6 @@ enum Replacement {
     Single(SyntaxElement),
 }
 
-/// Replaces descendants in the node, according to the mapping.
-///
-/// This is a type-unsafe low-level editing API, if you need to use it, prefer
-/// to create a type-safe abstraction on top of it instead.
-pub fn _replace_descendants(
-    parent: &SyntaxNode,
-    map: impl Fn(&SyntaxElement) -> Option<SyntaxElement>,
-) -> SyntaxNode {
-    SyntaxRewriter::from_fn(map).rewrite(parent)
-}
-
 fn with_children(
     parent: &SyntaxNode,
     new_children: Vec<NodeOrToken<rowan::GreenNode, rowan::GreenToken>>,
