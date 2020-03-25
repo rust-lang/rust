@@ -182,7 +182,7 @@ impl GlobalState {
         self.active_calls.contains(&id)
     }
 
-    pub fn static_base_ptr(&mut self, id: AllocId) -> Tag {
+    pub fn global_base_ptr(&mut self, id: AllocId) -> Tag {
         self.base_ptr_ids.get(&id).copied().unwrap_or_else(|| {
             let tag = Tag::Tagged(self.new_ptr());
             trace!("New allocation {:?} has base tag {:?}", id, tag);
@@ -457,12 +457,12 @@ impl Stacks {
             // everything else off the stack, invalidating all previous pointers,
             // and in particular, *all* raw pointers.
             MemoryKind::Stack => (Tag::Tagged(extra.borrow_mut().new_ptr()), Permission::Unique),
-            // Static memory can be referenced by "global" pointers from `tcx`.
-            // Thus we call `static_base_ptr` such that the global pointers get the same tag
+            // Global memory can be referenced by global pointers from `tcx`.
+            // Thus we call `global_base_ptr` such that the global pointers get the same tag
             // as what we use here.
             // The base pointer is not unique, so the base permission is `SharedReadWrite`.
-            MemoryKind::Machine(MiriMemoryKind::Static) | MemoryKind::Machine(MiriMemoryKind::Machine) =>
-                (extra.borrow_mut().static_base_ptr(id), Permission::SharedReadWrite),
+            MemoryKind::Machine(MiriMemoryKind::Global) | MemoryKind::Machine(MiriMemoryKind::Machine) =>
+                (extra.borrow_mut().global_base_ptr(id), Permission::SharedReadWrite),
             // Everything else we handle entirely untagged for now.
             // FIXME: experiment with more precise tracking.
             _ => (Tag::Untagged, Permission::SharedReadWrite),
