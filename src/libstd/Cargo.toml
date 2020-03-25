@@ -27,7 +27,7 @@ hashbrown = { version = "0.6.2", default-features = false, features = ['rustc-de
 
 [dependencies.backtrace_rs]
 package = "backtrace"
-version = "0.3.44"
+version = "0.3.46"
 default-features = false # without the libstd `backtrace` feature, stub out everything
 features = [ "rustc-dep-of-std" ] # enable build support for integrating into libstd
 
