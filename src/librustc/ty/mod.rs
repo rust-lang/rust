@@ -1765,12 +1765,14 @@ pub type PlaceholderConst = Placeholder<BoundVar>;
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
 /// particular point.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TypeFoldable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TypeFoldable, Lift)]
 pub struct ParamEnv<'tcx> {
     /// `Obligation`s that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into `Obligation`s, and elaborated and normalized.
     pub caller_bounds: &'tcx List<ty::Predicate<'tcx>>,
+
+    pub global_bounds: &'tcx List<ty::Predicate<'tcx>>,
 
     /// Typically, this is `Reveal::UserFacing`, but during codegen we
     /// want `Reveal::All` -- note that this is always paired with an
@@ -1812,7 +1814,7 @@ impl<'tcx> ParamEnv<'tcx> {
         reveal: Reveal,
         def_id: Option<DefId>,
     ) -> Self {
-        ty::ParamEnv { caller_bounds, reveal, def_id }
+        ty::ParamEnv { caller_bounds, global_bounds: List::empty(), reveal, def_id }
     }
 
     /// Returns a new parameter environment with the same clauses, but
