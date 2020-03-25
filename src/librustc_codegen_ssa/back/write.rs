@@ -131,7 +131,8 @@ impl ModuleConfig {
             || sess.opts.cg.linker_plugin_lto.enabled()
         {
             EmitObj::Bitcode
-        } else if sess.opts.debugging_opts.embed_bitcode {
+        } else if sess.opts.cg.embed_bitcode.unwrap_or(true) {
+            // `unwrap_or(true)` because `-C embed-bitcode` defaults to true.
             EmitObj::ObjectCode { bitcode_section: true }
         } else {
             EmitObj::ObjectCode { bitcode_section: false }

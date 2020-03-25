@@ -1680,6 +1680,16 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
+    if let Some(false) = cg.embed_bitcode {
+        match cg.lto {
+            LtoCli::No | LtoCli::Unspecified => {}
+            LtoCli::Yes | LtoCli::NoParam | LtoCli::Thin | LtoCli::Fat => early_error(
+                error_format,
+                "options `-C embed-bitcode=no` and `-C lto` are incompatible",
+            ),
+        }
+    }
+
     let prints = collect_print_requests(&mut cg, &mut debugging_opts, matches, error_format);
 
     let cg = cg;
