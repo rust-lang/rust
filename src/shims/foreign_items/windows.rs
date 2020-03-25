@@ -23,24 +23,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Environment related shims
             "GetEnvironmentVariableW" => {
-                let result = this.getenvironmentvariablew(args[0], args[1], args[2])?;
+                let result = this.GetEnvironmentVariableW(args[0], args[1], args[2])?;
                 this.write_scalar(Scalar::from_uint(result, dest.layout.size), dest)?;
             }
 
             "SetEnvironmentVariableW" => {
-                let result = this.setenvironmentvariablew(args[0], args[1])?;
+                let result = this.SetEnvironmentVariableW(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
             "GetEnvironmentStringsW" => {
-                let result = this.getenvironmentstringsw()?;
+                let result = this.GetEnvironmentStringsW()?;
                 // If the function succeeds, the return value is a pointer to the environment block of the current process.
                 this.write_scalar(result, dest)?;
             }
 
             "FreeEnvironmentStringsW" => {
-                let old_vars_ptr = this.read_scalar(args[0])?.not_undef()?;
-                let result = this.memory.deallocate(this.force_ptr(old_vars_ptr)?, None, MiriMemoryKind::WinHeap.into()).is_ok();
+                let result = this.FreeEnvironmentStringsW(args[0])?;
                 // If the function succeeds, the return value is nonzero.
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
