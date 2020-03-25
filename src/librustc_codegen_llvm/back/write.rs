@@ -1,5 +1,4 @@
 use crate::attributes;
-use crate::back::bytecode;
 use crate::back::lto::ThinBuffer;
 use crate::back::profiling::{
     selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
@@ -16,7 +15,7 @@ use crate::ModuleLlvm;
 use log::debug;
 use rustc_codegen_ssa::back::write::{CodegenContext, EmitObj, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, RLIB_BYTECODE_EXTENSION};
+use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{FatalError, Handler};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
@@ -669,19 +668,6 @@ pub(crate) unsafe fn codegen(
                 );
                 embed_bitcode(cgcx, llcx, llmod, data);
             }
-
-            if config.emit_bc_compressed {
-                let _timer = cgcx.prof.generic_activity_with_arg(
-                    "LLVM_module_codegen_emit_compressed_bitcode",
-                    &module.name[..],
-                );
-                let dst = bc_out.with_extension(RLIB_BYTECODE_EXTENSION);
-                let data = bytecode::encode(&module.name, data);
-                if let Err(e) = fs::write(&dst, data) {
-                    let msg = format!("failed to write bytecode to {}: {}", dst.display(), e);
-                    diag_handler.err(&msg);
-                }
-            }
         }
 
         if config.emit_ir {
@@ -790,7 +776,6 @@ pub(crate) unsafe fn codegen(
     Ok(module.into_compiled_module(
         config.emit_obj != EmitObj::None,
         config.emit_bc,
-        config.emit_bc_compressed,
         &cgcx.output_filenames,
     ))
 }

@@ -39,7 +39,6 @@ use std::sync::Arc;
 
 mod back {
     pub mod archive;
-    pub mod bytecode;
     pub mod lto;
     mod profiling;
     pub mod write;

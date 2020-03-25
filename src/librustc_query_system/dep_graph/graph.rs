@@ -868,7 +868,6 @@ pub struct WorkProduct {
 pub enum WorkProductFileKind {
     Object,
     Bytecode,
-    BytecodeCompressed,
 }
 
 #[derive(Clone)]

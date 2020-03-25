@@ -10,7 +10,7 @@ use std::str;
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind};
 use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
-use rustc_codegen_ssa::{looks_like_rust_object_file, METADATA_FILENAME, RLIB_BYTECODE_EXTENSION};
+use rustc_codegen_ssa::{looks_like_rust_object_file, METADATA_FILENAME};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
@@ -129,8 +129,8 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         let obj_start = name.to_owned();
 
         self.add_archive(rlib, move |fname: &str| {
-            // Ignore bytecode/metadata files, no matter the name.
-            if fname.ends_with(RLIB_BYTECODE_EXTENSION) || fname == METADATA_FILENAME {
+            // Ignore metadata files, no matter the name.
+            if fname == METADATA_FILENAME {
                 return true;
             }
 
