@@ -548,7 +548,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         amount: usize,
         placement: ReallocPlacement,
     ) -> Result<(), TryReserveError> {
-        assert!(amount <= self.cap, "Tried to shrink to a larger capacity");
+        assert!(amount <= self.capacity(), "Tried to shrink to a larger capacity");
 
         let mut memory = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
         let new_size = amount * mem::size_of::<T>();
