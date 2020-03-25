@@ -7,4 +7,5 @@ test_utils::marks![
     not_applicable_outside_of_bind_pat
     test_not_inline_mut_variable
     test_not_applicable_if_variable_unused
+    change_visibility_field_false_positive
 ];

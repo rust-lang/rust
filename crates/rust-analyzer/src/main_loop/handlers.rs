@@ -734,19 +734,29 @@ pub fn handle_code_action(
         res.push(fix.action.clone());
     }
 
-    let mut grouped_assists: FxHashMap<String, Vec<Assist>> = FxHashMap::default();
+    let mut grouped_assists: FxHashMap<String, (usize, Vec<Assist>)> = FxHashMap::default();
     for assist in world.analysis().assists(FileRange { file_id, range })?.into_iter() {
         match &assist.group_label {
-            Some(label) => grouped_assists.entry(label.to_owned()).or_default().push(assist),
-            None => res.push(create_single_code_action(assist, &world)?.into()),
+            Some(label) => grouped_assists
+                .entry(label.to_owned())
+                .or_insert_with(|| {
+                    let idx = res.len();
+                    let dummy = Command::new(String::new(), String::new(), None);
+                    res.push(dummy.into());
+                    (idx, Vec::new())
+                })
+                .1
+                .push(assist),
+            None => {
+                res.push(create_single_code_action(assist, &world)?.into());
+            }
         }
     }
 
-    for (group_label, assists) in grouped_assists {
+    for (group_label, (idx, assists)) in grouped_assists {
         if assists.len() == 1 {
-            res.push(
-                create_single_code_action(assists.into_iter().next().unwrap(), &world)?.into(),
-            );
+            res[idx] =
+                create_single_code_action(assists.into_iter().next().unwrap(), &world)?.into();
         } else {
             let title = group_label;
 
@@ -760,17 +770,15 @@ pub fn handle_code_action(
                 command: "rust-analyzer.selectAndApplySourceChange".to_string(),
                 arguments: Some(vec![serde_json::Value::Array(arguments)]),
             });
-            res.push(
-                CodeAction {
-                    title,
-                    kind: None,
-                    diagnostics: None,
-                    edit: None,
-                    command,
-                    is_preferred: None,
-                }
-                .into(),
-            );
+            res[idx] = CodeAction {
+                title,
+                kind: None,
+                diagnostics: None,
+                edit: None,
+                command,
+                is_preferred: None,
+            }
+            .into();
         }
     }
 
