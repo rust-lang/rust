@@ -1,4 +1,3 @@
-use crate::hir::map::DefPathHash;
 use crate::ich::{self, StableHashingContext};
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject;
@@ -6,6 +5,7 @@ use crate::ty::fold::TypeFoldable;
 use crate::ty::{Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::definitions::DefPathHash;
 use rustc_hir::HirId;
 
 use rustc_data_structures::fx::FxHashMap;

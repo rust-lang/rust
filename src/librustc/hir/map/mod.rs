@@ -7,9 +7,7 @@ use rustc_ast::ast::{self, Name, NodeId};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
-pub use rustc_hir::definitions;
-pub use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
-pub use rustc_hir::definitions::{Definitions, DisambiguatedDefPathData};
+use rustc_hir::definitions::{DefKey, DefPath, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::print::Nested;
@@ -23,8 +21,6 @@ use rustc_target::spec::abi::Abi;
 
 pub mod blocks;
 mod collector;
-mod hir_id_validator;
-pub use hir_id_validator::check_crate;
 
 /// Represents an entry and its parent `HirId`.
 #[derive(Copy, Clone, Debug)]
@@ -44,78 +40,41 @@ impl<'hir> Entry<'hir> {
 
 fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
     match node {
-        Node::Item(ref item) => match item.kind {
-            ItemKind::Fn(ref sig, _, _) => Some(&sig.decl),
-            _ => None,
-        },
-
-        Node::TraitItem(ref item) => match item.kind {
-            TraitItemKind::Fn(ref sig, _) => Some(&sig.decl),
-            _ => None,
-        },
-
-        Node::ImplItem(ref item) => match item.kind {
-            ImplItemKind::Fn(ref sig, _) => Some(&sig.decl),
-            _ => None,
-        },
-
-        Node::Expr(ref expr) => match expr.kind {
-            ExprKind::Closure(_, ref fn_decl, ..) => Some(fn_decl),
-            _ => None,
-        },
-
+        Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })
+        | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, _), .. })
+        | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(sig, _), .. }) => Some(&sig.decl),
+        Node::Expr(Expr { kind: ExprKind::Closure(_, fn_decl, ..), .. }) => Some(fn_decl),
         _ => None,
     }
 }
 
 fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
     match &node {
-        Node::Item(item) => match &item.kind {
-            ItemKind::Fn(sig, _, _) => Some(sig),
-            _ => None,
-        },
-
-        Node::TraitItem(item) => match &item.kind {
-            TraitItemKind::Fn(sig, _) => Some(sig),
-            _ => None,
-        },
-
-        Node::ImplItem(item) => match &item.kind {
-            ImplItemKind::Fn(sig, _) => Some(sig),
-            _ => None,
-        },
-
+        Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })
+        | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, _), .. })
+        | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(sig, _), .. }) => Some(sig),
         _ => None,
     }
 }
 
 fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
     match node {
-        Node::Item(item) => match item.kind {
-            ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body) => {
-                Some(body)
-            }
-            _ => None,
-        },
-
-        Node::TraitItem(item) => match item.kind {
-            TraitItemKind::Const(_, Some(body)) | TraitItemKind::Fn(_, TraitFn::Provided(body)) => {
-                Some(body)
-            }
-            _ => None,
-        },
-
-        Node::ImplItem(item) => match item.kind {
-            ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body) => Some(body),
-            _ => None,
-        },
+        Node::Item(Item {
+            kind: ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),
+            ..
+        })
+        | Node::TraitItem(TraitItem {
+            kind:
+                TraitItemKind::Const(_, Some(body)) | TraitItemKind::Fn(_, TraitFn::Provided(body)),
+            ..
+        })
+        | Node::ImplItem(ImplItem {
+            kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
+            ..
+        })
+        | Node::Expr(Expr { kind: ExprKind::Closure(.., body, _, _), .. }) => Some(*body),
 
         Node::AnonConst(constant) => Some(constant.body),
-
-        Node::Expr(expr) => match expr.kind {
-            ExprKind::Closure(.., body, _, _) => Some(body),
-            _ => None,
-        },
 
         _ => None,
     }
@@ -520,20 +479,21 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics<'hir>> {
-        self.get_if_local(id).and_then(|node| match node {
-            Node::ImplItem(ref impl_item) => Some(&impl_item.generics),
-            Node::TraitItem(ref trait_item) => Some(&trait_item.generics),
-            Node::Item(ref item) => match item.kind {
-                ItemKind::Fn(_, ref generics, _)
-                | ItemKind::TyAlias(_, ref generics)
-                | ItemKind::Enum(_, ref generics)
-                | ItemKind::Struct(_, ref generics)
-                | ItemKind::Union(_, ref generics)
-                | ItemKind::Trait(_, _, ref generics, ..)
-                | ItemKind::TraitAlias(ref generics, _)
-                | ItemKind::Impl { ref generics, .. } => Some(generics),
-                _ => None,
-            },
+        self.get_if_local(id).and_then(|node| match &node {
+            Node::ImplItem(impl_item) => Some(&impl_item.generics),
+            Node::TraitItem(trait_item) => Some(&trait_item.generics),
+            Node::Item(Item {
+                kind:
+                    ItemKind::Fn(_, generics, _)
+                    | ItemKind::TyAlias(_, generics)
+                    | ItemKind::Enum(_, generics)
+                    | ItemKind::Struct(_, generics)
+                    | ItemKind::Union(_, generics)
+                    | ItemKind::Trait(_, _, generics, ..)
+                    | ItemKind::TraitAlias(generics, _)
+                    | ItemKind::Impl { generics, .. },
+                ..
+            }) => Some(generics),
             _ => None,
         })
     }
@@ -573,11 +533,12 @@ impl<'hir> Map<'hir> {
             _ => return false,
         }
         match self.find(self.get_parent_node(id)) {
-            Some(Node::Item(_)) | Some(Node::TraitItem(_)) | Some(Node::ImplItem(_)) => true,
-            Some(Node::Expr(e)) => match e.kind {
-                ExprKind::Closure(..) => true,
-                _ => false,
-            },
+            Some(
+                Node::Item(_)
+                | Node::TraitItem(_)
+                | Node::ImplItem(_)
+                | Node::Expr(Expr { kind: ExprKind::Closure(..), .. }),
+            ) => true,
             _ => false,
         }
     }
@@ -644,12 +605,8 @@ impl<'hir> Map<'hir> {
             if let (Some((_, next_node)), false) = (iter.peek(), ignore_tail) {
                 match next_node {
                     Node::Block(Block { expr: None, .. }) => return None,
-                    Node::Block(Block { expr: Some(expr), .. }) => {
-                        if hir_id != expr.hir_id {
-                            // The current node is not the tail expression of its parent.
-                            return None;
-                        }
-                    }
+                    // The current node is not the tail expression of its parent.
+                    Node::Block(Block { expr: Some(e), .. }) if hir_id != e.hir_id => return None,
                     _ => {}
                 }
             }
@@ -659,14 +616,11 @@ impl<'hir> Map<'hir> {
                 | Node::TraitItem(_)
                 | Node::Expr(Expr { kind: ExprKind::Closure(..), .. })
                 | Node::ImplItem(_) => return Some(hir_id),
-                Node::Expr(ref expr) => {
-                    match expr.kind {
-                        // Ignore `return`s on the first iteration
-                        ExprKind::Loop(..) | ExprKind::Ret(..) => return None,
-                        _ => {}
-                    }
+                // Ignore `return`s on the first iteration
+                Node::Expr(Expr { kind: ExprKind::Loop(..) | ExprKind::Ret(..), .. })
+                | Node::Local(_) => {
+                    return None;
                 }
-                Node::Local(_) => return None,
                 _ => {}
             }
         }
@@ -710,17 +664,12 @@ impl<'hir> Map<'hir> {
     pub fn get_match_if_cause(&self, hir_id: HirId) -> Option<&'hir Expr<'hir>> {
         for (_, node) in self.parent_iter(hir_id) {
             match node {
-                Node::Item(_) | Node::ForeignItem(_) | Node::TraitItem(_) | Node::ImplItem(_) => {
-                    break;
-                }
-                Node::Expr(expr) => match expr.kind {
-                    ExprKind::Match(_, _, _) => return Some(expr),
-                    _ => {}
-                },
-                Node::Stmt(stmt) => match stmt.kind {
-                    StmtKind::Local(_) => break,
-                    _ => {}
-                },
+                Node::Item(_)
+                | Node::ForeignItem(_)
+                | Node::TraitItem(_)
+                | Node::ImplItem(_)
+                | Node::Stmt(Stmt { kind: StmtKind::Local(_), .. }) => break,
+                Node::Expr(expr @ Expr { kind: ExprKind::Match(..), .. }) => return Some(expr),
                 _ => {}
             }
         }
@@ -730,32 +679,22 @@ impl<'hir> Map<'hir> {
     /// Returns the nearest enclosing scope. A scope is roughly an item or block.
     pub fn get_enclosing_scope(&self, hir_id: HirId) -> Option<HirId> {
         for (hir_id, node) in self.parent_iter(hir_id) {
-            if match node {
-                Node::Item(i) => match i.kind {
+            if let Node::Item(Item {
+                kind:
                     ItemKind::Fn(..)
                     | ItemKind::Mod(..)
                     | ItemKind::Enum(..)
                     | ItemKind::Struct(..)
                     | ItemKind::Union(..)
                     | ItemKind::Trait(..)
-                    | ItemKind::Impl { .. } => true,
-                    _ => false,
-                },
-                Node::ForeignItem(fi) => match fi.kind {
-                    ForeignItemKind::Fn(..) => true,
-                    _ => false,
-                },
-                Node::TraitItem(ti) => match ti.kind {
-                    TraitItemKind::Fn(..) => true,
-                    _ => false,
-                },
-                Node::ImplItem(ii) => match ii.kind {
-                    ImplItemKind::Fn(..) => true,
-                    _ => false,
-                },
-                Node::Block(_) => true,
-                _ => false,
-            } {
+                    | ItemKind::Impl { .. },
+                ..
+            })
+            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(..), .. })
+            | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(..), .. })
+            | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(..), .. })
+            | Node::Block(_) = node
+            {
                 return Some(hir_id);
             }
         }
@@ -771,11 +710,11 @@ impl<'hir> Map<'hir> {
                 return CRATE_HIR_ID;
             }
             match self.get(scope) {
-                Node::Item(i) => match i.kind {
-                    ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }) => {}
-                    _ => break,
-                },
-                Node::Block(_) => {}
+                Node::Item(Item {
+                    kind: ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }),
+                    ..
+                })
+                | Node::Block(_) => {}
                 _ => break,
             }
         }
@@ -823,14 +762,11 @@ impl<'hir> Map<'hir> {
 
     pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData<'hir> {
         match self.find(id) {
-            Some(Node::Item(i)) => match i.kind {
-                ItemKind::Struct(ref struct_def, _) | ItemKind::Union(ref struct_def, _) => {
-                    struct_def
-                }
-                _ => bug!("struct ID bound to non-struct {}", self.node_to_string(id)),
-            },
+            Some(
+                Node::Ctor(vd)
+                | Node::Item(Item { kind: ItemKind::Struct(vd, _) | ItemKind::Union(vd, _), .. }),
+            ) => vd,
             Some(Node::Variant(variant)) => &variant.data,
-            Some(Node::Ctor(data)) => data,
             _ => bug!("expected struct or variant, found {}", self.node_to_string(id)),
         }
     }

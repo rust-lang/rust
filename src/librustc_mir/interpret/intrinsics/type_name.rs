@@ -1,4 +1,3 @@
-use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
 use rustc::mir::interpret::Allocation;
 use rustc::ty::{
     self,
@@ -7,6 +6,7 @@ use rustc::ty::{
     Ty, TyCtxt,
 };
 use rustc_hir::def_id::CrateNum;
+use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use std::fmt::Write;
 
 struct AbsolutePathPrinter<'tcx> {

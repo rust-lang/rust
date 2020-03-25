@@ -1,5 +1,5 @@
-use crate::hir::map::Map;
-use crate::ty::TyCtxt;
+use rustc::hir::map::Map;
+use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
 use rustc_hir as hir;

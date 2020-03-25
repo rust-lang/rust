@@ -55,7 +55,6 @@ use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
 
-use rustc::hir::map;
 use rustc::middle::region;
 use rustc::ty::error::TypeError;
 use rustc::ty::{
@@ -549,7 +548,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         terr: &TypeError<'tcx>,
     ) {
         use hir::def_id::CrateNum;
-        use map::DisambiguatedDefPathData;
+        use rustc_hir::definitions::DisambiguatedDefPathData;
         use ty::print::Printer;
         use ty::subst::GenericArg;
 

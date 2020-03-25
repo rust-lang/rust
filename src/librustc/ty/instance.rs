@@ -166,7 +166,7 @@ impl<'tcx> InstanceDef<'tcx> {
     /// Note that this is only a hint. See the documentation for
     /// `generates_cgu_internal_copy` for more information.
     pub fn requires_inline(&self, tcx: TyCtxt<'tcx>) -> bool {
-        use crate::hir::map::DefPathData;
+        use rustc_hir::definitions::DefPathData;
         let def_id = match *self {
             ty::InstanceDef::Item(def_id) => def_id,
             ty::InstanceDef::DropGlue(_, Some(_)) => return false,
