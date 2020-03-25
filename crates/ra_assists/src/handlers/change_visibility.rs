@@ -2,13 +2,14 @@ use ra_syntax::{
     ast::{self, NameOwner, VisibilityOwner},
     AstNode,
     SyntaxKind::{
-        ATTR, COMMENT, CONST_DEF, ENUM_DEF, FN_DEF, IDENT, MODULE, STRUCT_DEF, TRAIT_DEF,
-        VISIBILITY, WHITESPACE,
+        ATTR, COMMENT, CONST_DEF, ENUM_DEF, FN_DEF, MODULE, STRUCT_DEF, TRAIT_DEF, VISIBILITY,
+        WHITESPACE,
     },
     SyntaxNode, TextUnit, T,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
+use test_utils::tested_by;
 
 // Assist: change_visibility
 //
@@ -47,13 +48,16 @@ fn add_vis(ctx: AssistCtx) -> Option<Assist> {
         }
         (vis_offset(&parent), keyword.text_range())
     } else {
-        let ident = ctx.token_at_offset().find(|leaf| leaf.kind() == IDENT)?;
-        let field = ident.parent().ancestors().find_map(ast::RecordFieldDef::cast)?;
-        if field.name()?.syntax().text_range() != ident.text_range() && field.visibility().is_some()
-        {
+        let field_name: ast::Name = ctx.find_node_at_offset()?;
+        let field = field_name.syntax().ancestors().find_map(ast::RecordFieldDef::cast)?;
+        if field.name()? != field_name {
+            tested_by!(change_visibility_field_false_positive);
             return None;
         }
-        (vis_offset(field.syntax()), ident.text_range())
+        if field.visibility().is_some() {
+            return None;
+        }
+        (vis_offset(field.syntax()), field_name.syntax().text_range())
     };
 
     ctx.add_assist(AssistId("change_visibility"), "Change visibility to pub(crate)", |edit| {
@@ -98,8 +102,11 @@ fn change_vis(ctx: AssistCtx, vis: ast::Visibility) -> Option<Assist> {
 
 #[cfg(test)]
 mod tests {
+    use test_utils::covers;
+
+    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+
     use super::*;
-    use crate::helpers::{check_assist, check_assist_target};
 
     #[test]
     fn change_visibility_adds_pub_crate_to_items() {
@@ -120,8 +127,17 @@ mod tests {
     fn change_visibility_works_with_struct_fields() {
         check_assist(
             change_visibility,
-            "struct S { <|>field: u32 }",
-            "struct S { <|>pub(crate) field: u32 }",
+            r"struct S { <|>field: u32 }",
+            r"struct S { <|>pub(crate) field: u32 }",
+        )
+    }
+
+    #[test]
+    fn change_visibility_field_false_positive() {
+        covers!(change_visibility_field_false_positive);
+        check_assist_not_applicable(
+            change_visibility,
+            r"struct S { field: [(); { let <|>x = ();}] }",
         )
     }
 
@@ -144,7 +160,7 @@ mod tests {
     fn change_visibility_handles_comment_attrs() {
         check_assist(
             change_visibility,
-            "
+            r"
             /// docs
 
             // comments
@@ -152,7 +168,7 @@ mod tests {
             #[derive(Debug)]
             <|>struct Foo;
             ",
-            "
+            r"
             /// docs
 
             // comments
