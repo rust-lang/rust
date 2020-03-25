@@ -4,7 +4,6 @@
 
 pub use self::NativeLibraryKind::*;
 
-use crate::hir::map::definitions::{DefKey, DefPath, DefPathHash, DefPathTable};
 use crate::ty::TyCtxt;
 
 use rustc_ast::ast;
@@ -12,6 +11,7 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, DefPathTable};
 use rustc_macros::HashStable;
 use rustc_session::search_paths::PathKind;
 pub use rustc_session::utils::NativeLibraryKind;

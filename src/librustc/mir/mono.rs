@@ -1,9 +1,10 @@
 use crate::dep_graph::{DepConstructor, DepNode, WorkProduct, WorkProductId};
-use crate::ich::{Fingerprint, NodeIdHashingMode, StableHashingContext};
+use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::ty::print::obsolete::DefPathBasedNames;
 use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
