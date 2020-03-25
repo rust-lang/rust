@@ -50,8 +50,8 @@ pub enum MiriMemoryKind {
     WinHeap,
     /// Memory for env vars and args, errno, extern statics and other parts of the machine-managed environment.
     Machine,
-    /// Rust statics.
-    Static,
+    /// Globals copied from `tcx`.
+    Global,
 }
 
 impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
@@ -212,7 +212,7 @@ impl<'mir, 'tcx> MiriEvalContextExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> 
 
 /// Machine hook implementations.
 impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
-    type MemoryKinds = MiriMemoryKind;
+    type MemoryKind = MiriMemoryKind;
 
     type FrameExtra = FrameData<'tcx>;
     type MemoryExtra = MemoryExtra;
@@ -223,7 +223,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryMap =
         MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<Tag, Self::AllocExtra>)>;
 
-    const STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::Static);
+    const GLOBAL_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::Global);
 
     const CHECK_ALIGN: bool = true;
 
@@ -348,7 +348,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         memory_extra: &MemoryExtra,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
-        kind: Option<MemoryKind<Self::MemoryKinds>>,
+        kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag) {
         if Some(id) == memory_extra.tracked_alloc_id {
             register_diagnostic(NonHaltingDiagnostic::CreatedAlloc(id));
@@ -369,9 +369,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let alloc: Allocation<Tag, Self::AllocExtra> = alloc.with_tags_and_extra(
             |alloc| {
                 if let Some(stacked_borrows) = stacked_borrows.as_mut() {
-                    // Only statics may already contain pointers at this point
-                    assert_eq!(kind, MiriMemoryKind::Static.into());
-                    stacked_borrows.static_base_ptr(alloc)
+                    // Only globals may already contain pointers at this point
+                    assert_eq!(kind, MiriMemoryKind::Global.into());
+                    stacked_borrows.global_base_ptr(alloc)
                 } else {
                     Tag::Untagged
                 }
@@ -382,9 +382,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
-    fn tag_static_base_pointer(memory_extra: &MemoryExtra, id: AllocId) -> Self::PointerTag {
+    fn tag_global_base_pointer(memory_extra: &MemoryExtra, id: AllocId) -> Self::PointerTag {
         if let Some(stacked_borrows) = memory_extra.stacked_borrows.as_ref() {
-            stacked_borrows.borrow_mut().static_base_ptr(id)
+            stacked_borrows.borrow_mut().global_base_ptr(id)
         } else {
             Tag::Untagged
         }
@@ -486,7 +486,7 @@ impl MayLeak for MiriMemoryKind {
         use self::MiriMemoryKind::*;
         match self {
             Rust | C | WinHeap => false,
-            Machine | Static => true,
+            Machine | Global => true,
         }
     }
 }
