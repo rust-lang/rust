@@ -41,9 +41,7 @@ mod tests;
 ///
 /// Note that the excess of a zero-sized types is always infinite, so `capacity()` always returns
 /// `usize::MAX`. This means that you need to be careful when round-tripping this type with a
-/// `Box<[T]>`, since `capacity()` won't yield the length. However, `with_capacity`,
-/// `shrink_to_fit`, and `from_box` will actually set `RawVec`'s private capacity field. This allows
-/// zero-sized types to not be special-cased by consumers of this type.
+/// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
 pub struct RawVec<T, A: AllocRef = Global> {
     ptr: Unique<T>,
