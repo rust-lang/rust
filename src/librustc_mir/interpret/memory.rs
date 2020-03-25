@@ -474,7 +474,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     /// Gives raw access to the `Allocation`, without bounds or alignment checks.
-    /// Use the higher-level, `PlaceTy`- and `OpTy`-based APIs in `InterpCtx` instead!
+    /// Use the higher-level, `PlaceTy`- and `OpTy`-based APIs in `InterpCx` instead!
     pub fn get_raw(
         &self,
         id: AllocId,
@@ -511,7 +511,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     /// Gives raw mutable access to the `Allocation`, without bounds or alignment checks.
-    /// Use the higher-level, `PlaceTy`- and `OpTy`-based APIs in `InterpCtx` instead!
+    /// Use the higher-level, `PlaceTy`- and `OpTy`-based APIs in `InterpCx` instead!
     pub fn get_raw_mut(
         &mut self,
         id: AllocId,
