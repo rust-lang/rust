@@ -188,7 +188,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     if (config.package.releaseTag === undefined) return "rust-analyzer";
 
     let binaryName: string | undefined = undefined;
-    if (process.arch === "x64" || process.arch === "x32") {
+    if (process.arch === "x64" || process.arch === "ia32") {
         if (process.platform === "linux") binaryName = "rust-analyzer-linux";
         if (process.platform === "darwin") binaryName = "rust-analyzer-mac";
         if (process.platform === "win32") binaryName = "rust-analyzer-windows.exe";
