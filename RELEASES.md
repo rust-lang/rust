@@ -15,7 +15,7 @@ Language
 - [Merge `fn` syntax + cleanup item parsing.][68728]
 
 These are still rejected *semantically*, so you will likely receive an error but
-these changes can be seen and parsed by procedural macros and
+these changes can be seen and parsed by macros and
 conditional compilation.
 
 
