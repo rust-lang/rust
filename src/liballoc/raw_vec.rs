@@ -104,7 +104,7 @@ impl<T> RawVec<T, Global> {
     ///
     /// The `ptr` must be allocated (on the system heap), and with the given `capacity`.
     /// The `capacity` cannot exceed `isize::MAX` for sized types. (only a concern on 32-bit
-    /// systems). ZSTs may have a capacity up to `usize::MAX`.
+    /// systems). ZST vectors may have a capacity up to `usize::MAX`.
     /// If the `ptr` and `capacity` come from a `RawVec`, then this is guaranteed.
     #[inline]
     pub unsafe fn from_raw_parts(ptr: *mut T, capacity: usize) -> Self {
@@ -165,7 +165,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     ///
     /// The `ptr` must be allocated (via the given allocator `a`), and with the given `capacity`.
     /// The `capacity` cannot exceed `isize::MAX` for sized types. (only a concern on 32-bit
-    /// systems). ZSTs may have a capacity up to `usize::MAX`.
+    /// systems). ZST vectors may have a capacity up to `usize::MAX`.
     /// If the `ptr` and `capacity` come from a `RawVec` created via `a`, then this is guaranteed.
     #[inline]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, a: A) -> Self {
