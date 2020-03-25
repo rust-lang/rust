@@ -1336,6 +1336,17 @@ static inline SmallPtrSet<BasicBlock*, 4> getGuaranteedUnreachable(Function* F) 
   return knownUnreachables;
 }
 
+template<typename K, typename V, typename K2>
+typename std::map<K, V>::iterator insert_or_assign(std::map<K, V>& map, K2 key, V&& val) {
+  // map.insert_or_assign(key, val);
+  auto found = map.find(key);
+  if (found == map.end()) {}
+    return map.emplace(key, val).first;
+  
+  map.at(key) = val;
+  //map->second = val;
+  return map.find(key);
+}
 
 
 //! return structtype if recursive function
@@ -1397,11 +1408,11 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
         auto ut = UndefValue::get(NewF->getReturnType());
         auto val = bb.CreateInsertValue(ut, cal, {1u});
         bb.CreateRet(val);
-        return cachedfunctions.insert_or_assign(tup, AugmentedReturn(NewF, nullptr, {}, returnMapping, {}, {})).first->second;
+        return insert_or_assign(cachedfunctions, tup, AugmentedReturn(NewF, nullptr, {}, returnMapping, {}, {}))->second;
       }
 
       //assert(st->getNumElements() > 0);
-      return cachedfunctions.insert_or_assign(tup, AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {}, {})).first->second; //dyn_cast<StructType>(st->getElementType(0)));
+      return insert_or_assign(cachedfunctions, tup, AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {}, {}))->second; //dyn_cast<StructType>(st->getElementType(0)));
     }
 
   if (todiff->empty()) {
@@ -1472,7 +1483,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
   //}
 
 
-  cachedfunctions.insert_or_assign(tup, AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping, uncacheable_args_map, can_modref_map));
+  insert_or_assign(cachedfunctions, tup, AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping, uncacheable_args_map, can_modref_map));
   cachedfinished[tup] = false;
 
   auto getIndex = [&](Instruction* I, std::string u)-> unsigned {
@@ -2129,7 +2140,7 @@ void handleAugmentedCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, c
         nextTypeInfo.second = TR.query(gutils->getOriginal(op));
 
         const AugmentedReturn& augmentation = CreateAugmentedPrimal(called, subconstant_args, gutils->TLI, TR.analysis, gutils->AA, /*differentialReturn*/subdifferentialreturn, /*return is used*/subretused, nextTypeInfo, uncacheable_args, false);
-        subaugmentations.insert_or_assign(cast<CallInst>(gutils->getOriginal(op)), &augmentation);
+        insert_or_assign(subaugmentations, cast<CallInst>(gutils->getOriginal(op)), &augmentation);
         newcalled = augmentation.fn;
 
         auto found = augmentation.returns.find(AugmentedStruct::Tape);
