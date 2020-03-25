@@ -1614,7 +1614,7 @@ impl FloatTy {
         }
     }
 
-    pub fn bit_width(self) -> usize {
+    pub fn bit_width(self) -> u64 {
         match self {
             FloatTy::F32 => 32,
             FloatTy::F64 => 64,
@@ -1663,7 +1663,7 @@ impl IntTy {
         format!("{}{}", val as u128, self.name_str())
     }
 
-    pub fn bit_width(&self) -> Option<usize> {
+    pub fn bit_width(&self) -> Option<u64> {
         Some(match *self {
             IntTy::Isize => return None,
             IntTy::I8 => 8,
@@ -1725,7 +1725,7 @@ impl UintTy {
         format!("{}{}", val, self.name_str())
     }
 
-    pub fn bit_width(&self) -> Option<usize> {
+    pub fn bit_width(&self) -> Option<u64> {
         Some(match *self {
             UintTy::Usize => return None,
             UintTy::U8 => 8,

@@ -8,6 +8,7 @@
 
 use std::borrow::Cow;
 use std::collections::VecDeque;
+use std::convert::TryFrom;
 use std::ptr;
 
 use rustc::ty::layout::{Align, HasDataLayout, Size, TargetDataLayout};
@@ -346,7 +347,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         };
         Ok(match normalized.to_bits_or_ptr(self.pointer_size(), self) {
             Ok(bits) => {
-                let bits = bits as u64; // it's ptr-sized
+                let bits = u64::try_from(bits).unwrap(); // it's ptr-sized
                 assert!(size.bytes() == 0);
                 // Must be non-NULL.
                 if bits == 0 {
@@ -473,7 +474,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     /// Gives raw access to the `Allocation`, without bounds or alignment checks.
-    /// Use the higher-level, `PlaceTy`- and `OpTy`-based APIs in `InterpCtx` instead!
+    /// Use the higher-level, `PlaceTy`- and `OpTy`-based APIs in `InterpCx` instead!
     pub fn get_raw(
         &self,
         id: AllocId,
@@ -510,7 +511,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     /// Gives raw mutable access to the `Allocation`, without bounds or alignment checks.
-    /// Use the higher-level, `PlaceTy`- and `OpTy`-based APIs in `InterpCtx` instead!
+    /// Use the higher-level, `PlaceTy`- and `OpTy`-based APIs in `InterpCx` instead!
     pub fn get_raw_mut(
         &mut self,
         id: AllocId,
@@ -667,7 +668,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
             if alloc.undef_mask().is_range_defined(i, i + Size::from_bytes(1)).is_ok() {
                 // this `as usize` is fine, since `i` came from a `usize`
-                let i = i.bytes() as usize;
+                let i = i.bytes_usize();
 
                 // Checked definedness (and thus range) and relocations. This access also doesn't
                 // influence interpreter execution but is only for debugging.
@@ -692,8 +693,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             let mut pos = Size::ZERO;
             let relocation_width = (self.pointer_size().bytes() - 1) * 3;
             for (i, target_id) in relocations {
-                // this `as usize` is fine, since we can't print more chars than `usize::MAX`
-                write!(msg, "{:1$}", "", ((i - pos) * 3).bytes() as usize).unwrap();
+                write!(msg, "{:1$}", "", ((i - pos) * 3).bytes_usize()).unwrap();
                 let target = format!("({})", target_id);
                 // this `as usize` is fine, since we can't print more chars than `usize::MAX`
                 write!(msg, "└{0:─^1$}┘ ", target, relocation_width as usize).unwrap();
@@ -834,8 +834,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         src: impl IntoIterator<Item = u8>,
     ) -> InterpResult<'tcx> {
         let src = src.into_iter();
-        let size = Size::from_bytes(src.size_hint().0 as u64);
-        // `write_bytes` checks that this lower bound matches the upper bound matches reality.
+        let size = Size::from_bytes(src.size_hint().0);
+        // `write_bytes` checks that this lower bound `size` matches the upper bound and reality.
         let ptr = match self.check_ptr_access(ptr, size, Align::from_bytes(1).unwrap())? {
             Some(ptr) => ptr,
             None => return Ok(()), // zero-sized access
@@ -874,14 +874,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         let tcx = self.tcx.tcx;
 
-        // The bits have to be saved locally before writing to dest in case src and dest overlap.
-        assert_eq!(size.bytes() as usize as u64, size.bytes());
-
         // This checks relocation edges on the src.
         let src_bytes =
             self.get_raw(src.alloc_id)?.get_bytes_with_undef_and_ptr(&tcx, src, size)?.as_ptr();
         let dest_bytes =
-            self.get_raw_mut(dest.alloc_id)?.get_bytes_mut(&tcx, dest, size * length)?;
+            self.get_raw_mut(dest.alloc_id)?.get_bytes_mut(&tcx, dest, size * length)?; // `Size` multiplication
 
         // If `dest_bytes` is empty we just optimize to not run anything for zsts.
         // See #67539
@@ -902,7 +899,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             // touched if the bytes stay undef for the whole interpreter execution. On contemporary
             // operating system this can avoid physically allocating the page.
             let dest_alloc = self.get_raw_mut(dest.alloc_id)?;
-            dest_alloc.mark_definedness(dest, size * length, false);
+            dest_alloc.mark_definedness(dest, size * length, false); // `Size` multiplication
             dest_alloc.mark_relocation_range(relocations);
             return Ok(());
         }
@@ -913,9 +910,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // The pointers above remain valid even if the `HashMap` table is moved around because they
         // point into the `Vec` storing the bytes.
         unsafe {
-            assert_eq!(size.bytes() as usize as u64, size.bytes());
             if src.alloc_id == dest.alloc_id {
                 if nonoverlapping {
+                    // `Size` additions
                     if (src.offset <= dest.offset && src.offset + size > dest.offset)
                         || (dest.offset <= src.offset && dest.offset + size > src.offset)
                     {
@@ -926,16 +923,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 for i in 0..length {
                     ptr::copy(
                         src_bytes,
-                        dest_bytes.offset((size.bytes() * i) as isize),
-                        size.bytes() as usize,
+                        dest_bytes.add((size * i).bytes_usize()), // `Size` multiplication
+                        size.bytes_usize(),
                     );
                 }
             } else {
                 for i in 0..length {
                     ptr::copy_nonoverlapping(
                         src_bytes,
-                        dest_bytes.offset((size.bytes() * i) as isize),
-                        size.bytes() as usize,
+                        dest_bytes.add((size * i).bytes_usize()), // `Size` multiplication
+                        size.bytes_usize(),
                     );
                 }
             }
@@ -975,7 +972,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, u128> {
         match scalar.to_bits_or_ptr(size, self) {
             Ok(bits) => Ok(bits),
-            Err(ptr) => Ok(M::ptr_to_int(&self, ptr)? as u128),
+            Err(ptr) => Ok(M::ptr_to_int(&self, ptr)?.into()),
         }
     }
 }

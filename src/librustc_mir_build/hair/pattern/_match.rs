@@ -1920,8 +1920,8 @@ fn slice_pat_covered_by_const<'tcx>(
         }
         (ConstValue::Slice { data, start, end }, ty::Slice(t)) => {
             assert_eq!(*t, tcx.types.u8);
-            let ptr = Pointer::new(AllocId(0), Size::from_bytes(start as u64));
-            data.get_bytes(&tcx, ptr, Size::from_bytes((end - start) as u64)).unwrap()
+            let ptr = Pointer::new(AllocId(0), Size::from_bytes(start));
+            data.get_bytes(&tcx, ptr, Size::from_bytes(end - start)).unwrap()
         }
         // FIXME(oli-obk): create a way to extract fat pointers from ByRef
         (_, ty::Slice(_)) => return Ok(false),
@@ -2375,7 +2375,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                 ty::Slice(t) => {
                     match value.val {
                         ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => {
-                            let offset = Size::from_bytes(start as u64);
+                            let offset = Size::from_bytes(start);
                             let n = (end - start) as u64;
                             (Cow::Borrowed(data), offset, n, t)
                         }

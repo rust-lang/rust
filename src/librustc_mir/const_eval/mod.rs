@@ -1,5 +1,7 @@
 // Not in interpret to make sure we do not use private implementation details
 
+use std::convert::TryFrom;
+
 use rustc::mir;
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::{self, TyCtxt};
@@ -37,7 +39,7 @@ pub(crate) fn const_field<'tcx>(
         Some(variant) => ecx.operand_downcast(op, variant).unwrap(),
     };
     // then project
-    let field = ecx.operand_field(down, field.index() as u64).unwrap();
+    let field = ecx.operand_field(down, field.index()).unwrap();
     // and finally move back to the const world, always normalizing because
     // this is not called for statics.
     op_to_const(&ecx, field)
@@ -68,10 +70,11 @@ pub(crate) fn destructure_const<'tcx>(
 
     let variant = ecx.read_discriminant(op).unwrap().1;
 
+    // We go to `usize` as we cannot allocate anything bigger anyway.
     let field_count = match val.ty.kind {
-        ty::Array(_, len) => len.eval_usize(tcx, param_env),
-        ty::Adt(def, _) => def.variants[variant].fields.len() as u64,
-        ty::Tuple(substs) => substs.len() as u64,
+        ty::Array(_, len) => usize::try_from(len.eval_usize(tcx, param_env)).unwrap(),
+        ty::Adt(def, _) => def.variants[variant].fields.len(),
+        ty::Tuple(substs) => substs.len(),
         _ => bug!("cannot destructure constant {:?}", val),
     };
 

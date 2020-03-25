@@ -981,7 +981,7 @@ pub trait PrettyPrinter<'tcx>:
                     .alloc_map
                     .lock()
                     .unwrap_memory(ptr.alloc_id)
-                    .get_bytes(&self.tcx(), ptr, Size::from_bytes(*data as u64))
+                    .get_bytes(&self.tcx(), ptr, Size::from_bytes(*data))
                     .unwrap();
                 p!(pretty_print_byte_str(byte_str));
             }
@@ -1169,7 +1169,7 @@ pub trait PrettyPrinter<'tcx>:
             (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
                 let n = n.val.try_to_bits(self.tcx().data_layout.pointer_size).unwrap();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
-                let n = Size::from_bytes(n as u64);
+                let n = Size::from_bytes(n);
                 let ptr = Pointer::new(AllocId(0), offset);
 
                 let byte_str = alloc.get_bytes(&self.tcx(), ptr, n).unwrap();

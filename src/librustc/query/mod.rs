@@ -9,7 +9,7 @@ use crate::traits::query::{
 };
 use crate::ty::query::queries;
 use crate::ty::query::QueryDescription;
-use crate::ty::subst::SubstsRef;
+use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 
@@ -1114,10 +1114,10 @@ rustc_queries! {
         }
 
         /// Do not call this query directly: invoke `normalize_erasing_regions` instead.
-        query normalize_ty_after_erasing_regions(
-            goal: ParamEnvAnd<'tcx, Ty<'tcx>>
-        ) -> Ty<'tcx> {
-            desc { "normalizing `{:?}`", goal }
+        query normalize_generic_arg_after_erasing_regions(
+            goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
+        ) -> GenericArg<'tcx> {
+            desc { "normalizing `{}`", goal.value }
         }
 
         query implied_outlives_bounds(

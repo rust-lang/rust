@@ -413,6 +413,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // and it also rounds up to alignment, which we want to avoid,
                 // as the unsized field's alignment could be smaller.
                 assert!(!layout.ty.is_simd());
+                assert!(layout.fields.count() > 0);
                 trace!("DST layout: {:?}", layout);
 
                 let sized_size = layout.fields.offset(layout.fields.count() - 1);
@@ -452,7 +453,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // here. But this is where the add would go.)
 
                 // Return the sum of sizes and max of aligns.
-                let size = sized_size + unsized_size;
+                let size = sized_size + unsized_size; // `Size` addition
 
                 // Choose max of two known alignments (combined value must
                 // be aligned according to more restrictive of the two).
