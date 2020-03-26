@@ -229,6 +229,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // float -> uint
             Uint(t) => {
                 let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits());
+                // `to_u128` is a saturating cast, which is what we need
+                // (https://doc.rust-lang.org/nightly/nightly-rustc/rustc_apfloat/trait.Float.html#method.to_i128_r).
                 let v = f.to_u128(usize::try_from(width).unwrap()).value;
                 // This should already fit the bit width
                 Ok(Scalar::from_uint(v, Size::from_bits(width)))
@@ -236,6 +238,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // float -> int
             Int(t) => {
                 let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits());
+                // `to_i128` is a saturating cast, which is what we need
+                // (https://doc.rust-lang.org/nightly/nightly-rustc/rustc_apfloat/trait.Float.html#method.to_i128_r).
                 let v = f.to_i128(usize::try_from(width).unwrap()).value;
                 Ok(Scalar::from_int(v, Size::from_bits(width)))
             }
