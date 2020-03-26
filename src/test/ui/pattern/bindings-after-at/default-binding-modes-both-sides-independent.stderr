@@ -44,7 +44,7 @@ LL |         ref a @ b => {
    |         |       value moved into `b` here
    |         value borrowed, by `a`, here
 
-error[E0505]: cannot move out of `_` because it is borrowed
+error[E0505]: cannot move out of value because it is borrowed
   --> $DIR/default-binding-modes-both-sides-independent.rs:31:21
    |
 LL |     let ref mut a @ b = NotCopy;

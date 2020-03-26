@@ -4,7 +4,7 @@ use rustc_span::{MultiSpan, Span};
 
 impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
     crate fn cannot_move_when_borrowed(&self, span: Span, desc: &str) -> DiagnosticBuilder<'cx> {
-        struct_span_err!(self, span, E0505, "cannot move out of `{}` because it is borrowed", desc,)
+        struct_span_err!(self, span, E0505, "cannot move out of {} because it is borrowed", desc,)
     }
 
     crate fn cannot_use_when_mutably_borrowed(
@@ -18,12 +18,12 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
             self,
             span,
             E0503,
-            "cannot use `{}` because it was mutably borrowed",
+            "cannot use {} because it was mutably borrowed",
             desc,
         );
 
-        err.span_label(borrow_span, format!("borrow of `{}` occurs here", borrow_desc));
-        err.span_label(span, format!("use of borrowed `{}`", borrow_desc));
+        err.span_label(borrow_span, format!("borrow of {} occurs here", borrow_desc));
+        err.span_label(span, format!("use of borrowed {}", borrow_desc));
         err
     }
 
@@ -53,12 +53,12 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         old_load_end_span: Option<Span>,
     ) -> DiagnosticBuilder<'cx> {
         let via =
-            |msg: &str| if msg.is_empty() { msg.to_string() } else { format!(" (via `{}`)", msg) };
+            |msg: &str| if msg.is_empty() { "".to_string() } else { format!(" (via {})", msg) };
         let mut err = struct_span_err!(
             self,
             new_loan_span,
             E0499,
-            "cannot borrow `{}`{} as mutable more than once at a time",
+            "cannot borrow {}{} as mutable more than once at a time",
             desc,
             via(opt_via),
         );
@@ -103,7 +103,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
             self,
             new_loan_span,
             E0524,
-            "two closures require unique access to `{}` at the same time",
+            "two closures require unique access to {} at the same time",
             desc,
         );
         if old_loan_span == new_loan_span {
@@ -136,7 +136,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
             self,
             new_loan_span,
             E0500,
-            "closure requires unique access to `{}` but {} is already borrowed{}",
+            "closure requires unique access to {} but {} is already borrowed{}",
             desc_new,
             noun_old,
             old_opt_via,
@@ -168,7 +168,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
             self,
             new_loan_span,
             E0501,
-            "cannot borrow `{}`{} as {} because previous closure \
+            "cannot borrow {}{} as {} because previous closure \
              requires unique access",
             desc_new,
             opt_via,
@@ -201,13 +201,12 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         old_load_end_span: Option<Span>,
     ) -> DiagnosticBuilder<'cx> {
         let via =
-            |msg: &str| if msg.is_empty() { msg.to_string() } else { format!(" (via `{}`)", msg) };
+            |msg: &str| if msg.is_empty() { "".to_string() } else { format!(" (via {})", msg) };
         let mut err = struct_span_err!(
             self,
             span,
             E0502,
-            "cannot borrow `{}`{} as {} because {} is also borrowed \
-             as {}{}",
+            "cannot borrow {}{} as {} because {} is also borrowed as {}{}",
             desc_new,
             via(msg_new),
             kind_new,
@@ -225,7 +224,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
             err.span_label(
                 span,
                 format!(
-                    "{} borrow of `{}` -- which overlaps with `{}` -- occurs here",
+                    "{} borrow of {} -- which overlaps with {} -- occurs here",
                     kind_new, msg_new, msg_old,
                 ),
             );
@@ -248,12 +247,12 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
             self,
             span,
             E0506,
-            "cannot assign to `{}` because it is borrowed",
+            "cannot assign to {} because it is borrowed",
             desc,
         );
 
-        err.span_label(borrow_span, format!("borrow of `{}` occurs here", desc));
-        err.span_label(span, format!("assignment to borrowed `{}` occurs here", desc));
+        err.span_label(borrow_span, format!("borrow of {} occurs here", desc));
+        err.span_label(span, format!("assignment to borrowed {} occurs here", desc));
         err
     }
 
@@ -264,7 +263,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         is_arg: bool,
     ) -> DiagnosticBuilder<'cx> {
         let msg = if is_arg { "to immutable argument" } else { "twice to immutable variable" };
-        struct_span_err!(self, span, E0384, "cannot assign {} `{}`", msg, desc,)
+        struct_span_err!(self, span, E0384, "cannot assign {} {}", msg, desc)
     }
 
     crate fn cannot_assign(&self, span: Span, desc: &str) -> DiagnosticBuilder<'cx> {
@@ -362,7 +361,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
             self,
             mutate_span,
             E0510,
-            "cannot {} `{}` in {}",
+            "cannot {} {} in {}",
             action,
             immutable_place,
             immutable_section,

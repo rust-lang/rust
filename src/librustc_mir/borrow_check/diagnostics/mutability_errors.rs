@@ -169,9 +169,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 borrow_spans.var_span_label(
                     &mut err,
                     format!(
-                        "mutable borrow occurs due to use of `{}` in closure",
-                        // always Some() if the message is printed.
-                        self.describe_place(access_place.as_ref()).unwrap_or_default(),
+                        "mutable borrow occurs due to use of {} in closure",
+                        self.describe_any_place(access_place.as_ref()),
                     ),
                 );
                 borrow_span
