@@ -298,7 +298,7 @@ impl<'a> FmtVisitor<'a> {
 
     fn format_foreign_item(&mut self, item: &ast::ForeignItem) {
         let rewrite = item.rewrite(&self.get_context(), self.shape());
-        self.push_rewrite(item.span(), rewrite);
+        self.push_rewrite(item.span, rewrite);
         self.last_pos = item.span.hi();
     }
 
@@ -629,7 +629,7 @@ impl<'a> FmtVisitor<'a> {
             use crate::ast::AssocItemKind::*;
             fn need_empty_line(a: &ast::AssocItemKind, b: &ast::AssocItemKind) -> bool {
                 match (a, b) {
-                    (TyAlias(_, ref lty), TyAlias(_, ref rty))
+                    (TyAlias(_, _, _, ref lty), TyAlias(_, _, _, ref rty))
                         if both_type(lty, rty) || both_opaque(lty, rty) =>
                     {
                         false
@@ -640,7 +640,7 @@ impl<'a> FmtVisitor<'a> {
             }
 
             buffer.sort_by(|(_, a), (_, b)| match (&a.kind, &b.kind) {
-                (TyAlias(_, ref lty), TyAlias(_, ref rty))
+                (TyAlias(_, _, _, ref lty), TyAlias(_, _, _, ref rty))
                     if both_type(lty, rty) || both_opaque(lty, rty) =>
                 {
                     a.ident.as_str().cmp(&b.ident.as_str())
@@ -649,8 +649,8 @@ impl<'a> FmtVisitor<'a> {
                     a.ident.as_str().cmp(&b.ident.as_str())
                 }
                 (Fn(..), Fn(..)) => a.span.lo().cmp(&b.span.lo()),
-                (TyAlias(_, ref ty), _) if is_type(ty) => Ordering::Less,
-                (_, TyAlias(_, ref ty)) if is_type(ty) => Ordering::Greater,
+                (TyAlias(_, _, _, ref ty), _) if is_type(ty) => Ordering::Less,
+                (_, TyAlias(_, _, _, ref ty)) if is_type(ty) => Ordering::Greater,
                 (TyAlias(..), _) => Ordering::Less,
                 (_, TyAlias(..)) => Ordering::Greater,
                 (Const(..), _) => Ordering::Less,
@@ -1714,9 +1714,13 @@ pub(crate) struct StaticParts<'a> {
 
 impl<'a> StaticParts<'a> {
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
-        let (prefix, ty, mutability, expr) = match item.kind {
-            ast::ItemKind::Static(ref ty, mutability, ref expr) => ("static", ty, mutability, expr),
-            ast::ItemKind::Const(ref ty, ref expr) => ("const", ty, ast::Mutability::Not, expr),
+        let (defaultness, prefix, ty, mutability, expr) = match item.kind {
+            ast::ItemKind::Static(ref ty, mutability, ref expr) => {
+                (None, "static", ty, mutability, expr)
+            }
+            ast::ItemKind::Const(defaultness, ref ty, ref expr) => {
+                (Some(defaultness), "const", ty, ast::Mutability::Not, expr)
+            }
             _ => unreachable!(),
         };
         StaticParts {
@@ -1725,15 +1729,17 @@ impl<'a> StaticParts<'a> {
             ident: item.ident,
             ty,
             mutability,
-            expr_opt: Some(expr),
-            defaultness: None,
+            expr_opt: expr.as_ref(),
+            defaultness: defaultness,
             span: item.span,
         }
     }
 
     pub(crate) fn from_trait_item(ti: &'a ast::AssocItem) -> Self {
-        let (ty, expr_opt) = match ti.kind {
-            ast::AssocItemKind::Const(ref ty, ref expr_opt) => (ty, expr_opt),
+        let (defaultness, ty, expr_opt) = match ti.kind {
+            ast::AssocItemKind::Const(defaultness, ref ty, ref expr_opt) => {
+                (defaultness, ty, expr_opt)
+            }
             _ => unreachable!(),
         };
         StaticParts {
@@ -1743,14 +1749,14 @@ impl<'a> StaticParts<'a> {
             ty,
             mutability: ast::Mutability::Not,
             expr_opt: expr_opt.as_ref(),
-            defaultness: None,
+            defaultness: Some(defaultness),
             span: ti.span,
         }
     }
 
     pub(crate) fn from_impl_item(ii: &'a ast::AssocItem) -> Self {
-        let (ty, expr) = match ii.kind {
-            ast::AssocItemKind::Const(ref ty, ref expr) => (ty, expr),
+        let (defaultness, ty, expr) = match ii.kind {
+            ast::AssocItemKind::Const(defaultness, ref ty, ref expr) => (defaultness, ty, expr),
             _ => unreachable!(),
         };
         StaticParts {
@@ -1760,7 +1766,7 @@ impl<'a> StaticParts<'a> {
             ty,
             mutability: ast::Mutability::Not,
             expr_opt: expr.as_ref(),
-            defaultness: Some(ii.defaultness),
+            defaultness: Some(defaultness),
             span: ii.span,
         }
     }
@@ -1903,7 +1909,7 @@ pub(crate) fn rewrite_associated_impl_type(
     let result = rewrite_associated_type(ident, ty_opt, generics, None, context, indent)?;
 
     match defaultness {
-        ast::Defaultness::Default => Some(format!("default {}", result)),
+        ast::Defaultness::Default(..) => Some(format!("default {}", result)),
         _ => Some(result),
     }
 }
@@ -3083,7 +3089,7 @@ impl Rewrite for ast::ForeignItem {
         let span = mk_sp(self.span.lo(), self.span.hi() - BytePos(1));
 
         let item_str = match self.kind {
-            ast::ForeignItemKind::Fn(ref fn_sig, ref generics, _) => rewrite_fn_base(
+            ast::ForeignItemKind::Fn(_, ref fn_sig, ref generics, _) => rewrite_fn_base(
                 context,
                 shape.indent,
                 self.ident,
@@ -3092,7 +3098,7 @@ impl Rewrite for ast::ForeignItem {
                 FnBraceStyle::None,
             )
             .map(|(s, _)| format!("{};", s)),
-            ast::ForeignItemKind::Static(ref ty, mutability) => {
+            ast::ForeignItemKind::Static(ref ty, mutability, _) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function kw here.
                 let vis = format_visibility(context, &self.vis);
@@ -3106,7 +3112,7 @@ impl Rewrite for ast::ForeignItem {
                 // 1 = ;
                 rewrite_assign_rhs(context, prefix, &**ty, shape.sub_width(1)?).map(|s| s + ";")
             }
-            ast::ForeignItemKind::Ty => {
+            ast::ForeignItemKind::TyAlias(..) => {
                 let vis = format_visibility(context, &self.vis);
                 Some(format!(
                     "{}type {};",

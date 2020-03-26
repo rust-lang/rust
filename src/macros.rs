@@ -231,7 +231,7 @@ fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
         {
             parser.bump();
             let macro_arg =
-                MacroArg::Keyword(ast::Ident::with_dummy_span(keyword), parser.prev_span);
+                MacroArg::Keyword(ast::Ident::with_dummy_span(keyword), parser.prev_token.span);
             return Some(macro_arg);
         }
     }

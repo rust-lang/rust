@@ -18,12 +18,13 @@ use crate::utils::{count_newlines, mk_sp};
 mod doc_comment;
 
 /// Returns attributes on the given statement.
-pub(crate) fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
+pub(crate) fn get_attrs_from_stmt(stmt: &ast::Stmt) -> Option<&[ast::Attribute]> {
     match stmt.kind {
-        ast::StmtKind::Local(ref local) => &local.attrs,
-        ast::StmtKind::Item(ref item) => &item.attrs,
-        ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => &expr.attrs,
-        ast::StmtKind::Mac(ref mac) => &mac.2,
+        ast::StmtKind::Local(ref local) => Some(&local.attrs),
+        ast::StmtKind::Item(ref item) => Some(&item.attrs),
+        ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => Some(&expr.attrs),
+        ast::StmtKind::Mac(ref mac) => Some(&mac.2),
+        ast::StmtKind::Empty => None,
     }
 }
 
@@ -36,6 +37,7 @@ pub(crate) fn get_span_without_attrs(stmt: &ast::Stmt) -> Span {
             let (ref mac, _, _) = **mac;
             mac.span()
         }
+        ast::StmtKind::Empty => stmt.span,
     }
 }
 

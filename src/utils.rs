@@ -104,7 +104,7 @@ pub(crate) fn format_constness(constness: ast::Const) -> &'static str {
 #[inline]
 pub(crate) fn format_defaultness(defaultness: ast::Defaultness) -> &'static str {
     match defaultness {
-        ast::Defaultness::Default => "default ",
+        ast::Defaultness::Default(..) => "default ",
         ast::Defaultness::Final => "",
     }
 }

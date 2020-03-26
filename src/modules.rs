@@ -468,7 +468,7 @@ fn parse_mod_items<'a>(parser: &mut parser::Parser<'a>, inner_lo: Span) -> PResu
     let hi = if parser.token.span.is_dummy() {
         inner_lo
     } else {
-        parser.prev_span
+        parser.prev_token.span
     };
 
     Ok(ast::Mod {

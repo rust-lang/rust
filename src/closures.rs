@@ -105,9 +105,13 @@ fn get_inner_expr<'a>(
 
 // Figure out if a block is necessary.
 fn needs_block(block: &ast::Block, prefix: &str, context: &RewriteContext<'_>) -> bool {
-    let has_attributes = block.stmts.first().map_or(false, |first_stmt| {
-        !get_attrs_from_stmt(first_stmt).is_empty()
-    });
+    let has_attributes = block
+        .stmts
+        .first()
+        .map_or(false, |first_stmt| match get_attrs_from_stmt(first_stmt) {
+            Some(attrs) => !attrs.is_empty(),
+            None => false,
+        });
 
     is_unsafe_block(block)
         || block.stmts.len() > 1
