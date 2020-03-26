@@ -26,6 +26,11 @@ function enzyme!(pm)
     ccall((:AddEnzymePass, libenzyme), Nothing, (LLVM.API.LLVMPassManagerRef,), LLVM.ref(pm))
 end
 
+function __init__()
+    Libdl.dlopen(libenzyme, Libdl.RTLD_GLOBAL)
+    LLVM.clopts("-enzyme_preopt=0")
+end
+
 function optimize!(mod, opt_level=2)
     # everying except unroll, slpvec, loop-vec
     # then finish Julia GC

@@ -47,7 +47,8 @@ include(AddLLVM)
 
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS})
-message("found llvm include directory here: " "${LLVM_INCLUDE_DIRS}")
+message("LLVM_INSTALL_PREFIX: ${LLVM_INSTALL_PREFIX}")
+message("LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
 message("found llvm definitions " ${LLVM_DEFINITIONS})
 message("found llvm version " ${LLVM_VERSION_MAJOR})
 
@@ -70,6 +71,17 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
 # Look for Julia
 include(FindJulia)
 find_package(Julia)
+
+if(Julia_FOUND)
+    if(${Julia_LLVM_VERSION} MATCHES "^v([0-9]*)\.[0-9]*\.[0-9]")
+        set(Julia_LLVM_VERSION_MAJOR ${CMAKE_MATCH_1})
+        message("julia LLVM_VERSION_MAJOR: ${Julia_LLVM_VERSION_MAJOR}")
+        if(${Julia_LLVM_VERSION_MAJOR} VERSION_EQUAL  ${LLVM_VERSION_MAJOR})
+        else()
+            message(WARNING "Julia and Enzyme use different LLVM versions")
+        endif()
+    endif()
+endif()
 
 add_subdirectory(Enzyme)
 add_subdirectory(test)

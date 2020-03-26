@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        julia-version: [1.3]
+        julia-version: ['1.3', '1.4']
         os: [ubuntu-18.04]
     
     steps:
@@ -21,15 +21,31 @@ jobs:
         uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.julia-version }}
-      - name: "Download LLVM"
+      - name: "Download LLVM -- new way"
+        if: matrix.julia-version == 'nightly'
+        run: |
+          julia -e 'using Pkg; pkg"add LLVM_full_jll"'
+          LLVM_DIR=`julia -e "using LLVM_full_jll; print(LLVM_full_jll.artifact_dir)"`
+          # workaround https://github.com/JuliaPackaging/Yggdrasil/issues/652
+          sudo mkdir -p /workspace
+          sudo cp -r ${LLVM_DIR} /workspace/destdir
+          sudo mkdir -p /workspace/destdir/bin/
+          sudo ln -s  /workspace/destdir/tools/opt /workspace/destdir/bin/opt
+          sudo ln -s  /workspace/destdir/tools/FileCheck /workspace/destdir/bin/FileCheck
+          sudo ln -s  /workspace/destdir/tools/llvm-config /workspace/destdir/bin/llvm-config
+        env:
+          JULIA_PROJECT: "/tmp/proj"
+
+      - name: "Download LLVM -- old way"
+        if: matrix.julia-version == 1.3 || matrix.julia-version == 1.4
         run: |
           julia -e 'using Pkg; pkg"add LLVM_jll"'
           ARTIFACT_DIR=`julia -e "using LLVM_jll; print(LLVM_jll.artifact_dir)"`
           echo "ARTIFACT_DIR=${ARTIFACT_DIR}"
           # workaround https://github.com/JuliaPackaging/Yggdrasil/issues/652
           sudo mkdir -p /workspace
-          sudo ln -s ${ARTIFACT_DIR} /workspace/destdir
-          sudo mkdir -p  /workspace/destdir/bin/
+          sudo cp -r ${ARTIFACT_DIR} /workspace/destdir
+          sudo mkdir -p /workspace/destdir/bin/
           sudo ln -s  /workspace/destdir/tools/opt /workspace/destdir/bin/opt
           sudo ln -s  /workspace/destdir/tools/FileCheck /workspace/destdir/bin/FileCheck
           sudo ln -s  /workspace/destdir/tools/llvm-config /workspace/destdir/bin/llvm-config
