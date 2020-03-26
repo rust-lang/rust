@@ -907,12 +907,18 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         let count = (niche_variants.end().as_u32()
                             - niche_variants.start().as_u32()
                             + 1) as u128;
-                        if let Some((field_index, niche, (niche_start, niche_scalar))) = variants[i]
+
+                        // Find the field with the largest niche
+                        let niche_candidate = variants[i]
                             .iter()
                             .enumerate()
-                            .filter_map(|(i, &field)| Some((i, field.largest_niche.as_ref()?)))
-                            .max_by_key(|(_, niche)| niche.available(dl))
-                            .and_then(|(i, niche)| Some((i, niche, niche.reserve(self, count)?)))
+                            .filter_map(|(j, &field)| Some((j, field.largest_niche.as_ref()?)))
+                            .max_by_key(|(_, niche)| niche.available(dl));
+
+                        if let Some((field_index, niche, (niche_start, niche_scalar))) =
+                            niche_candidate.and_then(|(field_index, niche)| {
+                                Some((field_index, niche, niche.reserve(self, count)?))
+                            })
                         {
                             let mut align = dl.aggregate_align;
                             let st = variants
