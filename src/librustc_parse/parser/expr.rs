@@ -767,9 +767,6 @@ impl<'a> Parser<'a> {
             token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
                 Ok(self.parse_tuple_field_access_expr(lo, base, symbol, suffix))
             }
-            token::Literal(token::Lit { kind: token::Float, symbol, .. }) => {
-                self.recover_field_access_by_float_lit(lo, base, symbol)
-            }
             _ => {
                 self.error_unexpected_after_dot();
                 Ok(base)
@@ -781,47 +778,6 @@ impl<'a> Parser<'a> {
         // FIXME Could factor this out into non_fatal_unexpected or something.
         let actual = pprust::token_to_string(&self.token);
         self.struct_span_err(self.token.span, &format!("unexpected token: `{}`", actual)).emit();
-    }
-
-    fn recover_field_access_by_float_lit(
-        &mut self,
-        lo: Span,
-        base: P<Expr>,
-        sym: Symbol,
-    ) -> PResult<'a, P<Expr>> {
-        self.bump();
-
-        let fstr = sym.as_str();
-        let msg = format!("unexpected token: `{}`", sym);
-
-        let mut err = self.struct_span_err(self.prev_token.span, &msg);
-        err.span_label(self.prev_token.span, "unexpected token");
-
-        if fstr.chars().all(|x| "0123456789.".contains(x)) {
-            let float = match fstr.parse::<f64>() {
-                Ok(f) => f,
-                Err(_) => {
-                    err.emit();
-                    return Ok(base);
-                }
-            };
-            let sugg = pprust::to_string(|s| {
-                s.popen();
-                s.print_expr(&base);
-                s.s.word(".");
-                s.print_usize(float.trunc() as usize);
-                s.pclose();
-                s.s.word(".");
-                s.s.word(fstr.splitn(2, '.').last().unwrap().to_string())
-            });
-            err.span_suggestion(
-                lo.to(self.prev_token.span),
-                "try parenthesizing the first index",
-                sugg,
-                Applicability::MachineApplicable,
-            );
-        }
-        Err(err)
     }
 
     fn parse_tuple_field_access_expr(
