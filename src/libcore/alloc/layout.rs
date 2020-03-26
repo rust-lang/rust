@@ -141,6 +141,7 @@ impl Layout {
     /// sentinel value. Types that lazily allocate must track initialization by
     /// some other means.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[inline]
     pub const fn dangling(&self) -> NonNull<u8> {
         // align is non-zero and a power of two
         unsafe { NonNull::new_unchecked(self.align() as *mut u8) }
