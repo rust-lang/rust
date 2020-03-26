@@ -1,0 +1,14 @@
+error: unexpected token: `0.0`
+  --> $DIR/index-float.rs:4:20
+   |
+LL |     let _ = tuple. 0.0;
+   |                    ^^^
+
+error: unexpected token: `0.0`
+  --> $DIR/index-float.rs:6:36
+   |
+LL |     let _ = tuple./*special cases*/0.0;
+   |                                    ^^^
+
+error: aborting due to 2 previous errors
+
