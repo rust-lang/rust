@@ -2,16 +2,22 @@
 
 #only-x86_64-fortanix-unknown-sgx
 
-OBJDUMP="${S}/build/x86_64-unknown-linux-gnu/llvm/build/bin/llvm-objdump"
-FILECHECK="${S}/build/x86_64-unknown-linux-gnu/llvm/build/bin/FileCheck"
+# For cargo setting
+export RUSTC := $(RUSTC_ORIGINAL)
+export LD_LIBRARY_PATH := $(HOST_RPATH_DIR)
+# We need to be outside of 'src' dir in order to run cargo
+export WORK_DIR := $(TMPDIR)
+export TEST_DIR := $(shell pwd)
+
+## clean up unused env variables which might cause harm.
+unexport RUSTC_LINKER
+unexport RUSTC_BOOTSTRAP
+unexport RUST_BUILD_STAGE
+unexport RUST_TEST_THREADS
+unexport RUST_TEST_TMPDIR
+unexport AR
+unexport CC
+unexport CXX
 
 all:
-	$(RUSTC) --target ${TARGET} enclave.rs
-
-	#TODO: re-enable check when newly compiled libunwind is used
-	#${OBJDUMP} --disassemble-symbols=unw_getcontext --demangle $(TMPDIR)/enclave > $(TMPDIR)/unw_getcontext.asm
-	#${FILECHECK} --input-file $(TMPDIR)/unw_getcontext.asm unw_getcontext.checks
-
-	#TODO: re-enable check when newly compiled libunwind is used
-	${OBJDUMP} --disassemble-symbols="libunwind::Registers_x86_64::jumpto()" --demangle $(TMPDIR)/enclave > $(TMPDIR)/jumpto.asm
-	${FILECHECK} --input-file $(TMPDIR)/jumpto.asm jumpto.checks
+	bash script.sh
