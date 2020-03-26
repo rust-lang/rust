@@ -44,7 +44,7 @@ impl TextSize {
     ///
     /// Accepts `char`, `&str`, and references to any custom string-like type
     /// that dereferences to `str`. Types that don't dereference to `str` but
-    /// want to be usable in this constructor can implement [`TextSized`].
+    /// want to be usable in this constructor can implement [`LenTextSize`].
     ///
     /// # Examples
     ///
