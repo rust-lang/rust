@@ -209,11 +209,8 @@ impl RawItemsCollector {
         current_module: Option<Idx<ModuleData>>,
         body: impl ast::ModuleItemOwner,
     ) {
-        for item_or_macro in body.items_with_macros() {
-            match item_or_macro {
-                ast::ItemOrMacro::Macro(m) => self.add_macro(current_module, m),
-                ast::ItemOrMacro::Item(item) => self.add_item(current_module, item),
-            }
+        for item in body.items() {
+            self.add_item(current_module, item)
         }
     }
 
@@ -264,6 +261,10 @@ impl RawItemsCollector {
             }
             ast::ModuleItem::StaticDef(it) => {
                 (DefKind::Static(self.source_ast_id_map.ast_id(&it)), it.name())
+            }
+            ast::ModuleItem::MacroCall(it) => {
+                self.add_macro(current_module, it);
+                return;
             }
         };
         if let Some(name) = name {

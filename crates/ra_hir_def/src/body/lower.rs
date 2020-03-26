@@ -563,7 +563,8 @@ impl ExprCollector<'_> {
                 ast::ModuleItem::ImplDef(_)
                 | ast::ModuleItem::UseItem(_)
                 | ast::ModuleItem::ExternCrateItem(_)
-                | ast::ModuleItem::Module(_) => continue,
+                | ast::ModuleItem::Module(_)
+                | ast::ModuleItem::MacroCall(_) => continue,
             };
             self.body.item_scope.define_def(def);
             if let Some(name) = name {

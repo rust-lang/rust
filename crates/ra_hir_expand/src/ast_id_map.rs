@@ -68,8 +68,6 @@ impl AstIdMap {
         bfs(node, |it| {
             if let Some(module_item) = ast::ModuleItem::cast(it.clone()) {
                 res.alloc(module_item.syntax());
-            } else if let Some(macro_call) = ast::MacroCall::cast(it) {
-                res.alloc(macro_call.syntax());
             }
         });
         res

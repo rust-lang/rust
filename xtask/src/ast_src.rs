@@ -566,6 +566,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             ConstDef,
             StaticDef,
             Module,
+            MacroCall,
         }
 
         enum ImplItem: AttrsOwner {

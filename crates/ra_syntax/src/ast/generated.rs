@@ -4135,6 +4135,7 @@ pub enum ModuleItem {
     ConstDef(ConstDef),
     StaticDef(StaticDef),
     Module(Module),
+    MacroCall(MacroCall),
 }
 impl From<StructDef> for ModuleItem {
     fn from(node: StructDef) -> ModuleItem {
@@ -4196,6 +4197,11 @@ impl From<Module> for ModuleItem {
         ModuleItem::Module(node)
     }
 }
+impl From<MacroCall> for ModuleItem {
+    fn from(node: MacroCall) -> ModuleItem {
+        ModuleItem::MacroCall(node)
+    }
+}
 impl std::fmt::Display for ModuleItem {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -4205,7 +4211,7 @@ impl AstNode for ModuleItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             STRUCT_DEF | UNION_DEF | ENUM_DEF | FN_DEF | TRAIT_DEF | TYPE_ALIAS_DEF | IMPL_DEF
-            | USE_ITEM | EXTERN_CRATE_ITEM | CONST_DEF | STATIC_DEF | MODULE => true,
+            | USE_ITEM | EXTERN_CRATE_ITEM | CONST_DEF | STATIC_DEF | MODULE | MACRO_CALL => true,
             _ => false,
         }
     }
@@ -4223,6 +4229,7 @@ impl AstNode for ModuleItem {
             CONST_DEF => ModuleItem::ConstDef(ConstDef { syntax }),
             STATIC_DEF => ModuleItem::StaticDef(StaticDef { syntax }),
             MODULE => ModuleItem::Module(Module { syntax }),
+            MACRO_CALL => ModuleItem::MacroCall(MacroCall { syntax }),
             _ => return None,
         };
         Some(res)
@@ -4241,6 +4248,7 @@ impl AstNode for ModuleItem {
             ModuleItem::ConstDef(it) => &it.syntax,
             ModuleItem::StaticDef(it) => &it.syntax,
             ModuleItem::Module(it) => &it.syntax,
+            ModuleItem::MacroCall(it) => &it.syntax,
         }
     }
 }
