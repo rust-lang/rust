@@ -33,7 +33,6 @@
         - ["Cleanup Crew" ICE-breakers](ice-breaker/cleanup-crew.md)
         - [LLVM ICE-breakers](ice-breaker/llvm.md)
     - [Licenses](./licenses.md)
-
 - [Part 2: High-level Compiler Architecture](./part-2-intro.md)
     - [Overview of the Compiler](./overview.md)
     - [The compiler source code](./compiler-src.md)
