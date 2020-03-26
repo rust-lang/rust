@@ -170,7 +170,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     &mut err,
                     format!(
                         "mutable borrow occurs due to use of {} in closure",
-                        self.describe_place_str(access_place.as_ref()),
+                        self.describe_any_place(access_place.as_ref()),
                     ),
                 );
                 borrow_span

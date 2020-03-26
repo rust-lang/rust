@@ -53,7 +53,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         old_load_end_span: Option<Span>,
     ) -> DiagnosticBuilder<'cx> {
         let via =
-            |msg: &str| if msg.is_empty() { msg.to_string() } else { format!(" (via {})", msg) };
+            |msg: &str| if msg.is_empty() { "".to_string() } else { format!(" (via {})", msg) };
         let mut err = struct_span_err!(
             self,
             new_loan_span,
@@ -201,13 +201,12 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         old_load_end_span: Option<Span>,
     ) -> DiagnosticBuilder<'cx> {
         let via =
-            |msg: &str| if msg.is_empty() { msg.to_string() } else { format!(" (via {})", msg) };
+            |msg: &str| if msg.is_empty() { "".to_string() } else { format!(" (via {})", msg) };
         let mut err = struct_span_err!(
             self,
             span,
             E0502,
-            "cannot borrow {}{} as {} because {} is also borrowed \
-             as {}{}",
+            "cannot borrow {}{} as {} because {} is also borrowed as {}{}",
             desc_new,
             via(msg_new),
             kind_new,

@@ -256,8 +256,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             "report_move_out_while_borrowed: location={:?} place={:?} span={:?} borrow={:?}",
             location, place, span, borrow
         );
-        let value_msg = self.describe_place_str(place.as_ref());
-        let borrow_msg = self.describe_place_str(borrow.borrowed_place.as_ref());
+        let value_msg = self.describe_any_place(place.as_ref());
+        let borrow_msg = self.describe_any_place(borrow.borrowed_place.as_ref());
 
         let borrow_spans = self.retrieve_borrow_spans(borrow);
         let borrow_span = borrow_spans.args_or_use();
@@ -266,7 +266,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let span = move_spans.args_or_use();
 
         let mut err =
-            self.cannot_move_when_borrowed(span, &self.describe_place_str(place.as_ref()));
+            self.cannot_move_when_borrowed(span, &self.describe_any_place(place.as_ref()));
         err.span_label(borrow_span, format!("borrow of {} occurs here", borrow_msg));
         err.span_label(span, format!("move out of {} occurs here", value_msg));
 
@@ -306,14 +306,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let mut err = self.cannot_use_when_mutably_borrowed(
             span,
-            &self.describe_place_str(place.as_ref()),
+            &self.describe_any_place(place.as_ref()),
             borrow_span,
-            &self.describe_place_str(borrow.borrowed_place.as_ref()),
+            &self.describe_any_place(borrow.borrowed_place.as_ref()),
         );
 
         borrow_spans.var_span_label(&mut err, {
             let place = &borrow.borrowed_place;
-            let desc_place = self.describe_place_str(place.as_ref());
+            let desc_place = self.describe_any_place(place.as_ref());
             format!("borrow occurs due to use of {}{}", desc_place, borrow_spans.describe())
         });
 
@@ -506,7 +506,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             );
         } else {
             let borrow_place = &issued_borrow.borrowed_place;
-            let borrow_place_desc = self.describe_place_str(borrow_place.as_ref());
+            let borrow_place_desc = self.describe_any_place(borrow_place.as_ref());
             issued_spans.var_span_label(
                 &mut err,
                 format!(
@@ -647,12 +647,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 && proj_base == target_base.projection
                             {
                                 return Some((
-                                    self.describe_place_str(PlaceRef {
+                                    self.describe_any_place(PlaceRef {
                                         local,
                                         projection: proj_base,
                                     }),
-                                    self.describe_place_str(first_borrowed_place.as_ref()),
-                                    self.describe_place_str(second_borrowed_place.as_ref()),
+                                    self.describe_any_place(first_borrowed_place.as_ref()),
+                                    self.describe_any_place(second_borrowed_place.as_ref()),
                                     union_ty.to_string(),
                                 ));
                             }
@@ -665,7 +665,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // If we didn't find a field access into a union, or both places match, then
                 // only return the description of the first place.
                 (
-                    self.describe_place_str(first_borrowed_place.as_ref()),
+                    self.describe_any_place(first_borrowed_place.as_ref()),
                     "".to_string(),
                     "".to_string(),
                     "".to_string(),
@@ -1388,7 +1388,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let loan_spans = self.retrieve_borrow_spans(loan);
         let loan_span = loan_spans.args_or_use();
 
-        let descr_place = self.describe_place_str(place.as_ref());
+        let descr_place = self.describe_any_place(place.as_ref());
         if loan.kind == BorrowKind::Shallow {
             if let Some(section) = self.classify_immutable_section(&loan.assigned_place) {
                 let mut err = self.cannot_mutate_in_immutable_section(
@@ -1463,8 +1463,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             })
             | Some(LocalDecl { local_info: LocalInfo::StaticRef { .. }, .. })
             | Some(LocalDecl { local_info: LocalInfo::Other, .. })
-            | None => (self.describe_place_str(place.as_ref()), assigned_span),
-            Some(decl) => (self.describe_place_str(err_place.as_ref()), decl.source_info.span),
+            | None => (self.describe_any_place(place.as_ref()), assigned_span),
+            Some(decl) => (self.describe_any_place(err_place.as_ref()), decl.source_info.span),
         };
 
         let mut err = self.cannot_reassign_immutable(span, &place_description, from_arg);
