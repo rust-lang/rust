@@ -283,6 +283,23 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
 
+        let largest_niche_index = if matches!(kind, StructKind::Prefixed{..}) || repr.hide_niche() {
+            None
+        } else {
+            fields
+                .iter()
+                .enumerate()
+                .filter_map(|(i, &field)| field.largest_niche.as_ref().map(|n| (i, n)))
+                .max_by_key(|(_, niche)| (niche.available(dl), cmp::Reverse(niche.offset)))
+                .map(|(i, _)| i as u32)
+        };
+
+        // inverse_memory_index holds field indices by increasing memory offset.
+        // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
+        // We now write field offsets to the corresponding offset slot;
+        // field 5 with offset 0 puts 0 in offsets[5].
+        // At the bottom of this function, we invert `inverse_memory_index` to
+        // produce `memory_index` (see `invert_mapping`).
         let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
         let optimize = !repr.inhibit_struct_field_reordering_opt();
@@ -296,10 +313,15 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             match kind {
                 StructKind::AlwaysSized | StructKind::MaybeUnsized => {
                     optimizing.sort_by_key(|&x| {
-                        // Place ZSTs first to avoid "interesting offsets",
-                        // especially with only one or two non-ZST fields.
                         let f = &fields[x as usize];
-                        (!f.is_zst(), cmp::Reverse(field_align(f)))
+                        (
+                            // Place ZSTs first to avoid "interesting offsets",
+                            // especially with only one or two non-ZST fields.
+                            !f.is_zst(),
+                            cmp::Reverse(field_align(f)),
+                            // Try to put the largest niche earlier.
+                            Some(x) != largest_niche_index,
+                        )
                     });
                 }
                 StructKind::Prefixed(..) => {
@@ -308,20 +330,25 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     optimizing.sort_by_key(|&x| field_align(&fields[x as usize]));
                 }
             }
+            // Rotate index array to put the largest niche first.
+            // Since it is already the first amongst the types with the same alignement,
+            // this will just move some of the potential padding within the structure.
+            if let (Some(niche_index), StructKind::AlwaysSized) = (largest_niche_index, kind) {
+                // ZSTs are always first, and the largest niche is not one, so we can unwrap
+                let first_non_zst = inverse_memory_index
+                    .iter()
+                    .position(|&x| !fields[x as usize].is_zst())
+                    .unwrap();
+                let non_zsts = &mut inverse_memory_index[first_non_zst..];
+                let pivot = non_zsts.iter().position(|&x| x == niche_index).unwrap();
+                non_zsts.rotate_left(pivot);
+            }
         }
-
-        // inverse_memory_index holds field indices by increasing memory offset.
-        // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
-        // We now write field offsets to the corresponding offset slot;
-        // field 5 with offset 0 puts 0 in offsets[5].
-        // At the bottom of this function, we invert `inverse_memory_index` to
-        // produce `memory_index` (see `invert_mapping`).
 
         let mut sized = true;
         let mut offsets = vec![Size::ZERO; fields.len()];
         let mut offset = Size::ZERO;
         let mut largest_niche = None;
-        let mut largest_niche_available = 0;
 
         if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
             let prefix_align =
@@ -351,18 +378,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
             debug!("univariant offset: {:?} field: {:#?}", offset, field);
             offsets[i as usize] = offset;
-
-            if !repr.hide_niche() {
-                if let Some(mut niche) = field.largest_niche.clone() {
-                    let available = niche.available(dl);
-                    if available > largest_niche_available {
-                        largest_niche_available = available;
-                        niche.offset += offset;
-                        largest_niche = Some(niche);
-                    }
-                }
+            if largest_niche_index == Some(i) {
+                let mut niche = field.largest_niche.clone().unwrap();
+                niche.offset += offset;
+                largest_niche = Some(niche)
             }
-
             offset = offset.checked_add(field.size, dl).ok_or(LayoutError::SizeOverflow(ty))?;
         }
 

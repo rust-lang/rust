@@ -17,7 +17,7 @@ print-type-size         field `.0`: 1 bytes
 print-type-size         padding: 2 bytes
 print-type-size         field `.1`: 4 bytes, alignment: 4 bytes
 print-type-size type: `S`: 8 bytes, alignment: 4 bytes
-print-type-size     field `.g`: 4 bytes
-print-type-size     field `.a`: 1 bytes
 print-type-size     field `.b`: 1 bytes
-print-type-size     end padding: 2 bytes
+print-type-size     field `.a`: 1 bytes
+print-type-size     padding: 2 bytes
+print-type-size     field `.g`: 4 bytes, alignment: 4 bytes
