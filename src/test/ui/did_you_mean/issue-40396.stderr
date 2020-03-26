@@ -2,16 +2,8 @@ error: comparison operators cannot be chained
   --> $DIR/issue-40396.rs:2:20
    |
 LL |     (0..13).collect<Vec<i32>>();
-   |                    ^^^^^
+   |                    ^   ^
    |
-help: split the comparison into two...
-   |
-LL |     (0..13).collect < Vec && Vec <i32>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: ...or parenthesize one of the comparisons
-   |
-LL |     ((0..13).collect < Vec) <i32>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 help: use `::<...>` instead of `<...>` to specify type arguments
    |
 LL |     (0..13).collect::<Vec<i32>>();
@@ -21,7 +13,7 @@ error: comparison operators cannot be chained
   --> $DIR/issue-40396.rs:4:8
    |
 LL |     Vec<i32>::new();
-   |        ^^^^^
+   |        ^   ^
    |
 help: use `::<...>` instead of `<...>` to specify type arguments
    |
@@ -32,16 +24,8 @@ error: comparison operators cannot be chained
   --> $DIR/issue-40396.rs:6:20
    |
 LL |     (0..13).collect<Vec<i32>();
-   |                    ^^^^^
+   |                    ^   ^
    |
-help: split the comparison into two...
-   |
-LL |     (0..13).collect < Vec && Vec <i32>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: ...or parenthesize one of the comparisons
-   |
-LL |     ((0..13).collect < Vec) <i32>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 help: use `::<...>` instead of `<...>` to specify type arguments
    |
 LL |     (0..13).collect::<Vec<i32>();
