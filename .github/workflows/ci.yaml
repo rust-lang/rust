@@ -10,7 +10,6 @@ on:
 env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
-  CC: deny_c
   RUN_SLOW_TESTS: 1
   RUSTFLAGS: -D warnings
   RUSTUP_MAX_RETRIES: 10
@@ -44,6 +43,8 @@ jobs:
   rust:
     name: Rust
     runs-on: ${{ matrix.os }}
+    env:
+      CC: deny_c
 
     strategy:
       fail-fast: false
