@@ -149,7 +149,8 @@ impl<'tcx> TyCtxt<'tcx> {
                             query_info.info.query.describe(icx.tcx)
                         ),
                     );
-                    diag.span = icx.tcx.sess.source_map().guess_head_span(query_info.info.span).into();
+                    diag.span =
+                        icx.tcx.sess.source_map().guess_head_span(query_info.info.span).into();
                     handler.force_print_diagnostic(diag);
 
                     current_query = query_info.job.parent;

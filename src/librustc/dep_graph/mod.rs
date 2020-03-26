@@ -166,7 +166,11 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         self.queries.on_disk_cache.store_diagnostics(dep_node_index, diagnostics)
     }
 
-    fn store_diagnostics_for_anon_node(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>) {
+    fn store_diagnostics_for_anon_node(
+        &self,
+        dep_node_index: DepNodeIndex,
+        diagnostics: ThinVec<Diagnostic>,
+    ) {
         self.queries.on_disk_cache.store_diagnostics_for_anon_node(dep_node_index, diagnostics)
     }
 

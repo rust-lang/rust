@@ -49,7 +49,11 @@ pub trait DepContext: Copy + DepGraphSafe {
     fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>);
 
     /// Register diagnostics for the given node, for use in next session.
-    fn store_diagnostics_for_anon_node(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>);
+    fn store_diagnostics_for_anon_node(
+        &self,
+        dep_node_index: DepNodeIndex,
+        diagnostics: ThinVec<Diagnostic>,
+    );
 
     /// Access the profiler.
     fn profiler(&self) -> &SelfProfilerRef;

@@ -1,4 +1,4 @@
-use crate::dep_graph::{DepKind, DepContext};
+use crate::dep_graph::{DepContext, DepKind};
 use crate::query::config::QueryContext;
 use crate::query::plumbing::CycleError;
 
