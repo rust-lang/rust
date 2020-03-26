@@ -39,3 +39,4 @@ build
 
 check "std::io::stdio::_print::h87f0c238421c45bc" print.checks
 check cc_plus_one_c cc_plus_one_c.checks
+check cc_plus_one_c_asm cc_plus_one_c_asm.checks

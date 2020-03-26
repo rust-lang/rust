@@ -1,5 +1,5 @@
 fn main() {
     cc::Build::new()
         .file("foo.c")
-        .compile("foo");
+        .compile("foo_c");
 }
