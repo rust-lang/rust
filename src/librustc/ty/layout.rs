@@ -282,8 +282,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
 
-        let mut sized = true;
-        let mut offsets = vec![Size::ZERO; fields.len()];
         let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
         let mut optimize = !repr.inhibit_struct_field_reordering_opt();
@@ -320,6 +318,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // At the bottom of this function, we invert `inverse_memory_index` to
         // produce `memory_index` (see `invert_mapping`).
 
+        let mut sized = true;
+        let mut offsets = vec![Size::ZERO; fields.len()];
         let mut offset = Size::ZERO;
         let mut largest_niche = None;
         let mut largest_niche_available = 0;
@@ -900,18 +900,19 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         let count = (niche_variants.end().as_u32()
                             - niche_variants.start().as_u32()
                             + 1) as u128;
-                        // FIXME(#62691) use the largest niche across all fields,
-                        // not just the first one.
-                        for (field_index, &field) in variants[i].iter().enumerate() {
-                            let niche = match &field.largest_niche {
-                                Some(niche) => niche,
-                                _ => continue,
-                            };
-                            let (niche_start, niche_scalar) = match niche.reserve(self, count) {
-                                Some(pair) => pair,
-                                None => continue,
-                            };
 
+                        // Find the field with the largest niche
+                        let niche_candidate = variants[i]
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(j, &field)| Some((j, field.largest_niche.as_ref()?)))
+                            .max_by_key(|(_, niche)| niche.available(dl));
+
+                        if let Some((field_index, niche, (niche_start, niche_scalar))) =
+                            niche_candidate.and_then(|(field_index, niche)| {
+                                Some((field_index, niche, niche.reserve(self, count)?))
+                            })
+                        {
                             let mut align = dl.aggregate_align;
                             let st = variants
                                 .iter_enumerated()
