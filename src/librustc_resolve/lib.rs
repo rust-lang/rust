@@ -2517,7 +2517,8 @@ impl<'a> Resolver<'a> {
             false => "defined",
         };
 
-        let (name, span) = (ident.name, self.session.source_map().def_span(new_binding.span));
+        let (name, span) =
+            (ident.name, self.session.source_map().guess_head_span(new_binding.span));
 
         if let Some(s) = self.name_already_seen.get(&name) {
             if s == &span {
@@ -2558,7 +2559,7 @@ impl<'a> Resolver<'a> {
 
         err.span_label(span, format!("`{}` re{} here", name, new_participle));
         err.span_label(
-            self.session.source_map().def_span(old_binding.span),
+            self.session.source_map().guess_head_span(old_binding.span),
             format!("previous {} of the {} `{}` here", old_noun, old_kind, name),
         );
 

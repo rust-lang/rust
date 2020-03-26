@@ -367,7 +367,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return `Ok()` for unaligned pointers!
-        if self.check_defined(ptr, size).is_err() {
+        if self.is_defined(ptr, size).is_err() {
             // This inflates undefined bytes to the entire scalar, even if only a few
             // bytes are undefined.
             return Ok(ScalarMaybeUndef::Undef);
@@ -552,13 +552,19 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
 }
 
 /// Undefined bytes.
-impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
+impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
+    /// Checks whether the given range  is entirely defined.
+    ///
+    /// Returns `Ok(())` if it's defined. Otherwise returns the index of the byte
+    /// at which the first undefined access begins.
+    fn is_defined(&self, ptr: Pointer<Tag>, size: Size) -> Result<(), Size> {
+        self.undef_mask.is_range_defined(ptr.offset, ptr.offset + size) // `Size` addition
+    }
+
     /// Checks that a range of bytes is defined. If not, returns the `ReadUndefBytes`
     /// error which will report the first byte which is undefined.
-    #[inline]
     fn check_defined(&self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
-        self.undef_mask
-            .is_range_defined(ptr.offset, ptr.offset + size) // `Size` addition
+        self.is_defined(ptr, size)
             .or_else(|idx| throw_ub!(InvalidUndefBytes(Some(Pointer::new(ptr.alloc_id, idx)))))
     }
 

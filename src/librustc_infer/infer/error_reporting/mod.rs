@@ -200,7 +200,7 @@ fn msg_span_from_early_bound_and_free_regions(
     };
     let (prefix, span) = match *region {
         ty::ReEarlyBound(ref br) => {
-            let mut sp = sm.def_span(tcx.hir().span(node));
+            let mut sp = sm.guess_head_span(tcx.hir().span(node));
             if let Some(param) =
                 tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
             {
@@ -209,7 +209,7 @@ fn msg_span_from_early_bound_and_free_regions(
             (format!("the lifetime `{}` as defined on", br.name), sp)
         }
         ty::ReFree(ty::FreeRegion { bound_region: ty::BoundRegion::BrNamed(_, name), .. }) => {
-            let mut sp = sm.def_span(tcx.hir().span(node));
+            let mut sp = sm.guess_head_span(tcx.hir().span(node));
             if let Some(param) =
                 tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
             {
@@ -223,7 +223,7 @@ fn msg_span_from_early_bound_and_free_regions(
             }
             _ => (
                 format!("the lifetime `{}` as defined on", region),
-                sm.def_span(tcx.hir().span(node)),
+                sm.guess_head_span(tcx.hir().span(node)),
             ),
         },
         _ => bug!(),

@@ -835,7 +835,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 on_error();
                 return tcx.types.err;
             }
-            Res::Def(DefKind::AssocConst, _) | Res::Def(DefKind::AssocFn, _) => {
+            Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
                 report_unexpected_res(res);
                 return tcx.types.err;
             }
@@ -1020,7 +1020,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Adt(adt, substs) => (substs, adt),
             _ => span_bug!(pat.span, "struct pattern is not an ADT"),
         };
-        let kind_name = adt.variant_descr();
 
         // Index the struct fields' types.
         let field_map = variant
@@ -1074,7 +1073,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !inexistent_fields.is_empty() && !variant.recovered {
             self.error_inexistent_fields(
-                kind_name,
+                adt.variant_descr(),
                 &inexistent_fields,
                 &mut unmentioned_fields,
                 variant,
@@ -1083,18 +1082,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Require `..` if struct has non_exhaustive attribute.
         if variant.is_field_list_non_exhaustive() && !adt.did.is_local() && !etc {
-            struct_span_err!(
-                tcx.sess,
-                pat.span,
-                E0638,
-                "`..` required with {} marked as non-exhaustive",
-                kind_name
-            )
-            .emit();
+            self.error_foreign_non_exhaustive_spat(pat, adt.variant_descr(), fields.is_empty());
         }
 
         // Report an error if incorrect number of the fields were specified.
-        if kind_name == "union" {
+        if adt.is_union() {
             if fields.len() != 1 {
                 tcx.sess
                     .struct_span_err(pat.span, "union patterns should have exactly one field")
@@ -1107,6 +1099,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.error_unmentioned_fields(pat.span, &unmentioned_fields, variant);
         }
         no_field_errors
+    }
+
+    fn error_foreign_non_exhaustive_spat(&self, pat: &Pat<'_>, descr: &str, no_fields: bool) {
+        let sess = self.tcx.sess;
+        let sm = sess.source_map();
+        let sp_brace = sm.end_point(pat.span);
+        let sp_comma = sm.end_point(pat.span.with_hi(sp_brace.hi()));
+        let sugg = if no_fields || sp_brace != sp_comma { ".. }" } else { ", .. }" };
+
+        let mut err = struct_span_err!(
+            sess,
+            pat.span,
+            E0638,
+            "`..` required with {} marked as non-exhaustive",
+            descr
+        );
+        err.span_suggestion_verbose(
+            sp_comma,
+            "add `..` at the end of the field list to ignore all other fields",
+            sugg.to_string(),
+            Applicability::MachineApplicable,
+        );
+        err.emit();
     }
 
     fn error_field_already_bound(&self, span: Span, ident: ast::Ident, other_field: Span) {

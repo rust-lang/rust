@@ -325,7 +325,7 @@ pub(super) fn specialization_graph_provider(
 
             if let Some(overlap) = overlap {
                 let impl_span =
-                    tcx.sess.source_map().def_span(tcx.span_of_impl(impl_def_id).unwrap());
+                    tcx.sess.source_map().guess_head_span(tcx.span_of_impl(impl_def_id).unwrap());
 
                 // Work to be done after we've built the DiagnosticBuilder. We have to define it
                 // now because the struct_lint methods don't return back the DiagnosticBuilder
@@ -347,7 +347,7 @@ pub(super) fn specialization_graph_provider(
                     match tcx.span_of_impl(overlap.with_impl) {
                         Ok(span) => {
                             err.span_label(
-                                tcx.sess.source_map().def_span(span),
+                                tcx.sess.source_map().guess_head_span(span),
                                 "first implementation here".to_string(),
                             );
 

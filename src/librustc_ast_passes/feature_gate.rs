@@ -257,7 +257,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             gate_feature_post!(
                 &self,
                 non_ascii_idents,
-                self.parse_sess.source_map().def_span(sp),
+                self.parse_sess.source_map().guess_head_span(sp),
                 "non-ascii idents are not fully supported"
             );
         }

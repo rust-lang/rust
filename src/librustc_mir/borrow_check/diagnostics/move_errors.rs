@@ -272,14 +272,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         span: Span,
     ) -> DiagnosticBuilder<'a> {
         let description = if place.projection.len() == 1 {
-            format!("static item `{}`", self.describe_place(place.as_ref()).unwrap())
+            format!("static item {}", self.describe_any_place(place.as_ref()))
         } else {
             let base_static = PlaceRef { local: place.local, projection: &[ProjectionElem::Deref] };
 
             format!(
-                "`{:?}` as `{:?}` is a static item",
-                self.describe_place(place.as_ref()).unwrap(),
-                self.describe_place(base_static).unwrap(),
+                "{} as {} is a static item",
+                self.describe_any_place(place.as_ref()),
+                self.describe_any_place(base_static),
             )
         };
 
@@ -349,16 +349,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let upvar_name = upvar.name;
                 let upvar_span = self.infcx.tcx.hir().span(upvar_hir_id);
 
-                let place_name = self.describe_place(move_place.as_ref()).unwrap();
+                let place_name = self.describe_any_place(move_place.as_ref());
 
-                let place_description = if self
-                    .is_upvar_field_projection(move_place.as_ref())
-                    .is_some()
-                {
-                    format!("`{}`, a {}", place_name, capture_description)
-                } else {
-                    format!("`{}`, as `{}` is a {}", place_name, upvar_name, capture_description,)
-                };
+                let place_description =
+                    if self.is_upvar_field_projection(move_place.as_ref()).is_some() {
+                        format!("{}, a {}", place_name, capture_description)
+                    } else {
+                        format!("{}, as `{}` is a {}", place_name, upvar_name, capture_description)
+                    };
 
                 debug!(
                     "report: closure_kind_ty={:?} closure_kind={:?} place_description={:?}",

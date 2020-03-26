@@ -99,7 +99,7 @@ LL |         a @ box b => {}
    |         |       value used here after move
    |         value moved here
 
-error[E0502]: cannot borrow `_` as mutable because it is also borrowed as immutable
+error[E0502]: cannot borrow value as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-pat-at-and-box.rs:46:21
    |
 LL |     let ref a @ box ref mut b = Box::new(NC);
@@ -111,7 +111,7 @@ LL |     let ref a @ box ref mut b = Box::new(NC);
 LL |     drop(a);
    |          - immutable borrow later used here
 
-error[E0502]: cannot borrow `_` as immutable because it is also borrowed as mutable
+error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-pat-at-and-box.rs:52:25
    |
 LL |     let ref mut a @ box ref b = Box::new(NC);
@@ -123,7 +123,7 @@ LL |     let ref mut a @ box ref b = Box::new(NC);
 LL |     *a = Box::new(NC);
    |     -- mutable borrow later used here
 
-error[E0502]: cannot borrow `_` as immutable because it is also borrowed as mutable
+error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-pat-at-and-box.rs:66:25
    |
 LL |         ref mut a @ box ref b => {
@@ -155,7 +155,7 @@ LL |     fn f2(a @ box b: Box<C>) {}
    |           value moved here
    |           move occurs because value has type `std::boxed::Box<C>`, which does not implement the `Copy` trait
 
-error[E0502]: cannot borrow `_` as immutable because it is also borrowed as mutable
+error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-pat-at-and-box.rs:58:27
    |
 LL |     fn f5(ref mut a @ box ref b: Box<NC>) {

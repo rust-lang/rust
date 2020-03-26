@@ -1441,7 +1441,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     let enum_resolution = resolutions.get(&key).expect("resolution should exist");
                     let enum_span =
                         enum_resolution.borrow().binding.expect("binding should exist").span;
-                    let enum_def_span = this.session.source_map().def_span(enum_span);
+                    let enum_def_span = this.session.source_map().guess_head_span(enum_span);
                     let enum_def_snippet = this
                         .session
                         .source_map()

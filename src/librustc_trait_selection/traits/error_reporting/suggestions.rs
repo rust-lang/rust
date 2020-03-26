@@ -1381,7 +1381,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let msg = format!("required by `{}`", item_name);
 
                 if let Some(sp) = tcx.hir().span_if_local(item_def_id) {
-                    let sp = tcx.sess.source_map().def_span(sp);
+                    let sp = tcx.sess.source_map().guess_head_span(sp);
                     err.span_label(sp, &msg);
                 } else {
                     err.note(&msg);

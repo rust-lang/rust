@@ -76,7 +76,7 @@ impl EarlyLintPass for WhileTrue {
                 if let ast::LitKind::Bool(true) = lit.kind {
                     if !lit.span.from_expansion() {
                         let msg = "denote infinite loops with `loop { ... }`";
-                        let condition_span = cx.sess.source_map().def_span(e.span);
+                        let condition_span = cx.sess.source_map().guess_head_span(e.span);
                         cx.struct_span_lint(WHILE_TRUE, condition_span, |lint| {
                             lint.build(msg)
                                 .span_suggestion_short(
@@ -374,9 +374,13 @@ impl MissingDoc {
 
         let has_doc = attrs.iter().any(|a| has_doc(a));
         if !has_doc {
-            cx.struct_span_lint(MISSING_DOCS, cx.tcx.sess.source_map().def_span(sp), |lint| {
-                lint.build(&format!("missing documentation for {} {}", article, desc)).emit()
-            });
+            cx.struct_span_lint(
+                MISSING_DOCS,
+                cx.tcx.sess.source_map().guess_head_span(sp),
+                |lint| {
+                    lint.build(&format!("missing documentation for {} {}", article, desc)).emit()
+                },
+            );
         }
     }
 }
@@ -406,7 +410,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             if !has_doc {
                 cx.struct_span_lint(
                     MISSING_DOCS,
-                    cx.tcx.sess.source_map().def_span(macro_def.span),
+                    cx.tcx.sess.source_map().guess_head_span(macro_def.span),
                     |lint| lint.build("missing documentation for macro").emit(),
                 );
             }
@@ -978,7 +982,7 @@ impl UnreachablePub {
                 if span.from_expansion() {
                     applicability = Applicability::MaybeIncorrect;
                 }
-                let def_span = cx.tcx.sess.source_map().def_span(span);
+                let def_span = cx.tcx.sess.source_map().guess_head_span(span);
                 cx.struct_span_lint(UNREACHABLE_PUB, def_span, |lint| {
                     let mut err = lint.build(&format!("unreachable `pub` {}", what));
                     let replacement = if cx.tcx.features().crate_visibility_modifier {

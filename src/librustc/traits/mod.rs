@@ -108,7 +108,9 @@ impl<'tcx> ObligationCause<'tcx> {
         match self.code {
             ObligationCauseCode::CompareImplMethodObligation { .. }
             | ObligationCauseCode::MainFunctionType
-            | ObligationCauseCode::StartFunctionType => tcx.sess.source_map().def_span(self.span),
+            | ObligationCauseCode::StartFunctionType => {
+                tcx.sess.source_map().guess_head_span(self.span)
+            }
             ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                 arm_span,
                 ..

@@ -2269,7 +2269,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
 
                     if let Some(sp) = tcx.hir().span_if_local(adt_def.did) {
-                        let sp = tcx.sess.source_map().def_span(sp);
+                        let sp = tcx.sess.source_map().guess_head_span(sp);
                         err.span_label(sp, format!("variant `{}` not found here", assoc_ident));
                     }
 
