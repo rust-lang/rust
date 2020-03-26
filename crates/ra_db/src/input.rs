@@ -10,6 +10,7 @@ use std::{
     fmt, ops,
     path::{Path, PathBuf},
     str::FromStr,
+    sync::Arc,
 };
 
 use ra_cfg::CfgOptions;
@@ -19,6 +20,7 @@ use rustc_hash::FxHashSet;
 
 use crate::{RelativePath, RelativePathBuf};
 use fmt::Display;
+use ra_tt::TokenExpander;
 
 /// `FileId` is an integer which uniquely identifies a file. File paths are
 /// messy and system-dependent, so most of the code should work directly with
@@ -115,6 +117,22 @@ impl Display for CrateName {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ProcMacroId(pub u32);
+
+#[derive(Debug, Clone)]
+pub struct ProcMacro {
+    pub name: SmolStr,
+    pub expander: Arc<dyn TokenExpander>,
+}
+
+impl Eq for ProcMacro {}
+impl PartialEq for ProcMacro {
+    fn eq(&self, other: &ProcMacro) -> bool {
+        self.name == other.name && Arc::ptr_eq(&self.expander, &other.expander)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CrateData {
     pub root_file_id: FileId,
@@ -127,6 +145,7 @@ pub struct CrateData {
     pub env: Env,
     pub extern_source: ExternSource,
     pub dependencies: Vec<Dependency>,
+    pub proc_macro: Vec<ProcMacro>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -166,7 +185,11 @@ impl CrateGraph {
         cfg_options: CfgOptions,
         env: Env,
         extern_source: ExternSource,
+        proc_macro: Vec<(SmolStr, Arc<dyn ra_tt::TokenExpander>)>,
     ) -> CrateId {
+        let proc_macro =
+            proc_macro.into_iter().map(|(name, it)| ProcMacro { name, expander: it }).collect();
+
         let data = CrateData {
             root_file_id: file_id,
             edition,
@@ -174,6 +197,7 @@ impl CrateGraph {
             cfg_options,
             env,
             extern_source,
+            proc_macro,
             dependencies: Vec::new(),
         };
         let crate_id = CrateId(self.arena.len() as u32);
@@ -345,6 +369,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            Default::default(),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -353,6 +378,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            Default::default(),
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -360,6 +386,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
             Default::default(),
         );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
@@ -377,6 +404,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            Default::default(),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -385,6 +413,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            Default::default(),
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -392,6 +421,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
             Default::default(),
         );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
@@ -408,6 +438,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            Default::default(),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -415,6 +446,7 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
+            Default::default(),
             Default::default(),
         );
         assert!(graph

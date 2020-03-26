@@ -7,7 +7,9 @@ use anyhow::Result;
 use crossbeam_channel::{unbounded, Receiver};
 use ra_db::{ExternSourceId, FileId, SourceRootId};
 use ra_ide::{AnalysisChange, AnalysisHost};
-use ra_project_model::{get_rustc_cfg_options, CargoFeatures, PackageRoot, ProjectWorkspace};
+use ra_project_model::{
+    get_rustc_cfg_options, CargoFeatures, PackageRoot, ProcMacroClient, ProjectWorkspace,
+};
 use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask, Watch};
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -67,7 +69,9 @@ pub(crate) fn load_cargo(
             (source_root_id, project_root)
         })
         .collect::<FxHashMap<_, _>>();
-    let host = load(&source_roots, ws, &mut vfs, receiver, extern_dirs);
+
+    let proc_macro_client = ProcMacroClient::dummy();
+    let host = load(&source_roots, ws, &mut vfs, receiver, extern_dirs, &proc_macro_client);
     Ok((host, source_roots))
 }
 
@@ -77,6 +81,7 @@ pub(crate) fn load(
     vfs: &mut Vfs,
     receiver: Receiver<VfsTask>,
     extern_dirs: FxHashSet<PathBuf>,
+    proc_macro_client: &ProcMacroClient,
 ) -> AnalysisHost {
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
     let mut host = AnalysisHost::new(lru_cap);
@@ -143,12 +148,16 @@ pub(crate) fn load(
         opts
     };
 
-    let crate_graph =
-        ws.to_crate_graph(&default_cfg_options, &extern_source_roots, &mut |path: &Path| {
+    let crate_graph = ws.to_crate_graph(
+        &default_cfg_options,
+        &extern_source_roots,
+        proc_macro_client,
+        &mut |path: &Path| {
             let vfs_file = vfs.load(path);
             log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
             vfs_file.map(vfs_file_to_id)
-        });
+        },
+    );
     log::debug!("crate graph: {:?}", crate_graph);
     analysis_change.set_crate_graph(crate_graph);
 

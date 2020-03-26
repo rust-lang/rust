@@ -83,6 +83,7 @@ pub struct PackageData {
     pub edition: Edition,
     pub features: Vec<String>,
     pub out_dir: Option<PathBuf>,
+    pub proc_macro_dylib_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -158,8 +159,11 @@ impl CargoWorkspace {
         })?;
 
         let mut out_dir_by_id = FxHashMap::default();
+        let mut proc_macro_dylib_paths = FxHashMap::default();
         if cargo_features.load_out_dirs_from_check {
-            out_dir_by_id = load_out_dirs(cargo_toml, cargo_features);
+            let resources = load_extern_resources(cargo_toml, cargo_features);
+            out_dir_by_id = resources.out_dirs;
+            proc_macro_dylib_paths = resources.proc_dylib_paths;
         }
 
         let mut pkg_by_id = FxHashMap::default();
@@ -183,6 +187,7 @@ impl CargoWorkspace {
                 dependencies: Vec::new(),
                 features: Vec::new(),
                 out_dir: out_dir_by_id.get(&id).cloned(),
+                proc_macro_dylib_path: proc_macro_dylib_paths.get(&id).cloned(),
             });
             let pkg_data = &mut packages[pkg];
             pkg_by_id.insert(id, pkg);
@@ -246,10 +251,13 @@ impl CargoWorkspace {
     }
 }
 
-pub fn load_out_dirs(
-    cargo_toml: &Path,
-    cargo_features: &CargoFeatures,
-) -> FxHashMap<PackageId, PathBuf> {
+#[derive(Debug, Clone, Default)]
+pub struct ExternResources {
+    out_dirs: FxHashMap<PackageId, PathBuf>,
+    proc_dylib_paths: FxHashMap<PackageId, PathBuf>,
+}
+
+pub fn load_extern_resources(cargo_toml: &Path, cargo_features: &CargoFeatures) -> ExternResources {
     let mut args: Vec<String> = vec![
         "check".to_string(),
         "--message-format=json".to_string(),
@@ -267,14 +275,21 @@ pub fn load_out_dirs(
         args.extend(cargo_features.features.iter().cloned());
     }
 
-    let mut acc = FxHashMap::default();
+    let mut acc = ExternResources::default();
     let res = run_cargo(&args, cargo_toml.parent(), &mut |message| {
         match message {
             Message::BuildScriptExecuted(BuildScript { package_id, out_dir, .. }) => {
-                acc.insert(package_id, out_dir);
+                acc.out_dirs.insert(package_id, out_dir);
             }
 
-            Message::CompilerArtifact(_) => (),
+            Message::CompilerArtifact(message) => {
+                if message.target.kind.contains(&"proc-macro".to_string()) {
+                    let package_id = message.package_id;
+                    if let Some(filename) = message.filenames.get(0) {
+                        acc.proc_dylib_paths.insert(package_id, filename.clone());
+                    }
+                }
+            }
             Message::CompilerMessage(_) => (),
             Message::Unknown => (),
         }

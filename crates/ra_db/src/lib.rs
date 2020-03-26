@@ -12,7 +12,7 @@ pub use crate::{
     cancellation::Canceled,
     input::{
         CrateGraph, CrateId, CrateName, Dependency, Edition, Env, ExternSource, ExternSourceId,
-        FileId, SourceRoot, SourceRootId,
+        FileId, ProcMacroId, SourceRoot, SourceRootId,
     },
 };
 pub use relative_path::{RelativePath, RelativePathBuf};

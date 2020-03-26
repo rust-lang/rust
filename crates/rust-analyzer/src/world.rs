@@ -16,7 +16,7 @@ use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, InlayHintsOptions, LibraryData,
     SourceRootId,
 };
-use ra_project_model::{get_rustc_cfg_options, ProjectWorkspace};
+use ra_project_model::{get_rustc_cfg_options, ProcMacroClient, ProjectWorkspace};
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask, Watch};
 use relative_path::RelativePathBuf;
 
@@ -150,9 +150,19 @@ impl WorldState {
             vfs_file.map(|f| FileId(f.0))
         };
 
+        let proc_macro_client =
+            ProcMacroClient::extern_process(std::path::Path::new("ra_proc_macro_srv"));
+
         workspaces
             .iter()
-            .map(|ws| ws.to_crate_graph(&default_cfg_options, &extern_source_roots, &mut load))
+            .map(|ws| {
+                ws.to_crate_graph(
+                    &default_cfg_options,
+                    &extern_source_roots,
+                    &proc_macro_client,
+                    &mut load,
+                )
+            })
             .for_each(|graph| {
                 crate_graph.extend(graph);
             });
