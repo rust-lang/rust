@@ -4,6 +4,7 @@ use ucd_parse::Codepoints;
 
 mod case_mapping;
 mod raw_emitter;
+mod skiplist;
 mod unicode_download;
 
 use raw_emitter::{emit_codepoints, RawEmitter};
@@ -172,13 +173,14 @@ fn main() {
 
         modules.push((property.to_lowercase().to_string(), emitter.file));
         println!(
-            "{:15}: {} bytes, {} codepoints in {} ranges ({} - {})",
+            "{:15}: {} bytes, {} codepoints in {} ranges ({} - {}) using {}",
             property,
             emitter.bytes_used,
             datapoints,
             ranges.len(),
             ranges.first().unwrap().start,
-            ranges.last().unwrap().end
+            ranges.last().unwrap().end,
+            emitter.desc,
         );
         total_bytes += emitter.bytes_used;
     }
@@ -259,6 +261,7 @@ fn generate_tests(data_path: &str, ranges: &[(&str, Vec<Range<u32>>)]) -> String
     let mut s = String::new();
     s.push_str("#![allow(incomplete_features, unused)]\n");
     s.push_str("#![feature(const_generics)]\n\n");
+    s.push_str("\n#[allow(unused)]\nuse std::hint;\n");
     s.push_str(&format!("#[path = \"{}\"]\n", data_path));
     s.push_str("mod unicode_data;\n\n");
 
@@ -267,7 +270,8 @@ fn generate_tests(data_path: &str, ranges: &[(&str, Vec<Range<u32>>)]) -> String
     for (property, ranges) in ranges {
         s.push_str(&format!(r#"    println!("Testing {}");"#, property));
         s.push('\n');
-        s.push_str(&format!("    {}();\n", property.to_lowercase()));
+        s.push_str(&format!("    {}_true();\n", property.to_lowercase()));
+        s.push_str(&format!("    {}_false();\n", property.to_lowercase()));
         let mut is_true = Vec::new();
         let mut is_false = Vec::new();
         for ch_num in 0..(std::char::MAX as u32) {
@@ -281,8 +285,10 @@ fn generate_tests(data_path: &str, ranges: &[(&str, Vec<Range<u32>>)]) -> String
             }
         }
 
-        s.push_str(&format!("    fn {}() {{\n", property.to_lowercase()));
+        s.push_str(&format!("    fn {}_true() {{\n", property.to_lowercase()));
         generate_asserts(&mut s, property, &is_true, true);
+        s.push_str("    }\n\n");
+        s.push_str(&format!("    fn {}_false() {{\n", property.to_lowercase()));
         generate_asserts(&mut s, property, &is_false, false);
         s.push_str("    }\n\n");
     }
@@ -295,19 +301,19 @@ fn generate_asserts(s: &mut String, property: &str, points: &[u32], truthy: bool
     for range in ranges_from_set(points) {
         if range.end == range.start + 1 {
             s.push_str(&format!(
-                "        assert!({}unicode_data::{}::lookup(std::char::from_u32({}).unwrap()), \"{}\");\n",
+                "        assert!({}unicode_data::{}::lookup({:?}), \"{}\");\n",
                 if truthy { "" } else { "!" },
                 property.to_lowercase(),
-                range.start,
                 std::char::from_u32(range.start).unwrap(),
-        ));
+                range.start,
+            ));
         } else {
             s.push_str(&format!("        for chn in {:?}u32 {{\n", range));
             s.push_str(&format!(
                 "            assert!({}unicode_data::{}::lookup(std::char::from_u32(chn).unwrap()), \"{{:?}}\", chn);\n",
                 if truthy { "" } else { "!" },
                 property.to_lowercase(),
-        ));
+            ));
             s.push_str("        }\n");
         }
     }
@@ -323,22 +329,38 @@ fn merge_ranges(ranges: &mut Vec<Range<u32>>) {
     loop {
         let mut new_ranges = Vec::new();
         let mut idx_iter = 0..(ranges.len() - 1);
+        let mut should_insert_last = true;
         while let Some(idx) = idx_iter.next() {
             let cur = ranges[idx].clone();
             let next = ranges[idx + 1].clone();
             if cur.end == next.start {
-                let _ = idx_iter.next(); // skip next as we're merging it in
+                if idx_iter.next().is_none() {
+                    // We're merging the last element
+                    should_insert_last = false;
+                }
                 new_ranges.push(cur.start..next.end);
             } else {
+                // We're *not* merging the last element
+                should_insert_last = true;
                 new_ranges.push(cur);
             }
         }
-        new_ranges.push(ranges.last().unwrap().clone());
+        if should_insert_last {
+            new_ranges.push(ranges.last().unwrap().clone());
+        }
         if new_ranges.len() == ranges.len() {
             *ranges = new_ranges;
             break;
         } else {
             *ranges = new_ranges;
         }
+    }
+
+    let mut last_end = None;
+    for range in ranges {
+        if let Some(last) = last_end {
+            assert!(range.start > last, "{:?}", range);
+        }
+        last_end = Some(range.end);
     }
 }

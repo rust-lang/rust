@@ -46,12 +46,13 @@ use std::ops::Range;
 #[derive(Clone)]
 pub struct RawEmitter {
     pub file: String,
+    pub desc: String,
     pub bytes_used: usize,
 }
 
 impl RawEmitter {
     pub fn new() -> RawEmitter {
-        RawEmitter { file: String::new(), bytes_used: 0 }
+        RawEmitter { file: String::new(), bytes_used: 0, desc: String::new() }
     }
 
     fn blank_line(&mut self) {
@@ -61,8 +62,21 @@ impl RawEmitter {
         writeln!(&mut self.file, "").unwrap();
     }
 
-    fn emit_bitset(&mut self, words: &[u64]) {
-        let mut words = words.to_vec();
+    fn emit_bitset(&mut self, ranges: &[Range<u32>]) {
+        let last_code_point = ranges.last().unwrap().end;
+        // bitset for every bit in the codepoint range
+        //
+        // + 2 to ensure an all zero word to use for padding
+        let mut buckets = vec![0u64; (last_code_point as usize / 64) + 2];
+        for range in ranges {
+            for codepoint in range.clone() {
+                let bucket = codepoint as usize / 64;
+                let bit = codepoint as u64 % 64;
+                buckets[bucket] |= 1 << bit;
+            }
+        }
+
+        let mut words = buckets;
         // Ensure that there's a zero word in the dataset, used for padding and
         // such.
         words.push(0);
@@ -118,6 +132,19 @@ impl RawEmitter {
         // We only need it for the words that we removed by applying a shift and
         // flip to them.
         self.bytes_used += 2 * canonicalized.canonicalized_words.len();
+
+        self.blank_line();
+
+        writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
+        writeln!(&mut self.file, "    super::bitset_search(",).unwrap();
+        writeln!(&mut self.file, "        c as u32,").unwrap();
+        writeln!(&mut self.file, "        &BITSET_CHUNKS_MAP,").unwrap();
+        writeln!(&mut self.file, "        BITSET_LAST_CHUNK_MAP,").unwrap();
+        writeln!(&mut self.file, "        &BITSET_INDEX_CHUNKS,").unwrap();
+        writeln!(&mut self.file, "        &BITSET_CANONICAL,").unwrap();
+        writeln!(&mut self.file, "        &BITSET_MAPPING,").unwrap();
+        writeln!(&mut self.file, "    )").unwrap();
+        writeln!(&mut self.file, "}}").unwrap();
     }
 
     fn emit_chunk_map(&mut self, zero_at: u8, compressed_words: &[u8], chunk_length: usize) {
@@ -184,40 +211,24 @@ impl RawEmitter {
         .unwrap();
         self.bytes_used += chunk_length * chunks.len();
     }
-
-    pub fn emit_lookup(&mut self) {
-        writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
-        writeln!(&mut self.file, "    super::range_search(",).unwrap();
-        writeln!(&mut self.file, "        c as u32,").unwrap();
-        writeln!(&mut self.file, "        &BITSET_CHUNKS_MAP,").unwrap();
-        writeln!(&mut self.file, "        BITSET_LAST_CHUNK_MAP,").unwrap();
-        writeln!(&mut self.file, "        &BITSET_INDEX_CHUNKS,").unwrap();
-        writeln!(&mut self.file, "        &BITSET_CANONICAL,").unwrap();
-        writeln!(&mut self.file, "        &BITSET_MAPPING,").unwrap();
-        writeln!(&mut self.file, "    )").unwrap();
-        writeln!(&mut self.file, "}}").unwrap();
-    }
 }
 
 pub fn emit_codepoints(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
     emitter.blank_line();
 
-    let last_code_point = ranges.last().unwrap().end;
-    // bitset for every bit in the codepoint range
-    //
-    // + 2 to ensure an all zero word to use for padding
-    let mut buckets = vec![0u64; (last_code_point as usize / 64) + 2];
-    for range in ranges {
-        for codepoint in range.clone() {
-            let bucket = codepoint as usize / 64;
-            let bit = codepoint as u64 % 64;
-            buckets[bucket] |= 1 << bit;
-        }
-    }
+    let mut bitset = emitter.clone();
+    bitset.emit_bitset(&ranges);
 
-    emitter.emit_bitset(&buckets);
-    emitter.blank_line();
-    emitter.emit_lookup();
+    let mut skiplist = emitter.clone();
+    skiplist.emit_skiplist(&ranges);
+
+    if bitset.bytes_used <= skiplist.bytes_used {
+        *emitter = bitset;
+        emitter.desc = format!("bitset");
+    } else {
+        *emitter = skiplist;
+        emitter.desc = format!("skiplist");
+    }
 }
 
 struct Canonicalized {
