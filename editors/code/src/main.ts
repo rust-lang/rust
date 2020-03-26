@@ -169,9 +169,7 @@ async function bootstrapServer(config: Config, state: PersistentState): Promise<
     log.debug("Checked binary availability via --version", res);
     log.debug(res, "--version output:", res.output);
     if (res.status !== 0) {
-        throw new Error(
-            `Failed to execute ${path} --version`
-        );
+        throw new Error(`Failed to execute ${path} --version`);
     }
 
     return path;
