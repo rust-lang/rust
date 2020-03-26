@@ -51,11 +51,31 @@ use std::thread;
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
 
-/// The kind of bitcode to embed in object files.
-#[derive(PartialEq)]
-pub enum EmbedBitcode {
+/// What kind of object file to emit.
+#[derive(Clone, Copy, PartialEq)]
+pub enum EmitObj {
+    // No object file.
     None,
+
+    // Just uncompressed llvm bitcode. Provides easy compatibility with
+    // emscripten's ecc compiler, when used as the linker.
+    Bitcode,
+
+    // Object code, possibly augmented with a bitcode section.
+    ObjectCode(BitcodeSection),
+}
+
+/// What kind of llvm bitcode section to embed in an object file.
+#[derive(Clone, Copy, PartialEq)]
+pub enum BitcodeSection {
+    // No bitcode section.
+    None,
+
+    // An empty bitcode section (to placate tools such as the iOS linker that
+    // require this section even if they don't use it).
     Marker,
+
+    // A full, uncompressed bitcode section.
     Full,
 }
 
@@ -84,7 +104,7 @@ pub struct ModuleConfig {
     pub emit_bc_compressed: bool,
     pub emit_ir: bool,
     pub emit_asm: bool,
-    pub emit_obj: bool,
+    pub emit_obj: EmitObj,
     // Miscellaneous flags.  These are mostly copied from command-line
     // options.
     pub verify_llvm_ir: bool,
@@ -96,12 +116,7 @@ pub struct ModuleConfig {
     pub merge_functions: bool,
     pub inline_threshold: Option<usize>,
     pub new_llvm_pass_manager: Option<bool>,
-    // Instead of creating an object file by doing LLVM codegen, just
-    // make the object file bitcode. Provides easy compatibility with
-    // emscripten's ecc compiler, when used as the linker.
-    pub obj_is_bitcode: bool,
     pub no_integrated_as: bool,
-    pub embed_bitcode: EmbedBitcode,
 }
 
 impl ModuleConfig {
@@ -124,9 +139,7 @@ impl ModuleConfig {
             emit_bc_compressed: false,
             emit_ir: false,
             emit_asm: false,
-            emit_obj: false,
-            obj_is_bitcode: false,
-            embed_bitcode: EmbedBitcode::None,
+            emit_obj: EmitObj::None,
             no_integrated_as: false,
 
             verify_llvm_ir: false,
@@ -147,17 +160,6 @@ impl ModuleConfig {
         self.no_builtins = no_builtins || sess.target.target.options.no_builtins;
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.new_llvm_pass_manager = sess.opts.debugging_opts.new_llvm_pass_manager;
-        self.obj_is_bitcode =
-            sess.target.target.options.obj_is_bitcode || sess.opts.cg.linker_plugin_lto.enabled();
-        self.embed_bitcode =
-            if sess.target.target.options.embed_bitcode || sess.opts.debugging_opts.embed_bitcode {
-                match sess.opts.optimize {
-                    config::OptLevel::No | config::OptLevel::Less => EmbedBitcode::Marker,
-                    _ => EmbedBitcode::Full,
-                }
-            } else {
-                EmbedBitcode::None
-            };
 
         // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3. Otherwise configure other optimization aspects
@@ -194,9 +196,9 @@ impl ModuleConfig {
 
     pub fn bitcode_needed(&self) -> bool {
         self.emit_bc
-            || self.obj_is_bitcode
             || self.emit_bc_compressed
-            || self.embed_bitcode == EmbedBitcode::Full
+            || self.emit_obj == EmitObj::Bitcode
+            || self.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full)
     }
 }
 
@@ -397,6 +399,20 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         allocator_config.emit_bc_compressed = true;
     }
 
+    let emit_obj =
+        if sess.target.target.options.obj_is_bitcode || sess.opts.cg.linker_plugin_lto.enabled() {
+            EmitObj::Bitcode
+        } else if sess.opts.debugging_opts.embed_bitcode {
+            match sess.opts.optimize {
+                config::OptLevel::No | config::OptLevel::Less => {
+                    EmitObj::ObjectCode(BitcodeSection::Marker)
+                }
+                _ => EmitObj::ObjectCode(BitcodeSection::Full),
+            }
+        } else {
+            EmitObj::ObjectCode(BitcodeSection::None)
+        };
+
     modules_config.emit_pre_lto_bc = need_pre_lto_bitcode_for_incr_comp(sess);
 
     modules_config.no_integrated_as =
@@ -416,20 +432,20 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
                 // could be invoked specially with output_type_assembly, so
                 // in this case we still want the metadata object file.
                 if !sess.opts.output_types.contains_key(&OutputType::Assembly) {
-                    metadata_config.emit_obj = true;
-                    allocator_config.emit_obj = true;
+                    metadata_config.emit_obj = emit_obj;
+                    allocator_config.emit_obj = emit_obj;
                 }
             }
             OutputType::Object => {
-                modules_config.emit_obj = true;
+                modules_config.emit_obj = emit_obj;
             }
             OutputType::Metadata => {
-                metadata_config.emit_obj = true;
+                metadata_config.emit_obj = emit_obj;
             }
             OutputType::Exe => {
-                modules_config.emit_obj = true;
-                metadata_config.emit_obj = true;
-                allocator_config.emit_obj = true;
+                modules_config.emit_obj = emit_obj;
+                metadata_config.emit_obj = emit_obj;
+                allocator_config.emit_obj = emit_obj;
             }
             OutputType::Mir => {}
             OutputType::DepInfo => {}
@@ -880,7 +896,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
         }
     }
 
-    assert_eq!(object.is_some(), module_config.emit_obj);
+    assert_eq!(object.is_some(), module_config.emit_obj != EmitObj::None);
     assert_eq!(bytecode.is_some(), module_config.emit_bc);
     assert_eq!(bytecode_compressed.is_some(), module_config.emit_bc_compressed);
 
