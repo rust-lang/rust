@@ -597,6 +597,29 @@ use std::collections::HashMap;
 fn process(map: HashMap<String, String>) {}
 ```
 
+## `replace_unwrap_with_match`
+
+Replaces `unwrap` a `match` expression. Works for Result and Option.
+
+```rust
+// BEFORE
+enum Result<T, E> { Ok(T), Err(E) }
+fn main() {
+    let x: Result<i32, i32> = Result::Ok(92);
+    let y = x.┃unwrap();
+}
+
+// AFTER
+enum Result<T, E> { Ok(T), Err(E) }
+fn main() {
+    let x: Result<i32, i32> = Result::Ok(92);
+    let y = match x {
+        Ok(a) => a,
+        _ => unreachable!(),
+    };
+}
+```
+
 ## `split_import`
 
 Wraps the tail of import into braces.

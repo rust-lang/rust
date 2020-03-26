@@ -250,6 +250,10 @@ pub fn token(kind: SyntaxKind) -> SyntaxToken {
         .unwrap_or_else(|| panic!("unhandled token: {:?}", kind))
 }
 
+pub fn unreachable_macro_call() -> ast::MacroCall {
+    ast_from_text(&format!("unreachable!()"))
+}
+
 fn ast_from_text<N: AstNode>(text: &str) -> N {
     let parse = SourceFile::parse(text);
     let node = parse.tree().syntax().descendants().find_map(N::cast).unwrap();

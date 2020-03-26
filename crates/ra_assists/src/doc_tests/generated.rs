@@ -623,6 +623,30 @@ fn process(map: HashMap<String, String>) {}
 }
 
 #[test]
+fn doctest_replace_unwrap_with_match() {
+    check(
+        "replace_unwrap_with_match",
+        r#####"
+enum Result<T, E> { Ok(T), Err(E) }
+fn main() {
+    let x: Result<i32, i32> = Result::Ok(92);
+    let y = x.<|>unwrap();
+}
+"#####,
+        r#####"
+enum Result<T, E> { Ok(T), Err(E) }
+fn main() {
+    let x: Result<i32, i32> = Result::Ok(92);
+    let y = match x {
+        Ok(a) => a,
+        _ => unreachable!(),
+    };
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_split_import() {
     check(
         "split_import",
