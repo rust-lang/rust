@@ -7,14 +7,18 @@ on:
     - staging
     - trying
 
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  CC: deny_c
+  RUN_SLOW_TESTS: 1
+  RUSTFLAGS: -D warnings
+  RUSTUP_MAX_RETRIES: 10
+
 jobs:
   rust-audit:
     name: Audit Rust vulnerabilities
     runs-on: ubuntu-latest
-    env:
-      RUSTUP_MAX_RETRIES: 10
-      CARGO_NET_RETRY: 10
-
     steps:
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
@@ -45,14 +49,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-
-    env:
-      RUSTFLAGS: -D warnings
-      CC: deny_c
-      CARGO_INCREMENTAL: 0
-      RUN_SLOW_TESTS: 1
-      RUSTUP_MAX_RETRIES: 10
-      CARGO_NET_RETRY: 10
 
     steps:
     - name: Checkout repository
@@ -111,9 +107,6 @@ jobs:
   typescript:
     name: TypeScript
     runs-on: ubuntu-latest
-    env:
-      CXX: g++-4.9
-      CC: gcc-4.9
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
