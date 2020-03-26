@@ -1,6 +1,6 @@
 [package]
 name = "text-size"
-version = "0.99.0-dev.2"
+version = "0.99.0-dev.3"
 edition = "2018"
 
 authors = [
