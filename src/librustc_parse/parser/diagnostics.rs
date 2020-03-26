@@ -17,7 +17,6 @@ use rustc_span::symbol::kw;
 use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 
 use log::{debug, trace};
-use std::mem;
 
 const TURBOFISH: &str = "use `::<...>` instead of `<...>` to specify type arguments";
 
@@ -459,7 +458,7 @@ impl<'a> Parser<'a> {
         err: &mut DiagnosticBuilder<'_>,
         inner_op: &Expr,
         outer_op: &Spanned<AssocOp>,
-    ) -> bool /* recover */ {
+    ) -> bool /* advanced the cursor */ {
         if let ExprKind::Binary(op, ref l1, ref r1) = inner_op.kind {
             if let ExprKind::Field(_, ident) = l1.kind {
                 if ident.as_str().parse::<i32>().is_err() && !matches!(r1.kind, ExprKind::Lit(_)) {
@@ -468,6 +467,16 @@ impl<'a> Parser<'a> {
                     return false;
                 }
             }
+            let mut enclose = |left: Span, right: Span| {
+                err.multipart_suggestion(
+                    "parenthesize the comparison",
+                    vec![
+                        (left.shrink_to_lo(), "(".to_string()),
+                        (right.shrink_to_hi(), ")".to_string()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+            };
             return match (op.node, &outer_op.node) {
                 // `x == y == z`
                 (BinOpKind::Eq, AssocOp::Equal) |
@@ -492,23 +501,18 @@ impl<'a> Parser<'a> {
                 // `x == y < z`
                 (BinOpKind::Eq, AssocOp::Less) | (BinOpKind::Eq, AssocOp::LessEqual) |
                 (BinOpKind::Eq, AssocOp::Greater) | (BinOpKind::Eq, AssocOp::GreaterEqual) => {
-                    // Consume `/`z`/outer-op-rhs.
+                    // Consume `z`/outer-op-rhs.
                     let snapshot = self.clone();
                     match self.parse_expr() {
                         Ok(r2) => {
-                            err.multipart_suggestion(
-                                "parenthesize the comparison",
-                                vec![
-                                    (r1.span.shrink_to_lo(), "(".to_string()),
-                                    (r2.span.shrink_to_hi(), ")".to_string()),
-                                ],
-                                Applicability::MaybeIncorrect,
-                            );
+                            // We are sure that outer-op-rhs could be consumed, the suggestion is
+                            // likely correct.
+                            enclose(r1.span, r2.span);
                             true
                         }
                         Err(mut expr_err) => {
                             expr_err.cancel();
-                            mem::replace(self, snapshot);
+                            *self = snapshot;
                             false
                         }
                     }
@@ -517,21 +521,16 @@ impl<'a> Parser<'a> {
                 (BinOpKind::Lt, AssocOp::Equal) | (BinOpKind::Le, AssocOp::Equal) |
                 (BinOpKind::Gt, AssocOp::Equal) | (BinOpKind::Ge, AssocOp::Equal) => {
                     let snapshot = self.clone();
-                    err.multipart_suggestion(
-                        "parenthesize the comparison",
-                        vec![
-                            (l1.span.shrink_to_lo(), "(".to_string()),
-                            (r1.span.shrink_to_hi(), ")".to_string()),
-                        ],
-                        Applicability::MaybeIncorrect,
-                    );
+                    // At this point it is always valid to enclose the lhs in parentheses, no
+                    // further checks are necessary.
                     match self.parse_expr() {
                         Ok(_) => {
+                            enclose(l1.span, r1.span);
                             true
                         }
                         Err(mut expr_err) => {
                             expr_err.cancel();
-                            mem::replace(self, snapshot);
+                            *self = snapshot;
                             false
                         }
                     }
@@ -588,11 +587,11 @@ impl<'a> Parser<'a> {
                     );
                 };
 
+                // Include `<` to provide this recommendation even in a case like
+                // `Foo<Bar<Baz<Qux, ()>>>`
                 if op.node == BinOpKind::Lt && outer_op.node == AssocOp::Less
                     || outer_op.node == AssocOp::Greater
                 {
-                    // Include `<` to provide this recommendation
-                    // even in a case like `Foo<Bar<Baz<Qux, ()>>>`
                     if outer_op.node == AssocOp::Less {
                         let snapshot = self.clone();
                         self.bump();
@@ -606,7 +605,7 @@ impl<'a> Parser<'a> {
                         {
                             // We don't have `foo< bar >(` or `foo< bar >::`, so we rewind the
                             // parser and bail out.
-                            mem::replace(self, snapshot.clone());
+                            *self = snapshot.clone();
                         }
                     }
                     return if token::ModSep == self.token.kind {
@@ -631,7 +630,7 @@ impl<'a> Parser<'a> {
                                 expr_err.cancel();
                                 // Not entirely sure now, but we bubble the error up with the
                                 // suggestion.
-                                mem::replace(self, snapshot);
+                                *self = snapshot;
                                 Err(err)
                             }
                         }
@@ -695,7 +694,7 @@ impl<'a> Parser<'a> {
 
         if self.token.kind == token::Eof {
             // Not entirely sure that what we consumed were fn arguments, rollback.
-            mem::replace(self, snapshot);
+            *self = snapshot;
             Err(())
         } else {
             // 99% certain that the suggestion is correct, continue parsing.
