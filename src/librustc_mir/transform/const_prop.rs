@@ -172,7 +172,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
 
-    const GLOBAL_KIND: Option<!> = None;
+    const GLOBAL_KIND: Option<!> = None; // no copying of globals from `tcx` to machine memory
 
     const CHECK_ALIGN: bool = false;
 
@@ -274,7 +274,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _memory_extra: &(),
         _alloc_id: AllocId,
         allocation: &Allocation<Self::PointerTag, Self::AllocExtra>,
-        def_id: Option<DefId>,
+        static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
         if is_write {
@@ -285,7 +285,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         if allocation.mutability == Mutability::Mut {
             throw_machine_stop_str!("can't eval mutable globals in ConstProp");
         }
-        if def_id.is_some() && allocation.relocations().len() > 0 {
+        if static_def_id.is_some() && allocation.relocations().len() > 0 {
             throw_machine_stop_str!("can't eval statics with pointers in ConstProp");
         }
 
