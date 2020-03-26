@@ -285,6 +285,31 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
 
+        let largest_niche_index = if matches!(kind, StructKind::Prefixed{..}) || repr.hide_niche() {
+            None
+        } else {
+            fields
+                .iter()
+                .enumerate()
+                .filter_map(|(i, &field)| field.largest_niche.as_ref().map(|n| (i, n)))
+                .max_by_key(|(i, niche)| {
+                    (
+                        niche.available(dl),
+                        // Prefer niches that occur earlier in their respective field, to maximize space after the niche.
+                        cmp::Reverse(niche.offset),
+                        // Prefer fields that occur earlier in the struct, to avoid reordering fields unnecessarily.
+                        cmp::Reverse(*i),
+                    )
+                })
+                .map(|(i, _)| i as u32)
+        };
+
+        // inverse_memory_index holds field indices by increasing memory offset.
+        // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
+        // We now write field offsets to the corresponding offset slot;
+        // field 5 with offset 0 puts 0 in offsets[5].
+        // At the bottom of this function, we invert `inverse_memory_index` to
+        // produce `memory_index` (see `invert_mapping`).
         let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
         let optimize = !repr.inhibit_struct_field_reordering_opt();
@@ -298,10 +323,15 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             match kind {
                 StructKind::AlwaysSized | StructKind::MaybeUnsized => {
                     optimizing.sort_by_key(|&x| {
-                        // Place ZSTs first to avoid "interesting offsets",
-                        // especially with only one or two non-ZST fields.
                         let f = &fields[x as usize];
-                        (!f.is_zst(), cmp::Reverse(field_align(f)))
+                        (
+                            // Place ZSTs first to avoid "interesting offsets",
+                            // especially with only one or two non-ZST fields.
+                            !f.is_zst(),
+                            cmp::Reverse(field_align(f)),
+                            // Try to put the largest niche earlier.
+                            Some(x) != largest_niche_index,
+                        )
                     });
                 }
                 StructKind::Prefixed(..) => {
@@ -310,20 +340,29 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     optimizing.sort_by_key(|&x| field_align(&fields[x as usize]));
                 }
             }
-        }
 
-        // inverse_memory_index holds field indices by increasing memory offset.
-        // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
-        // We now write field offsets to the corresponding offset slot;
-        // field 5 with offset 0 puts 0 in offsets[5].
-        // At the bottom of this function, we invert `inverse_memory_index` to
-        // produce `memory_index` (see `invert_mapping`).
+            // Rotate index array to put the largest niche first. Then reverse the ones with larger
+            // alignment. Since it is already the first amongst the types with the same alignment,
+            // this will just move some of the potential padding within the structure.
+            if let (Some(niche_index), StructKind::AlwaysSized) = (largest_niche_index, kind) {
+                // ZSTs are always first, and the largest niche is not one, so we can unwrap
+                let first_non_zst = inverse_memory_index
+                    .iter()
+                    .position(|&x| !fields[x as usize].is_zst())
+                    .unwrap();
+                let non_zsts = &mut inverse_memory_index[first_non_zst..];
+                let pivot = non_zsts.iter().position(|&x| x == niche_index).unwrap();
+                non_zsts.rotate_left(pivot);
+                let pivot = non_zsts.len() - pivot;
+                non_zsts[pivot..].reverse();
+                debug_assert_eq!(non_zsts[0], niche_index);
+            }
+        }
 
         let mut sized = true;
         let mut offsets = vec![Size::ZERO; fields.len()];
         let mut offset = Size::ZERO;
         let mut largest_niche = None;
-        let mut largest_niche_available = 0;
 
         if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
             let prefix_align =
@@ -354,15 +393,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             debug!("univariant offset: {:?} field: {:#?}", offset, field);
             offsets[i as usize] = offset;
 
-            if !repr.hide_niche() {
-                if let Some(mut niche) = field.largest_niche.clone() {
-                    let available = niche.available(dl);
-                    if available > largest_niche_available {
-                        largest_niche_available = available;
-                        niche.offset += offset;
-                        largest_niche = Some(niche);
-                    }
-                }
+            if largest_niche_index == Some(i) {
+                let mut niche = field.largest_niche.clone().unwrap();
+                niche.offset += offset;
+                largest_niche = Some(niche)
             }
 
             offset = offset.checked_add(field.size, dl).ok_or(LayoutError::SizeOverflow(ty))?;
@@ -864,48 +898,80 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 if !def.repr.inhibit_enum_layout_opt() && no_explicit_discriminants {
                     let mut dataful_variant = None;
                     let mut niche_variants = VariantIdx::MAX..=VariantIdx::new(0);
+                    let mut max_size = Size::ZERO;
+                    let mut second_max_size = Size::ZERO;
+                    let mut align = dl.aggregate_align;
 
-                    // Find one non-ZST variant.
-                    'variants: for (v, fields) in variants.iter_enumerated() {
+                    // The size computations below assume that the padding is minimum.
+                    // This is the case when fields are re-ordered.
+                    let struct_reordering_opt = !def.repr.inhibit_struct_field_reordering_opt();
+
+                    let mut extend_niche_range = |d| {
+                        niche_variants =
+                            *niche_variants.start().min(&d)..=*niche_variants.end().max(&d);
+                    };
+
+                    // Find the largest and second largest variant.
+                    for (v, fields) in variants.iter_enumerated() {
                         if absent(fields) {
-                            continue 'variants;
+                            continue;
                         }
-                        for f in fields {
-                            if !f.is_zst() {
-                                if dataful_variant.is_none() {
-                                    dataful_variant = Some(v);
-                                    continue 'variants;
-                                } else {
-                                    dataful_variant = None;
-                                    break 'variants;
-                                }
+                        let mut size = Size::ZERO;
+                        for &f in fields {
+                            align = align.max(f.align);
+                            size += f.size;
+                        }
+                        if size > max_size {
+                            second_max_size = max_size;
+                            max_size = size;
+                            if let Some(d) = dataful_variant {
+                                extend_niche_range(d);
                             }
+                            dataful_variant = Some(v);
+                        } else if size == max_size {
+                            if let Some(d) = dataful_variant {
+                                extend_niche_range(d);
+                            }
+                            dataful_variant = None;
+                            extend_niche_range(v);
+                        } else {
+                            second_max_size = second_max_size.max(size);
+                            extend_niche_range(v);
                         }
-                        niche_variants = *niche_variants.start().min(&v)..=v;
                     }
 
                     if niche_variants.start() > niche_variants.end() {
                         dataful_variant = None;
                     }
 
-                    if let Some(i) = dataful_variant {
+                    if let Some(dataful_variant) = dataful_variant {
                         let count = (niche_variants.end().as_u32()
                             - niche_variants.start().as_u32()
                             + 1) as u128;
 
                         // Find the field with the largest niche
-                        let niche_candidate = variants[i]
+                        let niche_candidate = variants[dataful_variant]
                             .iter()
                             .enumerate()
                             .filter_map(|(j, &field)| Some((j, field.largest_niche.as_ref()?)))
-                            .max_by_key(|(_, niche)| niche.available(dl));
+                            .max_by_key(|(_, n)| (n.available(dl), cmp::Reverse(n.offset)))
+                            .and_then(|(field_index, niche)| {
+                                if !struct_reordering_opt && second_max_size > Size::ZERO {
+                                    return None;
+                                }
+                                // make sure there is enough room for the other variants
+                                if max_size - (niche.offset + niche.scalar.value.size(dl))
+                                    < second_max_size
+                                {
+                                    return None;
+                                }
+                                Some((field_index, niche, niche.reserve(self, count)?))
+                            });
 
                         if let Some((field_index, niche, (niche_start, niche_scalar))) =
-                            niche_candidate.and_then(|(field_index, niche)| {
-                                Some((field_index, niche, niche.reserve(self, count)?))
-                            })
+                            niche_candidate
                         {
-                            let mut align = dl.aggregate_align;
+                            let prefix = niche.offset + niche.scalar.value.size(dl);
                             let st = variants
                                 .iter_enumerated()
                                 .map(|(j, v)| {
@@ -913,23 +979,42 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                         ty,
                                         v,
                                         &def.repr,
-                                        StructKind::AlwaysSized,
+                                        if j == dataful_variant || second_max_size == Size::ZERO {
+                                            StructKind::AlwaysSized
+                                        } else {
+                                            StructKind::Prefixed(
+                                                prefix,
+                                                Align::from_bytes(1).unwrap(),
+                                            )
+                                        },
                                     )?;
                                     st.variants = Variants::Single { index: j };
 
-                                    align = align.max(st.align);
-
+                                    debug_assert_eq!(align, align.max(st.align));
                                     Ok(st)
                                 })
                                 .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
-                            let offset = st[i].fields.offset(field_index) + niche.offset;
-                            let size = st[i].size;
+                            let offset = if struct_reordering_opt {
+                                debug_assert_eq!(
+                                    st[dataful_variant].fields.offset(field_index),
+                                    Size::ZERO
+                                );
+                                niche.offset
+                            } else {
+                                st[dataful_variant].fields.offset(field_index) + niche.offset
+                            };
+
+                            let size = st[dataful_variant].size.align_to(align.abi);
+                            debug_assert!(
+                                !struct_reordering_opt || size == max_size.align_to(align.abi)
+                            );
+                            debug_assert!(st.iter().all(|v| v.size <= size));
 
                             let abi = if st.iter().all(|v| v.abi.is_uninhabited()) {
                                 Abi::Uninhabited
-                            } else {
-                                match st[i].abi {
+                            } else if second_max_size == Size::ZERO {
+                                match st[dataful_variant].abi {
                                     Abi::Scalar(_) => Abi::Scalar(niche_scalar.clone()),
                                     Abi::ScalarPair(ref first, ref second) => {
                                         // We need to use scalar_unit to reset the
@@ -951,6 +1036,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                     }
                                     _ => Abi::Aggregate { sized: true },
                                 }
+                            } else {
+                                Abi::Aggregate { sized: true }
                             };
 
                             let largest_niche =
@@ -960,7 +1047,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 variants: Variants::Multiple {
                                     tag: niche_scalar,
                                     tag_encoding: TagEncoding::Niche {
-                                        dataful_variant: i,
+                                        dataful_variant,
                                         niche_variants,
                                         niche_start,
                                     },

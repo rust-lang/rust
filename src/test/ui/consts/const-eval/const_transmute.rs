@@ -33,8 +33,10 @@ impl Drop for Foo {
 }
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 struct Fat<'a>(&'a Foo, &'static VTable);
 
+#[repr(C)]
 struct VTable {
     drop: Option<for<'a> fn(&'a mut Foo)>,
     size: usize,
