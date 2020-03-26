@@ -791,12 +791,12 @@ impl<'a> Resolver<'a> {
                 _ => Some(
                     self.session
                         .source_map()
-                        .def_span(self.cstore().get_span_untracked(def_id, self.session)),
+                        .guess_head_span(self.cstore().get_span_untracked(def_id, self.session)),
                 ),
             });
             if let Some(span) = def_span {
                 err.span_label(
-                    self.session.source_map().def_span(span),
+                    self.session.source_map().guess_head_span(span),
                     &format!(
                         "similarly named {} `{}` defined here",
                         suggestion.res.descr(),
@@ -986,7 +986,7 @@ impl<'a> Resolver<'a> {
                 which = if first { "" } else { " which" },
                 dots = if next_binding.is_some() { "..." } else { "" },
             );
-            let def_span = self.session.source_map().def_span(binding.span);
+            let def_span = self.session.source_map().guess_head_span(binding.span);
             let mut note_span = MultiSpan::from_span(def_span);
             if !first && binding.vis == ty::Visibility::Public {
                 note_span.push_span_label(def_span, "consider importing it directly".into());

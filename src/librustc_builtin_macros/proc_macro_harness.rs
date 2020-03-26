@@ -198,7 +198,7 @@ impl<'a> CollectProcMacros<'a> {
             } else {
                 "functions tagged with `#[proc_macro_derive]` must be `pub`"
             };
-            self.handler.span_err(self.source_map.def_span(item.span), msg);
+            self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
         }
     }
 
@@ -217,7 +217,7 @@ impl<'a> CollectProcMacros<'a> {
             } else {
                 "functions tagged with `#[proc_macro_attribute]` must be `pub`"
             };
-            self.handler.span_err(self.source_map.def_span(item.span), msg);
+            self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
         }
     }
 
@@ -236,7 +236,7 @@ impl<'a> CollectProcMacros<'a> {
             } else {
                 "functions tagged with `#[proc_macro]` must be `pub`"
             };
-            self.handler.span_err(self.source_map.def_span(item.span), msg);
+            self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
         }
     }
 }
@@ -247,7 +247,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             if self.is_proc_macro_crate && attr::contains_name(&item.attrs, sym::macro_export) {
                 let msg =
                     "cannot export macro_rules! macros from a `proc-macro` crate type currently";
-                self.handler.span_err(self.source_map.def_span(item.span), msg);
+                self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
             }
         }
 
@@ -298,7 +298,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 
         let attr = match found_attr {
             None => {
-                self.check_not_pub_in_root(&item.vis, self.source_map.def_span(item.span));
+                self.check_not_pub_in_root(&item.vis, self.source_map.guess_head_span(item.span));
                 let prev_in_root = mem::replace(&mut self.in_root, false);
                 visit::walk_item(self, item);
                 self.in_root = prev_in_root;

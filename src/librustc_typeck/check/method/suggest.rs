@@ -147,7 +147,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(note_span) = note_span {
                             // We have a span pointing to the method. Show note with snippet.
                             err.span_note(
-                                self.tcx.sess.source_map().def_span(note_span),
+                                self.tcx.sess.source_map().guess_head_span(note_span),
                                 &note_str,
                             );
                         } else {
@@ -189,8 +189,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Some(item) => item,
                                 None => continue,
                             };
-                        let item_span =
-                            self.tcx.sess.source_map().def_span(self.tcx.def_span(item.def_id));
+                        let item_span = self
+                            .tcx
+                            .sess
+                            .source_map()
+                            .guess_head_span(self.tcx.def_span(item.def_id));
                         let idx = if sources.len() > 1 {
                             let msg = &format!(
                                 "candidate #{} is defined in the trait `{}`",
@@ -397,7 +400,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if let Some(def) = actual.ty_adt_def() {
                     if let Some(full_sp) = tcx.hir().span_if_local(def.did) {
-                        let def_sp = tcx.sess.source_map().def_span(full_sp);
+                        let def_sp = tcx.sess.source_map().guess_head_span(full_sp);
                         err.span_label(
                             def_sp,
                             format!(
@@ -537,8 +540,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let mut restrict_type_params = false;
                 if !unsatisfied_predicates.is_empty() {
-                    let def_span =
-                        |def_id| self.tcx.sess.source_map().def_span(self.tcx.def_span(def_id));
+                    let def_span = |def_id| {
+                        self.tcx.sess.source_map().guess_head_span(self.tcx.def_span(def_id))
+                    };
                     let mut type_params = FxHashMap::default();
                     let mut bound_spans = vec![];
                     let mut collect_type_param_suggestions =
@@ -1117,7 +1121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let [trait_info] = &candidates[..] {
                     if let Some(span) = self.tcx.hir().span_if_local(trait_info.def_id) {
                         err.span_note(
-                            self.tcx.sess.source_map().def_span(span),
+                            self.tcx.sess.source_map().guess_head_span(span),
                             &format!(
                                 "`{}` defines an item `{}`, perhaps you need to {} it",
                                 self.tcx.def_path_str(trait_info.def_id),

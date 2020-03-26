@@ -402,7 +402,7 @@ impl<'a> AstValidator<'a> {
 
     fn check_defaultness(&self, span: Span, defaultness: Defaultness) {
         if let Defaultness::Default(def_span) = defaultness {
-            let span = self.session.source_map().def_span(span);
+            let span = self.session.source_map().guess_head_span(span);
             self.err_handler()
                 .struct_span_err(span, "`default` is only allowed on items in `impl` definitions")
                 .span_label(def_span, "`default` because of this")
@@ -517,7 +517,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn current_extern_span(&self) -> Span {
-        self.session.source_map().def_span(self.extern_mod.unwrap().span)
+        self.session.source_map().guess_head_span(self.extern_mod.unwrap().span)
     }
 
     /// An `fn` in `extern { ... }` cannot have qualfiers, e.g. `async fn`.

@@ -565,14 +565,14 @@ fn is_enclosed(
 }
 
 fn report_unused_unsafe(tcx: TyCtxt<'_>, used_unsafe: &FxHashSet<hir::HirId>, id: hir::HirId) {
-    let span = tcx.sess.source_map().def_span(tcx.hir().span(id));
+    let span = tcx.sess.source_map().guess_head_span(tcx.hir().span(id));
     tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, |lint| {
         let msg = "unnecessary `unsafe` block";
         let mut db = lint.build(msg);
         db.span_label(span, msg);
         if let Some((kind, id)) = is_enclosed(tcx, used_unsafe, id) {
             db.span_label(
-                tcx.sess.source_map().def_span(tcx.hir().span(id)),
+                tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
                 format!("because it's nested under this `unsafe` {}", kind),
             );
         }

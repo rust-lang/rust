@@ -186,7 +186,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     _ => (None, None),
                 };
 
-                let item_span = item.map(|i| tcx.sess.source_map().def_span(i.span));
+                let item_span = item.map(|i| tcx.sess.source_map().guess_head_span(i.span));
                 match pred {
                     ty::Predicate::Projection(proj) => {
                         // The obligation comes not from the current `impl` nor the `trait` being
