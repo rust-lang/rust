@@ -28,6 +28,13 @@ pub enum ExpandError {
     BindingError(String),
     ConversionError,
     InvalidRepeat,
+    ProcMacroError(tt::ExpansionError),
+}
+
+impl From<tt::ExpansionError> for ExpandError {
+    fn from(it: tt::ExpansionError) -> Self {
+        ExpandError::ProcMacroError(it)
+    }
 }
 
 pub use crate::syntax_bridge::{

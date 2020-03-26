@@ -12,7 +12,7 @@ use hir_expand::{
 };
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId, ProcMacroId};
-use ra_syntax::{ast, SmolStr};
+use ra_syntax::ast;
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
@@ -59,8 +59,8 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> Cr
         .enumerate()
         .map(|(idx, it)| {
             // FIXME: a hacky way to create a Name from string.
-            let name = tt::Ident { text: SmolStr::new(&it.name()), id: tt::TokenId::unspecified() };
-            (name.as_name(), ProcMacroExpander::new(def_map.krate, ProcMacroId(idx)))
+            let name = tt::Ident { text: it.name.clone(), id: tt::TokenId::unspecified() };
+            (name.as_name(), ProcMacroExpander::new(def_map.krate, ProcMacroId(idx as u32)))
         })
         .collect();
 

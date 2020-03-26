@@ -14,9 +14,12 @@ macro_rules! impl_froms {
     }
 }
 
-use std::fmt;
+use std::{
+    fmt::{self, Debug},
+    panic::RefUnwindSafe,
+};
 
-use smol_str::SmolStr;
+pub use smol_str::SmolStr;
 
 /// Represents identity of the token.
 ///
@@ -184,3 +187,11 @@ impl Subtree {
 }
 
 pub mod buffer;
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ExpansionError {}
+
+pub trait TokenExpander: Debug + Send + Sync + RefUnwindSafe {
+    fn expand(&self, subtree: &Subtree, attrs: Option<&Subtree>)
+        -> Result<Subtree, ExpansionError>;
+}

@@ -10,6 +10,7 @@ use std::{
     fmt, ops,
     path::{Path, PathBuf},
     str::FromStr,
+    sync::Arc,
 };
 
 use ra_cfg::CfgOptions;
@@ -19,7 +20,7 @@ use rustc_hash::FxHashSet;
 
 use crate::{RelativePath, RelativePathBuf};
 use fmt::Display;
-use ra_proc_macro::ProcMacro;
+use ra_tt::TokenExpander;
 
 /// `FileId` is an integer which uniquely identifies a file. File paths are
 /// messy and system-dependent, so most of the code should work directly with
@@ -117,7 +118,20 @@ impl Display for CrateName {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ProcMacroId(pub usize);
+pub struct ProcMacroId(pub u32);
+
+#[derive(Debug, Clone)]
+pub struct ProcMacro {
+    pub name: SmolStr,
+    pub expander: Arc<dyn TokenExpander>,
+}
+
+impl Eq for ProcMacro {}
+impl PartialEq for ProcMacro {
+    fn eq(&self, other: &ProcMacro) -> bool {
+        self.name == other.name && Arc::ptr_eq(&self.expander, &other.expander)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CrateData {
@@ -171,8 +185,11 @@ impl CrateGraph {
         cfg_options: CfgOptions,
         env: Env,
         extern_source: ExternSource,
-        proc_macro: Vec<ProcMacro>,
+        proc_macro: Vec<(SmolStr, Arc<dyn ra_tt::TokenExpander>)>,
     ) -> CrateId {
+        let proc_macro =
+            proc_macro.into_iter().map(|(name, it)| ProcMacro { name, expander: it }).collect();
+
         let data = CrateData {
             root_file_id: file_id,
             edition,

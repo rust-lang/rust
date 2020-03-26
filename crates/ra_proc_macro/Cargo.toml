@@ -10,4 +10,3 @@ doctest = false
 
 [dependencies]
 ra_tt = { path = "../ra_tt" }
-ra_mbe = { path = "../ra_mbe" }

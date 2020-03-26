@@ -15,7 +15,6 @@ pub use crate::{
         FileId, ProcMacroId, SourceRoot, SourceRootId,
     },
 };
-pub use ra_proc_macro::ProcMacro;
 pub use relative_path::{RelativePath, RelativePathBuf};
 pub use salsa;
 

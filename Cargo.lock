@@ -926,9 +926,9 @@ name = "ra_db"
 version = "0.1.0"
 dependencies = [
  "ra_cfg",
- "ra_proc_macro",
  "ra_prof",
  "ra_syntax",
+ "ra_tt",
  "relative-path",
  "rustc-hash",
  "salsa",
@@ -1086,7 +1086,6 @@ dependencies = [
 name = "ra_proc_macro"
 version = "0.1.0"
 dependencies = [
- "ra_mbe",
  "ra_tt",
 ]
 

@@ -23,9 +23,10 @@ impl ProcMacroExpander {
         let krate_graph = db.crate_graph();
         let proc_macro = krate_graph[self.krate]
             .proc_macro
-            .get(self.proc_macro_id.0)
+            .get(self.proc_macro_id.0 as usize)
             .clone()
             .ok_or_else(|| mbe::ExpandError::ConversionError)?;
-        proc_macro.custom_derive(tt)
+
+        proc_macro.expander.expand(&tt, None).map_err(mbe::ExpandError::from)
     }
 }
