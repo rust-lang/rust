@@ -178,16 +178,20 @@ pub fn run_passes(
 fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
     let const_kind = check_consts::ConstKind::for_item(tcx, def_id);
 
-    // No need to const-check a non-const `fn`.
-    if const_kind.is_none() {
-        return Default::default();
-    }
-
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
     // performing the steal.
     let body = &tcx.mir_const(def_id).borrow();
+
+    // No need to const-check a non-const `fn`.
+    if const_kind.is_none() {
+        // Run the dataflow analyses used for const-checking on all functions to get an idea of the
+        // performance hit.
+        let item = check_consts::Item::new(tcx, def_id, body.unwrap_read_only());
+        std::hint::black_box(check_consts::validation::Validator::new(&item));
+        return Default::default();
+    }
 
     if body.return_ty().references_error() {
         tcx.sess.delay_span_bug(body.span, "mir_const_qualif: MIR had errors");
