@@ -2,8 +2,8 @@
 //!
 //! We separate proc-macro expanding logic to an extern program to allow
 //! different implementations (e.g. wasm or dylib loading). And this crate
-//! is used for provide basic infra-structure for commnicate between two
-//! process: Client (RA itself), Server (the external program)
+//! is used to provide basic infrastructure  for communication between two
+//! processes: Client (RA itself), Server (the external program)
 
 use ra_mbe::ExpandError;
 use ra_tt::Subtree;
@@ -18,7 +18,7 @@ trait ProcMacroExpander: std::fmt::Debug + Send + Sync + std::panic::RefUnwindSa
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProcMacroProcessExpander {
-    process_path: PathBuf,
+    process: Arc<ProcMacroProcessSrv>,
 }
 
 impl ProcMacroExpander for ProcMacroProcessExpander {
@@ -34,7 +34,7 @@ impl ProcMacroExpander for ProcMacroProcessExpander {
 
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
-    expander: Arc<Box<dyn ProcMacroExpander>>,
+    expander: Arc<dyn ProcMacroExpander>,
     name: String,
 }
 
@@ -56,15 +56,20 @@ impl ProcMacro {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProcMacroProcessSrv {
+    path: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProcMacroClient {
-    Process { expander: Arc<ProcMacroProcessExpander> },
+    Process { process: Arc<ProcMacroProcessSrv> },
     Dummy,
 }
 
 impl ProcMacroClient {
     pub fn extern_process(process_path: &Path) -> ProcMacroClient {
-        let expander = ProcMacroProcessExpander { process_path: process_path.into() };
-        ProcMacroClient::Process { expander: Arc::new(expander) }
+        let process = ProcMacroProcessSrv { path: process_path.into() };
+        ProcMacroClient::Process { process: Arc::new(process) }
     }
 
     pub fn dummy() -> ProcMacroClient {
