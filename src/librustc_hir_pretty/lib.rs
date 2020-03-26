@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 use rustc_ast::ast;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
