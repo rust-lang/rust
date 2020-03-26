@@ -189,7 +189,12 @@ impl Subtree {
 pub mod buffer;
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum ExpansionError {}
+pub enum ExpansionError {
+    IOError(String),
+    JsonError(String),
+    Unknown(String),
+    ExpansionError(String),
+}
 
 pub trait TokenExpander: Debug + Send + Sync + RefUnwindSafe {
     fn expand(&self, subtree: &Subtree, attrs: Option<&Subtree>)

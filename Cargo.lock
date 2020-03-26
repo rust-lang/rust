@@ -1075,7 +1075,12 @@ dependencies = [
 name = "ra_proc_macro"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
+ "log",
  "ra_tt",
+ "serde",
+ "serde_derive",
+ "serde_json",
 ]
 
 [[package]]

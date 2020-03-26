@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
 use std::{
+    ffi::OsStr,
     ops,
     path::{Path, PathBuf},
 };
@@ -299,7 +300,10 @@ pub fn load_extern_resources(cargo_toml: &Path, cargo_features: &CargoFeatures) 
             Message::CompilerArtifact(message) => {
                 if message.target.kind.contains(&"proc-macro".to_string()) {
                     let package_id = message.package_id;
-                    if let Some(filename) = message.filenames.get(0) {
+                    // Skip rmeta file
+                    if let Some(filename) =
+                        message.filenames.iter().filter(|name| is_dylib(name)).next()
+                    {
                         acc.proc_dylib_paths.insert(package_id, filename.clone());
                     }
                 }
@@ -315,4 +319,20 @@ pub fn load_extern_resources(cargo_toml: &Path, cargo_features: &CargoFeatures) 
     }
 
     acc
+}
+
+// FIXME: File a better way to know if it is a dylib
+fn is_dylib(path: &Path) -> bool {
+    let ext = match path.extension().and_then(OsStr::to_str).map(|it| it.to_string().to_lowercase())
+    {
+        None => return false,
+        Some(ext) => ext,
+    };
+
+    match ext.as_str() {
+        "dll" => true,
+        "dylib" => true,
+        "so" => true,
+        _ => false,
+    }
 }
