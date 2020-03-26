@@ -1,7 +1,5 @@
 // Regression test for #67739
 
-// check-pass
-
 #![allow(incomplete_features)]
 #![feature(const_generics)]
 
@@ -12,6 +10,7 @@ pub trait Trait {
 
     fn associated_size(&self) -> usize {
         [0u8; mem::size_of::<Self::Associated>()];
+        //~^ ERROR constant expression depends on a generic parameter
         0
     }
 }

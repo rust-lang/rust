@@ -6,5 +6,13 @@ LL | #![feature(const_generics)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-warning: 1 warning emitted
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-62456.rs:5:20
+   |
+LL |     let _ = [0u64; N + 1];
+   |                    ^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to previous error; 1 warning emitted
 

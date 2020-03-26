@@ -17,6 +17,7 @@ impl<const X: usize> ArrayHolder<X> {
     pub const fn new() -> Self {
         ArrayHolder([0; Self::SIZE])
         //~^ ERROR: mismatched types
+        //~| ERROR constant expression depends on a generic parameter
     }
 }
 

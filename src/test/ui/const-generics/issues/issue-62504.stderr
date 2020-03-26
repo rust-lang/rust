@@ -7,6 +7,14 @@ LL |         ArrayHolder([0; Self::SIZE])
    = note: expected array `[u32; _]`
               found array `[u32; _]`
 
-error: aborting due to previous error
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-62504.rs:18:25
+   |
+LL |         ArrayHolder([0; Self::SIZE])
+   |                         ^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

@@ -3311,8 +3311,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn to_const(&self, ast_c: &hir::AnonConst) -> &'tcx ty::Const<'tcx> {
-        let c = self.tcx.hir().local_def_id(ast_c.hir_id).expect_local();
-        ty::Const::from_anon_const(self.tcx, c)
+        let const_def_id = self.tcx.hir().local_def_id(ast_c.hir_id).expect_local();
+        let c = ty::Const::from_anon_const(self.tcx, const_def_id);
+
+        // HACK(eddyb) emulate what a `WellFormedConst` obligation would do.
+        // This code should be replaced with the proper WF handling ASAP.
+        if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = c.val {
+            assert!(promoted.is_none());
+
+            // HACK(eddyb) let's hope these are always empty.
+            // let obligations = self.nominal_obligations(def_id, substs);
+            // self.out.extend(obligations);
+
+            let cause = traits::ObligationCause::new(
+                self.tcx.def_span(const_def_id.to_def_id()),
+                self.body_id,
+                traits::MiscObligation,
+            );
+            self.register_predicate(traits::Obligation::new(
+                cause,
+                self.param_env,
+                ty::Predicate::ConstEvaluatable(def_id, substs),
+            ));
+        }
+
+        c
     }
 
     // If the type given by the user has free regions, save it for later, since
