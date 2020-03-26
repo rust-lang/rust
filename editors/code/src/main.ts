@@ -48,21 +48,19 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx = await Ctx.create(config, context, serverPath);
 
     // Commands which invokes manually via command palette, shortcut, etc.
-    ctx.registerCommand('reload', (ctx) => {
-        return async () => {
-            vscode.window.showInformationMessage('Reloading rust-analyzer...');
-            // @DanTup maneuver
-            // https://github.com/microsoft/vscode/issues/45774#issuecomment-373423895
-            await deactivate();
-            for (const sub of ctx.subscriptions) {
-                try {
-                    sub.dispose();
-                } catch (e) {
-                    log.error(e);
-                }
+
+    // Reloading is inspired by @DanTup maneuver: https://github.com/microsoft/vscode/issues/45774#issuecomment-373423895
+    ctx.registerCommand('reload', _ => async () => {
+        void vscode.window.showInformationMessage('Reloading rust-analyzer...');
+        await deactivate();
+        while (context.subscriptions.length > 0) {
+            try {
+                context.subscriptions.pop()!.dispose();
+            } catch (err) {
+                log.error("Dispose error:", err);
             }
-            await activate(context);
-        };
+        }
+        await activate(context).catch(log.error);
     });
 
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
@@ -96,7 +94,7 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export async function deactivate() {
-    await ctx?.client?.stop();
+    await ctx?.client.stop();
     ctx = undefined;
 }
 
