@@ -1117,7 +1117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         err.span_suggestion_verbose(
             sp_comma,
-            "add `..` at the end of the field list",
+            "add `..` at the end of the field list to ignore all other fields",
             sugg.to_string(),
             Applicability::MachineApplicable,
         );

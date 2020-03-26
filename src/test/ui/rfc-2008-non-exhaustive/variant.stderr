@@ -70,7 +70,7 @@ error[E0638]: `..` required with variant marked as non-exhaustive
 LL |         NonExhaustiveVariants::Struct { field } => ""
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: add `..` at the end of the field list
+help: add `..` at the end of the field list to ignore all other fields
    |
 LL |         NonExhaustiveVariants::Struct { field , .. } => ""
    |                                               ^^^^^^
@@ -81,7 +81,7 @@ error[E0638]: `..` required with variant marked as non-exhaustive
 LL |     if let NonExhaustiveVariants::Struct { field } = variant_struct {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: add `..` at the end of the field list
+help: add `..` at the end of the field list to ignore all other fields
    |
 LL |     if let NonExhaustiveVariants::Struct { field , .. } = variant_struct {
    |                                                  ^^^^^^
