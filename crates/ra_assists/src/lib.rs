@@ -96,6 +96,7 @@ mod handlers {
     mod add_custom_impl;
     mod add_derive;
     mod add_explicit_type;
+    mod add_function;
     mod add_impl;
     mod add_missing_impl_members;
     mod add_new;
@@ -128,6 +129,7 @@ mod handlers {
             add_custom_impl::add_custom_impl,
             add_derive::add_derive,
             add_explicit_type::add_explicit_type,
+            add_function::add_function,
             add_impl::add_impl,
             add_missing_impl_members::add_missing_default_members,
             add_missing_impl_members::add_missing_impl_members,
