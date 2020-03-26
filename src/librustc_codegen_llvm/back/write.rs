@@ -751,44 +751,53 @@ pub(crate) unsafe fn codegen(
             })?;
         }
 
-        if config_emit_object_code {
-            if !config.no_integrated_as {
-                let _timer = cgcx
-                    .prof
-                    .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
-                with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                    write_output_file(
-                        diag_handler,
-                        tm,
-                        cpm,
-                        llmod,
-                        &obj_out,
-                        llvm::FileType::ObjectFile,
-                    )
-                })?;
-            } else {
-                let _timer = cgcx
-                    .prof
-                    .generic_activity_with_arg("LLVM_module_codegen_asm_to_obj", &module.name[..]);
-                let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
-                run_assembler(cgcx, diag_handler, &assembly, &obj_out);
+        match config.emit_obj {
+            EmitObj::ObjectCode(_) => {
+                if !config.no_integrated_as {
+                    let _timer = cgcx.prof.generic_activity_with_arg(
+                        "LLVM_module_codegen_emit_obj",
+                        &module.name[..],
+                    );
+                    with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                        write_output_file(
+                            diag_handler,
+                            tm,
+                            cpm,
+                            llmod,
+                            &obj_out,
+                            llvm::FileType::ObjectFile,
+                        )
+                    })?;
+                } else {
+                    let _timer = cgcx.prof.generic_activity_with_arg(
+                        "LLVM_module_codegen_asm_to_obj",
+                        &module.name[..],
+                    );
+                    let assembly =
+                        cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
+                    run_assembler(cgcx, diag_handler, &assembly, &obj_out);
 
-                if !config.emit_asm && !cgcx.save_temps {
-                    drop(fs::remove_file(&assembly));
+                    if !config.emit_asm && !cgcx.save_temps {
+                        drop(fs::remove_file(&assembly));
+                    }
                 }
             }
-        } else if config.emit_obj == EmitObj::Bitcode {
-            debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
-            if let Err(e) = link_or_copy(&bc_out, &obj_out) {
-                diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
-            }
 
-            if !config.emit_bc {
-                debug!("removing_bitcode {:?}", bc_out);
-                if let Err(e) = fs::remove_file(&bc_out) {
-                    diag_handler.err(&format!("failed to remove bitcode: {}", e));
+            EmitObj::Bitcode => {
+                debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
+                if let Err(e) = link_or_copy(&bc_out, &obj_out) {
+                    diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
+                }
+
+                if !config.emit_bc {
+                    debug!("removing_bitcode {:?}", bc_out);
+                    if let Err(e) = fs::remove_file(&bc_out) {
+                        diag_handler.err(&format!("failed to remove bitcode: {}", e));
+                    }
                 }
             }
+
+            EmitObj::None => {}
         }
 
         drop(handlers);
