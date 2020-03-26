@@ -305,14 +305,29 @@ impl TextRange {
 impl Index<TextRange> for str {
     type Output = str;
     #[inline]
-    fn index(&self, index: TextRange) -> &Self::Output {
+    fn index(&self, index: TextRange) -> &str {
+        &self[Range::<usize>::from(index)]
+    }
+}
+
+impl Index<TextRange> for String {
+    type Output = str;
+    #[inline]
+    fn index(&self, index: TextRange) -> &str {
         &self[Range::<usize>::from(index)]
     }
 }
 
 impl IndexMut<TextRange> for str {
     #[inline]
-    fn index_mut(&mut self, index: TextRange) -> &mut Self::Output {
+    fn index_mut(&mut self, index: TextRange) -> &mut str {
+        &mut self[Range::<usize>::from(index)]
+    }
+}
+
+impl IndexMut<TextRange> for String {
+    #[inline]
+    fn index_mut(&mut self, index: TextRange) -> &mut str {
         &mut self[Range::<usize>::from(index)]
     }
 }
