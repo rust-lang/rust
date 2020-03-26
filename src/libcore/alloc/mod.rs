@@ -221,21 +221,22 @@ pub unsafe trait AllocRef {
     /// allocation referenced by `ptr` to fit the new layout. If the [`placement`] is
     /// [`InPlace`], the returned pointer is guaranteed to be the same as the passed `ptr`.
     ///
-    /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
-    /// transferred to this allocator. The memory may or may not have been freed, and should be
-    /// considered unusable (unless of course it was transferred back to the caller again via the
+    /// If `ReallocPlacement::MayMove` is used then ownership of the memory block referenced by `ptr`
+    /// is transferred to this allocator. The memory may or may not be freed, and should be
+    /// considered unusable (unless of course it is transferred back to the caller again via the
     /// return value of this method).
     ///
     /// If this method returns `Err`, then ownership of the memory block has not been transferred to
     /// this allocator, and the contents of the memory block are unaltered.
     ///
-    /// The behavior of how the allocator tries to grow the memory is specified by [`placement`].
-    /// After growing a memory block, the new memory can be separated into three regions:
-    ///   1. `0..layout.size()`. This region is preserved or copied as appropriate from `ptr`.
-    ///   2. `layout.size()..allocated_size` where `allocated_size` is the latest returned
-    ///       size of the allocator. The new content is implementation defined. Allocators may
-    ///       initialize it according to [`init`] or leave them as is.
-    ///   3. `allocated_size..returned_size` is initialized according to [`init`].
+    /// The memory block will contain the following contents after a successful call to `grow`:
+    ///   * Bytes `0..layout.size()` are preserved from the original allocation.
+    ///   * Bytes `layout.size()..old_size` will either be preserved or initialized according to
+    ///     [`init`], depending on the allocator implementation. `old_size` refers to the size of
+    ///     the `MemoryBlock` prior to the `grow` call, which may be larger than the size
+    ///     that was originally requested when it was allocated.
+    ///   * Bytes `old_size..new_size` are initialized according to [`init`]. `new_size` refers to
+    ///     the size of the `MemoryBlock` returned by the `grow` call.
     ///
     /// [`InPlace`]: ReallocPlacement::InPlace
     /// [`placement`]: ReallocPlacement
