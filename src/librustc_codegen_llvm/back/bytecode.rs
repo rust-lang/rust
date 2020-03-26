@@ -22,6 +22,8 @@
 //!     n+9..    compressed LLVM bitcode
 //!     ?        maybe a byte to make this whole thing even length
 
+#![allow(dead_code)] // FIXME: this whole file will be removed in the next commit
+
 use std::io::{Read, Write};
 use std::ptr;
 use std::str;
