@@ -1,0 +1,11 @@
+error: no rules expected the token `.`
+  --> $DIR/indexing-in-macro.rs:7:6
+   |
+LL | macro_rules! m {
+   | -------------- when calling this macro
+...
+LL | m!(.0.0);
+   |      ^ no rules expected this token in macro call
+
+error: aborting due to previous error
+
