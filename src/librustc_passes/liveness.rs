@@ -903,10 +903,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn compute(&mut self, body: &hir::Expr<'_>) -> LiveNode {
-        debug!(
-            "compute: using id for body, {}",
-            self.ir.tcx.hir().hir_to_pretty_string(body.hir_id)
-        );
+        debug!("compute: using id for body, {:?}", body);
 
         // the fallthrough exit is only for those cases where we do not
         // explicitly return:
@@ -979,7 +976,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn propagate_through_expr(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
-        debug!("propagate_through_expr: {}", self.ir.tcx.hir().hir_to_pretty_string(expr.hir_id));
+        debug!("propagate_through_expr: {:?}", expr);
 
         match expr.kind {
             // Interesting cases with control flow or which gen/kill
@@ -990,10 +987,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             hir::ExprKind::Field(ref e, _) => self.propagate_through_expr(&e, succ),
 
             hir::ExprKind::Closure(..) => {
-                debug!(
-                    "{} is an ExprKind::Closure",
-                    self.ir.tcx.hir().hir_to_pretty_string(expr.hir_id)
-                );
+                debug!("{:?} is an ExprKind::Closure", expr);
 
                 // the construction of a closure itself is not important,
                 // but we have to consider the closed over variables.
@@ -1344,11 +1338,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let mut first_merge = true;
         let ln = self.live_node(expr.hir_id, expr.span);
         self.init_empty(ln, succ);
-        debug!(
-            "propagate_through_loop: using id for loop body {} {}",
-            expr.hir_id,
-            self.ir.tcx.hir().hir_to_pretty_string(body.hir_id)
-        );
+        debug!("propagate_through_loop: using id for loop body {} {:?}", expr.hir_id, body);
 
         self.break_ln.insert(expr.hir_id, succ);
 

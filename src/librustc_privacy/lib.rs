@@ -1320,14 +1320,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             let is_local_static =
                 if let DefKind::Static = kind { def_id.is_local() } else { false };
             if !self.item_is_accessible(def_id) && !is_local_static {
-                let name = match *qpath {
-                    hir::QPath::Resolved(_, ref path) => path.to_string(),
-                    hir::QPath::TypeRelative(_, ref segment) => segment.ident.to_string(),
+                let sess = self.tcx.sess;
+                let sm = sess.source_map();
+                let name = match qpath {
+                    hir::QPath::Resolved(_, path) => sm.span_to_snippet(path.span).ok(),
+                    hir::QPath::TypeRelative(_, segment) => Some(segment.ident.to_string()),
                 };
                 let kind = kind.descr(def_id);
-                self.tcx
-                    .sess
-                    .struct_span_err(span, &format!("{} `{}` is private", kind, name))
+                let msg = match name {
+                    Some(name) => format!("{} `{}` is private", kind, name),
+                    None => format!("{} is private", kind),
+                };
+                sess.struct_span_err(span, &msg)
                     .span_label(span, &format!("private {}", kind))
                     .emit();
                 return;

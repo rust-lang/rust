@@ -482,8 +482,8 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
 }
 
 pub fn print_inlined_const(cx: &DocContext<'_>, did: DefId) -> String {
-    if let Some(node_id) = cx.tcx.hir().as_local_hir_id(did) {
-        cx.tcx.hir().hir_to_pretty_string(node_id)
+    if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(did) {
+        rustc_hir_pretty::id_to_string(&cx.tcx.hir(), hir_id)
     } else {
         cx.tcx.rendered_const(did)
     }

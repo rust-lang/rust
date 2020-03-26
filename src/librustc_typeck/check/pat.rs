@@ -171,9 +171,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
                 self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, def_bm, ti)
             }
-            PatKind::Path(ref qpath) => {
-                self.check_pat_path(pat, path_res.unwrap(), qpath, expected, ti)
-            }
+            PatKind::Path(_) => self.check_pat_path(pat, path_res.unwrap(), expected, ti),
             PatKind::Struct(ref qpath, fields, etc) => {
                 self.check_pat_struct(pat, qpath, fields, etc, expected, def_bm, ti)
             }
@@ -694,7 +692,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'_>,
         path_resolution: (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment<'b>]),
-        qpath: &hir::QPath<'_>,
         expected: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
@@ -707,17 +704,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.set_tainted_by_errors();
                 return tcx.types.err;
             }
-            Res::Def(DefKind::AssocFn, _)
-            | Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _)
-            | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
-                report_unexpected_variant_res(tcx, res, pat.span, qpath);
+            Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fictive | CtorKind::Fn), _) => {
+                report_unexpected_variant_res(tcx, res, pat.span);
                 return tcx.types.err;
             }
-            Res::Def(DefKind::Ctor(_, CtorKind::Const), _)
-            | Res::SelfCtor(..)
-            | Res::Def(DefKind::Const, _)
-            | Res::Def(DefKind::AssocConst, _)
-            | Res::Def(DefKind::ConstParam, _) => {} // OK
+            Res::SelfCtor(..)
+            | Res::Def(
+                DefKind::Ctor(_, CtorKind::Const)
+                | DefKind::Const
+                | DefKind::AssocConst
+                | DefKind::ConstParam,
+                _,
+            ) => {} // OK
             _ => bug!("unexpected pattern resolution: {:?}", res),
         }
 
@@ -791,14 +789,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         let report_unexpected_res = |res: Res| {
+            let sm = tcx.sess.source_map();
+            let path_str = sm
+                .span_to_snippet(sm.span_until_char(pat.span, '('))
+                .map_or(String::new(), |s| format!(" `{}`", s.trim_end()));
             let msg = format!(
-                "expected tuple struct or tuple variant, found {} `{}`",
+                "expected tuple struct or tuple variant, found {}{}",
                 res.descr(),
-                hir::print::to_string(&tcx.hir(), |s| s.print_qpath(qpath, false)),
+                path_str
             );
+
             let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg);
-            match (res, &pat.kind) {
-                (Res::Def(DefKind::Fn, _), _) | (Res::Def(DefKind::AssocFn, _), _) => {
+            match res {
+                Res::Def(DefKind::Fn | DefKind::AssocFn, _) => {
                     err.span_label(pat.span, "`fn` calls are not allowed in patterns");
                     err.help(
                         "for more information, visit \
