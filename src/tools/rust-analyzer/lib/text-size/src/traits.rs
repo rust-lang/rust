@@ -12,9 +12,7 @@ pub trait LenTextSize: Copy {
 impl LenTextSize for &'_ str {
     #[inline]
     fn len_text_size(self) -> TextSize {
-        self.len()
-            .try_into()
-            .unwrap_or_else(|_| panic!("string too large ({}) for TextSize", self.len()))
+        self.len().try_into().unwrap()
     }
 }
 
