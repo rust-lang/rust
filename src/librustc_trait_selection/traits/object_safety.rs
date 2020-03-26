@@ -170,7 +170,7 @@ fn object_safety_violations_for_trait(
     violations
 }
 
-fn trait_bound_spans<'tcx>(
+fn sized_trait_bound_spans<'tcx>(
     tcx: TyCtxt<'tcx>,
     bounds: hir::GenericBounds<'tcx>,
 ) -> impl 'tcx + Iterator<Item = Span> {
@@ -207,14 +207,14 @@ fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]>
                             {
                                 // Fetch spans for trait bounds that are Sized:
                                 // `trait T where Self: Pred`
-                                Some(trait_bound_spans(tcx, pred.bounds))
+                                Some(sized_trait_bound_spans(tcx, pred.bounds))
                             }
                             _ => None,
                         }
                     })
                     .flatten()
                     // Fetch spans for supertraits that are `Sized`: `trait T: Super`.
-                    .chain(trait_bound_spans(tcx, bounds))
+                    .chain(sized_trait_bound_spans(tcx, bounds))
                     .collect::<SmallVec<[Span; 1]>>(),
             ),
             _ => None,
