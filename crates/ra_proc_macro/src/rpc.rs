@@ -252,7 +252,7 @@ mod tests {
         assert_eq!(task.macro_body, back.macro_body);
 
         let result = ExpansionResult { expansion: tt.clone() };
-        let json = serde_json::to_string(&task).unwrap();
+        let json = serde_json::to_string(&result).unwrap();
         let back: ExpansionResult = serde_json::from_str(&json).unwrap();
 
         assert_eq!(result, back);

@@ -10,8 +10,7 @@ doctest = false
 
 [dependencies]
 ra_tt = { path = "../ra_tt" }
-serde_derive = "1.0.104"
-serde = "1.0.104"
-serde_json = "1.0.48"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 log = "0.4.8"
 crossbeam-channel = "0.4.0"
