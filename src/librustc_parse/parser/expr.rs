@@ -774,10 +774,15 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn error_unexpected_after_dot(&self) {
+    fn error_unexpected_after_dot(&mut self) {
         // FIXME Could factor this out into non_fatal_unexpected or something.
         let actual = pprust::token_to_string(&self.token);
         self.struct_span_err(self.token.span, &format!("unexpected token: `{}`", actual)).emit();
+
+        // Recover `tuple. 0.0`.
+        if let token::Literal(token::Lit { kind: token::Float, .. }) = self.token.kind {
+            self.bump();
+        }
     }
 
     fn parse_tuple_field_access_expr(
