@@ -124,18 +124,16 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
                 }
                 (ty::ImplPolarity::Negative, ast::ImplPolarity::Negative(span)) => {
                     // FIXME(#27579): what amount of WF checking do we need for neg impls?
-                    if let (Some(of_trait), false) = (of_trait, is_auto) {
+                    if let hir::Defaultness::Default { .. } = defaultness {
+                        let mut spans = vec![span];
+                        spans.extend(defaultness_span);
                         struct_span_err!(
                             tcx.sess,
-                            span.to(of_trait.path.span),
-                            E0192,
-                            "invalid negative impl"
+                            spans,
+                            E0750,
+                            "negative impls cannot be default impls"
                         )
-                        .note(
-                            "negative impls are only allowed for auto traits, like `Send` and \
-                             `Sync`",
-                        )
-                        .emit()
+                        .emit();
                     }
                 }
                 (ty::ImplPolarity::Reservation, _) => {
@@ -902,13 +900,13 @@ fn check_opaque_types<'fcx, 'tcx>(
                                             .struct_span_err(
                                                 span,
                                                 "non-defining opaque type use \
-                                                    in defining scope",
+                                                 in defining scope",
                                             )
                                             .span_label(
                                                 param_span,
                                                 "cannot use static lifetime; use a bound lifetime \
-                                                instead or remove the lifetime parameter from the \
-                                                opaque type",
+                                                 instead or remove the lifetime parameter from the \
+                                                 opaque type",
                                             )
                                             .emit();
                                     } else {
@@ -923,13 +921,13 @@ fn check_opaque_types<'fcx, 'tcx>(
                                             .struct_span_err(
                                                 span,
                                                 "non-defining opaque type use \
-                                                in defining scope",
+                                                 in defining scope",
                                             )
                                             .span_note(
                                                 tcx.def_span(param.def_id),
                                                 &format!(
                                                     "used non-generic const {} for \
-                                                    generic parameter",
+                                                     generic parameter",
                                                     ty,
                                                 ),
                                             )
@@ -944,7 +942,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                                     .struct_span_err(
                                         span,
                                         "non-defining opaque type use \
-                                            in defining scope",
+                                         in defining scope",
                                     )
                                     .span_note(spans, "lifetime used multiple times")
                                     .emit();
@@ -1030,7 +1028,7 @@ fn check_method_receiver<'fcx, 'tcx>(
                     span,
                     &format!(
                         "`{}` cannot be used as the type of `self` without \
-                            the `arbitrary_self_types` feature",
+                         the `arbitrary_self_types` feature",
                         receiver_ty,
                     ),
                 )

@@ -1659,11 +1659,14 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: DefId, span:
             _ => unreachable!(),
         };
 
-        tcx.sess.span_err(span, &format!(
+        tcx.sess.span_err(
+            span,
+            &format!(
             "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
              a parent scope",
             if is_async { "async fn" } else { "impl Trait" },
-        ));
+        ),
+        );
     }
 }
 
@@ -1841,8 +1844,8 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
         Ok(ConstValue::ByRef { alloc, .. }) => {
             if alloc.relocations().len() != 0 {
                 let msg = "statics with a custom `#[link_section]` must be a \
-                       simple list of bytes on the wasm target with no \
-                       extra levels of indirection such as references";
+                           simple list of bytes on the wasm target with no \
+                           extra levels of indirection such as references";
                 tcx.sess.span_err(span, msg);
             }
         }
@@ -1971,6 +1974,24 @@ fn check_impl_items_against_trait<'tcx>(
         return;
     }
 
+    // Negative impls are not expected to have any items
+    match tcx.impl_polarity(impl_id) {
+        ty::ImplPolarity::Reservation | ty::ImplPolarity::Positive => {}
+        ty::ImplPolarity::Negative => {
+            if let [first_item_ref, ..] = impl_item_refs {
+                let first_item_span = tcx.hir().impl_item(first_item_ref.id).span;
+                struct_span_err!(
+                    tcx.sess,
+                    first_item_span,
+                    E0749,
+                    "negative impls cannot have any items"
+                )
+                .emit();
+            }
+            return;
+        }
+    }
+
     // Locate trait definition and items
     let trait_def = tcx.trait_def(impl_trait_ref.def_id);
 
@@ -2010,7 +2031,7 @@ fn check_impl_items_against_trait<'tcx>(
                             impl_item.span,
                             E0323,
                             "item `{}` is an associated const, \
-                              which doesn't match its trait `{}`",
+                             which doesn't match its trait `{}`",
                             ty_impl_item.ident,
                             impl_trait_ref.print_only_trait_path()
                         );
@@ -3554,7 +3575,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let adjusted_ty = autoderef.unambiguous_final_ty(self);
         debug!(
             "try_index_step(expr={:?}, base_expr={:?}, adjusted_ty={:?}, \
-                               index_ty={:?})",
+             index_ty={:?})",
             expr, base_expr, adjusted_ty, index_ty
         );
 
@@ -4705,7 +4726,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 err.span_label(
                                     fn_span,
                                     "implicitly returns `()` as its body has no tail or `return` \
-                                 expression",
+                                     expression",
                                 );
                             }
                         },
@@ -5577,11 +5598,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match self.at(&self.misc(span), self.param_env).sup(impl_ty, self_ty) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
-                    self.tcx.sess.delay_span_bug(span, &format!(
+                    self.tcx.sess.delay_span_bug(
+                        span,
+                        &format!(
                         "instantiate_value_path: (UFCS) {:?} was a subtype of {:?} but now is not?",
                         self_ty,
                         impl_ty,
-                    ));
+                    ),
+                    );
                 }
             }
         }
@@ -5767,7 +5791,7 @@ fn fatally_break_rust(sess: &Session) {
     handler.note_without_error("the compiler expectedly panicked. this is a feature.");
     handler.note_without_error(
         "we would appreciate a joke overview: \
-        https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675",
+         https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675",
     );
     handler.note_without_error(&format!(
         "rustc {} running on {}",
