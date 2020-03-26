@@ -295,6 +295,8 @@ impl<'a> Parser<'a> {
             // A rest pattern `..`.
             self.bump(); // `..`
             PatKind::Rest
+        } else if self.check(&token::DotDotDot) && !self.is_pat_range_end_start(1) {
+            self.recover_dotdotdot_rest_pat(lo)
         } else if let Some(form) = self.parse_range_end() {
             self.parse_pat_range_to(form)? // `..=X`, `...X`, or `..X`.
         } else if self.eat_keyword(kw::Underscore) {
@@ -360,6 +362,25 @@ impl<'a> Parser<'a> {
         }
 
         Ok(pat)
+    }
+
+    /// Recover from a typoed `...` pattern that was encountered
+    /// Ref: Issue #70388
+    fn recover_dotdotdot_rest_pat(&mut self, lo: Span) -> PatKind {
+        // A typoed rest pattern `...`.
+        self.bump(); // `...`
+
+        // The user probably mistook `...` for a rest pattern `..`.
+        self.struct_span_err(lo, "unexpected `...`")
+            .span_label(lo, "not a valid pattern")
+            .span_suggestion_short(
+                lo,
+                "for a rest pattern, use `..` instead of `...`",
+                "..".to_owned(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
+        PatKind::Rest
     }
 
     /// Try to recover the more general form `intersect ::= $pat_lhs @ $pat_rhs`.
