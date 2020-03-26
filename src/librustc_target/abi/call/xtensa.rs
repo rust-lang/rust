@@ -24,7 +24,7 @@ fn classify_arg_ty<Ty>(arg: &mut ArgAbi<'_, Ty>, xlen: u64, remaining_gpr: &mut 
         return;
     }
 
-    let alignment = arg.layout.details.align.abi;
+    let alignment = arg.layout.align.abi;
     let mut required_gpr = 1u64; // at least one per arg
 
     if alignment.bits() == 2 * xlen {
