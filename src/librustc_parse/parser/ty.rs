@@ -127,16 +127,16 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Underscore) {
             // A type to be inferred `_`
             TyKind::Infer
-        } else if self.token_is_bare_fn_keyword() {
+        } else if self.check_fn_front_matter() {
             // Function pointer type
-            self.parse_ty_bare_fn(Vec::new())?
+            self.parse_ty_bare_fn(lo, Vec::new())?
         } else if self.check_keyword(kw::For) {
             // Function pointer type or bound list (trait object type) starting with a poly-trait.
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
             //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
             let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
-            if self.token_is_bare_fn_keyword() {
-                self.parse_ty_bare_fn(lifetime_defs)?
+            if self.check_fn_front_matter() {
+                self.parse_ty_bare_fn(lo, lifetime_defs)?
             } else {
                 let path = self.parse_path(PathStyle::Type)?;
                 let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
@@ -291,13 +291,6 @@ impl<'a> Parser<'a> {
         Ok(TyKind::Typeof(expr))
     }
 
-    /// Is the current token one of the keywords that signals a bare function type?
-    fn token_is_bare_fn_keyword(&mut self) -> bool {
-        self.check_keyword(kw::Fn)
-            || self.check_keyword(kw::Unsafe)
-            || self.check_keyword(kw::Extern)
-    }
-
     /// Parses a function pointer type (`TyKind::BareFn`).
     /// ```
     /// [unsafe] [extern "ABI"] fn (S) -> T
@@ -306,12 +299,31 @@ impl<'a> Parser<'a> {
     ///    |               |        |   Return type
     /// Function Style    ABI  Parameter types
     /// ```
-    fn parse_ty_bare_fn(&mut self, generic_params: Vec<GenericParam>) -> PResult<'a, TyKind> {
-        let unsafety = self.parse_unsafety();
-        let ext = self.parse_extern()?;
-        self.expect_keyword(kw::Fn)?;
+    /// We actually parse `FnHeader FnDecl`, but we error on `const` and `async` qualifiers.
+    fn parse_ty_bare_fn(&mut self, lo: Span, params: Vec<GenericParam>) -> PResult<'a, TyKind> {
+        let ast::FnHeader { ext, unsafety, constness, asyncness } = self.parse_fn_front_matter()?;
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No)?;
-        Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params, decl })))
+        let whole_span = lo.to(self.prev_token.span);
+        if let ast::Const::Yes(span) = constness {
+            self.error_fn_ptr_bad_qualifier(whole_span, span, "const");
+        }
+        if let ast::Async::Yes { span, .. } = asyncness {
+            self.error_fn_ptr_bad_qualifier(whole_span, span, "async");
+        }
+        Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params: params, decl })))
+    }
+
+    /// Emit an error for the given bad function pointer qualifier.
+    fn error_fn_ptr_bad_qualifier(&self, span: Span, qual_span: Span, qual: &str) {
+        self.struct_span_err(span, &format!("an `fn` pointer type cannot be `{}`", qual))
+            .span_label(qual_span, format!("`{}` because of this", qual))
+            .span_suggestion_short(
+                qual_span,
+                &format!("remove the `{}` qualifier", qual),
+                String::new(),
+                Applicability::MaybeIncorrect,
+            )
+            .emit();
     }
 
     /// Parses an `impl B0 + ... + Bn` type.
