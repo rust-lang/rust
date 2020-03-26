@@ -1,11 +1,11 @@
-error[E0119]: conflicting implementations of trait `std::marker::Send` for type `TestType<_>`:
+error[E0748]: found both positive and negative implementation of trait `std::marker::Send` for type `TestType<_>`:
   --> $DIR/specialization-overlap-negative.rs:9:1
    |
 LL | unsafe impl<T: Clone> Send for TestType<T> {}
-   | ------------------------------------------ first implementation here
+   | ------------------------------------------ positive implementation here
 LL | impl<T: MyTrait> !Send for TestType<T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `TestType<_>`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ negative implementation here
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0119`.
+For more information about this error, try `rustc --explain E0748`.

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `MyS2: MyTrait` is not satisfied
-  --> $DIR/typeck-default-trait-impl-constituent-types.rs:20:18
+  --> $DIR/typeck-default-trait-impl-constituent-types.rs:21:18
    |
 LL | fn is_mytrait<T: MyTrait>() {}
    |    ----------    ------- required by this bound in `is_mytrait`

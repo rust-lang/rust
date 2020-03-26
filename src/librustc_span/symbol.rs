@@ -473,6 +473,7 @@ symbols! {
         needs_drop,
         needs_panic_runtime,
         negate_unsigned,
+        negative_impls,
         never,
         never_type,
         never_type_fallback,
