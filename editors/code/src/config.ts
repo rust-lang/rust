@@ -21,7 +21,7 @@ export class Config {
 
     readonly package: {
         version: string;
-        releaseTag: string | undefined;
+        releaseTag: string | null;
         enableProposedApi: boolean | undefined;
     } = vscode.extensions.getExtension(this.extensionId)!.packageJSON;
 

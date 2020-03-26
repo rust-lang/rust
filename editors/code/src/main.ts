@@ -48,21 +48,19 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx = await Ctx.create(config, context, serverPath);
 
     // Commands which invokes manually via command palette, shortcut, etc.
-    ctx.registerCommand('reload', (ctx) => {
-        return async () => {
-            vscode.window.showInformationMessage('Reloading rust-analyzer...');
-            // @DanTup maneuver
-            // https://github.com/microsoft/vscode/issues/45774#issuecomment-373423895
-            await deactivate();
-            for (const sub of ctx.subscriptions) {
-                try {
-                    sub.dispose();
-                } catch (e) {
-                    log.error(e);
-                }
+
+    // Reloading is inspired by @DanTup maneuver: https://github.com/microsoft/vscode/issues/45774#issuecomment-373423895
+    ctx.registerCommand('reload', _ => async () => {
+        void vscode.window.showInformationMessage('Reloading rust-analyzer...');
+        await deactivate();
+        while (context.subscriptions.length > 0) {
+            try {
+                context.subscriptions.pop()!.dispose();
+            } catch (err) {
+                log.error("Dispose error:", err);
             }
-            await activate(context);
-        };
+        }
+        await activate(context).catch(log.error);
     });
 
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
@@ -96,7 +94,7 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 export async function deactivate() {
-    await ctx?.client?.stop();
+    await ctx?.client.stop();
     ctx = undefined;
 }
 
@@ -110,11 +108,13 @@ async function bootstrap(config: Config, state: PersistentState): Promise<string
 }
 
 async function bootstrapExtension(config: Config, state: PersistentState): Promise<void> {
-    if (config.package.releaseTag === undefined) return;
+    if (config.package.releaseTag === null) return;
     if (config.channel === "stable") {
         if (config.package.releaseTag === NIGHTLY_TAG) {
-            vscode.window.showWarningMessage(`You are running a nightly version of rust-analyzer extension.
-To switch to stable, uninstall the extension and re-install it from the marketplace`);
+            void vscode.window.showWarningMessage(
+                `You are running a nightly version of rust-analyzer extension. ` +
+                `To switch to stable, uninstall the extension and re-install it from the marketplace`
+            );
         }
         return;
     };
@@ -169,9 +169,7 @@ async function bootstrapServer(config: Config, state: PersistentState): Promise<
     log.debug("Checked binary availability via --version", res);
     log.debug(res, "--version output:", res.output);
     if (res.status !== 0) {
-        throw new Error(
-            `Failed to execute ${path} --version`
-        );
+        throw new Error(`Failed to execute ${path} --version`);
     }
 
     return path;
@@ -185,7 +183,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         }
         return explicitPath;
     };
-    if (config.package.releaseTag === undefined) return "rust-analyzer";
+    if (config.package.releaseTag === null) return "rust-analyzer";
 
     let binaryName: string | undefined = undefined;
     if (process.arch === "x64" || process.arch === "ia32") {
