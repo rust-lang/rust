@@ -833,15 +833,55 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         ptr: Scalar<M::PointerTag>,
         src: impl IntoIterator<Item = u8>,
     ) -> InterpResult<'tcx> {
-        let src = src.into_iter();
+        let mut src = src.into_iter();
         let size = Size::from_bytes(src.size_hint().0);
         // `write_bytes` checks that this lower bound `size` matches the upper bound and reality.
         let ptr = match self.check_ptr_access(ptr, size, Align::from_bytes(1).unwrap())? {
             Some(ptr) => ptr,
-            None => return Ok(()), // zero-sized access
+            None => {
+                // zero-sized access
+                src.next().expect_none("iterator said it was empty but returned an element");
+                return Ok(());
+            }
         };
         let tcx = self.tcx.tcx;
         self.get_raw_mut(ptr.alloc_id)?.write_bytes(&tcx, ptr, src)
+    }
+
+    /// Writes the given stream of u16s into memory.
+    ///
+    /// Performs appropriate bounds checks.
+    pub fn write_u16s(
+        &mut self,
+        ptr: Scalar<M::PointerTag>,
+        src: impl IntoIterator<Item = u16>,
+    ) -> InterpResult<'tcx> {
+        let mut src = src.into_iter();
+        let (lower, upper) = src.size_hint();
+        let len = upper.expect("can only write bounded iterators");
+        assert_eq!(lower, len, "can only write iterators with a precise length");
+
+        let size = Size::from_bytes(lower);
+        let ptr = match self.check_ptr_access(ptr, size, Align::from_bytes(2).unwrap())? {
+            Some(ptr) => ptr,
+            None => {
+                // zero-sized access
+                src.next().expect_none("iterator said it was empty but returned an element");
+                return Ok(());
+            }
+        };
+        let tcx = self.tcx.tcx;
+        let allocation = self.get_raw_mut(ptr.alloc_id)?;
+
+        for idx in 0..len {
+            let val = Scalar::from_u16(
+                src.next().expect("iterator was shorter than it said it would be"),
+            );
+            let offset_ptr = ptr.offset(Size::from_bytes(idx) * 2, &tcx)?; // `Size` multiplication
+            allocation.write_scalar(&tcx, offset_ptr, val.into(), Size::from_bytes(2))?;
+        }
+        src.next().expect_none("iterator was longer than it said it would be");
+        Ok(())
     }
 
     /// Expects the caller to have checked bounds and alignment.
