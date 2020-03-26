@@ -1,3 +1,5 @@
+//! Handle process life-time and message passing for proc-macro client
+
 use crossbeam_channel::{bounded, Receiver, Sender};
 use ra_tt::Subtree;
 
