@@ -12,10 +12,8 @@ function build {
             # HACK(eddyb) sets `RUSTC_BOOTSTRAP=1` so Cargo can accept nightly features.
             # These come from the top-level Rust workspace, that this crate is not a
             # member of, but Cargo tries to load the workspace `Cargo.toml` anyway.
-            env RUSTC_BOOTSTRAP=1  \
+            env RUSTC_BOOTSTRAP=1
                 cargo -v run --target $TARGET
-            env RUSTC_BOOTSTRAP=1  \
-                cargo -v run --target $TARGET --release 
         popd
     popd
 }
@@ -40,3 +38,4 @@ build
 #check "libunwind::Registers_x86_64::jumpto()" jumpto.checks
 
 check "std::io::stdio::_print::h87f0c238421c45bc" print.checks
+check cc_plus_one_c cc_plus_one_c.checks
