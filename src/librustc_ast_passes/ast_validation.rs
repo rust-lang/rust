@@ -289,11 +289,7 @@ impl<'a> AstValidator<'a> {
         match expr.kind {
             ExprKind::Lit(..) | ExprKind::Err => {}
             ExprKind::Path(..) if allow_paths => {}
-            ExprKind::Unary(UnOp::Neg, ref inner)
-                if match inner.kind {
-                    ExprKind::Lit(_) => true,
-                    _ => false,
-                } => {}
+            ExprKind::Unary(UnOp::Neg, ref inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
             _ => self.err_handler().span_err(
                 expr.span,
                 "arbitrary expressions aren't allowed \
