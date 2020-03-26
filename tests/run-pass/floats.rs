@@ -1,17 +1,61 @@
 fn main() {
+    // basic arithmetic
     assert_eq!(6.0_f32*6.0_f32, 36.0_f32);
     assert_eq!(6.0_f64*6.0_f64, 36.0_f64);
     assert_eq!(-{5.0_f32}, -5.0_f32);
+    assert_eq!(-{5.0_f64}, -5.0_f64);
+    // infinities, NaN
     assert!((5.0_f32/0.0).is_infinite());
+    assert!((5.0_f64/0.0).is_infinite());
     assert!((-5.0_f32).sqrt().is_nan());
+    assert!((-5.0_f64).sqrt().is_nan());
+    // byte-level transmute
     let x: u64 = unsafe { std::mem::transmute(42.0_f64) };
     let y: f64 = unsafe { std::mem::transmute(x) };
     assert_eq!(y, 42.0_f64);
+    let x: u32 = unsafe { std::mem::transmute(42.0_f32) };
+    let y: f32 = unsafe { std::mem::transmute(x) };
+    assert_eq!(y, 42.0_f32);
 
+    // f32 casts
     assert_eq!(5.0f32 as u32, 5);
+    assert_eq!(-5.0f32 as u32, 0);
     assert_eq!(5.0f32 as i32, 5);
     assert_eq!(-5.0f32 as i32, -5);
+    assert_eq!(std::f32::MAX as i32, i32::MAX);
+    assert_eq!(std::f32::INFINITY as i32, i32::MAX);
+    assert_eq!(std::f32::MAX as u32, u32::MAX);
+    assert_eq!(std::f32::INFINITY as u32, u32::MAX);
+    assert_eq!(std::f32::MIN as i32, i32::MIN);
+    assert_eq!(std::f32::NEG_INFINITY as i32, i32::MIN);
+    assert_eq!(std::f32::MIN as u32, 0);
+    assert_eq!(std::f32::NEG_INFINITY as u32, 0);
+    assert_eq!(std::f32::NAN as i32, 0);
+    assert_eq!(std::f32::NAN as u32, 0);
+    assert_eq!(u128::MAX as f32, std::f32::INFINITY);
+    assert_eq!((u32::MAX-127) as f32 as u32, u32::MAX); // rounding loss
+    assert_eq!((u32::MAX-128) as f32 as u32, u32::MAX-255); // rounding loss
 
+    // f64 casts
+    assert_eq!(5.0f64 as u64, 5);
+    assert_eq!(-5.0f64 as u64, 0);
+    assert_eq!(5.0f64 as i64, 5);
+    assert_eq!(-5.0f64 as i64, -5);
+    assert_eq!(std::f64::MAX as i64, i64::MAX);
+    assert_eq!(std::f64::INFINITY as i64, i64::MAX);
+    assert_eq!(std::f64::MAX as u64, u64::MAX);
+    assert_eq!(std::f64::INFINITY as u64, u64::MAX);
+    assert_eq!(std::f64::MIN as i64, i64::MIN);
+    assert_eq!(std::f64::NEG_INFINITY as i64, i64::MIN);
+    assert_eq!(std::f64::MIN as u64, 0);
+    assert_eq!(std::f64::NEG_INFINITY as u64, 0);
+    assert_eq!(std::f64::NAN as i64, 0);
+    assert_eq!(std::f64::NAN as u64, 0);
+    assert_eq!(u128::MAX as f64 as u128, u128::MAX);
+    assert_eq!((u64::MAX-1023) as f64 as u64, u64::MAX); // rounding loss
+    assert_eq!((u64::MAX-1024) as f64 as u64, u64::MAX-2047); // rounding loss
+
+    // f32 min/max
     assert_eq!((1.0 as f32).max(-1.0), 1.0);
     assert_eq!((1.0 as f32).min(-1.0), -1.0);
     assert_eq!(std::f32::NAN.min(9.0), 9.0);
@@ -19,6 +63,7 @@ fn main() {
     assert_eq!((9.0 as f32).min(std::f32::NAN), 9.0);
     assert_eq!((-9.0 as f32).max(std::f32::NAN), -9.0);
 
+    // f64 min/max
     assert_eq!((1.0 as f64).max(-1.0), 1.0);
     assert_eq!((1.0 as f64).min(-1.0), -1.0);
     assert_eq!(std::f64::NAN.min(9.0), 9.0);
@@ -26,12 +71,14 @@ fn main() {
     assert_eq!((9.0 as f64).min(std::f64::NAN), 9.0);
     assert_eq!((-9.0 as f64).max(std::f64::NAN), -9.0);
 
+    // f32 copysign
     assert_eq!(3.5_f32.copysign(0.42), 3.5_f32);
     assert_eq!(3.5_f32.copysign(-0.42), -3.5_f32);
     assert_eq!((-3.5_f32).copysign(0.42), 3.5_f32);
     assert_eq!((-3.5_f32).copysign(-0.42), -3.5_f32);
     assert!(std::f32::NAN.copysign(1.0).is_nan());
 
+    // f64 copysign
     assert_eq!(3.5_f64.copysign(0.42), 3.5_f64);
     assert_eq!(3.5_f64.copysign(-0.42), -3.5_f64);
     assert_eq!((-3.5_f64).copysign(0.42), 3.5_f64);
