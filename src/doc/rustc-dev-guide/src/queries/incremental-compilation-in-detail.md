@@ -11,7 +11,7 @@ simple extension to the overall query system. It relies on the fact that:
 This chapter will explain how we can use these properties for making things
 incremental and then goes on to discuss version implementation issues.
 
-# A Basic Algorithm For Incremental Query Evaluation
+## A Basic Algorithm For Incremental Query Evaluation
 
 As explained in the [query evaluation model primer][query-model], query
 invocations form a directed-acyclic graph. Here's the example from the
@@ -36,9 +36,9 @@ we know which queries were invoked (the nodes of the graph) and for each
 invocation, which other queries or input has gone into computing the query's
 result (the edges of the graph).
 
-Now suppose, we change the source code of our program so that
+Now suppose we change the source code of our program so that
 HIR of `bar` looks different than before. Our goal is to only recompute
-those queries that are actually affected by the change while just re-using
+those queries that are actually affected by the change while re-using
 the cached results of all the other queries. Given the dependency graph we can
 do exactly that. For a given query invocation, the graph tells us exactly
 what data has gone into computing its results, we just have to follow the
@@ -46,7 +46,7 @@ edges until we reach something that has changed. If we don't encounter
 anything that has changed, we know that the query still would evaluate to
 the same result we already have in our cache.
 
-Taking the `type_of(foo)` invocation from above as example, we can check
+Taking the `type_of(foo)` invocation from above as an example, we can check
 whether the cached result is still valid by following the edges to its
 inputs. The only edge leads to `Hir(foo)`, an input that has not been affected
 by the change. So we know that the cached result for `type_of(foo)` is still
@@ -63,9 +63,9 @@ turn will re-run `type_of(bar)`, which will yield an up-to-date result
 because it reads the up-to-date version of `Hir(bar)`.
 
 
-# The Problem With The Basic Algorithm: False Positives
+## The Problem With The Basic Algorithm: False Positives
 
-If you read the previous paragraph carefully, you'll notice that it says that
+If you read the previous paragraph carefully you'll notice that it says that
 `type_of(bar)` *might* have changed because one of its inputs has changed.
 There's also the possibility that it might still yield exactly the same
 result *even though* its input has changed. Consider an example with a
@@ -90,7 +90,7 @@ of examples like this and small changes to the input often potentially affect
 very large parts of the output binaries. As a consequence, we had to make the
 change detection system smarter and more accurate.
 
-# Improving Accuracy: The red-green Algorithm
+## Improving Accuracy: The red-green Algorithm
 
 The "false positives" problem can be solved by interleaving change detection
 and query re-evaluation. Instead of walking the graph all the way to the
@@ -98,7 +98,7 @@ inputs when trying to find out if some cached result is still valid, we can
 check if a result has *actually* changed after we were forced to re-evaluate
 it.
 
-We call this algorithm, for better or worse, the red-green algorithm because nodes
+We call this algorithm the red-green algorithm because nodes
 in the dependency graph are assigned the color green if we were able to prove
 that its cached result is still valid and the color red if the result has
 turned out to be different after re-evaluating it.
@@ -128,7 +128,7 @@ fn try_mark_green(tcx, current_node) -> bool {
                 return false
             }
             Unknown => {
-                // This is the first time we are look at this node. Let's try
+                // This is the first time we look at this node. Let's try
                 // to mark it green by calling try_mark_green() recursively.
                 if try_mark_green(tcx, dependency) {
                     // We successfully marked the input as green, on to the
@@ -186,15 +186,15 @@ invoke the query provider to re-compute the result.
 
 
 
-# The Real World: How Persistence Makes Everything Complicated
+## The Real World: How Persistence Makes Everything Complicated
 
 The sections above described the underlying algorithm for incremental
 compilation but because the compiler process exits after being finished and
-takes the query context with its result cache with it into oblivion, we have
+takes the query context with its result cache with it into oblivion, we have to
 persist data to disk, so the next compilation session can make use of it.
 This comes with a whole new set of implementation challenges:
 
-- The query results cache is stored to disk, so they are not readily available
+- The query result cache is stored to disk, so they are not readily available
   for change comparison.
 - A subsequent compilation session will start off with new version of the code
   that has arbitrary changes applied to it. All kinds of IDs and indices that
@@ -205,11 +205,11 @@ This comes with a whole new set of implementation challenges:
 - Persisting things to disk comes at a cost, so not every tiny piece of
   information should be actually cached in between compilation sessions.
   Fixed-sized, plain-old-data is preferred to complex things that need to run
-  branching code during (de-)serialization.
+  through an expensive (de-)serialization step.
 
 The following sections describe how the compiler currently solves these issues.
 
-## A Question Of Stability: Bridging The Gap Between Compilation Sessions
+### A Question Of Stability: Bridging The Gap Between Compilation Sessions
 
 As noted before, various IDs (like `DefId`) are generated by the compiler in a
 way that depends on the contents of the source code being compiled. ID assignment
@@ -253,7 +253,7 @@ the `LocalId`s within it are still the same.
 
 
 
-## Checking Query Results For Changes: StableHash And Fingerprints
+### Checking Query Results For Changes: HashStable And Fingerprints
 
 In order to do red-green-marking we often need to check if the result of a
 query has changed compared to the result it had during the previous
@@ -273,7 +273,7 @@ value of the result. We call this hash value "the `Fingerprint` of the query
 result". The hashing is (and has to be) done "in a stable way". This means
 that whenever something is hashed that might change in between compilation
 sessions (e.g. a `DefId`), we instead hash its stable equivalent
-(e.g. the corresponding `DefPath`). That's what the whole `StableHash`
+(e.g. the corresponding `DefPath`). That's what the whole `HashStable`
 infrastructure is for. This way `Fingerprint`s computed in two
 different compilation sessions are still comparable.
 
@@ -300,12 +300,8 @@ This approach works rather well but it's not without flaws:
   use a good and thus expensive hash function, and we have to map things to
   their stable equivalents while doing the hashing.
 
-In the future we might want to explore different approaches to this problem.
-For now it's `StableHash` and `Fingerprint`.
 
-
-
-## A Tale Of Two DepGraphs: The Old And The New
+### A Tale Of Two DepGraphs: The Old And The New
 
 The initial description of dependency tracking glosses over a few details
 that quickly become a head scratcher when actually trying to implement things.
@@ -327,7 +323,7 @@ the given fingerprint, it means that the query key refers to something that
 did not yet exist in the previous session.
 
 So, having found the dep-node in the previous dependency graph, we can look
-up its dependencies (also dep-nodes in the previous graph) and continue with
+up its dependencies (i.e. also dep-nodes in the previous graph) and continue with
 the rest of the try-mark-green algorithm. The next interesting thing happens
 when we successfully marked the node as green. At that point we copy the node
 and the edges to its dependencies from the old graph into the new graph. We
@@ -343,12 +339,86 @@ new graph is serialized out to disk, alongside the query result cache, and can
 act as the previous dep-graph in a subsequent compilation session.
 
 
-## Didn't You Forget Something?: Cache Promotion
-TODO
+### Didn't You Forget Something?: Cache Promotion
+
+The system described so far has a somewhat subtle property: If all inputs of a
+dep-node are green then the dep-node itself can be marked as green without
+computing or loading the corresponding query result. Applying this property
+transitively often leads to the situation that some intermediate results are
+never actually loaded from disk, as in the following example:
+
+```ignore
+   input(A) <-- intermediate_query(B) <-- leaf_query(C)
+```
+
+The compiler might need the value of `leaf_query(C)` in order to generate some
+output artifact. If it can mark `leaf_query(C)` as green, it will load the
+result from the on-disk cache. The result of `intermediate_query(B)` is never
+loaded though. As a consequence, when the compiler persists the *new* result
+cache by writing all in-memory query results to disk, `intermediate_query(B)`
+will not be in memory and thus will be missing from the new result cache.
+
+If there subsequently is another compilation session that actually needs the
+result of `intermediate_query(B)` it will have to be re-computed even though we
+had a perfectly valid result for it in the cache just before.
+
+In order to prevent this from happening, the compiler does something called
+"cache promotion": Before emitting the new result cache it will walk all green
+dep-nodes and make sure that their query result is loaded into memory. That way
+the result cache doesn't unnecessarily shrink again.
 
 
-# The Future: Shortcomings Of The Current System and Possible Solutions
-TODO
+
+# Incremental Compilation and the Compiler Backend
+
+The compiler backend, the part involving LLVM, is using the query system but
+it is not implemented in terms of queries itself. As a consequence
+it does not automatically partake in dependency tracking. However, the manual
+integration with the tracking system is pretty straight-forward. The compiler
+simply tracks what queries get invoked when generating the initial LLVM version
+of each codegen unit, which results in a dep-node for each of them. In
+subsequent compilation sessions it then tries to mark the dep-node for a CGU as
+green. If it succeeds it knows that the corresponding object and bitcode files
+on disk are still valid. If it doesn't succeed, the entire codegen unit has to
+be recompiled.
+
+This is the same approach that is used for regular queries. The main differences
+are:
+
+ - that we cannot easily compute a fingerprint for LLVM modules (because
+   they are opaque C++ objects),
+
+ - that the logic for dealing with cached values is rather different from
+   regular queries because here we have bitcode and object files instead of
+   serialized Rust values in the common result cache file, and
+
+ - the operations around LLVM are so expensive in terms of computation time and
+   memory consumption that we need to have tight control over what is
+   executed when and what stays in memory for how long.
+
+The query system could probably be extended with general purpose mechanisms to
+deal with all of the above but so far that seemed like more trouble than it
+would save.
+
+
+# Shortcomings of the Current System
+
+There are many things that still can be improved.
+
+## Incrementality of on-disk data structures
+
+The current system is not able to update on-disk caches and the dependency graph
+in-place. Instead it has to rewrite each file entirely in each compilation
+session. The overhead of doing so is a few percent of total compilation time.
+
+## Unnecessary data dependencies
+
+Data structures used as query results could be factored in a way that removes
+edges from the dependency graph. Especially "span" information is very volatile,
+so including it in query result will increase the chance that that result won't
+be reusable. See https://github.com/rust-lang/rust/issues/47389 for more
+information.
+
 
 
 [query-model]: ./query-evaluation-model-in-detail.html

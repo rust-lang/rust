@@ -75,7 +75,8 @@ When the query context is created, it is still empty: No queries have been
 executed, no results are cached. But the context already provides access to
 "input" data, i.e. pieces of immutable data that were computed before the
 context was created and that queries can access to do their computations.
-Currently this input data consists mainly of the HIR map and the command-line
+Currently this input data consists mainly of the HIR map, upstream crate
+metadata, and the command-line
 options the compiler was invoked with. In the future, inputs will just consist
 of command-line options and a list of source files -- the HIR map will itself
 be provided by a query which processes these source files.
