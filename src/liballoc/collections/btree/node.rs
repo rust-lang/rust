@@ -31,6 +31,7 @@
 // - A node of length `n` has `n` keys, `n` values, and (in an internal node) `n + 1` edges.
 //   This implies that even an empty internal node has at least one edge.
 
+use core::alloc::MemoryBlock;
 use core::cmp::Ordering;
 use core::marker::PhantomData;
 use core::mem::{self, MaybeUninit};
@@ -227,7 +228,10 @@ impl<K, V> Root<K, V> {
         }
 
         unsafe {
-            Global.dealloc(NonNull::from(top).cast(), Layout::new::<InternalNode<K, V>>());
+            Global.dealloc(MemoryBlock::new(
+                NonNull::from(top).cast(),
+                Layout::new::<InternalNode<K, V>>(),
+            ));
         }
     }
 }
@@ -392,14 +396,14 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
         let height = self.height;
         let node = self.node;
         let ret = self.ascend().ok();
-        Global.dealloc(
+        Global.dealloc(MemoryBlock::new(
             node.cast(),
             if height > 0 {
                 Layout::new::<InternalNode<K, V>>()
             } else {
                 Layout::new::<LeafNode<K, V>>()
             },
-        );
+        ));
         ret
     }
 }
@@ -1142,7 +1146,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
             (*left_node.as_leaf_mut()).len += right_len as u16 + 1;
 
-            if self.node.height > 1 {
+            let layout = if self.node.height > 1 {
                 ptr::copy_nonoverlapping(
                     right_node.cast_unchecked().as_internal().edges.as_ptr(),
                     left_node
@@ -1159,10 +1163,11 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                         .correct_parent_link();
                 }
 
-                Global.dealloc(right_node.node.cast(), Layout::new::<InternalNode<K, V>>());
+                Layout::new::<InternalNode<K, V>>()
             } else {
-                Global.dealloc(right_node.node.cast(), Layout::new::<LeafNode<K, V>>());
-            }
+                Layout::new::<LeafNode<K, V>>()
+            };
+            Global.dealloc(MemoryBlock::new(right_node.node.cast(), layout));
 
             Handle::new_edge(self.node, self.idx)
         }

@@ -678,8 +678,9 @@ impl<T> Vec<T> {
         unsafe {
             self.shrink_to_fit();
             let buf = ptr::read(&self.buf);
+            let len = self.len();
             mem::forget(self);
-            buf.into_box().assume_init()
+            buf.into_box(len).assume_init()
         }
     }
 

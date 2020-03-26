@@ -11,7 +11,8 @@ pub use self::global::GlobalAlloc;
 pub use self::layout::{Layout, LayoutErr};
 
 use crate::fmt;
-use crate::ptr::{self, NonNull};
+use crate::mem;
+use crate::ptr::{self, NonNull, Unique};
 
 /// The `AllocErr` error indicates an allocation failure
 /// that may be due to resource exhaustion or to
@@ -41,49 +42,91 @@ pub enum AllocInit {
     Zeroed,
 }
 
-impl AllocInit {
-    /// Initialize the memory block referenced by `ptr` and specified by `Layout`.
-    ///
-    /// This behaves like calling [`AllocInit::initialize_offset(ptr, layout, 0)`][off].
-    ///
-    /// [off]: AllocInit::initialize_offset
+/// Represents a block of allocated memory returned by an allocator.
+#[derive(Debug)]
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[must_use = "`MemoryBlock` should be passed to `AllocRef::dealloc`"]
+pub struct MemoryBlock {
+    ptr: Unique<u8>,
+    layout: Layout,
+}
+
+impl MemoryBlock {
+    /// Creates a new `MemoryBlock`.
     ///
     /// # Safety
     ///
-    /// * `layout` must [*fit*] the block of memory referenced by `ptr`
+    /// * The block must be allocated with the same alignment as [`layout.align()`], and
+    /// * The provided [`layout.size()`] must fall in the range `min ..= max`, where:
+    ///   - `min` is the size requested size when allocating the block, and
+    ///   - `max` is the size of the memory block.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub const unsafe fn new(ptr: NonNull<u8>, layout: Layout) -> Self {
+        Self { ptr: Unique::new_unchecked(ptr.as_ptr()), layout }
+    }
+
+    /// Acquires the underlying `NonNull<u8>` pointer.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub const fn ptr(&self) -> NonNull<u8> {
+        // SAFETY: Unique<T> is always non-null
+        unsafe { NonNull::new_unchecked(self.ptr.as_ptr()) }
+    }
+
+    /// Returns the layout describing the memory block.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub const fn layout(&self) -> Layout {
+        self.layout
+    }
+
+    /// Returns the size of the memory block.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub const fn size(&self) -> usize {
+        self.layout().size()
+    }
+
+    /// Returns the minimum alignment of the memory block.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub const fn align(&self) -> usize {
+        self.layout().align()
+    }
+
+    /// Initialize the memory block like specified by `init`.
+    ///
+    /// This behaves like calling [`MemoryBlock::initialize_offset(ptr, layout, 0)`][off].
+    ///
+    /// [off]: MemoryBlock::init_offset
     ///
     /// [*fit*]: trait.AllocRef.html#memory-fitting
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn initialize(self, ptr: NonNull<u8>, layout: Layout) {
-        self.initialize_offset(ptr, layout, 0)
+    pub fn init(&mut self, init: AllocInit) {
+        // SAFETY: 0 is always smaller or equal to the size
+        unsafe { self.init_offset(init, 0) }
     }
 
-    /// Initialize the memory block referenced by `ptr` and specified by `Layout` at the specified
-    /// `offset`.
+    /// Initialize the memory block like specified by `init` at the specified `offset`.
     ///
     /// This is a no-op for [`AllocInit::Uninitialized`] and writes zeroes for [`AllocInit::Zeroed`]
     /// at `ptr + offset` until `ptr + layout.size()`.
     ///
     /// # Safety
     ///
-    /// * `layout` must [*fit*] the block of memory referenced by `ptr`
-    ///
-    /// * `offset` must be smaller than or equal to `layout.size()`
+    /// * `offset` must be smaller than or equal to `size()`
     ///
     /// [*fit*]: trait.AllocRef.html#memory-fitting
+    #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn initialize_offset(self, ptr: NonNull<u8>, layout: Layout, offset: usize) {
-        debug_assert!(
-            offset <= layout.size(),
-            "`offset` must be smaller than or equal to `layout.size()`"
-        );
-        match self {
+    pub unsafe fn init_offset(&mut self, init: AllocInit, offset: usize) {
+        debug_assert!(offset <= self.size(), "`offset` must be smaller than or equal to `size()`");
+        match init {
             AllocInit::Uninitialized => (),
             AllocInit::Zeroed => {
-                let new_ptr = ptr.as_ptr().add(offset);
-                let size = layout.size() - offset;
-                ptr::write_bytes(new_ptr, 0, size);
+                self.ptr().as_ptr().add(offset).write_bytes(0, self.size() - offset)
             }
         }
     }
@@ -116,70 +159,23 @@ pub enum ReallocPlacement {
 ///
 /// Unlike [`GlobalAlloc`][], zero-sized allocations are allowed in `AllocRef`. If an underlying
 /// allocator does not support this (like jemalloc) or return a null pointer (such as
-/// `libc::malloc`), this case must be caught. [`Layout::dangling()`][] then can be used to create
-/// an aligned `NonNull<u8>`.
-///
-/// ### Currently allocated memory
-///
-/// Some of the methods require that a memory block be *currently allocated* via an allocator. This
-/// means that:
-///
-/// * the starting address for that memory block was previously returned by [`alloc`], [`grow`], or
-///   [`shrink`], and
-///
-/// * the memory block has not been subsequently deallocated, where blocks are either deallocated
-///   directly by being passed to [`dealloc`] or were changed by being passed to [`grow`] or
-///   [`shrink`] that returns `Ok`. If `grow` or `shrink` have returned `Err`, the passed pointer
-///   remains valid.
-///
-/// [`alloc`]: AllocRef::alloc
-/// [`grow`]: AllocRef::grow
-/// [`shrink`]: AllocRef::shrink
-/// [`dealloc`]: AllocRef::dealloc
-///
-/// ### Memory fitting
-///
-/// Some of the methods require that a layout *fit* a memory block. What it means for a layout to
-/// "fit" a memory block means (or equivalently, for a memory block to "fit" a layout) is that the
-/// following conditions must hold:
-///
-/// * The block must be allocated with the same alignment as [`layout.align()`], and
-///
-/// * The provided [`layout.size()`] must fall in the range `min ..= max`, where:
-///   - `min` is the size of the layout most recently used to allocate the block, and
-///   - `max` is the latest actual size returned from [`alloc`], [`grow`], or [`shrink`].
-///
-/// [`layout.align()`]: Layout::align
-/// [`layout.size()`]: Layout::size
-///
-/// ### Notes
-///
-///  * if a layout `k` fits a memory block (denoted by `ptr`) currently allocated via an allocator
-///    `a`, then it is legal to use that layout to deallocate it, i.e.,
-///    [`a.dealloc(ptr, k);`][`dealloc`], and
-///
-///  * if an allocator does not support overallocating, it is fine to simply return
-///    [`layout.size()`] as the actual size.
+/// `libc::malloc`), this case must be caught.
 ///
 /// # Safety
 ///
-/// * Pointers returned from an allocator must point to valid memory and retain their validity until
-///   the instance and all of its clones are dropped,
+/// * Memory blocks returned from an allocator must point to valid memory and retain their validity
+///   until the instance and all of its clones are dropped, and
 ///
-/// * cloning or moving the allocator must not invalidate pointers returned from this allocator.
-///   A cloned allocator must behave like the same allocator, and
-///
-/// * any pointer to a memory block which is [*currently allocated*] may be passed to any other
-///   method of the allocator.
+/// * cloning or moving the allocator must not invalidate memory blocks returned from this
+///   allocator. A cloned allocator must behave like the same allocator.
 ///
 /// [*currently allocated*]: #currently-allocated-memory
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe trait AllocRef {
-    /// On success, returns a pointer meeting the size and alignment guarantees of `layout` and the
-    /// actual size of the allocated block, which is greater than or equal to `layout.size()`.
+    /// On success, returns a memory block meeting the size and alignment guarantees of `layout`.
     ///
-    /// The returned block of storage is initialized as specified by [`init`], all the way up to
-    /// the returned `actual_size`.
+    /// The returned block may have a larger size than specified by `layout.size()` and is
+    /// initialized as specified by [`init`], all the way up to the returned size of the block.
     ///
     /// [`init`]: AllocInit
     ///
@@ -196,58 +192,32 @@ pub unsafe trait AllocRef {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
-    fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<(NonNull<u8>, usize), AllocErr>;
+    fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<MemoryBlock, AllocErr>;
 
-    /// Deallocates the memory referenced by `ptr`.
+    /// Deallocates the memory denoted by `memory`.
     ///
     /// # Safety
     ///
-    /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator,
-    ///
-    /// * `layout` must [*fit*] that block of memory, and
-    ///
-    /// * the alignment of the `layout` must match the alignment used to allocate that block of
-    ///   memory.
-    ///
-    /// [*currently allocated*]: #currently-allocated-memory
-    /// [*fit*]: #memory-fitting
-    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout);
+    /// `memory` must be a memory block returned by this allocator.
+    unsafe fn dealloc(&mut self, memory: MemoryBlock);
 
-    /// Attempts to extend the allocation referenced by `ptr` to fit `new_size`.
-    ///
-    /// Returns a pointer and the actual size of the allocated block. The pointer is suitable for
-    /// holding data described by a new layout with `layout`’s alignment and a size given by
-    /// `new_size`. To accomplish this, the allocator may extend the allocation referenced by `ptr`
-    /// to fit the new layout.
-    ///
-    /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
-    /// transferred to this allocator. The memory may or may not have been freed, and should be
-    /// considered unusable (unless of course it was transferred back to the caller again via the
-    /// return value of this method).
-    ///
-    /// If this method returns `Err`, then ownership of the memory block has not been transferred to
-    /// this allocator, and the contents of the memory block are unaltered.
+    /// Attempts to extend the memory block.
     ///
     /// The behavior of how the allocator tries to grow the memory is specified by [`placement`].
-    /// The first `layout.size()` bytes of memory are preserved or copied as appropriate from `ptr`,
-    /// and the remaining bytes, from `layout.size()` to the returned actual size, are initialized
-    /// according to [`init`].
+    /// The first `memory.size()` bytes are preserved or copied as appropriate from `ptr`, and the
+    /// remaining bytes up to the new `memory.size()` are initialized according to [`init`].
     ///
     /// [`placement`]: ReallocPlacement
     /// [`init`]: AllocInit
     ///
     /// # Safety
     ///
-    /// * `ptr` must be [*currently allocated*] via this allocator,
-    ///
-    /// * `layout` must [*fit*] the `ptr`. (The `new_size` argument need not fit it.)
-    ///
-    // We can't require that `new_size` is strictly greater than `layout.size()` because of ZSTs.
+    /// * `memory` must be a memory block returned by this allocator.
+    // We can't require that `new_size` is strictly greater than `memory.size()` because of ZSTs.
     // An alternative would be
-    // * `new_size must be strictly greater than `layout.size()` or both are zero
-    /// * `new_size` must be greater than or equal to `layout.size()`
-    ///
-    /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`, must not overflow
+    // * `new_size must be strictly greater than `memory.size()` or both are zero
+    /// * `new_size` must be greater than or equal to `memory.size()`
+    /// * `new_size`, when rounded up to the nearest multiple of `memory.align()`, must not overflow
     ///   (i.e., the rounded value must be less than `usize::MAX`).
     ///
     /// [*currently allocated*]: #currently-allocated-memory
@@ -268,64 +238,50 @@ pub unsafe trait AllocRef {
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     unsafe fn grow(
         &mut self,
-        ptr: NonNull<u8>,
-        layout: Layout,
+        memory: &mut MemoryBlock,
         new_size: usize,
         placement: ReallocPlacement,
         init: AllocInit,
-    ) -> Result<(NonNull<u8>, usize), AllocErr> {
-        let old_size = layout.size();
-        debug_assert!(
-            new_size >= old_size,
-            "`new_size` must be greater than or equal to `layout.size()`"
-        );
-
-        if new_size == old_size {
-            return Ok((ptr, new_size));
-        }
-
+    ) -> Result<(), AllocErr> {
         match placement {
-            ReallocPlacement::MayMove => {
-                let (new_ptr, alloc_size) =
-                    self.alloc(Layout::from_size_align_unchecked(new_size, layout.align()), init)?;
-                ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_ptr(), old_size);
-                self.dealloc(ptr, layout);
-                Ok((new_ptr, alloc_size))
-            }
             ReallocPlacement::InPlace => Err(AllocErr),
+            ReallocPlacement::MayMove => {
+                let old_size = memory.size();
+                debug_assert!(
+                    new_size >= old_size,
+                    "`new_size` must be greater than or equal to `memory.size()`"
+                );
+
+                if new_size == old_size {
+                    return Ok(());
+                }
+
+                let new_layout = Layout::from_size_align_unchecked(new_size, memory.align());
+                let new_memory = self.alloc(new_layout, init)?;
+                ptr::copy_nonoverlapping(
+                    memory.ptr().as_ptr(),
+                    new_memory.ptr().as_ptr(),
+                    old_size,
+                );
+                self.dealloc(mem::replace(memory, new_memory));
+                Ok(())
+            }
         }
     }
 
-    /// Attempts to shrink the allocation referenced by `ptr` to fit `new_size`.
+    /// Attempts to shrink the memory block.
     ///
-    /// Returns a pointer and the actual size of the allocated block. The pointer is suitable for
-    /// holding data described by a new layout with `layout`’s alignment and a size given by
-    /// `new_size`. To accomplish this, the allocator may shrink the allocation referenced by `ptr`
-    /// to fit the new layout.
-    ///
-    /// The behavior on how the allocator tries to shrink the memory can be specified by
-    /// [`placement`].
-    ///
-    /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
-    /// transferred to this allocator. The memory may or may not have been freed, and should be
-    /// considered unusable unless it was transferred back to the caller again via the
-    /// return value of this method.
-    ///
-    /// If this method returns `Err`, then ownership of the memory block has not been transferred to
-    /// this allocator, and the contents of the memory block are unaltered.
+    /// The behavior of how the allocator tries to shrink the memory is specified by [`placement`].
     ///
     /// [`placement`]: ReallocPlacement
     ///
     /// # Safety
     ///
-    /// * `ptr` must be [*currently allocated*] via this allocator,
-    ///
-    /// * `layout` must [*fit*] the `ptr`. (The `new_size` argument need not fit it.)
-    ///
-    // We can't require that `new_size` is strictly smaller than `layout.size()` because of ZSTs.
+    /// * `memory` must be a memory block returned by this allocator.
+    // We can't require that `new_size` is strictly smaller than `memory.size()` because of ZSTs.
     // An alternative would be
-    // * `new_size must be strictly smaller than `layout.size()` or both are zero
-    /// * `new_size` must be smaller than or equal to `layout.size()`
+    // * `new_size must be strictly smaller than `memory.size()` or both are zero
+    /// * `new_size` must be smaller than or equal to `memory.size()`
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
@@ -333,7 +289,7 @@ pub unsafe trait AllocRef {
     /// # Errors
     ///
     /// Returns `Err` if the new layout does not meet the allocator's size and alignment
-    /// constraints of the allocator, or if shrinking otherwise fails.
+    /// constraints of the allocator, or if growing otherwise fails.
     ///
     /// Implementations are encouraged to return `Err` on memory exhaustion rather than panicking or
     /// aborting, but this is not a strict requirement. (Specifically: it is *legal* to implement
@@ -345,32 +301,33 @@ pub unsafe trait AllocRef {
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     unsafe fn shrink(
         &mut self,
-        ptr: NonNull<u8>,
-        layout: Layout,
+        memory: &mut MemoryBlock,
         new_size: usize,
         placement: ReallocPlacement,
-    ) -> Result<(NonNull<u8>, usize), AllocErr> {
-        let old_size = layout.size();
-        debug_assert!(
-            new_size <= old_size,
-            "`new_size` must be smaller than or equal to `layout.size()`"
-        );
-
-        if new_size == old_size {
-            return Ok((ptr, new_size));
-        }
-
+    ) -> Result<(), AllocErr> {
         match placement {
-            ReallocPlacement::MayMove => {
-                let (new_ptr, alloc_size) = self.alloc(
-                    Layout::from_size_align_unchecked(new_size, layout.align()),
-                    AllocInit::Uninitialized,
-                )?;
-                ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_ptr(), new_size);
-                self.dealloc(ptr, layout);
-                Ok((new_ptr, alloc_size))
-            }
             ReallocPlacement::InPlace => Err(AllocErr),
+            ReallocPlacement::MayMove => {
+                let old_size = memory.size();
+                debug_assert!(
+                    new_size <= old_size,
+                    "`new_size` must be smaller than or equal to `layout.size()`"
+                );
+
+                if new_size == old_size {
+                    return Ok(());
+                }
+
+                let new_layout = Layout::from_size_align_unchecked(new_size, memory.align());
+                let new_memory = self.alloc(new_layout, AllocInit::Uninitialized)?;
+                ptr::copy_nonoverlapping(
+                    memory.ptr().as_ptr(),
+                    new_memory.ptr().as_ptr(),
+                    new_size,
+                );
+                self.dealloc(mem::replace(memory, new_memory));
+                Ok(())
+            }
         }
     }
 }

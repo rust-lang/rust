@@ -1,5 +1,4 @@
 use super::*;
-use core::ptr::NonNull;
 
 #[test]
 fn allocator_param() {
@@ -13,6 +12,7 @@ fn allocator_param() {
     //
     // Instead, this just checks that the `RawVec` methods do at
     // least go through the Allocator API when it reserves
+
     // storage.
 
     // A dumb allocator that consumes a fixed amount of fuel
@@ -21,11 +21,7 @@ fn allocator_param() {
         fuel: usize,
     }
     unsafe impl AllocRef for BoundedAlloc {
-        fn alloc(
-            &mut self,
-            layout: Layout,
-            init: AllocInit,
-        ) -> Result<(NonNull<u8>, usize), AllocErr> {
+        fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<MemoryBlock, AllocErr> {
             let size = layout.size();
             if size > self.fuel {
                 return Err(AllocErr);
@@ -38,16 +34,16 @@ fn allocator_param() {
                 err @ Err(_) => err,
             }
         }
-        unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-            Global.dealloc(ptr, layout)
+        unsafe fn dealloc(&mut self, memory: MemoryBlock) {
+            Global.dealloc(memory)
         }
     }
 
     let a = BoundedAlloc { fuel: 500 };
     let mut v: RawVec<u8, _> = RawVec::with_capacity_in(50, a);
-    assert_eq!(v.a.fuel, 450);
+    assert_eq!(v.alloc.fuel, 450);
     v.reserve(50, 150); // (causes a realloc, thus using 50 + 150 = 200 units of fuel)
-    assert_eq!(v.a.fuel, 250);
+    assert_eq!(v.alloc.fuel, 250);
 }
 
 #[test]

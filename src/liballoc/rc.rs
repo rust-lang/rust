@@ -234,6 +234,7 @@ use crate::boxed::Box;
 #[cfg(test)]
 use std::boxed::Box;
 
+use core::alloc::MemoryBlock;
 use core::any::Any;
 use core::array::LengthAtMost32;
 use core::borrow;
@@ -936,12 +937,12 @@ impl<T: ?Sized> Rc<T> {
         let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
 
         // Allocate for the layout.
-        let (mem, _) = Global
+        let mem = Global
             .alloc(layout, AllocInit::Uninitialized)
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the RcBox
-        let inner = mem_to_rcbox(mem.as_ptr());
+        let inner = mem_to_rcbox(mem.ptr().as_ptr());
         debug_assert_eq!(Layout::for_value(&*inner), layout);
 
         ptr::write(&mut (*inner).strong, Cell::new(1));
@@ -1031,7 +1032,7 @@ impl<T> Rc<[T]> {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Global.dealloc(self.mem, self.layout);
+                    Global.dealloc(MemoryBlock::new(self.mem, self.layout));
                 }
             }
         }
@@ -1131,7 +1132,10 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
                 self.dec_weak();
 
                 if self.weak() == 0 {
-                    Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
+                    Global.dealloc(MemoryBlock::new(
+                        self.ptr.cast(),
+                        Layout::for_value(self.ptr.as_ref()),
+                    ));
                 }
             }
         }
@@ -1939,7 +1943,10 @@ impl<T: ?Sized> Drop for Weak<T> {
             // the strong pointers have disappeared.
             if inner.weak() == 0 {
                 unsafe {
-                    Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
+                    Global.dealloc(MemoryBlock::new(
+                        self.ptr.cast(),
+                        Layout::for_value(self.ptr.as_ref()),
+                    ));
                 }
             }
         }

@@ -143,7 +143,6 @@ use core::ops::{
 };
 use core::pin::Pin;
 use core::ptr::{self, NonNull, Unique};
-use core::slice;
 use core::task::{Context, Poll};
 
 use crate::alloc::{self, AllocInit, AllocRef, Global};
@@ -199,7 +198,7 @@ impl<T> Box<T> {
         let ptr = Global
             .alloc(layout, AllocInit::Uninitialized)
             .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-            .0
+            .ptr()
             .cast();
         unsafe { Box::from_raw(ptr.as_ptr()) }
     }
@@ -228,7 +227,7 @@ impl<T> Box<T> {
         let ptr = Global
             .alloc(layout, AllocInit::Zeroed)
             .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-            .0
+            .ptr()
             .cast();
         unsafe { Box::from_raw(ptr.as_ptr()) }
     }
@@ -265,13 +264,7 @@ impl<T> Box<[T]> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
-        let ptr = Global
-            .alloc(layout, AllocInit::Uninitialized)
-            .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-            .0
-            .cast();
-        unsafe { Box::from_raw(slice::from_raw_parts_mut(ptr.as_ptr(), len)) }
+        unsafe { RawVec::with_capacity(len).into_box(len) }
     }
 }
 
@@ -776,7 +769,7 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
         let buf = RawVec::with_capacity(len);
         unsafe {
             ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
-            buf.into_box().assume_init()
+            buf.into_box(slice.len()).assume_init()
         }
     }
 }

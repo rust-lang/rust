@@ -137,104 +137,98 @@ pub struct System;
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for System {
     #[inline]
-    fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<(NonNull<u8>, usize), AllocErr> {
-        let new_size = layout.size();
-        if new_size == 0 {
-            Ok((layout.dangling(), 0))
-        } else {
-            unsafe {
+    fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<MemoryBlock, AllocErr> {
+        unsafe {
+            if layout.size() == 0 {
+                Ok(MemoryBlock::new(layout.dangling(), layout))
+            } else {
                 let raw_ptr = match init {
                     AllocInit::Uninitialized => GlobalAlloc::alloc(self, layout),
                     AllocInit::Zeroed => GlobalAlloc::alloc_zeroed(self, layout),
                 };
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
-                Ok((ptr, new_size))
+                Ok(MemoryBlock::new(ptr, layout))
             }
         }
     }
 
     #[inline]
-    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-        if layout.size() != 0 {
-            GlobalAlloc::dealloc(self, ptr.as_ptr(), layout)
+    unsafe fn dealloc(&mut self, memory: MemoryBlock) {
+        if memory.size() != 0 {
+            GlobalAlloc::dealloc(self, memory.ptr().as_ptr(), memory.layout())
         }
     }
 
     #[inline]
     unsafe fn grow(
         &mut self,
-        ptr: NonNull<u8>,
-        layout: Layout,
+        memory: &mut MemoryBlock,
         new_size: usize,
         placement: ReallocPlacement,
         init: AllocInit,
-    ) -> Result<(NonNull<u8>, usize), AllocErr> {
-        let old_size = layout.size();
+    ) -> Result<(), AllocErr> {
+        let old_size = memory.size();
         debug_assert!(
             new_size >= old_size,
-            "`new_size` must be greater than or equal to `layout.size()`"
+            "`new_size` must be greater than or equal to `memory.size()`"
         );
 
         if old_size == new_size {
-            return Ok((ptr, new_size));
+            return Ok(());
         }
 
+        let new_layout = Layout::from_size_align_unchecked(new_size, memory.align());
         match placement {
-            ReallocPlacement::MayMove => {
-                if old_size == 0 {
-                    self.alloc(Layout::from_size_align_unchecked(new_size, layout.align()), init)
-                } else {
-                    // `realloc` probably checks for `new_size > old_size` or something similar.
-                    // `new_size` must be greater than or equal to `old_size` due to the safety constraint,
-                    // and `new_size` == `old_size` was caught before
-                    intrinsics::assume(new_size > old_size);
-                    let ptr =
-                        NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size))
-                            .ok_or(AllocErr)?;
-                    let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
-                    init.initialize_offset(ptr, new_layout, old_size);
-                    Ok((ptr, new_size))
-                }
+            ReallocPlacement::InPlace => return Err(AllocErr),
+            ReallocPlacement::MayMove if memory.size() == 0 => {
+                *memory = self.alloc(new_layout, init)?
             }
-            ReallocPlacement::InPlace => Err(AllocErr),
+            ReallocPlacement::MayMove => {
+                // `realloc` probably checks for `new_size > old_size` or something similar.
+                intrinsics::assume(new_size > old_size);
+                let ptr =
+                    GlobalAlloc::realloc(self, memory.ptr().as_ptr(), memory.layout(), new_size);
+                *memory = MemoryBlock::new(NonNull::new(ptr).ok_or(AllocErr)?, new_layout);
+                memory.init_offset(init, old_size);
+            }
         }
+        Ok(())
     }
 
     #[inline]
     unsafe fn shrink(
         &mut self,
-        ptr: NonNull<u8>,
-        layout: Layout,
+        memory: &mut MemoryBlock,
         new_size: usize,
         placement: ReallocPlacement,
-    ) -> Result<(NonNull<u8>, usize), AllocErr> {
-        let old_size = layout.size();
+    ) -> Result<(), AllocErr> {
+        let old_size = memory.size();
         debug_assert!(
             new_size <= old_size,
-            "`new_size` must be smaller than or equal to `layout.size()`"
+            "`new_size` must be smaller than or equal to `memory.size()`"
         );
 
         if old_size == new_size {
-            return Ok((ptr, new_size));
+            return Ok(());
         }
 
+        let new_layout = Layout::from_size_align_unchecked(new_size, memory.align());
         match placement {
-            ReallocPlacement::MayMove => {
-                let ptr = if new_size == 0 {
-                    self.dealloc(ptr, layout);
-                    layout.dangling()
-                } else {
-                    // `realloc` probably checks for `new_size > old_size` or something similar.
-                    // `new_size` must be smaller than or equal to `old_size` due to the safety constraint,
-                    // and `new_size` == `old_size` was caught before
-                    intrinsics::assume(new_size < old_size);
-                    NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size))
-                        .ok_or(AllocErr)?
-                };
-                Ok((ptr, new_size))
+            ReallocPlacement::InPlace => return Err(AllocErr),
+            ReallocPlacement::MayMove if new_size == 0 => {
+                let new_memory = MemoryBlock::new(new_layout.dangling(), new_layout);
+                let old_memory = mem::replace(memory, new_memory);
+                self.dealloc(old_memory)
             }
-            ReallocPlacement::InPlace => Err(AllocErr),
+            ReallocPlacement::MayMove => {
+                // `realloc` probably checks for `new_size < old_size` or something similar.
+                intrinsics::assume(new_size < old_size);
+                let ptr =
+                    GlobalAlloc::realloc(self, memory.ptr().as_ptr(), memory.layout(), new_size);
+                *memory = MemoryBlock::new(NonNull::new(ptr).ok_or(AllocErr)?, new_layout);
+            }
         }
+        Ok(())
     }
 }
 

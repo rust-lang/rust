@@ -6,6 +6,7 @@
 //!
 //! [arc]: struct.Arc.html
 
+use core::alloc::MemoryBlock;
 use core::any::Any;
 use core::array::LengthAtMost32;
 use core::borrow;
@@ -770,7 +771,7 @@ impl<T: ?Sized> Arc<T> {
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             acquire!(self.inner().weak);
-            Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()))
+            Global.dealloc(MemoryBlock::new(self.ptr.cast(), Layout::for_value(self.ptr.as_ref())))
         }
     }
 
@@ -814,12 +815,12 @@ impl<T: ?Sized> Arc<T> {
         // reference (see #54908).
         let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
 
-        let (mem, _) = Global
+        let mem = Global
             .alloc(layout, AllocInit::Uninitialized)
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the ArcInner
-        let inner = mem_to_arcinner(mem.as_ptr());
+        let inner = mem_to_arcinner(mem.ptr().as_ptr());
         debug_assert_eq!(Layout::for_value(&*inner), layout);
 
         ptr::write(&mut (*inner).strong, atomic::AtomicUsize::new(1));
@@ -909,7 +910,7 @@ impl<T> Arc<[T]> {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Global.dealloc(self.mem.cast(), self.layout);
+                    Global.dealloc(MemoryBlock::new(self.mem.cast(), self.layout));
                 }
             }
         }
@@ -1734,7 +1735,12 @@ impl<T: ?Sized> Drop for Weak<T> {
 
         if inner.weak.fetch_sub(1, Release) == 1 {
             acquire!(inner.weak);
-            unsafe { Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref())) }
+            unsafe {
+                Global.dealloc(MemoryBlock::new(
+                    self.ptr.cast(),
+                    Layout::for_value(self.ptr.as_ref()),
+                ))
+            }
         }
     }
 }

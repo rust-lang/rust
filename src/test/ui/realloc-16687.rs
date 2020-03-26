@@ -6,7 +6,9 @@
 
 #![feature(allocator_api)]
 
-use std::alloc::{handle_alloc_error, AllocInit, AllocRef, Global, Layout, ReallocPlacement};
+use std::alloc::{
+    handle_alloc_error, AllocInit, AllocRef, Global, Layout, MemoryBlock, ReallocPlacement,
+};
 use std::ptr::{self, NonNull};
 
 fn main() {
@@ -41,15 +43,15 @@ unsafe fn test_triangle() -> bool {
             println!("allocate({:?})", layout);
         }
 
-        let (ptr, _) = Global
+        let memory = Global
             .alloc(layout, AllocInit::Uninitialized)
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
         if PRINT {
-            println!("allocate({:?}) = {:?}", layout, ptr);
+            println!("allocate({:?}) = {:?}", layout, memory.ptr());
         }
 
-        ptr.cast().as_ptr()
+        memory.ptr().cast().as_ptr()
     }
 
     unsafe fn deallocate(ptr: *mut u8, layout: Layout) {
@@ -57,7 +59,7 @@ unsafe fn test_triangle() -> bool {
             println!("deallocate({:?}, {:?}", ptr, layout);
         }
 
-        Global.dealloc(NonNull::new_unchecked(ptr), layout);
+        Global.dealloc(MemoryBlock::new(NonNull::new_unchecked(ptr), layout));
     }
 
     unsafe fn reallocate(ptr: *mut u8, old: Layout, new: Layout) -> *mut u8 {
@@ -65,28 +67,28 @@ unsafe fn test_triangle() -> bool {
             println!("reallocate({:?}, old={:?}, new={:?})", ptr, old, new);
         }
 
-        let allocation = if new.size() > old.size() {
+        let mut memory = MemoryBlock::new(NonNull::new_unchecked(ptr), old);
+        let result = if new.size() > old.size() {
             Global.grow(
-                NonNull::new_unchecked(ptr),
-                old,
+                &mut memory,
                 new.size(),
                 ReallocPlacement::MayMove,
                 AllocInit::Uninitialized,
             )
         } else if new.size() < old.size() {
-            Global.shrink(NonNull::new_unchecked(ptr), old, new.size(), ReallocPlacement::MayMove)
+            Global.shrink(&mut memory, new.size(), ReallocPlacement::MayMove)
         } else {
             return ptr;
         };
 
-        let (ptr, _) = allocation.unwrap_or_else(|_| {
+        result.unwrap_or_else(|_| {
             handle_alloc_error(Layout::from_size_align_unchecked(new.size(), old.align()))
         });
 
         if PRINT {
-            println!("reallocate({:?}, old={:?}, new={:?}) = {:?}", ptr, old, new, ptr);
+            println!("reallocate({:?}, old={:?}, new={:?}) = {:?}", ptr, old, new, memory.ptr());
         }
-        ptr.cast().as_ptr()
+        memory.ptr().cast().as_ptr()
     }
 
     fn idx_to_size(i: usize) -> usize {
