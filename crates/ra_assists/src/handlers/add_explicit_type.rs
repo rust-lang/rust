@@ -130,8 +130,8 @@ mod tests {
     fn add_explicit_type_works_for_macro_call() {
         check_assist(
             add_explicit_type,
-            "macro_rules! v { () => {0u64} } fn f() { let a<|> = v!(); }",
-            "macro_rules! v { () => {0u64} } fn f() { let a<|>: u64 = v!(); }",
+            r"macro_rules! v { () => {0u64} } fn f() { let a<|> = v!(); }",
+            r"macro_rules! v { () => {0u64} } fn f() { let a<|>: u64 = v!(); }",
         );
     }
 

@@ -6,8 +6,7 @@ use itertools::Itertools;
 
 use crate::{
     ast::{self, child_opt, children, AstChildren, AstNode, AstToken},
-    match_ast,
-    syntax_node::{SyntaxElementChildren, SyntaxNodeChildren},
+    syntax_node::SyntaxElementChildren,
 };
 
 pub trait TypeAscriptionOwner: AstNode {
@@ -46,37 +45,9 @@ pub trait FnDefOwner: AstNode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ItemOrMacro {
-    Item(ast::ModuleItem),
-    Macro(ast::MacroCall),
-}
-
 pub trait ModuleItemOwner: AstNode {
     fn items(&self) -> AstChildren<ast::ModuleItem> {
         children(self)
-    }
-    fn items_with_macros(&self) -> ItemOrMacroIter {
-        ItemOrMacroIter(self.syntax().children())
-    }
-}
-
-#[derive(Debug)]
-pub struct ItemOrMacroIter(SyntaxNodeChildren);
-
-impl Iterator for ItemOrMacroIter {
-    type Item = ItemOrMacro;
-    fn next(&mut self) -> Option<ItemOrMacro> {
-        loop {
-            let n = self.0.next()?;
-            match_ast! {
-                match n {
-                    ast::ModuleItem(it) => { return Some(ItemOrMacro::Item(it)) },
-                    ast::MacroCall(it) => { return Some(ItemOrMacro::Macro(it)) },
-                    _ => {},
-                }
-            }
-        }
     }
 }
 
