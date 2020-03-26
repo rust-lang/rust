@@ -908,8 +908,10 @@ impl<'a> Parser<'a> {
 
     fn error_bad_item_kind<T>(&self, span: Span, kind: &ItemKind, ctx: &str) -> Option<T> {
         let span = self.sess.source_map().guess_head_span(span);
-        let msg = format!("{} is not supported in {}", kind.descr(), ctx);
-        self.struct_span_err(span, &msg).emit();
+        let descr = kind.descr();
+        self.struct_span_err(span, &format!("{} is not supported in {}", descr, ctx))
+            .help(&format!("consider moving the {} out to a nearby module scope", descr))
+            .emit();
         None
     }
 
