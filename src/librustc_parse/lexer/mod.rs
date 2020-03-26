@@ -182,7 +182,7 @@ impl<'a> StringReader<'a> {
     /// Turns simple `rustc_lexer::TokenKind` enum into a rich
     /// `librustc_ast::TokenKind`. This turns strings into interned
     /// symbols and runs additional validation.
-    fn cook_lexer_token(&self, token: rustc_lexer::TokenKind, start: BytePos) -> TokenKind {
+    fn cook_lexer_token(&mut self, token: rustc_lexer::TokenKind, start: BytePos) -> TokenKind {
         match token {
             rustc_lexer::TokenKind::LineComment => {
                 let string = self.str_from(start);
@@ -323,7 +323,7 @@ impl<'a> StringReader<'a> {
     }
 
     fn cook_lexer_literal(
-        &self,
+        &mut self,
         start: BytePos,
         suffix_start: BytePos,
         kind: rustc_lexer::LiteralKind,
@@ -440,6 +440,16 @@ impl<'a> StringReader<'a> {
                     _ => (),
                 }
 
+                // tuple.0.0
+                //       ^^^ we truncate this "float" literal at the dot.
+                if self.ends_with(start, ".") && !self.ends_with(start, "..") {
+                    if let Some(dot) = self.str_from(start).find('.') {
+                        self.pos = start + BytePos(dot as u32);
+                        let id = self.symbol_from(start);
+                        return (token::Integer, id);
+                    }
+                }
+
                 let id = self.symbol_from_to(start, suffix_start);
                 (token::Float, id)
             }
@@ -472,6 +482,11 @@ impl<'a> StringReader<'a> {
     /// Slice of the source text spanning from `start` up to but excluding `end`.
     fn str_from_to(&self, start: BytePos, end: BytePos) -> &str {
         &self.src[self.src_index(start)..self.src_index(end)]
+    }
+
+    /// Whether the source text leading up to position `pos` ends with `suffix`.
+    fn ends_with(&self, pos: BytePos, suffix: &str) -> bool {
+        self.src[..self.src_index(pos)].ends_with(suffix)
     }
 
     fn forbid_bare_cr(&self, start: BytePos, s: &str, errmsg: &str) {
