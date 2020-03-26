@@ -2,7 +2,7 @@ use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
 use rustc_span::{symbol::kw, BytePos, Span};
-use syntax::ast::{self, FunctionRetTy, Mutability};
+use syntax::ast::{self, FnRetTy, Mutability};
 
 use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity, Version};
@@ -292,7 +292,7 @@ fn rewrite_segment(
 
 fn format_function_type<'a, I>(
     inputs: I,
-    output: &FunctionRetTy,
+    output: &FnRetTy,
     variadic: bool,
     span: Span,
     context: &RewriteContext<'_>,
@@ -311,11 +311,11 @@ where
         IndentStyle::Visual => shape.block_left(4)?,
     };
     let output = match *output {
-        FunctionRetTy::Ty(ref ty) => {
+        FnRetTy::Ty(ref ty) => {
             let type_str = ty.rewrite(context, ty_shape)?;
             format!(" -> {}", type_str)
         }
-        FunctionRetTy::Default(..) => String::new(),
+        FnRetTy::Default(..) => String::new(),
     };
 
     let list_shape = if context.use_block_indent() {

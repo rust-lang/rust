@@ -165,10 +165,10 @@ pub(crate) struct FnSig<'a> {
     decl: &'a ast::FnDecl,
     generics: &'a ast::Generics,
     ext: ast::Extern,
-    is_async: Cow<'a, ast::IsAsync>,
-    constness: ast::Constness,
+    is_async: Cow<'a, ast::Async>,
+    constness: ast::Const,
     defaultness: ast::Defaultness,
-    unsafety: ast::Unsafety,
+    unsafety: ast::Unsafe,
     visibility: ast::Visibility,
 }
 
@@ -182,10 +182,10 @@ impl<'a> FnSig<'a> {
             decl,
             generics,
             ext: ast::Extern::None,
-            is_async: Cow::Owned(ast::IsAsync::NotAsync),
-            constness: ast::Constness::NotConst,
+            is_async: Cow::Owned(ast::Async::No),
+            constness: ast::Const::No,
             defaultness: ast::Defaultness::Final,
-            unsafety: ast::Unsafety::Normal,
+            unsafety: ast::Unsafe::No,
             visibility: vis,
         }
     }
@@ -196,8 +196,8 @@ impl<'a> FnSig<'a> {
     ) -> FnSig<'a> {
         FnSig {
             unsafety: method_sig.header.unsafety,
-            is_async: Cow::Borrowed(&method_sig.header.asyncness.node),
-            constness: method_sig.header.constness.node,
+            is_async: Cow::Borrowed(&method_sig.header.asyncness),
+            constness: method_sig.header.constness,
             defaultness: ast::Defaultness::Final,
             ext: method_sig.header.ext,
             decl: &*method_sig.decl,
@@ -224,8 +224,8 @@ impl<'a> FnSig<'a> {
                     decl,
                     generics,
                     ext: fn_sig.header.ext,
-                    constness: fn_sig.header.constness.node,
-                    is_async: Cow::Borrowed(&fn_sig.header.asyncness.node),
+                    constness: fn_sig.header.constness,
+                    is_async: Cow::Borrowed(&fn_sig.header.asyncness),
                     defaultness,
                     unsafety: fn_sig.header.unsafety,
                     visibility: vis.clone(),
@@ -1908,11 +1908,11 @@ pub(crate) fn rewrite_associated_impl_type(
     }
 }
 
-impl Rewrite for ast::FunctionRetTy {
+impl Rewrite for ast::FnRetTy {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match *self {
-            ast::FunctionRetTy::Default(_) => Some(String::new()),
-            ast::FunctionRetTy::Ty(ref ty) => {
+            ast::FnRetTy::Default(_) => Some(String::new()),
+            ast::FnRetTy::Ty(ref ty) => {
                 if context.config.version() == Version::One
                     || context.config.indent_style() == IndentStyle::Visual
                 {
@@ -2290,7 +2290,7 @@ fn rewrite_fn_base(
     }
 
     // Return type.
-    if let ast::FunctionRetTy::Ty(..) = fd.output {
+    if let ast::FnRetTy::Ty(..) = fd.output {
         let ret_should_indent = match context.config.indent_style() {
             // If our params are block layout then we surely must have space.
             IndentStyle::Block if put_params_in_block || fd.inputs.is_empty() => false,
@@ -2396,8 +2396,8 @@ fn rewrite_fn_base(
     }
 
     let pos_before_where = match fd.output {
-        ast::FunctionRetTy::Default(..) => params_span.hi(),
-        ast::FunctionRetTy::Ty(ref ty) => ty.span.hi(),
+        ast::FnRetTy::Default(..) => params_span.hi(),
+        ast::FnRetTy::Ty(ref ty) => ty.span.hi(),
     };
 
     let is_params_multi_lined = param_str.contains('\n');
@@ -2425,7 +2425,7 @@ fn rewrite_fn_base(
     // If there are neither where-clause nor return type, we may be missing comments between
     // params and `{`.
     if where_clause_str.is_empty() {
-        if let ast::FunctionRetTy::Default(ret_span) = fd.output {
+        if let ast::FnRetTy::Default(ret_span) = fd.output {
             match recover_missing_comment_in_span(
                 mk_sp(params_span.hi(), ret_span.hi()),
                 shape,

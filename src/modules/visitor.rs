@@ -15,11 +15,11 @@ pub(crate) struct ModItem {
 pub(crate) struct CfgIfVisitor<'a> {
     parse_sess: &'a ParseSess,
     mods: Vec<ModItem>,
-    base_dir: Directory<'a>,
+    base_dir: Directory,
 }
 
 impl<'a> CfgIfVisitor<'a> {
-    pub(crate) fn new(parse_sess: &'a ParseSess, base_dir: Directory<'a>) -> CfgIfVisitor<'a> {
+    pub(crate) fn new(parse_sess: &'a ParseSess, base_dir: Directory) -> CfgIfVisitor<'a> {
         CfgIfVisitor {
             mods: vec![],
             parse_sess,

@@ -86,18 +86,18 @@ pub(crate) fn format_visibility(
 }
 
 #[inline]
-pub(crate) fn format_async(is_async: &ast::IsAsync) -> &'static str {
+pub(crate) fn format_async(is_async: &ast::Async) -> &'static str {
     match is_async {
-        ast::IsAsync::Async { .. } => "async ",
-        ast::IsAsync::NotAsync => "",
+        ast::Async::Yes { .. } => "async ",
+        ast::Async::No => "",
     }
 }
 
 #[inline]
-pub(crate) fn format_constness(constness: ast::Constness) -> &'static str {
+pub(crate) fn format_constness(constness: ast::Const) -> &'static str {
     match constness {
-        ast::Constness::Const => "const ",
-        ast::Constness::NotConst => "",
+        ast::Const::Yes(..) => "const ",
+        ast::Const::No => "",
     }
 }
 
@@ -110,10 +110,10 @@ pub(crate) fn format_defaultness(defaultness: ast::Defaultness) -> &'static str 
 }
 
 #[inline]
-pub(crate) fn format_unsafety(unsafety: ast::Unsafety) -> &'static str {
+pub(crate) fn format_unsafety(unsafety: ast::Unsafe) -> &'static str {
     match unsafety {
-        ast::Unsafety::Unsafe => "unsafe ",
-        ast::Unsafety::Normal => "",
+        ast::Unsafe::Yes(..) => "unsafe ",
+        ast::Unsafe::No => "",
     }
 }
 

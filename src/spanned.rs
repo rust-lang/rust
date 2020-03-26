@@ -151,11 +151,11 @@ impl Spanned for ast::WherePredicate {
     }
 }
 
-impl Spanned for ast::FunctionRetTy {
+impl Spanned for ast::FnRetTy {
     fn span(&self) -> Span {
         match *self {
-            ast::FunctionRetTy::Default(span) => span,
-            ast::FunctionRetTy::Ty(ref ty) => ty.span,
+            ast::FnRetTy::Default(span) => span,
+            ast::FnRetTy::Ty(ref ty) => ty.span,
         }
     }
 }
