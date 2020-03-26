@@ -24,22 +24,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.getenv(args[0])?;
                 this.write_scalar(result, dest)?;
             }
-
             "unsetenv" => {
                 let result = this.unsetenv(args[0])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "setenv" => {
                 let result = this.setenv(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "getcwd" => {
                 let result = this.getcwd(args[0], args[1])?;
                 this.write_scalar(result, dest)?;
             }
-
             "chdir" => {
                 let result = this.chdir(args[0])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
@@ -50,17 +46,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.open(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "fcntl" => {
                 let result = this.fcntl(args[0], args[1], args.get(2).cloned())?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "read" => {
                 let result = this.read(args[0], args[1], args[2])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "write" => {
                 let fd = this.read_scalar(args[0])?.to_i32()?;
                 let buf = this.read_scalar(args[1])?.not_undef()?;
@@ -94,43 +87,40 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Now, `result` is the value we return back to the program.
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "unlink" => {
                 let result = this.unlink(args[0])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "symlink" => {
                 let result = this.symlink(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "rename" => {
                 let result = this.rename(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "mkdir" => {
                 let result = this.mkdir(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "rmdir" => {
                 let result = this.rmdir(args[0])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "closedir" => {
                 let result = this.closedir(args[0])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "lseek" | "lseek64" => {
                 let result = this.lseek64(args[0], args[1], args[2])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
+            "posix_fadvise" => {
+                // fadvise is only informational, we can ignore it.
+                this.write_null(dest)?;
+            }
 
-            // Other shims
+            // Allocation
             "posix_memalign" => {
                 let ret = this.deref_operand(args[0])?;
                 let align = this.read_scalar(args[1])?.to_machine_usize(this)?;
@@ -159,6 +149,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
+            // Dynamic symbol loading
             "dlsym" => {
                 let _handle = this.read_scalar(args[0])?;
                 let symbol = this.read_scalar(args[1])?.not_undef()?;
@@ -173,7 +164,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            // Hook pthread calls that go to the thread-local storage memory subsystem.
+            // Querying system information
+            "sysconf" => {
+                let name = this.read_scalar(args[0])?.to_i32()?;
+
+                let sysconfs = &[
+                    ("_SC_PAGESIZE", Scalar::from_int(PAGE_SIZE, dest.layout.size)),
+                    ("_SC_NPROCESSORS_ONLN", Scalar::from_int(NUM_CPUS, dest.layout.size)),
+                ];
+                let mut result = None;
+                for &(sysconf_name, value) in sysconfs {
+                    let sysconf_name = this.eval_libc_i32(sysconf_name)?;
+                    if sysconf_name == name {
+                        result = Some(value);
+                        break;
+                    }
+                }
+                if let Some(result) = result {
+                    this.write_scalar(result, dest)?;
+                } else {
+                    throw_unsup_format!("unimplemented sysconf name: {}", name)
+                }
+            }
+
+            // Thread-local storage
             "pthread_key_create" => {
                 let key_place = this.deref_operand(args[0])?;
 
@@ -220,36 +234,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
-            // Stack size/address stuff.
-            | "pthread_attr_init"
-            | "pthread_attr_destroy"
-            | "pthread_self"
-            | "pthread_attr_setstacksize" => {
-                this.write_null(dest)?;
-            }
-            "pthread_attr_getstack" => {
-                let addr_place = this.deref_operand(args[1])?;
-                let size_place = this.deref_operand(args[2])?;
-
-                this.write_scalar(
-                    Scalar::from_uint(STACK_ADDR, addr_place.layout.size),
-                    addr_place.into(),
-                )?;
-                this.write_scalar(
-                    Scalar::from_uint(STACK_SIZE, size_place.layout.size),
-                    size_place.into(),
-                )?;
-
-                // Return success (`0`).
-                this.write_null(dest)?;
-            }
-
-            // We don't support threading.
+            // Better error for attempts to create a thread
             "pthread_create" => {
                 throw_unsup_format!("Miri does not support threading");
             }
 
-            // Stub out calls for condvar, mutex and rwlock, to just return `0`.
+            // Miscellaneous
+            "isatty" => {
+                let _fd = this.read_scalar(args[0])?.to_i32()?;
+                // "returns 1 if fd is an open file descriptor referring to a terminal; otherwise 0 is returned, and errno is set to indicate the error"
+                // FIXME: we just say nothing is a terminal.
+                let enotty = this.eval_libc("ENOTTY")?;
+                this.set_last_error(enotty)?;
+                this.write_null(dest)?;
+            }
+            "pthread_atfork" => {
+                let _prepare = this.read_scalar(args[0])?.not_undef()?;
+                let _parent = this.read_scalar(args[1])?.not_undef()?;
+                let _child = this.read_scalar(args[1])?.not_undef()?;
+                // We do not support forking, so there is nothing to do here.
+                this.write_null(dest)?;
+            }
+
+            // Incomplete shims that we "stub out" just to get pre-main initialziation code to work.
+            // These shims are enabled only when the caller is in the standard library.
+            | "pthread_attr_init"
+            | "pthread_attr_destroy"
+            | "pthread_self"
+            | "pthread_attr_setstacksize" if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
+                this.write_null(dest)?;
+            }
             | "pthread_mutexattr_init"
             | "pthread_mutexattr_settype"
             | "pthread_mutex_init"
@@ -265,68 +279,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "pthread_condattr_setclock"
             | "pthread_cond_init"
             | "pthread_condattr_destroy"
-            | "pthread_cond_destroy"
+            | "pthread_cond_destroy" if this.frame().instance.to_string().starts_with("std::sys::unix::")
             => {
                 this.write_null(dest)?;
             }
-
-            // We don't support fork so we don't have to do anything for atfork.
-            "pthread_atfork" => {
-                this.write_null(dest)?;
-            }
-
-            // Some things needed for `sys::thread` initialization to go through.
             | "signal"
             | "sigaction"
             | "sigaltstack"
+            | "mprotect" if this.frame().instance.to_string().starts_with("std::sys::unix::")
             => {
-                this.write_scalar(Scalar::from_int(0, dest.layout.size), dest)?;
-            }
-
-            "sysconf" => {
-                let name = this.read_scalar(args[0])?.to_i32()?;
-
-                trace!("sysconf() called with name {}", name);
-                // TODO: Cache the sysconf integers via Miri's global cache.
-                let sysconfs = &[
-                    ("_SC_PAGESIZE", Scalar::from_int(PAGE_SIZE, dest.layout.size)),
-                    ("_SC_GETPW_R_SIZE_MAX", Scalar::from_int(-1, dest.layout.size)),
-                    ("_SC_NPROCESSORS_ONLN", Scalar::from_int(NUM_CPUS, dest.layout.size)),
-                ];
-                let mut result = None;
-                for &(sysconf_name, value) in sysconfs {
-                    let sysconf_name = this.eval_libc_i32(sysconf_name)?;
-                    if sysconf_name == name {
-                        result = Some(value);
-                        break;
-                    }
-                }
-                if let Some(result) = result {
-                    this.write_scalar(result, dest)?;
-                } else {
-                    throw_unsup_format!("unimplemented sysconf name: {}", name)
-                }
-            }
-
-            "isatty" => {
                 this.write_null(dest)?;
             }
 
-            "posix_fadvise" => {
-                // fadvise is only informational, we can ignore it.
-                this.write_null(dest)?;
-            }
-
-            "mmap" => {
-                // This is a horrible hack, but since the guard page mechanism calls mmap and expects a particular return value, we just give it that value.
-                let addr = this.read_scalar(args[0])?.not_undef()?;
-                this.write_scalar(addr, dest)?;
-            }
-
-            "mprotect" => {
-                this.write_null(dest)?;
-            }
-
+            // Platform-specific shims
             _ => {
                 match this.tcx.sess.target.target.target_os.as_str() {
                     "linux" => return linux::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),

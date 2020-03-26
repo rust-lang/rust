@@ -14,12 +14,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
+        // Windows API stubs.
+        // HANDLE = isize
+        // DWORD = ULONG = u32
+        // BOOL = i32
         match link_name {
-            // Windows API stubs.
-            // HANDLE = isize
-            // DWORD = ULONG = u32
-            // BOOL = i32
-
             // Environment related shims
             "GetEnvironmentVariableW" => {
                 let result = this.GetEnvironmentVariableW(args[0], args[1], args[2])?;
@@ -42,6 +41,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // File related shims
+            "GetStdHandle" => {
+                let which = this.read_scalar(args[0])?.to_i32()?;
+                // We just make this the identity function, so we know later in `WriteFile`
+                // which one it is.
+                this.write_scalar(Scalar::from_int(which, this.pointer_size()), dest)?;
+            }
             "WriteFile" => {
                 let handle = this.read_scalar(args[0])?.to_machine_isize(this)?;
                 let buf = this.read_scalar(args[1])?.not_undef()?;
@@ -61,9 +66,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     };
                     res.ok().map(|n| n as u32)
                 } else {
-                    eprintln!("Miri: Ignored output to handle {}", handle);
-                    // Pretend it all went well.
-                    Some(n)
+                    throw_unsup_format!("on Windows, writing to anything except stdout/stderr is not supported")
                 };
                 // If there was no error, write back how much was written.
                 if let Some(n) = written {
@@ -76,11 +79,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 )?;
             }
 
-            // Other shims
-            "GetProcessHeap" => {
-                // Just fake a HANDLE
-                this.write_scalar(Scalar::from_int(1, this.pointer_size()), dest)?;
-            }
+            // Allocation
             "HeapAlloc" => {
                 let _handle = this.read_scalar(args[0])?.to_machine_isize(this)?;
                 let flags = this.read_scalar(args[1])?.to_u32()?;
@@ -105,6 +104,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(res, dest)?;
             }
 
+            // errno
             "SetLastError" => {
                 this.set_last_error(this.read_scalar(args[0])?.not_undef()?)?;
             }
@@ -113,30 +113,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(last_error, dest)?;
             }
 
-            "AddVectoredExceptionHandler" => {
-                // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
-                this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
-            }
-
-            | "InitializeCriticalSection"
-            | "EnterCriticalSection"
-            | "LeaveCriticalSection"
-            | "DeleteCriticalSection"
-            => {
-                // Nothing to do, not even a return value.
-                // (Windows locks are reentrant, and we have only 1 thread,
-                // so not doing any futher checks here is at least not incorrect.)
-            }
-
-            | "GetModuleHandleW"
-            | "GetProcAddress"
-            | "GetConsoleScreenBufferInfo"
-            | "SetConsoleTextAttribute"
-            => {
-                // Pretend these do not exist / nothing happened, by returning zero.
-                this.write_null(dest)?;
-            }
-
+            // Querying system information
             "GetSystemInfo" => {
                 let system_info = this.deref_operand(args[0])?;
                 // Initialize with `0`.
@@ -150,6 +127,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_int(NUM_CPUS, dword_size), num_cpus.into())?;
             }
 
+            // Thread-local storage
             "TlsAlloc" => {
                 // This just creates a key; Windows does not natively support TLS destructors.
 
@@ -170,33 +148,72 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Return success (`1`).
                 this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
             }
-            "GetStdHandle" => {
-                let which = this.read_scalar(args[0])?.to_i32()?;
-                // We just make this the identity function, so we know later in `WriteFile`
-                // which one it is.
-                this.write_scalar(Scalar::from_int(which, this.pointer_size()), dest)?;
-            }
-            "GetConsoleMode" => {
-                // Everything is a pipe.
-                this.write_null(dest)?;
-            }
+
+            // Access to command-line arguments
             "GetCommandLineW" => {
                 this.write_scalar(
                     this.machine.cmd_line.expect("machine must be initialized"),
                     dest,
                 )?;
             }
-            // The actual name of 'RtlGenRandom'
+
+            // Miscellaneous
             "SystemFunction036" => {
+                // The actual name of 'RtlGenRandom'
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let len = this.read_scalar(args[1])?.to_u32()?;
                 this.gen_random(ptr, len.into())?;
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
-            // We don't support threading.
+            "GetConsoleScreenBufferInfo" => {
+                // `term` needs this, so we fake it.
+                let _console = this.read_scalar(args[0])?.to_machine_isize(this)?;
+                let _buffer_info = this.deref_operand(args[1])?;
+                // Indicate an error.
+                // FIXME: we should set last_error, but to what?
+                this.write_null(dest)?;
+            }
+            "GetConsoleMode" => {
+                // Windows "isatty" (in libtest) needs this, so we fake it.
+                let _console = this.read_scalar(args[0])?.to_machine_isize(this)?;
+                let _mode = this.deref_operand(args[1])?;
+                // Indicate an error.
+                // FIXME: we should set last_error, but to what?
+                this.write_null(dest)?;
+            }
+
+            // Better error for attempts to create a thread
             "CreateThread" => {
                 throw_unsup_format!("Miri does not support threading");
             }
+
+            // Incomplete shims that we "stub out" just to get pre-main initialziation code to work.
+            // These shims are enabled only when the caller is in the standard library.
+            "GetProcessHeap" if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
+                // Just fake a HANDLE
+                this.write_scalar(Scalar::from_int(1, this.pointer_size()), dest)?;
+            }
+            | "GetModuleHandleW"
+            | "GetProcAddress"
+            | "SetConsoleTextAttribute" if this.frame().instance.to_string().starts_with("std::sys::windows::")
+            => {
+                // Pretend these do not exist / nothing happened, by returning zero.
+                this.write_null(dest)?;
+            }
+            "AddVectoredExceptionHandler" if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
+                // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
+                this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
+            }
+            | "InitializeCriticalSection"
+            | "EnterCriticalSection"
+            | "LeaveCriticalSection"
+            | "DeleteCriticalSection" if this.frame().instance.to_string().starts_with("std::sys::windows::")
+            => {
+                // Nothing to do, not even a return value.
+                // (Windows locks are reentrant, and we have only 1 thread,
+                // so not doing any futher checks here is at least not incorrect.)
+            }
+
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
         }
 
