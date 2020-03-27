@@ -22,7 +22,7 @@ use std::hash::Hash;
 
 pub trait DepContext: Copy {
     type DepKind: self::DepKind;
-    type StableHashingContext: crate::HashStableContext;
+    type StableHashingContext;
 
     /// Create a hashing context for hashing new results.
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext;

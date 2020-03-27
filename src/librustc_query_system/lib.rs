@@ -15,5 +15,3 @@ extern crate rustc_data_structures;
 
 pub mod dep_graph;
 pub mod query;
-
-pub trait HashStableContext {}
