@@ -23,34 +23,23 @@ pub struct EnvVars<'tcx> {
 impl<'tcx> EnvVars<'tcx> {
     pub(crate) fn init<'mir>(
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
-        mut excluded_env_vars: Vec<String>,
+        excluded_env_vars: Vec<String>,
     ) -> InterpResult<'tcx> {
-        if ecx.tcx.sess.target.target.target_os == "windows" {
-            // Exclude `TERM` var to avoid terminfo trying to open the termcap file.
-            excluded_env_vars.push("TERM".to_owned());
-        }
         if ecx.machine.communicate {
+            let target_os = ecx.tcx.sess.target.target.target_os.as_str();
             for (name, value) in env::vars() {
                 if !excluded_env_vars.contains(&name) {
-                    let var_ptr =
-                        alloc_env_var_as_target_str(name.as_ref(), value.as_ref(), ecx)?;
+                    let var_ptr = match target_os {
+                        "linux" | "macos" => alloc_env_var_as_c_str(name.as_ref(), value.as_ref(), ecx)?,
+                        "windows" => alloc_env_var_as_wide_str(name.as_ref(), value.as_ref(), ecx)?,
+                        unsupported => throw_unsup_format!("OsString support for target OS `{}` not yet available", unsupported),
+                    };
                     ecx.machine.env_vars.map.insert(OsString::from(name), var_ptr);
                 }
             }
         }
         ecx.update_environ()
     }
-}
-
-fn alloc_env_var_as_target_str<'mir, 'tcx>(
-    name: &OsStr,
-    value: &OsStr,
-    ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
-) -> InterpResult<'tcx, Pointer<Tag>> {
-    let mut name_osstring = name.to_os_string();
-    name_osstring.push("=");
-    name_osstring.push(value);
-    Ok(ecx.alloc_os_str_as_target_str(name_osstring.as_os_str(), MiriMemoryKind::Machine.into())?)
 }
 
 fn alloc_env_var_as_c_str<'mir, 'tcx>(

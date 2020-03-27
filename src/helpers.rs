@@ -588,21 +588,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok((true, string_length))
     }
 
-    /// Dispatches to appropriate implementations for allocating & writing OsString in Memory,
-    /// depending on the interpretation target.
-    fn alloc_os_str_as_target_str(
-        &mut self,
-        os_str: &OsStr,
-        memkind: MemoryKind<MiriMemoryKind>,
-    ) -> InterpResult<'tcx, Pointer<Tag>> {
-        let target_os = self.eval_context_ref().tcx.sess.target.target.target_os.as_str();
-        match target_os {
-            "linux" | "macos" => Ok(self.alloc_os_str_as_c_str(os_str, memkind)),
-            "windows" => Ok(self.alloc_os_str_as_wide_str(os_str, memkind)),
-            unsupported => throw_unsup_format!("OsString support for target OS `{}` not yet available", unsupported),
-        }
-    }
-
     /// Allocate enough memory to store the given `OsStr` as a null-terminated sequence of bytes.
     fn alloc_os_str_as_c_str(
         &mut self,
