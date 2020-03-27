@@ -58,17 +58,35 @@ where
 {
     let mut args = vec!["check".to_owned()];
 
+    let mut fix = false;
+    let mut unstable_options = false;
+
     for arg in old_args.by_ref() {
-        if arg == "--fix" {
-            args[0] = "fix".to_owned();
-            continue;
+        match arg {
+            "--fix" => {
+                fix = true;
+                continue;
+            },
+            "--" => break,
+            // Cover -Zunstable-options and -Z unstable-options
+            s if s.ends_with("unstable-options") => unstable_options = true,
+            _ => {},
         }
 
-        if arg == "--" {
-            break;
-        }
         args.push(arg);
     }
+
+    if fix && !unstable_options {
+        panic!("Usage of `--fix` requires `-Z unstable-options`");
+    } else {
+        args[0] = "fix".to_owned();
+    }
+
+    let env_name = if unstable_options {
+        "RUSTC_WORKSPACE_WRAPPER"
+    } else {
+        "RUSTC_WRAPPER"
+    };
 
     let clippy_args: String = old_args.map(|arg| format!("{}__CLIPPY_HACKERY__", arg)).collect();
 
