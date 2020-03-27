@@ -27,9 +27,11 @@ impl<'tcx> EnvVars<'tcx> {
     ) -> InterpResult<'tcx> {
         let target_os = ecx.tcx.sess.target.target.target_os.as_str();
         if target_os == "windows" {
-            // Exclude `TERM` var to avoid terminfo trying to open the termcap file.
+            // Temporary hack: Exclude `TERM` var to avoid terminfo trying to open the termcap file.
+            // Can be removed once Issue#1013(Implement file system access for Windows) is resolved.
             excluded_env_vars.push("TERM".to_owned());
         }
+
         if ecx.machine.communicate {
             for (name, value) in env::vars() {
                 if !excluded_env_vars.contains(&name) {
