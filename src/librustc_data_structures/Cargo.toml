@@ -18,7 +18,7 @@ lazy_static = "1"
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 graphviz = { path = "../libgraphviz" }
 cfg-if = "0.1.2"
-crossbeam-utils = { version = "0.6.5", features = ["nightly"] }
+crossbeam-utils = { version = "0.7", features = ["nightly"] }
 stable_deref_trait = "1.0.0"
 rayon = { version = "0.3.0", package = "rustc-rayon" }
 rayon-core = { version = "0.3.0", package = "rustc-rayon-core" }
@@ -29,7 +29,7 @@ bitflags = "1.2.1"
 measureme = "0.7.1"
 
 [dependencies.parking_lot]
-version = "0.9"
+version = "0.10"
 features = ["nightly"]
 
 [target.'cfg(windows)'.dependencies]
