@@ -135,7 +135,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
         // In case we're in a module, try to resolve the relative path.
         if let Some(module_id) = parent_id.or(self.mod_ids.last().cloned()) {
-            let module_id = cx.tcx.hir().hir_to_node_id(module_id);
+            let module_id = cx.tcx.hir().hir_id_to_node_id(module_id);
             let result = cx.enter_resolver(|resolver| {
                 resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
             });

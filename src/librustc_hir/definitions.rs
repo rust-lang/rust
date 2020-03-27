@@ -353,15 +353,13 @@ impl Definitions {
         }
     }
 
-    // FIXME(eddyb) rename to `hir_id_to_node_id`.
     #[inline]
-    pub fn hir_to_node_id(&self, hir_id: hir::HirId) -> ast::NodeId {
+    pub fn hir_id_to_node_id(&self, hir_id: hir::HirId) -> ast::NodeId {
         self.hir_id_to_node_id[&hir_id]
     }
 
-    // FIXME(eddyb) rename to `node_id_to_hir_id`.
     #[inline]
-    pub fn node_to_hir_id(&self, node_id: ast::NodeId) -> hir::HirId {
+    pub fn node_id_to_hir_id(&self, node_id: ast::NodeId) -> hir::HirId {
         self.node_id_to_hir_id[node_id]
     }
 
