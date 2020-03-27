@@ -11,12 +11,12 @@ doctest = false
 
 [dependencies]
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
-rustc_ast = { path = "../librustc_ast" }
+rustc-rayon-core = "0.3.0"
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
-rustc_hir = { path = "../librustc_hir" }
 rustc_index = { path = "../librustc_index" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
+rustc_span = { path = "../librustc_span" }
 parking_lot = "0.9"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }

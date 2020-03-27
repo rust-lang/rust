@@ -8,7 +8,6 @@ use rustc_errors::Diagnostic;
 use rustc_hir::def_id::DefId;
 
 mod dep_node;
-mod safe;
 
 pub(crate) use rustc_query_system::dep_graph::DepNodeParams;
 pub use rustc_query_system::dep_graph::{
@@ -17,8 +16,6 @@ pub use rustc_query_system::dep_graph::{
 };
 
 pub use dep_node::{label_strs, DepConstructor, DepKind, DepNode, DepNodeExt};
-pub use safe::AssertDepGraphSafe;
-pub use safe::DepGraphSafe;
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
 pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
@@ -27,6 +24,8 @@ pub type PreviousDepGraph = rustc_query_system::dep_graph::PreviousDepGraph<DepK
 pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<DepKind>;
 
 impl rustc_query_system::dep_graph::DepKind for DepKind {
+    const NULL: Self = DepKind::Null;
+
     fn is_eval_always(&self) -> bool {
         DepKind::is_eval_always(self)
     }
@@ -82,6 +81,10 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
             op(icx.task_deps)
         })
     }
+
+    fn can_reconstruct_query_key(&self) -> bool {
+        DepKind::can_reconstruct_query_key(self)
+    }
 }
 
 impl<'tcx> DepContext for TyCtxt<'tcx> {
@@ -90,6 +93,10 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
 
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext {
         TyCtxt::create_stable_hashing_context(*self)
+    }
+
+    fn debug_dep_tasks(&self) -> bool {
+        self.sess.opts.debugging_opts.dep_tasks
     }
 
     fn try_force_from_dep_node(&self, dep_node: &DepNode) -> bool {
@@ -160,6 +167,14 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         self.queries.on_disk_cache.store_diagnostics(dep_node_index, diagnostics)
     }
 
+    fn store_diagnostics_for_anon_node(
+        &self,
+        dep_node_index: DepNodeIndex,
+        diagnostics: ThinVec<Diagnostic>,
+    ) {
+        self.queries.on_disk_cache.store_diagnostics_for_anon_node(dep_node_index, diagnostics)
+    }
+
     fn profiler(&self) -> &SelfProfilerRef {
         &self.prof
     }
@@ -168,24 +183,4 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
 fn def_id_corresponds_to_hir_dep_node(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     def_id.index == hir_id.owner.local_def_index
-}
-
-impl rustc_query_system::HashStableContext for StableHashingContext<'_> {
-    fn debug_dep_tasks(&self) -> bool {
-        self.sess().opts.debugging_opts.dep_tasks
-    }
-}
-
-impl rustc_query_system::HashStableContextProvider<StableHashingContext<'tcx>> for TyCtxt<'tcx> {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'tcx> {
-        self.create_stable_hashing_context()
-    }
-}
-
-impl rustc_query_system::HashStableContextProvider<StableHashingContext<'a>>
-    for StableHashingContext<'a>
-{
-    fn get_stable_hashing_context(&self) -> Self {
-        self.clone()
-    }
 }

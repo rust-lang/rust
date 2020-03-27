@@ -4,10 +4,10 @@ use crate::infer::canonical::Canonical;
 use crate::mir;
 use crate::traits;
 use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::query::caches::DefaultCacheSelector;
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_query_system::query::DefaultCacheSelector;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 

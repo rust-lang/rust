@@ -7,7 +7,6 @@ use crate::type_::Type;
 use crate::value::Value;
 
 use rustc::bug;
-use rustc::dep_graph::DepGraphSafe;
 use rustc::mir::mono::CodegenUnit;
 use rustc::ty::layout::{
     HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx,
@@ -89,8 +88,6 @@ pub struct CodegenCx<'ll, 'tcx> {
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
 }
-
-impl<'ll, 'tcx> DepGraphSafe for CodegenCx<'ll, 'tcx> {}
 
 pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
     let reloc_model_arg = match sess.opts.cg.relocation_model {

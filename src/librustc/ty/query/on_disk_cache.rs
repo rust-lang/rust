@@ -994,7 +994,8 @@ fn encode_query_results<'a, 'tcx, Q, E>(
     query_result_index: &mut EncodedQueryResultIndex,
 ) -> Result<(), E::Error>
 where
-    Q: super::config::QueryDescription<'tcx, Value: Encodable>,
+    Q: super::QueryDescription<TyCtxt<'tcx>>,
+    Q::Value: Encodable,
     E: 'a + TyEncoder,
 {
     let _timer = tcx

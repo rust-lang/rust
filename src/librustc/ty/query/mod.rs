@@ -61,17 +61,17 @@ use std::sync::Arc;
 
 #[macro_use]
 mod plumbing;
-pub(crate) use self::plumbing::CycleError;
-use self::plumbing::*;
+pub(crate) use rustc_query_system::query::CycleError;
+use rustc_query_system::query::*;
 
 mod stats;
 pub use self::stats::print_stats;
 
+#[cfg(parallel_compiler)]
 mod job;
 #[cfg(parallel_compiler)]
 pub use self::job::handle_deadlock;
-use self::job::QueryJobInfo;
-pub use self::job::{QueryInfo, QueryJob, QueryJobId};
+pub use rustc_query_system::query::{QueryInfo, QueryJob, QueryJobId};
 
 mod keys;
 use self::keys::Key;
@@ -79,13 +79,9 @@ use self::keys::Key;
 mod values;
 use self::values::Value;
 
-mod caches;
-use self::caches::CacheSelector;
-
-mod config;
-use self::config::QueryAccessors;
-pub use self::config::QueryConfig;
-pub(crate) use self::config::QueryDescription;
+use rustc_query_system::query::QueryAccessors;
+pub use rustc_query_system::query::QueryConfig;
+pub(crate) use rustc_query_system::query::QueryDescription;
 
 mod on_disk_cache;
 pub use self::on_disk_cache::OnDiskCache;
