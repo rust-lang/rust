@@ -1450,16 +1450,9 @@ impl EncodeContext<'tcx> {
 
         let all_impls: Vec<_> = all_impls
             .into_iter()
-            .map(|(trait_def_id, mut impls)| {
-                // Bring everything into deterministic order for hashing
-                impls.sort_by_cached_key(|&index| {
-                    tcx.hir().definitions().def_path_hash(LocalDefId { local_def_index: index })
-                });
-
-                TraitImpls {
-                    trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
-                    impls: self.lazy(&impls),
-                }
+            .map(|(trait_def_id, impls)| TraitImpls {
+                trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
+                impls: self.lazy(&impls),
             })
             .collect();
 
