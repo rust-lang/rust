@@ -12,6 +12,14 @@ fn coords() -> Point {
     Point { x: 1, y: 2 }
 }
 
+macro_rules! foo {
+    ($param:expr) => {
+        match $param {
+            _ => println!("whatever"),
+        }
+    };
+}
+
 fn main() {
     let a = 1;
     let b = 2;
@@ -26,6 +34,8 @@ fn main() {
     match (a, b, c) {
         (x, y, z) => println!("{} {} {}", x, y, z),
     }
+    // Ok
+    foo!(a);
     // Ok
     match a {
         2 => println!("2"),
