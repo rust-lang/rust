@@ -1,6 +1,6 @@
 use crate::dep_graph::DepNodeIndex;
-use crate::query::config::QueryContext;
 use crate::query::plumbing::{QueryLookup, QueryState};
+use crate::query::QueryContext;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;

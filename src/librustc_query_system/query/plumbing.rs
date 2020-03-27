@@ -5,8 +5,9 @@
 use crate::dep_graph::{DepKind, DepNode};
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use crate::query::caches::QueryCache;
-use crate::query::config::{QueryContext, QueryDescription};
+use crate::query::config::QueryDescription;
 use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId};
+use crate::query::QueryContext;
 
 #[cfg(not(parallel_compiler))]
 use rustc_data_structures::cold_path;

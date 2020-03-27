@@ -1,6 +1,6 @@
 use crate::dep_graph::{DepContext, DepKind};
-use crate::query::config::QueryContext;
 use crate::query::plumbing::CycleError;
+use crate::query::QueryContext;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::Span;
