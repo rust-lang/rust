@@ -178,8 +178,8 @@ fn return_macro_parse_failure_fallback(
     }
 
     context.skipped_range.borrow_mut().push((
-        context.source_map.lookup_line(span.lo()).unwrap().line,
-        context.source_map.lookup_line(span.hi()).unwrap().line,
+        context.parse_sess.line_of_byte_pos(span.lo()),
+        context.parse_sess.line_of_byte_pos(span.hi()),
     ));
 
     // Return the snippet unmodified if the macro is not block-like
@@ -286,7 +286,7 @@ fn rewrite_macro_inner(
         }
     }
 
-    let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
+    let mut parser = new_parser_from_tts(context.parse_sess.inner(), ts.trees().collect());
     let mut arg_vec = Vec::new();
     let mut vec_with_semi = false;
     let mut trailing_comma = false;
@@ -1190,7 +1190,7 @@ pub(crate) fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext<'_>) -> O
     let path = &pprust::path_to_string(&mac.path);
     if path == "try" || path == "r#try" {
         let ts = mac.args.inner_tokens();
-        let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
+        let mut parser = new_parser_from_tts(context.parse_sess.inner(), ts.trees().collect());
 
         Some(ast::Expr {
             id: ast::NodeId::root(), // dummy value
@@ -1422,7 +1422,7 @@ fn format_lazy_static(
     ts: &TokenStream,
 ) -> Option<String> {
     let mut result = String::with_capacity(1024);
-    let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
+    let mut parser = new_parser_from_tts(context.parse_sess.inner(), ts.trees().collect());
     let nested_shape = shape
         .block_indent(context.config.tab_spaces())
         .with_max_width(context.config);

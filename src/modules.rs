@@ -2,23 +2,24 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use rustc_errors::PResult;
-use rustc_parse::{new_sub_parser_from_file, parser, DirectoryOwnership};
-use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{source_map, Span, DUMMY_SP};
 use syntax::ast;
-use syntax::token::TokenKind;
 use syntax::visit::Visitor;
 
 use crate::attr::MetaVisitor;
 use crate::config::FileName;
 use crate::items::is_mod_decl;
+use crate::syntux::parser::{Directory, DirectoryOwnership, ModulePathSuccess, Parser};
+use crate::syntux::session::ParseSess;
 use crate::utils::contains_skip;
 
 mod visitor;
 
 type FileModMap<'ast> = BTreeMap<FileName, Cow<'ast, ast::Mod>>;
+
+lazy_static! {
+    static ref CFG_IF: Symbol = Symbol::intern("cfg_if");
+}
 
 /// Maps each module to the corresponding file.
 pub(crate) struct ModResolver<'ast, 'sess> {
@@ -26,21 +27,6 @@ pub(crate) struct ModResolver<'ast, 'sess> {
     directory: Directory,
     file_map: FileModMap<'ast>,
     recursive: bool,
-}
-
-#[derive(Clone)]
-struct Directory {
-    path: PathBuf,
-    ownership: DirectoryOwnership,
-}
-
-impl<'a> Directory {
-    fn to_syntax_directory(&'a self) -> rustc_parse::Directory {
-        rustc_parse::Directory {
-            path: self.path.clone(),
-            ownership: self.ownership.clone(),
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -78,12 +64,9 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         mut self,
         krate: &'ast ast::Crate,
     ) -> Result<FileModMap<'ast>, String> {
-        let root_filename = self.parse_sess.source_map().span_to_filename(krate.span);
+        let root_filename = self.parse_sess.span_to_filename(krate.span);
         self.directory.path = match root_filename {
-            source_map::FileName::Real(ref path) => path
-                .parent()
-                .expect("Parent directory should exists")
-                .to_path_buf(),
+            FileName::Real(ref p) => p.parent().unwrap_or(Path::new("")).to_path_buf(),
             _ => PathBuf::new(),
         };
 
@@ -93,14 +76,13 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         }
 
         self.file_map
-            .insert(root_filename.into(), Cow::Borrowed(&krate.module));
+            .insert(root_filename, Cow::Borrowed(&krate.module));
         Ok(self.file_map)
     }
 
     /// Visit `cfg_if` macro and look for module declarations.
     fn visit_cfg_if(&mut self, item: Cow<'ast, ast::Item>) -> Result<(), String> {
-        let mut visitor =
-            visitor::CfgIfVisitor::new(self.parse_sess, self.directory.to_syntax_directory());
+        let mut visitor = visitor::CfgIfVisitor::new(self.parse_sess, &self.directory);
         visitor.visit_item(&item);
         for module_item in visitor.mods() {
             if let ast::ItemKind::Mod(ref sub_mod) = module_item.item.kind {
@@ -258,7 +240,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         attrs: &[ast::Attribute],
         sub_mod: &Cow<'ast, ast::Mod>,
     ) -> Result<SubModKind<'c, 'ast>, String> {
-        if let Some(path) = parser::Parser::submod_path_from_attr(attrs, &self.directory.path) {
+        if let Some(path) = Parser::submod_path_from_attr(attrs, &self.directory.path) {
             return Ok(SubModKind::External(
                 path,
                 DirectoryOwnership::Owned { relative: None },
@@ -266,23 +248,18 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         }
 
         // Look for nested path, like `#[cfg_attr(feature = "foo", path = "bar.rs")]`.
-        let mut mods_outside_ast = self
-            .find_mods_ouside_of_ast(attrs, sub_mod)
-            .unwrap_or(vec![]);
+        let mut mods_outside_ast = self.find_mods_outside_of_ast(attrs, sub_mod);
 
         let relative = match self.directory.ownership {
             DirectoryOwnership::Owned { relative } => relative,
             DirectoryOwnership::UnownedViaBlock | DirectoryOwnership::UnownedViaMod => None,
         };
-        match parser::Parser::default_submod_path(
-            mod_name,
-            relative,
-            &self.directory.path,
-            self.parse_sess.source_map(),
-        )
-        .result
+        match self
+            .parse_sess
+            .default_submod_path(mod_name, relative, &self.directory.path)
+            .result
         {
-            Ok(parser::ModulePathSuccess {
+            Ok(ModulePathSuccess {
                 path,
                 directory_ownership,
                 ..
@@ -323,21 +300,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         }
     }
 
-    fn find_mods_ouside_of_ast(
-        &self,
-        attrs: &[ast::Attribute],
-        sub_mod: &Cow<'ast, ast::Mod>,
-    ) -> Option<Vec<(PathBuf, DirectoryOwnership, Cow<'ast, ast::Mod>)>> {
-        use std::panic::{catch_unwind, AssertUnwindSafe};
-        Some(
-            catch_unwind(AssertUnwindSafe(|| {
-                self.find_mods_ouside_of_ast_inner(attrs, sub_mod)
-            }))
-            .ok()?,
-        )
-    }
-
-    fn find_mods_ouside_of_ast_inner(
+    fn find_mods_outside_of_ast(
         &self,
         attrs: &[ast::Attribute],
         sub_mod: &Cow<'ast, ast::Mod>,
@@ -356,14 +319,8 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             if !actual_path.exists() {
                 continue;
             }
-            let file_name = rustc_span::FileName::Real(actual_path.clone());
-            if self
-                .parse_sess
-                .source_map()
-                .get_source_file(&file_name)
-                .is_some()
-            {
-                // If the specfied file is already parsed, then we just use that.
+            if self.parse_sess.is_file_parsed(&actual_path) {
+                // If the specified file is already parsed, then we just use that.
                 result.push((
                     actual_path,
                     DirectoryOwnership::Owned { relative: None },
@@ -371,32 +328,15 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 ));
                 continue;
             }
-            let mut parser = new_sub_parser_from_file(
+            let m = match Parser::parse_file_as_module(
+                self.directory.ownership,
                 self.parse_sess,
                 &actual_path,
-                self.directory.ownership,
-                None,
-                DUMMY_SP,
-            );
-            parser.cfg_mods = false;
-            let lo = parser.token.span;
-            // FIXME(topecongiro) Format inner attributes (#3606).
-            let _mod_attrs = match parse_inner_attributes(&mut parser) {
-                Ok(attrs) => attrs,
-                Err(mut e) => {
-                    e.cancel();
-                    parser.sess.span_diagnostic.reset_err_count();
-                    continue;
-                }
+            ) {
+                Some(m) => m,
+                None => continue,
             };
-            let m = match parse_mod_items(&mut parser, lo) {
-                Ok(m) => m,
-                Err(mut e) => {
-                    e.cancel();
-                    parser.sess.span_diagnostic.reset_err_count();
-                    continue;
-                }
-            };
+
             result.push((
                 actual_path,
                 DirectoryOwnership::Owned { relative: None },
@@ -422,67 +362,11 @@ fn find_path_value(attrs: &[ast::Attribute]) -> Option<Symbol> {
     attrs.iter().flat_map(path_value).next()
 }
 
-// FIXME(topecongiro) Use the method from libsyntax[1] once it become public.
-//
-// [1] https://github.com/rust-lang/rust/blob/master/src/libsyntax/parse/attr.rs
-fn parse_inner_attributes<'a>(parser: &mut parser::Parser<'a>) -> PResult<'a, Vec<ast::Attribute>> {
-    let mut attrs: Vec<ast::Attribute> = vec![];
-    loop {
-        match parser.token.kind {
-            TokenKind::Pound => {
-                // Don't even try to parse if it's not an inner attribute.
-                if !parser.look_ahead(1, |t| t == &TokenKind::Not) {
-                    break;
-                }
-
-                let attr = parser.parse_attribute(true)?;
-                assert_eq!(attr.style, ast::AttrStyle::Inner);
-                attrs.push(attr);
-            }
-            TokenKind::DocComment(s) => {
-                // we need to get the position of this token before we bump.
-                let attr = syntax::attr::mk_doc_comment(
-                    syntax::util::comments::doc_comment_style(&s.as_str()),
-                    s,
-                    parser.token.span,
-                );
-                if attr.style == ast::AttrStyle::Inner {
-                    attrs.push(attr);
-                    parser.bump();
-                } else {
-                    break;
-                }
-            }
-            _ => break,
-        }
-    }
-    Ok(attrs)
-}
-
-fn parse_mod_items<'a>(parser: &mut parser::Parser<'a>, inner_lo: Span) -> PResult<'a, ast::Mod> {
-    let mut items = vec![];
-    while let Some(item) = parser.parse_item()? {
-        items.push(item);
-    }
-
-    let hi = if parser.token.span.is_dummy() {
-        inner_lo
-    } else {
-        parser.prev_token.span
-    };
-
-    Ok(ast::Mod {
-        inner: inner_lo.to(hi),
-        items,
-        inline: false,
-    })
-}
-
 fn is_cfg_if(item: &ast::Item) -> bool {
     match item.kind {
         ast::ItemKind::Mac(ref mac) => {
             if let Some(first_segment) = mac.path.segments.first() {
-                if first_segment.ident.name == Symbol::intern("cfg_if") {
+                if first_segment.ident.name == *CFG_IF {
                     return true;
                 }
             }

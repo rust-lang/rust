@@ -363,17 +363,17 @@ impl<'a> FmtVisitor<'a> {
             return None;
         }
 
-        let source_map = self.get_context().source_map;
+        let context = self.get_context();
 
         if self.config.empty_item_single_line()
-            && is_empty_block(block, None, source_map)
+            && is_empty_block(&context, block, None)
             && self.block_indent.width() + fn_str.len() + 3 <= self.config.max_width()
             && !last_line_contains_single_line_comment(fn_str)
         {
             return Some(format!("{} {{}}", fn_str));
         }
 
-        if !self.config.fn_single_line() || !is_simple_block_stmt(block, None, source_map) {
+        if !self.config.fn_single_line() || !is_simple_block_stmt(&context, block, None) {
             return None;
         }
 

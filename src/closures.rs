@@ -43,7 +43,7 @@ pub(crate) fn rewrite_closure(
 
     if let ast::ExprKind::Block(ref block, _) = body.kind {
         // The body of the closure is an empty block.
-        if block.stmts.is_empty() && !block_contains_comment(block, context.source_map) {
+        if block.stmts.is_empty() && !block_contains_comment(context, block) {
             return body
                 .rewrite(context, shape)
                 .map(|s| format!("{} {}", prefix, s));
@@ -116,7 +116,7 @@ fn needs_block(block: &ast::Block, prefix: &str, context: &RewriteContext<'_>) -
     is_unsafe_block(block)
         || block.stmts.len() > 1
         || has_attributes
-        || block_contains_comment(block, context.source_map)
+        || block_contains_comment(context, block)
         || prefix.contains('\n')
 }
 
@@ -309,7 +309,7 @@ pub(crate) fn rewrite_last_closure(
             ast::ExprKind::Block(ref block, _)
                 if !is_unsafe_block(block)
                     && !context.inside_macro()
-                    && is_simple_block(block, Some(&body.attrs), context.source_map) =>
+                    && is_simple_block(context, block, Some(&body.attrs)) =>
             {
                 stmt_expr(&block.stmts[0]).unwrap_or(body)
             }

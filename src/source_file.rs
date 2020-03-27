@@ -2,10 +2,9 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 
-use rustc_span::source_map::SourceMap;
-
 use crate::config::FileName;
 use crate::emitter::{self, Emitter};
+use crate::syntux::session::ParseSess;
 use crate::NewlineStyle;
 
 #[cfg(test)]
@@ -14,6 +13,7 @@ use crate::config::Config;
 use crate::create_emitter;
 #[cfg(test)]
 use crate::formatting::FileRecord;
+use std::rc::Rc;
 
 // Append a newline to the end of each file.
 pub(crate) fn append_newline(s: &mut String) {
@@ -48,7 +48,7 @@ where
 }
 
 pub(crate) fn write_file<T>(
-    source_map: Option<&SourceMap>,
+    parse_sess: Option<&ParseSess>,
     filename: &FileName,
     formatted_text: &str,
     out: &mut T,
@@ -84,20 +84,17 @@ where
     // source map instead of hitting the file system. This also supports getting
     // original text for `FileName::Stdin`.
     let original_text = if newline_style != NewlineStyle::Auto && *filename != FileName::Stdin {
-        fs::read_to_string(ensure_real_path(filename))?
+        Rc::new(fs::read_to_string(ensure_real_path(filename))?)
     } else {
-        match source_map
-            .and_then(|x| x.get_source_file(&filename.into()))
-            .and_then(|x| x.src.as_ref().map(ToString::to_string))
-        {
+        match parse_sess.and_then(|sess| sess.get_original_snippet(filename)) {
             Some(ori) => ori,
-            None => fs::read_to_string(ensure_real_path(filename))?,
+            None => Rc::new(fs::read_to_string(ensure_real_path(filename))?),
         }
     };
 
     let formatted_file = emitter::FormattedFile {
         filename,
-        original_text: &original_text,
+        original_text: original_text.as_str(),
         formatted_text,
     };
 
