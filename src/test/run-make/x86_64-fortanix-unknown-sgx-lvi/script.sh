@@ -9,6 +9,7 @@ function build {
         cp -a $TEST_DIR/enclave .
         pushd $CRATE
             echo ${WORK_DIR}
+            hardening_flags="-mlvi-hardening -mllvm -x86-lvi-load-inline-asm"
             # HACK(eddyb) sets `RUSTC_BOOTSTRAP=1` so Cargo can accept nightly features.
             # These come from the top-level Rust workspace, that this crate is not a
             # member of, but Cargo tries to load the workspace `Cargo.toml` anyway.
@@ -40,3 +41,5 @@ build
 check "std::io::stdio::_print::h87f0c238421c45bc" print.checks
 check cc_plus_one_c cc_plus_one_c.checks
 check cc_plus_one_c_asm cc_plus_one_c_asm.checks
+check cc_plus_one_cxx cc_plus_one_cxx.checks
+check cc_plus_one_cxx_asm cc_plus_one_cxx_asm.checks
