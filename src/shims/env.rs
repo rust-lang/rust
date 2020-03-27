@@ -25,12 +25,12 @@ impl<'tcx> EnvVars<'tcx> {
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
         mut excluded_env_vars: Vec<String>,
     ) -> InterpResult<'tcx> {
-        if ecx.tcx.sess.target.target.target_os == "windows" {
+        let target_os = ecx.tcx.sess.target.target.target_os.as_str();
+        if target_os == "windows" {
             // Exclude `TERM` var to avoid terminfo trying to open the termcap file.
             excluded_env_vars.push("TERM".to_owned());
         }
         if ecx.machine.communicate {
-            let target_os = ecx.tcx.sess.target.target.target_os.as_str();
             for (name, value) in env::vars() {
                 if !excluded_env_vars.contains(&name) {
                     let var_ptr = match target_os {
@@ -44,28 +44,6 @@ impl<'tcx> EnvVars<'tcx> {
         }
         ecx.update_environ()
     }
-}
-
-fn alloc_env_var_as_c_str<'mir, 'tcx>(
-    name: &OsStr,
-    value: &OsStr,
-    ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
-) -> InterpResult<'tcx, Pointer<Tag>> {
-    let mut name_osstring = name.to_os_string();
-    name_osstring.push("=");
-    name_osstring.push(value);
-    Ok(ecx.alloc_os_str_as_c_str(name_osstring.as_os_str(), MiriMemoryKind::Machine.into()))
-}
-
-fn alloc_env_var_as_wide_str<'mir, 'tcx>(
-    name: &OsStr,
-    value: &OsStr,
-    ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
-) -> InterpResult<'tcx, Pointer<Tag>> {
-    let mut name_osstring = name.to_os_string();
-    name_osstring.push("=");
-    name_osstring.push(value);
-    Ok(ecx.alloc_os_str_as_wide_str(name_osstring.as_os_str(), MiriMemoryKind::Machine.into()))
 }
 
 fn alloc_env_var_as_c_str<'mir, 'tcx>(
@@ -126,26 +104,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let name_offset_bytes =
                     u64::try_from(name.len()).unwrap().checked_add(1).unwrap().checked_mul(2).unwrap();
                 let var_ptr = Scalar::from(var_ptr.offset(Size::from_bytes(name_offset_bytes), this)?);
+                let var = this.read_os_str_from_wide_str(var_ptr)?;
 
-                let var_size = u64::try_from(this.read_os_str_from_wide_str(var_ptr)?.len()).unwrap();
+                let buf_ptr = this.read_scalar(buf_op)?.not_undef()?;
                 // `buf_size` represents the size in characters.
                 let buf_size = u64::try_from(this.read_scalar(size_op)?.to_u32()?).unwrap();
-                let return_val = if var_size.checked_add(1).unwrap() > buf_size {
-                    // If lpBuffer is not large enough to hold the data, the return value is the buffer size, in characters,
-                    // required to hold the string and its terminating null character and the contents of lpBuffer are undefined.
-                    var_size + 1
-                } else {
-                    let buf_ptr = this.read_scalar(buf_op)?.not_undef()?;
-                    let bytes_to_be_copied = var_size.checked_add(1).unwrap().checked_mul(2).unwrap();
-                    this.memory.copy(this.force_ptr(var_ptr)?, this.force_ptr(buf_ptr)?, Size::from_bytes(bytes_to_be_copied), true)?;
+                let (success, len) = this.write_os_str_to_wide_str(&var, buf_ptr, buf_size)?;
+
+                if success {
                     // If the function succeeds, the return value is the number of characters stored in the buffer pointed to by lpBuffer,
                     // not including the terminating null character.
-                    var_size
-                };
-                return_val
+                    len
+                } else {
+                    // If lpBuffer is not large enough to hold the data, the return value is the buffer size, in characters,
+                    // required to hold the string and its terminating null character and the contents of lpBuffer are undefined.
+                    len + 1
+                }
             }
             None => {
-                this.set_last_error(Scalar::from_u32(203))?; // ERROR_ENVVAR_NOT_FOUND
+                let envvar_not_found = this.eval_path_scalar(&["std", "sys", "windows", "c", "ERROR_ENVVAR_NOT_FOUND"])?;
+                this.set_last_error(envvar_not_found.not_undef()?)?;
                 0 // return zero upon failure
             }
         })
