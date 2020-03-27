@@ -167,7 +167,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let locked_count = mutex_get_locked_count(this, mutex_op)?.to_u32()?;
 
         if kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")? {
-            if locked_count == 1 {
+            if locked_count != 0 {
                 mutex_set_locked_count(this, mutex_op, Scalar::from_u32(0))?;
                 Ok(0)
             } else {
@@ -176,7 +176,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 );
             }
         } else if kind == this.eval_libc("PTHREAD_MUTEX_ERRORCHECK")? {
-            if locked_count == 1 {
+            if locked_count != 0 {
                 mutex_set_locked_count(this, mutex_op, Scalar::from_u32(0))?;
                 Ok(0)
             } else {
@@ -363,8 +363,9 @@ fn assert_ptr_target_min_size<'mir, 'tcx: 'mir>(
     Ok(())
 }
 
-// pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform
-// memory layout: store an i32 in the first four bytes equal to the
+// pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.
+
+// Our chosen memory layout: store an i32 in the first four bytes equal to the
 // corresponding libc mutex kind constant (i.e. PTHREAD_MUTEX_NORMAL)
 
 fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
@@ -392,13 +393,14 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
     ecx.write_scalar(kind.into(), kind_place.into())
 }
 
-// pthread_mutex_t is between 24 and 48 bytes, depending on the platform
-// memory layout:
+// pthread_mutex_t is between 24 and 48 bytes, depending on the platform.
+
+// Our chosen memory layout:
 // bytes 0-3: reserved for signature on macOS
+// (need to avoid this because it is set by static initializer macros)
 // bytes 4-7: count of how many times this mutex has been locked, as a u32
 // bytes 12-15: mutex kind, as an i32
-// (the kind should be at this offset for compatibility with the static
-// initializer macro)
+// (the kind has to be at this offset for compatibility with static initializer macros)
 
 fn mutex_get_locked_count<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
@@ -454,9 +456,11 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
     ecx.write_scalar(kind.into(), kind_place.into())
 }
 
-// pthread_rwlock_t is between 32 and 56 bytes, depending on the platform
-// memory layout:
+// pthread_rwlock_t is between 32 and 56 bytes, depending on the platform.
+
+// Our chosen memory layout:
 // bytes 0-3: reserved for signature on macOS
+// (need to avoid this because it is set by static initializer macros)
 // bytes 4-7: reader count, as a u32
 // bytes 8-11: writer count, as a u32
 
