@@ -1,6 +1,12 @@
+use std::iter::once;
+
 use hir::Adt;
 use ra_syntax::{
-    ast::{self, make},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
+    },
     AstNode, T,
 };
 
@@ -8,12 +14,10 @@ use crate::{
     assist_ctx::{Assist, AssistCtx},
     AssistId,
 };
-use ast::edit::{AstNodeEdit, IndentLevel};
-use std::iter::once;
 
 // Assist: replace_let_with_if_let
 //
-// Replaces `if let` with an else branch with a `match` expression.
+// Replaces `let` with an `if-let`.
 //
 // ```
 // # enum Option<T> { Some(T), None }
