@@ -154,6 +154,21 @@ fn lane_type_and_count<'tcx>(
     (lane_layout, lane_count)
 }
 
+fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyLayout<'tcx>) -> Option<Type> {
+    let (element, count) = match &layout.abi {
+        Abi::Vector { element, count } => (element.clone(), *count),
+        _ => unreachable!(),
+    };
+
+    match scalar_to_clif_type(tcx, element).by(u16::try_from(count).unwrap()) {
+        // Cranelift currently only implements icmp for 128bit vectors. While 64bit lanes are
+        // supported, this needs either the `use_sse41_simd` or `use_sse42_simd` target flag
+        // to be enabled.
+        Some(vector_ty) if vector_ty.bits() == 128 && vector_ty.lane_type() != types::I64 => Some(vector_ty),
+        _ => None,
+    }
+}
+
 fn simd_for_each_lane<'tcx, B: Backend>(
     fx: &mut FunctionCx<'_, 'tcx, B>,
     val: CValue<'tcx>,
@@ -237,6 +252,18 @@ fn bool_to_zero_or_max_uint<'tcx>(
 
 macro simd_cmp {
     ($fx:expr, $cc:ident($x:ident, $y:ident) -> $ret:ident) => {
+        let vector_ty = clif_vector_type($fx.tcx, $x.layout());
+
+        if let Some(vector_ty) = vector_ty {
+            let x = $x.load_scalar($fx);
+            let y = $y.load_scalar($fx);
+            let val = codegen_icmp($fx, IntCC::$cc, x, y);
+
+            // HACK This depends on the fact that icmp for vectors represents bools as 0 and !0, not 0 and 1.
+            let val = $fx.bcx.ins().raw_bitcast(vector_ty, val);
+
+            $ret.write_cvalue($fx, CValue::by_val(val, $ret.layout()));
+        } else {
         simd_pair_for_each_lane(
             $fx,
             $x,
@@ -250,8 +277,10 @@ macro simd_cmp {
                 bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
             },
         );
+        }
     },
     ($fx:expr, $cc_u:ident|$cc_s:ident($x:ident, $y:ident) -> $ret:ident) => {
+        // FIXME use vector icmp when possible
         simd_pair_for_each_lane(
             $fx,
             $x,
