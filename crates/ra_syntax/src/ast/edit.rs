@@ -251,7 +251,7 @@ impl ast::UseItem {
     #[must_use]
     pub fn with_use_tree(&self, use_tree: ast::UseTree) -> ast::UseItem {
         if let Some(old) = self.use_tree() {
-            return self.replace_descendants(iter::once((old, use_tree)));
+            return self.replace_descendant(old, use_tree);
         }
         self.clone()
     }
@@ -283,7 +283,7 @@ impl ast::UseTree {
     #[must_use]
     pub fn with_path(&self, path: ast::Path) -> ast::UseTree {
         if let Some(old) = self.path() {
-            return self.replace_descendants(iter::once((old, path)));
+            return self.replace_descendant(old, path);
         }
         self.clone()
     }
@@ -291,7 +291,7 @@ impl ast::UseTree {
     #[must_use]
     pub fn with_use_tree_list(&self, use_tree_list: ast::UseTreeList) -> ast::UseTree {
         if let Some(old) = self.use_tree_list() {
-            return self.replace_descendants(iter::once((old, use_tree_list)));
+            return self.replace_descendant(old, use_tree_list);
         }
         self.clone()
     }
@@ -463,6 +463,11 @@ pub trait AstNodeEdit: AstNode + Sized {
     ) -> Self {
         let new_syntax = algo::replace_children(self.syntax(), to_replace, to_insert);
         Self::cast(new_syntax).unwrap()
+    }
+
+    #[must_use]
+    fn replace_descendant<D: AstNode>(&self, old: D, new: D) -> Self {
+        self.replace_descendants(iter::once((old, new)))
     }
 
     #[must_use]
