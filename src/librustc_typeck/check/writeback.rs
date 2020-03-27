@@ -75,7 +75,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.tables.upvar_list =
             mem::replace(&mut self.tables.borrow_mut().upvar_list, Default::default());
 
-        wbcx.tables.tainted_by_errors = self.is_tainted_by_errors();
+        wbcx.tables.tainted_by_errors |= self.is_tainted_by_errors();
 
         debug!("writeback: tables for {:?} are {:#?}", item_def_id, wbcx.tables);
 
@@ -578,14 +578,21 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn resolve<T>(&self, x: &T, span: &dyn Locatable) -> T
+    fn resolve<T>(&mut self, x: &T, span: &dyn Locatable) -> T
     where
         T: TypeFoldable<'tcx>,
     {
-        let x = x.fold_with(&mut Resolver::new(self.fcx, span, self.body));
+        let mut resolver = Resolver::new(self.fcx, span, self.body);
+        let x = x.fold_with(&mut resolver);
         if cfg!(debug_assertions) && x.needs_infer() {
             span_bug!(span.to_span(self.fcx.tcx), "writeback: `{:?}` has inference variables", x);
         }
+
+        // We may have introduced e.g. `ty::Error`, if inference failed, make sure
+        // to mark the `TypeckTables` as tainted in that case, so that downstream
+        // users of the tables don't produce extra errors, or worse, ICEs.
+        self.tables.tainted_by_errors |= resolver.replaced_with_error;
+
         x
     }
 }
@@ -613,6 +620,9 @@ struct Resolver<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     span: &'cx dyn Locatable,
     body: &'tcx hir::Body<'tcx>,
+
+    /// Set to `true` if any `Ty` or `ty::Const` had to be replaced with an `Error`.
+    replaced_with_error: bool,
 }
 
 impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
@@ -621,7 +631,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         span: &'cx dyn Locatable,
         body: &'tcx hir::Body<'tcx>,
     ) -> Resolver<'cx, 'tcx> {
-        Resolver { tcx: fcx.tcx, infcx: fcx, span, body }
+        Resolver { tcx: fcx.tcx, infcx: fcx, span, body, replaced_with_error: false }
     }
 
     fn report_error(&self, t: Ty<'tcx>) {
@@ -644,6 +654,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
             Err(_) => {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
                 self.report_error(t);
+                self.replaced_with_error = true;
                 self.tcx().types.err
             }
         }
@@ -661,6 +672,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
                 // FIXME: we'd like to use `self.report_error`, but it doesn't yet
                 // accept a &'tcx ty::Const.
+                self.replaced_with_error = true;
                 self.tcx().consts.err
             }
         }
