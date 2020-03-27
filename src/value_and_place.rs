@@ -589,6 +589,8 @@ impl<'tcx> CPlace<'tcx> {
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         field: mir::Field,
     ) -> CPlace<'tcx> {
+        // FIXME handle simd values
+
         let layout = self.layout();
         if let CPlaceInner::VarPair(local, var1, var2) = self.inner {
             let layout = layout.field(&*fx, field.index());
