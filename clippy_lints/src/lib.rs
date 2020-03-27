@@ -34,6 +34,8 @@ extern crate rustc_errors;
 #[allow(unused_extern_crates)]
 extern crate rustc_hir;
 #[allow(unused_extern_crates)]
+extern crate rustc_hir_pretty;
+#[allow(unused_extern_crates)]
 extern crate rustc_index;
 #[allow(unused_extern_crates)]
 extern crate rustc_infer;
