@@ -148,7 +148,6 @@ struct JobOwner<'tcx, CTX: QueryContext, C>
 where
     C: QueryCache,
     C::Key: Eq + Hash + Clone + Debug,
-    C::Value: Clone,
 {
     state: &'tcx QueryState<CTX, C>,
     key: C::Key,
@@ -159,7 +158,6 @@ impl<'tcx, CTX: QueryContext, C> JobOwner<'tcx, CTX, C>
 where
     C: QueryCache,
     C::Key: Eq + Hash + Clone + Debug,
-    C::Value: Clone,
 {
     /// Either gets a `JobOwner` corresponding the query, allowing us to
     /// start executing the query, or returns with the result of the query.
@@ -177,7 +175,7 @@ where
         mut lookup: QueryLookup<'a, CTX, C::Key, C::Sharded>,
     ) -> TryGetJob<'b, CTX, C>
     where
-        Q: QueryDescription<CTX, Key = C::Key, Value = C::Value, Cache = C>,
+        Q: QueryDescription<CTX, Key = C::Key, Stored = C::Stored, Value = C::Value, Cache = C>,
         CTX: QueryContext,
     {
         let lock = &mut *lookup.lock;
@@ -229,7 +227,8 @@ where
         // so we just return the error.
         #[cfg(not(parallel_compiler))]
         return TryGetJob::Cycle(cold_path(|| {
-            Q::handle_cycle_error(tcx, latch.find_cycle_in_stack(tcx, span))
+            let value = Q::handle_cycle_error(tcx, latch.find_cycle_in_stack(tcx, span));
+            Q::query_state(tcx).cache.store_nocache(value)
         }));
 
         // With parallel queries we might just have to wait on some other
@@ -239,7 +238,9 @@ where
             let result = latch.wait_on(tcx, span);
 
             if let Err(cycle) = result {
-                return TryGetJob::Cycle(Q::handle_cycle_error(tcx, cycle));
+                let value = Q::handle_cycle_error(tcx, cycle);
+                let value = Q::query_state(tcx).cache.store_nocache(value);
+                return TryGetJob::Cycle(value);
             }
 
             let cached = try_get_cached(
@@ -261,7 +262,7 @@ where
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
     #[inline(always)]
-    fn complete(self, tcx: CTX, result: &C::Value, dep_node_index: DepNodeIndex) {
+    fn complete(self, tcx: CTX, result: C::Value, dep_node_index: DepNodeIndex) -> C::Stored {
         // We can move out of `self` here because we `mem::forget` it below
         let key = unsafe { ptr::read(&self.key) };
         let state = self.state;
@@ -269,18 +270,18 @@ where
         // Forget ourself so our destructor won't poison the query
         mem::forget(self);
 
-        let job = {
-            let result = result.clone();
+        let (job, result) = {
             let mut lock = state.shards.get_shard_by_value(&key).lock();
             let job = match lock.active.remove(&key).unwrap() {
                 QueryResult::Started(job) => job,
                 QueryResult::Poisoned => panic!(),
             };
-            state.cache.complete(tcx, &mut lock.cache, key, result, dep_node_index);
-            job
+            let result = state.cache.complete(tcx, &mut lock.cache, key, result, dep_node_index);
+            (job, result)
         };
 
         job.signal_complete();
+        result
     }
 }
 
@@ -297,7 +298,6 @@ where
 impl<'tcx, CTX: QueryContext, C: QueryCache> Drop for JobOwner<'tcx, CTX, C>
 where
     C::Key: Eq + Hash + Clone + Debug,
-    C::Value: Clone,
 {
     #[inline(never)]
     #[cold]
@@ -331,7 +331,6 @@ pub struct CycleError<Q> {
 enum TryGetJob<'tcx, CTX: QueryContext, C: QueryCache>
 where
     C::Key: Eq + Hash + Clone + Debug,
-    C::Value: Clone,
 {
     /// The query is not yet started. Contains a guard to the cache eventually used to start it.
     NotYetStarted(JobOwner<'tcx, CTX, C>),
@@ -340,10 +339,10 @@ where
     /// Returns the result of the query and its dep-node index
     /// if it succeeded or a cycle error if it failed.
     #[cfg(parallel_compiler)]
-    JobCompleted((C::Value, DepNodeIndex)),
+    JobCompleted((C::Stored, DepNodeIndex)),
 
     /// Trying to execute the query resulted in a cycle.
-    Cycle(C::Value),
+    Cycle(C::Stored),
 }
 
 /// Checks if the query is already computed and in the cache.
@@ -362,7 +361,7 @@ fn try_get_cached<CTX, C, R, OnHit, OnMiss>(
 where
     C: QueryCache,
     CTX: QueryContext,
-    OnHit: FnOnce(&C::Value, DepNodeIndex) -> R,
+    OnHit: FnOnce(&C::Stored, DepNodeIndex) -> R,
     OnMiss: FnOnce(C::Key, QueryLookup<'_, CTX, C::Key, C::Sharded>) -> R,
 {
     state.cache.lookup(
@@ -388,7 +387,7 @@ fn try_execute_query<Q, CTX>(
     span: Span,
     key: Q::Key,
     lookup: QueryLookup<'_, CTX, Q::Key, <Q::Cache as QueryCache>::Sharded>,
-) -> Q::Value
+) -> Q::Stored
 where
     Q: QueryDescription<CTX>,
     CTX: QueryContext,
@@ -427,9 +426,7 @@ where
             tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
         }
 
-        job.complete(tcx, &result, dep_node_index);
-
-        return result;
+        return job.complete(tcx, result, dep_node_index);
     }
 
     let dep_node = Q::to_dep_node(tcx, &key);
@@ -454,8 +451,7 @@ where
             })
         });
         if let Some((result, dep_node_index)) = loaded {
-            job.complete(tcx, &result, dep_node_index);
-            return result;
+            return job.complete(tcx, result, dep_node_index);
         }
     }
 
@@ -558,7 +554,7 @@ fn force_query_with_job<Q, CTX>(
     key: Q::Key,
     job: JobOwner<'_, CTX, Q::Cache>,
     dep_node: DepNode<CTX::DepKind>,
-) -> (Q::Value, DepNodeIndex)
+) -> (Q::Stored, DepNodeIndex)
 where
     Q: QueryDescription<CTX>,
     CTX: QueryContext,
@@ -603,13 +599,13 @@ where
         }
     }
 
-    job.complete(tcx, &result, dep_node_index);
+    let result = job.complete(tcx, result, dep_node_index);
 
     (result, dep_node_index)
 }
 
 #[inline(never)]
-pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key) -> Q::Value
+pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key) -> Q::Stored
 where
     Q: QueryDescription<CTX>,
     CTX: QueryContext,

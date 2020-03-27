@@ -8,13 +8,21 @@ use std::default::Default;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-pub trait CacheSelector<K: Hash, V> {
-    type Cache: QueryCache<Key = K, Value = V>;
+pub trait CacheSelector<K, V> {
+    type Cache;
 }
 
-pub trait QueryCache: Default {
-    type Key: Hash;
+pub trait QueryStorage: Default {
     type Value;
+    type Stored: Clone;
+
+    /// Store a value without putting it in the cache.
+    /// This is meant to be used with cycle errors.
+    fn store_nocache(&self, value: Self::Value) -> Self::Stored;
+}
+
+pub trait QueryCache: QueryStorage {
+    type Key: Hash;
     type Sharded: Default;
 
     /// Checks if the query is already computed and in the cache.
@@ -30,7 +38,7 @@ pub trait QueryCache: Default {
         on_miss: OnMiss,
     ) -> R
     where
-        OnHit: FnOnce(&Self::Value, DepNodeIndex) -> R,
+        OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R,
         OnMiss: FnOnce(Self::Key, QueryLookup<'_, CTX, Self::Key, Self::Sharded>) -> R;
 
     fn complete<CTX: QueryContext>(
@@ -40,7 +48,7 @@ pub trait QueryCache: Default {
         key: Self::Key,
         value: Self::Value,
         index: DepNodeIndex,
-    );
+    ) -> Self::Stored;
 
     fn iter<R, L>(
         &self,
@@ -66,9 +74,18 @@ impl<K, V> Default for DefaultCache<K, V> {
     }
 }
 
+impl<K: Eq + Hash, V: Clone> QueryStorage for DefaultCache<K, V> {
+    type Value = V;
+    type Stored = V;
+
+    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
+        // We have no dedicated storage
+        value
+    }
+}
+
 impl<K: Eq + Hash, V: Clone> QueryCache for DefaultCache<K, V> {
     type Key = K;
-    type Value = V;
     type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
 
     #[inline(always)]
@@ -99,8 +116,9 @@ impl<K: Eq + Hash, V: Clone> QueryCache for DefaultCache<K, V> {
         key: K,
         value: V,
         index: DepNodeIndex,
-    ) {
-        lock_sharded_storage.insert(key, (value, index));
+    ) -> Self::Stored {
+        lock_sharded_storage.insert(key, (value.clone(), index));
+        value
     }
 
     fn iter<R, L>(
