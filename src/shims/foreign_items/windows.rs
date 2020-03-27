@@ -23,22 +23,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Environment related shims
             "GetEnvironmentVariableW" => {
-                // args[0] : LPCWSTR lpName (32-bit ptr to a const string of 16-bit Unicode chars)
-                // args[1] : LPWSTR lpBuffer (32-bit pointer to a string of 16-bit Unicode chars)
-                // lpBuffer : ptr to buffer that receives contents of the env_var as a null-terminated string.
-                // Return `# of chars` stored in the buffer pointed to by lpBuffer, excluding null-terminator.
-                // Return 0 upon failure.
-
-                // This is not the env var you are looking for.
-                this.set_last_error(Scalar::from_u32(203))?; // ERROR_ENVVAR_NOT_FOUND
-                this.write_null(dest)?;
+                let result = this.GetEnvironmentVariableW(args[0], args[1], args[2])?;
+                this.write_scalar(Scalar::from_uint(result, dest.layout.size), dest)?;
             }
 
             "SetEnvironmentVariableW" => {
-                // args[0] : LPCWSTR lpName (32-bit ptr to a const string of 16-bit Unicode chars)
-                // args[1] : LPCWSTR lpValue (32-bit ptr to a const string of 16-bit Unicode chars)
-                // Return nonzero if success, else return 0.
-                throw_unsup_format!("can't set environment variable on Windows");
+                let result = this.SetEnvironmentVariableW(args[0], args[1])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+            }
+
+            "GetEnvironmentStringsW" => {
+                let result = this.GetEnvironmentStringsW()?;
+                this.write_scalar(result, dest)?;
+            }
+
+            "FreeEnvironmentStringsW" => {
+                let result = this.FreeEnvironmentStringsW(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
             // File related shims

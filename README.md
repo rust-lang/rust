@@ -166,7 +166,7 @@ Several `-Z` flags are relevant for Miri:
 * `-Zmiri-disable-stacked-borrows` disables checking the experimental
   [Stacked Borrows] aliasing rules.  This can make Miri run faster, but it also
   means no aliasing violations will be detected.
-* `-Zmiri-disable-isolation` disables host host isolation.  As a consequence,
+* `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
 * `-Zmiri-ignore-leaks` disables the memory leak checker.

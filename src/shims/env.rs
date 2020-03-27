@@ -23,10 +23,16 @@ pub struct EnvVars<'tcx> {
 impl<'tcx> EnvVars<'tcx> {
     pub(crate) fn init<'mir>(
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
-        excluded_env_vars: Vec<String>,
+        mut excluded_env_vars: Vec<String>,
     ) -> InterpResult<'tcx> {
+        let target_os = ecx.tcx.sess.target.target.target_os.as_str();
+        if target_os == "windows" {
+            // Temporary hack: Exclude `TERM` var to avoid terminfo trying to open the termcap file.
+            // Can be removed once https://github.com/rust-lang/miri/issues/1013 is resolved.
+            excluded_env_vars.push("TERM".to_owned());
+        }
+
         if ecx.machine.communicate {
-            let target_os = ecx.tcx.sess.target.target.target_os.as_str();
             for (name, value) in env::vars() {
                 if !excluded_env_vars.contains(&name) {
                     let var_ptr = match target_os {
@@ -82,6 +88,82 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         })
     }
 
+    #[allow(non_snake_case)]
+    fn GetEnvironmentVariableW(
+        &mut self,
+        name_op: OpTy<'tcx, Tag>, // LPCWSTR
+        buf_op: OpTy<'tcx, Tag>,  // LPWSTR
+        size_op: OpTy<'tcx, Tag>, // DWORD
+    ) -> InterpResult<'tcx, u64> {
+        let this = self.eval_context_mut();
+        this.assert_target_os("windows", "GetEnvironmentVariableW");
+
+        let name_ptr = this.read_scalar(name_op)?.not_undef()?;
+        let name = this.read_os_str_from_wide_str(name_ptr)?;
+        Ok(match this.machine.env_vars.map.get(&name) {
+            Some(var_ptr) => {
+                // The offset is used to strip the "{name}=" part of the string.
+                let name_offset_bytes =
+                    u64::try_from(name.len()).unwrap().checked_add(1).unwrap().checked_mul(2).unwrap();
+                let var_ptr = Scalar::from(var_ptr.offset(Size::from_bytes(name_offset_bytes), this)?);
+                let var = this.read_os_str_from_wide_str(var_ptr)?;
+
+                let buf_ptr = this.read_scalar(buf_op)?.not_undef()?;
+                // `buf_size` represents the size in characters.
+                let buf_size = u64::try_from(this.read_scalar(size_op)?.to_u32()?).unwrap();
+                let (success, len) = this.write_os_str_to_wide_str(&var, buf_ptr, buf_size)?;
+
+                if success {
+                    // If the function succeeds, the return value is the number of characters stored in the buffer pointed to by lpBuffer,
+                    // not including the terminating null character.
+                    len
+                } else {
+                    // If lpBuffer is not large enough to hold the data, the return value is the buffer size, in characters,
+                    // required to hold the string and its terminating null character and the contents of lpBuffer are undefined.
+                    len + 1
+                }
+            }
+            None => {
+                let envvar_not_found = this.eval_path_scalar(&["std", "sys", "windows", "c", "ERROR_ENVVAR_NOT_FOUND"])?;
+                this.set_last_error(envvar_not_found.not_undef()?)?;
+                0 // return zero upon failure
+            }
+        })
+    }
+
+    #[allow(non_snake_case)]
+    fn GetEnvironmentStringsW(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
+        let this = self.eval_context_mut();
+        this.assert_target_os("windows", "GetEnvironmentStringsW");
+
+        // Info on layout of environment blocks in Windows: 
+        // https://docs.microsoft.com/en-us/windows/win32/procthread/environment-variables
+        let mut env_vars = std::ffi::OsString::new();
+        for &item in this.machine.env_vars.map.values() {
+            let env_var = this.read_os_str_from_wide_str(Scalar::from(item))?;
+            env_vars.push(env_var);
+            env_vars.push("\0");
+        }
+        // Allocate environment block & Store environment variables to environment block.
+        // Final null terminator(block terminator) is added by `alloc_os_str_to_wide_str`.
+        // FIXME: MemoryKind should be `Machine`, blocked on https://github.com/rust-lang/rust/pull/70479.
+        let envblock_ptr = this.alloc_os_str_as_wide_str(&env_vars, MiriMemoryKind::WinHeap.into());
+        // If the function succeeds, the return value is a pointer to the environment block of the current process.
+        Ok(envblock_ptr.into())
+    }
+
+    #[allow(non_snake_case)]
+    fn FreeEnvironmentStringsW(&mut self, env_block_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+        this.assert_target_os("windows", "FreeEnvironmentStringsW");
+
+        let env_block_ptr = this.read_scalar(env_block_op)?.not_undef()?;
+        // FIXME: MemoryKind should be `Machine`, blocked on https://github.com/rust-lang/rust/pull/70479.
+        let result = this.memory.deallocate(this.force_ptr(env_block_ptr)?, None, MiriMemoryKind::WinHeap.into());
+        // If the function succeeds, the return value is nonzero.
+        Ok(result.is_ok() as i32)
+    }
+
     fn setenv(
         &mut self,
         name_op: OpTy<'tcx, Tag>,
@@ -115,6 +197,47 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let einval = this.eval_libc("EINVAL")?;
             this.set_last_error(einval)?;
             Ok(-1)
+        }
+    }
+
+    #[allow(non_snake_case)]
+    fn SetEnvironmentVariableW(
+        &mut self,
+        name_op: OpTy<'tcx, Tag>,  // LPCWSTR
+        value_op: OpTy<'tcx, Tag>, // LPCWSTR
+    ) -> InterpResult<'tcx, i32> {
+        let mut this = self.eval_context_mut();
+        this.assert_target_os("windows", "SetEnvironmentVariableW");
+
+        let name_ptr = this.read_scalar(name_op)?.not_undef()?;
+        let value_ptr = this.read_scalar(value_op)?.not_undef()?;
+
+        if this.is_null(name_ptr)? {
+            // ERROR CODE is not clearly explained in docs.. For now, throw UB instead.
+            throw_ub_format!("pointer to environment variable name is NULL");
+        }
+        
+        let name = this.read_os_str_from_wide_str(name_ptr)?;
+        if name.is_empty() {
+            throw_unsup_format!("environment variable name is an empty string");
+        } else if name.to_string_lossy().contains('=') {
+            throw_unsup_format!("environment variable name contains '='");
+        } else if this.is_null(value_ptr)? {
+            // Delete environment variable `{name}`
+            if let Some(var) = this.machine.env_vars.map.remove(&name) {
+                this.memory.deallocate(var, None, MiriMemoryKind::Machine.into())?;
+                this.update_environ()?;
+            }
+            Ok(1) // return non-zero on success
+        } else {
+            let value = this.read_os_str_from_wide_str(value_ptr)?;
+            let var_ptr = alloc_env_var_as_wide_str(&name, &value, &mut this)?;
+            if let Some(var) = this.machine.env_vars.map.insert(name, var_ptr) {
+                this.memory
+                    .deallocate(var, None, MiriMemoryKind::Machine.into())?;
+            }
+            this.update_environ()?;
+            Ok(1) // return non-zero on success
         }
     }
 

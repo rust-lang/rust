@@ -1,4 +1,3 @@
-// ignore-windows: TODO env var emulation stubbed out on Windows
 // compile-flags: -Zmiri-disable-isolation
 
 fn main() {
