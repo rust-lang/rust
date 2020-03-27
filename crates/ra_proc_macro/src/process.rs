@@ -11,7 +11,7 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
-    thread::spawn,
+    thread::{spawn, JoinHandle},
 };
 
 #[derive(Debug, Default)]
@@ -19,9 +19,15 @@ pub(crate) struct ProcMacroProcessSrv {
     inner: Option<Handle>,
 }
 
-struct Task {
-    req: Message,
-    result_tx: Sender<Message>,
+#[derive(Debug)]
+pub(crate) struct ProcMacroProcessThread {
+    handle: Option<JoinHandle<()>>,
+    sender: Sender<Task>,
+}
+
+enum Task {
+    Request { req: Message, result_tx: Sender<Message> },
+    Close,
 }
 
 #[derive(Debug)]
@@ -60,16 +66,33 @@ impl Process {
     }
 }
 
+impl std::ops::Drop for ProcMacroProcessThread {
+    fn drop(&mut self) {
+        if let Some(handle) = self.handle.take() {
+            let _ = self.sender.send(Task::Close);
+
+            // Join the thread, it should finish shortly. We don't really care
+            // whether it panicked, so it is safe to ignore the result
+            let _ = handle.join();
+        }
+    }
+}
+
 impl ProcMacroProcessSrv {
-    pub fn run(process_path: &Path) -> Result<ProcMacroProcessSrv, io::Error> {
+    pub fn run(
+        process_path: &Path,
+    ) -> Result<(ProcMacroProcessThread, ProcMacroProcessSrv), io::Error> {
         let process = Process::run(process_path)?;
 
         let (task_tx, task_rx) = bounded(0);
-
-        let _ = spawn(move || {
+        let handle = spawn(move || {
             client_loop(task_rx, process);
         });
-        Ok(ProcMacroProcessSrv { inner: Some(Handle { sender: task_tx }) })
+
+        let srv = ProcMacroProcessSrv { inner: Some(Handle { sender: task_tx.clone() }) };
+        let thread = ProcMacroProcessThread { handle: Some(handle), sender: task_tx };
+
+        Ok((thread, srv))
     }
 
     pub fn find_proc_macros(
@@ -117,7 +140,12 @@ impl ProcMacroProcessSrv {
 
         let (result_tx, result_rx) = bounded(0);
 
-        handle.sender.send(Task { req: req.into(), result_tx }).unwrap();
+        handle.sender.send(Task::Request { req: req.into(), result_tx }).map_err(|err| {
+            ra_tt::ExpansionError::Unknown(format!(
+                "Fail to send task in channel, reason : {:#?} ",
+                err
+            ))
+        })?;
         let response = result_rx.recv().unwrap();
 
         match response {
@@ -155,7 +183,12 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
             Err(_) => break,
         };
 
-        let res = match send_message(&mut stdin, &mut stdout, task.req) {
+        let (req, result_tx) = match task {
+            Task::Request { req, result_tx } => (req, result_tx),
+            Task::Close => break,
+        };
+
+        let res = match send_message(&mut stdin, &mut stdout, req) {
             Ok(res) => res,
             Err(_err) => {
                 let res = Response {
@@ -167,7 +200,7 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
                         data: None,
                     }),
                 };
-                if task.result_tx.send(res.into()).is_err() {
+                if result_tx.send(res.into()).is_err() {
                     break;
                 }
                 // Restart the process
@@ -185,7 +218,7 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
         };
 
         if let Some(res) = res {
-            if task.result_tx.send(res).is_err() {
+            if result_tx.send(res).is_err() {
                 break;
             }
         }

@@ -9,7 +9,7 @@ mod rpc;
 mod process;
 pub mod msg;
 
-use process::ProcMacroProcessSrv;
+use process::{ProcMacroProcessSrv, ProcMacroProcessThread};
 use ra_tt::{SmolStr, Subtree};
 use rpc::ProcMacroKind;
 use std::{
@@ -45,21 +45,23 @@ impl ra_tt::TokenExpander for ProcMacroProcessExpander {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 enum ProcMacroClientKind {
-    Process { process: Arc<ProcMacroProcessSrv> },
+    Process { process: Arc<ProcMacroProcessSrv>, thread: ProcMacroProcessThread },
     Dummy,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ProcMacroClient {
     kind: ProcMacroClientKind,
 }
 
 impl ProcMacroClient {
     pub fn extern_process(process_path: &Path) -> Result<ProcMacroClient, std::io::Error> {
-        let process = ProcMacroProcessSrv::run(process_path)?;
-        Ok(ProcMacroClient { kind: ProcMacroClientKind::Process { process: Arc::new(process) } })
+        let (thread, process) = ProcMacroProcessSrv::run(process_path)?;
+        Ok(ProcMacroClient {
+            kind: ProcMacroClientKind::Process { process: Arc::new(process), thread },
+        })
     }
 
     pub fn dummy() -> ProcMacroClient {
@@ -72,7 +74,7 @@ impl ProcMacroClient {
     ) -> Vec<(SmolStr, Arc<dyn ra_tt::TokenExpander>)> {
         match &self.kind {
             ProcMacroClientKind::Dummy => vec![],
-            ProcMacroClientKind::Process { process } => {
+            ProcMacroClientKind::Process { process, .. } => {
                 let macros = match process.find_proc_macros(dylib_path) {
                     Err(err) => {
                         eprintln!("Fail to find proc macro. Error: {:#?}", err);
