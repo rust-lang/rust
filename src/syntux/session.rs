@@ -150,12 +150,13 @@ impl ParseSess {
         id: ast::Ident,
         relative: Option<ast::Ident>,
         dir_path: &Path,
-    ) -> rustc_parse::parser::ModulePath {
-        rustc_parse::parser::Parser::default_submod_path(
+    ) -> rustc_expand::module::ModulePath<'_> {
+        rustc_expand::module::default_submod_path(
+            &self.parse_sess,
             id,
+            rustc_span::DUMMY_SP,
             relative,
             dir_path,
-            self.parse_sess.source_map(),
         )
     }
 

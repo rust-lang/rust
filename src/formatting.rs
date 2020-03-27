@@ -91,10 +91,11 @@ fn format_project<T: FormatHandler>(
     let files = modules::ModResolver::new(
         &context.parse_session,
         directory_ownership.unwrap_or(DirectoryOwnership::UnownedViaMod),
-        !(input_is_stdin || config.skip_children()),
+        !input_is_stdin && !config.skip_children(),
     )
     .visit_crate(&krate)
     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
     for (path, module) in files {
         let should_ignore = !input_is_stdin && context.ignore_file(&path);
         if (config.skip_children() && path != main_file) || should_ignore {

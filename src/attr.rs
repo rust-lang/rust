@@ -23,7 +23,7 @@ pub(crate) fn get_attrs_from_stmt(stmt: &ast::Stmt) -> Option<&[ast::Attribute]>
         ast::StmtKind::Local(ref local) => Some(&local.attrs),
         ast::StmtKind::Item(ref item) => Some(&item.attrs),
         ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => Some(&expr.attrs),
-        ast::StmtKind::Mac(ref mac) => Some(&mac.2),
+        ast::StmtKind::MacCall(ref mac) => Some(&mac.2),
         ast::StmtKind::Empty => None,
     }
 }
@@ -33,7 +33,7 @@ pub(crate) fn get_span_without_attrs(stmt: &ast::Stmt) -> Span {
         ast::StmtKind::Local(ref local) => local.span,
         ast::StmtKind::Item(ref item) => item.span,
         ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => expr.span,
-        ast::StmtKind::Mac(ref mac) => {
+        ast::StmtKind::MacCall(ref mac) => {
             let (ref mac, _, _) = **mac;
             mac.span()
         }

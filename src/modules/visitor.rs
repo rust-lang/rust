@@ -3,7 +3,7 @@ use syntax::ast;
 use syntax::visit::Visitor;
 
 use crate::attr::MetaVisitor;
-use crate::syntux::parser::{Directory, Parser};
+use crate::syntux::parser::Parser;
 use crate::syntux::session::ParseSess;
 
 pub(crate) struct ModItem {
@@ -14,15 +14,13 @@ pub(crate) struct ModItem {
 pub(crate) struct CfgIfVisitor<'a> {
     parse_sess: &'a ParseSess,
     mods: Vec<ModItem>,
-    base_dir: &'a Directory,
 }
 
 impl<'a> CfgIfVisitor<'a> {
-    pub(crate) fn new(parse_sess: &'a ParseSess, base_dir: &'a Directory) -> CfgIfVisitor<'a> {
+    pub(crate) fn new(parse_sess: &'a ParseSess) -> CfgIfVisitor<'a> {
         CfgIfVisitor {
             mods: vec![],
             parse_sess,
-            base_dir,
         }
     }
 
@@ -32,7 +30,7 @@ impl<'a> CfgIfVisitor<'a> {
 }
 
 impl<'a, 'ast: 'a> Visitor<'ast> for CfgIfVisitor<'a> {
-    fn visit_mac(&mut self, mac: &'ast ast::Mac) {
+    fn visit_mac(&mut self, mac: &'ast ast::MacCall) {
         match self.visit_mac_inner(mac) {
             Ok(()) => (),
             Err(e) => debug!("{}", e),
@@ -41,7 +39,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CfgIfVisitor<'a> {
 }
 
 impl<'a, 'ast: 'a> CfgIfVisitor<'a> {
-    fn visit_mac_inner(&mut self, mac: &'ast ast::Mac) -> Result<(), &'static str> {
+    fn visit_mac_inner(&mut self, mac: &'ast ast::MacCall) -> Result<(), &'static str> {
         // Support both:
         // ```
         // extern crate cfg_if;
@@ -64,7 +62,7 @@ impl<'a, 'ast: 'a> CfgIfVisitor<'a> {
             }
         };
 
-        let items = Parser::parse_cfg_if(self.parse_sess, mac, &self.base_dir)?;
+        let items = Parser::parse_cfg_if(self.parse_sess, mac)?;
         self.mods
             .append(&mut items.into_iter().map(|item| ModItem { item }).collect());
 

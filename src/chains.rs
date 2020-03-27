@@ -403,7 +403,7 @@ impl Chain {
 
     fn convert_try(expr: &ast::Expr, context: &RewriteContext<'_>) -> ast::Expr {
         match expr.kind {
-            ast::ExprKind::Mac(ref mac) if context.config.use_try_shorthand() => {
+            ast::ExprKind::MacCall(ref mac) if context.config.use_try_shorthand() => {
                 if let Some(subexpr) = convert_try_mac(mac, context) {
                     subexpr
                 } else {

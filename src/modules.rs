@@ -32,7 +32,7 @@ pub(crate) struct ModResolver<'ast, 'sess> {
 #[derive(Clone)]
 enum SubModKind<'a, 'ast> {
     /// `mod foo;`
-    External(PathBuf, DirectoryOwnership),
+    External(PathBuf, DirectoryOwnership, Cow<'ast, ast::Mod>),
     /// `mod foo;` with multiple sources.
     MultiExternal(Vec<(PathBuf, DirectoryOwnership, Cow<'ast, ast::Mod>)>),
     /// `#[path = "..."] mod foo {}`
@@ -82,7 +82,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
 
     /// Visit `cfg_if` macro and look for module declarations.
     fn visit_cfg_if(&mut self, item: Cow<'ast, ast::Item>) -> Result<(), String> {
-        let mut visitor = visitor::CfgIfVisitor::new(self.parse_sess, &self.directory);
+        let mut visitor = visitor::CfgIfVisitor::new(self.parse_sess);
         visitor.visit_item(&item);
         for module_item in visitor.mods() {
             if let ast::ItemKind::Mod(ref sub_mod) = module_item.item.kind {
@@ -150,7 +150,6 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             // mod foo;
             // Look for an extern file.
             self.find_external_module(item.ident, &item.attrs, sub_mod)
-                .map(Some)
         } else {
             // An internal module (`mod foo { /* ... */ }`);
             if let Some(path) = find_path_value(&item.attrs) {
@@ -165,15 +164,19 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
     fn insert_sub_mod(
         &mut self,
         sub_mod_kind: SubModKind<'c, 'ast>,
-        sub_mod: Cow<'ast, ast::Mod>,
+        _sub_mod: Cow<'ast, ast::Mod>,
     ) -> Result<(), String> {
         match sub_mod_kind {
-            SubModKind::External(mod_path, _) => {
-                self.file_map.insert(FileName::Real(mod_path), sub_mod);
+            SubModKind::External(mod_path, _, sub_mod) => {
+                self.file_map
+                    .entry(FileName::Real(mod_path))
+                    .or_insert(sub_mod);
             }
             SubModKind::MultiExternal(mods) => {
                 for (mod_path, _, sub_mod) in mods {
-                    self.file_map.insert(FileName::Real(mod_path), sub_mod);
+                    self.file_map
+                        .entry(FileName::Real(mod_path))
+                        .or_insert(sub_mod);
                 }
             }
             _ => (),
@@ -187,7 +190,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         sub_mod_kind: SubModKind<'c, 'ast>,
     ) -> Result<(), String> {
         match sub_mod_kind {
-            SubModKind::External(mod_path, directory_ownership) => {
+            SubModKind::External(mod_path, directory_ownership, sub_mod) => {
                 let directory = Directory {
                     path: mod_path.parent().unwrap().to_path_buf(),
                     ownership: directory_ownership,
@@ -239,43 +242,97 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         mod_name: ast::Ident,
         attrs: &[ast::Attribute],
         sub_mod: &Cow<'ast, ast::Mod>,
-    ) -> Result<SubModKind<'c, 'ast>, String> {
+    ) -> Result<Option<SubModKind<'c, 'ast>>, String> {
+        let relative = match self.directory.ownership {
+            DirectoryOwnership::Owned { relative } => relative,
+            DirectoryOwnership::UnownedViaBlock | DirectoryOwnership::UnownedViaMod => None,
+        };
         if let Some(path) = Parser::submod_path_from_attr(attrs, &self.directory.path) {
-            return Ok(SubModKind::External(
-                path,
-                DirectoryOwnership::Owned { relative: None },
-            ));
+            if self.parse_sess.is_file_parsed(&path) {
+                return Ok(None);
+            }
+            return match Parser::parse_file_as_module(
+                self.parse_sess,
+                &path,
+                sub_mod.inner,
+            ) {
+                Some(m) => Ok(Some(SubModKind::External(
+                    path,
+                    DirectoryOwnership::Owned { relative: None },
+                    Cow::Owned(m),
+                ))),
+                None => Err(format!(
+                    "Failed to find module {} in {:?} {:?}",
+                    mod_name, self.directory.path, relative,
+                )),
+            };
         }
 
         // Look for nested path, like `#[cfg_attr(feature = "foo", path = "bar.rs")]`.
         let mut mods_outside_ast = self.find_mods_outside_of_ast(attrs, sub_mod);
 
-        let relative = match self.directory.ownership {
-            DirectoryOwnership::Owned { relative } => relative,
-            DirectoryOwnership::UnownedViaBlock | DirectoryOwnership::UnownedViaMod => None,
-        };
         match self
             .parse_sess
             .default_submod_path(mod_name, relative, &self.directory.path)
             .result
         {
             Ok(ModulePathSuccess {
-                path,
-                directory_ownership,
-                ..
-            }) => Ok(if mods_outside_ast.is_empty() {
-                SubModKind::External(path, directory_ownership)
-            } else {
-                mods_outside_ast.push((path, directory_ownership, sub_mod.clone()));
-                SubModKind::MultiExternal(mods_outside_ast)
-            }),
-            Err(_) if !mods_outside_ast.is_empty() => {
-                Ok(SubModKind::MultiExternal(mods_outside_ast))
+                path, ownership, ..
+            }) => {
+                let outside_mods_empty = mods_outside_ast.is_empty();
+                let should_insert = !mods_outside_ast
+                    .iter()
+                    .any(|(outside_path, _, _)| outside_path == &path);
+                if self.parse_sess.is_file_parsed(&path) {
+                    if outside_mods_empty {
+                        return Ok(None);
+                    } else {
+                        if should_insert {
+                            mods_outside_ast.push((path, ownership, sub_mod.clone()));
+                        }
+                        return Ok(Some(SubModKind::MultiExternal(mods_outside_ast)));
+                    }
+                }
+                match Parser::parse_file_as_module(
+                    self.parse_sess,
+                    &path,
+                    sub_mod.inner,
+                ) {
+                    Some(m) if outside_mods_empty => Ok(Some(SubModKind::External(
+                        path,
+                        ownership,
+                        Cow::Owned(m),
+                    ))),
+                    Some(m) => {
+                        mods_outside_ast.push((path.clone(), ownership, Cow::Owned(m)));
+                        if should_insert {
+                            mods_outside_ast.push((path, ownership, sub_mod.clone()));
+                        }
+                        Ok(Some(SubModKind::MultiExternal(mods_outside_ast)))
+                    }
+                    None if outside_mods_empty => Err(format!(
+                        "Failed to find module {} in {:?} {:?}",
+                        mod_name, self.directory.path, relative,
+                    )),
+                    None => {
+                        if should_insert {
+                            mods_outside_ast.push((path, ownership, sub_mod.clone()));
+                        }
+                        Ok(Some(SubModKind::MultiExternal(mods_outside_ast)))
+                    },
+                }
             }
-            Err(_) => Err(format!(
-                "Failed to find module {} in {:?} {:?}",
-                mod_name, self.directory.path, relative,
-            )),
+            Err(mut e) if !mods_outside_ast.is_empty() => {
+                e.cancel();
+                Ok(Some(SubModKind::MultiExternal(mods_outside_ast)))
+            }
+            Err(mut e) => {
+                e.cancel();
+                Err(format!(
+                    "Failed to find module {} in {:?} {:?}",
+                    mod_name, self.directory.path, relative,
+                ))
+            }
         }
     }
 
@@ -329,9 +386,9 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 continue;
             }
             let m = match Parser::parse_file_as_module(
-                self.directory.ownership,
                 self.parse_sess,
                 &actual_path,
+                sub_mod.inner,
             ) {
                 Some(m) => m,
                 None => continue,
@@ -364,7 +421,7 @@ fn find_path_value(attrs: &[ast::Attribute]) -> Option<Symbol> {
 
 fn is_cfg_if(item: &ast::Item) -> bool {
     match item.kind {
-        ast::ItemKind::Mac(ref mac) => {
+        ast::ItemKind::MacCall(ref mac) => {
             if let Some(first_segment) = mac.path.segments.first() {
                 if first_segment.ident.name == *CFG_IF {
                     return true;

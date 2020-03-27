@@ -199,7 +199,7 @@ pub(crate) fn format_expr(
         ast::ExprKind::Try(..) | ast::ExprKind::Field(..) | ast::ExprKind::MethodCall(..) => {
             rewrite_chain(expr, context, shape)
         }
-        ast::ExprKind::Mac(ref mac) => {
+        ast::ExprKind::MacCall(ref mac) => {
             rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
                 wrap_str(
                     context.snippet(expr.span).to_owned(),
@@ -1312,7 +1312,7 @@ pub(crate) fn can_be_overflowed_expr(
             context.config.overflow_delimited_expr()
                 || (context.use_block_indent() && args_len == 1)
         }
-        ast::ExprKind::Mac(ref mac) => {
+        ast::ExprKind::MacCall(ref mac) => {
             match (
                 syntax::ast::MacDelimiter::from_token(mac.args.delim()),
                 context.config.overflow_delimited_expr(),
@@ -1340,7 +1340,7 @@ pub(crate) fn can_be_overflowed_expr(
 
 pub(crate) fn is_nested_call(expr: &ast::Expr) -> bool {
     match expr.kind {
-        ast::ExprKind::Call(..) | ast::ExprKind::Mac(..) => true,
+        ast::ExprKind::Call(..) | ast::ExprKind::MacCall(..) => true,
         ast::ExprKind::AddrOf(_, _, ref expr)
         | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)

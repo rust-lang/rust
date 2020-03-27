@@ -187,7 +187,7 @@ fn return_macro_parse_failure_fallback(
 }
 
 pub(crate) fn rewrite_macro(
-    mac: &ast::Mac,
+    mac: &ast::MacCall,
     extra_ident: Option<ast::Ident>,
     context: &RewriteContext<'_>,
     shape: Shape,
@@ -239,7 +239,7 @@ fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
 }
 
 fn rewrite_macro_inner(
-    mac: &ast::Mac,
+    mac: &ast::MacCall,
     extra_ident: Option<ast::Ident>,
     context: &RewriteContext<'_>,
     shape: Shape,
@@ -495,7 +495,7 @@ pub(crate) fn rewrite_macro_def(
         None => return snippet,
     };
 
-    let mut result = if def.legacy {
+    let mut result = if def.macro_rules {
         String::from("macro_rules!")
     } else {
         format!("{}macro", format_visibility(context, vis))
@@ -504,7 +504,7 @@ pub(crate) fn rewrite_macro_def(
     result += " ";
     result += rewrite_ident(context, ident);
 
-    let multi_branch_style = def.legacy || parsed_def.branches.len() != 1;
+    let multi_branch_style = def.macro_rules || parsed_def.branches.len() != 1;
 
     let arm_shape = if multi_branch_style {
         shape
@@ -537,7 +537,7 @@ pub(crate) fn rewrite_macro_def(
     .collect::<Vec<_>>();
 
     let fmt = ListFormatting::new(arm_shape, context.config)
-        .separator(if def.legacy { ";" } else { "" })
+        .separator(if def.macro_rules { ";" } else { "" })
         .trailing_separator(SeparatorTactic::Always)
         .preserve_newline(true);
 
@@ -1186,7 +1186,7 @@ fn next_space(tok: &TokenKind) -> SpaceState {
 /// Tries to convert a macro use into a short hand try expression. Returns `None`
 /// when the macro is not an instance of `try!` (or parsing the inner expression
 /// failed).
-pub(crate) fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext<'_>) -> Option<ast::Expr> {
+pub(crate) fn convert_try_mac(mac: &ast::MacCall, context: &RewriteContext<'_>) -> Option<ast::Expr> {
     let path = &pprust::path_to_string(&mac.path);
     if path == "try" || path == "r#try" {
         let ts = mac.args.inner_tokens();
@@ -1203,7 +1203,7 @@ pub(crate) fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext<'_>) -> O
     }
 }
 
-pub(crate) fn macro_style(mac: &ast::Mac, context: &RewriteContext<'_>) -> DelimToken {
+pub(crate) fn macro_style(mac: &ast::MacCall, context: &RewriteContext<'_>) -> DelimToken {
     let snippet = context.snippet(mac.span());
     let paren_pos = snippet.find_uncommented("(").unwrap_or(usize::max_value());
     let bracket_pos = snippet.find_uncommented("[").unwrap_or(usize::max_value());

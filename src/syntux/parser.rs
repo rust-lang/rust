@@ -2,30 +2,21 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 
 use rustc_errors::{Diagnostic, PResult};
-use rustc_parse::{new_sub_parser_from_file, parser::Parser as RawParser};
-use rustc_span::{symbol::kw, Span, DUMMY_SP};
+use rustc_parse::{new_parser_from_file, parser::Parser as RawParser};
+use rustc_span::{symbol::kw, Span};
 use syntax::ast;
 use syntax::token::{DelimToken, TokenKind};
 
 use crate::syntux::session::ParseSess;
 use crate::{Config, Input};
 
-pub(crate) type DirectoryOwnership = rustc_parse::DirectoryOwnership;
-pub(crate) type ModulePathSuccess = rustc_parse::parser::ModulePathSuccess;
+pub(crate) type DirectoryOwnership = rustc_expand::module::DirectoryOwnership;
+pub(crate) type ModulePathSuccess = rustc_expand::module::ModulePathSuccess;
 
 #[derive(Clone)]
 pub(crate) struct Directory {
     pub(crate) path: PathBuf,
     pub(crate) ownership: DirectoryOwnership,
-}
-
-impl<'a> Directory {
-    fn to_syntax_directory(&'a self) -> rustc_parse::Directory {
-        rustc_parse::Directory {
-            path: self.path.clone(),
-            ownership: self.ownership,
-        }
-    }
 }
 
 /// A parser for Rust source code.
@@ -68,11 +59,10 @@ impl<'a> ParserBuilder<'a> {
     }
 
     pub(crate) fn build(self) -> Result<Parser<'a>, ParserError> {
-        let config = self.config.ok_or(ParserError::NoConfig)?;
         let sess = self.sess.ok_or(ParserError::NoParseSess)?;
         let input = self.input.ok_or(ParserError::NoInput)?;
 
-        let mut parser = match Self::parser(sess.inner(), input, self.directory_ownership) {
+        let parser = match Self::parser(sess.inner(), input) {
             Ok(p) => p,
             Err(db) => {
                 sess.emit_diagnostics(db);
@@ -80,47 +70,26 @@ impl<'a> ParserBuilder<'a> {
             }
         };
 
-        parser.cfg_mods = false;
-        if config.skip_children() {
-            parser.recurse_into_file_modules = false;
-        }
-
         Ok(Parser { parser, sess })
     }
 
     fn parser(
         sess: &'a rustc_session::parse::ParseSess,
         input: Input,
-        directory_ownership: Option<DirectoryOwnership>,
     ) -> Result<rustc_parse::parser::Parser<'a>, Vec<Diagnostic>> {
         match input {
-            Input::File(ref file) => Ok(if let Some(directory_ownership) = directory_ownership {
-                rustc_parse::new_sub_parser_from_file(
-                    sess,
-                    file,
-                    directory_ownership,
-                    None,
-                    DUMMY_SP,
-                )
-            } else {
-                rustc_parse::new_parser_from_file(sess, file)
-            }),
+            Input::File(ref file) => Ok(new_parser_from_file(sess, file, None)),
             Input::Text(text) => rustc_parse::maybe_new_parser_from_source_str(
                 sess,
                 rustc_span::FileName::Custom("stdin".to_owned()),
                 text,
-            )
-            .map(|mut parser| {
-                parser.recurse_into_file_modules = false;
-                parser
-            }),
+            ),
         }
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum ParserError {
-    NoConfig,
     NoParseSess,
     NoInput,
     ParserCreationError,
@@ -130,7 +99,7 @@ pub(crate) enum ParserError {
 
 impl<'a> Parser<'a> {
     pub(crate) fn submod_path_from_attr(attrs: &[ast::Attribute], path: &Path) -> Option<PathBuf> {
-        rustc_parse::parser::Parser::submod_path_from_attr(attrs, path)
+        rustc_expand::module::submod_path_from_attr(attrs, path)
     }
 
     // FIXME(topecongiro) Use the method from libsyntax[1] once it become public.
@@ -176,6 +145,11 @@ impl<'a> Parser<'a> {
             items.push(item);
         }
 
+        // Handle extern mods that are empty files/files with only comments.
+        if items.is_empty() {
+            parser.parse_mod(&TokenKind::Eof)?;
+        }
+
         let hi = if parser.token.span.is_dummy() {
             span
         } else {
@@ -190,15 +164,13 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn parse_file_as_module(
-        directory_ownership: DirectoryOwnership,
         sess: &'a ParseSess,
         path: &Path,
+        span: Span,
     ) -> Option<ast::Mod> {
-        let result = catch_unwind(AssertUnwindSafe(|| {
-            let mut parser =
-                new_sub_parser_from_file(sess.inner(), &path, directory_ownership, None, DUMMY_SP);
+            let result = catch_unwind(AssertUnwindSafe(|| {
+            let mut parser = new_parser_from_file(sess.inner(), &path, Some(span));
 
-            parser.cfg_mods = false;
             let lo = parser.token.span;
             // FIXME(topecongiro) Format inner attributes (#3606).
             match Parser::parse_inner_attrs(&mut parser) {
@@ -267,11 +239,10 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn parse_cfg_if(
         sess: &'a ParseSess,
-        mac: &'a ast::Mac,
-        base_dir: &Directory,
+        mac: &'a ast::MacCall,
     ) -> Result<Vec<ast::Item>, &'static str> {
         match catch_unwind(AssertUnwindSafe(|| {
-            Parser::parse_cfg_if_inner(sess, mac, base_dir)
+            Parser::parse_cfg_if_inner(sess, mac)
         })) {
             Ok(Ok(items)) => Ok(items),
             Ok(err @ Err(_)) => err,
@@ -281,17 +252,11 @@ impl<'a> Parser<'a> {
 
     fn parse_cfg_if_inner(
         sess: &'a ParseSess,
-        mac: &'a ast::Mac,
-        base_dir: &Directory,
+        mac: &'a ast::MacCall,
     ) -> Result<Vec<ast::Item>, &'static str> {
         let token_stream = mac.args.inner_tokens();
-        let mut parser = rustc_parse::stream_to_parser_with_base_dir(
-            sess.inner(),
-            token_stream.clone(),
-            base_dir.to_syntax_directory(),
-        );
+        let mut parser = rustc_parse::stream_to_parser(sess.inner(),token_stream.clone(),Some(""));
 
-        parser.cfg_mods = false;
         let mut items = vec![];
         let mut process_if_cfg = true;
 

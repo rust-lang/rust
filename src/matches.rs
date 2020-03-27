@@ -559,7 +559,7 @@ fn can_flatten_block_around_this(body: &ast::Expr) -> bool {
         | ast::ExprKind::Array(..)
         | ast::ExprKind::Call(..)
         | ast::ExprKind::MethodCall(..)
-        | ast::ExprKind::Mac(..)
+        | ast::ExprKind::MacCall(..)
         | ast::ExprKind::Struct(..)
         | ast::ExprKind::Tup(..) => true,
         ast::ExprKind::AddrOf(_, _, ref expr)

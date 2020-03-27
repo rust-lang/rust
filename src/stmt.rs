@@ -106,7 +106,7 @@ fn format_stmt(
             let shape = shape.sub_width(suffix.len())?;
             format_expr(ex, expr_type, context, shape).map(|s| s + suffix)
         }
-        ast::StmtKind::Mac(..) | ast::StmtKind::Item(..) | ast::StmtKind::Empty => None,
+        ast::StmtKind::MacCall(..) | ast::StmtKind::Item(..) | ast::StmtKind::Empty => None,
     };
     result.and_then(|res| recover_comment_removed(res, stmt.span(), context))
 }
