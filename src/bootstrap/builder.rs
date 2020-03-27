@@ -1098,6 +1098,9 @@ impl<'a> Builder<'a> {
         }
 
         if let Mode::Rustc | Mode::Codegen = mode {
+            if stage > 0 {
+                rustflags.arg("-Zcross-crate-inline-threshold=50");
+            }
             rustflags.arg("-Zunstable-options");
             rustflags.arg("-Wrustc::internal");
         }

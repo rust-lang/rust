@@ -882,6 +882,9 @@ impl EncodeContext<'tcx> {
             ty::AssocKind::OpaqueTy => unreachable!(),
         }
         if trait_item.kind == ty::AssocKind::Method {
+            if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
+                record!(self.per_def.cross_crate_inlinable[def_id] <- self.tcx.cross_crate_inlinable(def_id));
+            }
             record!(self.per_def.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }
@@ -968,9 +971,11 @@ impl EncodeContext<'tcx> {
         let mir = match ast_item.kind {
             hir::ImplItemKind::Const(..) => true,
             hir::ImplItemKind::Fn(ref sig, _) => {
+                record!(self.per_def.cross_crate_inlinable[def_id] <- self.tcx.cross_crate_inlinable(def_id));
+
                 let generics = self.tcx.generics_of(def_id);
                 let needs_inline = (generics.requires_monomorphization(self.tcx)
-                    || tcx.codegen_fn_attrs(def_id).requests_inline())
+                    || tcx.cross_crate_inlinable(def_id))
                     && !self.metadata_output_only();
                 let is_const_fn = sig.header.constness == hir::Constness::Const;
                 let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
@@ -1266,9 +1271,11 @@ impl EncodeContext<'tcx> {
         let mir = match item.kind {
             hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => true,
             hir::ItemKind::Fn(ref sig, ..) => {
+                record!(self.per_def.cross_crate_inlinable[def_id] <- self.tcx.cross_crate_inlinable(def_id));
+
                 let generics = tcx.generics_of(def_id);
                 let needs_inline = (generics.requires_monomorphization(tcx)
-                    || tcx.codegen_fn_attrs(def_id).requests_inline())
+                    || tcx.cross_crate_inlinable(def_id))
                     && !self.metadata_output_only();
                 let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                 needs_inline || sig.header.constness == hir::Constness::Const || always_encode_mir
@@ -1743,8 +1750,8 @@ impl<'tcx, 'v> ParItemLikeVisitor<'v> for PrefetchVisitor<'tcx> {
             hir::ItemKind::Fn(ref sig, ..) => {
                 let def_id = tcx.hir().local_def_id(item.hir_id);
                 let generics = tcx.generics_of(def_id);
-                let needs_inline = generics.requires_monomorphization(tcx)
-                    || tcx.codegen_fn_attrs(def_id).requests_inline();
+                let needs_inline =
+                    generics.requires_monomorphization(tcx) || tcx.cross_crate_inlinable(def_id);
                 if needs_inline || sig.header.constness == hir::Constness::Const {
                     self.prefetch_mir(def_id)
                 }
@@ -1768,8 +1775,8 @@ impl<'tcx, 'v> ParItemLikeVisitor<'v> for PrefetchVisitor<'tcx> {
             hir::ImplItemKind::Fn(ref sig, _) => {
                 let def_id = tcx.hir().local_def_id(impl_item.hir_id);
                 let generics = tcx.generics_of(def_id);
-                let needs_inline = generics.requires_monomorphization(tcx)
-                    || tcx.codegen_fn_attrs(def_id).requests_inline();
+                let needs_inline =
+                    generics.requires_monomorphization(tcx) || tcx.cross_crate_inlinable(def_id);
                 let is_const_fn = sig.header.constness == hir::Constness::Const;
                 if needs_inline || is_const_fn {
                     self.prefetch_mir(def_id)

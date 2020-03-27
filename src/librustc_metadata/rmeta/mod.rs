@@ -276,6 +276,7 @@ define_per_def_tables! {
     inferred_outlives: Table<DefIndex, Lazy!(&'tcx [(ty::Predicate<'tcx>, Span)])>,
     super_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
     mir: Table<DefIndex, Lazy!(mir::BodyAndCache<'tcx>)>,
+    cross_crate_inlinable: Table<DefIndex, Lazy<bool>>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::BodyAndCache<'tcx>>)>,
 }
 

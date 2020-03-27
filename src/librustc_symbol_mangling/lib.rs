@@ -101,6 +101,7 @@ use rustc::mir::mono::{InstantiationMode, MonoItem};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Instance, TyCtxt};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_session::config::SymbolManglingVersion;
@@ -233,6 +234,8 @@ fn compute_symbol_name(
         // project.
         is_generic(substs) ||
 
+        (tcx.def_kind(instance.def_id()) != Some(DefKind::Static) &&
+
         // If we're dealing with an instance of a function that's inlined from
         // another crate but we're marking it as globally shared to our
         // compliation (aka we're not making an internal copy in each of our
@@ -242,7 +245,7 @@ fn compute_symbol_name(
         match MonoItem::Fn(instance).instantiation_mode(tcx) {
             InstantiationMode::GloballyShared { may_conflict: true } => true,
             _ => false,
-        };
+        });
 
     let instantiating_crate =
         if avoid_cross_crate_conflicts { Some(compute_instantiating_crate()) } else { None };

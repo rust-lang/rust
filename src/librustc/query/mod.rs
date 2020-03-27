@@ -649,6 +649,8 @@ rustc_queries! {
         query codegen_fn_attrs(_: DefId) -> CodegenFnAttrs {
             cache_on_disk_if { true }
         }
+
+        query cross_crate_inlinable(_: DefId) -> bool {}
     }
 
     Other {

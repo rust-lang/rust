@@ -152,6 +152,9 @@ macro_rules! __thread_local_inner {
             #[inline]
             fn __init() -> $t { $init }
 
+            // This cannot be inlined due to #[thread_local] not working correctly across
+            // dylibs.
+            #[inline(never)]
             unsafe fn __getit() -> $crate::option::Option<&'static $t> {
                 #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
                 static __KEY: $crate::thread::__StaticLocalKeyInner<$t> =

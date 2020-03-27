@@ -90,6 +90,18 @@ impl<'tcx> MonoItem<'tcx> {
 
         match *self {
             MonoItem::Fn(ref instance) => {
+                /*use rustc_hir::ItemKind;
+                use rustc_hir::Node;
+                tcx.hir().as_local_hir_id(instance.def_id()).map(|id| match tcx.hir().get(id) {
+                    Node::Item(item) => match item.kind {
+                        ItemKind::Static(..) | ItemKind::Const(..) => {
+                            panic!("STATIC!! {:?}", self);
+                        }
+                        _ => (),
+                    },
+                    _ => (),
+                });*/
+
                 let entry_def_id = tcx.entry_fn(LOCAL_CRATE).map(|(id, _)| id);
                 // If this function isn't inlined or otherwise has explicit
                 // linkage, then we'll be creating a globally shared version.

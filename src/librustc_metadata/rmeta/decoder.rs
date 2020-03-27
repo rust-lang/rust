@@ -1099,6 +1099,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         !self.is_proc_macro(id) && self.root.per_def.mir.get(self, id).is_some()
     }
 
+    fn is_item_cross_crate_inlinable(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> bool {
+        self.root
+            .per_def
+            .cross_crate_inlinable
+            .get(self, id)
+            .map(|v| v.decode((self, tcx)))
+            .unwrap_or(false)
+    }
+
     fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> BodyAndCache<'tcx> {
         let mut cache = self
             .root

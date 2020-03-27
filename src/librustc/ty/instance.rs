@@ -204,12 +204,13 @@ impl<'tcx> InstanceDef<'tcx> {
             // drops of `Option::None` before LTO. We also respect the intent of
             // `#[inline]` on `Drop::drop` implementations.
             return ty.ty_adt_def().map_or(true, |adt_def| {
-                adt_def.destructor(tcx).map_or(adt_def.is_enum(), |dtor| {
-                    tcx.codegen_fn_attrs(dtor.did).requests_inline()
-                })
+                adt_def
+                    .destructor(tcx)
+                    .map_or(adt_def.is_enum(), |dtor| tcx.cross_crate_inlinable(dtor.did))
             });
         }
-        tcx.codegen_fn_attrs(self.def_id()).requests_inline()
+
+        tcx.cross_crate_inlinable(self.def_id())
     }
 
     pub fn requires_caller_location(&self, tcx: TyCtxt<'_>) -> bool {
