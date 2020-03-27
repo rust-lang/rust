@@ -104,7 +104,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
                     let then_branch =
                         make::block_expr(once(make::expr_stmt(early_expression).into()), None);
                     let cond = invert_boolean_expression(cond_expr);
-                    let e = make::expr_if(cond, then_branch);
+                    let e = make::expr_if(make::condition(cond, None), then_branch);
                     if_indent_level.increase_indent(e)
                 };
                 replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)

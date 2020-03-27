@@ -108,7 +108,7 @@ pub fn expr_return() -> ast::Expr {
 pub fn expr_match(expr: ast::Expr, match_arm_list: ast::MatchArmList) -> ast::Expr {
     expr_from_text(&format!("match {} {}", expr, match_arm_list))
 }
-pub fn expr_if(condition: ast::Expr, then_branch: ast::BlockExpr) -> ast::Expr {
+pub fn expr_if(condition: ast::Condition, then_branch: ast::BlockExpr) -> ast::Expr {
     expr_from_text(&format!("if {} {}", condition, then_branch))
 }
 pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::Expr {
@@ -121,6 +121,15 @@ fn expr_from_text(text: &str) -> ast::Expr {
 
 pub fn try_expr_from_text(text: &str) -> Option<ast::Expr> {
     try_ast_from_text(&format!("const C: () = {};", text))
+}
+
+pub fn condition(expr: ast::Expr, pattern: Option<ast::Pat>) -> ast::Condition {
+    match pattern {
+        None => ast_from_text(&format!("const _: () = while {} {{}};", expr)),
+        Some(pattern) => {
+            ast_from_text(&format!("const _: () = while {} = {} {{}};", pattern, expr))
+        }
+    }
 }
 
 pub fn bind_pat(name: ast::Name) -> ast::BindPat {
