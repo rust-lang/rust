@@ -2,14 +2,12 @@ use crate::dep_graph::{DepConstructor, DepNode, WorkProduct, WorkProductId};
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::ty::print::obsolete::DefPathBasedNames;
 use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
-use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::HirId;
-use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 use std::fmt;
@@ -80,13 +78,9 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     pub fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
-        let generate_cgu_internal_copies = tcx
-            .sess
-            .opts
-            .debugging_opts
-            .inline_in_all_cgus
-            .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
-            && !tcx.sess.opts.cg.link_dead_code;
+        let generate_cgu_internal_copies =
+            tcx.sess.opts.debugging_opts.inline_in_all_cgus.unwrap_or(false)
+                && !tcx.sess.opts.cg.link_dead_code;
 
         match *self {
             MonoItem::Fn(ref instance) => {
@@ -107,15 +101,7 @@ impl<'tcx> MonoItem<'tcx> {
                     return InstantiationMode::LocalCopy;
                 }
 
-                // Finally, if this is `#[inline(always)]` we're sure to respect
-                // that with an inline copy per CGU, but otherwise we'll be
-                // creating one copy of this `#[inline]` function which may
-                // conflict with upstream crates as it could be an exported
-                // symbol.
-                match tcx.codegen_fn_attrs(instance.def_id()).inline {
-                    InlineAttr::Always => InstantiationMode::LocalCopy,
-                    _ => InstantiationMode::GloballyShared { may_conflict: true },
-                }
+                return InstantiationMode::GloballyShared { may_conflict: true };
             }
             MonoItem::Static(..) | MonoItem::GlobalAsm(..) => {
                 InstantiationMode::GloballyShared { may_conflict: false }
