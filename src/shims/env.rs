@@ -32,7 +32,7 @@ impl<'tcx> EnvVars<'tcx> {
                     let var_ptr = match target_os {
                         "linux" | "macos" => alloc_env_var_as_c_str(name.as_ref(), value.as_ref(), ecx)?,
                         "windows" => alloc_env_var_as_wide_str(name.as_ref(), value.as_ref(), ecx)?,
-                        unsupported => throw_unsup_format!("OsString support for target OS `{}` not yet available", unsupported),
+                        unsupported => throw_unsup_format!("environment support for target OS `{}` not yet available", unsupported),
                     };
                     ecx.machine.env_vars.map.insert(OsString::from(name), var_ptr);
                 }
