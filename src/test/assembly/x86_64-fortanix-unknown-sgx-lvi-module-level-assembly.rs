@@ -10,7 +10,3 @@ global_asm!(".start_module_asm:
             movq (%rdi), %rax
             retq
             .end_module_asm:" );
-
-// CHECK: .start_module_asm
-// TODO add check, when module-level pass is corrected
-// CHECK: .end_module_asm
