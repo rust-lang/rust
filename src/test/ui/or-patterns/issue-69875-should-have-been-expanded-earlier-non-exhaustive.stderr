@@ -6,6 +6,7 @@ LL |     let 0 | (1 | 2) = 0;
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `i32`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
 LL |     if let 0 | (1 | 2) = 0 { /* */ }
@@ -18,6 +19,7 @@ LL |     match 0 {
    |           ^ patterns `std::i32::MIN..=-1i32` and `3i32..=std::i32::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `i32`
 
 error: aborting due to 2 previous errors
 

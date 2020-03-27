@@ -5,6 +5,7 @@ LL |     match "world" {
    |           ^^^^^^^ pattern `&_` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `&str`
 
 error[E0004]: non-exhaustive patterns: `&_` not covered
   --> $DIR/issue-30240.rs:6:11
@@ -13,6 +14,7 @@ LL |     match "world" {
    |           ^^^^^^^ pattern `&_` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `&str`
 
 error: aborting due to 2 previous errors
 
