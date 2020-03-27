@@ -60,7 +60,7 @@ fn is_mir_available(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
-fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &FxHashSet<LocalDefId> {
+fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> FxHashSet<LocalDefId> {
     assert_eq!(krate, LOCAL_CRATE);
 
     let mut set = FxHashSet::default();
@@ -97,7 +97,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &FxHashSet<LocalDefId> {
         .krate()
         .visit_all_item_likes(&mut GatherCtors { tcx, set: &mut set }.as_deep_visitor());
 
-    tcx.arena.alloc(set)
+    set
 }
 
 /// Where a specific `mir::Body` comes from.

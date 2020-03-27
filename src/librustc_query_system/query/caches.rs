@@ -2,8 +2,10 @@ use crate::dep_graph::DepNodeIndex;
 use crate::query::plumbing::{QueryLookup, QueryState};
 use crate::query::QueryContext;
 
+use arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
+use rustc_data_structures::sync::WorkerLocal;
 use std::default::Default;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -119,6 +121,91 @@ impl<K: Eq + Hash, V: Clone> QueryCache for DefaultCache<K, V> {
     ) -> Self::Stored {
         lock_sharded_storage.insert(key, (value.clone(), index));
         value
+    }
+
+    fn iter<R, L>(
+        &self,
+        shards: &Sharded<L>,
+        get_shard: impl Fn(&mut L) -> &mut Self::Sharded,
+        f: impl for<'a> FnOnce(Box<dyn Iterator<Item = (&'a K, &'a V, DepNodeIndex)> + 'a>) -> R,
+    ) -> R {
+        let mut shards = shards.lock_shards();
+        let mut shards: Vec<_> = shards.iter_mut().map(|shard| get_shard(shard)).collect();
+        let results = shards.iter_mut().flat_map(|shard| shard.iter()).map(|(k, v)| (k, &v.0, v.1));
+        f(Box::new(results))
+    }
+}
+
+pub struct ArenaCacheSelector<'tcx>(PhantomData<&'tcx ()>);
+
+impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<K, V> for ArenaCacheSelector<'tcx> {
+    type Cache = ArenaCache<'tcx, K, V>;
+}
+
+pub struct ArenaCache<'tcx, K, V> {
+    arena: WorkerLocal<&'tcx TypedArena<(V, DepNodeIndex)>>,
+    phantom: PhantomData<K>,
+}
+
+impl<'tcx, K, V> Default for ArenaCache<'tcx, K, V> {
+    fn default() -> Self {
+        ArenaCache {
+            arena: WorkerLocal::new(|_| &*Box::leak(Box::new(TypedArena::default()))),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'tcx, K: Eq + Hash, V: 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
+    type Value = V;
+    type Stored = &'tcx V;
+
+    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
+        let value = self.arena.alloc((value, DepNodeIndex::INVALID));
+        &value.0
+    }
+}
+
+impl<'tcx, K: Eq + Hash, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V> {
+    type Key = K;
+    type Sharded = FxHashMap<K, &'tcx (V, DepNodeIndex)>;
+
+    #[inline(always)]
+    fn lookup<CTX: QueryContext, R, OnHit, OnMiss>(
+        &self,
+        state: &QueryState<CTX, Self>,
+        key: K,
+        on_hit: OnHit,
+        on_miss: OnMiss,
+    ) -> R
+    where
+        OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
+        OnMiss: FnOnce(K, QueryLookup<'_, CTX, K, Self::Sharded>) -> R,
+    {
+        let mut lookup = state.get_lookup(&key);
+        let lock = &mut *lookup.lock;
+
+        let result = lock.cache.raw_entry().from_key_hashed_nocheck(lookup.key_hash, &key);
+
+        if let Some((_, value)) = result {
+            on_hit(&&value.0, value.1)
+        } else {
+            on_miss(key, lookup)
+        }
+    }
+
+    #[inline]
+    fn complete<CTX: QueryContext>(
+        &self,
+        _: CTX,
+        lock_sharded_storage: &mut Self::Sharded,
+        key: K,
+        value: V,
+        index: DepNodeIndex,
+    ) -> Self::Stored {
+        let value = self.arena.alloc((value, index));
+        lock_sharded_storage.insert(key, value);
+        &value.0
     }
 
     fn iter<R, L>(
