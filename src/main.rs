@@ -77,10 +77,10 @@ where
     }
 
     if fix {
-        if !unstable_options {
-            panic!("Usage of `--fix` requires `-Z unstable-options`");
-        } else {
+        if unstable_options {
             args[0] = "fix".to_owned();
+        } else {
+            panic!("Usage of `--fix` requires `-Z unstable-options`");
         }
     }
 
