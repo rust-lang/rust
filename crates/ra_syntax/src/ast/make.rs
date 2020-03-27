@@ -127,7 +127,7 @@ pub fn condition(expr: ast::Expr, pattern: Option<ast::Pat>) -> ast::Condition {
     match pattern {
         None => ast_from_text(&format!("const _: () = while {} {{}};", expr)),
         Some(pattern) => {
-            ast_from_text(&format!("const _: () = while {} = {} {{}};", pattern, expr))
+            ast_from_text(&format!("const _: () = while let {} = {} {{}};", pattern, expr))
         }
     }
 }
@@ -245,7 +245,8 @@ pub fn let_stmt(pattern: ast::Pat, initializer: Option<ast::Expr>) -> ast::LetSt
     ast_from_text(&format!("fn f() {{ {} }}", text))
 }
 pub fn expr_stmt(expr: ast::Expr) -> ast::ExprStmt {
-    ast_from_text(&format!("fn f() {{ {}; }}", expr))
+    let semi = if expr.is_block_like() { "" } else { ";" };
+    ast_from_text(&format!("fn f() {{ {}{} (); }}", expr, semi))
 }
 
 pub fn token(kind: SyntaxKind) -> SyntaxToken {

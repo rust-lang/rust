@@ -608,6 +608,32 @@ fn handle(action: Action) {
 }
 
 #[test]
+fn doctest_replace_let_with_if_let() {
+    check(
+        "replace_let_with_if_let",
+        r#####"
+enum Option<T> { Some(T), None }
+
+fn main(action: Action) {
+    <|>let x = compute();
+}
+
+fn compute() -> Option<i32> { None }
+"#####,
+        r#####"
+enum Option<T> { Some(T), None }
+
+fn main(action: Action) {
+    if let Some(x) = compute() {
+    }
+}
+
+fn compute() -> Option<i32> { None }
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_qualified_name_with_use() {
     check(
         "replace_qualified_name_with_use",

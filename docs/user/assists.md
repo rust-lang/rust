@@ -583,6 +583,29 @@ fn handle(action: Action) {
 }
 ```
 
+## `replace_let_with_if_let`
+
+Replaces `if let` with an else branch with a `match` expression.
+
+```rust
+// BEFORE
+
+fn main(action: Action) {
+    ┃let x = compute();
+}
+
+fn compute() -> Option<i32> { None }
+
+// AFTER
+
+fn main(action: Action) {
+    if let Some(x) = compute() {
+    }
+}
+
+fn compute() -> Option<i32> { None }
+```
+
 ## `replace_qualified_name_with_use`
 
 Adds a use statement for a given fully-qualified name.

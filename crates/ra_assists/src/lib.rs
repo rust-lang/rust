@@ -118,6 +118,7 @@ mod handlers {
     mod remove_dbg;
     mod remove_mut;
     mod replace_if_let_with_match;
+    mod replace_let_with_if_let;
     mod replace_qualified_name_with_use;
     mod split_import;
 
@@ -153,6 +154,7 @@ mod handlers {
             remove_dbg::remove_dbg,
             remove_mut::remove_mut,
             replace_if_let_with_match::replace_if_let_with_match,
+            replace_let_with_if_let::replace_let_with_if_let,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
             split_import::split_import,
         ]
