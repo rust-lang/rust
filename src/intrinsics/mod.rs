@@ -141,10 +141,10 @@ macro atomic_minmax($fx:expr, $cc:expr, <$T:ident> ($ptr:ident, $src:ident) -> $
 fn lane_type_and_count<'tcx>(
     tcx: TyCtxt<'tcx>,
     layout: TyLayout<'tcx>,
-) -> (TyLayout<'tcx>, u32) {
+) -> (TyLayout<'tcx>, u16) {
     assert!(layout.ty.is_simd());
     let lane_count = match layout.fields {
-        layout::FieldPlacement::Array { stride: _, count } => u32::try_from(count).unwrap(),
+        layout::FieldPlacement::Array { stride: _, count } => u16::try_from(count).unwrap(),
         _ => unreachable!("lane_type_and_count({:?})", layout),
     };
     let lane_layout = layout.field(&ty::layout::LayoutCx {
@@ -264,19 +264,19 @@ macro simd_cmp {
 
             $ret.write_cvalue($fx, CValue::by_val(val, $ret.layout()));
         } else {
-        simd_pair_for_each_lane(
-            $fx,
-            $x,
-            $y,
-            $ret,
-            |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind {
-                    ty::Uint(_) | ty::Int(_) => codegen_icmp(fx, IntCC::$cc, x_lane, y_lane),
-                    _ => unreachable!("{:?}", lane_layout.ty),
-                };
-                bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
-            },
-        );
+            simd_pair_for_each_lane(
+                $fx,
+                $x,
+                $y,
+                $ret,
+                |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
+                    let res_lane = match lane_layout.ty.kind {
+                        ty::Uint(_) | ty::Int(_) => codegen_icmp(fx, IntCC::$cc, x_lane, y_lane),
+                        _ => unreachable!("{:?}", lane_layout.ty),
+                    };
+                    bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
+                },
+            );
         }
     },
     ($fx:expr, $cc_u:ident|$cc_s:ident($x:ident, $y:ident) -> $ret:ident) => {
