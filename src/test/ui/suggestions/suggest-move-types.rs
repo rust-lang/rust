@@ -24,21 +24,21 @@ trait ThreeWithLifetime<'a, 'b, 'c, T, U, V> {
 }
 
 struct A<T, M: One<A=(), T>> {
-//~^ ERROR constraints in a path segment must come after generic arguments
+//~^ ERROR generic arguments must come before the first constraint
     m: M,
     t: T,
 }
 
 
 struct Al<'a, T, M: OneWithLifetime<A=(), T, 'a>> {
-//~^ ERROR constraints in a path segment must come after generic arguments
+//~^ ERROR generic arguments must come before the first constraint
 //~^^ ERROR type provided when a lifetime was expected
     m: M,
     t: &'a T,
 }
 
 struct B<T, U, V, M: Three<A=(), B=(), C=(), T, U, V>> {
-//~^ ERROR constraints in a path segment must come after generic arguments
+//~^ ERROR generic arguments must come before the first constraint
     m: M,
     t: T,
     u: U,
@@ -46,7 +46,7 @@ struct B<T, U, V, M: Three<A=(), B=(), C=(), T, U, V>> {
 }
 
 struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<A=(), B=(), C=(), T, U, V, 'a, 'b, 'c>> {
-//~^ ERROR constraints in a path segment must come after generic arguments
+//~^ ERROR generic arguments must come before the first constraint
 //~^^ ERROR type provided when a lifetime was expected
     m: M,
     t: &'a T,
@@ -55,7 +55,7 @@ struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<A=(), B=(), C=(), T, U, V, '
 }
 
 struct C<T, U, V, M: Three<T, A=(), B=(), C=(), U, V>> {
-//~^ ERROR constraints in a path segment must come after generic arguments
+//~^ ERROR generic arguments must come before the first constraint
     m: M,
     t: T,
     u: U,
@@ -63,7 +63,7 @@ struct C<T, U, V, M: Three<T, A=(), B=(), C=(), U, V>> {
 }
 
 struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), C=(), U, 'b, V, 'c>> {
-//~^ ERROR constraints in a path segment must come after generic arguments
+//~^ ERROR generic arguments must come before the first constraint
 //~^^ ERROR lifetime provided when a type was expected
     m: M,
     t: &'a T,
@@ -72,7 +72,7 @@ struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), C=(), U, 
 }
 
 struct D<T, U, V, M: Three<T, A=(), B=(), U, C=(), V>> {
-//~^ ERROR constraints in a path segment must come after generic arguments
+//~^ ERROR generic arguments must come before the first constraint
     m: M,
     t: T,
     u: U,
@@ -80,7 +80,7 @@ struct D<T, U, V, M: Three<T, A=(), B=(), U, C=(), V>> {
 }
 
 struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), U, 'b, C=(), V, 'c>> {
-//~^ ERROR constraints in a path segment must come after generic arguments
+//~^ ERROR generic arguments must come before the first constraint
 //~^^ ERROR lifetime provided when a type was expected
     m: M,
     t: &'a T,

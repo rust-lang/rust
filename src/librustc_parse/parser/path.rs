@@ -439,8 +439,8 @@ impl<'a> Parser<'a> {
             Some(GenericArg::Type(ty)) => return Ok(ty),
             Some(GenericArg::Const(expr)) => {
                 self.struct_span_err(span, "cannot constrain an associated constant to a value")
-                    .span_label(ident.span, "the value constrains this associated constant")
-                    .span_label(expr.value.span, "the value is given in this expression")
+                    .span_label(ident.span, "this associated constant...")
+                    .span_label(expr.value.span, "...cannot be constrained to this value")
                     .emit();
             }
             Some(GenericArg::Lifetime(lt)) => {
@@ -450,15 +450,17 @@ impl<'a> Parser<'a> {
                     .emit();
             }
             None => {
-                self.struct_span_err(span, "missing type to the right of `=`")
+                let after_eq = eq.shrink_to_hi();
+                let before_next = self.token.span.shrink_to_lo();
+                self.struct_span_err(after_eq.to(before_next), "missing type to the right of `=`")
                     .span_suggestion(
-                        span,
+                        self.sess.source_map().next_point(eq).to(before_next),
                         "to constrain the associated type, add a type after `=`",
-                        format!("{} = TheType", ident),
+                        " TheType".to_string(),
                         Applicability::HasPlaceholders,
                     )
                     .span_suggestion(
-                        eq,
+                        eq.to(before_next),
                         &format!("remove the `=` if `{}` is a type", ident),
                         String::new(),
                         Applicability::MaybeIncorrect,

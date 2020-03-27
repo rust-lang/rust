@@ -1,10 +1,9 @@
-error: constraints in a path segment must come after generic arguments
-  --> $DIR/issue-32214.rs:3:24
+error: generic arguments must come before the first constraint
+  --> $DIR/issue-32214.rs:3:34
    |
 LL | pub fn test<W, I: Trait<Item=(), W> >() {}
-   |                        ^-------^^-^
-   |                         |        |
-   |                         |        this generic argument must come before the first constraint
+   |                         -------  ^
+   |                         |
    |                         the first constraint is provided here
 
 error: aborting due to previous error
