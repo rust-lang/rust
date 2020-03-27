@@ -9,7 +9,7 @@ use rustc_index::bit_set::BitSet;
 use std::marker::PhantomData;
 
 use super::{qualifs, Item, Qualif};
-use crate::dataflow::{self as old_dataflow, generic as dataflow};
+use crate::dataflow;
 
 /// A `Visitor` that propagates qualifs between locals. This defines the transfer function of
 /// `FlowSensitiveAnalysis`.
@@ -165,7 +165,7 @@ where
     }
 }
 
-impl<Q> old_dataflow::BottomValue for FlowSensitiveAnalysis<'_, '_, '_, Q> {
+impl<Q> dataflow::BottomValue for FlowSensitiveAnalysis<'_, '_, '_, Q> {
     const BOTTOM_VALUE: bool = false;
 }
 

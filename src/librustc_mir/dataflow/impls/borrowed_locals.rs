@@ -1,6 +1,6 @@
 pub use super::*;
 
-use crate::dataflow::generic::{AnalysisDomain, GenKill, GenKillAnalysis};
+use crate::dataflow::{AnalysisDomain, GenKill, GenKillAnalysis};
 use rustc::mir::visit::Visitor;
 use rustc::mir::*;
 use rustc::ty::{ParamEnv, TyCtxt};

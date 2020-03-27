@@ -9,11 +9,11 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 
-use crate::dataflow::generic::{Analysis, Results, ResultsCursor};
 use crate::dataflow::move_paths::{HasMoveData, MoveData};
 use crate::dataflow::move_paths::{LookupResult, MovePathIndex};
 use crate::dataflow::MaybeMutBorrowedLocals;
 use crate::dataflow::MoveDataParamEnv;
+use crate::dataflow::{Analysis, Results, ResultsCursor};
 use crate::dataflow::{
     DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces,
 };

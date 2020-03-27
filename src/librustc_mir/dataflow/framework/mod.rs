@@ -1,26 +1,25 @@
 //! A framework that can express both [gen-kill] and generic dataflow problems.
 //!
-//! There is another interface for dataflow in the compiler in `librustc_mir/dataflow/mod.rs`. The
-//! interface in this module will eventually [replace that one][design-meeting].
+//! To actually use this framework, you must implement either the `Analysis` or the
+//! `GenKillAnalysis` trait. If your transfer function can be expressed with only gen/kill
+//! operations, prefer `GenKillAnalysis` since it will run faster while iterating to fixpoint. The
+//! `impls` module contains several examples of gen/kill dataflow analyses.
 //!
-//! To actually use this framework, you must implement either the `Analysis` or the `GenKillAnalysis`
-//! trait. If your transfer function can be expressed with only gen/kill operations, prefer
-//! `GenKillAnalysis` since it will run faster while iterating to fixpoint. Create an `Engine` using
-//! the appropriate constructor and call `iterate_to_fixpoint`. You can use a `ResultsCursor` to
-//! inspect the fixpoint solution to your dataflow problem.
+//! Create an `Engine` for your analysis using the `into_engine` method on the `Analysis` trait,
+//! then call `iterate_to_fixpoint`. From there, you can use a `ResultsCursor` to inspect the
+//! fixpoint solution to your dataflow problem, or implement the `ResultsVisitor` interface and use
+//! `visit_results`. The following example uses the `ResultsCursor` approach.
 //!
 //! ```ignore(cross-crate-imports)
+//! use rustc_mir::dataflow::Analysis; // Makes `into_engine` available.
+//!
 //! fn do_my_analysis(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>, did: DefId) {
-//!     let analysis = MyAnalysis::new();
+//!     let analysis = MyAnalysis::new()
+//!         .into_engine(tcx, body, did)
+//!         .iterate_to_fixpoint()
+//!         .into_results_cursor(body);
 //!
-//!     // If `MyAnalysis` implements `GenKillAnalysis`.
-//!     let results = Engine::new_gen_kill(tcx, body, did, analysis).iterate_to_fixpoint();
-//!
-//!     // If `MyAnalysis` implements `Analysis`.
-//!     // let results = Engine::new_generic(tcx, body, did, analysis).iterate_to_fixpoint();
-//!
-//!     let mut cursor = ResultsCursor::new(body, results);
-//!
+//!     // Print the dataflow state *after* each statement in the start block.
 //!     for (_, statement_index) in body.block_data[START_BLOCK].statements.iter_enumerated() {
 //!         cursor.seek_after(Location { block: START_BLOCK, statement_index });
 //!         let state = cursor.get();
@@ -30,7 +29,6 @@
 //! ```
 //!
 //! [gen-kill]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
-//! [design-meeting]https://github.com/rust-lang/compiler-team/issues/202
 
 use std::io;
 
@@ -40,8 +38,6 @@ use rustc::ty::{self, TyCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::{Idx, IndexVec};
-
-use crate::dataflow::BottomValue;
 
 mod cursor;
 mod engine;
@@ -92,6 +88,47 @@ where
     ) {
         let blocks = mir::traversal::reverse_postorder(body);
         visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
+    }
+}
+
+/// Parameterization for the precise form of data flow that is used.
+///
+/// `BottomValue` determines whether the initial entry set for each basic block is empty or full.
+/// This also determines the semantics of the lattice `join` operator used to merge dataflow
+/// results, since dataflow works by starting at the bottom and moving monotonically to a fixed
+/// point.
+///
+/// This means, for propagation across the graph, that you either want to start at all-zeroes and
+/// then use Union as your merge when propagating, or you start at all-ones and then use Intersect
+/// as your merge when propagating.
+pub trait BottomValue {
+    /// Specifies the initial value for each bit in the entry set for each basic block.
+    const BOTTOM_VALUE: bool;
+
+    /// Merges `in_set` into `inout_set`, returning `true` if `inout_set` changed.
+    ///
+    /// It is almost certainly wrong to override this, since it automatically applies
+    /// * `inout_set & in_set` if `BOTTOM_VALUE == true`
+    /// * `inout_set | in_set` if `BOTTOM_VALUE == false`
+    ///
+    /// This means that if a bit is not `BOTTOM_VALUE`, it is propagated into all target blocks.
+    /// For clarity, the above statement again from a different perspective:
+    /// A bit in the block's entry set is `!BOTTOM_VALUE` if *any* predecessor block's bit value is
+    /// `!BOTTOM_VALUE`.
+    ///
+    /// There are situations where you want the opposite behaviour: propagate only if *all*
+    /// predecessor blocks's value is `!BOTTOM_VALUE`.
+    /// E.g. if you want to know whether a bit is *definitely* set at a specific location. This
+    /// means that all code paths leading to the location must have set the bit, instead of any
+    /// code path leading there.
+    ///
+    /// If you want this kind of "definitely set" analysis, you need to
+    /// 1. Invert `BOTTOM_VALUE`
+    /// 2. Reset the `entry_set` in `start_block_effect` to `!BOTTOM_VALUE`
+    /// 3. Override `join` to do the opposite from what it's doing now.
+    #[inline]
+    fn join<T: Idx>(&self, inout_set: &mut BitSet<T>, in_set: &BitSet<T>) -> bool {
+        if !Self::BOTTOM_VALUE { inout_set.union(in_set) } else { inout_set.intersect(in_set) }
     }
 }
 

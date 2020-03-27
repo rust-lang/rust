@@ -3,9 +3,9 @@ use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use std::rc::Rc;
 
-use crate::dataflow::generic::ResultsCursor;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::MaybeInitializedPlaces;
+use crate::dataflow::ResultsCursor;
 
 use crate::borrow_check::{
     constraints::OutlivesConstraintSet,

@@ -49,7 +49,7 @@
 //! For generators with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
-use crate::dataflow::generic::{self as dataflow, Analysis};
+use crate::dataflow::{self, Analysis};
 use crate::dataflow::{MaybeBorrowedLocals, MaybeRequiresStorage, MaybeStorageLive};
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::transform::simplify;
