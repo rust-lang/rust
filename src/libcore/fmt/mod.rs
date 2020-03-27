@@ -852,7 +852,7 @@ pub trait LowerHex {
 ///     }
 /// }
 ///
-/// let l = Length(i32::max_value());
+/// let l = Length(i32::MAX);
 ///
 /// assert_eq!(format!("l as hex is: {:X}", l), "l as hex is: 7FFFFFFF");
 ///

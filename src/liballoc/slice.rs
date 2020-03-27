@@ -432,7 +432,7 @@ impl<T> [T] {
     ///
     /// ```should_panic
     /// // this will panic at runtime
-    /// b"0123456789abcdef".repeat(usize::max_value());
+    /// b"0123456789abcdef".repeat(usize::MAX);
     /// ```
     #[stable(feature = "repeat_generic_slice", since = "1.40.0")]
     pub fn repeat(&self, n: usize) -> Vec<T>

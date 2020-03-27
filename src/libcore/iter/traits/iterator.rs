@@ -198,7 +198,7 @@ pub trait Iterator {
     /// // and the maximum possible lower bound
     /// let iter = 0..;
     ///
-    /// assert_eq!((usize::max_value(), None), iter.size_hint());
+    /// assert_eq!((usize::MAX, None), iter.size_hint());
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
