@@ -241,6 +241,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             }
 
             adt_defined_here(cx, &mut err, pattern_ty, &witnesses);
+            err.note(&format!("the matched value is of type `{}`", pattern_ty));
             err.emit();
         });
     }
@@ -483,6 +484,7 @@ fn check_exhaustive<'p, 'tcx>(
         "ensure that all possible cases are being handled, \
          possibly by adding wildcards or more match arms",
     );
+    err.note(&format!("the matched value is of type `{}`", scrut_ty));
     err.emit();
 }
 
