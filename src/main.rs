@@ -66,11 +66,11 @@ where
             "--fix" => {
                 fix = true;
                 continue;
-            }
+            },
             "--" => break,
             // Cover -Zunstable-options and -Z unstable-options
             s if s.ends_with("unstable-options") => unstable_options = true,
-            _ => {}
+            _ => {},
         }
 
         args.push(arg);
