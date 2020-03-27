@@ -10,7 +10,6 @@ fn bitset_search<
 >(
     needle: u32,
     chunk_idx_map: &[u8; N],
-    last_chunk_idx: u16,
     bitset_chunk_idx: &[[u8; CHUNK_SIZE]; N1],
     bitset_canonical: &[u64; CANONICAL],
     bitset_canonicalized: &[(u8, u8); CANONICALIZED],
@@ -18,12 +17,8 @@ fn bitset_search<
     let bucket_idx = (needle / 64) as usize;
     let chunk_map_idx = bucket_idx / CHUNK_SIZE;
     let chunk_piece = bucket_idx % CHUNK_SIZE;
-    // The last entry of `chunk_idx_map` actually should be at `last_chunk_idx`,
-    // so we need to remap it
-    let chunk_idx = if chunk_map_idx < (chunk_idx_map.len() - 1) {
-        chunk_idx_map[chunk_map_idx]
-    } else if chunk_map_idx == last_chunk_idx as usize {
-        chunk_idx_map[chunk_idx_map.len() - 1]
+    let chunk_idx = if let Some(&v) = chunk_idx_map.get(chunk_map_idx) {
+        v
     } else {
         return false;
     };
@@ -317,12 +312,12 @@ pub mod grapheme_extend {
 
 #[rustfmt::skip]
 pub mod lowercase {
-    const BITSET_LAST_CHUNK_MAP: u16 = 122;
-    static BITSET_CHUNKS_MAP: [u8; 119] = [
+    static BITSET_CHUNKS_MAP: [u8; 123] = [
         13, 16, 0, 0, 8, 0, 0, 11, 12, 9, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 3, 1, 0, 14, 0, 7, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 6,
+        0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0,
+        0, 0, 6,
     ];
     static BITSET_INDEX_CHUNKS: [[u8; 16]; 18] = [
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -408,7 +403,6 @@ pub mod lowercase {
         super::bitset_search(
             c as u32,
             &BITSET_CHUNKS_MAP,
-            BITSET_LAST_CHUNK_MAP,
             &BITSET_INDEX_CHUNKS,
             &BITSET_CANONICAL,
             &BITSET_MAPPING,
@@ -449,13 +443,12 @@ pub mod n {
 
 #[rustfmt::skip]
 pub mod uppercase {
-    const BITSET_LAST_CHUNK_MAP: u16 = 124;
-    static BITSET_CHUNKS_MAP: [u8; 124] = [
+    static BITSET_CHUNKS_MAP: [u8; 125] = [
         12, 15, 5, 5, 0, 5, 5, 2, 4, 11, 5, 14, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
         5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
         5, 5, 5, 6, 5, 13, 5, 10, 5, 5, 1, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
         5, 7, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 16, 5, 5,
-        5, 5, 9, 3,
+        5, 5, 9, 5, 3,
     ];
     static BITSET_INDEX_CHUNKS: [[u8; 16]; 17] = [
         [41, 41, 5, 33, 41, 41, 41, 41, 41, 41, 41, 41, 41, 41, 5, 0],
@@ -529,7 +522,6 @@ pub mod uppercase {
         super::bitset_search(
             c as u32,
             &BITSET_CHUNKS_MAP,
-            BITSET_LAST_CHUNK_MAP,
             &BITSET_INDEX_CHUNKS,
             &BITSET_CANONICAL,
             &BITSET_MAPPING,

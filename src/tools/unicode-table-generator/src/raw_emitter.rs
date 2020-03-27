@@ -139,7 +139,6 @@ impl RawEmitter {
         writeln!(&mut self.file, "    super::bitset_search(",).unwrap();
         writeln!(&mut self.file, "        c as u32,").unwrap();
         writeln!(&mut self.file, "        &BITSET_CHUNKS_MAP,").unwrap();
-        writeln!(&mut self.file, "        BITSET_LAST_CHUNK_MAP,").unwrap();
         writeln!(&mut self.file, "        &BITSET_INDEX_CHUNKS,").unwrap();
         writeln!(&mut self.file, "        &BITSET_CANONICAL,").unwrap();
         writeln!(&mut self.file, "        &BITSET_MAPPING,").unwrap();
@@ -170,29 +169,6 @@ impl RawEmitter {
             chunk_indices.push(chunk_map[chunk]);
         }
 
-        // If one of the chunks has all of the entries point to the bitset
-        // word filled with zeros, then pop those off the end -- we know they
-        // are useless.
-        let zero_chunk_idx = chunks.iter().position(|chunk| chunk.iter().all(|e| *e == zero_at));
-        while zero_chunk_idx.is_some() && chunk_indices.last().cloned() == zero_chunk_idx {
-            chunk_indices.pop();
-        }
-        // We do not count the LAST_CHUNK_MAP as adding bytes because it's a
-        // small constant whose values are inlined directly into the instruction
-        // stream.
-        writeln!(
-            &mut self.file,
-            "const BITSET_LAST_CHUNK_MAP: u16 = {};",
-            chunk_indices.len() - 1,
-        )
-        .unwrap();
-        let nonzero = chunk_indices.pop().unwrap();
-        // Try to pop again, now that we've recorded a non-zero pointing index
-        // into the LAST_CHUNK_MAP.
-        while zero_chunk_idx.is_some() && chunk_indices.last().cloned() == zero_chunk_idx {
-            chunk_indices.pop();
-        }
-        chunk_indices.push(nonzero);
         writeln!(
             &mut self.file,
             "static BITSET_CHUNKS_MAP: [u8; {}] = [{}];",
