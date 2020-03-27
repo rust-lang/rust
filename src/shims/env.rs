@@ -28,7 +28,7 @@ impl<'tcx> EnvVars<'tcx> {
         let target_os = ecx.tcx.sess.target.target.target_os.as_str();
         if target_os == "windows" {
             // Temporary hack: Exclude `TERM` var to avoid terminfo trying to open the termcap file.
-            // Can be removed once Issue#1013(Implement file system access for Windows) is resolved.
+            // Can be removed once https://github.com/rust-lang/miri/issues/1013 is resolved.
             excluded_env_vars.push("TERM".to_owned());
         }
 
