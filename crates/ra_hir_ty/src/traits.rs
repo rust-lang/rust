@@ -153,7 +153,7 @@ pub(crate) fn trait_solve_query(
         }
     }
 
-    let canonical = goal.to_chalk(db).cast();
+    let canonical = goal.to_chalk(db).cast(&Interner);
 
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
@@ -194,8 +194,8 @@ fn solution_from_chalk(
     let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution<Interner>>| {
         let value = subst
             .value
-            .into_iter()
-            .map(|p| match p.ty() {
+            .iter(&Interner)
+            .map(|p| match p.ty(&Interner) {
                 Some(ty) => from_chalk(db, ty.clone()),
                 None => unimplemented!(),
             })
