@@ -3,7 +3,6 @@
 use crate::utils::get_attr;
 use rustc_ast::ast::Attribute;
 use rustc_hir as hir;
-use rustc_hir_pretty;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::Session;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
