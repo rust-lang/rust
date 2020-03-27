@@ -660,10 +660,11 @@ impl<'a> AstValidator<'a> {
         // ...and then error:
         self.err_handler()
             .struct_span_err(
-                misplaced_args,
+                misplaced_args.clone(),
                 "generic arguments must come before the first constraint",
             )
             .span_label(first.unwrap(), "the first constraint is provided here")
+            .span_labels(misplaced_args, "generic argument")
             .emit();
     }
 }

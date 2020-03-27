@@ -2,7 +2,7 @@ error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:26:26
    |
 LL | struct A<T, M: One<A=(), T>> {
-   |                    ----  ^
+   |                    ----  ^ generic argument
    |                    |
    |                    the first constraint is provided here
 
@@ -10,56 +10,72 @@ error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:33:43
    |
 LL | struct Al<'a, T, M: OneWithLifetime<A=(), T, 'a>> {
-   |                                     ----  ^  ^^
-   |                                     |
+   |                                     ----  ^  ^^ generic argument
+   |                                     |     |
+   |                                     |     generic argument
    |                                     the first constraint is provided here
 
 error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:40:46
    |
 LL | struct B<T, U, V, M: Three<A=(), B=(), C=(), T, U, V>> {
-   |                            ----              ^  ^  ^
-   |                            |
+   |                            ----              ^  ^  ^ generic argument
+   |                            |                 |  |
+   |                            |                 |  generic argument
+   |                            |                 generic argument
    |                            the first constraint is provided here
 
 error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:48:71
    |
 LL | struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<A=(), B=(), C=(), T, U, V, 'a, 'b, 'c>> {
-   |                                                     ----              ^  ^  ^  ^^  ^^  ^^
-   |                                                     |
+   |                                                     ----              ^  ^  ^  ^^  ^^  ^^ generic argument
+   |                                                     |                 |  |  |  |   |
+   |                                                     |                 |  |  |  |   generic argument
+   |                                                     |                 |  |  |  generic argument
+   |                                                     |                 |  |  generic argument
+   |                                                     |                 |  generic argument
+   |                                                     |                 generic argument
    |                                                     the first constraint is provided here
 
 error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:57:49
    |
 LL | struct C<T, U, V, M: Three<T, A=(), B=(), C=(), U, V>> {
-   |                               ----              ^  ^
-   |                               |
+   |                               ----              ^  ^ generic argument
+   |                               |                 |
+   |                               |                 generic argument
    |                               the first constraint is provided here
 
 error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:65:78
    |
 LL | struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), C=(), U, 'b, V, 'c>> {
-   |                                                            ----              ^  ^^  ^  ^^
-   |                                                            |
+   |                                                            ----              ^  ^^  ^  ^^ generic argument
+   |                                                            |                 |  |   |
+   |                                                            |                 |  |   generic argument
+   |                                                            |                 |  generic argument
+   |                                                            |                 generic argument
    |                                                            the first constraint is provided here
 
 error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:74:43
    |
 LL | struct D<T, U, V, M: Three<T, A=(), B=(), U, C=(), V>> {
-   |                               ----        ^        ^
-   |                               |
+   |                               ----        ^        ^ generic argument
+   |                               |           |
+   |                               |           generic argument
    |                               the first constraint is provided here
 
 error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:82:72
    |
 LL | struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), U, 'b, C=(), V, 'c>> {
-   |                                                            ----        ^  ^^        ^  ^^
-   |                                                            |
+   |                                                            ----        ^  ^^        ^  ^^ generic argument
+   |                                                            |           |  |         |
+   |                                                            |           |  |         generic argument
+   |                                                            |           |  generic argument
+   |                                                            |           generic argument
    |                                                            the first constraint is provided here
 
 error[E0747]: type provided when a lifetime was expected
