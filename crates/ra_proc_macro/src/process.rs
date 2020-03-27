@@ -16,7 +16,7 @@ use std::{
 
 #[derive(Debug, Default)]
 pub(crate) struct ProcMacroProcessSrv {
-    inner: Option<Handle>,
+    inner: Option<Sender<Task>>,
 }
 
 #[derive(Debug)]
@@ -28,11 +28,6 @@ pub(crate) struct ProcMacroProcessThread {
 enum Task {
     Request { req: Message, result_tx: Sender<Message> },
     Close,
-}
-
-#[derive(Debug)]
-struct Handle {
-    sender: Sender<Task>,
 }
 
 struct Process {
@@ -89,7 +84,7 @@ impl ProcMacroProcessSrv {
             client_loop(task_rx, process);
         });
 
-        let srv = ProcMacroProcessSrv { inner: Some(Handle { sender: task_tx.clone() }) };
+        let srv = ProcMacroProcessSrv { inner: Some(task_tx.clone()) };
         let thread = ProcMacroProcessThread { handle: Some(handle), sender: task_tx };
 
         Ok((thread, srv))
@@ -127,8 +122,8 @@ impl ProcMacroProcessSrv {
         T: serde::Serialize,
         R: serde::de::DeserializeOwned + Default,
     {
-        let handle = match &self.inner {
-            None => return Err(ra_tt::ExpansionError::Unknown("No handle is found.".to_string())),
+        let sender = match &self.inner {
+            None => return Err(ra_tt::ExpansionError::Unknown("No sender is found.".to_string())),
             Some(it) => it,
         };
 
@@ -140,7 +135,7 @@ impl ProcMacroProcessSrv {
 
         let (result_tx, result_rx) = bounded(0);
 
-        handle.sender.send(Task::Request { req: req.into(), result_tx }).map_err(|err| {
+        sender.send(Task::Request { req: req.into(), result_tx }).map_err(|err| {
             ra_tt::ExpansionError::Unknown(format!(
                 "Fail to send task in channel, reason : {:#?} ",
                 err
