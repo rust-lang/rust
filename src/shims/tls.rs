@@ -25,6 +25,12 @@ pub struct TlsData<'tcx> {
 
     /// pthreads-style thread-local storage.
     keys: BTreeMap<TlsKey, TlsEntry<'tcx>>,
+
+    /// A single global dtor (that's how things work on macOS) with a data argument.
+    global_dtor: Option<(ty::Instance<'tcx>, Scalar<Tag>)>,
+
+    /// Whether we are in the "destruct" phase, during which some operations are UB.
+    dtors_running: bool,
 }
 
 impl<'tcx> Default for TlsData<'tcx> {
@@ -32,6 +38,8 @@ impl<'tcx> Default for TlsData<'tcx> {
         TlsData {
             next_key: 1, // start with 1 as we must not use 0 on Windows
             keys: Default::default(),
+            global_dtor: None,
+            dtors_running: false,
         }
     }
 }
@@ -86,6 +94,19 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
+    pub fn set_global_dtor(&mut self, dtor: ty::Instance<'tcx>, data: Scalar<Tag>) -> InterpResult<'tcx> {
+        if self.dtors_running {
+            // UB, according to libstd docs.
+            throw_ub_format!("setting global destructor while destructors are already running");
+        }
+        if self.global_dtor.is_some() {
+            throw_unsup_format!("setting more than one global destructor is not supported");
+        }
+
+        self.global_dtor = Some((dtor, data));
+        Ok(())
+    }
+
     /// Returns a dtor, its argument and its index, if one is supposed to run
     ///
     /// An optional destructor function may be associated with each key value.
@@ -134,11 +155,30 @@ impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tc
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn run_tls_dtors(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        assert!(!this.machine.tls.dtors_running, "running TLS dtors twice");
+        this.machine.tls.dtors_running = true;
+
+        // The macOS global dtor runs "before any TLS slots get freed", so do that first.
+        if let Some((instance, data)) = this.machine.tls.global_dtor {
+            trace!("Running global dtor {:?} on {:?}", instance, data);
+
+            let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
+            this.call_function(
+                instance,
+                &[data.into()],
+                Some(ret_place),
+                StackPopCleanup::None { cleanup: true },
+            )?;
+
+            // step until out of stackframes
+            this.run()?;
+        }
+
+        // Now run the "keyed" destructors.
         let mut dtor = this.machine.tls.fetch_tls_dtor(None);
-        // FIXME: replace loop by some structure that works with stepping
         while let Some((instance, ptr, key)) = dtor {
             trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
-            assert!(!this.is_null(ptr).unwrap(), "Data can't be NULL when dtor is called!");
+            assert!(!this.is_null(ptr).unwrap(), "data can't be NULL when dtor is called!");
 
             let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
             this.call_function(

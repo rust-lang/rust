@@ -87,7 +87,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             "_tlv_atexit" => {
-                // FIXME: register the destructor.
+                let dtor = this.read_scalar(args[0])?.not_undef()?;
+                let dtor = this.memory.get_fn(dtor)?.as_instance()?;
+                let data = this.read_scalar(args[1])?.not_undef()?;
+                this.machine.tls.set_global_dtor(dtor, data)?;
             }
 
             "_NSGetArgc" => {
