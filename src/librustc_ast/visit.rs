@@ -813,7 +813,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         }
         ExprKind::MacCall(ref mac) => visitor.visit_mac(mac),
         ExprKind::Paren(ref subexpression) => visitor.visit_expr(subexpression),
-        ExprKind::InlineAsm(ref ia) => {
+        ExprKind::LlvmInlineAsm(ref ia) => {
             for &(_, ref input) in &ia.inputs {
                 visitor.visit_expr(input)
             }

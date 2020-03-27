@@ -1114,7 +1114,7 @@ impl Expr {
             ExprKind::Break(..) => ExprPrecedence::Break,
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
-            ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
+            ExprKind::LlvmInlineAsm(..) => ExprPrecedence::InlineAsm,
             ExprKind::MacCall(..) => ExprPrecedence::Mac,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
@@ -1243,8 +1243,8 @@ pub enum ExprKind {
     /// A `return`, with an optional value to be returned.
     Ret(Option<P<Expr>>),
 
-    /// Output of the `asm!()` macro.
-    InlineAsm(P<InlineAsm>),
+    /// Output of the `llvm_asm!()` macro.
+    LlvmInlineAsm(P<LlvmInlineAsm>),
 
     /// A macro invocation; pre-expansion.
     MacCall(MacCall),
@@ -1860,37 +1860,37 @@ pub enum TraitObjectSyntax {
 
 /// Inline assembly dialect.
 ///
-/// E.g., `"intel"` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
+/// E.g., `"intel"` as in `llvm_asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
-pub enum AsmDialect {
+pub enum LlvmAsmDialect {
     Att,
     Intel,
 }
 
-/// Inline assembly.
+/// LLVM-style inline assembly.
 ///
-/// E.g., `"={eax}"(result)` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
+/// E.g., `"={eax}"(result)` as in `llvm_asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct InlineAsmOutput {
+pub struct LlvmInlineAsmOutput {
     pub constraint: Symbol,
     pub expr: P<Expr>,
     pub is_rw: bool,
     pub is_indirect: bool,
 }
 
-/// Inline assembly.
+/// LLVM-style inline assembly.
 ///
-/// E.g., `asm!("NOP");`.
+/// E.g., `llvm_asm!("NOP");`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct InlineAsm {
+pub struct LlvmInlineAsm {
     pub asm: Symbol,
     pub asm_str_style: StrStyle,
-    pub outputs: Vec<InlineAsmOutput>,
+    pub outputs: Vec<LlvmInlineAsmOutput>,
     pub inputs: Vec<(Symbol, P<Expr>)>,
     pub clobbers: Vec<Symbol>,
     pub volatile: bool,
     pub alignstack: bool,
-    pub dialect: AsmDialect,
+    pub dialect: LlvmAsmDialect,
 }
 
 /// A parameter in a function header.

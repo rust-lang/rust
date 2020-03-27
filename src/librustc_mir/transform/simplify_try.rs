@@ -172,7 +172,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranchSame {
                     // so we cannot assume that the `unreachable` terminator itself is reachable.
                     // FIXME(Centril): use a normalization pass instead of a check.
                     || bb.statements.iter().any(|stmt| match stmt.kind {
-                        StatementKind::InlineAsm(..) => true,
+                        StatementKind::LlvmInlineAsm(..) => true,
                         _ => false,
                     })
                 })

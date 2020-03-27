@@ -96,8 +96,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Return { value } => {
                 this.break_scope(block, value, BreakableTarget::Return, source_info)
             }
-            ExprKind::InlineAsm { asm, outputs, inputs } => {
-                debug!("stmt_expr InlineAsm block_context.push(SubExpr) : {:?}", expr2);
+            ExprKind::LlvmInlineAsm { asm, outputs, inputs } => {
+                debug!("stmt_expr LlvmInlineAsm block_context.push(SubExpr) : {:?}", expr2);
                 this.block_context.push(BlockFrame::SubExpr);
                 let outputs = outputs
                     .into_iter()
@@ -115,7 +115,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     Statement {
                         source_info,
-                        kind: StatementKind::InlineAsm(box InlineAsm {
+                        kind: StatementKind::LlvmInlineAsm(box LlvmInlineAsm {
                             asm: asm.clone(),
                             outputs,
                             inputs,

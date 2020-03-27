@@ -532,7 +532,7 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr<'tcx>) {
         | hir::ExprKind::AssignOp(..)
         | hir::ExprKind::Struct(..)
         | hir::ExprKind::Repeat(..)
-        | hir::ExprKind::InlineAsm(..)
+        | hir::ExprKind::LlvmInlineAsm(..)
         | hir::ExprKind::Box(..)
         | hir::ExprKind::Yield(..)
         | hir::ExprKind::Type(..)
@@ -1177,7 +1177,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             | hir::ExprKind::Yield(ref e, _)
             | hir::ExprKind::Repeat(ref e, _) => self.propagate_through_expr(&e, succ),
 
-            hir::ExprKind::InlineAsm(ref asm) => {
+            hir::ExprKind::LlvmInlineAsm(ref asm) => {
                 let ia = &asm.inner;
                 let outputs = asm.outputs_exprs;
                 let inputs = asm.inputs_exprs;
@@ -1398,7 +1398,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
             }
         }
 
-        hir::ExprKind::InlineAsm(ref asm) => {
+        hir::ExprKind::LlvmInlineAsm(ref asm) => {
             for input in asm.inputs_exprs {
                 this.visit_expr(input);
             }

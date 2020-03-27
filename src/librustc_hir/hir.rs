@@ -3,7 +3,7 @@ use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::itemlikevisit;
 
-use rustc_ast::ast::{self, AsmDialect, CrateSugar, Ident, Name};
+use rustc_ast::ast::{self, CrateSugar, Ident, LlvmAsmDialect, Name};
 use rustc_ast::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
 pub use rustc_ast::ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use rustc_ast::ast::{CaptureBy, Movability, Mutability};
@@ -1344,7 +1344,7 @@ impl Expr<'_> {
             ExprKind::Break(..) => ExprPrecedence::Break,
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
-            ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
+            ExprKind::LlvmInlineAsm(..) => ExprPrecedence::InlineAsm,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
@@ -1399,7 +1399,7 @@ impl Expr<'_> {
             | ExprKind::Ret(..)
             | ExprKind::Loop(..)
             | ExprKind::Assign(..)
-            | ExprKind::InlineAsm(..)
+            | ExprKind::LlvmInlineAsm(..)
             | ExprKind::AssignOp(..)
             | ExprKind::Lit(_)
             | ExprKind::Unary(..)
@@ -1575,8 +1575,8 @@ pub enum ExprKind<'hir> {
     /// A `return`, with an optional value to be returned.
     Ret(Option<&'hir Expr<'hir>>),
 
-    /// Inline assembly (from `asm!`), with its outputs and inputs.
-    InlineAsm(&'hir InlineAsm<'hir>),
+    /// Inline assembly (from `llvm_asm!`), with its outputs and inputs.
+    LlvmInlineAsm(&'hir LlvmInlineAsm<'hir>),
 
     /// A struct or struct-like variant literal expression.
     ///
@@ -1999,7 +1999,7 @@ pub enum TyKind<'hir> {
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic, PartialEq)]
-pub struct InlineAsmOutput {
+pub struct LlvmInlineAsmOutput {
     pub constraint: Symbol,
     pub is_rw: bool,
     pub is_indirect: bool,
@@ -2009,20 +2009,20 @@ pub struct InlineAsmOutput {
 // NOTE(eddyb) This is used within MIR as well, so unlike the rest of the HIR,
 // it needs to be `Clone` and use plain `Vec<T>` instead of arena-allocated slice.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic, PartialEq)]
-pub struct InlineAsmInner {
+pub struct LlvmInlineAsmInner {
     pub asm: Symbol,
     pub asm_str_style: StrStyle,
-    pub outputs: Vec<InlineAsmOutput>,
+    pub outputs: Vec<LlvmInlineAsmOutput>,
     pub inputs: Vec<Symbol>,
     pub clobbers: Vec<Symbol>,
     pub volatile: bool,
     pub alignstack: bool,
-    pub dialect: AsmDialect,
+    pub dialect: LlvmAsmDialect,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
-pub struct InlineAsm<'hir> {
-    pub inner: InlineAsmInner,
+pub struct LlvmInlineAsm<'hir> {
+    pub inner: LlvmInlineAsmInner,
     pub outputs_exprs: &'hir [Expr<'hir>],
     pub inputs_exprs: &'hir [Expr<'hir>],
 }

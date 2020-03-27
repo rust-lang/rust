@@ -2024,8 +2024,8 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
             }
-            ast::ExprKind::InlineAsm(ref a) => {
-                self.s.word("asm!");
+            ast::ExprKind::LlvmInlineAsm(ref a) => {
+                self.s.word("llvm_asm!");
                 self.popen();
                 self.print_string(&a.asm.as_str(), a.asm_str_style);
                 self.word_space(":");
@@ -2066,7 +2066,7 @@ impl<'a> State<'a> {
                 if a.alignstack {
                     options.push("alignstack");
                 }
-                if a.dialect == ast::AsmDialect::Intel {
+                if a.dialect == ast::LlvmAsmDialect::Intel {
                     options.push("intel");
                 }
 

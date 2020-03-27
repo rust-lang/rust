@@ -1407,9 +1407,9 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(&expr, parser::PREC_JUMP);
                 }
             }
-            hir::ExprKind::InlineAsm(ref a) => {
+            hir::ExprKind::LlvmInlineAsm(ref a) => {
                 let i = &a.inner;
-                self.s.word("asm!");
+                self.s.word("llvm_asm!");
                 self.popen();
                 self.print_string(&i.asm.as_str(), i.asm_str_style);
                 self.word_space(":");
@@ -1454,7 +1454,7 @@ impl<'a> State<'a> {
                 if i.alignstack {
                     options.push("alignstack");
                 }
-                if i.dialect == ast::AsmDialect::Intel {
+                if i.dialect == ast::LlvmAsmDialect::Intel {
                     options.push("intel");
                 }
 

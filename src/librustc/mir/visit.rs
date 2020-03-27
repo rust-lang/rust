@@ -385,7 +385,7 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
-                    StatementKind::InlineAsm(asm) => {
+                    StatementKind::LlvmInlineAsm(asm) => {
                         for output in & $($mutability)? asm.outputs[..] {
                             self.visit_place(
                                 output,

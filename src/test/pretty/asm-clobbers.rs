@@ -1,3 +1,3 @@
-#![feature(asm)]
+#![feature(llvm_asm)]
 
-pub fn main() { unsafe { asm!("" : : : "hello", "world") }; }
+pub fn main() { unsafe { llvm_asm!("" : : : "hello", "world") }; }

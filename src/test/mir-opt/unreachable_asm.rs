@@ -1,5 +1,5 @@
 // ignore-tidy-linelength
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 enum Empty {}
 
@@ -18,7 +18,7 @@ fn main() {
         }
 
         // asm instruction stops unreachable propagation to if else blocks bb4 and bb5.
-        unsafe { asm!("NOP"); }
+        unsafe { llvm_asm!("NOP"); }
         match _x { }
     }
 }
@@ -39,7 +39,7 @@ fn main() {
 //          StorageDead(_6);
 //          StorageDead(_5);
 //          StorageLive(_7);
-//          asm!(InlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []);
+//          llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []);
 //          _7 = ();
 //          StorageDead(_7);
 //          StorageLive(_8);
@@ -62,7 +62,7 @@ fn main() {
 //          StorageDead(_6);
 //          StorageDead(_5);
 //          StorageLive(_7);
-//          asm!(InlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []);
+//          llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []);
 //          _7 = ();
 //          StorageDead(_7);
 //          StorageLive(_8);

@@ -29,7 +29,7 @@ impl MirPass<'_> for UnreachablePropagation {
             // Accompanying testcases: mir-opt/unreachable_asm.rs and mir-opt/unreachable_asm_2.rs
             let asm_stmt_in_block = || {
                 bb_data.statements.iter().any(|stmt: &Statement<'_>| match stmt.kind {
-                    StatementKind::InlineAsm(..) => true,
+                    StatementKind::LlvmInlineAsm(..) => true,
                     _ => false,
                 })
             };

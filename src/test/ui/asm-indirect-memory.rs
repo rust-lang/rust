@@ -1,12 +1,12 @@
 // run-pass
 
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn read(ptr: &u32) -> u32 {
     let out: u32;
     unsafe {
-        asm!("mov $1, $0" : "=r" (out) : "*m" (ptr));
+        llvm_asm!("mov $1, $0" : "=r" (out) : "*m" (ptr));
     }
     out
 }
@@ -14,7 +14,7 @@ fn read(ptr: &u32) -> u32 {
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn write(ptr: &mut u32, val: u32) {
     unsafe {
-        asm!("mov $1, $0" : "=*m" (ptr) : "r" (val));
+        llvm_asm!("mov $1, $0" : "=*m" (ptr) : "r" (val));
     }
 }
 
@@ -22,7 +22,7 @@ fn write(ptr: &mut u32, val: u32) {
 fn replace(ptr: &mut u32, val: u32) -> u32 {
     let out: u32;
     unsafe {
-        asm!("mov $0, $1; mov $2, $0" : "+*m" (ptr), "=&r" (out) : "r" (val));
+        llvm_asm!("mov $0, $1; mov $2, $0" : "+*m" (ptr), "=&r" (out) : "r" (val));
     }
     out
 }

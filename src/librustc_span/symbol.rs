@@ -424,6 +424,7 @@ symbols! {
         LintPass,
         lint_reasons,
         literal,
+        llvm_asm,
         local_inner_macros,
         log_syntax,
         loop_break_value,

@@ -230,7 +230,7 @@ fn check_statement(
         // just an assignment
         StatementKind::SetDiscriminant { place, .. } => check_place(tcx, place, span, def_id, body),
 
-        StatementKind::InlineAsm { .. } => {
+        StatementKind::LlvmInlineAsm { .. } => {
             Err((span, "cannot use inline assembly in const fn".into()))
         }
 

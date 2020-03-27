@@ -1,21 +1,21 @@
 // run-pass
 
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 unsafe fn next_power_of_2(n: u32) -> u32 {
     let mut tmp = n;
-    asm!("dec $0" : "+rm"(tmp) :: "cc");
+    llvm_asm!("dec $0" : "+rm"(tmp) :: "cc");
     let mut shift = 1_u32;
     while shift <= 16 {
-        asm!(
+        llvm_asm!(
             "shr %cl, $2
             or $2, $0
             shl $$1, $1"
             : "+&rm"(tmp), "+{ecx}"(shift) : "r"(tmp) : "cc"
         );
     }
-    asm!("inc $0" : "+rm"(tmp) :: "cc");
+    llvm_asm!("inc $0" : "+rm"(tmp) :: "cc");
     return tmp;
 }
 
@@ -30,7 +30,7 @@ pub fn main() {
     let x: isize;
     unsafe {
         // Treat the output as initialization.
-        asm!(
+        llvm_asm!(
             "shl $2, $1
             add $3, $1
             mov $1, $0"
@@ -47,7 +47,7 @@ pub fn main() {
         // Assignment to mutable.
         // Early clobber "&":
         // Forbids the use of a single register by both operands.
-        asm!("shr $$2, $1; add $1, $0" : "+&r"(x) : "r"(x) : "cc");
+        llvm_asm!("shr $$2, $1; add $1, $0" : "+&r"(x) : "r"(x) : "cc");
     }
     assert_eq!(x, 60);
 }

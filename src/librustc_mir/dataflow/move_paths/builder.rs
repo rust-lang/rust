@@ -295,7 +295,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             StatementKind::FakeRead(_, ref place) => {
                 self.create_move_path(place);
             }
-            StatementKind::InlineAsm(ref asm) => {
+            StatementKind::LlvmInlineAsm(ref asm) => {
                 for (output, kind) in asm.outputs.iter().zip(&asm.asm.outputs) {
                     if !kind.is_indirect {
                         self.gather_init(output.as_ref(), InitKind::Deep);

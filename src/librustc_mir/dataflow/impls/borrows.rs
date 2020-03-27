@@ -289,7 +289,7 @@ impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
                 self.kill_borrows_on_place(trans, &Place::from(local));
             }
 
-            mir::StatementKind::InlineAsm(ref asm) => {
+            mir::StatementKind::LlvmInlineAsm(ref asm) => {
                 for (output, kind) in asm.outputs.iter().zip(&asm.asm.outputs) {
                     if !kind.is_indirect && !kind.is_rw {
                         self.kill_borrows_on_place(trans, output);

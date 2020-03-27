@@ -106,7 +106,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 // safe (at least as emitted during MIR construction)
             }
 
-            StatementKind::InlineAsm { .. } => self.require_unsafe(
+            StatementKind::LlvmInlineAsm { .. } => self.require_unsafe(
                 "use of inline assembly",
                 "inline assembly is entirely unchecked and can cause undefined behavior",
                 UnsafetyViolationKind::General,

@@ -255,7 +255,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Return { .. }
             | ExprKind::Literal { .. }
             | ExprKind::StaticRef { .. }
-            | ExprKind::InlineAsm { .. }
+            | ExprKind::LlvmInlineAsm { .. }
             | ExprKind::Yield { .. }
             | ExprKind::Call { .. } => {
                 // these are not places, so we need to make a temporary.
