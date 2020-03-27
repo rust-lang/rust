@@ -8,7 +8,7 @@ struct BadRope<'a>(&'a [&'a str]);
 
 impl LenTextSize for BadRope<'_> {
     fn len_text_size(self) -> TextSize {
-        self.0.iter().copied().map(LenTextSize::len_text_size).sum()
+        self.0.iter().map(TextSize::of).sum()
     }
 }
 
