@@ -401,6 +401,95 @@ deal with all of the above but so far that seemed like more trouble than it
 would save.
 
 
+
+## Query Attributes
+
+The query system allows for applying attributes to queries. These attributes
+affect certain aspects of how the system treats the query with respect to
+incremental compilation:
+
+ - `eval_always` - A query with the `eval_always` attribute is re-executed
+   unconditionally during incremental compilation. I.e. the system will not
+   even try to mark the query's dep-node as green. This attribute has two use
+   cases:
+
+    - Queries that are **inputs** to the system must be marked as `eval_always`
+      since we have no other way of checking whether their value has changed.
+
+    - Some queries are very likely to be re-evaluated because their result
+      depends on the entire source code. In this case `eval_always` can be used
+      as an optimization because the system can skip recording dependencies in
+      the first place.
+
+ - `no_hash` - Applying `no_hash` to a query tells the system to not compute
+   the fingerprint of the query's result. This has two consequences:
+
+    - Not computing the fingerprint can save quite a bit of time because
+      fingerprinting is expensive, especially for large, complex values.
+
+    - Without the fingerprint, the system has to unconditionally assume that
+      the result of the query has changed. As a consequence anything depending
+      on a `no_hash` query will always be re-executed.
+
+ - `cache_on_disk_if` - This attribute is what determines which query results
+   are persisted in the incremental compilation query result cache. The
+   attribute takes an expression that allows to make per query invocation
+   decisions. For example, it makes no sense to store values from upstream
+   crates in the cache because they are already available in the upstream
+   crate's metadata.
+
+ - `anon` - This attribute makes the system use "anonymous" dep-nodes for the
+   given query. An anonymous dep-node is not identified by the corresponding
+   query key, instead its ID is computed from the IDs of its dependencies. This
+   allows the red-green system to do its change detection even if there is no
+   query key available for a given dep-node -- something which is needed for
+   handling trait selection because it is not based on queries.
+
+
+## The Projection Query Pattern
+
+It's interesting to note that `eval_always` and `no_hash` can be used together
+in the so-called "projection query" pattern. It is often the case that there is
+one query that depends on the entirety of the compiler's input (e.g. the indexed HIR)
+and another query that projects individual values out of this monolithic value
+(e.g. a HIR item with a certain `DefId`). These projection queries allow for
+building change propagation "firewalls" because even if the result of the
+monolithic query changes (which it is very likely to do) the small projections
+can still mostly be marked as green.
+
+
+```ignore
+  +------------+
+  |            |           +---------------+           +--------+
+  |            | <---------| projection(x) | <---------| foo(a) |
+  |            |           +---------------+           +--------+
+  |            |
+  | monolithic |           +---------------+           +--------+
+  |   query    | <---------| projection(y) | <---------| bar(b) |
+  |            |           +---------------+           +--------+
+  |            |
+  |            |           +---------------+           +--------+
+  |            | <---------| projection(z) | <---------| baz(c) |
+  |            |           +---------------+           +--------+
+  +------------+
+```
+
+Let's assume that the result `monolithic_query` changes so that also the result
+of `projection(x)` has changed, i.e. both their dep-nodes are being marked as
+red. As a consequence `foo(a)` needs to be re-executed; but `bar(b)` and
+`baz(c)` can be marked as green. However, if `foo`, `bar`, and `baz` would have
+directly depended on `monolithic_query` then all of them would have had to be
+re-evaluated.
+
+This pattern works even without `eval_always` and `no_hash` but the two
+attributes can be used to avoid unnecessary overhead. If the monolithic query
+is likely to change at any minor modification of the compiler's input it makes
+sense to mark it as `eval_always`, thus getting rid of its dependency tracking
+cost. And it always makes sense to mark the monolithic query as `no_hash`
+because we have the projections to take care of keeping things green as much
+as possible.
+
+
 # Shortcomings of the Current System
 
 There are many things that still can be improved.
