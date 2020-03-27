@@ -2204,7 +2204,7 @@ pub struct Const<'tcx> {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Const<'_>, 48);
+static_assert_size!(Const<'_>, if cfg!(bootstrap) { 48 } else { 40 });
 
 impl<'tcx> Const<'tcx> {
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
@@ -2432,7 +2432,7 @@ pub enum ConstKind<'tcx> {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(ConstKind<'_>, 40);
+static_assert_size!(ConstKind<'_>, if cfg!(bootstrap) { 40 } else { 32 });
 
 impl<'tcx> ConstKind<'tcx> {
     #[inline]

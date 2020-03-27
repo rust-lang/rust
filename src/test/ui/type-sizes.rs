@@ -102,6 +102,16 @@ enum Option2<A, B> {
     None
 }
 
+struct BoolInTheMiddle(std::num::NonZeroU16, bool, u8);
+
+enum NicheWithData {
+    A,
+    B([u16; 5]),
+    Largest { a1: u32, a2: BoolInTheMiddle, a3: u32 },
+    C,
+    D(u32, u32),
+}
+
 pub fn main() {
     assert_eq!(size_of::<u8>(), 1 as usize);
     assert_eq!(size_of::<u32>(), 4 as usize);
@@ -149,4 +159,12 @@ pub fn main() {
     struct S1{ a: u16, b: std::num::NonZeroU16, c: u16, d: u8, e: u32, f: u64, g:[u8;2] }
     assert_eq!(size_of::<S1>(), 24);
     assert_eq!(size_of::<Option<S1>>(), 24);
+
+    assert_eq!(size_of::<NicheWithData>(), 12);
+    assert_eq!(size_of::<Option<NicheWithData>>(), 12);
+    assert_eq!(size_of::<Option<Option<NicheWithData>>>(), 12);
+    assert_eq!(
+        size_of::<Option<Option2<&(), Option<NicheWithData>>>>(),
+        size_of::<(&(), NicheWithData)>()
+    );
 }
