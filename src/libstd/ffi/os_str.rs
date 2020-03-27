@@ -379,6 +379,14 @@ impl ops::Index<ops::RangeFull> for OsString {
     }
 }
 
+#[stable(feature = "mut_osstr", since = "1.44.0")]
+impl ops::IndexMut<ops::RangeFull> for OsString {
+    #[inline]
+    fn index_mut(&mut self, _index: ops::RangeFull) -> &mut OsStr {
+        OsStr::from_inner_mut(self.inner.as_mut_slice())
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Deref for OsString {
     type Target = OsStr;
@@ -386,6 +394,14 @@ impl ops::Deref for OsString {
     #[inline]
     fn deref(&self) -> &OsStr {
         &self[..]
+    }
+}
+
+#[stable(feature = "mut_osstr", since = "1.44.0")]
+impl ops::DerefMut for OsString {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut OsStr {
+        &mut self[..]
     }
 }
 
@@ -509,7 +525,18 @@ impl OsStr {
 
     #[inline]
     fn from_inner(inner: &Slice) -> &OsStr {
+        // Safety: OsStr is just a wrapper of Slice,
+        // therefore converting &Slice to &OsStr is safe.
         unsafe { &*(inner as *const Slice as *const OsStr) }
+    }
+
+    #[inline]
+    fn from_inner_mut(inner: &mut Slice) -> &mut OsStr {
+        // Safety: OsStr is just a wrapper of Slice,
+        // therefore converting &mut Slice to &mut OsStr is safe.
+        // Any method that mutates OsStr must be careful not to
+        // break platform-specific encoding, in particular Wtf8 on Windows.
+        unsafe { &mut *(inner as *mut Slice as *mut OsStr) }
     }
 
     /// Yields a [`&str`] slice if the `OsStr` is valid Unicode.
