@@ -283,10 +283,10 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, indent: usize) {
                 print_expr(cx, e, indent + 1);
             }
         },
-        hir::ExprKind::InlineAsm(ref asm) => {
+        hir::ExprKind::LlvmInlineAsm(ref asm) => {
             let inputs = &asm.inputs_exprs;
             let outputs = &asm.outputs_exprs;
-            println!("{}InlineAsm", ind);
+            println!("{}LlvmInlineAsm", ind);
             println!("{}inputs:", ind);
             for e in inputs.iter() {
                 print_expr(cx, e, indent + 1);
