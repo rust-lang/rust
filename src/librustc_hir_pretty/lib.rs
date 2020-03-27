@@ -1,20 +1,25 @@
+#![recursion_limit = "256"]
+
 use rustc_ast::ast;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
+use rustc_hir as hir;
+use rustc_hir::{GenericArg, GenericParam, GenericParamKind, Node};
+use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, IdentPrinter};
 use rustc_span::{self, BytePos, FileName};
 use rustc_target::spec::abi::Abi;
 
-use crate::hir;
-use crate::hir::{GenericArg, GenericParam, GenericParamKind, Node};
-use crate::hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
-
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::vec;
+
+pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: hir::HirId) -> String {
+    to_string(&map, |s| s.print_node(map.find(hir_id).unwrap()))
+}
 
 pub enum AnnNode<'a> {
     Name(&'a ast::Name),
@@ -47,10 +52,24 @@ pub struct NoAnn;
 impl PpAnn for NoAnn {}
 pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
-impl PpAnn for hir::Crate<'a> {
+impl PpAnn for hir::Crate<'_> {
     fn try_fetch_item(&self, item: hir::HirId) -> Option<&hir::Item<'_>> {
         Some(self.item(item))
     }
+    fn nested(&self, state: &mut State<'_>, nested: Nested) {
+        match nested {
+            Nested::Item(id) => state.print_item(self.item(id.id)),
+            Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
+            Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
+            Nested::Body(id) => state.print_expr(&self.body(id).value),
+            Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat),
+        }
+    }
+}
+
+/// Identical to the `PpAnn` implementation for `hir::Crate`,
+/// except it avoids creating a dependency on the whole crate.
+impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
         match nested {
             Nested::Item(id) => state.print_item(self.item(id.id)),
@@ -1006,10 +1025,10 @@ impl<'a> State<'a> {
         close_box: bool,
     ) {
         match blk.rules {
-            hir::UnsafeBlock(..) => self.word_space("unsafe"),
-            hir::PushUnsafeBlock(..) => self.word_space("push_unsafe"),
-            hir::PopUnsafeBlock(..) => self.word_space("pop_unsafe"),
-            hir::DefaultBlock => (),
+            hir::BlockCheckMode::UnsafeBlock(..) => self.word_space("unsafe"),
+            hir::BlockCheckMode::PushUnsafeBlock(..) => self.word_space("push_unsafe"),
+            hir::BlockCheckMode::PopUnsafeBlock(..) => self.word_space("pop_unsafe"),
+            hir::BlockCheckMode::DefaultBlock => (),
         }
         self.maybe_print_comment(blk.span.lo());
         self.ann.pre(self, AnnNode::Block(blk));
@@ -1092,7 +1111,7 @@ impl<'a> State<'a> {
         &mut self,
         qpath: &hir::QPath<'_>,
         fields: &[hir::Field<'_>],
-        wth: &Option<&'hir hir::Expr<'_>>,
+        wth: &Option<&hir::Expr<'_>>,
     ) {
         self.print_qpath(qpath, true);
         self.s.word("{");
@@ -1848,7 +1867,8 @@ impl<'a> State<'a> {
                 self.print_block_unclosed(&blk);
 
                 // If it is a user-provided unsafe block, print a comma after it
-                if let hir::UnsafeBlock(hir::UserProvided) = blk.rules {
+                if let hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::UserProvided) = blk.rules
+                {
                     self.s.word(",");
                 }
             }
@@ -1928,18 +1948,18 @@ impl<'a> State<'a> {
         });
         self.s.word("|");
 
-        if let hir::DefaultReturn(..) = decl.output {
+        if let hir::FnRetTy::DefaultReturn(..) = decl.output {
             return;
         }
 
         self.space_if_not_bol();
         self.word_space("->");
         match decl.output {
-            hir::Return(ref ty) => {
+            hir::FnRetTy::Return(ref ty) => {
                 self.print_type(&ty);
                 self.maybe_print_comment(ty.span.lo())
             }
-            hir::DefaultReturn(..) => unreachable!(),
+            hir::FnRetTy::DefaultReturn(..) => unreachable!(),
         }
     }
 
@@ -2112,7 +2132,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_output(&mut self, decl: &hir::FnDecl<'_>) {
-        if let hir::DefaultReturn(..) = decl.output {
+        if let hir::FnRetTy::DefaultReturn(..) = decl.output {
             return;
         }
 
@@ -2120,13 +2140,13 @@ impl<'a> State<'a> {
         self.ibox(INDENT_UNIT);
         self.word_space("->");
         match decl.output {
-            hir::DefaultReturn(..) => unreachable!(),
-            hir::Return(ref ty) => self.print_type(&ty),
+            hir::FnRetTy::DefaultReturn(..) => unreachable!(),
+            hir::FnRetTy::Return(ref ty) => self.print_type(&ty),
         }
         self.end();
 
         match decl.output {
-            hir::Return(ref output) => self.maybe_print_comment(output.span.lo()),
+            hir::FnRetTy::Return(ref output) => self.maybe_print_comment(output.span.lo()),
             _ => {}
         }
     }

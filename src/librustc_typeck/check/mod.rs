@@ -2677,14 +2677,14 @@ pub fn check_enum<'tcx>(
     check_transparent(tcx, sp, def_id);
 }
 
-fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span, qpath: &QPath<'_>) {
+fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span) {
     struct_span_err!(
         tcx.sess,
         span,
         E0533,
-        "expected unit struct, unit variant or constant, found {} `{}`",
+        "expected unit struct, unit variant or constant, found {}{}",
         res.descr(),
-        hir::print::to_string(&tcx.hir(), |s| s.print_qpath(qpath, false))
+        tcx.sess.source_map().span_to_snippet(span).map_or(String::new(), |s| format!(" `{}`", s)),
     )
     .emit();
 }

@@ -404,14 +404,15 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Some(impl_id) => match self.tcx.hir().get_if_local(impl_id) {
                 Some(Node::Item(item)) => match item.kind {
                     hir::ItemKind::Impl { ref self_ty, .. } => {
+                        let hir = self.tcx.hir();
+
                         let mut qualname = String::from("<");
-                        qualname.push_str(&self.tcx.hir().hir_to_pretty_string(self_ty.hir_id));
+                        qualname.push_str(&rustc_hir_pretty::id_to_string(&hir, self_ty.hir_id));
 
                         let trait_id = self.tcx.trait_id_of_impl(impl_id);
                         let mut docs = String::new();
                         let mut attrs = vec![];
-                        let hir_id = self.tcx.hir().node_to_hir_id(id);
-                        if let Some(Node::ImplItem(item)) = self.tcx.hir().find(hir_id) {
+                        if let Some(Node::ImplItem(item)) = hir.find(hir.node_to_hir_id(id)) {
                             docs = self.docs_for_attrs(&item.attrs);
                             attrs = item.attrs.to_vec();
                         }

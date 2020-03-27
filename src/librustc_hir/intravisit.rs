@@ -121,6 +121,8 @@ impl<'a> FnKind<'a> {
 
 /// An abstract representation of the HIR `rustc::hir::map::Map`.
 pub trait Map<'hir> {
+    /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
+    fn find(&self, hir_id: HirId) -> Option<Node<'hir>>;
     fn body(&self, id: BodyId) -> &'hir Body<'hir>;
     fn item(&self, id: HirId) -> &'hir Item<'hir>;
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
@@ -132,6 +134,9 @@ pub trait Map<'hir> {
 pub struct ErasedMap<'hir>(&'hir dyn Map<'hir>);
 
 impl<'hir> Map<'hir> for ErasedMap<'hir> {
+    fn find(&self, _: HirId) -> Option<Node<'hir>> {
+        None
+    }
     fn body(&self, id: BodyId) -> &'hir Body<'hir> {
         self.0.body(id)
     }

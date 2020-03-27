@@ -5,7 +5,6 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::print::visibility_qualified;
 use rustc_session::lint;
 use rustc_span::Span;
 
@@ -176,16 +175,13 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
                 Some(orig_name) => format!("use {} as {};", orig_name, item.ident.name),
                 None => format!("use {};", item.ident.name),
             };
-
-            let replacement = visibility_qualified(&item.vis, base_replacement);
-            let msg = "`extern crate` is not idiomatic in the new edition";
-            let help = format!("convert it to a `{}`", visibility_qualified(&item.vis, "use"));
-
-            lint.build(msg)
+            let vis = tcx.sess.source_map().span_to_snippet(item.vis.span).unwrap_or_default();
+            let add_vis = |to| if vis.is_empty() { to } else { format!("{} {}", vis, to) };
+            lint.build("`extern crate` is not idiomatic in the new edition")
                 .span_suggestion_short(
                     extern_crate.span,
-                    &help,
-                    replacement,
+                    &format!("convert it to a `{}`", add_vis("use".to_string())),
+                    add_vis(base_replacement),
                     Applicability::MachineApplicable,
                 )
                 .emit();

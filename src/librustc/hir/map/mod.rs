@@ -10,7 +10,6 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::print::Nested;
 use rustc_hir::*;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
@@ -890,20 +889,18 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    /// Get a representation of this `id` for debugging purposes.
+    /// NOTE: Do NOT use this in diagnostics!
     pub fn node_to_string(&self, id: HirId) -> String {
-        hir_id_to_string(self, id, true)
-    }
-
-    pub fn hir_to_user_string(&self, id: HirId) -> String {
-        hir_id_to_string(self, id, false)
-    }
-
-    pub fn hir_to_pretty_string(&self, id: HirId) -> String {
-        print::to_string(self, |s| s.print_node(self.get(id)))
+        hir_id_to_string(self, id)
     }
 }
 
 impl<'hir> intravisit::Map<'hir> for Map<'hir> {
+    fn find(&self, hir_id: HirId) -> Option<Node<'hir>> {
+        self.find(hir_id)
+    }
+
     fn body(&self, id: BodyId) -> &'hir Body<'hir> {
         self.body(id)
     }
@@ -982,23 +979,8 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx Indexe
     tcx.arena.alloc(IndexedHir { crate_hash, map })
 }
 
-/// Identical to the `PpAnn` implementation for `hir::Crate`,
-/// except it avoids creating a dependency on the whole crate.
-impl<'hir> print::PpAnn for Map<'hir> {
-    fn nested(&self, state: &mut print::State<'_>, nested: print::Nested) {
-        match nested {
-            Nested::Item(id) => state.print_item(self.expect_item(id.id)),
-            Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
-            Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
-            Nested::Body(id) => state.print_expr(&self.body(id).value),
-            Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat),
-        }
-    }
-}
-
-fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
+fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
     let id_str = format!(" (hir_id={})", id);
-    let id_str = if include_id { &id_str[..] } else { "" };
 
     let path_str = || {
         // This functionality is used for debugging, try to use `TyCtxt` to get
@@ -1018,6 +1000,9 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
             }
         })
     };
+
+    let span_str = || map.tcx.sess.source_map().span_to_snippet(map.span(id)).unwrap_or_default();
+    let node_str = |prefix| format!("{} {}{}", prefix, span_str(), id_str);
 
     match map.find(id) {
         Some(Node::Item(item)) => {
@@ -1069,22 +1054,20 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
         Some(Node::Field(ref field)) => {
             format!("field {} in {}{}", field.ident, path_str(), id_str)
         }
-        Some(Node::AnonConst(_)) => format!("const {}{}", map.hir_to_pretty_string(id), id_str),
-        Some(Node::Expr(_)) => format!("expr {}{}", map.hir_to_pretty_string(id), id_str),
-        Some(Node::Stmt(_)) => format!("stmt {}{}", map.hir_to_pretty_string(id), id_str),
-        Some(Node::PathSegment(_)) => {
-            format!("path segment {}{}", map.hir_to_pretty_string(id), id_str)
-        }
-        Some(Node::Ty(_)) => format!("type {}{}", map.hir_to_pretty_string(id), id_str),
-        Some(Node::TraitRef(_)) => format!("trait_ref {}{}", map.hir_to_pretty_string(id), id_str),
-        Some(Node::Binding(_)) => format!("local {}{}", map.hir_to_pretty_string(id), id_str),
-        Some(Node::Pat(_)) => format!("pat {}{}", map.hir_to_pretty_string(id), id_str),
-        Some(Node::Param(_)) => format!("param {}{}", map.hir_to_pretty_string(id), id_str),
-        Some(Node::Arm(_)) => format!("arm {}{}", map.hir_to_pretty_string(id), id_str),
-        Some(Node::Block(_)) => format!("block {}{}", map.hir_to_pretty_string(id), id_str),
-        Some(Node::Local(_)) => format!("local {}{}", map.hir_to_pretty_string(id), id_str),
+        Some(Node::AnonConst(_)) => node_str("const"),
+        Some(Node::Expr(_)) => node_str("expr"),
+        Some(Node::Stmt(_)) => node_str("stmt"),
+        Some(Node::PathSegment(_)) => node_str("path segment"),
+        Some(Node::Ty(_)) => node_str("type"),
+        Some(Node::TraitRef(_)) => node_str("trait ref"),
+        Some(Node::Binding(_)) => node_str("local"),
+        Some(Node::Pat(_)) => node_str("pat"),
+        Some(Node::Param(_)) => node_str("param"),
+        Some(Node::Arm(_)) => node_str("arm"),
+        Some(Node::Block(_)) => node_str("block"),
+        Some(Node::Local(_)) => node_str("local"),
         Some(Node::Ctor(..)) => format!("ctor {}{}", path_str(), id_str),
-        Some(Node::Lifetime(_)) => format!("lifetime {}{}", map.hir_to_pretty_string(id), id_str),
+        Some(Node::Lifetime(_)) => node_str("lifetime"),
         Some(Node::GenericParam(ref param)) => format!("generic_param {:?}{}", param, id_str),
         Some(Node::Visibility(ref vis)) => format!("visibility {:?}{}", vis, id_str),
         Some(Node::MacroDef(_)) => format!("macro {}{}", path_str(), id_str),
