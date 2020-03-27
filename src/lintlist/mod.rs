@@ -2410,7 +2410,7 @@ pub const ALL_LINTS: [Lint; 362] = [
     },
     Lint {
         name: "verbose_file_reads",
-        group: "complexity",
+        group: "restriction",
         desc: "use of `File::read_to_end` or `File::read_to_string`",
         deprecation: None,
         module: "verbose_file_reads",
