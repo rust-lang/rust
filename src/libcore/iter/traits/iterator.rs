@@ -2016,7 +2016,6 @@ pub trait Iterator {
     ///
     /// ```
     /// #![feature(iterator_fold_self)]
-    /// use std::cmp::Ordering;
     ///
     /// fn find_max<I>(iter: I) -> Option<I::Item>
     ///     where I: Iterator,
