@@ -1,4 +1,5 @@
 // run-pass
+#![allow(unused_parens)]
 #![allow(non_camel_case_types)]
 
 // Note: This test was used to demonstrate #5873 (now #23898).

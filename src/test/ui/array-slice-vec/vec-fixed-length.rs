@@ -9,7 +9,7 @@ fn test_big_vec() {}
 #[cfg(target_pointer_width = "64")]
 fn test_big_vec()
 {
-    assert_eq!(size_of::<[u8; (1 << 32)]>(), (1 << 32));
+    assert_eq!(size_of::<[u8; 1 << 32]>(), (1 << 32));
 }
 
 fn main() {
