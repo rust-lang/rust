@@ -15,3 +15,11 @@ int cmake_plus_one_c_asm(int *arg) {
 
     return value;
 }
+
+asm(".text\n"
+"    .global cmake_plus_one_c_global_asm\n"
+"    .type cmake_plus_one_c_global_asm, @function\n"
+"cmake_plus_one_c_global_asm:\n"
+"    movl (%rdi), %eax\n"
+"    inc %eax\n"
+"    retq\n" );
