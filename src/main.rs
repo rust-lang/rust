@@ -62,27 +62,29 @@ where
     let mut unstable_options = false;
 
     for arg in old_args.by_ref() {
-        match arg {
+        match arg.as_str() {
             "--fix" => {
                 fix = true;
                 continue;
-            },
+            }
             "--" => break,
             // Cover -Zunstable-options and -Z unstable-options
             s if s.ends_with("unstable-options") => unstable_options = true,
-            _ => {},
+            _ => {}
         }
 
         args.push(arg);
     }
 
-    if fix && !unstable_options {
-        panic!("Usage of `--fix` requires `-Z unstable-options`");
-    } else {
-        args[0] = "fix".to_owned();
+    if fix {
+        if !unstable_options {
+            panic!("Usage of `--fix` requires `-Z unstable-options`");
+        } else {
+            args[0] = "fix".to_owned();
+        }
     }
 
-    let env_name = if unstable_options {
+    let path_env = if unstable_options {
         "RUSTC_WORKSPACE_WRAPPER"
     } else {
         "RUSTC_WRAPPER"
@@ -119,7 +121,7 @@ where
 
     let exit_status = std::process::Command::new("cargo")
         .args(&args)
-        .env("RUSTC_WORKSPACE_WRAPPER", path)
+        .env(path_env, path)
         .env("CLIPPY_ARGS", clippy_args)
         .envs(target_dir)
         .spawn()
