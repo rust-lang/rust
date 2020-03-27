@@ -171,6 +171,34 @@ use std::{fmt::<|>{Display, Debug}};
     }
 
     #[test]
+    fn test_merge_single_wildcard_diff_prefixes() {
+        check_assist(
+            merge_imports,
+            r"
+use std<|>::cell::*;
+use std::str;
+",
+            r"
+use std<|>::{cell::*, str};
+",
+        )
+    }
+
+    #[test]
+    fn test_merge_both_wildcard_diff_prefixes() {
+        check_assist(
+            merge_imports,
+            r"
+use std<|>::cell::*;
+use std::str::*;
+",
+            r"
+use std<|>::{cell::*, str::*};
+",
+        )
+    }
+
+    #[test]
     fn removes_just_enough_whitespace() {
         check_assist(
             merge_imports,
