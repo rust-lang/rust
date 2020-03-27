@@ -22,7 +22,6 @@ use super::prev::PreviousDepGraph;
 use super::query::DepGraphQuery;
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepContext, DepKind, DepNode, WorkProductId};
-use crate::HashStableContext;
 
 #[derive(Clone)]
 pub struct DepGraph<K: DepKind> {
@@ -259,7 +258,7 @@ impl<K: DepKind> DepGraph<K> {
                 task_deps.map(|lock| lock.into_inner()),
             );
 
-            let print_status = cfg!(debug_assertions) && hcx.debug_dep_tasks();
+            let print_status = cfg!(debug_assertions) && cx.debug_dep_tasks();
 
             // Determine the color of the new DepNode.
             if let Some(prev_index) = data.previous.node_to_index_opt(&key) {

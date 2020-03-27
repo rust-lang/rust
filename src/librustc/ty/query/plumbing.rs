@@ -209,14 +209,14 @@ macro_rules! is_eval_always {
 }
 
 macro_rules! query_storage {
-    (<$tcx:tt>[][$K:ty, $V:ty]) => {
+    ([][$K:ty, $V:ty]) => {
         <<$K as Key>::CacheSelector as CacheSelector<$K, $V>>::Cache
     };
-    (<$tcx:tt>[storage($ty:ty) $($rest:tt)*][$K:ty, $V:ty]) => {
+    ([storage($ty:ty) $($rest:tt)*][$K:ty, $V:ty]) => {
         $ty
     };
-    (<$tcx:tt>[$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
-        query_storage!(<$tcx>[$($($modifiers)*)*][$($args)*])
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
+        query_storage!([$($($modifiers)*)*][$($args)*])
     };
 }
 
@@ -332,7 +332,7 @@ macro_rules! define_queries_inner {
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
             const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$node;
 
-            type Cache = query_storage!(<$tcx>[$($modifiers)*][$K, $V]);
+            type Cache = query_storage!([$($modifiers)*][$K, $V]);
 
             #[inline(always)]
             fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<TyCtxt<$tcx>, Self::Cache> {

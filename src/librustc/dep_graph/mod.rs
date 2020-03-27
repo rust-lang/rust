@@ -95,6 +95,10 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         TyCtxt::create_stable_hashing_context(*self)
     }
 
+    fn debug_dep_tasks(&self) -> bool {
+        self.sess.opts.debugging_opts.dep_tasks
+    }
+
     fn try_force_from_dep_node(&self, dep_node: &DepNode) -> bool {
         // FIXME: This match is just a workaround for incremental bugs and should
         // be removed. https://github.com/rust-lang/rust/issues/62649 is one such
@@ -181,8 +185,4 @@ fn def_id_corresponds_to_hir_dep_node(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     def_id.index == hir_id.owner.local_def_index
 }
 
-impl rustc_query_system::HashStableContext for StableHashingContext<'_> {
-    fn debug_dep_tasks(&self) -> bool {
-        self.sess().opts.debugging_opts.dep_tasks
-    }
-}
+impl rustc_query_system::HashStableContext for StableHashingContext<'_> {}

@@ -16,6 +16,4 @@ extern crate rustc_data_structures;
 pub mod dep_graph;
 pub mod query;
 
-pub trait HashStableContext {
-    fn debug_dep_tasks(&self) -> bool;
-}
+pub trait HashStableContext {}
