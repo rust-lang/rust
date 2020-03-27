@@ -23,8 +23,12 @@ pub struct EnvVars<'tcx> {
 impl<'tcx> EnvVars<'tcx> {
     pub(crate) fn init<'mir>(
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
-        excluded_env_vars: Vec<String>,
+        mut excluded_env_vars: Vec<String>,
     ) -> InterpResult<'tcx> {
+        if ecx.tcx.sess.target.target.target_os == "windows" {
+            // Exclude `TERM` var to avoid terminfo trying to open the termcap file.
+            excluded_env_vars.push("TERM".to_owned());
+        }
         if ecx.machine.communicate {
             for (name, value) in env::vars() {
                 if !excluded_env_vars.contains(&name) {
@@ -49,19 +53,41 @@ fn alloc_env_var_as_target_str<'mir, 'tcx>(
     Ok(ecx.alloc_os_str_as_target_str(name_osstring.as_os_str(), MiriMemoryKind::Machine.into())?)
 }
 
+fn alloc_env_var_as_c_str<'mir, 'tcx>(
+    name: &OsStr,
+    value: &OsStr,
+    ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
+) -> InterpResult<'tcx, Pointer<Tag>> {
+    let mut name_osstring = name.to_os_string();
+    name_osstring.push("=");
+    name_osstring.push(value);
+    Ok(ecx.alloc_os_str_as_c_str(name_osstring.as_os_str(), MiriMemoryKind::Machine.into()))
+}
+
+fn alloc_env_var_as_wide_str<'mir, 'tcx>(
+    name: &OsStr,
+    value: &OsStr,
+    ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
+) -> InterpResult<'tcx, Pointer<Tag>> {
+    let mut name_osstring = name.to_os_string();
+    name_osstring.push("=");
+    name_osstring.push(value);
+    Ok(ecx.alloc_os_str_as_wide_str(name_osstring.as_os_str(), MiriMemoryKind::Machine.into()))
+}
+
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn getenv(&mut self, name_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
-        let target_os = this.tcx.sess.target.target.target_os.as_str();
-        assert!(target_os == "linux" || target_os == "macos", "`{}` is only available for the UNIX target family");
+        let target_os = &this.tcx.sess.target.target.target_os;
+        assert!(target_os == "linux" || target_os == "macos", "`getenv` is only available for the UNIX target family");
 
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
         let name = this.read_os_str_from_c_str(name_ptr)?;
         Ok(match this.machine.env_vars.map.get(name) {
-            // The offset is used to strip the "{name}=" part of the string.
             Some(var_ptr) => {
-                Scalar::from(var_ptr.offset(Size::from_bytes(name.len()) + Size::from_bytes(1), this)?)
+                // The offset is used to strip the "{name}=" part of the string.
+                Scalar::from(var_ptr.offset(Size::from_bytes(u64::try_from(name.len()).unwrap().checked_add(1).unwrap()), this)?)
             }
             None => Scalar::ptr_null(&*this.tcx),
         })
@@ -73,32 +99,40 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         value_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let mut this = self.eval_context_mut();
+        let target_os = &this.tcx.sess.target.target.target_os;
+        assert!(target_os == "linux" || target_os == "macos", "`setenv` is only available for the UNIX target family");
 
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
         let value_ptr = this.read_scalar(value_op)?.not_undef()?;
-        let value = this.read_os_str_from_target_str(value_ptr)?;
+
         let mut new = None;
         if !this.is_null(name_ptr)? {
-            let name = this.read_os_str_from_target_str(name_ptr)?;
+            let name = this.read_os_str_from_c_str(name_ptr)?;
             if !name.is_empty() && !name.to_string_lossy().contains('=') {
+                let value = this.read_os_str_from_c_str(value_ptr)?;
                 new = Some((name.to_owned(), value.to_owned()));
             }
         }
         if let Some((name, value)) = new {
-            let var_ptr = alloc_env_var_as_target_str(&name, &value, &mut this)?;
+            let var_ptr = alloc_env_var_as_c_str(&name, &value, &mut this)?;
             if let Some(var) = this.machine.env_vars.map.insert(name, var_ptr) {
                 this.memory
                     .deallocate(var, None, MiriMemoryKind::Machine.into())?;
             }
             this.update_environ()?;
-            Ok(0)
+            Ok(0) // return zero on success
         } else {
+            // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
+            let einval = this.eval_libc("EINVAL")?;
+            this.set_last_error(einval)?;
             Ok(-1)
         }
     }
 
     fn unsetenv(&mut self, name_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
+        let target_os = &this.tcx.sess.target.target.target_os;
+        assert!(target_os == "linux" || target_os == "macos", "`unsetenv` is only available for the UNIX target family");
 
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
         let mut success = None;
@@ -116,6 +150,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.update_environ()?;
             Ok(0)
         } else {
+            // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
+            let einval = this.eval_libc("EINVAL")?;
+            this.set_last_error(einval)?;
             Ok(-1)
         }
     }
