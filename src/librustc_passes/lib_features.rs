@@ -138,6 +138,6 @@ fn collect(tcx: TyCtxt<'_>) -> LibFeatures {
 pub fn provide(providers: &mut Providers<'_>) {
     providers.get_lib_features = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
-        tcx.arena.alloc(collect(tcx))
+        collect(tcx)
     };
 }

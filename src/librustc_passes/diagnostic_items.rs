@@ -93,18 +93,18 @@ fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
 }
 
 /// Traverse and collect the diagnostic items in the current
-fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> &'tcx FxHashMap<Symbol, DefId> {
+fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
     // Initialize the collector.
     let mut collector = DiagnosticItemCollector::new(tcx);
 
     // Collect diagnostic items in this crate.
     tcx.hir().krate().visit_all_item_likes(&mut collector);
 
-    tcx.arena.alloc(collector.items)
+    collector.items
 }
 
 /// Traverse and collect all the diagnostic items in all crates.
-fn collect_all<'tcx>(tcx: TyCtxt<'tcx>) -> &'tcx FxHashMap<Symbol, DefId> {
+fn collect_all<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
     // Initialize the collector.
     let mut collector = FxHashMap::default();
 
@@ -115,7 +115,7 @@ fn collect_all<'tcx>(tcx: TyCtxt<'tcx>) -> &'tcx FxHashMap<Symbol, DefId> {
         }
     }
 
-    tcx.arena.alloc(collector)
+    collector
 }
 
 pub fn provide(providers: &mut Providers<'_>) {

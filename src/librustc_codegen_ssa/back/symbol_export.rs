@@ -42,14 +42,11 @@ pub fn crates_export_threshold(crate_types: &[config::CrateType]) -> SymbolExpor
     }
 }
 
-fn reachable_non_generics_provider(
-    tcx: TyCtxt<'_>,
-    cnum: CrateNum,
-) -> &DefIdMap<SymbolExportLevel> {
+fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<SymbolExportLevel> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
-        return tcx.arena.alloc(Default::default());
+        return Default::default();
     }
 
     // Check to see if this crate is a "special runtime crate". These
@@ -145,7 +142,7 @@ fn reachable_non_generics_provider(
         reachable_non_generics.insert(id, SymbolExportLevel::C);
     }
 
-    tcx.arena.alloc(reachable_non_generics)
+    reachable_non_generics
 }
 
 fn is_reachable_non_generic_provider_local(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
@@ -281,7 +278,7 @@ fn exported_symbols_provider_local(
 fn upstream_monomorphizations_provider(
     tcx: TyCtxt<'_>,
     cnum: CrateNum,
-) -> &DefIdMap<FxHashMap<SubstsRef<'_>, CrateNum>> {
+) -> DefIdMap<FxHashMap<SubstsRef<'_>, CrateNum>> {
     debug_assert!(cnum == LOCAL_CRATE);
 
     let cnums = tcx.all_crate_nums(LOCAL_CRATE);
@@ -338,7 +335,7 @@ fn upstream_monomorphizations_provider(
         }
     }
 
-    tcx.arena.alloc(instances)
+    instances
 }
 
 fn upstream_monomorphizations_for_provider(

@@ -29,12 +29,12 @@ pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers { variances_of, crate_variances, ..*providers };
 }
 
-fn crate_variances(tcx: TyCtxt<'_>, crate_num: CrateNum) -> &CrateVariancesMap<'_> {
+fn crate_variances(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CrateVariancesMap<'_> {
     assert_eq!(crate_num, LOCAL_CRATE);
     let mut arena = arena::TypedArena::default();
     let terms_cx = terms::determine_parameters_to_be_inferred(tcx, &mut arena);
     let constraints_cx = constraints::add_constraints_from_crate(terms_cx);
-    tcx.arena.alloc(solve::solve_constraints(constraints_cx))
+    solve::solve_constraints(constraints_cx)
 }
 
 fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {

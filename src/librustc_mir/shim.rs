@@ -26,7 +26,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.mir_shims = make_shim;
 }
 
-fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx Body<'tcx> {
+fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'tcx> {
     debug!("make_shim({:?})", instance);
 
     let mut result = match instance {
@@ -128,7 +128,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
 
     debug!("make_shim({:?}) = {:?}", instance, result);
 
-    tcx.arena.alloc(result)
+    result
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -828,7 +828,7 @@ fn build_call_shim<'tcx>(
     body
 }
 
-pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &Body<'_> {
+pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
     let span =
@@ -895,5 +895,5 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &Body<'_> {
         |_, _| Ok(()),
     );
 
-    tcx.arena.alloc(body)
+    body
 }

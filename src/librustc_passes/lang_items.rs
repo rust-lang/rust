@@ -169,6 +169,6 @@ fn collect(tcx: TyCtxt<'_>) -> LanguageItems {
 pub fn provide(providers: &mut Providers<'_>) {
     providers.get_lang_items = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
-        tcx.arena.alloc(collect(tcx))
+        collect(tcx)
     };
 }
