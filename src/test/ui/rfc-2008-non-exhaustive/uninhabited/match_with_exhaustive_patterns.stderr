@@ -5,6 +5,7 @@ LL |     match x {}
    |           ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `uninhabited::UninhabitedEnum`
 
 error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedStruct` is non-empty
   --> $DIR/match_with_exhaustive_patterns.rs:26:11
@@ -13,6 +14,7 @@ LL |     match x {}
    |           ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `uninhabited::UninhabitedStruct`
 
 error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedTupleStruct` is non-empty
   --> $DIR/match_with_exhaustive_patterns.rs:30:11
@@ -21,6 +23,7 @@ LL |     match x {}
    |           ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `uninhabited::UninhabitedTupleStruct`
 
 error[E0004]: non-exhaustive patterns: `Tuple(_)` and `Struct { .. }` not covered
   --> $DIR/match_with_exhaustive_patterns.rs:34:11
@@ -36,6 +39,7 @@ LL |     #[non_exhaustive] Struct { x: ! }
    |                       ------ not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `uninhabited::UninhabitedVariants`
 
 error: aborting due to 4 previous errors
 
