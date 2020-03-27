@@ -463,18 +463,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    /// Dispatches to appropriate implementations for reading an OsString from Memory,
-    /// depending on the interpretation target.
-    /// FIXME: Use `Cow` to avoid copies
-    fn read_os_str_from_target_str(&self, scalar: Scalar<Tag>) -> InterpResult<'tcx, OsString> {
-        let target_os = self.eval_context_ref().tcx.sess.target.target.target_os.as_str();
-        match target_os {
-            "linux" | "macos" => self.read_os_str_from_c_str(scalar).map(|x| x.to_os_string()),
-            "windows" => self.read_os_str_from_wide_str(scalar),
-            unsupported => throw_unsup_format!("OsString support for target OS `{}` not yet available", unsupported),
-        }
-    }
-
     /// Helper function to read an OsString from a null-terminated sequence of bytes, which is what
     /// the Unix APIs usually handle.
     fn read_os_str_from_c_str<'a>(&'a self, scalar: Scalar<Tag>) -> InterpResult<'tcx, &'a OsStr>
@@ -567,7 +555,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn write_os_str_to_wide_str(
         &mut self,
         os_str: &OsStr,
-        mplace: MPlaceTy<'tcx, Tag>,
+        scalar: Scalar<Tag>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         #[cfg(windows)]
@@ -593,14 +581,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok((false, string_length));
         }
 
-        let this = self.eval_context_mut();
-
         // Store the UTF-16 string.
-        let char_size = Size::from_bytes(2);
-        for (idx, c) in u16_vec.into_iter().chain(iter::once(0x0000)).enumerate() {
-            let place = this.mplace_field(mplace, idx)?;
-            this.write_scalar(Scalar::from_uint(c, char_size), place.into())?;
-        }
+        self.eval_context_mut()
+            .memory
+            .write_u16s(scalar, u16_vec.into_iter().chain(iter::once(0x0000)))?;
         Ok((true, string_length))
     }
 
@@ -645,7 +629,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let arg_type = this.tcx.mk_array(this.tcx.types.u16, size);
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind);
-        assert!(self.write_os_str_to_wide_str(os_str, arg_place, size).unwrap().0);
+        assert!(self.write_os_str_to_wide_str(os_str, arg_place.ptr, size).unwrap().0);
         arg_place.ptr.assert_ptr()
     }
 
