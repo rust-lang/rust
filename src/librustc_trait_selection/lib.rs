@@ -15,6 +15,7 @@
 #![feature(drain_filter)]
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
+#![feature(or_patterns)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

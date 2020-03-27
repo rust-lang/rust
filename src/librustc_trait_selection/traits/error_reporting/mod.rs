@@ -25,8 +25,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{Node, QPath, TyKind, WhereBoundPredicate, WherePredicate};
 use rustc_session::DiagnosticMessageId;
-use rustc_span::source_map::SourceMap;
-use rustc_span::{ExpnKind, Span, DUMMY_SP};
+use rustc_span::{BytePos, ExpnKind, Span, DUMMY_SP};
 use std::fmt;
 
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -1679,14 +1678,8 @@ pub fn suggest_constraining_type_param(
     err: &mut DiagnosticBuilder<'_>,
     param_name: &str,
     constraint: &str,
-    source_map: &SourceMap,
-    span: Span,
     def_id: Option<DefId>,
 ) -> bool {
-    const MSG_RESTRICT_BOUND_FURTHER: &str = "consider further restricting this bound with";
-    const MSG_RESTRICT_TYPE: &str = "consider restricting this type parameter with";
-    const MSG_RESTRICT_TYPE_FURTHER: &str = "consider further restricting this type parameter with";
-
     let param = generics.params.iter().find(|p| p.name.ident().as_str() == param_name);
 
     let param = if let Some(param) = param {
@@ -1695,11 +1688,24 @@ pub fn suggest_constraining_type_param(
         return false;
     };
 
+    const MSG_RESTRICT_BOUND_FURTHER: &str = "consider further restricting this bound";
+    let msg_restrict_type = format!("consider restricting type parameter `{}`", param_name);
+    let msg_restrict_type_further =
+        format!("consider further restricting type parameter `{}`", param_name);
+
     if def_id == tcx.lang_items().sized_trait() {
         // Type parameters are already `Sized` by default.
         err.span_label(param.span, &format!("this type parameter needs to be `{}`", constraint));
         return true;
     }
+    let mut suggest_restrict = |span| {
+        err.span_suggestion_verbose(
+            span,
+            MSG_RESTRICT_BOUND_FURTHER,
+            format!(" + {}", constraint),
+            Applicability::MachineApplicable,
+        );
+    };
 
     if param_name.starts_with("impl ") {
         // If there's an `impl Trait` used in argument position, suggest
@@ -1717,19 +1723,15 @@ pub fn suggest_constraining_type_param(
         //             |
         //             replace with: `impl Foo + Bar`
 
-        err.span_help(param.span, &format!("{} `+ {}`", MSG_RESTRICT_BOUND_FURTHER, constraint));
-
-        err.tool_only_span_suggestion(
-            param.span,
-            MSG_RESTRICT_BOUND_FURTHER,
-            format!("{} + {}", param_name, constraint),
-            Applicability::MachineApplicable,
-        );
-
+        suggest_restrict(param.span.shrink_to_hi());
         return true;
     }
 
-    if generics.where_clause.predicates.is_empty() {
+    if generics.where_clause.predicates.is_empty()
+        // Given `trait Base<T = String>: Super<T>` where `T: Copy`, suggest restricting in the
+        // `where` clause instead of `trait Base<T: Copy = String>: Super<T>`.
+        && !matches!(param.kind, hir::GenericParamKind::Type { default: Some(_), .. })
+    {
         if let Some(bounds_span) = param.bounds_span() {
             // If user has provided some bounds, suggest restricting them:
             //
@@ -1744,38 +1746,16 @@ pub fn suggest_constraining_type_param(
             //          --
             //          |
             //          replace with: `T: Bar +`
-
-            err.span_help(
-                bounds_span,
-                &format!("{} `+ {}`", MSG_RESTRICT_BOUND_FURTHER, constraint),
-            );
-
-            let span_hi = param.span.with_hi(span.hi());
-            let span_with_colon = source_map.span_through_char(span_hi, ':');
-
-            if span_hi != param.span && span_with_colon != span_hi {
-                err.tool_only_span_suggestion(
-                    span_with_colon,
-                    MSG_RESTRICT_BOUND_FURTHER,
-                    format!("{}: {} + ", param_name, constraint),
-                    Applicability::MachineApplicable,
-                );
-            }
+            suggest_restrict(bounds_span.shrink_to_hi());
         } else {
             // If user hasn't provided any bounds, suggest adding a new one:
             //
             //   fn foo<T>(t: T) { ... }
             //          - help: consider restricting this type parameter with `T: Foo`
-
-            err.span_help(
-                param.span,
-                &format!("{} `{}: {}`", MSG_RESTRICT_TYPE, param_name, constraint),
-            );
-
-            err.tool_only_span_suggestion(
-                param.span,
-                MSG_RESTRICT_TYPE,
-                format!("{}: {}", param_name, constraint),
+            err.span_suggestion_verbose(
+                param.span.shrink_to_hi(),
+                &msg_restrict_type,
+                format!(": {}", constraint),
                 Applicability::MachineApplicable,
             );
         }
@@ -1839,55 +1819,25 @@ pub fn suggest_constraining_type_param(
             }
         }
 
-        let where_clause_span =
-            generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi();
+        let where_clause_span = generics.where_clause.span_for_predicates_or_empty_place();
+        // Account for `fn foo<T>(t: T) where T: Foo,` so we don't suggest two trailing commas.
+        let mut trailing_comma = false;
+        if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(where_clause_span) {
+            trailing_comma = snippet.ends_with(",");
+        }
+        let where_clause_span = if trailing_comma {
+            let hi = where_clause_span.hi();
+            Span::new(hi - BytePos(1), hi, where_clause_span.ctxt())
+        } else {
+            where_clause_span.shrink_to_hi()
+        };
 
         match &param_spans[..] {
-            &[] => {
-                err.span_help(
-                    param.span,
-                    &format!("{} `where {}: {}`", MSG_RESTRICT_TYPE, param_name, constraint),
-                );
-
-                err.tool_only_span_suggestion(
-                    where_clause_span,
-                    MSG_RESTRICT_TYPE,
-                    format!(", {}: {}", param_name, constraint),
-                    Applicability::MachineApplicable,
-                );
-            }
-
-            &[&param_span] => {
-                err.span_help(
-                    param_span,
-                    &format!("{} `+ {}`", MSG_RESTRICT_BOUND_FURTHER, constraint),
-                );
-
-                let span_hi = param_span.with_hi(span.hi());
-                let span_with_colon = source_map.span_through_char(span_hi, ':');
-
-                if span_hi != param_span && span_with_colon != span_hi {
-                    err.tool_only_span_suggestion(
-                        span_with_colon,
-                        MSG_RESTRICT_BOUND_FURTHER,
-                        format!("{}: {} +", param_name, constraint),
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-
+            &[&param_span] => suggest_restrict(param_span.shrink_to_hi()),
             _ => {
-                err.span_help(
-                    param.span,
-                    &format!(
-                        "{} `where {}: {}`",
-                        MSG_RESTRICT_TYPE_FURTHER, param_name, constraint,
-                    ),
-                );
-
-                err.tool_only_span_suggestion(
+                err.span_suggestion_verbose(
                     where_clause_span,
-                    MSG_RESTRICT_BOUND_FURTHER,
+                    &msg_restrict_type_further,
                     format!(", {}: {}", param_name, constraint),
                     Applicability::MachineApplicable,
                 );

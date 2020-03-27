@@ -8,11 +8,10 @@ LL | fn is_send<T:Send>() {
    |    -------   ---- required by this bound in `is_send`
    |
    = help: the trait `std::marker::Send` is not implemented for `T`
-help: consider restricting this type parameter with `T: std::marker::Send`
-  --> $DIR/typeck-default-trait-impl-send-param.rs:4:8
+help: consider restricting type parameter `T`
    |
-LL | fn foo<T>() {
-   |        ^
+LL | fn foo<T: std::marker::Send>() {
+   |         ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

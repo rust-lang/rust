@@ -8,11 +8,10 @@ LL | fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
    |                      ^^^^ `F` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `F`
-help: consider further restricting this bound with `+ std::marker::Send`
-  --> $DIR/closure-bounds-cant-promote-superkind-in-struct.rs:5:33
+help: consider further restricting this bound
    |
-LL | fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
-   |                                 ^^^^^^^^^^^^^^^^^^^^^
+LL | fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static + std::marker::Send {
+   |                                                       ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
