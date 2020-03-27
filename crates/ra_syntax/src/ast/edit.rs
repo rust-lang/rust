@@ -302,9 +302,10 @@ impl ast::UseTree {
             Some(it) => it,
             None => return self.clone(),
         };
-        let use_tree = make::use_tree(suffix.clone(), self.use_tree_list(), self.alias());
+        let use_tree =
+            make::use_tree(suffix.clone(), self.use_tree_list(), self.alias(), self.has_star());
         let nested = make::use_tree_list(iter::once(use_tree));
-        return make::use_tree(prefix.clone(), Some(nested), None);
+        return make::use_tree(prefix.clone(), Some(nested), None, false);
 
         fn split_path_prefix(prefix: &ast::Path) -> Option<ast::Path> {
             let parent = prefix.parent_path()?;

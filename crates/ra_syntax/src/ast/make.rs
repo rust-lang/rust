@@ -29,12 +29,17 @@ pub fn use_tree(
     path: ast::Path,
     use_tree_list: Option<ast::UseTreeList>,
     alias: Option<ast::Alias>,
+    add_star: bool,
 ) -> ast::UseTree {
     let mut buf = "use ".to_string();
     buf += &path.syntax().to_string();
     if let Some(use_tree_list) = use_tree_list {
         buf += &format!("::{}", use_tree_list);
     }
+    if add_star {
+        buf += "::*";
+    }
+
     if let Some(alias) = alias {
         buf += &format!(" {}", alias);
     }
