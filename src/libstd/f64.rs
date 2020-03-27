@@ -280,7 +280,7 @@ impl f64 {
     /// assert_eq!(a.rem_euclid(-b), 3.0);
     /// assert_eq!((-a).rem_euclid(-b), 1.0);
     /// // limitation due to round-off error
-    /// assert!((-std::f64::EPSILON).rem_euclid(3.0) != 0.0);
+    /// assert!((-f64::EPSILON).rem_euclid(3.0) != 0.0);
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
@@ -928,7 +928,7 @@ impl f64 {
     /// assert!((-3.0f64).clamp(-2.0, 1.0) == -2.0);
     /// assert!((0.0f64).clamp(-2.0, 1.0) == 0.0);
     /// assert!((2.0f64).clamp(-2.0, 1.0) == 1.0);
-    /// assert!((std::f64::NAN).clamp(-2.0, 1.0).is_nan());
+    /// assert!((f64::NAN).clamp(-2.0, 1.0).is_nan());
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "clamp", issue = "44095")]
