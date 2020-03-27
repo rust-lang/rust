@@ -11,6 +11,7 @@ use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::json;
+use crate::util::get_pointer_width;
 use crate::util::{logv, PathBufExt};
 use diff;
 use regex::{Captures, Regex};
@@ -176,6 +177,33 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
     results.remove(0);
 
     results
+}
+
+fn print_diff(expected: &str, actual: &str, context_size: usize) {
+    write_diff(expected, actual, context_size, std::io::stdout());
+}
+
+fn write_diff(expected: &str, actual: &str, context_size: usize, mut dest: impl io::Write) {
+    let diff_results = make_diff(expected, actual, context_size);
+    for result in diff_results {
+        let mut line_number = result.line_number;
+        for line in result.lines {
+            match line {
+                DiffLine::Expected(e) => {
+                    writeln!(dest, "-\t{}", e).unwrap();
+                    line_number += 1;
+                }
+                DiffLine::Context(c) => {
+                    writeln!(dest, "{}\t{}", line_number, c).unwrap();
+                    line_number += 1;
+                }
+                DiffLine::Resulting(r) => {
+                    writeln!(dest, "+\t{}", r).unwrap();
+                }
+            }
+        }
+        writeln!(dest).unwrap();
+    }
 }
 
 pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
@@ -3040,6 +3068,89 @@ impl<'test> TestCx<'test> {
 
     fn check_mir_dump(&self) {
         let test_file_contents = fs::read_to_string(&self.testpaths.file).unwrap();
+
+        let mut test_dir = self.testpaths.file.with_extension("");
+
+        if test_file_contents.lines().any(|l| l == "// EMIT_MIR_FOR_EACH_BIT_WIDTH") {
+            test_dir.push(get_pointer_width(&self.config.target))
+        }
+
+        if self.config.bless {
+            let _ = std::fs::remove_dir_all(&test_dir);
+        }
+        for l in test_file_contents.lines() {
+            if l.starts_with("// EMIT_MIR ") {
+                let test_name = l.trim_start_matches("// EMIT_MIR ");
+                let expected_file = test_dir.join(test_name);
+
+                let dumped_string = if test_name.ends_with(".diff") {
+                    let test_name = test_name.trim_end_matches(".diff");
+                    let before = format!("{}.before.mir", test_name);
+                    let after = format!("{}.after.mir", test_name);
+                    let before = self.get_mir_dump_dir().join(before);
+                    let after = self.get_mir_dump_dir().join(after);
+                    debug!(
+                        "comparing the contents of: {} with {}",
+                        before.display(),
+                        after.display()
+                    );
+                    let before = fs::read_to_string(before).unwrap();
+                    let after = fs::read_to_string(after).unwrap();
+                    let before = self.normalize_output(&before, &[]);
+                    let after = self.normalize_output(&after, &[]);
+                    let mut dumped_string = String::new();
+                    for result in diff::lines(&before, &after) {
+                        use std::fmt::Write;
+                        match result {
+                            diff::Result::Left(s) => writeln!(dumped_string, "- {}", s).unwrap(),
+                            diff::Result::Right(s) => writeln!(dumped_string, "+ {}", s).unwrap(),
+                            diff::Result::Both(s, _) => writeln!(dumped_string, "  {}", s).unwrap(),
+                        }
+                    }
+                    dumped_string
+                } else {
+                    let mut output_file = PathBuf::new();
+                    output_file.push(self.get_mir_dump_dir());
+                    output_file.push(test_name);
+                    debug!(
+                        "comparing the contents of: {} with {}",
+                        output_file.display(),
+                        expected_file.display()
+                    );
+                    if !output_file.exists() {
+                        panic!(
+                            "Output file `{}` from test does not exist, available files are in `{}`",
+                            output_file.display(),
+                            output_file.parent().unwrap().display()
+                        );
+                    }
+                    self.check_mir_test_timestamp(test_name, &output_file);
+                    let dumped_string = fs::read_to_string(&output_file).unwrap();
+                    self.normalize_output(&dumped_string, &[])
+                };
+                if self.config.bless {
+                    let _ = std::fs::create_dir_all(&test_dir);
+                    let _ = std::fs::remove_file(&expected_file);
+                    std::fs::write(expected_file, dumped_string.as_bytes()).unwrap();
+                } else {
+                    if !expected_file.exists() {
+                        panic!(
+                            "Output file `{}` from test does not exist",
+                            expected_file.display()
+                        );
+                    }
+                    let expected_string = fs::read_to_string(&expected_file).unwrap();
+                    if dumped_string != expected_string {
+                        print_diff(&dumped_string, &expected_string, 3);
+                        panic!(
+                            "Actual MIR output differs from expected MIR output {}",
+                            expected_file.display()
+                        );
+                    }
+                }
+            }
+        }
+
         if let Some(idx) = test_file_contents.find("// END RUST SOURCE") {
             let (_, tests_text) = test_file_contents.split_at(idx + "// END_RUST SOURCE".len());
             let tests_text_str = String::from(tests_text);
@@ -3090,13 +3201,10 @@ impl<'test> TestCx<'test> {
         let mut output_file = PathBuf::new();
         output_file.push(self.get_mir_dump_dir());
         output_file.push(test_name);
-        debug!("comparing the contests of: {:?}", output_file);
+        debug!("comparing the contents of: {:?}", output_file);
         debug!("with: {:?}", expected_content);
         if !output_file.exists() {
-            panic!(
-                "Output file `{}` from test does not exist",
-                output_file.into_os_string().to_string_lossy()
-            );
+            panic!("Output file `{}` from test does not exist", output_file.display());
         }
         self.check_mir_test_timestamp(test_name, &output_file);
 
@@ -3356,26 +3464,7 @@ impl<'test> TestCx<'test> {
                 println!("normalized {}:\n{}\n", kind, actual);
             } else {
                 println!("diff of {}:\n", kind);
-                let diff_results = make_diff(expected, actual, 3);
-                for result in diff_results {
-                    let mut line_number = result.line_number;
-                    for line in result.lines {
-                        match line {
-                            DiffLine::Expected(e) => {
-                                println!("-\t{}", e);
-                                line_number += 1;
-                            }
-                            DiffLine::Context(c) => {
-                                println!("{}\t{}", line_number, c);
-                                line_number += 1;
-                            }
-                            DiffLine::Resulting(r) => {
-                                println!("+\t{}", r);
-                            }
-                        }
-                    }
-                    println!();
-                }
+                print_diff(expected, actual, 3);
             }
         }
 
