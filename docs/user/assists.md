@@ -585,7 +585,7 @@ fn handle(action: Action) {
 
 ## `replace_let_with_if_let`
 
-Replaces `if let` with an else branch with a `match` expression.
+Replaces `let` with an `if-let`.
 
 ```rust
 // BEFORE
