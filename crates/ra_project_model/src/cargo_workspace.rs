@@ -323,16 +323,8 @@ pub fn load_extern_resources(cargo_toml: &Path, cargo_features: &CargoFeatures) 
 
 // FIXME: File a better way to know if it is a dylib
 fn is_dylib(path: &Path) -> bool {
-    let ext = match path.extension().and_then(OsStr::to_str).map(|it| it.to_string().to_lowercase())
-    {
-        None => return false,
-        Some(ext) => ext,
-    };
-
-    match ext.as_str() {
-        "dll" => true,
-        "dylib" => true,
-        "so" => true,
-        _ => false,
+    match path.extension().and_then(OsStr::to_str).map(|it| it.to_string().to_lowercase()) {
+        None => false,
+        Some(ext) => matches!(ext.as_str(), "dll" | "dylib" | "so"),
     }
 }
