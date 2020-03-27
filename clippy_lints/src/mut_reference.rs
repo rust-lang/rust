@@ -1,7 +1,8 @@
 use crate::utils::span_lint;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty};
-use rustc_hir::{print, BorrowKind, Expr, ExprKind, Mutability};
+use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
+use rustc_hir_pretty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -34,7 +35,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
                         cx,
                         arguments,
                         cx.tables.expr_ty(fn_expr),
-                        &print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)),
+                        &rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false)),
                     );
                 }
             },

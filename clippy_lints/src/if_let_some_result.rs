@@ -1,7 +1,8 @@
 use crate::utils::{match_type, method_chain_args, paths, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{print, Expr, ExprKind, MatchSource, PatKind, QPath};
+use rustc_hir::{Expr, ExprKind, MatchSource, PatKind, QPath};
+use rustc_hir_pretty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -46,7 +47,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OkIfLet {
             if let PatKind::TupleStruct(QPath::Resolved(_, ref x), ref y, _)  = body[0].pat.kind; //get operation
             if method_chain_args(op, &["ok"]).is_some(); //test to see if using ok() methoduse std::marker::Sized;
             let is_result_type = match_type(cx, cx.tables.expr_ty(&result_types[0]), &paths::RESULT);
-            if print::to_string(print::NO_ANN, |s| s.print_path(x, false)) == "Some" && is_result_type;
+            if rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(x, false)) == "Some" && is_result_type;
 
             then {
                 let mut applicability = Applicability::MachineApplicable;
