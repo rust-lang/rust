@@ -159,7 +159,8 @@ would still exist and already executed queries would not have to be re-done.
 ## Cycles
 
 Earlier we stated that query invocations form a DAG. However, it would be easy
-form a cyclic graph by, for example, having a query provider like the following:
+to form a cyclic graph by, for example, having a query provider like the
+following:
 
 ```rust,ignore
 fn cyclic_query_provider(tcx, key) -> u32 {
@@ -225,7 +226,7 @@ The nightly compiler already implements parallel query evaluation as follows:
 
 When a query `foo` is evaluated, the cache table for `foo` is locked.
 
-- If there already is a result, we can clone it,release the lock and
+- If there already is a result, we can clone it, release the lock and
   we are done.
 - If there is no cache entry and no other active query invocation computing the
   same result, we mark the key as being "in progress", release the lock and
@@ -235,4 +236,3 @@ When a query `foo` is evaluated, the cache table for `foo` is locked.
   computed the result we are waiting for. This cannot deadlock because, as
   mentioned before, query invocations form a DAG. Some thread will always make
   progress.
-
