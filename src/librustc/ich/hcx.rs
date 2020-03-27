@@ -137,7 +137,7 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn node_to_hir_id(&self, node_id: ast::NodeId) -> hir::HirId {
-        self.definitions.node_to_hir_id(node_id)
+        self.definitions.node_id_to_hir_id(node_id)
     }
 
     #[inline]

@@ -644,7 +644,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
     }
 
     let mut unsafe_blocks: Vec<_> = unsafe_blocks.iter().collect();
-    unsafe_blocks.sort_by_cached_key(|(hir_id, _)| tcx.hir().hir_to_node_id(*hir_id));
+    unsafe_blocks.sort_by_cached_key(|(hir_id, _)| tcx.hir().hir_id_to_node_id(*hir_id));
     let used_unsafe: FxHashSet<_> =
         unsafe_blocks.iter().flat_map(|&&(id, used)| used.then_some(id)).collect();
     for &(block_id, is_used) in unsafe_blocks {

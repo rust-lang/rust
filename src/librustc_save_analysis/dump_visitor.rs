@@ -225,7 +225,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             collector.visit_pat(&arg.pat);
 
             for (id, ident, ..) in collector.collected_idents {
-                let hir_id = self.tcx.hir().node_to_hir_id(id);
+                let hir_id = self.tcx.hir().node_id_to_hir_id(id);
                 let typ = match self.save_ctxt.tables.node_type_opt(hir_id) {
                     Some(s) => s.to_string(),
                     None => continue,
@@ -268,7 +268,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     ) {
         debug!("process_method: {}:{}", id, ident);
 
-        let hir_id = self.tcx.hir().node_to_hir_id(id);
+        let hir_id = self.tcx.hir().node_id_to_hir_id(id);
         self.nest_tables(id, |v| {
             if let Some(mut method_data) = v.save_ctxt.get_method_data(id, ident, span) {
                 v.process_formals(&sig.decl.inputs, &method_data.qualname);
@@ -308,7 +308,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     fn process_struct_field_def(&mut self, field: &ast::StructField, parent_id: NodeId) {
         let field_data = self.save_ctxt.get_field_data(field, parent_id);
         if let Some(field_data) = field_data {
-            let hir_id = self.tcx.hir().node_to_hir_id(field.id);
+            let hir_id = self.tcx.hir().node_id_to_hir_id(field.id);
             self.dumper.dump_def(&access_from!(self.save_ctxt, field, hir_id), field_data);
         }
     }
@@ -360,7 +360,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         ty_params: &'l ast::Generics,
         body: Option<&'l ast::Block>,
     ) {
-        let hir_id = self.tcx.hir().node_to_hir_id(item.id);
+        let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
         self.nest_tables(item.id, |v| {
             if let Some(fn_data) = v.save_ctxt.get_item_data(item) {
                 down_cast_data!(fn_data, DefData, item.span);
@@ -402,7 +402,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         typ: &'l ast::Ty,
         expr: Option<&'l ast::Expr>,
     ) {
-        let hir_id = self.tcx.hir().node_to_hir_id(item.id);
+        let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
         self.nest_tables(item.id, |v| {
             if let Some(var_data) = v.save_ctxt.get_item_data(item) {
                 down_cast_data!(var_data, DefData, item.span);
@@ -429,7 +429,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         if !self.span.filter_generated(ident.span) {
             let sig = sig::assoc_const_signature(id, ident.name, typ, expr, &self.save_ctxt);
             let span = self.span_from_span(ident.span);
-            let hir_id = self.tcx.hir().node_to_hir_id(id);
+            let hir_id = self.tcx.hir().node_id_to_hir_id(id);
 
             self.dumper.dump_def(
                 &access_from_vis!(self.save_ctxt, vis, hir_id),
@@ -503,7 +503,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
         if !self.span.filter_generated(item.ident.span) {
             let span = self.span_from_span(item.ident.span);
-            let hir_id = self.tcx.hir().node_to_hir_id(item.id);
+            let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
             self.dumper.dump_def(
                 &access_from!(self.save_ctxt, item, hir_id),
                 Def {
@@ -546,7 +546,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         };
         down_cast_data!(enum_data, DefData, item.span);
 
-        let hir_id = self.tcx.hir().node_to_hir_id(item.id);
+        let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
         let access = access_from!(self.save_ctxt, item, hir_id);
 
         for variant in &enum_definition.variants {
@@ -699,7 +699,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             let id = id_from_node_id(item.id, &self.save_ctxt);
             let span = self.span_from_span(item.ident.span);
             let children = methods.iter().map(|i| id_from_node_id(i.id, &self.save_ctxt)).collect();
-            let hir_id = self.tcx.hir().node_to_hir_id(item.id);
+            let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
             self.dumper.dump_def(
                 &access_from!(self.save_ctxt, item, hir_id),
                 Def {
@@ -759,7 +759,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     fn process_mod(&mut self, item: &ast::Item) {
         if let Some(mod_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(mod_data, DefData, item.span);
-            let hir_id = self.tcx.hir().node_to_hir_id(item.id);
+            let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
             self.dumper.dump_def(&access_from!(self.save_ctxt, item, hir_id), mod_data);
         }
     }
@@ -864,7 +864,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         match p.kind {
             PatKind::Struct(ref _path, ref fields, _) => {
                 // FIXME do something with _path?
-                let hir_id = self.tcx.hir().node_to_hir_id(p.id);
+                let hir_id = self.tcx.hir().node_id_to_hir_id(p.id);
                 let adt = match self.save_ctxt.tables.node_type_opt(hir_id) {
                     Some(ty) if ty.ty_adt_def().is_some() => ty.ty_adt_def().unwrap(),
                     _ => {
@@ -903,7 +903,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         for (id, ident, _) in collector.collected_idents {
             match self.save_ctxt.get_path_res(id) {
                 Res::Local(hir_id) => {
-                    let id = self.tcx.hir().hir_to_node_id(hir_id);
+                    let id = self.tcx.hir().hir_id_to_node_id(hir_id);
                     let typ = self
                         .save_ctxt
                         .tables
@@ -1126,7 +1126,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
         // The access is calculated using the current tree ID, but with the root tree's visibility
         // (since nested trees don't have their own visibility).
-        let hir_id = self.tcx.hir().node_to_hir_id(id);
+        let hir_id = self.tcx.hir().node_id_to_hir_id(id);
         let access = access_from!(self.save_ctxt, root_item, hir_id);
 
         // The parent `DefId` of a given use tree is always the enclosing item.
@@ -1321,7 +1321,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 if !self.span.filter_generated(item.ident.span) {
                     let span = self.span_from_span(item.ident.span);
                     let id = id_from_node_id(item.id, &self.save_ctxt);
-                    let hir_id = self.tcx.hir().node_to_hir_id(item.id);
+                    let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
 
                     self.dumper.dump_def(
                         &access_from!(self.save_ctxt, item, hir_id),
@@ -1420,7 +1420,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
         self.process_macro_use(ex.span);
         match ex.kind {
             ast::ExprKind::Struct(ref path, ref fields, ref base) => {
-                let expr_hir_id = self.save_ctxt.tcx.hir().node_to_hir_id(ex.id);
+                let expr_hir_id = self.save_ctxt.tcx.hir().node_id_to_hir_id(ex.id);
                 let hir_expr = self.save_ctxt.tcx.hir().expect_expr(expr_hir_id);
                 let adt = match self.save_ctxt.tables.expr_ty_opt(&hir_expr) {
                     Some(ty) if ty.ty_adt_def().is_some() => ty.ty_adt_def().unwrap(),
@@ -1429,7 +1429,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                         return;
                     }
                 };
-                let node_id = self.save_ctxt.tcx.hir().hir_to_node_id(hir_expr.hir_id);
+                let node_id = self.save_ctxt.tcx.hir().hir_id_to_node_id(hir_expr.hir_id);
                 let res = self.save_ctxt.get_path_res(node_id);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_res(res), base)
             }
@@ -1514,7 +1514,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, item: &'l ast::ForeignItem) {
-        let hir_id = self.tcx.hir().node_to_hir_id(item.id);
+        let hir_id = self.tcx.hir().node_id_to_hir_id(item.id);
         let access = access_from!(self.save_ctxt, item, hir_id);
 
         match item.kind {
