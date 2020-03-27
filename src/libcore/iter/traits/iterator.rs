@@ -2023,10 +2023,7 @@ pub trait Iterator {
     ///           I::Item: Ord,
     /// {
     ///     iter.fold_first(|a, b| {
-    ///         a.partial_cmp(b).map(move |cmp| match cmp {
-    ///             Ordering::Greater | Ordering::Equal => a,
-    ///             Ordering::Less => b,
-    ///         })
+    ///         if a >= b { a } else { b }
     ///     })
     /// }
     /// let a = [10, 20, 5, -23, 0];
