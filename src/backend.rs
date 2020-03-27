@@ -14,7 +14,7 @@ use gimli::SectionId;
 
 use crate::debuginfo::{DebugReloc, DebugRelocName};
 
-pub trait WriteMetadata {
+pub(crate) trait WriteMetadata {
     fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>, is_like_osx: bool);
 }
 
@@ -38,7 +38,7 @@ impl WriteMetadata for object::write::Object {
     }
 }
 
-pub trait WriteDebugInfo {
+pub(crate) trait WriteDebugInfo {
     type SectionId;
 
     fn add_debug_section(&mut self, name: SectionId, data: Vec<u8>) -> Self::SectionId;
@@ -99,7 +99,7 @@ impl WriteDebugInfo for ObjectProduct {
     }
 }
 
-pub trait Emit {
+pub(crate) trait Emit {
     fn emit(self) -> Vec<u8>;
 }
 
@@ -109,7 +109,7 @@ impl Emit for ObjectProduct {
     }
 }
 
-pub fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object)) -> Vec<u8> {
+pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object)) -> Vec<u8> {
     let triple = crate::build_isa(sess, true).triple().clone();
     let mut metadata_object =
         object::write::Object::new(triple.binary_format, triple.architecture);
@@ -118,9 +118,9 @@ pub fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object)) -> V
     metadata_object.write().unwrap()
 }
 
-pub type Backend = impl cranelift_module::Backend<Product: Emit + WriteDebugInfo>;
+pub(crate) type Backend = impl cranelift_module::Backend<Product: Emit + WriteDebugInfo>;
 
-pub fn make_module(sess: &Session, name: String) -> Module<Backend> {
+pub(crate) fn make_module(sess: &Session, name: String) -> Module<Backend> {
     let module: Module<ObjectBackend> = Module::new(
         ObjectBuilder::new(
             crate::build_isa(sess, true),

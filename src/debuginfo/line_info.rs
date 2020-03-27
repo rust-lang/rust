@@ -3,7 +3,7 @@ use std::path::{Component, Path};
 
 use crate::prelude::*;
 
-use rustc_span::{FileName, SourceFileAndLine};
+use rustc_span::{FileName, SourceFileAndLine, Pos};
 
 use cranelift_codegen::binemit::CodeOffset;
 
@@ -162,7 +162,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
             let current_file_changed = if let Some(last_file) = &last_file {
                 // If the allocations are not equal, then the files may still be equal, but that
                 // is not a problem, as this is just an optimization.
-                !Lrc::ptr_eq(last_file, &file)
+                !rustc_data_structures::sync::Lrc::ptr_eq(last_file, &file)
             } else {
                 true
             };

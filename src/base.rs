@@ -3,7 +3,7 @@ use rustc_index::vec::IndexVec;
 
 use crate::prelude::*;
 
-pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
+pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     cx: &mut crate::CodegenCx<'clif, 'tcx, B>,
     instance: Instance<'tcx>,
     linkage: Linkage,
@@ -202,7 +202,7 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     context.clear();
 }
 
-pub fn verify_func(tcx: TyCtxt, writer: &crate::pretty_clif::CommentWriter, func: &Function) {
+pub(crate) fn verify_func(tcx: TyCtxt, writer: &crate::pretty_clif::CommentWriter, func: &Function) {
     tcx.sess.time("verify clif ir", || {
         let flags = settings::Flags::new(settings::builder());
         match ::cranelift_codegen::verify_function(&func, &flags) {
@@ -724,7 +724,7 @@ fn codegen_array_len<'tcx>(
     }
 }
 
-pub fn trans_place<'tcx>(
+pub(crate) fn trans_place<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     place: &Place<'tcx>,
 ) -> CPlace<'tcx> {
@@ -792,7 +792,7 @@ pub fn trans_place<'tcx>(
     cplace
 }
 
-pub fn trans_operand<'tcx>(
+pub(crate) fn trans_operand<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     operand: &Operand<'tcx>,
 ) -> CValue<'tcx> {

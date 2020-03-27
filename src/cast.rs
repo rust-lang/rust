@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub fn clif_intcast(
+pub(crate) fn clif_intcast(
     fx: &mut FunctionCx<'_, '_, impl Backend>,
     val: Value,
     to: Type,
@@ -48,7 +48,7 @@ pub fn clif_intcast(
     }
 }
 
-pub fn clif_int_or_float_cast(
+pub(crate) fn clif_int_or_float_cast(
     fx: &mut FunctionCx<'_, '_, impl Backend>,
     from: Value,
     from_signed: bool,

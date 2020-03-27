@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use rustc::middle::cstore::EncodedMetadata;
-use rustc::mir::mono::{Linkage as RLinkage, Visibility};
+use rustc::mir::mono::{Linkage as RLinkage, MonoItem, Visibility};
 
 use crate::prelude::*;
 
@@ -9,7 +9,7 @@ mod aot;
 #[cfg(not(target_arch = "wasm32"))]
 mod jit;
 
-pub fn codegen_crate(
+pub(crate) fn codegen_crate(
     tcx: TyCtxt<'_>,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
@@ -17,7 +17,7 @@ pub fn codegen_crate(
     tcx.sess.abort_if_errors();
 
     if std::env::var("CG_CLIF_JIT").is_ok()
-        && tcx.sess.crate_types.get().contains(&CrateType::Executable)
+        && tcx.sess.crate_types.get().contains(&rustc_session::config::CrateType::Executable)
     {
         #[cfg(not(target_arch = "wasm32"))]
         let _: ! = jit::run_jit(tcx);

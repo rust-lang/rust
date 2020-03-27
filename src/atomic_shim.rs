@@ -8,7 +8,7 @@ use crate::prelude::*;
 #[no_mangle]
 pub static mut __cg_clif_global_atomic_mutex: libc::pthread_mutex_t = libc::PTHREAD_MUTEX_INITIALIZER;
 
-pub fn init_global_lock(module: &mut Module<impl Backend>, bcx: &mut FunctionBuilder<'_>) {
+pub(crate) fn init_global_lock(module: &mut Module<impl Backend>, bcx: &mut FunctionBuilder<'_>) {
     if std::env::var("CG_CLIF_JIT").is_ok () {
         // When using JIT, dylibs won't find the __cg_clif_global_atomic_mutex data object defined here,
         // so instead define it in the cg_clif dylib.
@@ -46,7 +46,7 @@ pub fn init_global_lock(module: &mut Module<impl Backend>, bcx: &mut FunctionBui
     bcx.ins().call(pthread_mutex_init, &[atomic_mutex, nullptr]);
 }
 
-pub fn lock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
+pub(crate) fn lock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
     let atomic_mutex = fx.module.declare_data(
         "__cg_clif_global_atomic_mutex",
         Linkage::Import,
@@ -71,7 +71,7 @@ pub fn lock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
     fx.bcx.ins().call(pthread_mutex_lock, &[atomic_mutex]);
 }
 
-pub fn unlock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
+pub(crate) fn unlock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
     let atomic_mutex = fx.module.declare_data(
         "__cg_clif_global_atomic_mutex",
         Linkage::Import,

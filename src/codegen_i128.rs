@@ -2,7 +2,7 @@
 
 use crate::prelude::*;
 
-pub fn maybe_codegen<'tcx>(
+pub(crate) fn maybe_codegen<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     bin_op: BinOp,
     checked: bool,

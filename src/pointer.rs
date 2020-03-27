@@ -3,33 +3,33 @@ use crate::prelude::*;
 use cranelift_codegen::ir::immediates::Offset32;
 
 #[derive(Copy, Clone, Debug)]
-pub struct Pointer {
+pub(crate) struct Pointer {
     base: PointerBase,
     offset: Offset32,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum PointerBase {
+pub(crate) enum PointerBase {
     Addr(Value),
     Stack(StackSlot),
 }
 
 impl Pointer {
-    pub fn new(addr: Value) -> Self {
+    pub(crate) fn new(addr: Value) -> Self {
         Pointer {
             base: PointerBase::Addr(addr),
             offset: Offset32::new(0),
         }
     }
 
-    pub fn stack_slot(stack_slot: StackSlot) -> Self {
+    pub(crate) fn stack_slot(stack_slot: StackSlot) -> Self {
         Pointer {
             base: PointerBase::Stack(stack_slot),
             offset: Offset32::new(0),
         }
     }
 
-    pub fn const_addr<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>, addr: i64) -> Self {
+    pub(crate) fn const_addr<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>, addr: i64) -> Self {
         let addr = fx.bcx.ins().iconst(fx.pointer_type, addr);
         Pointer {
             base: PointerBase::Addr(addr),
@@ -38,11 +38,11 @@ impl Pointer {
     }
 
     #[cfg(debug_assertions)]
-    pub fn base_and_offset(self) -> (PointerBase, Offset32) {
+    pub(crate) fn base_and_offset(self) -> (PointerBase, Offset32) {
         (self.base, self.offset)
     }
 
-    pub fn get_addr<'a, 'tcx>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> Value {
+    pub(crate) fn get_addr<'a, 'tcx>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> Value {
         match self.base {
             PointerBase::Addr(base_addr) => {
                 let offset: i64 = self.offset.into();
@@ -56,7 +56,7 @@ impl Pointer {
         }
     }
 
-    pub fn offset<'a, 'tcx>(
+    pub(crate) fn offset<'a, 'tcx>(
         self,
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         extra_offset: Offset32,
@@ -64,7 +64,7 @@ impl Pointer {
         self.offset_i64(fx, extra_offset.into())
     }
 
-    pub fn offset_i64<'a, 'tcx>(
+    pub(crate) fn offset_i64<'a, 'tcx>(
         self,
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         extra_offset: i64,
@@ -92,7 +92,7 @@ impl Pointer {
         }
     }
 
-    pub fn offset_value<'a, 'tcx>(
+    pub(crate) fn offset_value<'a, 'tcx>(
         self,
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         extra_offset: Value,
@@ -112,7 +112,7 @@ impl Pointer {
         }
     }
 
-    pub fn load<'a, 'tcx>(
+    pub(crate) fn load<'a, 'tcx>(
         self,
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         ty: Type,
@@ -130,7 +130,7 @@ impl Pointer {
         }
     }
 
-    pub fn store<'a, 'tcx>(
+    pub(crate) fn store<'a, 'tcx>(
         self,
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
         value: Value,

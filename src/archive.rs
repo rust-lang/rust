@@ -23,7 +23,7 @@ enum ArchiveEntry {
     File(PathBuf),
 }
 
-pub struct ArArchiveBuilder<'a> {
+pub(crate) struct ArArchiveBuilder<'a> {
     config: ArchiveConfig<'a>,
     src_archives: Vec<(PathBuf, ar::Archive<File>)>,
     // Don't use `HashMap` here, as the order is important. `rust.metadata.bin` must always be at

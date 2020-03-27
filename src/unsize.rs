@@ -8,7 +8,7 @@ use crate::prelude::*;
 /// The `old_info` argument is a bit funny. It is intended for use
 /// in an upcast, where the new vtable for an object will be derived
 /// from the old one.
-pub fn unsized_info<'tcx>(
+pub(crate) fn unsized_info<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
@@ -84,7 +84,7 @@ fn unsize_thin_ptr<'tcx>(
 
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
-pub fn coerce_unsized_into<'tcx>(
+pub(crate) fn coerce_unsized_into<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     src: CValue<'tcx>,
     dst: CPlace<'tcx>,
@@ -137,7 +137,7 @@ pub fn coerce_unsized_into<'tcx>(
 
 // Adapted from https://github.com/rust-lang/rust/blob/2a663555ddf36f6b041445894a8c175cd1bc718c/src/librustc_codegen_ssa/glue.rs
 
-pub fn size_and_align_of_dst<'tcx>(
+pub(crate) fn size_and_align_of_dst<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     layout: TyLayout<'tcx>,
     info: Value,

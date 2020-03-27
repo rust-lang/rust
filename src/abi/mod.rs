@@ -10,10 +10,10 @@ use cranelift_codegen::ir::AbiParam;
 use self::pass_mode::*;
 use crate::prelude::*;
 
-pub use self::returning::{can_return_to_ssa_var, codegen_return};
+pub(crate) use self::returning::{can_return_to_ssa_var, codegen_return};
 
 // Copied from https://github.com/rust-lang/rust/blob/c2f4c57296f0d929618baed0b0d6eb594abf01eb/src/librustc/ty/layout.rs#L2349
-pub fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::PolyFnSig<'tcx> {
+pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::PolyFnSig<'tcx> {
     let ty = instance.monomorphic_ty(tcx);
     match ty.kind {
         ty::FnDef(..) |
@@ -163,7 +163,7 @@ fn clif_sig_from_fn_sig<'tcx>(
     }
 }
 
-pub fn get_function_name_and_sig<'tcx>(
+pub(crate) fn get_function_name_and_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
     triple: &target_lexicon::Triple,
     inst: Instance<'tcx>,
@@ -180,7 +180,7 @@ pub fn get_function_name_and_sig<'tcx>(
 }
 
 /// Instance must be monomorphized
-pub fn import_function<'tcx>(
+pub(crate) fn import_function<'tcx>(
     tcx: TyCtxt<'tcx>,
     module: &mut Module<impl Backend>,
     inst: Instance<'tcx>,
@@ -193,7 +193,7 @@ pub fn import_function<'tcx>(
 
 impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     /// Instance must be monomorphized
-    pub fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
+    pub(crate) fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
         let func_id = import_function(self.tcx, self.module, inst);
         let func_ref = self
             .module
@@ -234,7 +234,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         results
     }
 
-    pub fn easy_call(
+    pub(crate) fn easy_call(
         &mut self,
         name: &str,
         args: &[CValue<'tcx>],
@@ -288,7 +288,7 @@ fn local_place<'tcx>(
     fx.local_map[&local]
 }
 
-pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_block: Block, should_codegen_locals: bool) {
+pub(crate) fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_block: Block, should_codegen_locals: bool) {
     let ssa_analyzed = crate::analyze::analyze(fx);
 
     #[cfg(debug_assertions)]
@@ -423,7 +423,7 @@ pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_block
         .jump(*fx.block_map.get(START_BLOCK).unwrap(), &[]);
 }
 
-pub fn codegen_terminator_call<'tcx>(
+pub(crate) fn codegen_terminator_call<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     span: Span,
     func: &Operand<'tcx>,
@@ -444,7 +444,7 @@ pub fn codegen_terminator_call<'tcx>(
             ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
 
         if fx.tcx.symbol_name(instance).name.as_str().starts_with("llvm.") {
-            crate::intrinsics::llvm::codegen_llvm_intrinsic_call(
+            crate::intrinsics::codegen_llvm_intrinsic_call(
                 fx,
                 &fx.tcx.symbol_name(instance).name.as_str(),
                 substs,
@@ -640,7 +640,7 @@ fn codegen_call_inner<'tcx>(
     }
 }
 
-pub fn codegen_drop<'tcx>(
+pub(crate) fn codegen_drop<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     span: Span,
     drop_place: CPlace<'tcx>,

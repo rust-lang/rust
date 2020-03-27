@@ -6,11 +6,11 @@ use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
 
 use crate::prelude::*;
 
-pub fn mir_var(loc: Local) -> Variable {
+pub(crate) fn mir_var(loc: Local) -> Variable {
     Variable::with_u32(loc.index() as u32)
 }
 
-pub fn pointer_ty(tcx: TyCtxt) -> types::Type {
+pub(crate) fn pointer_ty(tcx: TyCtxt) -> types::Type {
     match tcx.data_layout.pointer_size.bits() {
         16 => types::I16,
         32 => types::I32,
@@ -19,7 +19,7 @@ pub fn pointer_ty(tcx: TyCtxt) -> types::Type {
     }
 }
 
-pub fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
+pub(crate) fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
     match scalar.value {
         Primitive::Int(int, _sign) => match int {
             Integer::I8 => types::I8,
@@ -72,7 +72,7 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
 }
 
 /// Is a pointer to this type a fat ptr?
-pub fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     let ptr_ty = tcx.mk_ptr(TypeAndMut { ty, mutbl: rustc_hir::Mutability::Not });
     match &tcx.layout_of(ParamEnv::reveal_all().and(ptr_ty)).unwrap().abi {
         Abi::Scalar(_) => false,
@@ -81,7 +81,7 @@ pub fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-pub fn codegen_icmp(
+pub(crate) fn codegen_icmp(
     fx: &mut FunctionCx<'_, '_, impl Backend>,
     intcc: IntCC,
     lhs: Value,
@@ -126,7 +126,7 @@ pub fn codegen_icmp(
     }
 }
 
-pub fn codegen_icmp_imm(
+pub(crate) fn codegen_icmp_imm(
     fx: &mut FunctionCx<'_, '_, impl Backend>,
     intcc: IntCC,
     lhs: Value,
@@ -207,7 +207,7 @@ fn resolve_128bit_value_imm(func: &Function, val: Value) -> Option<u128> {
     Some(msb << 64 | lsb)
 }
 
-pub fn resolve_value_imm(func: &Function, val: Value) -> Option<u128> {
+pub(crate) fn resolve_value_imm(func: &Function, val: Value) -> Option<u128> {
     if func.dfg.value_type(val) == types::I128 {
         resolve_128bit_value_imm(func, val)
     } else {
@@ -215,7 +215,7 @@ pub fn resolve_value_imm(func: &Function, val: Value) -> Option<u128> {
     }
 }
 
-pub fn type_min_max_value(ty: Type, signed: bool) -> (i64, i64) {
+pub(crate) fn type_min_max_value(ty: Type, signed: bool) -> (i64, i64) {
     assert!(ty.is_int());
     let min = match (ty, signed) {
         (types::I8, false) | (types::I16, false) | (types::I32, false) | (types::I64, false) => {
@@ -245,7 +245,7 @@ pub fn type_min_max_value(ty: Type, signed: bool) -> (i64, i64) {
     (min, max)
 }
 
-pub fn type_sign(ty: Ty<'_>) -> bool {
+pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
     match ty.kind {
         ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..) | ty::Char | ty::Uint(..) | ty::Bool => false,
         ty::Int(..) => true,
@@ -254,30 +254,30 @@ pub fn type_sign(ty: Ty<'_>) -> bool {
     }
 }
 
-pub struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
+pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     // FIXME use a reference to `CodegenCx` instead of `tcx`, `module` and `constants` and `caches`
-    pub tcx: TyCtxt<'tcx>,
-    pub module: &'clif mut Module<B>,
-    pub pointer_type: Type, // Cached from module
+    pub(crate) tcx: TyCtxt<'tcx>,
+    pub(crate) module: &'clif mut Module<B>,
+    pub(crate) pointer_type: Type, // Cached from module
 
-    pub instance: Instance<'tcx>,
-    pub mir: &'tcx Body<'tcx>,
+    pub(crate) instance: Instance<'tcx>,
+    pub(crate) mir: &'tcx Body<'tcx>,
 
-    pub bcx: FunctionBuilder<'clif>,
-    pub block_map: IndexVec<BasicBlock, Block>,
-    pub local_map: HashMap<Local, CPlace<'tcx>>,
+    pub(crate) bcx: FunctionBuilder<'clif>,
+    pub(crate) block_map: IndexVec<BasicBlock, Block>,
+    pub(crate) local_map: HashMap<Local, CPlace<'tcx>>,
 
     /// When `#[track_caller]` is used, the implicit caller location is stored in this variable.
-    pub caller_location: Option<CValue<'tcx>>,
+    pub(crate) caller_location: Option<CValue<'tcx>>,
 
     /// See [crate::optimize::code_layout] for more information.
-    pub cold_blocks: EntitySet<Block>,
+    pub(crate) cold_blocks: EntitySet<Block>,
 
-    pub clif_comments: crate::pretty_clif::CommentWriter,
-    pub constants_cx: &'clif mut crate::constant::ConstantCx,
-    pub vtables: &'clif mut HashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
+    pub(crate) clif_comments: crate::pretty_clif::CommentWriter,
+    pub(crate) constants_cx: &'clif mut crate::constant::ConstantCx,
+    pub(crate) vtables: &'clif mut HashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
 
-    pub source_info_set: indexmap::IndexSet<SourceInfo>,
+    pub(crate) source_info_set: indexmap::IndexSet<SourceInfo>,
 }
 
 impl<'tcx, B: Backend> LayoutOf for FunctionCx<'_, 'tcx, B> {
@@ -333,7 +333,7 @@ impl<'tcx, B: Backend> BackendTypes for FunctionCx<'_, 'tcx, B> {
 }
 
 impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
-    pub fn monomorphize<T>(&self, value: &T) -> T
+    pub(crate) fn monomorphize<T>(&self, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -344,26 +344,26 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         )
     }
 
-    pub fn clif_type(&self, ty: Ty<'tcx>) -> Option<Type> {
+    pub(crate) fn clif_type(&self, ty: Ty<'tcx>) -> Option<Type> {
         clif_type_from_ty(self.tcx, ty)
     }
 
-    pub fn get_block(&self, bb: BasicBlock) -> Block {
+    pub(crate) fn get_block(&self, bb: BasicBlock) -> Block {
         *self.block_map.get(bb).unwrap()
     }
 
-    pub fn get_local_place(&mut self, local: Local) -> CPlace<'tcx> {
+    pub(crate) fn get_local_place(&mut self, local: Local) -> CPlace<'tcx> {
         *self.local_map.get(&local).unwrap_or_else(|| {
             panic!("Local {:?} doesn't exist", local);
         })
     }
 
-    pub fn set_debug_loc(&mut self, source_info: mir::SourceInfo) {
+    pub(crate) fn set_debug_loc(&mut self, source_info: mir::SourceInfo) {
         let (index, _) = self.source_info_set.insert_full(source_info);
         self.bcx.set_srcloc(SourceLoc::new(index as u32));
     }
 
-    pub fn get_caller_location(&mut self, span: Span) -> CValue<'tcx> {
+    pub(crate) fn get_caller_location(&mut self, span: Span) -> CValue<'tcx> {
         if let Some(loc) = self.caller_location {
             // `#[track_caller]` is used; return caller location instead of current location.
             return loc;
@@ -382,7 +382,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         )
     }
 
-    pub fn triple(&self) -> &target_lexicon::Triple {
+    pub(crate) fn triple(&self) -> &target_lexicon::Triple {
         self.module.isa().triple()
     }
 }

@@ -5,7 +5,7 @@ fn return_layout<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> TyLay
     fx.layout_of(fx.monomorphize(&fx.mir.local_decls[RETURN_PLACE].ty))
 }
 
-pub fn can_return_to_ssa_var<'tcx>(tcx: TyCtxt<'tcx>, dest_layout: TyLayout<'tcx>) -> bool {
+pub(crate) fn can_return_to_ssa_var<'tcx>(tcx: TyCtxt<'tcx>, dest_layout: TyLayout<'tcx>) -> bool {
     match get_pass_mode(tcx, dest_layout) {
         PassMode::NoPass | PassMode::ByVal(_) => true,
         // FIXME Make it possible to return ByValPair and ByRef to an ssa var.
@@ -101,7 +101,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
     (call_inst, meta)
 }
 
-pub fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
+pub(crate) fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
     match get_pass_mode(fx.tcx, return_layout(fx)) {
         PassMode::NoPass | PassMode::ByRef { sized: true } => {
             fx.bcx.ins().return_(&[]);

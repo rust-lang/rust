@@ -1,5 +1,7 @@
-pub mod llvm;
+mod llvm;
 mod simd;
+
+pub(crate) use llvm::codegen_llvm_intrinsic_call;
 
 use crate::prelude::*;
 
@@ -332,7 +334,7 @@ macro simd_flt_binop($fx:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) {
     );
 }
 
-pub fn codegen_intrinsic_call<'tcx>(
+pub(crate) fn codegen_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     instance: Instance<'tcx>,
     args: &[mir::Operand<'tcx>],

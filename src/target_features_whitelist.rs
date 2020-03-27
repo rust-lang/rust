@@ -115,7 +115,7 @@ const WASM_WHITELIST: &[(&str, Option<Symbol>)] = &[
 ///
 /// IMPORTANT: If you're adding another whitelist to the above lists, make sure to add it to this
 /// iterator!
-pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol>)> {
+pub(crate) fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol>)> {
     ARM_WHITELIST
         .iter()
         .cloned()
@@ -127,7 +127,7 @@ pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol
         .chain(WASM_WHITELIST.iter().cloned())
 }
 
-pub fn target_feature_whitelist(sess: &Session) -> &'static [(&'static str, Option<Symbol>)] {
+pub(crate) fn target_feature_whitelist(sess: &Session) -> &'static [(&'static str, Option<Symbol>)] {
     match &*sess.target.target.arch {
         "arm" => ARM_WHITELIST,
         "aarch64" => AARCH64_WHITELIST,

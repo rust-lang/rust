@@ -19,7 +19,7 @@ use cranelift_module::*;
 use crate::prelude::*;
 
 #[derive(Default)]
-pub struct ConstantCx {
+pub(crate) struct ConstantCx {
     todo: Vec<TodoItem>,
     done: FxHashSet<DataId>,
 }
@@ -31,7 +31,7 @@ enum TodoItem {
 }
 
 impl ConstantCx {
-    pub fn finalize(mut self, tcx: TyCtxt<'_>, module: &mut Module<impl Backend>) {
+    pub(crate) fn finalize(mut self, tcx: TyCtxt<'_>, module: &mut Module<impl Backend>) {
         //println!("todo {:?}", self.todo);
         define_all_allocs(tcx, module, &mut self);
         //println!("done {:?}", self.done);
@@ -39,7 +39,7 @@ impl ConstantCx {
     }
 }
 
-pub fn codegen_static(constants_cx: &mut ConstantCx, def_id: DefId) {
+pub(crate) fn codegen_static(constants_cx: &mut ConstantCx, def_id: DefId) {
     constants_cx.todo.push(TodoItem::Static(def_id));
 }
 
@@ -56,7 +56,7 @@ fn codegen_static_ref<'tcx>(
     cplace_for_dataid(fx, layout, local_data_id)
 }
 
-pub fn trans_constant<'tcx>(
+pub(crate) fn trans_constant<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
@@ -77,7 +77,7 @@ pub fn trans_constant<'tcx>(
     trans_const_value(fx, const_)
 }
 
-pub fn trans_const_value<'tcx>(
+pub(crate) fn trans_const_value<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     const_: &'tcx Const<'tcx>,
 ) -> CValue<'tcx> {
@@ -489,7 +489,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
     }
 }
 
-pub fn mir_operand_get_const_val<'tcx>(
+pub(crate) fn mir_operand_get_const_val<'tcx>(
     fx: &FunctionCx<'_, 'tcx, impl Backend>,
     operand: &Operand<'tcx>,
 ) -> Option<&'tcx Const<'tcx>> {

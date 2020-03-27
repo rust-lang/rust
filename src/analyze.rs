@@ -4,12 +4,12 @@ use rustc::mir::StatementKind::*;
 use rustc_index::vec::IndexVec;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum SsaKind {
+pub(crate) enum SsaKind {
     NotSsa,
     Ssa,
 }
 
-pub fn analyze(fx: &FunctionCx<'_, '_, impl Backend>) -> IndexVec<Local, SsaKind> {
+pub(crate) fn analyze(fx: &FunctionCx<'_, '_, impl Backend>) -> IndexVec<Local, SsaKind> {
     let mut flag_map = fx.mir.local_decls.iter().map(|local_decl| {
         if fx.clif_type(fx.monomorphize(&local_decl.ty)).is_some() {
             SsaKind::Ssa

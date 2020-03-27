@@ -55,7 +55,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
 /// Use this when `rustc_codegen_llvm` would insert a call to the panic handler.
 ///
 /// Trap code: user0
-pub fn trap_panic(
+pub(crate) fn trap_panic(
     fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>,
     msg: impl AsRef<str>,
 ) {
@@ -67,7 +67,7 @@ pub fn trap_panic(
 /// so you can **not** add instructions to it afterwards.
 ///
 /// Trap code: user65535
-pub fn trap_unreachable(
+pub(crate) fn trap_unreachable(
     fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>,
     msg: impl AsRef<str>,
 ) {
@@ -78,7 +78,7 @@ pub fn trap_unreachable(
 /// Like `trap_unreachable` but returns a fake value of the specified type.
 ///
 /// Trap code: user65535
-pub fn trap_unreachable_ret_value<'tcx>(
+pub(crate) fn trap_unreachable_ret_value<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl cranelift_module::Backend>,
     dest_layout: TyLayout<'tcx>,
     msg: impl AsRef<str>,
@@ -92,7 +92,7 @@ pub fn trap_unreachable_ret_value<'tcx>(
 /// to it afterwards.
 ///
 /// Trap code: user65535
-pub fn trap_unimplemented(
+pub(crate) fn trap_unimplemented(
     fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>,
     msg: impl AsRef<str>,
 ) {
@@ -104,7 +104,7 @@ pub fn trap_unimplemented(
 /// Like `trap_unimplemented` but returns a fake value of the specified type.
 ///
 /// Trap code: user65535
-pub fn trap_unimplemented_ret_value<'tcx>(
+pub(crate) fn trap_unimplemented_ret_value<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl cranelift_module::Backend>,
     dest_layout: TyLayout<'tcx>,
     msg: impl AsRef<str>,

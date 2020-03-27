@@ -89,7 +89,7 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
     let formats = tcx.dependency_formats(LOCAL_CRATE);
     let data = &formats
         .iter()
-        .find(|(crate_type, _data)| *crate_type == CrateType::Executable)
+        .find(|(crate_type, _data)| *crate_type == rustc_session::config::CrateType::Executable)
         .unwrap()
         .1;
     for &(cnum, _) in &crate_info.used_crates_dynamic {

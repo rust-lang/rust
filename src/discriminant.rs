@@ -2,7 +2,7 @@
 
 use crate::prelude::*;
 
-pub fn codegen_set_discriminant<'tcx>(
+pub(crate) fn codegen_set_discriminant<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     place: CPlace<'tcx>,
     variant_index: VariantIdx,
@@ -52,7 +52,7 @@ pub fn codegen_set_discriminant<'tcx>(
     }
 }
 
-pub fn codegen_get_discriminant<'tcx>(
+pub(crate) fn codegen_get_discriminant<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     value: CValue<'tcx>,
     dest_layout: TyLayout<'tcx>,

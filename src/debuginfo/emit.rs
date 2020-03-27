@@ -8,7 +8,7 @@ use crate::backend::WriteDebugInfo;
 use super::DebugContext;
 
 impl DebugContext<'_> {
-    pub fn emit<P: WriteDebugInfo>(&mut self, product: &mut P) {
+    pub(crate) fn emit<P: WriteDebugInfo>(&mut self, product: &mut P) {
         let unit_range_list_id = self.dwarf.unit.ranges.add(self.unit_range_list.clone());
         let root = self.dwarf.unit.root();
         let root = self.dwarf.unit.get_mut(root);
@@ -41,15 +41,15 @@ impl DebugContext<'_> {
 }
 
 #[derive(Clone)]
-pub struct DebugReloc {
-    pub offset: u32,
-    pub size: u8,
-    pub name: DebugRelocName,
-    pub addend: i64,
+pub(crate) struct DebugReloc {
+    pub(crate) offset: u32,
+    pub(crate) size: u8,
+    pub(crate) name: DebugRelocName,
+    pub(crate) addend: i64,
 }
 
 #[derive(Clone)]
-pub enum DebugRelocName {
+pub(crate) enum DebugRelocName {
     Section(SectionId),
     Symbol(usize),
 }

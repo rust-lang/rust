@@ -13,7 +13,7 @@ use gimli::write::{
 };
 use gimli::{Encoding, Format, LineEncoding, Register, RunTimeEndian, X86_64};
 
-pub use emit::{DebugReloc, DebugRelocName};
+pub(crate) use emit::{DebugReloc, DebugRelocName};
 
 fn target_endian(tcx: TyCtxt) -> RunTimeEndian {
     use rustc::ty::layout::Endian;
@@ -24,7 +24,7 @@ fn target_endian(tcx: TyCtxt) -> RunTimeEndian {
     }
 }
 
-pub struct DebugContext<'tcx> {
+pub(crate) struct DebugContext<'tcx> {
     tcx: TyCtxt<'tcx>,
 
     endian: RunTimeEndian,
@@ -37,7 +37,7 @@ pub struct DebugContext<'tcx> {
 }
 
 impl<'tcx> DebugContext<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, address_size: u8) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, address_size: u8) -> Self {
         let encoding = Encoding {
             format: Format::Dwarf32,
             // TODO: this should be configurable
@@ -187,7 +187,7 @@ impl<'tcx> DebugContext<'tcx> {
     }
 }
 
-pub struct FunctionDebugContext<'a, 'tcx> {
+pub(crate) struct FunctionDebugContext<'a, 'tcx> {
     debug_context: &'a mut DebugContext<'tcx>,
     entry_id: UnitEntryId,
     symbol: usize,
@@ -196,7 +196,7 @@ pub struct FunctionDebugContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
-    pub fn new(
+    pub(crate) fn new(
         debug_context: &'a mut DebugContext<'tcx>,
         instance: Instance<'tcx>,
         func_id: FuncId,
@@ -250,7 +250,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         var_id
     }
 
-    pub fn define(
+    pub(crate) fn define(
         &mut self,
         context: &Context,
         isa: &dyn TargetIsa,

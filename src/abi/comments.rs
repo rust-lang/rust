@@ -5,7 +5,7 @@ use rustc::mir;
 use crate::abi::pass_mode::*;
 use crate::prelude::*;
 
-pub fn add_args_header_comment(fx: &mut FunctionCx<impl Backend>) {
+pub(super) fn add_args_header_comment(fx: &mut FunctionCx<impl Backend>) {
     fx.add_global_comment(format!(
         "kind  loc.idx   param    pass mode                            ty"
     ));
@@ -49,14 +49,14 @@ pub(super) fn add_arg_comment<'tcx>(
     ));
 }
 
-pub fn add_locals_header_comment(fx: &mut FunctionCx<impl Backend>) {
+pub(super) fn add_locals_header_comment(fx: &mut FunctionCx<impl Backend>) {
     fx.add_global_comment(String::new());
     fx.add_global_comment(format!(
         "kind  local ty                              size align (abi,pref)"
     ));
 }
 
-pub fn add_local_place_comments<'tcx>(
+pub(super) fn add_local_place_comments<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     place: CPlace<'tcx>,
     local: Local,

@@ -12,7 +12,7 @@ fn vtable_memflags() -> MemFlags {
     flags
 }
 
-pub fn drop_fn_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
+pub(crate) fn drop_fn_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),
@@ -22,7 +22,7 @@ pub fn drop_fn_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) 
     )
 }
 
-pub fn size_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
+pub(crate) fn size_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),
@@ -32,7 +32,7 @@ pub fn size_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> 
     )
 }
 
-pub fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
+pub(crate) fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),
@@ -42,7 +42,7 @@ pub fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value
     )
 }
 
-pub fn get_ptr_and_method_ref<'tcx>(
+pub(crate) fn get_ptr_and_method_ref<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     arg: CValue<'tcx>,
     idx: usize,
@@ -67,7 +67,7 @@ pub fn get_ptr_and_method_ref<'tcx>(
     (ptr, func_ref)
 }
 
-pub fn get_vtable<'tcx>(
+pub(crate) fn get_vtable<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     layout: TyLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,

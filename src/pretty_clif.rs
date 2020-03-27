@@ -64,13 +64,13 @@ use crate::prelude::*;
 /// ```
 
 #[derive(Debug)]
-pub struct CommentWriter {
+pub(crate) struct CommentWriter {
     global_comments: Vec<String>,
     entity_comments: HashMap<AnyEntity, String>,
 }
 
 impl CommentWriter {
-    pub fn new<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
+    pub(crate) fn new<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
         let global_comments = if cfg!(debug_assertions) {
             vec![
                 format!("symbol {}", tcx.symbol_name(instance).name.as_str()),
@@ -97,11 +97,11 @@ impl CommentWriter {
 
 #[cfg(debug_assertions)]
 impl CommentWriter {
-    pub fn add_global_comment<S: Into<String>>(&mut self, comment: S) {
+    pub(crate) fn add_global_comment<S: Into<String>>(&mut self, comment: S) {
         self.global_comments.push(comment.into());
     }
 
-    pub fn add_comment<S: Into<String> + AsRef<str>, E: Into<AnyEntity>>(
+    pub(crate) fn add_comment<S: Into<String> + AsRef<str>, E: Into<AnyEntity>>(
         &mut self,
         entity: E,
         comment: S,
@@ -186,11 +186,11 @@ impl FuncWriter for &'_ CommentWriter {
 
 #[cfg(debug_assertions)]
 impl<'a, 'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
-    pub fn add_global_comment<S: Into<String>>(&mut self, comment: S) {
+    pub(crate) fn add_global_comment<S: Into<String>>(&mut self, comment: S) {
         self.clif_comments.add_global_comment(comment);
     }
 
-    pub fn add_comment<S: Into<String> + AsRef<str>, E: Into<AnyEntity>>(
+    pub(crate) fn add_comment<S: Into<String> + AsRef<str>, E: Into<AnyEntity>>(
         &mut self,
         entity: E,
         comment: S,
@@ -200,7 +200,7 @@ impl<'a, 'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
 }
 
 #[cfg(debug_assertions)]
-pub fn write_clif_file<'tcx>(
+pub(crate) fn write_clif_file<'tcx>(
     tcx: TyCtxt<'tcx>,
     postfix: &str,
     instance: Instance<'tcx>,

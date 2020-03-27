@@ -62,62 +62,52 @@ mod value_and_place;
 mod vtable;
 
 mod prelude {
-    pub use std::any::Any;
-    pub use std::collections::{HashMap, HashSet};
-    pub use std::convert::{TryFrom, TryInto};
+    pub(crate) use std::collections::HashMap;
+    pub(crate) use std::convert::{TryFrom, TryInto};
 
-    pub use rustc_ast::ast::{FloatTy, IntTy, UintTy};
-    pub use rustc_span::{Pos, Span};
+    pub(crate) use rustc_ast::ast::{FloatTy, IntTy, UintTy};
+    pub(crate) use rustc_span::Span;
 
-    pub use rustc::bug;
-    pub use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-    pub use rustc::mir::{self, interpret::AllocId, mono::MonoItem, *};
-    pub use rustc_session::{
-        config::{CrateType, Lto},
-        Session,
-    };
-    pub use rustc::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyLayout, VariantIdx};
-    pub use rustc::ty::{
-        self, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt, TypeAndMut,
-        TypeFoldable,
+    pub(crate) use rustc::bug;
+    pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+    pub(crate) use rustc::mir::{self, *};
+    pub(crate) use rustc_session::Session;
+    pub(crate) use rustc::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyLayout, VariantIdx};
+    pub(crate) use rustc::ty::{
+        self, FnSig, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeAndMut, TypeFoldable,
     };
 
-    pub use rustc_data_structures::{
-        fx::{FxHashMap, FxHashSet},
-        sync::Lrc,
+    pub(crate) use rustc_data_structures::fx::FxHashMap;
+
+    pub(crate) use rustc_index::vec::Idx;
+
+    pub(crate) use rustc_codegen_ssa::traits::*;
+    pub(crate) use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
+
+    pub(crate) use cranelift_codegen::Context;
+    pub(crate) use cranelift_codegen::entity::EntitySet;
+    pub(crate) use cranelift_codegen::ir::{AbiParam, Block, ExternalName, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot, StackSlotData, StackSlotKind, TrapCode, Type, Value};
+    pub(crate) use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
+    pub(crate) use cranelift_codegen::ir::function::Function;
+    pub(crate) use cranelift_codegen::ir::types;
+    pub(crate) use cranelift_codegen::isa::{self, CallConv};
+    pub(crate) use cranelift_codegen::settings::{self, Configurable};
+    pub(crate) use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
+    pub(crate) use cranelift_module::{
+        self, Backend, DataContext, DataId, FuncId, Linkage, Module,
     };
 
-    pub use rustc_index::vec::Idx;
+    pub(crate) use crate::abi::*;
+    pub(crate) use crate::base::{trans_operand, trans_place};
+    pub(crate) use crate::cast::*;
+    pub(crate) use crate::common::*;
+    pub(crate) use crate::debuginfo::{DebugContext, FunctionDebugContext};
+    pub(crate) use crate::pointer::Pointer;
+    pub(crate) use crate::trap::*;
+    pub(crate) use crate::value_and_place::{CPlace, CPlaceInner, CValue};
+    pub(crate) use crate::CodegenCx;
 
-    pub use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
-    pub use rustc_codegen_ssa::traits::*;
-    pub use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
-
-    pub use cranelift_codegen::Context;
-    pub use cranelift_codegen::entity::EntitySet;
-    pub use cranelift_codegen::ir::{AbiParam, Block, ExternalName, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot, StackSlotData, StackSlotKind, TrapCode, Type, Value};
-    pub use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
-    pub use cranelift_codegen::ir::function::Function;
-    pub use cranelift_codegen::ir::immediates::{Ieee32, Ieee64};
-    pub use cranelift_codegen::ir::types;
-    pub use cranelift_codegen::isa::{self, CallConv};
-    pub use cranelift_codegen::settings::{self, Configurable};
-    pub use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
-    pub use cranelift_module::{
-        self, Backend, DataContext, DataId, FuncId, FuncOrDataId, Linkage, Module,
-    };
-
-    pub use crate::abi::*;
-    pub use crate::base::{trans_operand, trans_place};
-    pub use crate::cast::*;
-    pub use crate::common::*;
-    pub use crate::debuginfo::{DebugContext, FunctionDebugContext};
-    pub use crate::pointer::Pointer;
-    pub use crate::trap::*;
-    pub use crate::value_and_place::{CPlace, CPlaceInner, CValue};
-    pub use crate::CodegenCx;
-
-    pub struct PrintOnPanic<F: Fn() -> String>(pub F);
+    pub(crate) struct PrintOnPanic<F: Fn() -> String>(pub F);
     impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
         fn drop(&mut self) {
             if ::std::thread::panicking() {
@@ -126,12 +116,12 @@ mod prelude {
         }
     }
 
-    pub macro unimpl_fatal($tcx:expr, $span:expr, $($tt:tt)*) {
+    pub(crate) macro unimpl_fatal($tcx:expr, $span:expr, $($tt:tt)*) {
         $tcx.sess.span_fatal($span, &format!($($tt)*));
     }
 }
 
-pub struct CodegenCx<'clif, 'tcx, B: Backend + 'static> {
+pub(crate) struct CodegenCx<'clif, 'tcx, B: Backend + 'static> {
     tcx: TyCtxt<'tcx>,
     module: &'clif mut Module<B>,
     constants_cx: ConstantCx,

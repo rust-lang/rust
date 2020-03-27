@@ -3,7 +3,7 @@ use crate::prelude::*;
 pub(super) use EmptySinglePair::*;
 
 #[derive(Copy, Clone, Debug)]
-pub enum PassMode {
+pub(super) enum PassMode {
     NoPass,
     ByVal(Type),
     ByValPair(Type, Type),
@@ -76,7 +76,7 @@ impl PassMode {
     }
 }
 
-pub fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyLayout<'tcx>) -> PassMode {
+pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyLayout<'tcx>) -> PassMode {
     if layout.is_zst() {
         // WARNING zst arguments must never be passed, as that will break CastKind::ClosureFnPointer
         PassMode::NoPass
