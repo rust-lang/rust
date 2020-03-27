@@ -86,6 +86,7 @@ fn suggest_slice_pat(e: &mut DiagnosticBuilder<'_>, site_span: Span, parser: &Pa
 fn emit_frag_parse_err(
     mut e: DiagnosticBuilder<'_>,
     parser: &Parser<'_>,
+    orig_parser: &mut Parser<'_>,
     site_span: Span,
     macro_ident: ast::Ident,
     arm_span: Span,
@@ -118,6 +119,21 @@ fn emit_frag_parse_err(
         AstFragmentKind::Pat if macro_ident.name == sym::vec => {
             suggest_slice_pat(&mut e, site_span, parser);
         }
+        // Try a statement if an expression is wanted but failed and suggest adding `;` to call.
+        AstFragmentKind::Expr => match parse_ast_fragment(orig_parser, AstFragmentKind::Stmts) {
+            Err(mut err) => err.cancel(),
+            Ok(_) => {
+                e.note(
+                    "the macro call doesn't expand to an expression, but it can expand to a statement",
+                );
+                e.span_suggestion_verbose(
+                    site_span.shrink_to_hi(),
+                    "add `;` to interpret the expansion as a statement",
+                    ";".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        },
         _ => annotate_err_with_kind(&mut e, kind, site_span),
     };
     e.emit();
@@ -126,10 +142,11 @@ fn emit_frag_parse_err(
 impl<'a> ParserAnyMacro<'a> {
     crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
+        let snapshot = &mut parser.clone();
         let fragment = match parse_ast_fragment(parser, kind) {
             Ok(f) => f,
             Err(err) => {
-                emit_frag_parse_err(err, parser, site_span, macro_ident, arm_span, kind);
+                emit_frag_parse_err(err, parser, snapshot, site_span, macro_ident, arm_span, kind);
                 return kind.dummy(site_span);
             }
         };
