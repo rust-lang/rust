@@ -39,7 +39,17 @@ build
 #check "libunwind::Registers_x86_64::jumpto()" jumpto.checks
 
 check "std::io::stdio::_print::h87f0c238421c45bc" print.checks
+#TODO: the current passes cannot handle module level assembly!
+#  No checks are implemented
 check cc_plus_one_c cc_plus_one_c.checks
 check cc_plus_one_c_asm cc_plus_one_c_asm.checks
 check cc_plus_one_cxx cc_plus_one_cxx.checks
 check cc_plus_one_cxx_asm cc_plus_one_cxx_asm.checks
+
+check cmake_plus_one_c cmake_plus_one_c.checks
+check cmake_plus_one_c_asm cmake_plus_one_c_asm.checks
+check cmake_plus_one_cxx cmake_plus_one_cxx.checks
+check cmake_plus_one_cxx_asm cmake_plus_one_cxx_asm.checks
+
+#WARNING clang/clang++ use an integrated assembler when given an assembly file.
+#  LVI patches are *not* applied
