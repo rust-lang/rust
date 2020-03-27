@@ -489,7 +489,8 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 ::rustc::dep_graph::DepKind::#name => {
                     if <#arg as DepNodeParams<TyCtxt<'_>>>::CAN_RECONSTRUCT_QUERY_KEY {
                         if let Some(key) = <#arg as DepNodeParams<TyCtxt<'_>>>::recover($tcx, $dep_node) {
-                            $tcx.force_query::<crate::ty::query::queries::#name<'_>>(
+                            force_query::<crate::ty::query::queries::#name<'_>, _>(
+                                $tcx,
                                 key,
                                 DUMMY_SP,
                                 *$dep_node

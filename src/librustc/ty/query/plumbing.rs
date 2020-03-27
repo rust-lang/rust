@@ -381,7 +381,7 @@ macro_rules! define_queries_inner {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: $K) {
-                self.tcx.ensure_query::<queries::$name<'_>>(key)
+                ensure_query::<queries::$name<'_>, _>(self.tcx, key)
             })*
         }
 
@@ -459,7 +459,7 @@ macro_rules! define_queries_inner {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: $K) -> $V {
-                self.tcx.get_query::<queries::$name<'_>>(self.span, key)
+                get_query::<queries::$name<'_>, _>(self.tcx, self.span, key)
             })*
         }
 

@@ -606,105 +606,87 @@ where
     (result, dep_node_index)
 }
 
-pub trait QueryGetter: QueryContext {
-    fn get_query<Q: QueryDescription<Self>>(self, span: Span, key: Q::Key) -> Q::Value;
-
-    /// Ensure that either this query has all green inputs or been executed.
-    /// Executing `query::ensure(D)` is considered a read of the dep-node `D`.
-    ///
-    /// This function is particularly useful when executing passes for their
-    /// side-effects -- e.g., in order to report errors for erroneous programs.
-    ///
-    /// Note: The optimization is only available during incr. comp.
-    fn ensure_query<Q: QueryDescription<Self>>(self, key: Q::Key);
-
-    fn force_query<Q: QueryDescription<Self>>(
-        self,
-        key: Q::Key,
-        span: Span,
-        dep_node: DepNode<Self::DepKind>,
-    );
-}
-
-impl<CTX> QueryGetter for CTX
+#[inline(never)]
+pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key) -> Q::Value
 where
+    Q: QueryDescription<CTX>,
     CTX: QueryContext,
 {
-    #[inline(never)]
-    fn get_query<Q: QueryDescription<Self>>(self, span: Span, key: Q::Key) -> Q::Value {
-        debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
+    debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
 
-        try_get_cached(
-            self,
-            Q::query_state(self),
-            key,
-            |value, index| {
-                self.dep_graph().read_index(index);
-                value.clone()
-            },
-            |key, lookup| try_execute_query::<Q, _>(self, span, key, lookup),
-        )
+    try_get_cached(
+        tcx,
+        Q::query_state(tcx),
+        key,
+        |value, index| {
+            tcx.dep_graph().read_index(index);
+            value.clone()
+        },
+        |key, lookup| try_execute_query::<Q, _>(tcx, span, key, lookup),
+    )
+}
+
+/// Ensure that either this query has all green inputs or been executed.
+/// Executing `query::ensure(D)` is considered a read of the dep-node `D`.
+///
+/// This function is particularly useful when executing passes for their
+/// side-effects -- e.g., in order to report errors for erroneous programs.
+///
+/// Note: The optimization is only available during incr. comp.
+pub fn ensure_query<Q, CTX>(tcx: CTX, key: Q::Key)
+where
+    Q: QueryDescription<CTX>,
+    CTX: QueryContext,
+{
+    if Q::EVAL_ALWAYS {
+        let _ = get_query::<Q, _>(tcx, DUMMY_SP, key);
+        return;
     }
 
-    /// Ensure that either this query has all green inputs or been executed.
-    /// Executing `query::ensure(D)` is considered a read of the dep-node `D`.
-    ///
-    /// This function is particularly useful when executing passes for their
-    /// side-effects -- e.g., in order to report errors for erroneous programs.
-    ///
-    /// Note: The optimization is only available during incr. comp.
-    fn ensure_query<Q: QueryDescription<Self>>(self, key: Q::Key) {
-        if Q::EVAL_ALWAYS {
-            let _ = self.get_query::<Q>(DUMMY_SP, key);
-            return;
+    // Ensuring an anonymous query makes no sense
+    assert!(!Q::ANON);
+
+    let dep_node = Q::to_dep_node(tcx, &key);
+
+    match tcx.dep_graph().try_mark_green_and_read(tcx, &dep_node) {
+        None => {
+            // A None return from `try_mark_green_and_read` means that this is either
+            // a new dep node or that the dep node has already been marked red.
+            // Either way, we can't call `dep_graph.read()` as we don't have the
+            // DepNodeIndex. We must invoke the query itself. The performance cost
+            // this introduces should be negligible as we'll immediately hit the
+            // in-memory cache, or another query down the line will.
+            let _ = get_query::<Q, _>(tcx, DUMMY_SP, key);
         }
-
-        // Ensuring an anonymous query makes no sense
-        assert!(!Q::ANON);
-
-        let dep_node = Q::to_dep_node(self, &key);
-
-        match self.dep_graph().try_mark_green_and_read(self, &dep_node) {
-            None => {
-                // A None return from `try_mark_green_and_read` means that this is either
-                // a new dep node or that the dep node has already been marked red.
-                // Either way, we can't call `dep_graph.read()` as we don't have the
-                // DepNodeIndex. We must invoke the query itself. The performance cost
-                // this introduces should be negligible as we'll immediately hit the
-                // in-memory cache, or another query down the line will.
-                let _ = self.get_query::<Q>(DUMMY_SP, key);
-            }
-            Some((_, dep_node_index)) => {
-                self.profiler().query_cache_hit(dep_node_index.into());
-            }
+        Some((_, dep_node_index)) => {
+            tcx.profiler().query_cache_hit(dep_node_index.into());
         }
     }
+}
 
-    fn force_query<Q: QueryDescription<Self>>(
-        self,
-        key: Q::Key,
-        span: Span,
-        dep_node: DepNode<Self::DepKind>,
-    ) {
-        // We may be concurrently trying both execute and force a query.
-        // Ensure that only one of them runs the query.
+pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, span: Span, dep_node: DepNode<CTX::DepKind>)
+where
+    Q: QueryDescription<CTX>,
+    CTX: QueryContext,
+{
+    // We may be concurrently trying both execute and force a query.
+    // Ensure that only one of them runs the query.
 
-        try_get_cached(
-            self,
-            Q::query_state(self),
-            key,
-            |_, _| {
-                // Cache hit, do nothing
-            },
-            |key, lookup| {
-                let job = match JobOwner::try_start::<Q>(self, span, &key, lookup) {
-                    TryGetJob::NotYetStarted(job) => job,
-                    TryGetJob::Cycle(_) => return,
-                    #[cfg(parallel_compiler)]
-                    TryGetJob::JobCompleted(_) => return,
-                };
-                force_query_with_job::<Q, _>(self, key, job, dep_node);
-            },
-        );
-    }
+    try_get_cached(
+        tcx,
+        Q::query_state(tcx),
+        key,
+        |_, _| {
+            // Cache hit, do nothing
+        },
+        |key, lookup| {
+            let job = match JobOwner::try_start::<Q>(tcx, span, &key, lookup) {
+                TryGetJob::NotYetStarted(job) => job,
+                TryGetJob::Cycle(_) => return,
+                #[cfg(parallel_compiler)]
+                TryGetJob::JobCompleted(_) => return,
+            };
+            force_query_with_job::<Q, _>(tcx, key, job, dep_node);
+        },
+    );
 }
