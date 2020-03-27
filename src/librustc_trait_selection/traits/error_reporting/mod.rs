@@ -1581,7 +1581,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 for param in generics.params {
                     if param.span == *span
                         && !param.bounds.iter().any(|bound| {
-                            bound.trait_def_id() == self.tcx.lang_items().sized_trait()
+                            bound.trait_ref().and_then(|trait_ref| trait_ref.trait_def_id())
+                                == self.tcx.lang_items().sized_trait()
                         })
                     {
                         let (span, separator) = match param.bounds {

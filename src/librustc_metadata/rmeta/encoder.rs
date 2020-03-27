@@ -824,8 +824,10 @@ impl EncodeContext<'tcx> {
 
         record!(self.per_def.kind[def_id] <- match trait_item.kind {
             ty::AssocKind::Const => {
-                let rendered =
-                    hir::print::to_string(&self.tcx.hir(), |s| s.print_trait_item(ast_item));
+                let rendered = rustc_hir_pretty::to_string(
+                    &(&self.tcx.hir() as &dyn intravisit::Map<'_>),
+                    |s| s.print_trait_item(ast_item)
+                );
                 let rendered_const = self.lazy(RenderedConst(rendered));
 
                 EntryKind::AssocConst(
@@ -1044,8 +1046,11 @@ impl EncodeContext<'tcx> {
     }
 
     fn encode_rendered_const_for_body(&mut self, body_id: hir::BodyId) -> Lazy<RenderedConst> {
-        let body = self.tcx.hir().body(body_id);
-        let rendered = hir::print::to_string(&self.tcx.hir(), |s| s.print_expr(&body.value));
+        let hir = self.tcx.hir();
+        let body = hir.body(body_id);
+        let rendered = rustc_hir_pretty::to_string(&(&hir as &dyn intravisit::Map<'_>), |s| {
+            s.print_expr(&body.value)
+        });
         let rendered_const = &RenderedConst(rendered);
         self.lazy(rendered_const)
     }

@@ -21,9 +21,9 @@ use std::str::FromStr;
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};
 
-use crate::dataflow::generic::ResultsCursor;
 use crate::dataflow::move_paths::{InitKind, InitLocation, MoveData};
 use crate::dataflow::MaybeInitializedPlaces;
+use crate::dataflow::ResultsCursor;
 use crate::transform::MirSource;
 use crate::util as mir_util;
 use crate::util::pretty;

@@ -2,11 +2,6 @@ use crate::def::{DefKind, Namespace, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::itemlikevisit;
-use crate::print;
-
-crate use BlockCheckMode::*;
-crate use FnRetTy::*;
-crate use UnsafeSource::*;
 
 use rustc_ast::ast::{self, AsmDialect, CrateSugar, Ident, Name};
 use rustc_ast::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
@@ -16,7 +11,6 @@ use rustc_ast::node_id::NodeMap;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
-use rustc_errors::FatalError;
 use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -169,12 +163,7 @@ impl fmt::Display for Lifetime {
 
 impl fmt::Debug for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "lifetime({}: {})",
-            self.hir_id,
-            print::to_string(print::NO_ANN, |s| s.print_lifetime(self))
-        )
+        write!(f, "lifetime({}: {})", self.hir_id, self.name.ident())
     }
 }
 
@@ -191,7 +180,7 @@ impl Lifetime {
 /// A `Path` is essentially Rust's notion of a name; for instance,
 /// `std::cmp::PartialEq`. It's represented as a sequence of identifiers,
 /// along with a bunch of supporting information.
-#[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct Path<'hir> {
     pub span: Span,
     /// The resolution for the path.
@@ -203,18 +192,6 @@ pub struct Path<'hir> {
 impl Path<'_> {
     pub fn is_global(&self) -> bool {
         !self.segments.is_empty() && self.segments[0].ident.name == kw::PathRoot
-    }
-}
-
-impl fmt::Debug for Path<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "path({})", self)
-    }
-}
-
-impl fmt::Display for Path<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", print::to_string(print::NO_ANN, |s| s.print_path(self, false)))
     }
 }
 
@@ -388,9 +365,9 @@ pub enum GenericBound<'hir> {
 }
 
 impl GenericBound<'_> {
-    pub fn trait_def_id(&self) -> Option<DefId> {
+    pub fn trait_ref(&self) -> Option<&TraitRef<'_>> {
         match self {
-            GenericBound::Trait(data, _) => Some(data.trait_ref.trait_def_id()),
+            GenericBound::Trait(data, _) => Some(&data.trait_ref),
             _ => None,
         }
     }
@@ -758,23 +735,12 @@ pub struct Block<'hir> {
     pub targeted_by_break: bool,
 }
 
-#[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub struct Pat<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub kind: PatKind<'hir>,
     pub span: Span,
-}
-
-impl fmt::Debug for Pat<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "pat({}: {})",
-            self.hir_id,
-            print::to_string(print::NO_ANN, |s| s.print_pat(self))
-        )
-    }
 }
 
 impl Pat<'_> {
@@ -1118,26 +1084,15 @@ impl UnOp {
 }
 
 /// A statement.
-#[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct Stmt<'hir> {
     pub hir_id: HirId,
     pub kind: StmtKind<'hir>,
     pub span: Span,
 }
 
-impl fmt::Debug for Stmt<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "stmt({}: {})",
-            self.hir_id,
-            print::to_string(print::NO_ANN, |s| s.print_stmt(self))
-        )
-    }
-}
-
 /// The contents of a statement.
-#[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum StmtKind<'hir> {
     /// A local (`let`) binding.
     Local(&'hir Local<'hir>),
@@ -1351,7 +1306,7 @@ pub struct AnonConst {
 }
 
 /// An expression.
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct Expr<'hir> {
     pub hir_id: HirId,
     pub kind: ExprKind<'hir>,
@@ -1469,17 +1424,6 @@ impl Expr<'_> {
             expr = inner;
         }
         expr
-    }
-}
-
-impl fmt::Debug for Expr<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "expr({}: {})",
-            self.hir_id,
-            print::to_string(print::NO_ANN, |s| s.print_expr(self))
-        )
     }
 }
 
@@ -1965,17 +1909,11 @@ impl TypeBinding<'_> {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct Ty<'hir> {
     pub hir_id: HirId,
     pub kind: TyKind<'hir>,
     pub span: Span,
-}
-
-impl fmt::Debug for Ty<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "type({})", print::to_string(print::NO_ANN, |s| s.print_type(self)))
-    }
 }
 
 /// Not represented directly in the AST; referred to by name through a `ty_path`.
@@ -2182,15 +2120,6 @@ pub enum FnRetTy<'hir> {
     Return(&'hir Ty<'hir>),
 }
 
-impl fmt::Display for FnRetTy<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Return(ref ty) => print::to_string(print::NO_ANN, |s| s.print_type(ty)).fmt(f),
-            Self::DefaultReturn(_) => "()".fmt(f),
-        }
-    }
-}
-
 impl FnRetTy<'_> {
     pub fn span(&self) -> Span {
         match *self {
@@ -2274,13 +2203,10 @@ pub struct TraitRef<'hir> {
 
 impl TraitRef<'_> {
     /// Gets the `DefId` of the referenced trait. It _must_ actually be a trait or trait alias.
-    pub fn trait_def_id(&self) -> DefId {
+    pub fn trait_def_id(&self) -> Option<DefId> {
         match self.path.res {
-            Res::Def(DefKind::Trait, did) => did,
-            Res::Def(DefKind::TraitAlias, did) => did,
-            Res::Err => {
-                FatalError.raise();
-            }
+            Res::Def(DefKind::Trait | DefKind::TraitAlias, did) => Some(did),
+            Res::Err => None,
             _ => unreachable!(),
         }
     }

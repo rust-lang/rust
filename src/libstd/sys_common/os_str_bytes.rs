@@ -106,7 +106,18 @@ impl Buf {
 
     #[inline]
     pub fn as_slice(&self) -> &Slice {
+        // Safety: Slice just wraps [u8],
+        // and &*self.inner is &[u8], therefore
+        // transmuting &[u8] to &Slice is safe.
         unsafe { mem::transmute(&*self.inner) }
+    }
+
+    #[inline]
+    pub fn as_mut_slice(&mut self) -> &mut Slice {
+        // Safety: Slice just wraps [u8],
+        // and &mut *self.inner is &mut [u8], therefore
+        // transmuting &mut [u8] to &mut Slice is safe.
+        unsafe { mem::transmute(&mut *self.inner) }
     }
 
     pub fn into_string(self) -> Result<String, Buf> {

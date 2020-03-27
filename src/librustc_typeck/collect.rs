@@ -2146,13 +2146,18 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     {
         let check = |ast_ty: &hir::Ty<'_>, ty: Ty<'_>| {
             if ty.is_simd() {
+                let snip = tcx
+                    .sess
+                    .source_map()
+                    .span_to_snippet(ast_ty.span)
+                    .map_or(String::new(), |s| format!(" `{}`", s));
                 tcx.sess
                     .struct_span_err(
                         ast_ty.span,
                         &format!(
-                            "use of SIMD type `{}` in FFI is highly experimental and \
+                            "use of SIMD type{} in FFI is highly experimental and \
                              may result in invalid code",
-                            tcx.hir().hir_to_pretty_string(ast_ty.hir_id)
+                            snip
                         ),
                     )
                     .help("add `#![feature(simd_ffi)]` to the crate attributes to enable")

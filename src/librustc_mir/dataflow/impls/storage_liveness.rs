@@ -1,7 +1,7 @@
 pub use super::*;
 
-use crate::dataflow::generic::{self as dataflow, GenKill, Results, ResultsRefCursor};
 use crate::dataflow::BottomValue;
+use crate::dataflow::{self, GenKill, Results, ResultsRefCursor};
 use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::*;
 use std::cell::RefCell;

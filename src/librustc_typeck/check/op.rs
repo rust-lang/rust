@@ -492,36 +492,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_label(span, ty.to_string());
         if let FnDef(def_id, _) = ty.kind {
             let source_map = self.tcx.sess.source_map();
-            let hir_id = match self.tcx.hir().as_local_hir_id(def_id) {
-                Some(hir_id) => hir_id,
-                None => return false,
-            };
             if !self.tcx.has_typeck_tables(def_id) {
                 return false;
             }
-            let fn_sig = {
-                match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(hir_id) {
-                    Some(f) => *f,
-                    None => {
-                        bug!("No fn-sig entry for def_id={:?}", def_id);
-                    }
-                }
-            };
+            // We're emitting a suggestion, so we can just ignore regions
+            let fn_sig = *self.tcx.fn_sig(def_id).skip_binder();
 
             let other_ty = if let FnDef(def_id, _) = other_ty.kind {
-                let hir_id = match self.tcx.hir().as_local_hir_id(def_id) {
-                    Some(hir_id) => hir_id,
-                    None => return false,
-                };
                 if !self.tcx.has_typeck_tables(def_id) {
                     return false;
                 }
-                match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(hir_id) {
-                    Some(f) => f.clone().output(),
-                    None => {
-                        bug!("No fn-sig entry for def_id={:?}", def_id);
-                    }
-                }
+                // We're emitting a suggestion, so we can just ignore regions
+                self.tcx.fn_sig(def_id).skip_binder().output()
             } else {
                 other_ty
             };

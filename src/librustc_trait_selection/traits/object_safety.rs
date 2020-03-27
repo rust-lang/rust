@@ -15,7 +15,7 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
@@ -170,6 +170,24 @@ fn object_safety_violations_for_trait(
     violations
 }
 
+fn sized_trait_bound_spans<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    bounds: hir::GenericBounds<'tcx>,
+) -> impl 'tcx + Iterator<Item = Span> {
+    bounds.iter().filter_map(move |b| match b {
+        hir::GenericBound::Trait(trait_ref, hir::TraitBoundModifier::None)
+            if trait_has_sized_self(
+                tcx,
+                trait_ref.trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise()),
+            ) =>
+        {
+            // Fetch spans for supertraits that are `Sized`: `trait T: Super`
+            Some(trait_ref.span)
+        }
+        _ => None,
+    })
+}
+
 fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]> {
     tcx.hir()
         .get_if_local(trait_def_id)
@@ -189,33 +207,14 @@ fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]>
                             {
                                 // Fetch spans for trait bounds that are Sized:
                                 // `trait T where Self: Pred`
-                                Some(pred.bounds.iter().filter_map(|b| match b {
-                                    hir::GenericBound::Trait(
-                                        trait_ref,
-                                        hir::TraitBoundModifier::None,
-                                    ) if trait_has_sized_self(
-                                        tcx,
-                                        trait_ref.trait_ref.trait_def_id(),
-                                    ) =>
-                                    {
-                                        Some(trait_ref.span)
-                                    }
-                                    _ => None,
-                                }))
+                                Some(sized_trait_bound_spans(tcx, pred.bounds))
                             }
                             _ => None,
                         }
                     })
                     .flatten()
-                    .chain(bounds.iter().filter_map(|b| match b {
-                        hir::GenericBound::Trait(trait_ref, hir::TraitBoundModifier::None)
-                            if trait_has_sized_self(tcx, trait_ref.trait_ref.trait_def_id()) =>
-                        {
-                            // Fetch spans for supertraits that are `Sized`: `trait T: Super`
-                            Some(trait_ref.span)
-                        }
-                        _ => None,
-                    }))
+                    // Fetch spans for supertraits that are `Sized`: `trait T: Super`.
+                    .chain(sized_trait_bound_spans(tcx, bounds))
                     .collect::<SmallVec<[Span; 1]>>(),
             ),
             _ => None,
