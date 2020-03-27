@@ -1,3 +1,76 @@
+//! This implements the core logic of the compression scheme used to compactly
+//! encode Unicode properties.
+//!
+//! We have two primary goals with the encoding: we want to be compact, because
+//! these tables often end up in ~every Rust program (especially the
+//! grapheme_extend table, used for str debugging), including those for embedded
+//! targets (where space is important). We also want to be relatively fast,
+//! though this is more of a nice to have rather than a key design constraint.
+//! It is expected that libraries/applications which are performance-sensitive
+//! to Unicode property lookups are extremely rare, and those that care may find
+//! the tradeoff of the raw bitsets worth it. For most applications, a
+//! relatively fast but much smaller (and as such less cache-impacting, etc.)
+//! data set is likely preferable.
+//!
+//! We have two separate encoding schemes: a skiplist-like approach, and a
+//! compressed bitset. The datasets we consider mostly use the skiplist (it's
+//! smaller) but the lowercase and uppercase sets are sufficiently sparse for
+//! the bitset to be worthwhile -- for those sets the biset is a 2x size win.
+//! Since the bitset is also faster, this seems an obvious choice. (As a
+//! historical note, the bitset was also the prior implementation, so its
+//! relative complexity had already been paid).
+//!
+//! ## The bitset
+//!
+//! The primary idea is that we 'flatten' the Unicode ranges into an enormous
+//! bitset. To represent any arbitrary codepoint in a raw bitset, we would need
+//! over 17 kilobytes of data per character set -- way too much for our
+//! purposes.
+//!
+//! First, the raw bitset (one bit for every valid `char`, from 0 to 0x10FFFF,
+//! not skipping the small 'gap') is associated into words (u64) and
+//! deduplicated. On random data, this would be useless; on our data, this is
+//! incredibly beneficial -- our data sets have (far) less than 256 unique
+//! words.
+//!
+//! This gives us an array that maps `u8 -> word`; the current algorithm does
+//! not handle the case of more than 256 unique words, but we are relatively far
+//! from coming that close.
+//!
+//! With that scheme, we now have a single byte for every 64 codepoints.
+//!
+//! We further chunk these by some constant N (between 1 and 64 per group,
+//! dynamically chosen for smallest size), and again deduplicate and store in an
+//! array (u8 -> [u8; N]).
+//!
+//! The bytes of this array map into the words from the bitset above, but we
+//! apply another trick here: some of these words are similar enough that they
+//! can be represented by some function of another word. The particular
+//! functions chosen are rotation, inversion, and shifting (right).
+//!
+//! ## The skiplist
+//!
+//! The skip list arose out of the desire for an even smaller encoding than the
+//! bitset -- and was the answer to the question "what is the smallest
+//! representation we can imagine?". However, it is not necessarily the
+//! smallest, and if you have a better proposal, please do suggest it!
+//!
+//! This is a relatively straightforward encoding. First, we break up all the
+//! ranges in the input data into offsets from each other, essentially a gap
+//! encoding. In practice, most gaps are small -- less than u8::MAX -- so we
+//! store those directly. We make use of the larger gaps (which are nicely
+//! interspersed already) throughout the dataset to index this data set.
+//!
+//! In particular, each run of small gaps (terminating in a large gap) is
+//! indexed in a separate dataset. That data set stores an index into the
+//! primary offset list and a prefix sum of that offset list. These are packed
+//! into a single u32 (11 bits for the offset, 21 bits for the prefix sum).
+//!
+//! Lookup proceeds via a binary search in the index and then a straightforward
+//! linear scan (adding up the offsets) until we reach the needle, and then the
+//! index of that offset is utilized as the answer to whether we're in the set
+//! or not.
+
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
 use ucd_parse::Codepoints;
