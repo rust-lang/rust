@@ -444,7 +444,12 @@ where
 
     let graphviz = graphviz::Formatter::new(body, def_id, results, &mut *formatter);
     dot::render_opts(&graphviz, &mut buf, &[dot::RenderOption::Monospace])?;
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
     fs::write(&path, buf)?;
+
     Ok(())
 }
 
