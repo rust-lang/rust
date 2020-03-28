@@ -1,6 +1,6 @@
 #![feature(rustc_private)]
 
-use std::sync::{Mutex, RwLock, TryLockError};
+use std::sync::{Mutex, TryLockError};
 
 extern crate libc;
 
@@ -86,6 +86,7 @@ fn test_mutex_libc_static_initializer_recursive() {
 
 #[cfg(not(target_os = "windows"))]
 fn test_rwlock_stdlib() {
+    use std::sync::RwLock;
     let rw = RwLock::new(0);
     {
         let _read_guard = rw.read().unwrap();
