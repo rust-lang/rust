@@ -3,7 +3,7 @@
 // Imports.
 
 // Long import.
-use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
+use rustc_ast::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
 use exceedingly::looooooooooooooooooooooooooooooooooooooooooooooooooooooooooong::import::path::{ItemA, ItemB};
 use exceedingly::loooooooooooooooooooooooooooooooooooooooooooooooooooooooong::import::path::{ItemA, ItemB};
 
@@ -15,30 +15,30 @@ use list::{
 
 use test::{  Other          /* C   */  , /*   A   */ self  /*    B     */    };
 
-use syntax::{self};
+use rustc_ast::{self};
 use {/* Pre-comment! */
      Foo, Bar /* comment */};
 use Foo::{Bar, Baz};
-pub use syntax::ast::{Expr_, Expr, ExprAssign, ExprCall, ExprMethodCall, ExprPath};
+pub use rustc_ast::ast::{Expr_, Expr, ExprAssign, ExprCall, ExprMethodCall, ExprPath};
 
-use syntax::some::{};
+use rustc_ast::some::{};
 
 use self;
 use std::io::{self};
 use std::io::self;
 
 mod Foo {
-    pub use syntax::ast::{
+    pub use rustc_ast::ast::{
         ItemForeignMod,
-        ItemImpl, 
+        ItemImpl,
         ItemMac,
         ItemMod,
-        ItemStatic, 
+        ItemStatic,
         ItemDefaultImpl
     };
 
     mod Foo2 {
-        pub use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, self, ItemDefaultImpl};
+        pub use rustc_ast::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, self, ItemDefaultImpl};
     }
 }
 

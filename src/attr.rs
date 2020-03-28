@@ -1,7 +1,7 @@
 //! Format attributes and meta items.
 
+use rustc_ast::ast;
 use rustc_span::{symbol::sym, BytePos, Span, DUMMY_SP};
-use syntax::ast;
 
 use self::doc_comment::DocCommentFormatter;
 use crate::comment::{contains_comment, rewrite_doc_comment, CommentStyle};

@@ -63,6 +63,10 @@ lazy_static = "1.0.0"
 # for more information.
 rustc-workspace-hack = "1.0.0"
 
+[dependencies.rustc_ast]
+package = "rustc-ap-rustc_ast"
+version = "650.0.0"
+
 [dependencies.rustc_ast_pretty]
 package = "rustc-ap-rustc_ast_pretty"
 version = "650.0.0"
@@ -93,8 +97,4 @@ version = "650.0.0"
 
 [dependencies.rustc_target]
 package = "rustc-ap-rustc_target"
-version = "650.0.0"
-
-[dependencies.syntax]
-package = "rustc-ap-rustc_ast"
 version = "650.0.0"

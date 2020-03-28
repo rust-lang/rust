@@ -2,9 +2,9 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use itertools::Itertools;
+use rustc_ast::token::{DelimToken, LitKind};
+use rustc_ast::{ast, ptr};
 use rustc_span::{BytePos, Span};
-use syntax::token::{DelimToken, LitKind};
-use syntax::{ast, ptr};
 
 use crate::chains::rewrite_chain;
 use crate::closures;
@@ -1314,7 +1314,7 @@ pub(crate) fn can_be_overflowed_expr(
         }
         ast::ExprKind::MacCall(ref mac) => {
             match (
-                syntax::ast::MacDelimiter::from_token(mac.args.delim()),
+                rustc_ast::ast::MacDelimiter::from_token(mac.args.delim()),
                 context.config.overflow_delimited_expr(),
             ) {
                 (Some(ast::MacDelimiter::Bracket), true)

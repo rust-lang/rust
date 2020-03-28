@@ -1,5 +1,5 @@
+use rustc_ast::{ast, ptr};
 use rustc_span::Span;
-use syntax::{ast, ptr};
 
 use crate::attr::get_attrs_from_stmt;
 use crate::config::lists::*;

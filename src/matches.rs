@@ -2,8 +2,8 @@
 
 use std::iter::repeat;
 
+use rustc_ast::{ast, ptr};
 use rustc_span::{BytePos, Span};
-use syntax::{ast, ptr};
 
 use crate::comment::{combine_strs_with_missing_comments, rewrite_comment};
 use crate::config::lists::*;

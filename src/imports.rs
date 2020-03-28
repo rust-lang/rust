@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt;
 
+use rustc_ast::ast::{self, UseTreeKind};
 use rustc_span::{source_map, symbol::sym, BytePos, Span, DUMMY_SP};
-use syntax::ast::{self, UseTreeKind};
 
 use crate::comment::combine_strs_with_missing_comments;
 use crate::config::lists::*;

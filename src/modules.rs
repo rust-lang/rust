@@ -2,9 +2,9 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use rustc_ast::ast;
+use rustc_ast::visit::Visitor;
 use rustc_span::symbol::{sym, Symbol};
-use syntax::ast;
-use syntax::visit::Visitor;
 
 use crate::attr::MetaVisitor;
 use crate::config::FileName;

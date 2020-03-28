@@ -4,9 +4,9 @@ use std::borrow::Cow;
 use std::cmp::{max, min, Ordering};
 
 use regex::Regex;
+use rustc_ast::visit;
+use rustc_ast::{ast, ptr};
 use rustc_span::{source_map, symbol, BytePos, Span, DUMMY_SP};
-use syntax::visit;
-use syntax::{ast, ptr};
 
 use crate::attr::filter_inline_attrs;
 use crate::comment::{
@@ -594,7 +594,7 @@ impl<'a> FmtVisitor<'a> {
                 self.buffer.clear();
             }
 
-            fn is_type(ty: &Option<syntax::ptr::P<ast::Ty>>) -> bool {
+            fn is_type(ty: &Option<rustc_ast::ptr::P<ast::Ty>>) -> bool {
                 match ty {
                     None => true,
                     Some(lty) => match lty.kind.opaque_top_hack() {
@@ -604,7 +604,7 @@ impl<'a> FmtVisitor<'a> {
                 }
             }
 
-            fn is_opaque(ty: &Option<syntax::ptr::P<ast::Ty>>) -> bool {
+            fn is_opaque(ty: &Option<rustc_ast::ptr::P<ast::Ty>>) -> bool {
                 match ty {
                     None => false,
                     Some(lty) => match lty.kind.opaque_top_hack() {
@@ -615,15 +615,15 @@ impl<'a> FmtVisitor<'a> {
             }
 
             fn both_type(
-                a: &Option<syntax::ptr::P<ast::Ty>>,
-                b: &Option<syntax::ptr::P<ast::Ty>>,
+                a: &Option<rustc_ast::ptr::P<ast::Ty>>,
+                b: &Option<rustc_ast::ptr::P<ast::Ty>>,
             ) -> bool {
                 is_type(a) && is_type(b)
             }
 
             fn both_opaque(
-                a: &Option<syntax::ptr::P<ast::Ty>>,
-                b: &Option<syntax::ptr::P<ast::Ty>>,
+                a: &Option<rustc_ast::ptr::P<ast::Ty>>,
+                b: &Option<rustc_ast::ptr::P<ast::Ty>>,
             ) -> bool {
                 is_opaque(a) && is_opaque(b)
             }

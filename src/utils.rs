@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 
-use rustc_ast_pretty::pprust;
-use rustc_span::{sym, BytePos, ExpnId, Span, Symbol, SyntaxContext};
-use rustc_target::spec::abi;
-use syntax::ast::{
+use rustc_ast::ast::{
     self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,
     VisibilityKind,
 };
-use syntax::ptr;
+use rustc_ast::ptr;
+use rustc_ast_pretty::pprust;
+use rustc_span::{sym, BytePos, ExpnId, Span, Symbol, SyntaxContext};
+use rustc_target::spec::abi;
 use unicode_width::UnicodeWidthStr;
 
 use crate::comment::{filter_normal_code, CharClasses, FullCodeCharKind, LineClasses};
@@ -157,7 +157,7 @@ pub(crate) fn format_extern(
 }
 
 #[inline]
-// Transform `Vec<syntax::ptr::P<T>>` into `Vec<&T>`
+// Transform `Vec<rustc_ast::ptr::P<T>>` into `Vec<&T>`
 pub(crate) fn ptr_vec_to_ref_vec<T>(vec: &[ptr::P<T>]) -> Vec<&T> {
     vec.iter().map(|x| &**x).collect::<Vec<_>>()
 }

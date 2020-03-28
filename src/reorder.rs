@@ -8,8 +8,8 @@
 
 use std::cmp::{Ord, Ordering};
 
+use rustc_ast::{ast, attr};
 use rustc_span::{symbol::sym, Span};
-use syntax::{ast, attr};
 
 use crate::config::Config;
 use crate::imports::{merge_use_trees, UseTree};

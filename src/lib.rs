@@ -19,7 +19,7 @@ use std::rc::Rc;
 
 use failure::Fail;
 use ignore;
-use syntax::ast;
+use rustc_ast::ast;
 
 use crate::comment::LineClasses;
 use crate::emitter::Emitter;

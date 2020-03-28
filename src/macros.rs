@@ -12,12 +12,12 @@
 use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
+use rustc_ast::token::{BinOpToken, DelimToken, Token, TokenKind};
+use rustc_ast::tokenstream::{Cursor, TokenStream, TokenTree};
+use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
 use rustc_parse::{new_parser_from_tts, parser::Parser};
 use rustc_span::{symbol::kw, BytePos, Span, Symbol, DUMMY_SP};
-use syntax::token::{BinOpToken, DelimToken, Token, TokenKind};
-use syntax::tokenstream::{Cursor, TokenStream, TokenTree};
-use syntax::{ast, ptr};
 
 use crate::comment::{
     contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses,

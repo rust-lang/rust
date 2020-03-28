@@ -1,9 +1,9 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+use rustc_ast::token::DelimToken;
+use rustc_ast::{ast, visit};
 use rustc_span::{BytePos, Pos, Span};
-use syntax::token::DelimToken;
-use syntax::{ast, visit};
 
 use crate::attr::*;
 use crate::comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};

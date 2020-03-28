@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
 
+use rustc_ast::ast;
 use rustc_data_structures::sync::{Lrc, Send};
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::{ColorConfig, Diagnostic, Handler, Level as DiagnosticLevel};
@@ -10,7 +11,6 @@ use rustc_span::{
     source_map::{FilePathMapping, SourceMap},
     BytePos, Span,
 };
-use syntax::ast;
 
 use crate::config::file_lines::LineRange;
 use crate::ignore_path::IgnorePathSet;

@@ -1,8 +1,8 @@
 use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
+use rustc_ast::ast::{self, FnRetTy, Mutability};
 use rustc_span::{symbol::kw, BytePos, Span};
-use syntax::ast::{self, FnRetTy, Mutability};
 
 use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity, Version};
@@ -551,7 +551,7 @@ impl Rewrite for ast::GenericParam {
             _ => (),
         }
 
-        if let syntax::ast::GenericParamKind::Const { ref ty } = &self.kind {
+        if let rustc_ast::ast::GenericParamKind::Const { ref ty } = &self.kind {
             result.push_str("const ");
             result.push_str(rewrite_ident(context, self.ident));
             result.push_str(": ");
