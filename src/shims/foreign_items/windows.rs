@@ -40,6 +40,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
+            "GetCurrentDirectoryW" => {
+                let result = this.GetCurrentDirectoryW(args[0], args[1])?;
+                this.write_scalar(Scalar::from_u32(result), dest)?;
+            }
+
+            "SetCurrentDirectoryW" => {
+                let result = this.SetCurrentDirectoryW(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+
             // File related shims
             "GetStdHandle" => {
                 let which = this.read_scalar(args[0])?.to_i32()?;

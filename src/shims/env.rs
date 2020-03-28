@@ -138,8 +138,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
             None => {
-                let envvar_not_found = this.eval_path_scalar(&["std", "sys", "windows", "c", "ERROR_ENVVAR_NOT_FOUND"])?;
-                this.set_last_error(envvar_not_found.not_undef()?)?;
+                let envvar_not_found = this.eval_windows("ERROR_ENVVAR_NOT_FOUND")?;
+                this.set_last_error(envvar_not_found)?;
                 0 // return zero upon failure
             }
         })
@@ -289,6 +289,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
+        let target_os = &this.tcx.sess.target.target.target_os;
+        assert!(target_os == "linux" || target_os == "macos", "`getcwd` is only available for the UNIX target family");
 
         this.check_no_isolation("getcwd")?;
 
@@ -308,8 +310,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(Scalar::null_ptr(&*this.tcx))
     }
 
+    #[allow(non_snake_case)]
+    fn GetCurrentDirectoryW(
+        &mut self,
+        size_op: OpTy<'tcx, Tag>, // DWORD
+        buf_op: OpTy<'tcx, Tag>,  // LPTSTR
+    ) -> InterpResult<'tcx, u32> {
+        let this = self.eval_context_mut();
+        this.assert_target_os("windows", "GetCurrentDirectoryW");
+
+        this.check_no_isolation("GetCurrentDirectoryW")?;
+
+        let size = u64::from(this.read_scalar(size_op)?.to_u32()?);
+        let buf = this.read_scalar(buf_op)?.not_undef()?;
+
+        // If we cannot get the current directory, we return 0
+        match env::current_dir() {
+            Ok(cwd) => {
+                let len = this.write_path_to_wide_str(&cwd, buf, size)?.1;
+                return Ok(u32::try_from(len).unwrap())
+            }
+            Err(e) => this.set_last_error_from_io_error(e)?,
+        }
+        Ok(0)
+    }
+
     fn chdir(&mut self, path_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
+        let target_os = &this.tcx.sess.target.target.target_os;
+        assert!(target_os == "linux" || target_os == "macos", "`getcwd` is only available for the UNIX target family");
 
         this.check_no_isolation("chdir")?;
 
@@ -320,6 +349,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Err(e) => {
                 this.set_last_error_from_io_error(e)?;
                 Ok(-1)
+            }
+        }
+    }
+
+    #[allow(non_snake_case)]
+    fn SetCurrentDirectoryW (
+        &mut self,
+        path_op: OpTy<'tcx, Tag>   // LPCTSTR
+    ) -> InterpResult<'tcx, i32> { // Returns BOOL(i32 in Windows)
+        let this = self.eval_context_mut();
+        this.assert_target_os("windows", "SetCurrentDirectoryW");
+
+        this.check_no_isolation("SetCurrentDirectoryW")?;
+
+        let path = this.read_path_from_wide_str(this.read_scalar(path_op)?.not_undef()?)?;
+
+        match env::set_current_dir(path) {
+            Ok(()) => Ok(1),
+            Err(e) => {
+                this.set_last_error_from_io_error(e)?;
+                Ok(0)
             }
         }
     }
