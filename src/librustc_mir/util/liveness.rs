@@ -265,7 +265,7 @@ pub fn dump_mir<'tcx>(
     body: &Body<'tcx>,
     result: &LivenessResult,
 ) {
-    if !dump_enabled(tcx, pass_name, source) {
+    if !dump_enabled(tcx, pass_name, source.def_id()) {
         return;
     }
     let node_path = ty::print::with_forced_impl_filename_line(|| {

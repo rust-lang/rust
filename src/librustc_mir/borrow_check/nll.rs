@@ -317,7 +317,7 @@ pub(super) fn dump_mir_results<'a, 'tcx>(
     regioncx: &RegionInferenceContext<'_>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
 ) {
-    if !mir_util::dump_enabled(infcx.tcx, "nll", source) {
+    if !mir_util::dump_enabled(infcx.tcx, "nll", source.def_id()) {
         return;
     }
 
