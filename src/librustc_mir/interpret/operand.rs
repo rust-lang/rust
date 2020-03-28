@@ -56,7 +56,7 @@ impl<'tcx, Tag> Immediate<Tag> {
     pub fn new_slice(val: Scalar<Tag>, len: u64, cx: &impl HasDataLayout) -> Self {
         Immediate::ScalarPair(
             val.into(),
-            Scalar::from_uint(len, cx.data_layout().pointer_size).into(),
+            Scalar::from_machine_usize(len, cx).into(),
         )
     }
 
