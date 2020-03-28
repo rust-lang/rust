@@ -721,7 +721,7 @@ impl OsStr {
     ///
     /// assert_eq!("grÜße, jÜrgen ❤", s);
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "none")]
+    #[unstable(feature = "osstring_ascii", issue = "70516")]
     pub fn make_ascii_lowercase(&mut self) {
         self.inner.make_ascii_lowercase()
     }
@@ -748,7 +748,7 @@ impl OsStr {
     ///
     /// assert_eq!("GRüßE, JüRGEN ❤", s);
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "none")]
+    #[unstable(feature = "osstring_ascii", issue = "70516")]
     pub fn make_ascii_uppercase(&mut self) {
         self.inner.make_ascii_uppercase()
     }
@@ -772,7 +772,7 @@ impl OsStr {
     ///
     /// assert_eq!("grüße, jürgen ❤", s.to_ascii_lowercase());
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "none")]
+    #[unstable(feature = "osstring_ascii", issue = "70516")]
     pub fn to_ascii_lowercase(&self) -> OsString {
         OsString::from_inner(self.inner.to_ascii_lowercase())
     }
@@ -796,7 +796,7 @@ impl OsStr {
     ///
     /// assert_eq!("GRüßE, JüRGEN ❤", s.to_ascii_uppercase());
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "none")]
+    #[unstable(feature = "osstring_ascii", issue = "70516")]
     pub fn to_ascii_uppercase(&self) -> OsString {
         OsString::from_inner(self.inner.to_ascii_uppercase())
     }
@@ -815,7 +815,7 @@ impl OsStr {
     /// assert!(ascii.is_ascii());
     /// assert!(!non_ascii.is_ascii());
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "none")]
+    #[unstable(feature = "osstring_ascii", issue = "70516")]
     pub fn is_ascii(&self) -> bool {
         self.inner.is_ascii()
     }
@@ -835,7 +835,7 @@ impl OsStr {
     /// assert!(OsString::from("Ferrös").eq_ignore_ascii_case("FERRöS"));
     /// assert!(!OsString::from("Ferrös").eq_ignore_ascii_case("FERRÖS"));
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "none")]
+    #[unstable(feature = "osstring_ascii", issue = "70516")]
     pub fn eq_ignore_ascii_case<S: ?Sized + AsRef<OsStr>>(&self, other: &S) -> bool {
         self.inner.eq_ignore_ascii_case(&other.as_ref().inner)
     }
