@@ -275,17 +275,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
             return;
         }
         for arg in iter_input_pats(decl, body) {
-            match arg.pat.kind {
-                PatKind::Binding(BindingAnnotation::Ref, ..) | PatKind::Binding(BindingAnnotation::RefMut, ..) => {
-                    span_lint(
-                        cx,
-                        TOPLEVEL_REF_ARG,
-                        arg.pat.span,
-                        "`ref` directly on a function argument is ignored. Consider using a reference type \
-                         instead.",
-                    );
-                },
-                _ => {},
+            if let PatKind::Binding(BindingAnnotation::Ref | BindingAnnotation::RefMut, ..) = arg.pat.kind {
+                span_lint(
+                    cx,
+                    TOPLEVEL_REF_ARG,
+                    arg.pat.span,
+                    "`ref` directly on a function argument is ignored. \
+                    Consider using a reference type instead.",
+                );
             }
         }
     }

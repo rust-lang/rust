@@ -1403,9 +1403,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
             },
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
-            ["as_ptr", "unwrap"] | ["as_ptr", "expect"] => {
-                lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0])
-            },
+            ["as_ptr", "unwrap" | "expect"] => lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0]),
             ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
             ["nth", ..] => lint_iter_nth_zero(cx, expr, arg_lists[0]),
@@ -1418,12 +1416,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["filter_map", ..] => unnecessary_filter_map::lint(cx, expr, arg_lists[0]),
             ["count", "map"] => lint_suspicious_map(cx, expr),
             ["assume_init"] => lint_maybe_uninit(cx, &arg_lists[0][0], expr),
-            ["unwrap_or", arith @ "checked_add"]
-            | ["unwrap_or", arith @ "checked_sub"]
-            | ["unwrap_or", arith @ "checked_mul"] => {
+            ["unwrap_or", arith @ ("checked_add" | "checked_sub" | "checked_mul")] => {
                 manual_saturating_arithmetic::lint(cx, expr, &arg_lists, &arith["checked_".len()..])
             },
-            ["add"] | ["offset"] | ["sub"] | ["wrapping_offset"] | ["wrapping_add"] | ["wrapping_sub"] => {
+            ["add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub"] => {
                 check_pointer_offset(cx, expr, arg_lists[0])
             },
             ["is_file", ..] => lint_filetype_is_file(cx, expr, arg_lists[0]),
@@ -1829,8 +1825,7 @@ fn lint_expect_fun_call(
             hir::ExprKind::Call(fun, _) => {
                 if let hir::ExprKind::Path(ref p) = fun.kind {
                     match cx.tables.qpath_res(p, fun.hir_id) {
-                        hir::def::Res::Def(hir::def::DefKind::Fn, def_id)
-                        | hir::def::Res::Def(hir::def::DefKind::AssocFn, def_id) => matches!(
+                        hir::def::Res::Def(hir::def::DefKind::Fn | hir::def::DefKind::AssocFn, def_id) => matches!(
                             cx.tcx.fn_sig(def_id).output().skip_binder().kind,
                             ty::Ref(ty::ReStatic, ..)
                         ),
