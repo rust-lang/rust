@@ -214,11 +214,18 @@ impl GenericArg {
 pub struct AngleBracketedArgs {
     /// The overall span.
     pub span: Span,
-    /// The arguments for this path segment.
-    pub args: Vec<GenericArg>,
-    /// Constraints on associated types, if any.
-    /// E.g., `Foo<A = Bar, B: Baz>`.
-    pub constraints: Vec<AssocTyConstraint>,
+    /// The comma separated parts in the `<...>`.
+    pub args: Vec<AngleBracketedArg>,
+}
+
+/// Either an argument for a parameter e.g., `'a`, `Vec<u8>`, `0`,
+/// or a constraint on an associated item, e.g., `Item = String` or `Item: Bound`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum AngleBracketedArg {
+    /// Argument for a generic parameter.
+    Arg(GenericArg),
+    /// Constraint for an associated item.
+    Constraint(AssocTyConstraint),
 }
 
 impl Into<Option<P<GenericArgs>>> for AngleBracketedArgs {
@@ -248,11 +255,13 @@ pub struct ParenthesizedArgs {
 
 impl ParenthesizedArgs {
     pub fn as_angle_bracketed_args(&self) -> AngleBracketedArgs {
-        AngleBracketedArgs {
-            span: self.span,
-            args: self.inputs.iter().cloned().map(GenericArg::Type).collect(),
-            constraints: vec![],
-        }
+        let args = self
+            .inputs
+            .iter()
+            .cloned()
+            .map(|input| AngleBracketedArg::Arg(GenericArg::Type(input)))
+            .collect();
+        AngleBracketedArgs { span: self.span, args }
     }
 }
 

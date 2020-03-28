@@ -639,6 +639,34 @@ impl<'a> AstValidator<'a> {
             .emit();
         }
     }
+
+    /// Enforce generic args coming before constraints in `<...>` of a path segment.
+    fn check_generic_args_before_constraints(&self, data: &AngleBracketedArgs) {
+        // Early exit in case it's partitioned as it should be.
+        if data.args.iter().is_partitioned(|arg| matches!(arg, AngleBracketedArg::Arg(_))) {
+            return;
+        }
+        // Find all generic argument coming after the first constraint...
+        let mut misplaced_args = Vec::new();
+        let mut first = None;
+        for arg in &data.args {
+            match (arg, first) {
+                (AngleBracketedArg::Arg(a), Some(_)) => misplaced_args.push(a.span()),
+                (AngleBracketedArg::Constraint(c), None) => first = Some(c.span),
+                (AngleBracketedArg::Arg(_), None) | (AngleBracketedArg::Constraint(_), Some(_)) => {
+                }
+            }
+        }
+        // ...and then error:
+        self.err_handler()
+            .struct_span_err(
+                misplaced_args.clone(),
+                "generic arguments must come before the first constraint",
+            )
+            .span_label(first.unwrap(), "the first constraint is provided here")
+            .span_labels(misplaced_args, "generic argument")
+            .emit();
+    }
 }
 
 /// Checks that generic parameters are in the correct order,
@@ -1008,17 +1036,20 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_generic_args(&mut self, _: Span, generic_args: &'a GenericArgs) {
         match *generic_args {
             GenericArgs::AngleBracketed(ref data) => {
-                walk_list!(self, visit_generic_arg, &data.args);
+                self.check_generic_args_before_constraints(data);
 
-                // Type bindings such as `Item = impl Debug` in `Iterator<Item = Debug>`
-                // are allowed to contain nested `impl Trait`.
-                self.with_impl_trait(None, |this| {
-                    walk_list!(
-                        this,
-                        visit_assoc_ty_constraint_from_generic_args,
-                        &data.constraints
-                    );
-                });
+                for arg in &data.args {
+                    match arg {
+                        AngleBracketedArg::Arg(arg) => self.visit_generic_arg(arg),
+                        // Type bindings such as `Item = impl Debug` in `Iterator<Item = Debug>`
+                        // are allowed to contain nested `impl Trait`.
+                        AngleBracketedArg::Constraint(constraint) => {
+                            self.with_impl_trait(None, |this| {
+                                this.visit_assoc_ty_constraint_from_generic_args(constraint);
+                            });
+                        }
+                    }
+                }
             }
             GenericArgs::Parenthesized(ref data) => {
                 walk_list!(self, visit_ty, &data.inputs);
