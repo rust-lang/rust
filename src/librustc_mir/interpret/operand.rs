@@ -54,10 +54,7 @@ impl<Tag> From<Pointer<Tag>> for Immediate<Tag> {
 
 impl<'tcx, Tag> Immediate<Tag> {
     pub fn new_slice(val: Scalar<Tag>, len: u64, cx: &impl HasDataLayout) -> Self {
-        Immediate::ScalarPair(
-            val.into(),
-            Scalar::from_machine_usize(len, cx).into(),
-        )
+        Immediate::ScalarPair(val.into(), Scalar::from_machine_usize(len, cx).into())
     }
 
     pub fn new_dyn_trait(val: Scalar<Tag>, vtable: Pointer<Tag>) -> Self {
