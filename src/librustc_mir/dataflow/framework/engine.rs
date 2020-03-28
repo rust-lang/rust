@@ -15,6 +15,7 @@ use rustc_span::symbol::{sym, Symbol};
 
 use super::graphviz;
 use super::{Analysis, GenKillAnalysis, GenKillSet, Results};
+use crate::util::pretty::dump_enabled;
 
 /// A solver for dataflow problems.
 pub struct Engine<'a, 'tcx, A>
@@ -400,12 +401,25 @@ where
     let attrs = match RustcMirAttrs::parse(tcx, def_id) {
         Ok(attrs) => attrs,
 
-        // Invalid `rustc_mir` attrs will be reported using `span_err`.
+        // Invalid `rustc_mir` attrs are reported in `RustcMirAttrs::parse`
         Err(()) => return Ok(()),
     };
 
     let path = match attrs.output_path(A::NAME) {
         Some(path) => path,
+
+        None if tcx.sess.opts.debugging_opts.dump_mir_dataflow
+            && dump_enabled(tcx, A::NAME, def_id) =>
+        {
+            let mut path = PathBuf::from(&tcx.sess.opts.debugging_opts.dump_mir_dir);
+
+            let item_name = ty::print::with_forced_impl_filename_line(|| {
+                tcx.def_path(def_id).to_filename_friendly_no_crate()
+            });
+            path.push(format!("rustc.{}.{}.dot", item_name, A::NAME));
+            path
+        }
+
         None => return Ok(()),
     };
 
