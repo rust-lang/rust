@@ -563,9 +563,9 @@ dependencies = [
 
 [[package]]
 name = "jod-thread"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f52a11f73b88fab829a0e4d9e13ea5982c7ac457c72eb3541d82a4afdfce4ff"
+checksum = "4022656272c3e564a7cdebcaaba6518d844b0d0c1836597196efb5bfeb98bb49"
 
 [[package]]
 name = "kernel32-sys"
