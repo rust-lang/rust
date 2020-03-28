@@ -1,15 +1,14 @@
 //! This modules takes care of rendering various definitions as completion items.
 
 use hir::{Docs, HasAttrs, HasSource, HirDisplay, ScopeDef, StructKind, Type};
-use join_to_string::join;
 use ra_syntax::ast::NameOwner;
+use stdx::SepBy;
 use test_utils::tested_by;
 
-use crate::completion::{
-    CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
-};
-
 use crate::{
+    completion::{
+        CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
+    },
     display::{const_label, macro_label, type_label, FunctionSignature},
     RootDatabase,
 };
@@ -221,13 +220,13 @@ impl Completions {
                 builder = builder.trigger_call_info();
                 let snippet = if ctx.options.add_call_argument_snippets {
                     let to_skip = if has_self_param { 1 } else { 0 };
-                    let function_params_snippet = join(
-                        function_signature.parameter_names.iter().skip(to_skip).enumerate().map(
-                            |(index, param_name)| format!("${{{}:{}}}", index + 1, param_name),
-                        ),
-                    )
-                    .separator(", ")
-                    .to_string();
+                    let function_params_snippet = function_signature
+                        .parameter_names
+                        .iter()
+                        .skip(to_skip)
+                        .enumerate()
+                        .map(|(index, param_name)| format!("${{{}:{}}}", index + 1, param_name))
+                        .sep_by(", ");
                     format!("{}({})$0", name, function_params_snippet)
                 } else {
                     format!("{}($0)", name)
@@ -281,18 +280,16 @@ impl Completions {
             .into_iter()
             .map(|field| (field.name(ctx.db), field.signature_ty(ctx.db)));
         let detail = match variant.kind(ctx.db) {
-            StructKind::Tuple | StructKind::Unit => {
-                join(detail_types.map(|(_, t)| t.display(ctx.db).to_string()))
-                    .separator(", ")
-                    .surround_with("(", ")")
-                    .to_string()
-            }
-            StructKind::Record => {
-                join(detail_types.map(|(n, t)| format!("{}: {}", n, t.display(ctx.db).to_string())))
-                    .separator(", ")
-                    .surround_with("{ ", " }")
-                    .to_string()
-            }
+            StructKind::Tuple | StructKind::Unit => detail_types
+                .map(|(_, t)| t.display(ctx.db).to_string())
+                .sep_by(", ")
+                .surround_with("(", ")")
+                .to_string(),
+            StructKind::Record => detail_types
+                .map(|(n, t)| format!("{}: {}", n, t.display(ctx.db).to_string()))
+                .sep_by(", ")
+                .surround_with("{ ", " }")
+                .to_string(),
         };
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
             .kind(CompletionItemKind::EnumVariant)

@@ -1,12 +1,14 @@
 //! FIXME: write short doc here
 
-use std::fmt::{self, Display};
+use std::{
+    convert::From,
+    fmt::{self, Display},
+};
 
 use hir::{Docs, Documentation, HasSource, HirDisplay};
-use join_to_string::join;
 use ra_ide_db::RootDatabase;
 use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
-use std::convert::From;
+use stdx::SepBy;
 
 use crate::display::{generic_parameters, where_predicates};
 
@@ -227,21 +229,17 @@ impl Display for FunctionSignature {
         }
 
         if !self.generic_parameters.is_empty() {
-            join(self.generic_parameters.iter())
-                .separator(", ")
-                .surround_with("<", ">")
-                .to_fmt(f)?;
+            write!(f, "{}", self.generic_parameters.iter().sep_by(", ").surround_with("<", ">"))?;
         }
 
-        join(self.parameters.iter()).separator(", ").surround_with("(", ")").to_fmt(f)?;
+        write!(f, "{}", self.parameters.iter().sep_by(", ").surround_with("(", ")"))?;
 
         if let Some(t) = &self.ret_type {
             write!(f, " -> {}", t)?;
         }
 
         if !self.where_predicates.is_empty() {
-            write!(f, "\nwhere ")?;
-            join(self.where_predicates.iter()).separator(",\n      ").to_fmt(f)?;
+            write!(f, "\nwhere {}", self.where_predicates.iter().sep_by(",\n      "))?;
         }
 
         Ok(())

@@ -1,9 +1,8 @@
-use format_buf::format;
-use join_to_string::join;
 use ra_syntax::{
     ast::{self, AstNode, NameOwner, TypeParamsOwner},
     TextUnit,
 };
+use stdx::{format_to, SepBy};
 
 use crate::{Assist, AssistCtx, AssistId};
 
@@ -36,7 +35,7 @@ pub(crate) fn add_impl(ctx: AssistCtx) -> Option<Assist> {
         let mut buf = String::new();
         buf.push_str("\n\nimpl");
         if let Some(type_params) = &type_params {
-            format!(buf, "{}", type_params.syntax());
+            format_to!(buf, "{}", type_params.syntax());
         }
         buf.push_str(" ");
         buf.push_str(name.text().as_str());
@@ -47,7 +46,9 @@ pub(crate) fn add_impl(ctx: AssistCtx) -> Option<Assist> {
                 .map(|it| it.text().clone());
             let type_params =
                 type_params.type_params().filter_map(|it| it.name()).map(|it| it.text().clone());
-            join(lifetime_params.chain(type_params)).surround_with("<", ">").to_buf(&mut buf);
+
+            let generic_params = lifetime_params.chain(type_params).sep_by(", ");
+            format_to!(buf, "<{}>", generic_params)
         }
         buf.push_str(" {\n");
         edit.set_cursor(start_offset + TextUnit::of_str(&buf));

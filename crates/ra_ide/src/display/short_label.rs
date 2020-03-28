@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
-use format_buf::format;
 use ra_syntax::ast::{self, AstNode, NameOwner, TypeAscriptionOwner, VisibilityOwner};
+use stdx::format_to;
 
 pub(crate) trait ShortLabel {
     fn short_label(&self) -> Option<String>;
@@ -80,7 +80,7 @@ where
     let mut buf = short_label_from_node(node, prefix)?;
 
     if let Some(type_ref) = node.ascribed_type() {
-        format!(buf, ": {}", type_ref.syntax());
+        format_to!(buf, ": {}", type_ref.syntax());
     }
 
     Some(buf)
