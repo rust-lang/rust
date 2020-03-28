@@ -382,17 +382,21 @@ where
 }
 
 #[inline(always)]
-fn try_execute_query<Q, CTX>(
+fn try_execute_query<CTX, C>(
     tcx: CTX,
+    state: &QueryState<CTX, C>,
     span: Span,
-    key: Q::Key,
-    lookup: QueryLookup<'_, CTX, Q::Key, <Q::Cache as QueryCache>::Sharded>,
-) -> Q::Stored
+    key: C::Key,
+    lookup: QueryLookup<'_, CTX, C::Key, C::Sharded>,
+    query: &QueryVtable<CTX, C::Key, C::Value>,
+) -> C::Stored
 where
-    Q: QueryDescription<CTX>,
+    C: QueryCache,
+    C::Key: Eq + Clone + Debug,
+    C::Stored: Clone,
     CTX: QueryContext,
 {
-    let job = match JobOwner::try_start(tcx, Q::query_state(tcx), span, &key, lookup, &Q::VTABLE) {
+    let job = match JobOwner::try_start(tcx, state, span, &key, lookup, query) {
         TryGetJob::NotYetStarted(job) => job,
         TryGetJob::Cycle(result) => return result,
         #[cfg(parallel_compiler)]
@@ -406,18 +410,32 @@ where
     // expensive for some `DepKind`s.
     if !tcx.dep_graph().is_fully_enabled() {
         let null_dep_node = DepNode::new_no_params(DepKind::NULL);
-        return force_query_with_job(tcx, key, job, null_dep_node, &Q::VTABLE).0;
+        return force_query_with_job(tcx, key, job, null_dep_node, query).0;
     }
 
-    if Q::ANON {
-        let (result, dep_node_index) = try_execute_anon_query(tcx, key, job.id, &Q::VTABLE);
+    if query.anon {
+        let prof_timer = tcx.profiler().query_provider();
+
+        let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
+            tcx.start_query(job.id, diagnostics, |tcx| {
+                tcx.dep_graph().with_anon_task(query.dep_kind, || query.compute(tcx, key))
+            })
+        });
+
+        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+        tcx.dep_graph().read_index(dep_node_index);
+
+        if unlikely!(!diagnostics.is_empty()) {
+            tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
+        }
 
         return job.complete(tcx, result, dep_node_index);
     }
 
-    let dep_node = Q::to_dep_node(tcx, &key);
+    let dep_node = query.to_dep_node(tcx, &key);
 
-    if !Q::EVAL_ALWAYS {
+    if !query.eval_always {
         // The diagnostics for this query will be
         // promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
@@ -431,7 +449,7 @@ where
                         prev_dep_node_index,
                         dep_node_index,
                         &dep_node,
-                        &Q::VTABLE,
+                        query,
                     ),
                     dep_node_index,
                 )
@@ -442,38 +460,9 @@ where
         }
     }
 
-    let (result, dep_node_index) = force_query_with_job(tcx, key, job, dep_node, &Q::VTABLE);
+    let (result, dep_node_index) = force_query_with_job(tcx, key, job, dep_node, query);
     tcx.dep_graph().read_index(dep_node_index);
     result
-}
-
-fn try_execute_anon_query<CTX, K, V>(
-    tcx: CTX,
-    key: K,
-    job_id: QueryJobId<CTX::DepKind>,
-    query: &QueryVtable<CTX, K, V>,
-) -> (V, DepNodeIndex)
-where
-    CTX: QueryContext,
-{
-    debug_assert!(query.anon);
-    let prof_timer = tcx.profiler().query_provider();
-
-    let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-        tcx.start_query(job_id, diagnostics, |tcx| {
-            tcx.dep_graph().with_anon_task(query.dep_kind, || query.compute(tcx, key))
-        })
-    });
-
-    prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-    tcx.dep_graph().read_index(dep_node_index);
-
-    if unlikely!(!diagnostics.is_empty()) {
-        tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
-    }
-
-    (result, dep_node_index)
 }
 
 fn load_from_disk_and_cache_in_memory<CTX, K, V>(
@@ -639,7 +628,7 @@ where
             tcx.dep_graph().read_index(index);
             value.clone()
         },
-        |key, lookup| try_execute_query::<Q, _>(tcx, span, key, lookup),
+        |key, lookup| try_execute_query(tcx, Q::query_state(tcx), span, key, lookup, &Q::VTABLE),
     )
 }
 
