@@ -47,7 +47,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn malloc(&mut self, size: u64, zero_init: bool, kind: MiriMemoryKind) -> Scalar<Tag> {
         let this = self.eval_context_mut();
         if size == 0 {
-            Scalar::from_int(0, this.pointer_size())
+            Scalar::ptr_null(this)
         } else {
             let align = this.min_align(size, kind);
             let ptr = this.memory.allocate(Size::from_bytes(size), align, kind.into());
@@ -78,7 +78,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let new_align = this.min_align(new_size, kind);
         if this.is_null(old_ptr)? {
             if new_size == 0 {
-                Ok(Scalar::from_int(0, this.pointer_size()))
+                Ok(Scalar::ptr_null(this))
             } else {
                 let new_ptr =
                     this.memory.allocate(Size::from_bytes(new_size), new_align, kind.into());
@@ -88,7 +88,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let old_ptr = this.force_ptr(old_ptr)?;
             if new_size == 0 {
                 this.memory.deallocate(old_ptr, None, kind.into())?;
-                Ok(Scalar::from_int(0, this.pointer_size()))
+                Ok(Scalar::ptr_null(this))
             } else {
                 let new_ptr = this.memory.reallocate(
                     old_ptr,
@@ -296,7 +296,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     }
                 };
 
-                this.write_scalar(Scalar::from_int(result, Size::from_bits(32)), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "memrchr" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
@@ -334,7 +334,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "strlen" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let n = this.memory.read_c_str(ptr)?.len();
-                this.write_scalar(Scalar::from_uint(u64::try_from(n).unwrap(), dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_machine_usize(u64::try_from(n).unwrap(), this), dest)?;
             }
 
             // math functions

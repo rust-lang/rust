@@ -130,7 +130,7 @@ impl MemoryExtra {
                 // This should be all-zero, pointer-sized.
                 let layout = this.layout_of(this.tcx.types.usize)?;
                 let place = this.allocate(layout, MiriMemoryKind::Machine.into());
-                this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
+                this.write_scalar(Scalar::from_machine_usize(0, this), place.into())?;
                 Self::add_extern_static(this, "__cxa_thread_atexit_impl", place.ptr);
                 // "environ"
                 Self::add_extern_static(this, "environ", this.machine.env_vars.environ.unwrap().ptr);
@@ -316,10 +316,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let layout = ecx.layout_of(dest.layout.ty.builtin_deref(false).unwrap().ty)?;
         // First argument: `size`.
         // (`0` is allowed here -- this is expected to be handled by the lang item).
-        let size = Scalar::from_uint(layout.size.bytes(), ecx.pointer_size());
+        let size = Scalar::from_machine_usize(layout.size.bytes(), ecx);
 
         // Second argument: `align`.
-        let align = Scalar::from_uint(layout.align.abi.bytes(), ecx.pointer_size());
+        let align = Scalar::from_machine_usize(layout.align.abi.bytes(), ecx);
 
         // Call the `exchange_malloc` lang item.
         let malloc = ecx.tcx.lang_items().exchange_malloc_fn().unwrap();

@@ -860,7 +860,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             Err(e) => {
                 this.set_last_error_from_io_error(e)?;
-                Ok(Scalar::from_machine_usize(0, this))
+                Ok(Scalar::ptr_null(this))
             }
         }
     }

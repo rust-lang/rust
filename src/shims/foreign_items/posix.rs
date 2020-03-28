@@ -26,11 +26,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "unsetenv" => {
                 let result = this.unsetenv(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "setenv" => {
                 let result = this.setenv(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "getcwd" => {
                 let result = this.getcwd(args[0], args[1])?;
@@ -38,21 +38,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "chdir" => {
                 let result = this.chdir(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
             // File related shims
             "open" | "open64" => {
                 let result = this.open(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "fcntl" => {
                 let result = this.fcntl(args[0], args[1], args.get(2).cloned())?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "read" => {
                 let result = this.read(args[0], args[1], args[2])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_machine_isize(result, this), dest)?;
             }
             "write" => {
                 let fd = this.read_scalar(args[0])?.to_i32()?;
@@ -85,35 +85,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.write(args[0], args[1], args[2])?
                 };
                 // Now, `result` is the value we return back to the program.
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_machine_isize(result, this), dest)?;
             }
             "unlink" => {
                 let result = this.unlink(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "symlink" => {
                 let result = this.symlink(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "rename" => {
                 let result = this.rename(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "mkdir" => {
                 let result = this.mkdir(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "rmdir" => {
                 let result = this.rmdir(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "closedir" => {
                 let result = this.closedir(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "lseek" | "lseek64" => {
                 let result = this.lseek64(args[0], args[1], args[2])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                // "lseek" is only used on macOS which is 64bit-only, so `i64` always works.
+                this.write_scalar(Scalar::from_i64(result), dest)?;
             }
 
             // Allocation
@@ -165,8 +166,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let name = this.read_scalar(args[0])?.to_i32()?;
 
                 let sysconfs = &[
-                    ("_SC_PAGESIZE", Scalar::from_int(PAGE_SIZE, dest.layout.size)),
-                    ("_SC_NPROCESSORS_ONLN", Scalar::from_int(NUM_CPUS, dest.layout.size)),
+                    ("_SC_PAGESIZE", Scalar::from_int(PAGE_SIZE, this.pointer_size())),
+                    ("_SC_NPROCESSORS_ONLN", Scalar::from_int(NUM_CPUS, this.pointer_size())),
                 ];
                 let mut result = None;
                 for &(sysconf_name, value) in sysconfs {

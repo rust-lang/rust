@@ -108,7 +108,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         name_op: OpTy<'tcx, Tag>, // LPCWSTR
         buf_op: OpTy<'tcx, Tag>,  // LPWSTR
         size_op: OpTy<'tcx, Tag>, // DWORD
-    ) -> InterpResult<'tcx, u64> {
+    ) -> InterpResult<'tcx, u32> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetEnvironmentVariableW");
 
@@ -124,17 +124,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 let buf_ptr = this.read_scalar(buf_op)?.not_undef()?;
                 // `buf_size` represents the size in characters.
-                let buf_size = u64::try_from(this.read_scalar(size_op)?.to_u32()?).unwrap();
+                let buf_size = u64::from(this.read_scalar(size_op)?.to_u32()?);
                 let (success, len) = this.write_os_str_to_wide_str(&var, buf_ptr, buf_size)?;
 
                 if success {
                     // If the function succeeds, the return value is the number of characters stored in the buffer pointed to by lpBuffer,
                     // not including the terminating null character.
-                    len
+                    u32::try_from(len).unwrap()
                 } else {
                     // If lpBuffer is not large enough to hold the data, the return value is the buffer size, in characters,
                     // required to hold the string and its terminating null character and the contents of lpBuffer are undefined.
-                    len + 1
+                    u32::try_from(len).unwrap().checked_add(1).unwrap()
                 }
             }
             None => {
@@ -337,14 +337,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // This is memory backing an extern static, hence `Machine`, not `Env`.
             let layout = this.layout_of(this.tcx.types.usize)?;
             let place = this.allocate(layout, MiriMemoryKind::Machine.into());
-            this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
             this.machine.env_vars.environ = Some(place);
         }
 
         // Collect all the pointers to each variable in a vector.
         let mut vars: Vec<Scalar<Tag>> = this.machine.env_vars.map.values().map(|&ptr| ptr.into()).collect();
         // Add the trailing null pointer.
-        vars.push(Scalar::from_int(0, this.pointer_size()));
+        vars.push(Scalar::ptr_null(this));
         // Make an array with all these pointers inside Miri.
         let tcx = this.tcx;
         let vars_layout =
