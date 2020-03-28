@@ -42,35 +42,14 @@ pub enum AllocInit {
 }
 
 /// Represents a block of allocated memory returned by an allocator.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub struct MemoryBlock {
-    ptr: NonNull<u8>,
-    size: usize,
+    pub ptr: NonNull<u8>,
+    pub size: usize,
 }
 
 impl MemoryBlock {
-    /// Creates a new `MemoryBlock` from the specified `ptr` and `size`.
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub const fn new(ptr: NonNull<u8>, size: usize) -> Self {
-        Self { ptr, size }
-    }
-
-    /// Acquires the underlying `NonNull<u8>` pointer.
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub const fn ptr(&self) -> NonNull<u8> {
-        self.ptr
-    }
-
-    /// Returns the size of the memory block.
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub const fn size(&self) -> usize {
-        self.size
-    }
-
     /// Initialize the memory block like specified by `init`.
     ///
     /// This behaves like calling [`MemoryBlock::initialize_offset(ptr, layout, 0)`][off].
@@ -98,12 +77,10 @@ impl MemoryBlock {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn init_offset(&mut self, init: AllocInit, offset: usize) {
-        debug_assert!(offset <= self.size(), "`offset` must be smaller than or equal to `size()`");
+        debug_assert!(offset <= self.size, "`offset` must be smaller than or equal to `size()`");
         match init {
             AllocInit::Uninitialized => (),
-            AllocInit::Zeroed => {
-                self.ptr().as_ptr().add(offset).write_bytes(0, self.size() - offset)
-            }
+            AllocInit::Zeroed => self.ptr.as_ptr().add(offset).write_bytes(0, self.size - offset),
         }
     }
 }
@@ -246,9 +223,9 @@ pub unsafe trait AllocRef {
     ///
     /// * `ptr` must be [*currently allocated*] via this allocator,
     /// * `layout` must [*fit*] the `ptr`. (The `new_size` argument need not fit it.)
-    // We can't require that `new_size` is strictly greater than `memory.size()` because of ZSTs.
+    // We can't require that `new_size` is strictly greater than `memory.size` because of ZSTs.
     // An alternative would be
-    // * `new_size must be strictly greater than `memory.size()` or both are zero
+    // * `new_size must be strictly greater than `memory.size` or both are zero
     /// * `new_size` must be greater than or equal to `layout.size()`
     /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`, must not overflow
     ///   (i.e., the rounded value must be less than `usize::MAX`).
@@ -280,19 +257,19 @@ pub unsafe trait AllocRef {
         match placement {
             ReallocPlacement::InPlace => Err(AllocErr),
             ReallocPlacement::MayMove => {
-                let old_size = layout.size();
+                let size = layout.size();
                 debug_assert!(
-                    new_size >= old_size,
+                    new_size >= size,
                     "`new_size` must be greater than or equal to `layout.size()`"
                 );
 
-                if new_size == old_size {
-                    return Ok(MemoryBlock::new(ptr, old_size));
+                if new_size == size {
+                    return Ok(MemoryBlock { ptr, size });
                 }
 
                 let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
                 let new_memory = self.alloc(new_layout, init)?;
-                ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr().as_ptr(), old_size);
+                ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), size);
                 self.dealloc(ptr, layout);
                 Ok(new_memory)
             }
@@ -324,10 +301,10 @@ pub unsafe trait AllocRef {
     ///
     /// * `ptr` must be [*currently allocated*] via this allocator,
     /// * `layout` must [*fit*] the `ptr`. (The `new_size` argument need not fit it.)
-    // We can't require that `new_size` is strictly smaller than `memory.size()` because of ZSTs.
+    // We can't require that `new_size` is strictly smaller than `memory.size` because of ZSTs.
     // An alternative would be
-    // * `new_size must be strictly smaller than `memory.size()` or both are zero
-    /// * `new_size` must be smaller than or equal to `memory.size()`
+    // * `new_size must be strictly smaller than `memory.size` or both are zero
+    /// * `new_size` must be smaller than or equal to `layout.size()`
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
@@ -355,19 +332,19 @@ pub unsafe trait AllocRef {
         match placement {
             ReallocPlacement::InPlace => Err(AllocErr),
             ReallocPlacement::MayMove => {
-                let old_size = layout.size();
+                let size = layout.size();
                 debug_assert!(
-                    new_size <= old_size,
+                    new_size <= size,
                     "`new_size` must be smaller than or equal to `layout.size()`"
                 );
 
-                if new_size == old_size {
-                    return Ok(MemoryBlock::new(ptr, old_size));
+                if new_size == size {
+                    return Ok(MemoryBlock { ptr, size });
                 }
 
                 let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
                 let new_memory = self.alloc(new_layout, AllocInit::Uninitialized)?;
-                ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr().as_ptr(), new_size);
+                ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), new_size);
                 self.dealloc(ptr, layout);
                 Ok(new_memory)
             }

@@ -819,7 +819,7 @@ impl<T: ?Sized> Arc<T> {
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the ArcInner
-        let inner = mem_to_arcinner(mem.ptr().as_ptr());
+        let inner = mem_to_arcinner(mem.ptr.as_ptr());
         debug_assert_eq!(Layout::for_value(&*inner), layout);
 
         ptr::write(&mut (*inner).strong, atomic::AtomicUsize::new(1));

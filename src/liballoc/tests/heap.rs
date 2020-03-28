@@ -26,7 +26,7 @@ fn check_overalign_requests<T: AllocRef>(mut allocator: T) {
                                 AllocInit::Uninitialized,
                             )
                             .unwrap()
-                            .ptr()
+                            .ptr
                     })
                     .collect();
                 for &ptr in &pointers {

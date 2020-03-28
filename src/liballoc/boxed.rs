@@ -198,7 +198,7 @@ impl<T> Box<T> {
         let ptr = Global
             .alloc(layout, AllocInit::Uninitialized)
             .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-            .ptr()
+            .ptr
             .cast();
         unsafe { Box::from_raw(ptr.as_ptr()) }
     }
@@ -227,7 +227,7 @@ impl<T> Box<T> {
         let ptr = Global
             .alloc(layout, AllocInit::Zeroed)
             .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-            .ptr()
+            .ptr
             .cast();
         unsafe { Box::from_raw(ptr.as_ptr()) }
     }

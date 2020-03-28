@@ -143,14 +143,14 @@ unsafe impl AllocRef for System {
         unsafe {
             let size = layout.size();
             if size == 0 {
-                Ok(MemoryBlock::new(layout.dangling(), 0))
+                Ok(MemoryBlock { ptr: layout.dangling(), size: 0 })
             } else {
                 let raw_ptr = match init {
                     AllocInit::Uninitialized => GlobalAlloc::alloc(self, layout),
                     AllocInit::Zeroed => GlobalAlloc::alloc_zeroed(self, layout),
                 };
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
-                Ok(MemoryBlock::new(ptr, size))
+                Ok(MemoryBlock { ptr, size })
             }
         }
     }
@@ -171,14 +171,14 @@ unsafe impl AllocRef for System {
         placement: ReallocPlacement,
         init: AllocInit,
     ) -> Result<MemoryBlock, AllocErr> {
-        let old_size = layout.size();
+        let size = layout.size();
         debug_assert!(
-            new_size >= old_size,
+            new_size >= size,
             "`new_size` must be greater than or equal to `memory.size()`"
         );
 
-        if old_size == new_size {
-            return Ok(MemoryBlock::new(ptr, old_size));
+        if size == new_size {
+            return Ok(MemoryBlock { ptr, size });
         }
 
         match placement {
@@ -189,10 +189,11 @@ unsafe impl AllocRef for System {
             }
             ReallocPlacement::MayMove => {
                 // `realloc` probably checks for `new_size > old_size` or something similar.
-                intrinsics::assume(new_size > old_size);
+                intrinsics::assume(new_size > size);
                 let ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
-                let mut memory = MemoryBlock::new(NonNull::new(ptr).ok_or(AllocErr)?, new_size);
-                memory.init_offset(init, old_size);
+                let mut memory =
+                    MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size };
+                memory.init_offset(init, size);
                 Ok(memory)
             }
         }
@@ -206,27 +207,27 @@ unsafe impl AllocRef for System {
         new_size: usize,
         placement: ReallocPlacement,
     ) -> Result<MemoryBlock, AllocErr> {
-        let old_size = layout.size();
+        let size = layout.size();
         debug_assert!(
-            new_size <= old_size,
+            new_size <= size,
             "`new_size` must be smaller than or equal to `memory.size()`"
         );
 
-        if old_size == new_size {
-            return Ok(MemoryBlock::new(ptr, old_size));
+        if size == new_size {
+            return Ok(MemoryBlock { ptr, size });
         }
 
         match placement {
             ReallocPlacement::InPlace => Err(AllocErr),
             ReallocPlacement::MayMove if new_size == 0 => {
                 self.dealloc(ptr, layout);
-                Ok(MemoryBlock::new(layout.dangling(), 0))
+                Ok(MemoryBlock { ptr: layout.dangling(), size: 0 })
             }
             ReallocPlacement::MayMove => {
                 // `realloc` probably checks for `new_size < old_size` or something similar.
-                intrinsics::assume(new_size < old_size);
+                intrinsics::assume(new_size < size);
                 let ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
-                Ok(MemoryBlock::new(NonNull::new(ptr).ok_or(AllocErr)?, new_size))
+                Ok(MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size })
             }
         }
     }

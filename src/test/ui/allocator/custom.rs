@@ -38,9 +38,9 @@ fn main() {
         let layout = Layout::from_size_align(4, 2).unwrap();
 
         let memory = Global.alloc(layout.clone(), AllocInit::Uninitialized).unwrap();
-        helper::work_with(&memory.ptr());
+        helper::work_with(&memory.ptr);
         assert_eq!(HITS.load(Ordering::SeqCst), n + 1);
-        Global.dealloc(memory.ptr(), layout);
+        Global.dealloc(memory.ptr, layout);
         assert_eq!(HITS.load(Ordering::SeqCst), n + 2);
 
         let s = String::with_capacity(10);
@@ -51,8 +51,8 @@ fn main() {
 
         let memory = System.alloc(layout.clone(), AllocInit::Uninitialized).unwrap();
         assert_eq!(HITS.load(Ordering::SeqCst), n + 4);
-        helper::work_with(&memory.ptr());
-        System.dealloc(memory.ptr(), layout);
+        helper::work_with(&memory.ptr);
+        System.dealloc(memory.ptr, layout);
         assert_eq!(HITS.load(Ordering::SeqCst), n + 4);
     }
 }

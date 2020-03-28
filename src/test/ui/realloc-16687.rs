@@ -46,10 +46,10 @@ unsafe fn test_triangle() -> bool {
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
         if PRINT {
-            println!("allocate({:?}) = {:?}", layout, memory.ptr());
+            println!("allocate({:?}) = {:?}", layout, memory.ptr);
         }
 
-        memory.ptr().cast().as_ptr()
+        memory.ptr.cast().as_ptr()
     }
 
     unsafe fn deallocate(ptr: *mut u8, layout: Layout) {
@@ -82,9 +82,9 @@ unsafe fn test_triangle() -> bool {
         });
 
         if PRINT {
-            println!("reallocate({:?}, old={:?}, new={:?}) = {:?}", ptr, old, new, memory.ptr());
+            println!("reallocate({:?}, old={:?}, new={:?}) = {:?}", ptr, old, new, memory.ptr);
         }
-        memory.ptr().cast().as_ptr()
+        memory.ptr.cast().as_ptr()
     }
 
     fn idx_to_size(i: usize) -> usize {

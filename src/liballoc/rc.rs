@@ -941,7 +941,7 @@ impl<T: ?Sized> Rc<T> {
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the RcBox
-        let inner = mem_to_rcbox(mem.ptr().as_ptr());
+        let inner = mem_to_rcbox(mem.ptr.as_ptr());
         debug_assert_eq!(Layout::for_value(&*inner), layout);
 
         ptr::write(&mut (*inner).strong, Cell::new(1));

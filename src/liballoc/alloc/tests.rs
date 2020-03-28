@@ -12,13 +12,13 @@ fn allocate_zeroed() {
             .alloc(layout.clone(), AllocInit::Zeroed)
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
-        let mut i = memory.ptr().cast::<u8>().as_ptr();
+        let mut i = memory.ptr.cast::<u8>().as_ptr();
         let end = i.add(layout.size());
         while i < end {
             assert_eq!(*i, 0);
             i = i.offset(1);
         }
-        Global.dealloc(memory.ptr(), layout);
+        Global.dealloc(memory.ptr, layout);
     }
 }
 

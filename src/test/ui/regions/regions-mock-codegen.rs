@@ -28,7 +28,7 @@ fn alloc(_bcx: &arena) -> &Bcx<'_> {
         let memory = Global
             .alloc(layout, AllocInit::Uninitialized)
             .unwrap_or_else(|_| handle_alloc_error(layout));
-        &*(memory.ptr().as_ptr() as *const _)
+        &*(memory.ptr.as_ptr() as *const _)
     }
 }
 

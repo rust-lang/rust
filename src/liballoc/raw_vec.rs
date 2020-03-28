@@ -152,8 +152,8 @@ impl<T, A: AllocRef> RawVec<T, A> {
 
             let memory = alloc.alloc(layout, init).unwrap_or_else(|_| handle_alloc_error(layout));
             Self {
-                ptr: memory.ptr().cast().into(),
-                cap: Self::capacity_from_bytes(memory.size()),
+                ptr: memory.ptr.cast().into(),
+                cap: Self::capacity_from_bytes(memory.size),
                 alloc,
             }
         }
@@ -470,8 +470,8 @@ impl<T, A: AllocRef> RawVec<T, A> {
     }
 
     fn set_memory(&mut self, memory: MemoryBlock) {
-        self.ptr = memory.ptr().cast().into();
-        self.cap = Self::capacity_from_bytes(memory.size());
+        self.ptr = memory.ptr.cast().into();
+        self.cap = Self::capacity_from_bytes(memory.size);
     }
 
     /// Single method to handle all possibilities of growing the buffer.
