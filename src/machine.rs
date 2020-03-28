@@ -48,9 +48,13 @@ pub enum MiriMemoryKind {
     C,
     /// Windows `HeapAlloc` memory.
     WinHeap,
-    /// Memory for env vars and args, errno, extern statics and other parts of the machine-managed environment.
+    /// Memory for args, errno, extern statics and other parts of the machine-managed environment.
+    /// This memory may leak.
     Machine,
+    /// Memory for env vars. Separate from `Machine` because we clean it up and leak-check it.
+    Env,
     /// Globals copied from `tcx`.
+    /// This memory may leak.
     Global,
 }
 
@@ -498,7 +502,7 @@ impl MayLeak for MiriMemoryKind {
     fn may_leak(self) -> bool {
         use self::MiriMemoryKind::*;
         match self {
-            Rust | C | WinHeap => false,
+            Rust | C | WinHeap | Env => false,
             Machine | Global => true,
         }
     }

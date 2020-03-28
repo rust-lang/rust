@@ -460,8 +460,10 @@ impl Stacks {
             // Global memory can be referenced by global pointers from `tcx`.
             // Thus we call `global_base_ptr` such that the global pointers get the same tag
             // as what we use here.
+            // `Machine` is used for extern statics, and thus must also be listed here.
+            // `Env` we list because we can get away with precise tracking there.
             // The base pointer is not unique, so the base permission is `SharedReadWrite`.
-            MemoryKind::Machine(MiriMemoryKind::Global) | MemoryKind::Machine(MiriMemoryKind::Machine) =>
+            MemoryKind::Machine(MiriMemoryKind::Global | MiriMemoryKind::Machine | MiriMemoryKind::Env) =>
                 (extra.borrow_mut().global_base_ptr(id), Permission::SharedReadWrite),
             // Everything else we handle entirely untagged for now.
             // FIXME: experiment with more precise tracking.

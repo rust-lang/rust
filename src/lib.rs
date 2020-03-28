@@ -2,6 +2,8 @@
 #![feature(option_expect_none, option_unwrap_none)]
 #![feature(map_first_last)]
 #![feature(never_type)]
+#![feature(or_patterns)]
+
 #![warn(rust_2018_idioms)]
 #![allow(clippy::cast_lossless)]
 

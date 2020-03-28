@@ -46,6 +46,20 @@ impl<'tcx> EnvVars<'tcx> {
         }
         ecx.update_environ()
     }
+
+    pub(crate) fn cleanup<'mir>(
+        ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
+    ) -> InterpResult<'tcx> {
+        // Deallocate individual env vars.
+        for (_name, ptr) in ecx.machine.env_vars.map.drain() {
+            ecx.memory.deallocate(ptr, None, MiriMemoryKind::Env.into())?;
+        }
+        // Deallocate environ var list.
+        let environ = ecx.machine.env_vars.environ.take().unwrap();
+        let old_vars_ptr = ecx.read_scalar(environ.into())?.not_undef()?;
+        ecx.memory.deallocate(ecx.force_ptr(old_vars_ptr)?, None, MiriMemoryKind::Env.into())?;
+        Ok(())
+    }
 }
 
 fn alloc_env_var_as_c_str<'mir, 'tcx>(
@@ -56,7 +70,7 @@ fn alloc_env_var_as_c_str<'mir, 'tcx>(
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
     name_osstring.push(value);
-    Ok(ecx.alloc_os_str_as_c_str(name_osstring.as_os_str(), MiriMemoryKind::Machine.into()))
+    Ok(ecx.alloc_os_str_as_c_str(name_osstring.as_os_str(), MiriMemoryKind::Env.into()))
 }
 
 fn alloc_env_var_as_wide_str<'mir, 'tcx>(
@@ -67,7 +81,7 @@ fn alloc_env_var_as_wide_str<'mir, 'tcx>(
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
     name_osstring.push(value);
-    Ok(ecx.alloc_os_str_as_wide_str(name_osstring.as_os_str(), MiriMemoryKind::Machine.into()))
+    Ok(ecx.alloc_os_str_as_wide_str(name_osstring.as_os_str(), MiriMemoryKind::Env.into()))
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -146,7 +160,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         // Allocate environment block & Store environment variables to environment block.
         // Final null terminator(block terminator) is added by `alloc_os_str_to_wide_str`.
-        // FIXME: MemoryKind should be `Machine`, blocked on https://github.com/rust-lang/rust/pull/70479.
+        // FIXME: MemoryKind should be `Env`, blocked on https://github.com/rust-lang/rust/pull/70479.
         let envblock_ptr = this.alloc_os_str_as_wide_str(&env_vars, MiriMemoryKind::WinHeap.into());
         // If the function succeeds, the return value is a pointer to the environment block of the current process.
         Ok(envblock_ptr.into())
@@ -158,7 +172,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.assert_target_os("windows", "FreeEnvironmentStringsW");
 
         let env_block_ptr = this.read_scalar(env_block_op)?.not_undef()?;
-        // FIXME: MemoryKind should be `Machine`, blocked on https://github.com/rust-lang/rust/pull/70479.
+        // FIXME: MemoryKind should be `Env`, blocked on https://github.com/rust-lang/rust/pull/70479.
         let result = this.memory.deallocate(this.force_ptr(env_block_ptr)?, None, MiriMemoryKind::WinHeap.into());
         // If the function succeeds, the return value is nonzero.
         Ok(result.is_ok() as i32)
@@ -188,7 +202,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let var_ptr = alloc_env_var_as_c_str(&name, &value, &mut this)?;
             if let Some(var) = this.machine.env_vars.map.insert(name, var_ptr) {
                 this.memory
-                    .deallocate(var, None, MiriMemoryKind::Machine.into())?;
+                    .deallocate(var, None, MiriMemoryKind::Env.into())?;
             }
             this.update_environ()?;
             Ok(0) // return zero on success
@@ -225,7 +239,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else if this.is_null(value_ptr)? {
             // Delete environment variable `{name}`
             if let Some(var) = this.machine.env_vars.map.remove(&name) {
-                this.memory.deallocate(var, None, MiriMemoryKind::Machine.into())?;
+                this.memory.deallocate(var, None, MiriMemoryKind::Env.into())?;
                 this.update_environ()?;
             }
             Ok(1) // return non-zero on success
@@ -234,7 +248,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let var_ptr = alloc_env_var_as_wide_str(&name, &value, &mut this)?;
             if let Some(var) = this.machine.env_vars.map.insert(name, var_ptr) {
                 this.memory
-                    .deallocate(var, None, MiriMemoryKind::Machine.into())?;
+                    .deallocate(var, None, MiriMemoryKind::Env.into())?;
             }
             this.update_environ()?;
             Ok(1) // return non-zero on success
@@ -257,7 +271,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(old) = success {
             if let Some(var) = old {
                 this.memory
-                    .deallocate(var, None, MiriMemoryKind::Machine.into())?;
+                    .deallocate(var, None, MiriMemoryKind::Env.into())?;
             }
             this.update_environ()?;
             Ok(0)
@@ -314,12 +328,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// The first time it gets called, also initializes `extra.environ`.
     fn update_environ(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        // Deallocate the old environ value, if any.
+        // Deallocate the old environ list, if any.
         if let Some(environ) = this.machine.env_vars.environ {
             let old_vars_ptr = this.read_scalar(environ.into())?.not_undef()?;
-            this.memory.deallocate(this.force_ptr(old_vars_ptr)?, None, MiriMemoryKind::Machine.into())?;
+            this.memory.deallocate(this.force_ptr(old_vars_ptr)?, None, MiriMemoryKind::Env.into())?;
         } else {
             // No `environ` allocated yet, let's do that.
+            // This is memory backing an extern static, hence `Machine`, not `Env`.
             let layout = this.layout_of(this.tcx.types.usize)?;
             let place = this.allocate(layout, MiriMemoryKind::Machine.into());
             this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
@@ -334,7 +349,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let tcx = this.tcx;
         let vars_layout =
             this.layout_of(tcx.mk_array(tcx.types.usize, u64::try_from(vars.len()).unwrap()))?;
-        let vars_place = this.allocate(vars_layout, MiriMemoryKind::Machine.into());
+        let vars_place = this.allocate(vars_layout, MiriMemoryKind::Env.into());
         for (idx, var) in vars.into_iter().enumerate() {
             let place = this.mplace_field(vars_place, idx)?;
             this.write_scalar(var, place.into())?;
