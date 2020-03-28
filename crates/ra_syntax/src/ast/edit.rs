@@ -46,12 +46,44 @@ impl ast::FnDef {
     }
 }
 
+fn make_multiline<N>(node: N) -> N
+where
+    N: AstNode + Clone,
+{
+    let l_curly = match node.syntax().children_with_tokens().find(|it| it.kind() == T!['{']) {
+        Some(it) => it,
+        None => return node,
+    };
+    let sibling = match l_curly.next_sibling_or_token() {
+        Some(it) => it,
+        None => return node,
+    };
+    let existing_ws = match sibling.as_token() {
+        None => None,
+        Some(tok) if tok.kind() != WHITESPACE => None,
+        Some(ws) => {
+            if ws.text().contains('\n') {
+                return node;
+            }
+            Some(ws.clone())
+        }
+    };
+
+    let indent = leading_indent(node.syntax()).unwrap_or_default();
+    let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
+    let to_insert = iter::once(ws.ws().into());
+    match existing_ws {
+        None => node.insert_children(InsertPosition::After(l_curly), to_insert),
+        Some(ws) => node.replace_children(single_node(ws), to_insert),
+    }
+}
+
 impl ast::ItemList {
     #[must_use]
     pub fn append_items(&self, items: impl Iterator<Item = ast::ImplItem>) -> ast::ItemList {
         let mut res = self.clone();
         if !self.syntax().text().contains_char('\n') {
-            res = res.make_multiline();
+            res = make_multiline(res);
         }
         items.for_each(|it| res = res.append_item(it));
         res
@@ -80,35 +112,6 @@ impl ast::ItemList {
 
     fn l_curly(&self) -> Option<SyntaxElement> {
         self.syntax().children_with_tokens().find(|it| it.kind() == T!['{'])
-    }
-
-    fn make_multiline(&self) -> ast::ItemList {
-        let l_curly = match self.syntax().children_with_tokens().find(|it| it.kind() == T!['{']) {
-            Some(it) => it,
-            None => return self.clone(),
-        };
-        let sibling = match l_curly.next_sibling_or_token() {
-            Some(it) => it,
-            None => return self.clone(),
-        };
-        let existing_ws = match sibling.as_token() {
-            None => None,
-            Some(tok) if tok.kind() != WHITESPACE => None,
-            Some(ws) => {
-                if ws.text().contains('\n') {
-                    return self.clone();
-                }
-                Some(ws.clone())
-            }
-        };
-
-        let indent = leading_indent(self.syntax()).unwrap_or_default();
-        let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
-        let to_insert = iter::once(ws.ws().into());
-        match existing_ws {
-            None => self.insert_children(InsertPosition::After(l_curly), to_insert),
-            Some(ws) => self.replace_children(single_node(ws), to_insert),
-        }
     }
 }
 
@@ -330,6 +333,85 @@ impl ast::UseTree {
                 return res;
             }
         }
+        res
+    }
+}
+
+impl ast::MatchArmList {
+    #[must_use]
+    pub fn append_arms(&self, items: impl Iterator<Item = ast::MatchArm>) -> ast::MatchArmList {
+        let mut res = self.clone();
+        res = res.strip_if_only_whitespace();
+        if !res.syntax().text().contains_char('\n') {
+            res = make_multiline(res);
+        }
+        items.for_each(|it| res = res.append_arm(it));
+        res
+    }
+
+    fn strip_if_only_whitespace(&self) -> ast::MatchArmList {
+        let mut iter = self.syntax().children_with_tokens().skip_while(|it| it.kind() != T!['{']);
+        iter.next(); // Eat the curly
+        let mut inner = iter.take_while(|it| it.kind() != T!['}']);
+        if !inner.clone().all(|it| it.kind() == WHITESPACE) {
+            return self.clone();
+        }
+        let start = match inner.next() {
+            Some(s) => s,
+            None => return self.clone(),
+        };
+        let end = match inner.last() {
+            Some(s) => s,
+            None => start.clone(),
+        };
+        let res = self.replace_children(start..=end, &mut iter::empty());
+        res
+    }
+
+    #[must_use]
+    pub fn remove_placeholder(&self) -> ast::MatchArmList {
+        let placeholder = self.arms().find(|arm| {
+            if let Some(ast::Pat::PlaceholderPat(_)) = arm.pat() {
+                return true;
+            }
+            false
+        });
+        if let Some(placeholder) = placeholder {
+            let s: SyntaxElement = placeholder.syntax().clone().into();
+            let e = s.clone();
+            self.replace_children(s..=e, &mut iter::empty())
+        } else {
+            self.clone()
+        }
+    }
+
+    #[must_use]
+    pub fn append_arm(&self, item: ast::MatchArm) -> ast::MatchArmList {
+        let r_curly = match self.syntax().children_with_tokens().find(|it| it.kind() == T!['}']) {
+            Some(t) => t,
+            None => return self.clone(),
+        };
+        let mut sib = r_curly.prev_sibling_or_token();
+        while let Some(s) = sib.clone() {
+            if let Some(tok) = s.as_token() {
+                if tok.kind() != WHITESPACE {
+                    break;
+                }
+                sib = s.prev_sibling_or_token();
+            } else {
+                break;
+            }
+        }
+        let indent = "    ".to_string() + &leading_indent(self.syntax()).unwrap_or_default();
+        let sib = match sib {
+            Some(s) => s,
+            None => return self.clone(),
+        };
+        let position = InsertPosition::After(sib.into());
+        let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
+        let to_insert: ArrayVec<[SyntaxElement; 2]> =
+            [ws.ws().into(), item.syntax().clone().into()].into();
+        let res = self.insert_children(position, to_insert);
         res
     }
 }
