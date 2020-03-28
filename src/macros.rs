@@ -1186,7 +1186,10 @@ fn next_space(tok: &TokenKind) -> SpaceState {
 /// Tries to convert a macro use into a short hand try expression. Returns `None`
 /// when the macro is not an instance of `try!` (or parsing the inner expression
 /// failed).
-pub(crate) fn convert_try_mac(mac: &ast::MacCall, context: &RewriteContext<'_>) -> Option<ast::Expr> {
+pub(crate) fn convert_try_mac(
+    mac: &ast::MacCall,
+    context: &RewriteContext<'_>,
+) -> Option<ast::Expr> {
     let path = &pprust::path_to_string(&mac.path);
     if path == "try" || path == "r#try" {
         let ts = mac.args.inner_tokens();

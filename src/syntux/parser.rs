@@ -168,7 +168,7 @@ impl<'a> Parser<'a> {
         path: &Path,
         span: Span,
     ) -> Option<ast::Mod> {
-            let result = catch_unwind(AssertUnwindSafe(|| {
+        let result = catch_unwind(AssertUnwindSafe(|| {
             let mut parser = new_parser_from_file(sess.inner(), &path, Some(span));
 
             let lo = parser.token.span;
@@ -241,9 +241,7 @@ impl<'a> Parser<'a> {
         sess: &'a ParseSess,
         mac: &'a ast::MacCall,
     ) -> Result<Vec<ast::Item>, &'static str> {
-        match catch_unwind(AssertUnwindSafe(|| {
-            Parser::parse_cfg_if_inner(sess, mac)
-        })) {
+        match catch_unwind(AssertUnwindSafe(|| Parser::parse_cfg_if_inner(sess, mac))) {
             Ok(Ok(items)) => Ok(items),
             Ok(err @ Err(_)) => err,
             Err(..) => Err("failed to parse cfg_if!"),
@@ -255,7 +253,8 @@ impl<'a> Parser<'a> {
         mac: &'a ast::MacCall,
     ) -> Result<Vec<ast::Item>, &'static str> {
         let token_stream = mac.args.inner_tokens();
-        let mut parser = rustc_parse::stream_to_parser(sess.inner(),token_stream.clone(),Some(""));
+        let mut parser =
+            rustc_parse::stream_to_parser(sess.inner(), token_stream.clone(), Some(""));
 
         let mut items = vec![];
         let mut process_if_cfg = true;

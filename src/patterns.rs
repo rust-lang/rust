@@ -231,7 +231,9 @@ impl Rewrite for Pat {
             PatKind::Struct(ref path, ref fields, ellipsis) => {
                 rewrite_struct_pat(path, fields, ellipsis, self.span, context, shape)
             }
-            PatKind::MacCall(ref mac) => rewrite_macro(mac, None, context, shape, MacroPosition::Pat),
+            PatKind::MacCall(ref mac) => {
+                rewrite_macro(mac, None, context, shape, MacroPosition::Pat)
+            }
             PatKind::Paren(ref pat) => pat
                 .rewrite(context, shape.offset_left(1)?.sub_width(1)?)
                 .map(|inner_pat| format!("({})", inner_pat)),

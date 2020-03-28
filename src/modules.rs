@@ -251,11 +251,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             if self.parse_sess.is_file_parsed(&path) {
                 return Ok(None);
             }
-            return match Parser::parse_file_as_module(
-                self.parse_sess,
-                &path,
-                sub_mod.inner,
-            ) {
+            return match Parser::parse_file_as_module(self.parse_sess, &path, sub_mod.inner) {
                 Some(m) => Ok(Some(SubModKind::External(
                     path,
                     DirectoryOwnership::Owned { relative: None },
@@ -293,16 +289,10 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                         return Ok(Some(SubModKind::MultiExternal(mods_outside_ast)));
                     }
                 }
-                match Parser::parse_file_as_module(
-                    self.parse_sess,
-                    &path,
-                    sub_mod.inner,
-                ) {
-                    Some(m) if outside_mods_empty => Ok(Some(SubModKind::External(
-                        path,
-                        ownership,
-                        Cow::Owned(m),
-                    ))),
+                match Parser::parse_file_as_module(self.parse_sess, &path, sub_mod.inner) {
+                    Some(m) if outside_mods_empty => {
+                        Ok(Some(SubModKind::External(path, ownership, Cow::Owned(m))))
+                    }
                     Some(m) => {
                         mods_outside_ast.push((path.clone(), ownership, Cow::Owned(m)));
                         if should_insert {
@@ -319,7 +309,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                             mods_outside_ast.push((path, ownership, sub_mod.clone()));
                         }
                         Ok(Some(SubModKind::MultiExternal(mods_outside_ast)))
-                    },
+                    }
                 }
             }
             Err(mut e) if !mods_outside_ast.is_empty() => {
@@ -385,11 +375,8 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 ));
                 continue;
             }
-            let m = match Parser::parse_file_as_module(
-                self.parse_sess,
-                &actual_path,
-                sub_mod.inner,
-            ) {
+            let m = match Parser::parse_file_as_module(self.parse_sess, &actual_path, sub_mod.inner)
+            {
                 Some(m) => m,
                 None => continue,
             };
