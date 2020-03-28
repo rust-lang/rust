@@ -17,7 +17,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         ret: mir::BasicBlock,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
-        let tcx = &{ this.tcx.tcx };
 
         match link_name {
             // Environment related shims
@@ -65,7 +64,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "write" => {
                 let fd = this.read_scalar(args[0])?.to_i32()?;
                 let buf = this.read_scalar(args[1])?.not_undef()?;
-                let n = this.read_scalar(args[2])?.to_machine_usize(tcx)?;
+                let n = this.read_scalar(args[2])?.to_machine_usize(this)?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
                 let result = if fd == 1 || fd == 2 {
                     // stdout/stderr
@@ -209,7 +208,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "pthread_getspecific" => {
                 let key = this.force_bits(this.read_scalar(args[0])?.not_undef()?, args[0].layout.size)?;
-                let ptr = this.machine.tls.load_tls(key, tcx)?;
+                let ptr = this.machine.tls.load_tls(key, this)?;
                 this.write_scalar(ptr, dest)?;
             }
             "pthread_setspecific" => {

@@ -70,7 +70,7 @@ impl<'tcx> TlsData<'tcx> {
     }
 
     pub fn load_tls(
-        &mut self,
+        &self,
         key: TlsKey,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Scalar<Tag>> {
@@ -107,7 +107,8 @@ impl<'tcx> TlsData<'tcx> {
         Ok(())
     }
 
-    /// Returns a dtor, its argument and its index, if one is supposed to run
+    /// Returns a dtor, its argument and its index, if one is supposed to run.
+    /// `key` is the last dtors that was run; we return the *next* one after that.
     ///
     /// An optional destructor function may be associated with each key value.
     /// At thread exit, if a key value has a non-NULL destructor pointer,
@@ -191,8 +192,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // step until out of stackframes
             this.run()?;
 
+            // Fetch next dtor after `key`.
             dtor = match this.machine.tls.fetch_tls_dtor(Some(key)) {
                 dtor @ Some(_) => dtor,
+                // We ran each dtor once, start over from the beginning.
                 None => this.machine.tls.fetch_tls_dtor(None),
             };
         }
