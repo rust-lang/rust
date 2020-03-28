@@ -6,12 +6,13 @@ mod navigation_target;
 mod structure;
 mod short_label;
 
-use std::fmt::{Display, Write};
+use std::fmt::Display;
 
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner, NameOwner, TypeParamsOwner},
     SyntaxKind::{ATTR, COMMENT},
 };
+use stdx::format_to;
 
 pub use function_signature::FunctionSignature;
 pub use navigation_target::NavigationTarget;
@@ -78,18 +79,18 @@ pub(crate) fn rust_code_markup_with_doc(
     doc: Option<&str>,
     mod_path: Option<&str>,
 ) -> String {
-    let mut markup = "```rust\n".to_owned();
+    let mut buf = "```rust\n".to_owned();
 
     if let Some(mod_path) = mod_path {
         if !mod_path.is_empty() {
-            write!(markup, "{}\n", mod_path).unwrap();
+            format_to!(buf, "{}\n", mod_path);
         }
     }
-    write!(markup, "{}\n```", code).unwrap();
+    format_to!(buf, "{}\n```", code);
 
     if let Some(doc) = doc {
-        write!(markup, "\n\n{}", doc).unwrap();
+        format_to!(buf, "\n\n{}", doc);
     }
 
-    markup
+    buf
 }

@@ -4,6 +4,7 @@ use std::any::Any;
 
 use hir_expand::{db::AstDatabase, name::Name, HirFileId, InFile};
 use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
+use stdx::format_to;
 
 pub use hir_def::diagnostics::UnresolvedModule;
 pub use hir_expand::diagnostics::{AstDiagnostic, Diagnostic, DiagnosticSink};
@@ -37,12 +38,11 @@ pub struct MissingFields {
 
 impl Diagnostic for MissingFields {
     fn message(&self) -> String {
-        use std::fmt::Write;
-        let mut message = String::from("Missing structure fields:\n");
+        let mut buf = String::from("Missing structure fields:\n");
         for field in &self.missed_fields {
-            writeln!(message, "- {}", field).unwrap();
+            format_to!(buf, "- {}", field);
         }
-        message
+        buf
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.field_list.into() }

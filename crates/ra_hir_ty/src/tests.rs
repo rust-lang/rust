@@ -7,7 +7,6 @@ mod traits;
 mod method_resolution;
 mod macros;
 
-use std::fmt::Write;
 use std::sync::Arc;
 
 use hir_def::{
@@ -26,6 +25,7 @@ use ra_syntax::{
     algo,
     ast::{self, AstNode},
 };
+use stdx::format_to;
 
 use crate::{db::HirDatabase, display::HirDisplay, test_db::TestDB, InferenceResult};
 
@@ -63,7 +63,7 @@ fn infer(ra_fixture: &str) -> String {
 fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     let (db, file_id) = TestDB::with_single_file(content);
 
-    let mut acc = String::new();
+    let mut buf = String::new();
 
     let mut infer_def = |inference_result: Arc<InferenceResult>,
                          body_source_map: Arc<BodySourceMap>| {
@@ -106,15 +106,14 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                 (src_ptr.value.range(), node.text().to_string().replace("\n", " "))
             };
             let macro_prefix = if src_ptr.file_id != file_id.into() { "!" } else { "" };
-            writeln!(
-                acc,
-                "{}{} '{}': {}",
+            format_to!(
+                buf,
+                "{}{} '{}': {}\n",
                 macro_prefix,
                 range,
                 ellipsize(text, 15),
                 ty.display(&db)
-            )
-            .unwrap();
+            );
         }
         if include_mismatches {
             mismatches.sort_by_key(|(src_ptr, _)| {
@@ -123,15 +122,14 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             for (src_ptr, mismatch) in &mismatches {
                 let range = src_ptr.value.range();
                 let macro_prefix = if src_ptr.file_id != file_id.into() { "!" } else { "" };
-                writeln!(
-                    acc,
-                    "{}{}: expected {}, got {}",
+                format_to!(
+                    buf,
+                    "{}{}: expected {}, got {}\n",
                     macro_prefix,
                     range,
                     mismatch.expected.display(&db),
                     mismatch.actual.display(&db),
-                )
-                .unwrap();
+                );
             }
         }
     };
@@ -158,8 +156,8 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         infer_def(infer, source_map);
     }
 
-    acc.truncate(acc.trim_end().len());
-    acc
+    buf.truncate(buf.trim_end().len());
+    buf
 }
 
 fn visit_module(

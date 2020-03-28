@@ -1,7 +1,7 @@
 //! Fully type-check project and print various stats, like the number of type
 //! errors.
 
-use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
+use std::{collections::HashSet, path::Path, time::Instant};
 
 use hir::{
     db::{AstDatabase, DefDatabase, HirDatabase},
@@ -13,6 +13,7 @@ use itertools::Itertools;
 use ra_db::SourceDatabaseExt;
 use ra_syntax::AstNode;
 use rand::{seq::SliceRandom, thread_rng};
+use stdx::format_to;
 
 use crate::cli::{load_cargo::load_cargo, progress_report::ProgressReport, Result, Verbosity};
 
@@ -128,7 +129,7 @@ pub fn analysis_stats(
             let original_file = src.file_id.original_file(db);
             let path = db.file_relative_path(original_file);
             let syntax_range = src.value.syntax().text_range();
-            write!(msg, " ({:?} {})", path, syntax_range).unwrap();
+            format_to!(msg, " ({:?} {})", path, syntax_range);
         }
         if verbosity.is_spammy() {
             bar.println(msg.to_string());
