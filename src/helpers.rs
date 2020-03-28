@@ -71,6 +71,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .not_undef()
     }
 
+    /// Helper function to get a `windows` constant as a `Scalar`.
+    fn eval_windows(&mut self, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
+        self.eval_context_mut()
+            .eval_path_scalar(&["std", "sys", "windows", "c", name])?
+            .not_undef()
+    }
+
     /// Helper function to get a `libc` constant as an `i32`.
     fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
         // TODO: Cache the result.
@@ -428,11 +435,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             })?
         } else {
-            // FIXME: we have to implement the Windows equivalent of this.
-            throw_unsup_format!(
-                "setting the last OS error from an io::Error is unsupported for {}.",
-                target.target_os
-            )
+            // FIXME: we have to finish implementing the Windows equivalent of this.
+            this.eval_windows(match e.kind() {
+                NotFound => "ERROR_FILE_NOT_FOUND",
+                _ => throw_unsup_format!(
+                    "setting the last OS error from an io::Error is yet unsupported for {}.",
+                    target.target_os
+                )
+            })?
         };
         this.set_last_error(last_error)
     }
