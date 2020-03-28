@@ -1076,6 +1076,7 @@ name = "ra_proc_macro"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
+ "jod-thread",
  "log",
  "ra_tt",
  "serde",

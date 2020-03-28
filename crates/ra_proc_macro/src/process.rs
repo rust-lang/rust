@@ -12,7 +12,6 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
-    thread::{spawn, JoinHandle},
 };
 
 #[derive(Debug, Default)]
@@ -22,8 +21,18 @@ pub(crate) struct ProcMacroProcessSrv {
 
 #[derive(Debug)]
 pub(crate) struct ProcMacroProcessThread {
-    handle: Option<JoinHandle<()>>,
-    sender: Sender<Task>,
+    // XXX: drop order is significant
+    sender: SenderGuard,
+    handle: jod_thread::JoinHandle<()>,
+}
+
+#[derive(Debug)]
+struct SenderGuard(pub Sender<Task>);
+
+impl std::ops::Drop for SenderGuard {
+    fn drop(&mut self) {
+        let _ = self.0.send(Task::Close);
+    }
 }
 
 enum Task {
@@ -62,18 +71,6 @@ impl Process {
     }
 }
 
-impl std::ops::Drop for ProcMacroProcessThread {
-    fn drop(&mut self) {
-        if let Some(handle) = self.handle.take() {
-            let _ = self.sender.send(Task::Close);
-
-            // Join the thread, it should finish shortly. We don't really care
-            // whether it panicked, so it is safe to ignore the result
-            let _ = handle.join();
-        }
-    }
-}
-
 impl ProcMacroProcessSrv {
     pub fn run(
         process_path: &Path,
@@ -81,12 +78,12 @@ impl ProcMacroProcessSrv {
         let process = Process::run(process_path)?;
 
         let (task_tx, task_rx) = bounded(0);
-        let handle = spawn(move || {
+        let handle = jod_thread::spawn(move || {
             client_loop(task_rx, process);
         });
 
         let srv = ProcMacroProcessSrv { inner: Some(task_tx.clone()) };
-        let thread = ProcMacroProcessThread { handle: Some(handle), sender: task_tx };
+        let thread = ProcMacroProcessThread { handle, sender: SenderGuard(task_tx) };
 
         Ok((thread, srv))
     }
