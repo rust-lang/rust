@@ -505,10 +505,10 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
             cmd.args(args);
         }
     }
-    if let Some(ref args) = sess.opts.debugging_opts.pre_link_args {
+    if let Some(ref args) = sess.opts.cg.pre_link_args {
         cmd.args(args);
     }
-    cmd.args(&sess.opts.debugging_opts.pre_link_arg);
+    cmd.args(&sess.opts.cg.pre_link_arg);
 
     if sess.target.target.options.is_like_fuchsia {
         let prefix = match sess.opts.debugging_opts.sanitizer {
