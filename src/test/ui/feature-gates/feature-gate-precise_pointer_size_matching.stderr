@@ -5,6 +5,7 @@ LL |     match 0usize {
    |           ^^^^^^ pattern `_` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `usize`
 
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/feature-gate-precise_pointer_size_matching.rs:10:11
@@ -13,6 +14,7 @@ LL |     match 0isize {
    |           ^^^^^^ pattern `_` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `isize`
 
 error: aborting due to 2 previous errors
 

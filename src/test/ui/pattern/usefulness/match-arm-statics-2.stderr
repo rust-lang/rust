@@ -5,6 +5,7 @@ LL |     match (true, false) {
    |           ^^^^^^^^^^^^^ pattern `(true, false)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `(bool, bool)`
 
 error[E0004]: non-exhaustive patterns: `Some(Some(West))` not covered
   --> $DIR/match-arm-statics-2.rs:34:11
@@ -21,6 +22,7 @@ LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `std::option::Option<std::option::Option<Direction>>`
 
 error[E0004]: non-exhaustive patterns: `Foo { bar: Some(North), baz: NewBool(true) }` not covered
   --> $DIR/match-arm-statics-2.rs:53:11
@@ -35,6 +37,7 @@ LL |       match (Foo { bar: Some(North), baz: NewBool(true) }) {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo { bar: Some(North), baz: NewBool(true) }` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `Foo`
 
 error: aborting due to 3 previous errors
 

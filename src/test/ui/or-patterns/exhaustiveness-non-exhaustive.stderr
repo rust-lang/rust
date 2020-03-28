@@ -5,6 +5,7 @@ LL |     match (0u8, 0u8) {
    |           ^^^^^^^^^^ pattern `(2u8..=std::u8::MAX, _)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `(u8, u8)`
 
 error[E0004]: non-exhaustive patterns: `((4u8..=std::u8::MAX))` not covered
   --> $DIR/exhaustiveness-non-exhaustive.rs:10:11
@@ -13,6 +14,7 @@ LL |     match ((0u8,),) {
    |           ^^^^^^^^^ pattern `((4u8..=std::u8::MAX))` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `((u8,),)`
 
 error[E0004]: non-exhaustive patterns: `(Some(2u8..=std::u8::MAX))` not covered
   --> $DIR/exhaustiveness-non-exhaustive.rs:14:11
@@ -21,6 +23,7 @@ LL |     match (Some(0u8),) {
    |           ^^^^^^^^^^^^ pattern `(Some(2u8..=std::u8::MAX))` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `(std::option::Option<u8>,)`
 
 error: aborting due to 3 previous errors
 

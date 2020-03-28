@@ -11,6 +11,7 @@ LL |     match x { T::B => { } }
    |           ^ pattern `A` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `T`
 
 error[E0004]: non-exhaustive patterns: `false` not covered
   --> $DIR/non-exhaustive-match.rs:13:11
@@ -19,6 +20,7 @@ LL |     match true {
    |           ^^^^ pattern `false` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `bool`
 
 error[E0004]: non-exhaustive patterns: `Some(_)` not covered
   --> $DIR/non-exhaustive-match.rs:16:11
@@ -32,6 +34,7 @@ LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     ---- not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `std::option::Option<i32>`
 
 error[E0004]: non-exhaustive patterns: `(_, _, std::i32::MIN..=3i32)` and `(_, _, 5i32..=std::i32::MAX)` not covered
   --> $DIR/non-exhaustive-match.rs:19:11
@@ -40,6 +43,7 @@ LL |     match (2, 3, 4) {
    |           ^^^^^^^^^ patterns `(_, _, std::i32::MIN..=3i32)` and `(_, _, 5i32..=std::i32::MAX)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `(i32, i32, i32)`
 
 error[E0004]: non-exhaustive patterns: `(A, A)` not covered
   --> $DIR/non-exhaustive-match.rs:23:11
@@ -48,6 +52,7 @@ LL |     match (T::A, T::A) {
    |           ^^^^^^^^^^^^ pattern `(A, A)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `(T, T)`
 
 error[E0004]: non-exhaustive patterns: `B` not covered
   --> $DIR/non-exhaustive-match.rs:27:11
@@ -62,6 +67,7 @@ LL |     match T::A {
    |           ^^^^ pattern `B` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `T`
 
 error[E0004]: non-exhaustive patterns: `[]` not covered
   --> $DIR/non-exhaustive-match.rs:38:11
@@ -70,6 +76,7 @@ LL |     match *vec {
    |           ^^^^ pattern `[]` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `[std::option::Option<isize>]`
 
 error[E0004]: non-exhaustive patterns: `[_, _, _, _, ..]` not covered
   --> $DIR/non-exhaustive-match.rs:51:11
@@ -78,6 +85,7 @@ LL |     match *vec {
    |           ^^^^ pattern `[_, _, _, _, ..]` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `[f32]`
 
 error: aborting due to 8 previous errors
 
