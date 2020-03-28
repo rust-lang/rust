@@ -391,7 +391,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
 struct TransPlaceInterpreter;
 
 impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
-    type MemoryKinds = !;
+    type MemoryKind = !;
     type ExtraFnVal = !;
     type PointerTag = ();
     type AllocExtra = ();
@@ -400,7 +400,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation<()>)>;
 
     const CHECK_ALIGN: bool = true;
-    const STATIC_KIND: Option<!> = None;
+    const GLOBAL_KIND: Option<!> = None;
 
     fn enforce_validity(_: &InterpCx<'mir, 'tcx, Self>) -> bool {
         false
@@ -458,7 +458,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         (alloc, ())
     }
 
-    fn tag_static_base_pointer(_: &(), _: AllocId) -> Self::PointerTag {
+    fn tag_global_base_pointer(_: &(), _: AllocId) -> Self::PointerTag {
         ()
     }
 

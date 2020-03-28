@@ -573,7 +573,13 @@ fn trans_stmt<'tcx>(
                 }
                 Rvalue::Repeat(operand, times) => {
                     let operand = trans_operand(fx, operand);
-                    for i in 0..*times {
+                    let times = fx
+                        .monomorphize(times)
+                        .eval(fx.tcx, ParamEnv::reveal_all())
+                        .val
+                        .try_to_bits(fx.tcx.data_layout.pointer_size)
+                        .unwrap();
+                    for i in 0..times {
                         let index = fx.bcx.ins().iconst(fx.pointer_type, i as i64);
                         let to = lval.place_index(fx, index);
                         to.write_cvalue(fx, operand);
@@ -642,14 +648,14 @@ fn trans_stmt<'tcx>(
         | StatementKind::Retag { .. }
         | StatementKind::AscribeUserType(..) => {}
 
-        StatementKind::InlineAsm(asm) => {
+        StatementKind::LlvmInlineAsm(asm) => {
             use rustc_ast::ast::Name;
-            let InlineAsm {
+            let LlvmInlineAsm {
                 asm,
                 outputs: _,
                 inputs: _,
             } = &**asm;
-            let rustc_hir::InlineAsmInner {
+            let rustc_hir::LlvmInlineAsmInner {
                 asm: asm_code, // Name
                 outputs,       // Vec<Name>
                 inputs,        // Vec<Name>

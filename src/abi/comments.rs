@@ -61,15 +61,15 @@ pub(super) fn add_local_place_comments<'tcx>(
     place: CPlace<'tcx>,
     local: Local,
 ) {
-    let TyLayout { ty, details } = place.layout();
-    let ty::layout::LayoutDetails {
+    let TyLayout { ty, layout } = place.layout();
+    let ty::layout::Layout {
         size,
         align,
         abi: _,
         variants: _,
         fields: _,
         largest_niche: _,
-    } = details;
+    } = layout;
 
     let (kind, extra) = match *place.inner() {
         CPlaceInner::Var(var) => {
