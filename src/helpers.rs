@@ -413,7 +413,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn set_last_error_from_io_error(&mut self, e: std::io::Error) -> InterpResult<'tcx> {
         use std::io::ErrorKind::*;
         let this = self.eval_context_mut();
-        let target = &this.tcx.tcx.sess.target.target;
+        let target = &this.tcx.sess.target.target;
         let last_error = if target.options.target_family == Some("unix".to_owned()) {
             this.eval_libc(match e.kind() {
                 ConnectionRefused => "ECONNREFUSED",

@@ -19,7 +19,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn min_align(&self, size: u64, kind: MiriMemoryKind) -> Align {
         let this = self.eval_context_ref();
         // List taken from `libstd/sys_common/alloc.rs`.
-        let min_align = match this.tcx.tcx.sess.target.target.arch.as_str() {
+        let min_align = match this.tcx.sess.target.target.arch.as_str() {
             "x86" | "arm" | "mips" | "powerpc" | "powerpc64" | "asmjs" | "wasm32" => 8,
             "x86_64" | "aarch64" | "mips64" | "s390x" | "sparc64" => 16,
             arch => bug!("Unsupported target architecture: {}", arch),
