@@ -298,8 +298,14 @@ impl<'a> FmtVisitor<'a> {
 
     fn format_foreign_item(&mut self, item: &ast::ForeignItem) {
         let rewrite = item.rewrite(&self.get_context(), self.shape());
-        self.push_rewrite(item.span, rewrite);
-        self.last_pos = item.span.hi();
+        let hi = item.span.hi();
+        let span = if item.attrs.is_empty() {
+            item.span
+        } else {
+            mk_sp(item.attrs[0].span.lo(), hi)
+        };
+        self.push_rewrite(span, rewrite);
+        self.last_pos = hi;
     }
 
     pub(crate) fn rewrite_fn_before_block(
