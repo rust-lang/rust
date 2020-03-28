@@ -307,7 +307,7 @@ pub fn const_eval_raw_provider<'tcx>(
     );
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
-    res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, *body))
+    res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body))
         .and_then(|place| {
             Ok(RawConst { alloc_id: place.ptr.assert_ptr().alloc_id, ty: place.layout.ty })
         })

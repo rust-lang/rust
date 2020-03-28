@@ -210,7 +210,7 @@ fn type_check_internal<'a, 'tcx, R>(
     );
     let errors_reported = {
         let mut verifier = TypeVerifier::new(&mut checker, *body, promoted);
-        verifier.visit_body(*body);
+        verifier.visit_body(&body);
         verifier.errors_reported
     };
 
@@ -563,7 +563,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         swap_constraints(self);
 
-        self.visit_body(*promoted_body);
+        self.visit_body(&promoted_body);
 
         if !self.errors_reported {
             // if verifier failed, don't do further checks to avoid ICEs
