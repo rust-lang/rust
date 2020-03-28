@@ -5,17 +5,18 @@ use std::sync::{Mutex, RwLock, TryLockError};
 extern crate libc;
 
 fn main() {
-    test_mutex();
+    test_mutex_stdlib();
     #[cfg(not(target_os = "windows"))] // TODO: implement RwLock on Windows
     {
-        test_mutex_libc_recursive();
+        test_mutex_libc_init_recursive();
+        test_mutex_libc_init_normal();
+        test_mutex_libc_static_initializer_recursive();
         test_rwlock_stdlib();
-        test_mutex_libc_init();
         test_rwlock_libc_static_initializer();
     }
 }
 
-fn test_mutex() {
+fn test_mutex_stdlib() {
     let m = Mutex::new(0);
     {
         let _guard = m.lock();
@@ -26,7 +27,7 @@ fn test_mutex() {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn test_mutex_libc_recursive() {
+fn test_mutex_libc_init_recursive() {
     unsafe {
         let mut attr: libc::pthread_mutexattr_t = std::mem::zeroed();
         assert_eq!(libc::pthread_mutexattr_init(&mut attr as *mut _), 0);
@@ -44,6 +45,39 @@ fn test_mutex_libc_recursive() {
         assert_eq!(libc::pthread_mutex_unlock(&mut mutex as *mut _), libc::EPERM);
         assert_eq!(libc::pthread_mutex_destroy(&mut mutex as *mut _), 0);
         assert_eq!(libc::pthread_mutexattr_destroy(&mut attr as *mut _), 0);
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn test_mutex_libc_init_normal() {
+    unsafe {
+        let mut mutexattr: libc::pthread_mutexattr_t = std::mem::zeroed();
+        assert_eq!(libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, libc::PTHREAD_MUTEX_NORMAL), 0);
+        let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
+        assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mutexattr as *const _), 0);
+        assert_eq!(libc::pthread_mutex_lock(&mut mutex as *mut _), 0);
+        assert_eq!(libc::pthread_mutex_trylock(&mut mutex as *mut _), libc::EBUSY);
+        assert_eq!(libc::pthread_mutex_unlock(&mut mutex as *mut _), 0);
+        assert_eq!(libc::pthread_mutex_trylock(&mut mutex as *mut _), 0);
+        assert_eq!(libc::pthread_mutex_unlock(&mut mutex as *mut _), 0);
+        assert_eq!(libc::pthread_mutex_destroy(&mut mutex as *mut _), 0);
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn test_mutex_libc_static_initializer_recursive() {
+    let mutex = std::cell::UnsafeCell::new(libc::PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP);
+    unsafe {
+        assert_eq!(libc::pthread_mutex_lock(mutex.get()), 0);
+        assert_eq!(libc::pthread_mutex_trylock(mutex.get()), 0);
+        assert_eq!(libc::pthread_mutex_unlock(mutex.get()), 0);
+        assert_eq!(libc::pthread_mutex_unlock(mutex.get()), 0);
+        assert_eq!(libc::pthread_mutex_trylock(mutex.get()), 0);
+        assert_eq!(libc::pthread_mutex_lock(mutex.get()), 0);
+        assert_eq!(libc::pthread_mutex_unlock(mutex.get()), 0);
+        assert_eq!(libc::pthread_mutex_unlock(mutex.get()), 0);
+        assert_eq!(libc::pthread_mutex_unlock(mutex.get()), libc::EPERM);
+        assert_eq!(libc::pthread_mutex_destroy(mutex.get()), 0);
     }
 }
 
@@ -66,20 +100,6 @@ fn test_rwlock_stdlib() {
 
 // need to go a layer deeper and test the behavior of libc functions, because
 // std::sys::unix::rwlock::RWLock keeps track of write_locked and num_readers
-
-#[cfg(not(target_os = "windows"))]
-fn test_mutex_libc_init() {
-    unsafe {
-        let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
-        assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, std::ptr::null_mut()), 0);
-        assert_eq!(libc::pthread_mutex_lock(&mut mutex as *mut _), 0);
-        assert_eq!(libc::pthread_mutex_trylock(&mut mutex as *mut _), libc::EBUSY);
-        assert_eq!(libc::pthread_mutex_unlock(&mut mutex as *mut _), 0);
-        assert_eq!(libc::pthread_mutex_trylock(&mut mutex as *mut _), 0);
-        assert_eq!(libc::pthread_mutex_unlock(&mut mutex as *mut _), 0);
-        assert_eq!(libc::pthread_mutex_destroy(&mut mutex as *mut _), 0);
-    }
-}
 
 #[cfg(not(target_os = "windows"))]
 fn test_rwlock_libc_static_initializer() {
