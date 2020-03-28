@@ -1538,7 +1538,7 @@ impl ExplicitOutlivesRequirements {
         inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
         ty_generics: &'tcx ty::Generics,
     ) -> Vec<ty::Region<'tcx>> {
-        let index = ty_generics.param_def_id_to_index[&tcx.hir().local_def_id(param.hir_id)];
+        let index = ty_generics.param_def_id_to_index(tcx.hir().local_def_id(param.hir_id));
 
         match param.kind {
             hir::GenericParamKind::Lifetime { .. } => {
@@ -1711,7 +1711,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                         match predicate.bounded_ty.kind {
                             hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
                                 if let Res::Def(DefKind::TyParam, def_id) = path.res {
-                                    let index = ty_generics.param_def_id_to_index[&def_id];
+                                    let index = ty_generics.param_def_id_to_index(def_id);
                                     (
                                         Self::lifetimes_outliving_type(inferred_outlives, index),
                                         &predicate.bounds,

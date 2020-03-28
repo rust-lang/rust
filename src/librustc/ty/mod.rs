@@ -1020,10 +1020,6 @@ pub struct Generics {
     pub parent_count: usize,
     pub params: Vec<GenericParamDef>,
 
-    /// Reverse map to the `index` field of each `GenericParamDef`.
-    #[stable_hasher(ignore)]
-    pub param_def_id_to_index: FxHashMap<DefId, u32>,
-
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,
 }
@@ -1031,6 +1027,17 @@ pub struct Generics {
 impl<'tcx> Generics {
     pub fn count(&self) -> usize {
         self.parent_count + self.params.len()
+    }
+
+    /// Returns the index of the param with the given `DefId`,
+    /// panics in case no param is found.
+    #[inline]
+    pub fn param_def_id_to_index(&self, def_id: DefId) -> u32 {
+        self.params
+            .iter()
+            .find(|param| param.def_id == def_id)
+            .map(|param| param.index)
+            .expect("invalid def_id")
     }
 
     pub fn own_counts(&self) -> GenericParamCount {

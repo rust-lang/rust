@@ -503,7 +503,7 @@ fn type_param_predicates(
     let param_owner = tcx.hir().ty_param_owner(param_id);
     let param_owner_def_id = tcx.hir().local_def_id(param_owner);
     let generics = tcx.generics_of(param_owner_def_id);
-    let index = generics.param_def_id_to_index[&def_id];
+    let index = generics.param_def_id_to_index(def_id);
     let ty = tcx.mk_ty_param(index, tcx.hir().ty_param_name(param_id));
 
     // Don't look for bounds where the type parameter isn't in scope.
@@ -1394,13 +1394,10 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
         }));
     }
 
-    let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();
-
     tcx.arena.alloc(ty::Generics {
         parent: parent_def_id,
         parent_count,
         params,
-        param_def_id_to_index,
         has_self: has_self || parent_has_self,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
     })

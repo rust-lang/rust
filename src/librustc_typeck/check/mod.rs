@@ -2714,7 +2714,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         let item_id = tcx.hir().ty_param_owner(hir_id);
         let item_def_id = tcx.hir().local_def_id(item_id);
         let generics = tcx.generics_of(item_def_id);
-        let index = generics.param_def_id_to_index[&def_id];
+        let index = generics.param_def_id_to_index(def_id);
         ty::GenericPredicates {
             parent: None,
             predicates: tcx.arena.alloc_from_iter(self.param_env.caller_bounds.iter().filter_map(
