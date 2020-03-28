@@ -348,12 +348,6 @@ macro_rules! define_queries_inner {
                 &tcx.queries.$name
             }
 
-            #[allow(unused)]
-            #[inline(always)]
-            fn to_dep_node(tcx: TyCtxt<$tcx>, key: &Self::Key) -> DepNode {
-                DepConstructor::$node(tcx, *key)
-            }
-
             #[inline]
             fn compute(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value {
                 let provider = tcx.queries.providers.get(key.query_crate())

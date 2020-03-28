@@ -392,7 +392,7 @@ fn try_execute_query<CTX, C>(
 ) -> C::Stored
 where
     C: QueryCache,
-    C::Key: Eq + Clone + Debug,
+    C::Key: Eq + Clone + Debug + crate::dep_graph::DepNodeParams<CTX>,
     C::Stored: Clone,
     CTX: QueryContext,
 {
@@ -616,6 +616,7 @@ where
 pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key) -> Q::Stored
 where
     Q: QueryDescription<CTX>,
+    Q::Key: crate::dep_graph::DepNodeParams<CTX>,
     CTX: QueryContext,
 {
     debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
@@ -642,6 +643,7 @@ where
 pub fn ensure_query<Q, CTX>(tcx: CTX, key: Q::Key)
 where
     Q: QueryDescription<CTX>,
+    Q::Key: crate::dep_graph::DepNodeParams<CTX>,
     CTX: QueryContext,
 {
     if Q::EVAL_ALWAYS {

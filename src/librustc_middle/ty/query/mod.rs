@@ -1,4 +1,4 @@
-use crate::dep_graph::{self, DepConstructor, DepNode, DepNodeParams};
+use crate::dep_graph::{self, DepNode, DepNodeParams};
 use crate::hir::exports::Export;
 use crate::hir::map;
 use crate::infer::canonical::{self, Canonical};

@@ -28,7 +28,6 @@ pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
     pub anon: bool,
     pub dep_kind: CTX::DepKind,
     pub eval_always: bool,
-    pub to_dep_node: fn(CTX, &K) -> DepNode<CTX::DepKind>,
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     pub compute: fn(CTX, K) -> V,
@@ -40,8 +39,11 @@ pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
 }
 
 impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
-    pub(crate) fn to_dep_node(&self, tcx: CTX, key: &K) -> DepNode<CTX::DepKind> {
-        (self.to_dep_node)(tcx, key)
+    pub(crate) fn to_dep_node(&self, tcx: CTX, key: &K) -> DepNode<CTX::DepKind>
+    where
+        K: crate::dep_graph::DepNodeParams<CTX>,
+    {
+        DepNode::construct(tcx, self.dep_kind, key)
     }
 
     pub(crate) fn compute(&self, tcx: CTX, key: K) -> V {
@@ -79,7 +81,12 @@ pub trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX, Self::Cache>;
 
-    fn to_dep_node(tcx: CTX, key: &Self::Key) -> DepNode<CTX::DepKind>;
+    fn to_dep_node(tcx: CTX, key: &Self::Key) -> DepNode<CTX::DepKind>
+    where
+        Self::Key: crate::dep_graph::DepNodeParams<CTX>,
+    {
+        DepNode::construct(tcx, Self::DEP_KIND, key)
+    }
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn compute(tcx: CTX, key: Self::Key) -> Self::Value;
@@ -117,7 +124,6 @@ where
     const VTABLE: QueryVtable<CTX, Q::Key, Q::Value> = QueryVtable {
         anon: Q::ANON,
         dep_kind: Q::DEP_KIND,
-        to_dep_node: Q::to_dep_node,
         eval_always: Q::EVAL_ALWAYS,
         compute: Q::compute,
         hash_result: Q::hash_result,

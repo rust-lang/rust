@@ -183,31 +183,10 @@ macro_rules! define_dep_nodes {
                     // tuple args
                     $({
                         erase!($tuple_arg_ty);
-                        let hash = DepNodeParams::to_fingerprint(&arg, _tcx);
-                        let dep_node = DepNode {
-                            kind: DepKind::$variant,
-                            hash
-                        };
-
-                        #[cfg(debug_assertions)]
-                        {
-                            if !dep_node.kind.can_reconstruct_query_key() &&
-                            (_tcx.sess.opts.debugging_opts.incremental_info ||
-                                _tcx.sess.opts.debugging_opts.query_dep_graph)
-                            {
-                                _tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
-                                    arg.to_debug_str(_tcx)
-                                });
-                            }
-                        }
-
-                        return dep_node;
+                        return DepNode::construct(_tcx, DepKind::$variant, &arg)
                     })*
 
-                    DepNode {
-                        kind: DepKind::$variant,
-                        hash: Fingerprint::ZERO,
-                    }
+                    return DepNode::construct(_tcx, DepKind::$variant, &())
                 }
             )*
         }

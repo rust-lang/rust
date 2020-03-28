@@ -98,6 +98,10 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     fn debug_dep_tasks(&self) -> bool {
         self.sess.opts.debugging_opts.dep_tasks
     }
+    fn debug_dep_node(&self) -> bool {
+        self.sess.opts.debugging_opts.incremental_info
+            || self.sess.opts.debugging_opts.query_dep_graph
+    }
 
     fn try_force_from_dep_node(&self, dep_node: &DepNode) -> bool {
         // FIXME: This match is just a workaround for incremental bugs and should
