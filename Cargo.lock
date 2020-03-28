@@ -966,6 +966,7 @@ dependencies = [
  "ra_syntax",
  "ra_tt",
  "rustc-hash",
+ "stdx",
  "test_utils",
 ]
 
@@ -1002,6 +1003,7 @@ dependencies = [
  "ra_prof",
  "ra_syntax",
  "rustc-hash",
+ "stdx",
  "test_utils",
 ]
 
@@ -1116,6 +1118,7 @@ dependencies = [
  "rustc_lexer",
  "serde",
  "smol_str",
+ "stdx",
  "test_utils",
  "walkdir",
 ]
@@ -1307,6 +1310,7 @@ dependencies = [
  "rustc-hash",
  "serde",
  "serde_json",
+ "stdx",
  "tempfile",
  "test_utils",
  "threadpool",

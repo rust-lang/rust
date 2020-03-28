@@ -1,6 +1,7 @@
 //! This module contains free-standing functions for creating AST fragments out
 //! of smaller pieces.
 use itertools::Itertools;
+use stdx::format_to;
 
 use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, SyntaxToken};
 
@@ -34,14 +35,14 @@ pub fn use_tree(
     let mut buf = "use ".to_string();
     buf += &path.syntax().to_string();
     if let Some(use_tree_list) = use_tree_list {
-        buf += &format!("::{}", use_tree_list);
+        format_to!(buf, "::{}", use_tree_list);
     }
     if add_star {
         buf += "::*";
     }
 
     if let Some(alias) = alias {
-        buf += &format!(" {}", alias);
+        format_to!(buf, " {}", alias);
     }
     ast_from_text(&buf)
 }
@@ -70,15 +71,15 @@ pub fn block_expr(
     stmts: impl IntoIterator<Item = ast::Stmt>,
     tail_expr: Option<ast::Expr>,
 ) -> ast::BlockExpr {
-    let mut text = "{\n".to_string();
+    let mut buf = "{\n".to_string();
     for stmt in stmts.into_iter() {
-        text += &format!("    {}\n", stmt);
+        format_to!(buf, "    {}\n", stmt);
     }
     if let Some(tail_expr) = tail_expr {
-        text += &format!("    {}\n", tail_expr)
+        format_to!(buf, "    {}\n", tail_expr)
     }
-    text += "}";
-    ast_from_text(&format!("fn f() {}", text))
+    buf += "}";
+    ast_from_text(&format!("fn f() {}", buf))
 }
 
 pub fn block_from_expr(e: ast::Expr) -> ast::Block {

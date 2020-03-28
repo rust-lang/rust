@@ -10,6 +10,7 @@ use hir_expand::{db::AstDatabase, diagnostics::DiagnosticSink};
 use ra_db::{
     salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath, SourceDatabase, Upcast,
 };
+use stdx::format_to;
 
 use crate::{db::HirDatabase, expr::ExprValidator};
 
@@ -131,7 +132,7 @@ impl TestDB {
             for f in fns {
                 let infer = self.infer(f.into());
                 let mut sink = DiagnosticSink::new(|d| {
-                    buf += &format!("{:?}: {}\n", d.syntax_node(self).text(), d.message());
+                    format_to!(buf, "{:?}: {}\n", d.syntax_node(self).text(), d.message());
                 });
                 infer.add_diagnostics(self, f, &mut sink);
                 let mut validator = ExprValidator::new(f, infer, &mut sink);

@@ -19,6 +19,7 @@ use ra_ide::{
 use ra_project_model::{get_rustc_cfg_options, ProcMacroClient, ProjectWorkspace};
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask, Watch};
 use relative_path::RelativePathBuf;
+use stdx::format_to;
 
 use crate::{
     diagnostics::{CheckFixes, DiagnosticCollection},
@@ -319,23 +320,23 @@ impl WorldSnapshot {
     }
 
     pub fn status(&self) -> String {
-        let mut res = String::new();
+        let mut buf = String::new();
         if self.workspaces.is_empty() {
-            res.push_str("no workspaces\n")
+            buf.push_str("no workspaces\n")
         } else {
-            res.push_str("workspaces:\n");
+            buf.push_str("workspaces:\n");
             for w in self.workspaces.iter() {
-                res += &format!("{} packages loaded\n", w.n_packages());
+                format_to!(buf, "{} packages loaded\n", w.n_packages());
             }
         }
-        res.push_str("\nanalysis:\n");
-        res.push_str(
+        buf.push_str("\nanalysis:\n");
+        buf.push_str(
             &self
                 .analysis
                 .status()
                 .unwrap_or_else(|_| "Analysis retrieval was cancelled".to_owned()),
         );
-        res
+        buf
     }
 
     pub fn workspace_root_for(&self, file_id: FileId) -> Option<&Path> {
