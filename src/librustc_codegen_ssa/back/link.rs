@@ -1391,10 +1391,17 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
     // link line. And finally upstream native libraries can't depend on anything
     // in this DAG so far because they're only dylibs and dylibs can only depend
     // on other dylibs (e.g., other native deps).
-    add_local_native_libraries(cmd, sess, codegen_results);
+    //
+    // If -Zlink-native-libraries=false is set, then the assumption is that an
+    // external build system already has the native dependencies defined, and it
+    // will provide them to the linker itself.
+    if sess.opts.debugging_opts.link_native_libraries.unwrap_or(true) {
+        add_local_native_libraries(cmd, sess, codegen_results);
+    }
     add_upstream_rust_crates::<B>(cmd, sess, codegen_results, crate_type, tmpdir);
-    add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
-
+    if sess.opts.debugging_opts.link_native_libraries.unwrap_or(true) {
+        add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
+    }
     // Tell the linker what we're doing.
     if crate_type != config::CrateType::Executable {
         cmd.build_dylib(out_filename);
