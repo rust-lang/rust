@@ -10,9 +10,12 @@ fn main() {
     {
         test_mutex_libc_init_recursive();
         test_mutex_libc_init_normal();
-        test_mutex_libc_static_initializer_recursive();
         test_rwlock_stdlib();
         test_rwlock_libc_static_initializer();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        test_mutex_libc_static_initializer_recursive();
     }
 }
 
@@ -64,7 +67,7 @@ fn test_mutex_libc_init_normal() {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
 fn test_mutex_libc_static_initializer_recursive() {
     let mutex = std::cell::UnsafeCell::new(libc::PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP);
     unsafe {
