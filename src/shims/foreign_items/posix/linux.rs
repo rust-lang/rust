@@ -140,6 +140,6 @@ fn getrandom<'tcx>(
     let _flags = this.read_scalar(args[2])?.to_i32()?;
 
     this.gen_random(ptr, len)?;
-    this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
+    this.write_scalar(Scalar::from_machine_usize(len, this), dest)?;
     Ok(())
 }

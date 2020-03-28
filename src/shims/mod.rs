@@ -75,7 +75,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let ptr_scalar = this.read_scalar(ptr_op)?.not_undef()?;
 
         // Default: no result.
-        let mut result = this.truncate(u128::MAX, dest.layout);
+        let mut result = this.usize_max();
         if let Ok(ptr) = this.force_ptr(ptr_scalar) {
             // Only do anything if we can identify the allocation this goes to.
             let cur_align =
@@ -84,7 +84,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // If the allocation alignment is at least the required alignment we use the
                 // libcore implementation.
                 // FIXME: is this correct in case of truncation?
-                result = u128::try_from(
+                result = u64::try_from(
                     (this.force_bits(ptr_scalar, this.pointer_size())? as *const i8)
                         .align_offset(usize::try_from(req_align).unwrap())
                 ).unwrap();
@@ -92,7 +92,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Return result, and jump to caller.
-        this.write_scalar(Scalar::from_uint(result, this.pointer_size()), dest)?;
+        this.write_scalar(Scalar::from_machine_usize(result, this), dest)?;
         this.go_to_block(ret);
         Ok(())
     }
