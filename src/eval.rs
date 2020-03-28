@@ -184,10 +184,9 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 /// Returns `Some(return_code)` if program executed completed.
 /// Returns `None` if an evaluation error occured.
 pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) -> Option<i64> {
-    // FIXME: We always ignore leaks on some OSs where we do not
-    // correctly implement TLS destructors.
-    let target_os = &tcx.sess.target.target.target_os;
-    let ignore_leaks = config.ignore_leaks || target_os == "windows";
+    // FIXME: on Windows, locks and TLS dtor management allocate and leave that memory in `static`s.
+    // So we need https://github.com/rust-lang/miri/issues/940 to fix the leaks there.
+    let ignore_leaks = config.ignore_leaks || tcx.sess.target.target.target_os == "windows";
 
     let (mut ecx, ret_place) = match create_ecx(tcx, main_id, config) {
         Ok(v) => v,

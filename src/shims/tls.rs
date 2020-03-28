@@ -70,7 +70,7 @@ impl<'tcx> TlsData<'tcx> {
     }
 
     pub fn load_tls(
-        &mut self,
+        &self,
         key: TlsKey,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Scalar<Tag>> {
@@ -107,7 +107,8 @@ impl<'tcx> TlsData<'tcx> {
         Ok(())
     }
 
-    /// Returns a dtor, its argument and its index, if one is supposed to run
+    /// Returns a dtor, its argument and its index, if one is supposed to run.
+    /// `key` is the last dtors that was run; we return the *next* one after that.
     ///
     /// An optional destructor function may be associated with each key value.
     /// At thread exit, if a key value has a non-NULL destructor pointer,
@@ -158,6 +159,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         assert!(!this.machine.tls.dtors_running, "running TLS dtors twice");
         this.machine.tls.dtors_running = true;
 
+        if this.tcx.sess.target.target.target_os == "windows" {
+            // Windows has a special magic linker section that is run on certain events.
+            // Instead of searching for that section and supporting arbitrary hooks in there
+            // (that would be basically https://github.com/rust-lang/miri/issues/450),
+            // we specifically look up the static in libstd that we know is placed
+            // in that section.
+            let thread_callback = this.eval_path_scalar(&["std", "sys", "windows", "thread_local", "p_thread_callback"])?;
+            let thread_callback = this.memory.get_fn(thread_callback.not_undef()?)?.as_instance()?;
+
+            // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
+            let reason = this.eval_path_scalar(&["std", "sys", "windows", "c", "DLL_PROCESS_DETACH"])?;
+            let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
+            this.call_function(
+                thread_callback,
+                &[Scalar::ptr_null(this).into(), reason.into(), Scalar::ptr_null(this).into()],
+                Some(ret_place),
+                StackPopCleanup::None { cleanup: true },
+            )?;
+
+            // step until out of stackframes
+            this.run()?;
+
+            // Windows doesn't have other destructors.
+            return Ok(());
+        }
+
         // The macOS global dtor runs "before any TLS slots get freed", so do that first.
         if let Some((instance, data)) = this.machine.tls.global_dtor {
             trace!("Running global dtor {:?} on {:?}", instance, data);
@@ -191,12 +218,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // step until out of stackframes
             this.run()?;
 
+            // Fetch next dtor after `key`.
             dtor = match this.machine.tls.fetch_tls_dtor(Some(key)) {
                 dtor @ Some(_) => dtor,
+                // We ran each dtor once, start over from the beginning.
                 None => this.machine.tls.fetch_tls_dtor(None),
             };
         }
-        // FIXME: On a windows target, call `unsafe extern "system" fn on_tls_callback`.
         Ok(())
     }
 }

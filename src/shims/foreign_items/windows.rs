@@ -13,7 +13,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         _ret: mir::BasicBlock,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
-        let tcx = &{ this.tcx.tcx };
 
         match link_name {
             // Windows API stubs.
@@ -160,7 +159,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "TlsGetValue" => {
                 let key = u128::from(this.read_scalar(args[0])?.to_u32()?);
-                let ptr = this.machine.tls.load_tls(key, tcx)?;
+                let ptr = this.machine.tls.load_tls(key, this)?;
                 this.write_scalar(ptr, dest)?;
             }
             "TlsSetValue" => {

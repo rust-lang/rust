@@ -102,6 +102,20 @@ impl MemoryExtra {
         }
     }
 
+    fn add_extern_static<'tcx, 'mir>(
+        this: &mut MiriEvalContext<'mir, 'tcx>,
+        name: &str,
+        ptr: Scalar<Tag>,
+    ) {
+        let ptr = ptr.assert_ptr();
+        assert_eq!(ptr.offset, Size::ZERO);
+        this.memory
+            .extra
+            .extern_statics
+            .insert(Symbol::intern(name), ptr.alloc_id)
+            .unwrap_none();
+    }
+
     /// Sets up the "extern statics" for this machine.
     pub fn init_extern_statics<'tcx, 'mir>(
         this: &mut MiriEvalContext<'mir, 'tcx>,
@@ -113,17 +127,17 @@ impl MemoryExtra {
                 let layout = this.layout_of(this.tcx.types.usize)?;
                 let place = this.allocate(layout, MiriMemoryKind::Machine.into());
                 this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
-                this.memory
-                    .extra
-                    .extern_statics
-                    .insert(Symbol::intern("__cxa_thread_atexit_impl"), place.ptr.assert_ptr().alloc_id)
-                    .unwrap_none();
+                Self::add_extern_static(this, "__cxa_thread_atexit_impl", place.ptr);
                 // "environ"
-                this.memory
-                    .extra
-                    .extern_statics
-                    .insert(Symbol::intern("environ"), this.machine.env_vars.environ.unwrap().ptr.assert_ptr().alloc_id)
-                    .unwrap_none();
+                Self::add_extern_static(this, "environ", this.machine.env_vars.environ.unwrap().ptr);
+            }
+            "windows" => {
+                // "_tls_used"
+                // This is some obscure hack that is part of the Windows TLS story. It's a `u8`.
+                let layout = this.layout_of(this.tcx.types.u8)?;
+                let place = this.allocate(layout, MiriMemoryKind::Machine.into());
+                this.write_scalar(Scalar::from_u8(0), place.into())?;
+                Self::add_extern_static(this, "_tls_used", place.ptr);
             }
             _ => {} // No "extern statics" supported on this target
         }

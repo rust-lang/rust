@@ -19,7 +19,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn min_align(&self, size: u64, kind: MiriMemoryKind) -> Align {
         let this = self.eval_context_ref();
         // List taken from `libstd/sys_common/alloc.rs`.
-        let min_align = match this.tcx.tcx.sess.target.target.arch.as_str() {
+        let min_align = match this.tcx.sess.target.target.arch.as_str() {
             "x86" | "arm" | "mips" | "powerpc" | "powerpc64" | "asmjs" | "wasm32" => 8,
             "x86_64" | "aarch64" | "mips64" | "s390x" | "sparc64" => 16,
             arch => bug!("Unsupported target architecture: {}", arch),
@@ -124,7 +124,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
         // Strip linker suffixes (seen on 32-bit macOS).
         let link_name = link_name.trim_end_matches("$UNIX2003");
-        let tcx = &{ this.tcx.tcx };
+        let tcx = this.tcx.tcx;
 
         // First: functions that diverge.
         let (dest, ret) = match ret {
@@ -133,8 +133,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // The implementation is provided by the function with the `#[panic_handler]` attribute.
                 "panic_impl" => {
                     this.check_panic_supported()?;
-                    let panic_impl_id = this.tcx.lang_items().panic_impl().unwrap();
-                    let panic_impl_instance = ty::Instance::mono(*this.tcx, panic_impl_id);
+                    let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
+                    let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
                     return Ok(Some(&*this.load_mir(panic_impl_instance.def, None)?));
                 }
                 | "exit"

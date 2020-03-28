@@ -24,13 +24,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if this.emulate_intrinsic(span, instance, args, ret)? {
             return Ok(());
         }
-        let tcx = &{ this.tcx.tcx };
         let substs = instance.substs;
 
         // All these intrinsics take raw pointers, so if we access memory directly
         // (as opposed to through a place), we have to remember to erase any tag
         // that might still hang around!
-        let intrinsic_name = &*tcx.item_name(instance.def_id()).as_str();
+        let intrinsic_name = &*this.tcx.item_name(instance.def_id()).as_str();
 
         // First handle intrinsics without return place.
         let (dest, ret) = match ret {
