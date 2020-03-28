@@ -51,8 +51,6 @@ pub struct Options {
 pub struct WorldState {
     pub options: Options,
     pub feature_flags: Arc<FeatureFlags>,
-    //FIXME: this belongs to `LoopState` rather than to `WorldState`
-    pub roots_to_scan: usize,
     pub roots: Vec<PathBuf>,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis_host: AnalysisHost,
@@ -123,7 +121,7 @@ impl WorldState {
         let (task_sender, task_receiver) = unbounded();
         let task_sender = Box::new(move |t| task_sender.send(t).unwrap());
         let (mut vfs, vfs_roots) = Vfs::new(roots, task_sender, watch);
-        let roots_to_scan = vfs_roots.len();
+
         for r in vfs_roots {
             let vfs_root_path = vfs.root2path(r);
             let is_local = folder_roots.iter().any(|it| vfs_root_path.starts_with(it));
@@ -190,7 +188,6 @@ impl WorldState {
         WorldState {
             options,
             feature_flags: Arc::new(feature_flags),
-            roots_to_scan,
             roots: folder_roots,
             workspaces: Arc::new(workspaces),
             analysis_host,
@@ -206,6 +203,7 @@ impl WorldState {
     /// FIXME: better API here
     pub fn process_changes(
         &mut self,
+        roots_to_scan: &mut usize,
     ) -> Option<Vec<(SourceRootId, Vec<(FileId, RelativePathBuf, Arc<String>)>)>> {
         let changes = self.vfs.write().commit_changes();
         if changes.is_empty() {
@@ -219,7 +217,7 @@ impl WorldState {
                     let root_path = self.vfs.read().root2path(root);
                     let is_local = self.roots.iter().any(|r| root_path.starts_with(r));
                     if is_local {
-                        self.roots_to_scan -= 1;
+                        *roots_to_scan -= 1;
                         for (file, path, text) in files {
                             change.add_file(SourceRootId(root.0), FileId(file.0), path, text);
                         }
@@ -247,7 +245,6 @@ impl WorldState {
     }
 
     pub fn add_lib(&mut self, data: LibraryData) {
-        self.roots_to_scan -= 1;
         let mut change = AnalysisChange::new();
         change.add_library(data);
         self.analysis_host.apply_change(change);
