@@ -115,10 +115,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.lseek64(args[0], args[1], args[2])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-            "posix_fadvise" => {
-                // fadvise is only informational, we can ignore it.
-                this.write_null(dest)?;
-            }
 
             // Allocation
             "posix_memalign" => {

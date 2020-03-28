@@ -34,6 +34,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.linux_readdir64_r(args[0], args[1], args[2])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
+            // Linux-only
+            "posix_fadvise" => {
+                let _fd = this.read_scalar(args[0])?.to_i32()?;
+                let _offset = this.read_scalar(args[1])?.to_machine_isize(this)?;
+                let _len = this.read_scalar(args[2])?.to_machine_isize(this)?;
+                let _advice = this.read_scalar(args[3])?.to_i32()?;
+                // fadvise is only informational, we can ignore it.
+                this.write_null(dest)?;
+            }
 
             // Time related shims
             "clock_gettime" => {
