@@ -1447,7 +1447,7 @@ fn assoc_ty_def(
     selcx: &SelectionContext<'_, '_>,
     impl_def_id: DefId,
     assoc_ty_def_id: DefId,
-) -> Result<specialization_graph::NodeItem<ty::AssocItem>, ErrorReported> {
+) -> Result<specialization_graph::NodeItem, ErrorReported> {
     let tcx = selcx.tcx();
     let assoc_ty_name = tcx.associated_item(assoc_ty_def_id).ident;
     let trait_def_id = tcx.impl_trait_ref(impl_def_id).unwrap().def_id;

@@ -154,15 +154,9 @@ impl Iterator for Ancestors<'_> {
     }
 }
 
-pub struct NodeItem<T> {
+pub struct NodeItem {
     pub node: Node,
-    pub item: T,
-}
-
-impl<T> NodeItem<T> {
-    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> NodeItem<U> {
-        NodeItem { node: self.node, item: f(self.item) }
-    }
+    pub item: ty::AssocItem,
 }
 
 impl<'tcx> Ancestors<'tcx> {
@@ -173,7 +167,7 @@ impl<'tcx> Ancestors<'tcx> {
         tcx: TyCtxt<'tcx>,
         trait_item_name: Ident,
         trait_item_kind: ty::AssocKind,
-    ) -> Option<NodeItem<ty::AssocItem>> {
+    ) -> Option<NodeItem> {
         let trait_def_id = self.trait_def_id;
         self.find_map(|node| {
             node.item(tcx, trait_item_name, trait_item_kind, trait_def_id)
@@ -183,8 +177,10 @@ impl<'tcx> Ancestors<'tcx> {
 }
 
 /// Walk up the specialization ancestors of a given impl, starting with that
-/// impl itself. Returns `None` if an error was reported while building the
-/// specialization graph.
+/// impl itself.
+///
+/// Returns `Err` if an error was reported while building the specialization
+/// graph.
 pub fn ancestors(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
