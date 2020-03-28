@@ -242,8 +242,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         .iter()
                         .filter_map(|seg| seg.args.as_ref().map(|args| (args.args, seg)))
                         .find_map(|(args, seg)| {
+                            // We iterate backwards to simplify accessing the corresponding
+                            // generic parameter later on.
+                            //
+                            // This allows us to not care about potential `Self` or default parameters.
                             args.iter()
-                                .filter(|arg| arg.is_const())
+                                .rev()
                                 .enumerate()
                                 .filter(|(_, arg)| arg.id() == hir_id)
                                 .map(|(index, _)| (index, seg))
@@ -252,6 +256,13 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         .unwrap_or_else(|| {
                             bug!("no arg matching AnonConst in path");
                         });
+
+                    debug_assert!(
+                        segment
+                            .args
+                            .and_then(|args| args.args.iter().rev().nth(arg_index))
+                            .map_or(false, |arg| arg.is_const())
+                    );
 
                     // Try to use the segment resolution if it is valid, otherwise we
                     // default to the path resolution.
@@ -276,14 +287,11 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     let ty = generics
                         .params
                         .iter()
-                        .filter(|param| {
-                            if let ty::GenericParamDefKind::Const = param.kind {
-                                true
-                            } else {
-                                false
-                            }
-                        })
+                        .rev()
                         .nth(arg_index)
+                        // Prevent ourselves from trying to get the type of a lifetime in
+                        // case there are too many generic args.
+                        .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Const))
                         .map(|param| tcx.type_of(param.def_id));
 
                     if let Some(ty) = ty {
