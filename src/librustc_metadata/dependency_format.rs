@@ -98,7 +98,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
         // If the global prefer_dynamic switch is turned off, or the final
         // executable will be statically linked, prefer static crate linkage.
         config::CrateType::Executable
-            if !sess.opts.cg.prefer_dynamic || sess.crt_static(Some(ty)) =>
+            if !sess.opts.cg.prefer_dynamic || sess.crt_static_feature(Some(ty)) =>
         {
             Linkage::Static
         }
@@ -129,11 +129,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
 
         // Staticlibs and static executables must have all static dependencies.
         // If any are not found, generate some nice pretty errors.
-        if ty == config::CrateType::Staticlib
-            || (ty == config::CrateType::Executable
-                && sess.crt_static(Some(ty))
-                && !sess.target.target.options.crt_static_allows_dylibs)
-        {
+        if ty == config::CrateType::Staticlib {
             for &cnum in tcx.crates().iter() {
                 if tcx.dep_kind(cnum).macros_only() {
                     continue;

@@ -544,16 +544,6 @@ impl Session {
             .unwrap_or(self.opts.debug_assertions)
     }
 
-    /// Check whether this compile session and crate type use static crt.
-    pub fn crt_static(&self, crate_type: Option<config::CrateType>) -> bool {
-        // If the target does not opt in to crt-static support, use its default.
-        if self.target.target.options.crt_static_respected {
-            self.crt_static_feature(crate_type)
-        } else {
-            self.target.target.options.crt_static_default
-        }
-    }
-
     /// Check whether this compile session and crate type use `crt-static` feature.
     pub fn crt_static_feature(&self, crate_type: Option<config::CrateType>) -> bool {
         let requested_features = self.opts.cg.target_feature.split(',');

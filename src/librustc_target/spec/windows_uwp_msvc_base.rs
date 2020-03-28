@@ -26,8 +26,6 @@ pub fn opts() -> TargetOptions {
         is_like_windows: true,
         is_like_msvc: true,
         pre_link_args: args,
-        crt_static_allows_dylibs: true,
-        crt_static_respected: true,
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
         requires_uwtable: true,

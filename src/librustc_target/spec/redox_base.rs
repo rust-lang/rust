@@ -30,7 +30,6 @@ pub fn opts() -> TargetOptions {
         relro_level: RelroLevel::Full,
         has_elf_tls: true,
         crt_static_default: true,
-        crt_static_respected: true,
         ..Default::default()
     }
 }

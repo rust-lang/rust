@@ -25,8 +25,6 @@ pub fn opts() -> TargetOptions {
         link_env: vec![("VSLANG".to_string(), "1033".to_string())],
         lld_flavor: LldFlavor::Link,
         pre_link_args: args,
-        crt_static_allows_dylibs: true,
-        crt_static_respected: true,
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
         requires_uwtable: true,

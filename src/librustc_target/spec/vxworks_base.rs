@@ -32,8 +32,6 @@ pub fn opts() -> TargetOptions {
         has_elf_tls: true,
         pre_link_args_crt: args_crt,
         crt_static_default: true,
-        crt_static_respected: true,
-        crt_static_allows_dylibs: true,
         // VxWorks needs to implement this to support profiling
         target_mcount: "_mcount".to_string(),
         ..Default::default()
