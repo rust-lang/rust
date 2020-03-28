@@ -12,7 +12,6 @@ use std::{
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    thread::JoinHandle,
     time::Instant,
 };
 
@@ -37,8 +36,9 @@ pub struct CheckOptions {
 #[derive(Debug)]
 pub struct CheckWatcher {
     pub task_recv: Receiver<CheckTask>,
+    // XXX: drop order is significant
     cmd_send: Option<Sender<CheckCommand>>,
-    handle: Option<JoinHandle<()>>,
+    handle: Option<jod_thread::JoinHandle<()>>,
 }
 
 impl CheckWatcher {
@@ -47,7 +47,7 @@ impl CheckWatcher {
 
         let (task_send, task_recv) = unbounded::<CheckTask>();
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
-        let handle = std::thread::spawn(move || {
+        let handle = jod_thread::spawn(move || {
             let mut check = CheckWatcherThread::new(options, workspace_root);
             check.run(&task_send, &cmd_recv);
         });
@@ -63,22 +63,6 @@ impl CheckWatcher {
     pub fn update(&self) {
         if let Some(cmd_send) = &self.cmd_send {
             cmd_send.send(CheckCommand::Update).unwrap();
-        }
-    }
-}
-
-impl std::ops::Drop for CheckWatcher {
-    fn drop(&mut self) {
-        if let Some(handle) = self.handle.take() {
-            // Take the sender out of the option
-            let cmd_send = self.cmd_send.take();
-
-            // Dropping the sender finishes the thread loop
-            drop(cmd_send);
-
-            // Join the thread, it should finish shortly. We don't really care
-            // whether it panicked, so it is safe to ignore the result
-            let _ = handle.join();
         }
     }
 }
@@ -237,8 +221,9 @@ pub struct DiagnosticWithFixes {
 /// The correct way to dispose of the thread is to drop it, on which the
 /// sub-process will be killed, and the thread will be joined.
 struct WatchThread {
-    handle: Option<JoinHandle<()>>,
+    // XXX: drop order is significant
     message_recv: Receiver<CheckEvent>,
+    _handle: Option<jod_thread::JoinHandle<()>>,
 }
 
 enum CheckEvent {
@@ -333,7 +318,7 @@ pub fn run_cargo(
 
 impl WatchThread {
     fn dummy() -> WatchThread {
-        WatchThread { handle: None, message_recv: never() }
+        WatchThread { message_recv: never(), _handle: None }
     }
 
     fn new(options: &CheckOptions, workspace_root: &Path) -> WatchThread {
@@ -352,7 +337,7 @@ impl WatchThread {
         let (message_send, message_recv) = unbounded();
         let workspace_root = workspace_root.to_owned();
         let handle = if options.enable {
-            Some(std::thread::spawn(move || {
+            Some(jod_thread::spawn(move || {
                 // If we trigger an error here, we will do so in the loop instead,
                 // which will break out of the loop, and continue the shutdown
                 let _ = message_send.send(CheckEvent::Begin);
@@ -383,23 +368,6 @@ impl WatchThread {
         } else {
             None
         };
-        WatchThread { handle, message_recv }
-    }
-}
-
-impl std::ops::Drop for WatchThread {
-    fn drop(&mut self) {
-        if let Some(handle) = self.handle.take() {
-            // Replace our reciever with dummy one, so we can drop and close the
-            // one actually communicating with the thread
-            let recv = std::mem::replace(&mut self.message_recv, never());
-
-            // Dropping the original reciever initiates thread sub-process shutdown
-            drop(recv);
-
-            // Join the thread, it should finish shortly. We don't really care
-            // whether it panicked, so it is safe to ignore the result
-            let _ = handle.join();
-        }
+        WatchThread { message_recv, _handle: handle }
     }
 }

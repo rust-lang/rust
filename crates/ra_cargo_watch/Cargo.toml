@@ -10,6 +10,7 @@ lsp-types = { version = "0.73.0", features = ["proposed"] }
 log = "0.4.8"
 cargo_metadata = "0.9.1"
 serde_json = "1.0.48"
+jod-thread = "0.1.1"
 
 [dev-dependencies]
 insta = "0.15.0"

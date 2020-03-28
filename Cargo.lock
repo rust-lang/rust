@@ -893,6 +893,7 @@ dependencies = [
  "cargo_metadata",
  "crossbeam-channel",
  "insta",
+ "jod-thread",
  "log",
  "lsp-types",
  "serde_json",
