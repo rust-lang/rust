@@ -3,7 +3,7 @@
 use crossbeam_channel::{bounded, Receiver, Sender};
 use ra_tt::Subtree;
 
-use crate::msg::{ErrorCode, Request, Response, ResponseError, Message};
+use crate::msg::{ErrorCode, Message, Request, Response, ResponseError};
 use crate::rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask, ProcMacroKind};
 
 use io::{BufRead, BufReader};
