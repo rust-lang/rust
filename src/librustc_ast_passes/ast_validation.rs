@@ -14,7 +14,7 @@ use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{error_code, struct_span_err, Applicability};
+use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
 use rustc_session::lint::LintBuffer;
@@ -647,24 +647,38 @@ impl<'a> AstValidator<'a> {
             return;
         }
         // Find all generic argument coming after the first constraint...
-        let mut misplaced_args = Vec::new();
-        let mut first = None;
-        for arg in &data.args {
-            match (arg, first) {
-                (AngleBracketedArg::Arg(a), Some(_)) => misplaced_args.push(a.span()),
-                (AngleBracketedArg::Constraint(c), None) => first = Some(c.span),
-                (AngleBracketedArg::Arg(_), None) | (AngleBracketedArg::Constraint(_), Some(_)) => {
-                }
-            }
-        }
+        let constraint_spans = data
+            .args
+            .iter()
+            .filter_map(|arg| match arg {
+                AngleBracketedArg::Constraint(c) => Some(c.span),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let arg_spans = data
+            .args
+            .iter()
+            .filter_map(|arg| match arg {
+                AngleBracketedArg::Arg(a) => Some(a.span()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let constraint_len = constraint_spans.len();
         // ...and then error:
         self.err_handler()
             .struct_span_err(
-                misplaced_args.clone(),
+                arg_spans.clone(),
                 "generic arguments must come before the first constraint",
             )
-            .span_label(first.unwrap(), "the first constraint is provided here")
-            .span_labels(misplaced_args, "generic argument")
+            .span_labels(
+                constraint_spans,
+                &format!(
+                    "the constraint{} {} provided here",
+                    pluralize!(constraint_len),
+                    if constraint_len == 1 { "is" } else { "are" }
+                ),
+            )
+            .span_labels(arg_spans, "generic argument")
             .emit();
     }
 }
