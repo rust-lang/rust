@@ -388,8 +388,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ty = substs.type_at(0);
                 let layout = this.layout_of(ty)?;
                 let align = layout.align.pref.bytes();
-                let ptr_size = this.pointer_size();
-                let align_val = Scalar::from_uint(align, ptr_size);
+                let align_val = Scalar::from_machine_usize(align, this);
                 this.write_scalar(align_val, dest)?;
             }
 
@@ -471,8 +470,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let (size, _) = this
                     .size_and_align_of_mplace(mplace)?
                     .expect("size_of_val called on extern type");
-                let ptr_size = this.pointer_size();
-                this.write_scalar(Scalar::from_uint(size.bytes(), ptr_size), dest)?;
+                this.write_scalar(Scalar::from_machine_usize(size.bytes(), this), dest)?;
             }
 
             #[rustfmt::skip]
@@ -483,8 +481,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let (_, align) = this
                     .size_and_align_of_mplace(mplace)?
                     .expect("size_of_val called on extern type");
-                let ptr_size = this.pointer_size();
-                this.write_scalar(Scalar::from_uint(align.bytes(), ptr_size), dest)?;
+                this.write_scalar(Scalar::from_machine_usize(align.bytes(), this), dest)?;
             }
 
             "write_bytes" => {

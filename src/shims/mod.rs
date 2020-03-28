@@ -92,7 +92,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Return result, and jump to caller.
-        this.write_scalar(Scalar::from_uint(result, dest.layout.size), dest)?;
+        this.write_scalar(Scalar::from_uint(result, this.pointer_size()), dest)?;
         this.go_to_block(ret);
         Ok(())
     }

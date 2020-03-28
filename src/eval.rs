@@ -6,7 +6,7 @@ use std::convert::TryFrom;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
-use rustc::ty::layout::{LayoutOf, Size};
+use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, TyCtxt};
 use rustc_hir::def_id::DefId;
 
@@ -96,7 +96,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // First argument: pointer to `main()`.
     let main_ptr = ecx.memory.create_fn_alloc(FnVal::Instance(main_instance));
     // Second argument (argc): length of `config.args`.
-    let argc = Scalar::from_uint(u64::try_from(config.args.len()).unwrap(), ecx.pointer_size());
+    let argc = Scalar::from_machine_usize(u64::try_from(config.args.len()).unwrap(), &ecx);
     // Third argument (`argv`): created from `config.args`.
     let argv = {
         // Put each argument in memory, collect pointers.
@@ -152,10 +152,9 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             let cmd_place = ecx.allocate(ecx.layout_of(cmd_type)?, MiriMemoryKind::Machine.into());
             ecx.machine.cmd_line = Some(cmd_place.ptr);
             // Store the UTF-16 string. We just allocated so we know the bounds are fine.
-            let char_size = Size::from_bytes(2);
             for (idx, &c) in cmd_utf16.iter().enumerate() {
                 let place = ecx.mplace_field(cmd_place, idx)?;
-                ecx.write_scalar(Scalar::from_uint(c, char_size), place.into())?;
+                ecx.write_scalar(Scalar::from_u16(c), place.into())?;
             }
         }
         argv

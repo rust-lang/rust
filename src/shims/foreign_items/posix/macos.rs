@@ -22,19 +22,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // File related shims
             "close$NOCANCEL" => {
                 let result = this.close(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "stat$INODE64" => {
                 let result = this.macos_stat(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "lstat$INODE64" => {
                 let result = this.macos_lstat(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "fstat$INODE64" => {
                 let result = this.macos_fstat(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "opendir$INODE64" => {
                 let result = this.opendir(args[0])?;
@@ -42,7 +42,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "readdir_r$INODE64" => {
                 let result = this.macos_readdir_r(args[0], args[1], args[2])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
             // Environment related shims
@@ -53,11 +53,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Time related shims
             "gettimeofday" => {
                 let result = this.gettimeofday(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "mach_absolute_time" => {
                 let result = this.mach_absolute_time()?;
-                this.write_scalar(Scalar::from_uint(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_u64(result), dest)?;
             }
 
             // Access to command-line arguments
@@ -79,12 +79,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Querying system information
             "pthread_get_stackaddr_np" => {
                 let _thread = this.read_scalar(args[0])?.not_undef()?;
-                let stack_addr = Scalar::from_uint(STACK_ADDR, dest.layout.size);
+                let stack_addr = Scalar::from_uint(STACK_ADDR, this.pointer_size());
                 this.write_scalar(stack_addr, dest)?;
             }
             "pthread_get_stacksize_np" => {
                 let _thread = this.read_scalar(args[0])?.not_undef()?;
-                let stack_size = Scalar::from_uint(STACK_SIZE, dest.layout.size);
+                let stack_size = Scalar::from_uint(STACK_SIZE, this.pointer_size());
                 this.write_scalar(stack_size, dest)?;
             }
 

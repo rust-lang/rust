@@ -316,10 +316,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let layout = ecx.layout_of(dest.layout.ty.builtin_deref(false).unwrap().ty)?;
         // First argument: `size`.
         // (`0` is allowed here -- this is expected to be handled by the lang item).
-        let size = Scalar::from_uint(layout.size.bytes(), ecx.pointer_size());
+        let size = Scalar::from_machine_usize(layout.size.bytes(), ecx);
 
         // Second argument: `align`.
-        let align = Scalar::from_uint(layout.align.abi.bytes(), ecx.pointer_size());
+        let align = Scalar::from_machine_usize(layout.align.abi.bytes(), ecx);
 
         // Call the `exchange_malloc` lang item.
         let malloc = ecx.tcx.lang_items().exchange_malloc_fn().unwrap();

@@ -22,12 +22,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Environment related shims
             "GetEnvironmentVariableW" => {
                 let result = this.GetEnvironmentVariableW(args[0], args[1], args[2])?;
-                this.write_scalar(Scalar::from_uint(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_u32(result), dest)?;
             }
 
             "SetEnvironmentVariableW" => {
                 let result = this.SetEnvironmentVariableW(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
             "GetEnvironmentStringsW" => {
@@ -45,7 +45,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let which = this.read_scalar(args[0])?.to_i32()?;
                 // We just make this the identity function, so we know later in `WriteFile`
                 // which one it is.
-                this.write_scalar(Scalar::from_int(which, this.pointer_size()), dest)?;
+                this.write_scalar(Scalar::from_machine_isize(which.into(), this), dest)?;
             }
             "WriteFile" => {
                 let handle = this.read_scalar(args[0])?.to_machine_isize(this)?;
@@ -74,7 +74,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
                 // Return whether this was a success.
                 this.write_scalar(
-                    Scalar::from_int(if written.is_some() { 1 } else { 0 }, dest.layout.size),
+                    Scalar::from_i32(if written.is_some() { 1 } else { 0 }),
                     dest,
                 )?;
             }
@@ -93,7 +93,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let _flags = this.read_scalar(args[1])?.to_u32()?;
                 let ptr = this.read_scalar(args[2])?.not_undef()?;
                 this.free(ptr, MiriMemoryKind::WinHeap)?;
-                this.write_scalar(Scalar::from_int(1, Size::from_bytes(4)), dest)?;
+                this.write_scalar(Scalar::from_i32(1), dest)?;
             }
             "HeapReAlloc" => {
                 let _handle = this.read_scalar(args[0])?.to_machine_isize(this)?;
@@ -146,7 +146,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.machine.tls.store_tls(key, this.test_null(new_ptr)?)?;
 
                 // Return success (`1`).
-                this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(1), dest)?;
             }
 
             // Access to command-line arguments
@@ -191,7 +191,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // These shims are enabled only when the caller is in the standard library.
             "GetProcessHeap" if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
                 // Just fake a HANDLE
-                this.write_scalar(Scalar::from_int(1, this.pointer_size()), dest)?;
+                this.write_scalar(Scalar::from_machine_isize(1, this), dest)?;
             }
             | "GetModuleHandleW"
             | "GetProcAddress"
@@ -202,7 +202,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "AddVectoredExceptionHandler" if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
                 // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
-                this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_machine_usize(1, this), dest)?;
             }
             | "InitializeCriticalSection"
             | "EnterCriticalSection"

@@ -24,7 +24,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // in the `posix` module.
             "close" => {
                 let result = this.close(args[0])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "opendir" => {
                 let result = this.opendir(args[0])?;
@@ -32,7 +32,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "readdir64_r" => {
                 let result = this.linux_readdir64_r(args[0], args[1], args[2])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             // Linux-only
             "posix_fadvise" => {
@@ -48,7 +48,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "clock_gettime" => {
                 // This is a POSIX function but it has only been tested on linux.
                 let result = this.clock_gettime(args[0], args[1])?;
-                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
             // Querying system information
@@ -59,11 +59,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let size_place = this.deref_operand(args[2])?;
 
                 this.write_scalar(
-                    Scalar::from_uint(STACK_ADDR, addr_place.layout.size),
+                    Scalar::from_uint(STACK_ADDR, this.pointer_size()),
                     addr_place.into(),
                 )?;
                 this.write_scalar(
-                    Scalar::from_uint(STACK_SIZE, size_place.layout.size),
+                    Scalar::from_uint(STACK_SIZE, this.pointer_size()),
                     size_place.into(),
                 )?;
 
@@ -93,7 +93,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     id if id == sys_statx => {
                         // The first argument is the syscall id, so skip over it.
                         let result = this.linux_statx(args[1], args[2], args[3], args[4], args[5])?;
-                        this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
+                        this.write_scalar(Scalar::from_machine_isize(result.into(), this), dest)?;
                     }
                     id => throw_unsup_format!("miri does not support syscall ID {}", id),
                 }
@@ -110,7 +110,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: we just return an error; `num_cpus` then falls back to `sysconf`.
                 let einval = this.eval_libc("EINVAL")?;
                 this.set_last_error(einval)?;
-                this.write_scalar(Scalar::from_int(-1, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(-1), dest)?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialziation code to work.
