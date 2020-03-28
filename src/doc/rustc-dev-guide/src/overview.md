@@ -72,8 +72,8 @@ we'll talk about that later.
 [lex]: https://rust-lang.github.io/rustc-guide/the-parser.html
 [`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.StringReader.html
 [`librustc_parse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
-[parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
-[hir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
+[parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parser/index.html
+[hir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html
 [type inference]: https://rust-lang.github.io/rustc-guide/type-inference.html
 [mir]: https://rust-lang.github.io/rustc-guide/mir/index.html
 [borrow checker]: https://rust-lang.github.io/rustc-guide/borrow_check.html
@@ -263,10 +263,6 @@ but there are already some promising performance improvements.
 
 **TODO (or do we want such a section)?**
 
-## A flow chart or walkthrough diagram
-
-**TODO**
-
 # Unresolved Questions
 
 **TODO: find answers to these**
@@ -293,7 +289,7 @@ but there are already some promising performance improvements.
     - Guide: [Lexing and Parsing](https://rust-lang.github.io/rustc-guide/the-parser.html)
     - Parser definition: [`librustc_parse`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html)
     - Main entry point: **TODO**
-    - AST definition: [`syntax`](https://doc.rust-lang.org/nightly/nightly-rustc/syntax/index.html)
+    - AST definition: [`librustc_ast`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html)
 - The High Level Intermediate Representation (HIR)
     - Guide: [The HIR](https://rust-lang.github.io/rustc-guide/hir.html)
     - Guide: [Identifiers in the HIR](https://rust-lang.github.io/rustc-guide/hir.html#identifiers-in-the-hir)
