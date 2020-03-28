@@ -665,7 +665,7 @@ mod tests {
             }
             fn foo(a: A) {
                 match a {
-                    // TODO: Fill this in<|>
+                    // foo bar baz<|>
                     A::One => {}
                     // This is where the rest should be
                 }
@@ -678,7 +678,7 @@ mod tests {
             }
             fn foo(a: A) {
                 match <|>a {
-                    // TODO: Fill this in
+                    // foo bar baz
                     A::One => {}
                     // This is where the rest should be
                     A::Two => {}
@@ -699,7 +699,7 @@ mod tests {
             }
             fn foo(a: A) {
                 match a {
-                    // TODO: Fill this in<|>
+                    // foo bar baz<|>
                 }
             }
             "#,
@@ -710,7 +710,7 @@ mod tests {
             }
             fn foo(a: A) {
                 match <|>a {
-                    // TODO: Fill this in
+                    // foo bar baz
                     A::One => {}
                     A::Two => {}
                 }
