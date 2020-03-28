@@ -2,7 +2,6 @@ use std::iter;
 use std::convert::TryFrom;
 
 use rustc::mir;
-use rustc::mir::interpret::{InterpResult, PointerArithmetic};
 use rustc::ty;
 use rustc::ty::layout::{Align, LayoutOf};
 use rustc_apfloat::Float;

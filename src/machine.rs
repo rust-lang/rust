@@ -130,7 +130,7 @@ impl MemoryExtra {
                 // This should be all-zero, pointer-sized.
                 let layout = this.layout_of(this.tcx.types.usize)?;
                 let place = this.allocate(layout, MiriMemoryKind::Machine.into());
-                this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
+                this.write_scalar(Scalar::from_machine_usize(0, this), place.into())?;
                 Self::add_extern_static(this, "__cxa_thread_atexit_impl", place.ptr);
                 // "environ"
                 Self::add_extern_static(this, "environ", this.machine.env_vars.environ.unwrap().ptr);

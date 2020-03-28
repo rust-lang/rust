@@ -337,14 +337,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // This is memory backing an extern static, hence `Machine`, not `Env`.
             let layout = this.layout_of(this.tcx.types.usize)?;
             let place = this.allocate(layout, MiriMemoryKind::Machine.into());
-            this.write_scalar(Scalar::from_machine_usize(0, &*this.tcx), place.into())?;
             this.machine.env_vars.environ = Some(place);
         }
 
         // Collect all the pointers to each variable in a vector.
         let mut vars: Vec<Scalar<Tag>> = this.machine.env_vars.map.values().map(|&ptr| ptr.into()).collect();
         // Add the trailing null pointer.
-        vars.push(Scalar::from_machine_usize(0, this));
+        vars.push(Scalar::ptr_null(this));
         // Make an array with all these pointers inside Miri.
         let tcx = this.tcx;
         let vars_layout =
