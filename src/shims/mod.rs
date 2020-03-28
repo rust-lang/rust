@@ -3,6 +3,7 @@ pub mod env;
 pub mod foreign_items;
 pub mod fs;
 pub mod intrinsics;
+pub mod os_str;
 pub mod panic;
 pub mod time;
 pub mod tls;

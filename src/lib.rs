@@ -41,6 +41,7 @@ pub use crate::shims::env::{EnvVars, EvalContextExt as EnvEvalContextExt};
 pub use crate::shims::foreign_items::EvalContextExt as ForeignItemsEvalContextExt;
 pub use crate::shims::fs::{DirHandler, EvalContextExt as FileEvalContextExt, FileHandler};
 pub use crate::shims::intrinsics::EvalContextExt as IntrinsicsEvalContextExt;
+pub use crate::shims::os_str::EvalContextExt as OsStrEvalContextExt;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as PanicEvalContextExt};
 pub use crate::shims::time::EvalContextExt as TimeEvalContextExt;
 pub use crate::shims::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
