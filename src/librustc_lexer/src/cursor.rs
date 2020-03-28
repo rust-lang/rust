@@ -41,7 +41,7 @@ impl<'a> Cursor<'a> {
     /// If requested position doesn't exist, `EOF_CHAR` is returned.
     /// However, getting `EOF_CHAR` doesn't always mean actual end of file,
     /// it should be checked with `is_eof` method.
-    fn nth_char(&self, n: usize) -> char {
+    pub(crate) fn nth_char(&self, n: usize) -> char {
         self.chars().nth(n).unwrap_or(EOF_CHAR)
     }
 

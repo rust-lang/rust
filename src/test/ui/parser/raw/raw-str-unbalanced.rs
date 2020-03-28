@@ -1,4 +1,4 @@
 static s: &'static str =
     r#"
-      "## //~ ERROR expected one of `.`, `;`, `?`, or an operator, found `#`
+      "## //~ too many `#` when terminating raw string
 ;

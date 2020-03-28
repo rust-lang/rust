@@ -6,7 +6,7 @@ use rustc_ast::ast::{
 };
 use rustc_ast::ast::{AttrVec, ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, TokenKind};
+use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -255,6 +255,10 @@ impl<'a> Parser<'a> {
             }
         }
 
+        if self.check_too_many_raw_str_terminators(&mut err) {
+            return Err(err);
+        }
+
         let sm = self.sess.source_map();
         if self.prev_token.span == DUMMY_SP {
             // Account for macro context where the previous span might not be
@@ -280,6 +284,31 @@ impl<'a> Parser<'a> {
         }
         self.maybe_annotate_with_ascription(&mut err, false);
         Err(err)
+    }
+
+    fn check_too_many_raw_str_terminators(&mut self, err: &mut DiagnosticBuilder<'_>) -> bool {
+        let prev_token_raw_str = match self.prev_token {
+            Token { kind: TokenKind::Literal(Lit { kind: LitKind::StrRaw(n), .. }), .. } => Some(n),
+            Token {
+                kind: TokenKind::Literal(Lit { kind: LitKind::ByteStrRaw(n), .. }), ..
+            } => Some(n),
+            _ => None,
+        };
+
+        if let Some(n_hashes) = prev_token_raw_str {
+            if self.token.kind == TokenKind::Pound {
+                err.set_primary_message("too many `#` when terminating raw string");
+                err.span_suggestion(
+                    self.token.span,
+                    "Remove the extra `#`",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+                err.note(&format!("The raw string started with {} `#`s", n_hashes));
+                return true;
+            }
+        }
+        false
     }
 
     pub fn maybe_annotate_with_ascription(
