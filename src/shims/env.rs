@@ -55,7 +55,7 @@ impl<'tcx> EnvVars<'tcx> {
             ecx.memory.deallocate(ptr, None, MiriMemoryKind::Env.into())?;
         }
         // Deallocate environ var list.
-        let environ = ecx.machine.env_vars.environ.take().unwrap();
+        let environ = ecx.machine.env_vars.environ.unwrap();
         let old_vars_ptr = ecx.read_scalar(environ.into())?.not_undef()?;
         ecx.memory.deallocate(ecx.force_ptr(old_vars_ptr)?, None, MiriMemoryKind::Env.into())?;
         Ok(())
