@@ -613,23 +613,28 @@ where
 }
 
 #[inline(never)]
-pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key) -> Q::Stored
+fn get_query_impl<CTX, C>(
+    tcx: CTX,
+    state: &QueryState<CTX, C>,
+    span: Span,
+    key: C::Key,
+    query: &QueryVtable<CTX, C::Key, C::Value>,
+) -> C::Stored
 where
-    Q: QueryDescription<CTX>,
-    Q::Key: crate::dep_graph::DepNodeParams<CTX>,
     CTX: QueryContext,
+    C: QueryCache,
+    C::Key: Eq + Clone + crate::dep_graph::DepNodeParams<CTX>,
+    C::Stored: Clone,
 {
-    debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
-
     try_get_cached(
         tcx,
-        Q::query_state(tcx),
+        state,
         key,
         |value, index| {
             tcx.dep_graph().read_index(index);
             value.clone()
         },
-        |key, lookup| try_execute_query(tcx, Q::query_state(tcx), span, key, lookup, &Q::VTABLE),
+        |key, lookup| try_execute_query(tcx, state, span, key, lookup, query),
     )
 }
 
@@ -640,21 +645,25 @@ where
 /// side-effects -- e.g., in order to report errors for erroneous programs.
 ///
 /// Note: The optimization is only available during incr. comp.
-pub fn ensure_query<Q, CTX>(tcx: CTX, key: Q::Key)
-where
-    Q: QueryDescription<CTX>,
-    Q::Key: crate::dep_graph::DepNodeParams<CTX>,
+fn ensure_query_impl<CTX, C>(
+    tcx: CTX,
+    state: &QueryState<CTX, C>,
+    key: C::Key,
+    query: &QueryVtable<CTX, C::Key, C::Value>,
+) where
+    C: QueryCache,
+    C::Key: Eq + Clone + crate::dep_graph::DepNodeParams<CTX>,
     CTX: QueryContext,
 {
-    if Q::EVAL_ALWAYS {
-        let _ = get_query::<Q, _>(tcx, DUMMY_SP, key);
+    if query.eval_always {
+        let _ = get_query_impl(tcx, state, DUMMY_SP, key, query);
         return;
     }
 
     // Ensuring an anonymous query makes no sense
-    assert!(!Q::ANON);
+    assert!(!query.anon);
 
-    let dep_node = Q::to_dep_node(tcx, &key);
+    let dep_node = query.to_dep_node(tcx, &key);
 
     match tcx.dep_graph().try_mark_green_and_read(tcx, &dep_node) {
         None => {
@@ -664,7 +673,7 @@ where
             // DepNodeIndex. We must invoke the query itself. The performance cost
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
-            let _ = get_query::<Q, _>(tcx, DUMMY_SP, key);
+            let _ = get_query_impl(tcx, state, DUMMY_SP, key, query);
         }
         Some((_, dep_node_index)) => {
             tcx.profiler().query_cache_hit(dep_node_index.into());
@@ -672,9 +681,16 @@ where
     }
 }
 
-pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, span: Span, dep_node: DepNode<CTX::DepKind>)
-where
-    Q: QueryDescription<CTX>,
+fn force_query_impl<C, CTX>(
+    tcx: CTX,
+    state: &QueryState<CTX, C>,
+    key: C::Key,
+    span: Span,
+    dep_node: DepNode<CTX::DepKind>,
+    query: &QueryVtable<CTX, C::Key, C::Value>,
+) where
+    C: QueryCache,
+    C::Key: Eq + Clone + crate::dep_graph::DepNodeParams<CTX>,
     CTX: QueryContext,
 {
     // We may be concurrently trying both execute and force a query.
@@ -682,21 +698,48 @@ where
 
     try_get_cached(
         tcx,
-        Q::query_state(tcx),
+        state,
         key,
         |_, _| {
             // Cache hit, do nothing
         },
         |key, lookup| {
-            let job =
-                match JobOwner::try_start(tcx, Q::query_state(tcx), span, &key, lookup, &Q::VTABLE)
-                {
-                    TryGetJob::NotYetStarted(job) => job,
-                    TryGetJob::Cycle(_) => return,
-                    #[cfg(parallel_compiler)]
-                    TryGetJob::JobCompleted(_) => return,
-                };
-            force_query_with_job(tcx, key, job, dep_node, &Q::VTABLE);
+            let job = match JobOwner::try_start(tcx, state, span, &key, lookup, query) {
+                TryGetJob::NotYetStarted(job) => job,
+                TryGetJob::Cycle(_) => return,
+                #[cfg(parallel_compiler)]
+                TryGetJob::JobCompleted(_) => return,
+            };
+            force_query_with_job(tcx, key, job, dep_node, query);
         },
     );
+}
+
+pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key) -> Q::Stored
+where
+    Q: QueryDescription<CTX>,
+    Q::Key: crate::dep_graph::DepNodeParams<CTX>,
+    CTX: QueryContext,
+{
+    debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
+
+    get_query_impl(tcx, Q::query_state(tcx), span, key, &Q::VTABLE)
+}
+
+pub fn ensure_query<Q, CTX>(tcx: CTX, key: Q::Key)
+where
+    Q: QueryDescription<CTX>,
+    Q::Key: crate::dep_graph::DepNodeParams<CTX>,
+    CTX: QueryContext,
+{
+    ensure_query_impl(tcx, Q::query_state(tcx), key, &Q::VTABLE)
+}
+
+pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, span: Span, dep_node: DepNode<CTX::DepKind>)
+where
+    Q: QueryDescription<CTX>,
+    Q::Key: crate::dep_graph::DepNodeParams<CTX>,
+    CTX: QueryContext,
+{
+    force_query_impl(tcx, Q::query_state(tcx), key, span, dep_node, &Q::VTABLE)
 }
