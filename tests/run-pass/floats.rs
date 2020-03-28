@@ -2,8 +2,8 @@
 use std::fmt::Debug;
 
 // Helper function to avoid promotion so that this tests "run-time" casts, not CTFE.
-// Doesn't make a big difference when running this in Miri, but when running this in
-// rustc (with -Zmir-opt-level=0) for comparison it means we use LLVM casts.
+// Doesn't make a big difference when running this in Miri, but it means we can compare this
+// with the LLVM backend by running `rustc -Zmir-opt-level=0 -Zsaturating-float-casts`.
 #[track_caller]
 #[inline(never)]
 fn assert_eq<T: PartialEq + Debug>(x: T, y: T) {
@@ -29,7 +29,7 @@ fn main() {
     let y: f32 = unsafe { std::mem::transmute(x) };
     assert_eq(y, 42.0_f32);
 
-    // f32-to-int casts
+    // f32 <-> int casts
     assert_eq(5.0f32 as u32, 5);
     assert_eq(-5.0f32 as u32, 0);
     assert_eq(5.0f32 as i32, 5);
@@ -44,11 +44,13 @@ fn main() {
     assert_eq(std::f32::NEG_INFINITY as u32, 0);
     assert_eq(std::f32::NAN as i32, 0);
     assert_eq(std::f32::NAN as u32, 0);
-    assert_eq(u128::MAX as f32, std::f32::INFINITY);
     assert_eq((u32::MAX-127) as f32 as u32, u32::MAX); // rounding loss
     assert_eq((u32::MAX-128) as f32 as u32, u32::MAX-255); // rounding loss
+    assert_eq(127i8 as f32, 127.0f32);
+    assert_eq(i128::MIN as f32, -170141183460469231731687303715884105728.0f32);
+    assert_eq(u128::MAX as f32, std::f32::INFINITY); // saturation
 
-    // f64-to-int casts
+    // f64 <-> int casts
     assert_eq(5.0f64 as u64, 5);
     assert_eq(-5.0f64 as u64, 0);
     assert_eq(5.0f64 as i64, 5);
@@ -63,9 +65,11 @@ fn main() {
     assert_eq(std::f64::NEG_INFINITY as u64, 0);
     assert_eq(std::f64::NAN as i64, 0);
     assert_eq(std::f64::NAN as u64, 0);
-    assert_eq(u128::MAX as f64 as u128, u128::MAX);
     assert_eq((u64::MAX-1023) as f64 as u64, u64::MAX); // rounding loss
     assert_eq((u64::MAX-1024) as f64 as u64, u64::MAX-2047); // rounding loss
+    assert_eq(u128::MAX as f64 as u128, u128::MAX);
+    assert_eq(i16::MIN as f64, -32768.0f64);
+    assert_eq(u128::MAX as f64, 340282366920938463463374607431768211455.0f64); // even that fits...
 
     // f32 <-> f64 casts
     assert_eq(5.0f64 as f32, 5.0f32);
