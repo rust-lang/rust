@@ -81,6 +81,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Helper function to get a `libc` constant as an `i32`.
     fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
+        // TODO: Cache the result.
         self.eval_libc(name)?.to_i32()
     }
 

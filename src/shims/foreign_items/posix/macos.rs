@@ -13,44 +13,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         match link_name {
+            // errno
             "__error" => {
                 let errno_place = this.machine.last_error.unwrap();
                 this.write_scalar(errno_place.to_ref().to_scalar()?, dest)?;
             }
 
             // File related shims
-
-            // The only reason this is not in the `posix` module is because the `linux` item has a
-            // different name.
             "close$NOCANCEL" => {
                 let result = this.close(args[0])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "stat$INODE64" => {
                 let result = this.macos_stat(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "lstat$INODE64" => {
                 let result = this.macos_lstat(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
             "fstat$INODE64" => {
                 let result = this.macos_fstat(args[0], args[1])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
-
-            // The only reason this is not in the `posix` module is because the `linux` item has a
-            // different name.
             "opendir$INODE64" => {
                 let result = this.opendir(args[0])?;
                 this.write_scalar(result, dest)?;
             }
-
-            // The `linux` module has a parallel foreign item, `readdir64_r`, which uses a
-            // different struct layout.
             "readdir_r$INODE64" => {
                 let result = this.macos_readdir_r(args[0], args[1], args[2])?;
                 this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
@@ -71,21 +60,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_uint(result, dest.layout.size), dest)?;
             }
 
-            // Other shims
-            "pthread_attr_get_np" => {
-                this.write_null(dest)?;
+            // Access to command-line arguments
+            "_NSGetArgc" => {
+                this.write_scalar(this.machine.argc.expect("machine must be initialized"), dest)?;
+            }
+            "_NSGetArgv" => {
+                this.write_scalar(this.machine.argv.expect("machine must be initialized"), dest)?;
             }
 
-            "pthread_get_stackaddr_np" => {
-                let stack_addr = Scalar::from_uint(STACK_ADDR, dest.layout.size);
-                this.write_scalar(stack_addr, dest)?;
-            }
-
-            "pthread_get_stacksize_np" => {
-                let stack_size = Scalar::from_uint(STACK_SIZE, dest.layout.size);
-                this.write_scalar(stack_size, dest)?;
-            }
-
+            // Thread-local storage
             "_tlv_atexit" => {
                 let dtor = this.read_scalar(args[0])?.not_undef()?;
                 let dtor = this.memory.get_fn(dtor)?.as_instance()?;
@@ -93,12 +76,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.machine.tls.set_global_dtor(dtor, data)?;
             }
 
-            "_NSGetArgc" => {
-                this.write_scalar(this.machine.argc.expect("machine must be initialized"), dest)?;
+            // Querying system information
+            "pthread_get_stackaddr_np" => {
+                let _thread = this.read_scalar(args[0])?.not_undef()?;
+                let stack_addr = Scalar::from_uint(STACK_ADDR, dest.layout.size);
+                this.write_scalar(stack_addr, dest)?;
+            }
+            "pthread_get_stacksize_np" => {
+                let _thread = this.read_scalar(args[0])?.not_undef()?;
+                let stack_size = Scalar::from_uint(STACK_SIZE, dest.layout.size);
+                this.write_scalar(stack_size, dest)?;
             }
 
-            "_NSGetArgv" => {
-                this.write_scalar(this.machine.argv.expect("machine must be initialized"), dest)?;
+            // Incomplete shims that we "stub out" just to get pre-main initialziation code to work.
+            // These shims are enabled only when the caller is in the standard library.
+            "mmap" if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
+                // This is a horrible hack, but since the guard page mechanism calls mmap and expects a particular return value, we just give it that value.
+                let addr = this.read_scalar(args[0])?.not_undef()?;
+                this.write_scalar(addr, dest)?;
             }
 
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),

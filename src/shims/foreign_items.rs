@@ -196,6 +196,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Here we dispatch all the shims for foreign functions. If you have a platform specific
         // shim, add it to the corresponding submodule.
         match link_name {
+            // Standard C allocation
             "malloc" => {
                 let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
                 let res = this.malloc(size, /*zero_init:*/ false, MiriMemoryKind::C);
@@ -220,6 +221,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(res, dest)?;
             }
 
+            // Rust allocation
+            // (Usually these would be forwarded to to `#[global_allocator]`; we instead implement a generic
+            // allocation that also checks that all conditions are met, such as not permitting zero-sized allocations.)
             "__rust_alloc" => {
                 let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
                 let align = this.read_scalar(args[1])?.to_machine_usize(this)?;
@@ -274,6 +278,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(new_ptr, dest)?;
             }
 
+            // C memory handling functions
             "memcmp" => {
                 let left = this.read_scalar(args[0])?.not_undef()?;
                 let right = this.read_scalar(args[1])?.not_undef()?;
@@ -293,7 +298,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 this.write_scalar(Scalar::from_int(result, Size::from_bits(32)), dest)?;
             }
-
             "memrchr" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let val = this.read_scalar(args[1])?.to_i32()? as u8;
@@ -311,7 +315,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.write_null(dest)?;
                 }
             }
-
             "memchr" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let val = this.read_scalar(args[1])?.to_i32()? as u8;
@@ -328,7 +331,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.write_null(dest)?;
                 }
             }
-
             "strlen" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let n = this.memory.read_c_str(ptr)?.len();
@@ -358,11 +360,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
             }
-            // underscore case for windows
             | "_hypotf"
             | "hypotf"
             | "atan2f"
             => {
+                // underscore case for windows, here and below
+                // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
                 // FIXME: Using host floats.
                 let f1 = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
                 let f2 = f32::from_bits(this.read_scalar(args[1])?.to_u32()?);
@@ -373,7 +376,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 this.write_scalar(Scalar::from_u32(n.to_bits()), dest)?;
             }
-
             | "cbrt"
             | "cosh"
             | "sinh"
@@ -396,8 +398,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;
             }
-            // underscore case for windows, here and below
-            // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
             | "_hypot"
             | "hypot"
             | "atan2"
@@ -412,11 +412,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
             }
-            // For radix-2 (binary) systems, `ldexp` and `scalbn` are the same.
             | "_ldexp"
             | "ldexp"
             | "scalbn"
             => {
+                // For radix-2 (binary) systems, `ldexp` and `scalbn` are the same.
                 let x = this.read_scalar(args[0])?.to_f64()?;
                 let exp = this.read_scalar(args[1])?.to_i32()?;
 
@@ -434,6 +434,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_f64(res), dest)?;
             }
 
+            // Target-specific shims
             _ => match this.tcx.sess.target.target.target_os.as_str() {
                 "linux" | "macos" => return posix::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
                 "windows" => return windows::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
