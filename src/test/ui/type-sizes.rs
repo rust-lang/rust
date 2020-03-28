@@ -167,4 +167,9 @@ pub fn main() {
         size_of::<Option<Option2<&(), Option<NicheWithData>>>>(),
         size_of::<(&(), NicheWithData)>()
     );
+
+    pub enum FillPadding { A(std::num::NonZeroU8, u32), B }
+    assert_eq!(size_of::<FillPadding>(), 8);
+    assert_eq!(size_of::<Option<FillPadding>>(), 8);
+    assert_eq!(size_of::<Option<Option<FillPadding>>>(), 8);
 }
