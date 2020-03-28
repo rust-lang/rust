@@ -1,5 +1,7 @@
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use rustc_middle::ty::{TyKind, TypeAndMut};
-use rustc_target::abi::{LayoutOf, Size};
+use rustc_target::abi::{FieldsShape, LayoutOf, Size};
 
 use crate::stacked_borrows::Tag;
 use crate::*;
@@ -399,15 +401,67 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
 // bytes 0-3: reserved for signature on macOS
 // (need to avoid this because it is set by static initializer macros)
 // bytes 4-7: count of how many times this mutex has been locked, as a u32
-// bytes 12-15: mutex kind, as an i32
-// (the kind has to be at this offset for compatibility with static initializer macros)
+// bytes 12-15 or 16-19 (depending on platform): mutex kind, as an i32
+// (the kind has to be at its offset for compatibility with static initializer macros)
+
+static LIBC_MUTEX_KIND_OFFSET_CACHE: AtomicU64 = AtomicU64::new(0);
+
+fn libc_mutex_kind_offset<'mir, 'tcx: 'mir>(
+    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+) -> InterpResult<'tcx, u64> {
+    // Check if this offset has already been found and memoized
+    let cached_value = LIBC_MUTEX_KIND_OFFSET_CACHE.load(Ordering::Relaxed);
+    if cached_value != 0 {
+        return Ok(cached_value);
+    }
+
+    // This function infers the offset of the `kind` field of libc's pthread_mutex_t
+    // C struct by examining the array inside libc::PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP.
+    // At time of writing, it is always all zero bytes except for a one byte at one of
+    // four positions, depending on the target OS's C struct layout and the endianness of the
+    // target architecture. This offset will then be used in getters and setters below, so that
+    // mutexes created from static initializers can be emulated with the correct behavior.
+    let initializer_path = ["libc", "PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP"];
+    let initializer_instance = ecx.resolve_path(&initializer_path);
+    let initializer_cid = GlobalId { instance: initializer_instance, promoted: None };
+    let initializer_const_val = ecx.const_eval_raw(initializer_cid)?;
+    let array_mplacety = ecx.mplace_field(initializer_const_val, 0)?;
+    let array_length = match array_mplacety.layout.fields {
+        FieldsShape::Array { count, .. } => count,
+        _ => bug!("Couldn't get array length from type {:?}", array_mplacety.layout.ty),
+    };
+
+    let kind_offset = if array_length < 20 {
+        bug!("libc::PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP array was shorter than expected");
+    } else if ecx.read_scalar(ecx.mplace_field(array_mplacety, 16)?.into())?.to_u8()? != 0 {
+        // for little-endian architectures
+        16
+    } else if ecx.read_scalar(ecx.mplace_field(array_mplacety, 19)?.into())?.to_u8()? != 0 {
+        // for big-endian architectures
+        // (note that the i32 spans bytes 16 through 19, so the offset of the kind field is 16)
+        16
+    } else if ecx.read_scalar(ecx.mplace_field(array_mplacety, 12)?.into())?.to_u8()? != 0 {
+        // for little-endian architectures
+        12
+    } else if ecx.read_scalar(ecx.mplace_field(array_mplacety, 15)?.into())?.to_u8()? != 0 {
+        // for big-endian architectures
+        // (note that the i32 spans bytes 12 through 15, so the offset of the kind field is 12)
+        12
+    } else {
+        bug!("Couldn't determine offset of `kind` in pthread_mutex_t");
+    };
+
+    // Save offset to memoization cache for future calls
+    LIBC_MUTEX_KIND_OFFSET_CACHE.store(kind_offset, Ordering::Relaxed);
+    Ok(kind_offset)
+}
 
 fn mutex_get_locked_count<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
     // Ensure that the following read at an offset to the mutex pointer is within bounds
-    assert_ptr_target_min_size(ecx, mutex_op, 16)?;
+    assert_ptr_target_min_size(ecx, mutex_op, 20)?;
     let mutex_place = ecx.deref_operand(mutex_op)?;
     let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
     let locked_count_place =
@@ -421,7 +475,7 @@ fn mutex_set_locked_count<'mir, 'tcx: 'mir>(
     locked_count: impl Into<ScalarMaybeUndef<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     // Ensure that the following write at an offset to the mutex pointer is within bounds
-    assert_ptr_target_min_size(ecx, mutex_op, 16)?;
+    assert_ptr_target_min_size(ecx, mutex_op, 20)?;
     let mutex_place = ecx.deref_operand(mutex_op)?;
     let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
     let locked_count_place =
@@ -430,15 +484,19 @@ fn mutex_set_locked_count<'mir, 'tcx: 'mir>(
 }
 
 fn mutex_get_kind<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
+    ecx: &mut MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
     // Ensure that the following read at an offset to the mutex pointer is within bounds
-    assert_ptr_target_min_size(ecx, mutex_op, 16)?;
+    assert_ptr_target_min_size(ecx, mutex_op, 20)?;
     let mutex_place = ecx.deref_operand(mutex_op)?;
     let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
-    let kind_place =
-        mutex_place.offset(Size::from_bytes(12), MemPlaceMeta::None, i32_layout, ecx)?;
+    let kind_place = mutex_place.offset(
+        Size::from_bytes(libc_mutex_kind_offset(ecx)?),
+        MemPlaceMeta::None,
+        i32_layout,
+        ecx,
+    )?;
     ecx.read_scalar(kind_place.into())
 }
 
@@ -448,11 +506,15 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
     kind: impl Into<ScalarMaybeUndef<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     // Ensure that the following write at an offset to the mutex pointer is within bounds
-    assert_ptr_target_min_size(ecx, mutex_op, 16)?;
+    assert_ptr_target_min_size(ecx, mutex_op, 20)?;
     let mutex_place = ecx.deref_operand(mutex_op)?;
     let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
-    let kind_place =
-        mutex_place.offset(Size::from_bytes(12), MemPlaceMeta::None, i32_layout, ecx)?;
+    let kind_place = mutex_place.offset(
+        Size::from_bytes(libc_mutex_kind_offset(ecx)?),
+        MemPlaceMeta::None,
+        i32_layout,
+        ecx,
+    )?;
     ecx.write_scalar(kind.into(), kind_place.into())
 }
 
