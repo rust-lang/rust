@@ -17,7 +17,7 @@ fn main() {
     let y: f32 = unsafe { std::mem::transmute(x) };
     assert_eq!(y, 42.0_f32);
 
-    // f32 casts
+    // f32-to-int casts
     assert_eq!(5.0f32 as u32, 5);
     assert_eq!(-5.0f32 as u32, 0);
     assert_eq!(5.0f32 as i32, 5);
@@ -36,7 +36,7 @@ fn main() {
     assert_eq!((u32::MAX-127) as f32 as u32, u32::MAX); // rounding loss
     assert_eq!((u32::MAX-128) as f32 as u32, u32::MAX-255); // rounding loss
 
-    // f64 casts
+    // f64-to-int casts
     assert_eq!(5.0f64 as u64, 5);
     assert_eq!(-5.0f64 as u64, 0);
     assert_eq!(5.0f64 as i64, 5);
@@ -54,6 +54,14 @@ fn main() {
     assert_eq!(u128::MAX as f64 as u128, u128::MAX);
     assert_eq!((u64::MAX-1023) as f64 as u64, u64::MAX); // rounding loss
     assert_eq!((u64::MAX-1024) as f64 as u64, u64::MAX-2047); // rounding loss
+
+    // f32 <-> f64 casts
+    assert_eq!(5.0f64 as f32, 5.0f32);
+    assert_eq!(5.0f32 as f64, 5.0f64);
+    assert_eq!(std::f64::MAX as f32, std::f32::INFINITY);
+    assert_eq!(std::f64::MIN as f32, std::f32::NEG_INFINITY);
+    assert_eq!(std::f32::INFINITY as f64, std::f64::INFINITY);
+    assert_eq!(std::f32::NEG_INFINITY as f64, std::f64::NEG_INFINITY);
 
     // f32 min/max
     assert_eq!((1.0 as f32).max(-1.0), 1.0);
