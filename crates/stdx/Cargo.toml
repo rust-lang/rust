@@ -1,0 +1,11 @@
+[package]
+name = "stdx"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+# Think twice before adding anything here

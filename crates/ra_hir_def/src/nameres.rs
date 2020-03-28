@@ -63,6 +63,7 @@ use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
 use ra_syntax::ast;
 use rustc_hash::FxHashMap;
+use stdx::format_to;
 
 use crate::{
     db::DefDatabase,
@@ -246,7 +247,7 @@ impl CrateDefMap {
             entries.sort_by_key(|(name, _)| name.clone());
 
             for (name, def) in entries {
-                *buf += &format!("{}:", name);
+                format_to!(buf, "{}:", name);
 
                 if def.types.is_some() {
                     *buf += " t";
@@ -265,7 +266,7 @@ impl CrateDefMap {
             }
 
             for (name, child) in map.modules[module].children.iter() {
-                let path = path.to_string() + &format!("::{}", name);
+                let path = &format!("{}::{}", path, name);
                 go(buf, map, &path, *child);
             }
         }

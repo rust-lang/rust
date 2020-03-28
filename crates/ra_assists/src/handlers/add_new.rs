@@ -1,14 +1,11 @@
-use std::fmt::Write;
-
-use format_buf::format;
 use hir::Adt;
-use join_to_string::join;
 use ra_syntax::{
     ast::{
         self, AstNode, NameOwner, StructKind, TypeAscriptionOwner, TypeParamsOwner, VisibilityOwner,
     },
     TextUnit, T,
 };
+use stdx::{format_to, SepBy};
 
 use crate::{Assist, AssistCtx, AssistId};
 
@@ -53,24 +50,22 @@ pub(crate) fn add_new(ctx: AssistCtx) -> Option<Assist> {
             buf.push('\n');
         }
 
-        let vis = strukt.visibility().map(|v| format!("{} ", v.syntax()));
+        let vis = strukt.visibility().map(|v| format!("{} ", v));
         let vis = vis.as_deref().unwrap_or("");
-        write!(&mut buf, "    {}fn new(", vis).unwrap();
 
-        join(field_list.fields().filter_map(|f| {
-            Some(format!("{}: {}", f.name()?.syntax().text(), f.ascribed_type()?.syntax().text()))
-        }))
-        .separator(", ")
-        .to_buf(&mut buf);
+        let params = field_list
+            .fields()
+            .filter_map(|f| {
+                Some(format!(
+                    "{}: {}",
+                    f.name()?.syntax().text(),
+                    f.ascribed_type()?.syntax().text()
+                ))
+            })
+            .sep_by(", ");
+        let fields = field_list.fields().filter_map(|f| f.name()).sep_by(", ");
 
-        buf.push_str(") -> Self { Self {");
-
-        join(field_list.fields().filter_map(|f| Some(f.name()?.syntax().text())))
-            .separator(", ")
-            .surround_with(" ", " ")
-            .to_buf(&mut buf);
-
-        buf.push_str("} }");
+        format_to!(buf, "    {}fn new({}) -> Self {{ Self {{ {} }} }}", vis, params, fields);
 
         let (start_offset, end_offset) = impl_def
             .and_then(|impl_def| {
@@ -103,7 +98,7 @@ fn generate_impl_text(strukt: &ast::StructDef, code: &str) -> String {
     let mut buf = String::with_capacity(code.len());
     buf.push_str("\n\nimpl");
     if let Some(type_params) = &type_params {
-        format!(buf, "{}", type_params.syntax());
+        format_to!(buf, "{}", type_params.syntax());
     }
     buf.push_str(" ");
     buf.push_str(strukt.name().unwrap().text().as_str());
@@ -114,10 +109,10 @@ fn generate_impl_text(strukt: &ast::StructDef, code: &str) -> String {
             .map(|it| it.text().clone());
         let type_params =
             type_params.type_params().filter_map(|it| it.name()).map(|it| it.text().clone());
-        join(lifetime_params.chain(type_params)).surround_with("<", ">").to_buf(&mut buf);
+        format_to!(buf, "<{}>", lifetime_params.chain(type_params).sep_by(", "))
     }
 
-    format!(&mut buf, " {{\n{}\n}}\n", code);
+    format_to!(buf, " {{\n{}\n}}\n", code);
 
     buf
 }

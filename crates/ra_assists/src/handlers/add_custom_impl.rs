@@ -1,16 +1,12 @@
-//! FIXME: write short doc here
-
-use join_to_string::join;
 use ra_syntax::{
     ast::{self, AstNode},
     Direction, SmolStr,
     SyntaxKind::{IDENT, WHITESPACE},
     TextRange, TextUnit,
 };
+use stdx::SepBy;
 
 use crate::{Assist, AssistCtx, AssistId};
-
-const DERIVE_TRAIT: &str = "derive";
 
 // Assist: add_custom_impl
 //
@@ -38,7 +34,7 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
         .descendants_with_tokens()
         .filter(|t| t.kind() == IDENT)
         .find_map(|i| i.into_token())
-        .filter(|t| *t.text() == DERIVE_TRAIT)?
+        .filter(|t| *t.text() == "derive")?
         .text()
         .clone();
 
@@ -63,8 +59,7 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
             .filter(|t| t != trait_token.text())
             .collect::<Vec<SmolStr>>();
         let has_more_derives = !new_attr_input.is_empty();
-        let new_attr_input =
-            join(new_attr_input.iter()).separator(", ").surround_with("(", ")").to_string();
+        let new_attr_input = new_attr_input.iter().sep_by(", ").surround_with("(", ")").to_string();
         let new_attr_input_len = new_attr_input.len();
 
         let mut buf = String::new();
@@ -100,8 +95,9 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::helpers::{check_assist, check_assist_not_applicable};
+
+    use super::*;
 
     #[test]
     fn add_custom_impl_for_unique_input() {

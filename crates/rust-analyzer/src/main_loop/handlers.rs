@@ -3,7 +3,6 @@
 //! `ra_ide` crate.
 
 use std::{
-    fmt::Write as _,
     io::Write as _,
     process::{self, Stdio},
 };
@@ -28,6 +27,7 @@ use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
+use stdx::format_to;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -46,11 +46,11 @@ use crate::{
 pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
     let _p = profile("handle_analyzer_status");
     let mut buf = world.status();
-    writeln!(buf, "\n\nrequests:").unwrap();
+    format_to!(buf, "\n\nrequests:");
     let requests = world.latest_requests.read();
     for (is_last, r) in requests.iter() {
         let mark = if is_last { "*" } else { " " };
-        writeln!(buf, "{}{:4} {:<36}{}ms", mark, r.id, r.method, r.duration.as_millis()).unwrap();
+        format_to!(buf, "{}{:4} {:<36}{}ms", mark, r.id, r.method, r.duration.as_millis());
     }
     Ok(buf)
 }

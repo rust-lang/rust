@@ -354,12 +354,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fad85553e09a6f881f739c29f0b00b0f01357c743266d478b68951ce23285f3"
 
 [[package]]
-name = "format-buf"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7aea5a5909a74969507051a3b17adc84737e31a5f910559892aedce026f4d53"
-
-[[package]]
 name = "fs_extra"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -572,12 +566,6 @@ name = "jod-thread"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f52a11f73b88fab829a0e4d9e13ea5982c7ac457c72eb3541d82a4afdfce4ff"
-
-[[package]]
-name = "join_to_string"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4dc7a5290e8c2606ce2be49f456d50f69173cb96d1541e4f66e34ac8b331a98f"
 
 [[package]]
 name = "kernel32-sys"
@@ -885,9 +873,7 @@ name = "ra_assists"
 version = "0.1.0"
 dependencies = [
  "either",
- "format-buf",
  "itertools 0.9.0",
- "join_to_string",
  "ra_db",
  "ra_fmt",
  "ra_hir",
@@ -896,6 +882,7 @@ dependencies = [
  "ra_syntax",
  "ra_text_edit",
  "rustc-hash",
+ "stdx",
  "test_utils",
 ]
 
@@ -979,6 +966,7 @@ dependencies = [
  "ra_syntax",
  "ra_tt",
  "rustc-hash",
+ "stdx",
  "test_utils",
 ]
 
@@ -1015,6 +1003,7 @@ dependencies = [
  "ra_prof",
  "ra_syntax",
  "rustc-hash",
+ "stdx",
  "test_utils",
 ]
 
@@ -1023,11 +1012,9 @@ name = "ra_ide"
 version = "0.1.0"
 dependencies = [
  "either",
- "format-buf",
  "indexmap",
  "insta",
  "itertools 0.9.0",
- "join_to_string",
  "log",
  "ra_assists",
  "ra_cfg",
@@ -1040,6 +1027,7 @@ dependencies = [
  "ra_text_edit",
  "rand",
  "rustc-hash",
+ "stdx",
  "test_utils",
 ]
 
@@ -1130,6 +1118,7 @@ dependencies = [
  "rustc_lexer",
  "serde",
  "smol_str",
+ "stdx",
  "test_utils",
  "walkdir",
 ]
@@ -1321,6 +1310,7 @@ dependencies = [
  "rustc-hash",
  "serde",
  "serde_json",
+ "stdx",
  "tempfile",
  "test_utils",
  "threadpool",
@@ -1487,6 +1477,10 @@ checksum = "34836c9a295c62c2ce3514471117c5cb269891e8421b2aafdd910050576c4d8b"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "stdx"
+version = "0.1.0"
 
 [[package]]
 name = "superslice"

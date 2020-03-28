@@ -200,8 +200,8 @@ fn check_struct_shorthand_initialization(
 #[cfg(test)]
 mod tests {
     use insta::assert_debug_snapshot;
-    use join_to_string::join;
     use ra_syntax::SourceFile;
+    use stdx::SepBy;
     use test_utils::assert_eq_text;
 
     use crate::mock_analysis::{analysis_and_position, single_file};
@@ -254,16 +254,12 @@ mod tests {
             .map(|it| it.len() - it.trim_start().len())
             .next()
             .expect("empty fixture");
-        let after = join(after.lines().filter_map(|line| {
-            if line.len() > margin {
-                Some(&line[margin..])
-            } else {
-                None
-            }
-        }))
-        .separator("\n")
-        .suffix("\n")
-        .to_string();
+        let after = after
+            .lines()
+            .filter_map(|line| if line.len() > margin { Some(&line[margin..]) } else { None })
+            .sep_by("\n")
+            .suffix("\n")
+            .to_string();
 
         assert_eq_text!(&after, &actual);
         assert!(

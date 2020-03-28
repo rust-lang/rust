@@ -1,4 +1,3 @@
-use format_buf::format;
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxKind::{
@@ -7,6 +6,7 @@ use ra_syntax::{
     },
     SyntaxNode, TextUnit,
 };
+use stdx::format_to;
 use test_utils::tested_by;
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -52,7 +52,7 @@ pub(crate) fn introduce_variable(ctx: AssistCtx) -> Option<Assist> {
             buf.push_str("let var_name = ");
             TextUnit::of_str("let ")
         };
-        format!(buf, "{}", expr.syntax());
+        format_to!(buf, "{}", expr.syntax());
         let full_stmt = ast::ExprStmt::cast(anchor_stmt.clone());
         let is_full_stmt = if let Some(expr_stmt) = &full_stmt {
             Some(expr.syntax().clone()) == expr_stmt.expr().map(|e| e.syntax().clone())

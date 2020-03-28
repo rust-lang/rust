@@ -32,9 +32,10 @@ pub mod ast;
 #[doc(hidden)]
 pub mod fuzz;
 
-use std::{fmt::Write, marker::PhantomData, sync::Arc};
+use std::{marker::PhantomData, sync::Arc};
 
 use ra_text_edit::AtomTextEdit;
+use stdx::format_to;
 
 use crate::syntax_node::GreenNode;
 
@@ -115,7 +116,7 @@ impl Parse<SourceFile> {
     pub fn debug_dump(&self) -> String {
         let mut buf = format!("{:#?}", self.tree().syntax());
         for err in self.errors.iter() {
-            writeln!(buf, "error {:?}: {}", err.range(), err).unwrap();
+            format_to!(buf, "error {:?}: {}\n", err.range(), err);
         }
         buf
     }
@@ -296,7 +297,7 @@ fn api_walkthrough() {
                     NodeOrToken::Node(it) => it.text().to_string(),
                     NodeOrToken::Token(it) => it.text().to_string(),
                 };
-                buf += &format!("{:indent$}{:?} {:?}\n", " ", text, node.kind(), indent = indent);
+                format_to!(buf, "{:indent$}{:?} {:?}\n", " ", text, node.kind(), indent = indent);
                 indent += 2;
             }
             WalkEvent::Leave(_) => indent -= 2,
