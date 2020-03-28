@@ -236,7 +236,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "TryEnterCriticalSection" if this.frame().instance.to_string().starts_with("std::sys::windows::")
             => {
                 // There is only one thread, so this always succeeds and returns TRUE
-                this.write_scalar(Scalar::from_int(1, dest.layout.size), dest)?;
+                this.write_scalar(Scalar::from_i32(1), dest)?;
             }
 
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
