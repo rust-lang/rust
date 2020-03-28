@@ -35,10 +35,10 @@ pub struct CheckOptions {
 /// The spawned thread is shut down when this struct is dropped.
 #[derive(Debug)]
 pub struct CheckWatcher {
-    pub task_recv: Receiver<CheckTask>,
     // XXX: drop order is significant
     cmd_send: Option<Sender<CheckCommand>>,
     handle: Option<jod_thread::JoinHandle<()>>,
+    pub task_recv: Receiver<CheckTask>,
 }
 
 impl CheckWatcher {

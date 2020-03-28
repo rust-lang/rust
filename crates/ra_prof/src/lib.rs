@@ -339,6 +339,14 @@ pub fn print_backtrace() {
     let bt = backtrace::Backtrace::new();
     eprintln!("{:?}", bt);
 }
+#[cfg(not(feature = "backtrace"))]
+pub fn print_backtrace() {
+    eprintln!(
+        r#"enable the backtrace feature:
+    ra_prof = {{ path = "../ra_prof", features = [ "backtrace"] }}
+"#
+    );
+}
 
 thread_local!(static IN_SCOPE: RefCell<bool> = RefCell::new(false));
 
