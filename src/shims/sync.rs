@@ -4,6 +4,177 @@ use rustc_target::abi::{LayoutOf, Size};
 use crate::stacked_borrows::Tag;
 use crate::*;
 
+fn assert_ptr_target_min_size<'mir, 'tcx: 'mir>(
+    ecx: &MiriEvalContext<'mir, 'tcx>,
+    operand: OpTy<'tcx, Tag>,
+    min_size: u64,
+) -> InterpResult<'tcx, ()> {
+    let target_ty = match operand.layout.ty.kind {
+        TyKind::RawPtr(TypeAndMut { ty, mutbl: _ }) => ty,
+        _ => panic!("Argument to pthread function was not a raw pointer"),
+    };
+    let target_layout = ecx.layout_of(target_ty)?;
+    assert!(target_layout.size.bytes() >= min_size);
+    Ok(())
+}
+
+// pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.
+
+// Our chosen memory layout: store an i32 in the first four bytes equal to the
+// corresponding libc mutex kind constant (i.e. PTHREAD_MUTEX_NORMAL)
+
+fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
+    ecx: &MiriEvalContext<'mir, 'tcx>,
+    attr_op: OpTy<'tcx, Tag>,
+) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+    // Ensure that the following read at an offset to the attr pointer is within bounds
+    assert_ptr_target_min_size(ecx, attr_op, 4)?;
+    let attr_place = ecx.deref_operand(attr_op)?;
+    let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
+    let kind_place = attr_place.offset(Size::ZERO, MemPlaceMeta::None, i32_layout, ecx)?;
+    ecx.read_scalar(kind_place.into())
+}
+
+fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
+    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    attr_op: OpTy<'tcx, Tag>,
+    kind: impl Into<ScalarMaybeUndef<Tag>>,
+) -> InterpResult<'tcx, ()> {
+    // Ensure that the following write at an offset to the attr pointer is within bounds
+    assert_ptr_target_min_size(ecx, attr_op, 4)?;
+    let attr_place = ecx.deref_operand(attr_op)?;
+    let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
+    let kind_place = attr_place.offset(Size::ZERO, MemPlaceMeta::None, i32_layout, ecx)?;
+    ecx.write_scalar(kind.into(), kind_place.into())
+}
+
+// pthread_mutex_t is between 24 and 48 bytes, depending on the platform.
+
+// Our chosen memory layout:
+// bytes 0-3: reserved for signature on macOS
+// (need to avoid this because it is set by static initializer macros)
+// bytes 4-7: count of how many times this mutex has been locked, as a u32
+// bytes 12-15 or 16-19 (depending on platform): mutex kind, as an i32
+// (the kind has to be at its offset for compatibility with static initializer macros)
+
+fn mutex_get_locked_count<'mir, 'tcx: 'mir>(
+    ecx: &MiriEvalContext<'mir, 'tcx>,
+    mutex_op: OpTy<'tcx, Tag>,
+) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+    // Ensure that the following read at an offset to the mutex pointer is within bounds
+    assert_ptr_target_min_size(ecx, mutex_op, 20)?;
+    let mutex_place = ecx.deref_operand(mutex_op)?;
+    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
+    let locked_count_place =
+        mutex_place.offset(Size::from_bytes(4), MemPlaceMeta::None, u32_layout, ecx)?;
+    ecx.read_scalar(locked_count_place.into())
+}
+
+fn mutex_set_locked_count<'mir, 'tcx: 'mir>(
+    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    mutex_op: OpTy<'tcx, Tag>,
+    locked_count: impl Into<ScalarMaybeUndef<Tag>>,
+) -> InterpResult<'tcx, ()> {
+    // Ensure that the following write at an offset to the mutex pointer is within bounds
+    assert_ptr_target_min_size(ecx, mutex_op, 20)?;
+    let mutex_place = ecx.deref_operand(mutex_op)?;
+    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
+    let locked_count_place =
+        mutex_place.offset(Size::from_bytes(4), MemPlaceMeta::None, u32_layout, ecx)?;
+    ecx.write_scalar(locked_count.into(), locked_count_place.into())
+}
+
+fn mutex_get_kind<'mir, 'tcx: 'mir>(
+    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    mutex_op: OpTy<'tcx, Tag>,
+) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+    // Ensure that the following read at an offset to the mutex pointer is within bounds
+    assert_ptr_target_min_size(ecx, mutex_op, 20)?;
+    let mutex_place = ecx.deref_operand(mutex_op)?;
+    let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
+    let kind_offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
+    let kind_place =
+        mutex_place.offset(Size::from_bytes(kind_offset), MemPlaceMeta::None, i32_layout, ecx)?;
+    ecx.read_scalar(kind_place.into())
+}
+
+fn mutex_set_kind<'mir, 'tcx: 'mir>(
+    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    mutex_op: OpTy<'tcx, Tag>,
+    kind: impl Into<ScalarMaybeUndef<Tag>>,
+) -> InterpResult<'tcx, ()> {
+    // Ensure that the following write at an offset to the mutex pointer is within bounds
+    assert_ptr_target_min_size(ecx, mutex_op, 20)?;
+    let mutex_place = ecx.deref_operand(mutex_op)?;
+    let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
+    let kind_offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
+    let kind_place =
+        mutex_place.offset(Size::from_bytes(kind_offset), MemPlaceMeta::None, i32_layout, ecx)?;
+    ecx.write_scalar(kind.into(), kind_place.into())
+}
+
+// pthread_rwlock_t is between 32 and 56 bytes, depending on the platform.
+
+// Our chosen memory layout:
+// bytes 0-3: reserved for signature on macOS
+// (need to avoid this because it is set by static initializer macros)
+// bytes 4-7: reader count, as a u32
+// bytes 8-11: writer count, as a u32
+
+fn rwlock_get_readers<'mir, 'tcx: 'mir>(
+    ecx: &MiriEvalContext<'mir, 'tcx>,
+    rwlock_op: OpTy<'tcx, Tag>,
+) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+    // Ensure that the following read at an offset to the rwlock pointer is within bounds
+    assert_ptr_target_min_size(ecx, rwlock_op, 12)?;
+    let rwlock_place = ecx.deref_operand(rwlock_op)?;
+    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
+    let readers_place =
+        rwlock_place.offset(Size::from_bytes(4), MemPlaceMeta::None, u32_layout, ecx)?;
+    ecx.read_scalar(readers_place.into())
+}
+
+fn rwlock_set_readers<'mir, 'tcx: 'mir>(
+    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    rwlock_op: OpTy<'tcx, Tag>,
+    readers: impl Into<ScalarMaybeUndef<Tag>>,
+) -> InterpResult<'tcx, ()> {
+    // Ensure that the following write at an offset to the rwlock pointer is within bounds
+    assert_ptr_target_min_size(ecx, rwlock_op, 12)?;
+    let rwlock_place = ecx.deref_operand(rwlock_op)?;
+    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
+    let readers_place =
+        rwlock_place.offset(Size::from_bytes(4), MemPlaceMeta::None, u32_layout, ecx)?;
+    ecx.write_scalar(readers.into(), readers_place.into())
+}
+
+fn rwlock_get_writers<'mir, 'tcx: 'mir>(
+    ecx: &MiriEvalContext<'mir, 'tcx>,
+    rwlock_op: OpTy<'tcx, Tag>,
+) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
+    // Ensure that the following read at an offset to the rwlock pointer is within bounds
+    assert_ptr_target_min_size(ecx, rwlock_op, 12)?;
+    let rwlock_place = ecx.deref_operand(rwlock_op)?;
+    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
+    let writers_place =
+        rwlock_place.offset(Size::from_bytes(8), MemPlaceMeta::None, u32_layout, ecx)?;
+    ecx.read_scalar(writers_place.into())
+}
+
+fn rwlock_set_writers<'mir, 'tcx: 'mir>(
+    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    rwlock_op: OpTy<'tcx, Tag>,
+    writers: impl Into<ScalarMaybeUndef<Tag>>,
+) -> InterpResult<'tcx, ()> {
+    // Ensure that the following write at an offset to the rwlock pointer is within bounds
+    assert_ptr_target_min_size(ecx, rwlock_op, 12)?;
+    let rwlock_place = ecx.deref_operand(rwlock_op)?;
+    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
+    let writers_place =
+        rwlock_place.offset(Size::from_bytes(8), MemPlaceMeta::None, u32_layout, ecx)?;
+    ecx.write_scalar(writers.into(), writers_place.into())
+}
+
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn pthread_mutexattr_init(&mut self, attr_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
@@ -347,175 +518,4 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         Ok(0)
     }
-}
-
-fn assert_ptr_target_min_size<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
-    operand: OpTy<'tcx, Tag>,
-    min_size: u64,
-) -> InterpResult<'tcx, ()> {
-    let target_ty = match operand.layout.ty.kind {
-        TyKind::RawPtr(TypeAndMut { ty, mutbl: _ }) => ty,
-        _ => panic!("Argument to pthread function was not a raw pointer"),
-    };
-    let target_layout = ecx.layout_of(target_ty)?;
-    assert!(target_layout.size.bytes() >= min_size);
-    Ok(())
-}
-
-// pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.
-
-// Our chosen memory layout: store an i32 in the first four bytes equal to the
-// corresponding libc mutex kind constant (i.e. PTHREAD_MUTEX_NORMAL)
-
-fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
-    attr_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
-    // Ensure that the following read at an offset to the attr pointer is within bounds
-    assert_ptr_target_min_size(ecx, attr_op, 4)?;
-    let attr_place = ecx.deref_operand(attr_op)?;
-    let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
-    let kind_place = attr_place.offset(Size::ZERO, MemPlaceMeta::None, i32_layout, ecx)?;
-    ecx.read_scalar(kind_place.into())
-}
-
-fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
-    attr_op: OpTy<'tcx, Tag>,
-    kind: impl Into<ScalarMaybeUndef<Tag>>,
-) -> InterpResult<'tcx, ()> {
-    // Ensure that the following write at an offset to the attr pointer is within bounds
-    assert_ptr_target_min_size(ecx, attr_op, 4)?;
-    let attr_place = ecx.deref_operand(attr_op)?;
-    let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
-    let kind_place = attr_place.offset(Size::ZERO, MemPlaceMeta::None, i32_layout, ecx)?;
-    ecx.write_scalar(kind.into(), kind_place.into())
-}
-
-// pthread_mutex_t is between 24 and 48 bytes, depending on the platform.
-
-// Our chosen memory layout:
-// bytes 0-3: reserved for signature on macOS
-// (need to avoid this because it is set by static initializer macros)
-// bytes 4-7: count of how many times this mutex has been locked, as a u32
-// bytes 12-15 or 16-19 (depending on platform): mutex kind, as an i32
-// (the kind has to be at its offset for compatibility with static initializer macros)
-
-fn mutex_get_locked_count<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
-    mutex_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
-    // Ensure that the following read at an offset to the mutex pointer is within bounds
-    assert_ptr_target_min_size(ecx, mutex_op, 20)?;
-    let mutex_place = ecx.deref_operand(mutex_op)?;
-    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
-    let locked_count_place =
-        mutex_place.offset(Size::from_bytes(4), MemPlaceMeta::None, u32_layout, ecx)?;
-    ecx.read_scalar(locked_count_place.into())
-}
-
-fn mutex_set_locked_count<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
-    mutex_op: OpTy<'tcx, Tag>,
-    locked_count: impl Into<ScalarMaybeUndef<Tag>>,
-) -> InterpResult<'tcx, ()> {
-    // Ensure that the following write at an offset to the mutex pointer is within bounds
-    assert_ptr_target_min_size(ecx, mutex_op, 20)?;
-    let mutex_place = ecx.deref_operand(mutex_op)?;
-    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
-    let locked_count_place =
-        mutex_place.offset(Size::from_bytes(4), MemPlaceMeta::None, u32_layout, ecx)?;
-    ecx.write_scalar(locked_count.into(), locked_count_place.into())
-}
-
-fn mutex_get_kind<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
-    mutex_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
-    // Ensure that the following read at an offset to the mutex pointer is within bounds
-    assert_ptr_target_min_size(ecx, mutex_op, 20)?;
-    let mutex_place = ecx.deref_operand(mutex_op)?;
-    let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
-    let kind_offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
-    let kind_place =
-        mutex_place.offset(Size::from_bytes(kind_offset), MemPlaceMeta::None, i32_layout, ecx)?;
-    ecx.read_scalar(kind_place.into())
-}
-
-fn mutex_set_kind<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
-    mutex_op: OpTy<'tcx, Tag>,
-    kind: impl Into<ScalarMaybeUndef<Tag>>,
-) -> InterpResult<'tcx, ()> {
-    // Ensure that the following write at an offset to the mutex pointer is within bounds
-    assert_ptr_target_min_size(ecx, mutex_op, 20)?;
-    let mutex_place = ecx.deref_operand(mutex_op)?;
-    let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
-    let kind_offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
-    let kind_place =
-        mutex_place.offset(Size::from_bytes(kind_offset), MemPlaceMeta::None, i32_layout, ecx)?;
-    ecx.write_scalar(kind.into(), kind_place.into())
-}
-
-// pthread_rwlock_t is between 32 and 56 bytes, depending on the platform.
-
-// Our chosen memory layout:
-// bytes 0-3: reserved for signature on macOS
-// (need to avoid this because it is set by static initializer macros)
-// bytes 4-7: reader count, as a u32
-// bytes 8-11: writer count, as a u32
-
-fn rwlock_get_readers<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
-    rwlock_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
-    // Ensure that the following read at an offset to the rwlock pointer is within bounds
-    assert_ptr_target_min_size(ecx, rwlock_op, 12)?;
-    let rwlock_place = ecx.deref_operand(rwlock_op)?;
-    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
-    let readers_place =
-        rwlock_place.offset(Size::from_bytes(4), MemPlaceMeta::None, u32_layout, ecx)?;
-    ecx.read_scalar(readers_place.into())
-}
-
-fn rwlock_set_readers<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
-    rwlock_op: OpTy<'tcx, Tag>,
-    readers: impl Into<ScalarMaybeUndef<Tag>>,
-) -> InterpResult<'tcx, ()> {
-    // Ensure that the following write at an offset to the rwlock pointer is within bounds
-    assert_ptr_target_min_size(ecx, rwlock_op, 12)?;
-    let rwlock_place = ecx.deref_operand(rwlock_op)?;
-    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
-    let readers_place =
-        rwlock_place.offset(Size::from_bytes(4), MemPlaceMeta::None, u32_layout, ecx)?;
-    ecx.write_scalar(readers.into(), readers_place.into())
-}
-
-fn rwlock_get_writers<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
-    rwlock_op: OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>> {
-    // Ensure that the following read at an offset to the rwlock pointer is within bounds
-    assert_ptr_target_min_size(ecx, rwlock_op, 12)?;
-    let rwlock_place = ecx.deref_operand(rwlock_op)?;
-    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
-    let writers_place =
-        rwlock_place.offset(Size::from_bytes(8), MemPlaceMeta::None, u32_layout, ecx)?;
-    ecx.read_scalar(writers_place.into())
-}
-
-fn rwlock_set_writers<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
-    rwlock_op: OpTy<'tcx, Tag>,
-    writers: impl Into<ScalarMaybeUndef<Tag>>,
-) -> InterpResult<'tcx, ()> {
-    // Ensure that the following write at an offset to the rwlock pointer is within bounds
-    assert_ptr_target_min_size(ecx, rwlock_op, 12)?;
-    let rwlock_place = ecx.deref_operand(rwlock_op)?;
-    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
-    let writers_place =
-        rwlock_place.offset(Size::from_bytes(8), MemPlaceMeta::None, u32_layout, ecx)?;
-    ecx.write_scalar(writers.into(), writers_place.into())
 }
