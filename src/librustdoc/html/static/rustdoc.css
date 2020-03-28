@@ -1082,8 +1082,8 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 
 pre.rust {
 	position: relative;
-	tab-width: 4;
-	-moz-tab-width: 4;
+	tab-size: 4;
+	-moz-tab-size: 4;
 }
 
 .search-failed {
