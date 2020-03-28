@@ -37,6 +37,7 @@
     - [High-level overview of the compiler source](./high-level-overview.md)
     - [The Rustc Driver and Interface](./rustc-driver.md)
         - [Rustdoc](./rustdoc.md)
+        - [Interacting with the AST](./rustc-driver-interacting-with-the-ast.md)
     - [Queries: demand-driven compilation](./query.md)
         - [The Query Evaluation Model in Detail](./queries/query-evaluation-model-in-detail.md)
         - [Incremental compilation](./queries/incremental-compilation.md)
