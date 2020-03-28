@@ -90,6 +90,9 @@ pub(super) fn add_local_place_comments<'tcx>(
                 (crate::pointer::PointerBase::Stack(stack_slot), offset) => {
                     ("stack", format!("storage={}{}{}", stack_slot, offset, meta).into())
                 }
+                (crate::pointer::PointerBase::Dangling(align), offset) => {
+                    ("zst", format!("align={},offset={}", align.bytes(), offset).into())
+                }
             }
         }
     };

@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+use rustc_target::abi::Align;
+
 use cranelift_codegen::ir::immediates::Offset32;
 
 #[derive(Copy, Clone, Debug)]
@@ -12,6 +14,7 @@ pub(crate) struct Pointer {
 pub(crate) enum PointerBase {
     Addr(Value),
     Stack(StackSlot),
+    Dangling(Align),
 }
 
 impl Pointer {
@@ -37,6 +40,13 @@ impl Pointer {
         }
     }
 
+    pub(crate) fn dangling(align: Align) -> Self {
+        Pointer {
+            base: PointerBase::Dangling(align),
+            offset: Offset32::new(0),
+        }
+    }
+
     #[cfg(debug_assertions)]
     pub(crate) fn base_and_offset(self) -> (PointerBase, Offset32) {
         (self.base, self.offset)
@@ -53,6 +63,9 @@ impl Pointer {
                 }
             }
             PointerBase::Stack(stack_slot) => fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, self.offset),
+            PointerBase::Dangling(align) => {
+                fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(align.bytes()).unwrap())
+            }
         }
     }
 
@@ -80,6 +93,7 @@ impl Pointer {
                 let base_addr = match self.base {
                     PointerBase::Addr(addr) => addr,
                     PointerBase::Stack(stack_slot) => fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0),
+                    PointerBase::Dangling(align) => fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(align.bytes()).unwrap()),
                 };
                 let addr = fx.bcx.ins().iadd_imm(base_addr, new_offset);
                 Pointer {
@@ -109,6 +123,13 @@ impl Pointer {
                     offset: Offset32::new(0),
                 }
             }
+            PointerBase::Dangling(align) => {
+                let addr = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(align.bytes()).unwrap());
+                Pointer {
+                    base: PointerBase::Addr(fx.bcx.ins().iadd(addr, extra_offset)),
+                    offset: self.offset,
+                }
+            }
         }
     }
 
@@ -127,6 +148,7 @@ impl Pointer {
             } else {
                 fx.bcx.ins().stack_load(ty, stack_slot, self.offset)
             }
+            PointerBase::Dangling(_align) => unreachable!(),
         }
     }
 
@@ -150,6 +172,7 @@ impl Pointer {
                     fx.bcx.ins().stack_store(value, stack_slot, self.offset);
                 }
             }
+            PointerBase::Dangling(_align) => unreachable!(),
         }
     }
 }

@@ -344,7 +344,7 @@ impl<'tcx> CPlace<'tcx> {
                 }
             }
             CPlaceInner::NoPlace => CValue::by_ref(
-                Pointer::const_addr(fx, i64::try_from(self.layout.align.pref.bytes()).unwrap()),
+                Pointer::dangling(self.layout.align.pref),
                 layout,
             ),
         }
