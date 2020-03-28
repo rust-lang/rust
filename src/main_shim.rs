@@ -103,6 +103,10 @@ pub(crate) fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<im
             bcx.seal_all_blocks();
             bcx.finalize();
         }
-        m.define_function(cmain_func_id, &mut ctx).unwrap();
+        m.define_function(
+            cmain_func_id,
+            &mut ctx,
+            &mut cranelift_codegen::binemit::NullTrapSink {},
+        ).unwrap();
     }
 }

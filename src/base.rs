@@ -171,7 +171,14 @@ pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
 
     // Define function
     let module = &mut cx.module;
-    tcx.sess.time("define function", || module.define_function(func_id, context).unwrap());
+    tcx.sess.time(
+        "define function",
+        || module.define_function(
+            func_id,
+            context,
+            &mut cranelift_codegen::binemit::NullTrapSink {},
+        ).unwrap(),
+    );
 
     // Write optimized function to file for debugging
     #[cfg(debug_assertions)]

@@ -125,7 +125,6 @@ pub(crate) fn make_module(sess: &Session, name: String) -> Module<Backend> {
         ObjectBuilder::new(
             crate::build_isa(sess, true),
             name + ".o",
-            ObjectTrapCollection::Disabled,
             cranelift_module::default_libcall_names(),
         ),
     );

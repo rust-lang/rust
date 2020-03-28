@@ -94,6 +94,10 @@ fn codegen_inner(module: &mut Module<impl Backend + 'static>, kind: AllocatorKin
             bcx.seal_all_blocks();
             bcx.finalize();
         }
-        module.define_function(func_id, &mut ctx).unwrap();
+        module.define_function(
+            func_id,
+            &mut ctx,
+            &mut cranelift_codegen::binemit::NullTrapSink {},
+        ).unwrap();
     }
 }
