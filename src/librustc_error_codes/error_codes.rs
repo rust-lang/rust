@@ -389,6 +389,7 @@ E0698: include_str!("./error_codes/E0698.md"),
 E0699: include_str!("./error_codes/E0699.md"),
 E0700: include_str!("./error_codes/E0700.md"),
 E0701: include_str!("./error_codes/E0701.md"),
+E0703: include_str!("./error_codes/E0703.md"),
 E0704: include_str!("./error_codes/E0704.md"),
 E0705: include_str!("./error_codes/E0705.md"),
 E0706: include_str!("./error_codes/E0706.md"),
@@ -603,7 +604,6 @@ E0751: include_str!("./error_codes/E0751.md"),
 //  E0694, // an unknown tool name found in scoped attributes
     E0696, // `continue` pointing to a labeled block
 //  E0702, // replaced with a generic attribute input check
-    E0703, // invalid ABI
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
     E0708, // `async` non-`move` closures with parameters are not currently
            // supported

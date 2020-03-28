@@ -91,7 +91,8 @@
 //! pull-requests for your suggested changes.
 //!
 //! Contributions are appreciated! If you see a part of the docs that can be
-//! improved, submit a PR, or chat with us first on irc.mozilla.org #rust-docs.
+//! improved, submit a PR, or chat with us first on [Discord][rust-discord]
+//! #docs.
 //!
 //! # A Tour of The Rust Standard Library
 //!
@@ -194,6 +195,7 @@
 //! [multithreading]: thread/index.html
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/ch03-02-data-types.html
+//! [rust-discord]: https://discord.gg/rust-lang
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(
