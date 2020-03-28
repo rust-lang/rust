@@ -621,7 +621,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let real_discr = if discr_val.layout.abi.is_signed() {
                     // going from layout tag type to typeck discriminant type
                     // requires first sign extending with the discriminant layout
-                    let sexted = sign_extend(bits_discr, discr_val.layout.size) as i128;
+                    let sexted = sign_extend(bits_discr, discr_val.layout.size);
                     // and then zeroing with the typeck discriminant type
                     let discr_ty = rval
                         .layout
@@ -631,8 +631,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .repr
                         .discr_type();
                     let size = layout::Integer::from_attr(self, discr_ty).size();
-                    let truncatee = sexted as u128;
-                    truncate(truncatee, size)
+                    truncate(sexted, size)
                 } else {
                     bits_discr
                 };
