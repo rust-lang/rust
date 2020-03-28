@@ -141,7 +141,7 @@ pub fn find_associated_item<'tcx>(
                         param_env,
                         impl_data.impl_def_id,
                         substs,
-                        node_item.node,
+                        node_item.defining_node,
                     );
                     infcx.tcx.erase_regions(&substs)
                 });

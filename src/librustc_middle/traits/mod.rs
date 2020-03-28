@@ -6,6 +6,7 @@ pub mod query;
 pub mod select;
 pub mod specialization_graph;
 mod structural_impls;
+pub mod util;
 
 use crate::mir::interpret::ErrorHandled;
 use crate::ty::subst::SubstsRef;
