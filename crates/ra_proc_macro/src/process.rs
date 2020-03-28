@@ -3,11 +3,12 @@
 use crossbeam_channel::{bounded, Receiver, Sender};
 use ra_tt::Subtree;
 
-use crate::msg::{ErrorCode, Message, Request, Response, ResponseError};
+use crate::msg::{ErrorCode, Request, Response, ResponseError, Message};
 use crate::rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask, ProcMacroKind};
 
 use io::{BufRead, BufReader};
 use std::{
+    convert::{TryFrom, TryInto},
     io::{self, Write},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
@@ -26,7 +27,7 @@ pub(crate) struct ProcMacroProcessThread {
 }
 
 enum Task {
-    Request { req: Message, result_tx: Sender<Message> },
+    Request { req: Request, result_tx: Sender<Response> },
     Close,
 }
 
@@ -96,7 +97,7 @@ impl ProcMacroProcessSrv {
     ) -> Result<Vec<(String, ProcMacroKind)>, ra_tt::ExpansionError> {
         let task = ListMacrosTask { lib: dylib_path.to_path_buf() };
 
-        let result: ListMacrosResult = self.send_task("list_macros", task)?;
+        let result: ListMacrosResult = self.send_task(Request::ListMacro(task))?;
         Ok(result.macros)
     }
 
@@ -113,25 +114,18 @@ impl ProcMacroProcessSrv {
             lib: dylib_path.to_path_buf(),
         };
 
-        let result: ExpansionResult = self.send_task("custom_derive", task)?;
+        let result: ExpansionResult = self.send_task(Request::ExpansionMacro(task))?;
         Ok(result.expansion)
     }
 
-    pub fn send_task<'a, T, R>(&self, method: &str, task: T) -> Result<R, ra_tt::ExpansionError>
+    pub fn send_task<R>(&self, req: Request) -> Result<R, ra_tt::ExpansionError>
     where
-        T: serde::Serialize,
-        R: serde::de::DeserializeOwned + Default,
+        R: TryFrom<Response, Error = &'static str>,
     {
         let sender = match &self.inner {
             None => return Err(ra_tt::ExpansionError::Unknown("No sender is found.".to_string())),
             Some(it) => it,
         };
-
-        let msg = serde_json::to_value(task).unwrap();
-
-        // FIXME: use a proper request id
-        let id = 0;
-        let req = Request { id: id.into(), method: method.into(), params: msg };
 
         let (result_tx, result_rx) = bounded(0);
 
@@ -141,27 +135,18 @@ impl ProcMacroProcessSrv {
                 err
             ))
         })?;
-        let response = result_rx.recv().unwrap();
 
-        match response {
-            Message::Request(_) => {
-                return Err(ra_tt::ExpansionError::Unknown(
-                    "Return request from ra_proc_srv".into(),
+        let res = result_rx.recv().unwrap();
+        match res {
+            Response::Error(err) => {
+                return Err(ra_tt::ExpansionError::ExpansionError(err.message));
+            }
+            _ => Ok(res.try_into().map_err(|err| {
+                ra_tt::ExpansionError::Unknown(format!(
+                    "Fail to get response, reason : {:#?} ",
+                    err
                 ))
-            }
-            Message::Response(res) => {
-                if let Some(err) = res.error {
-                    return Err(ra_tt::ExpansionError::ExpansionError(err.message));
-                }
-                match res.result {
-                    None => Ok(R::default()),
-                    Some(res) => {
-                        let result: R = serde_json::from_value(res)
-                            .map_err(|err| ra_tt::ExpansionError::JsonError(err.to_string()))?;
-                        Ok(result)
-                    }
-                }
-            }
+            })?),
         }
     }
 }
@@ -183,18 +168,13 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
             Task::Close => break,
         };
 
-        let res = match send_message(&mut stdin, &mut stdout, req) {
+        let res = match send_request(&mut stdin, &mut stdout, req) {
             Ok(res) => res,
             Err(_err) => {
-                let res = Response {
-                    id: 0.into(),
-                    result: None,
-                    error: Some(ResponseError {
-                        code: ErrorCode::ServerErrorEnd as i32,
-                        message: "Server closed".into(),
-                        data: None,
-                    }),
-                };
+                let res = Response::Error(ResponseError {
+                    code: ErrorCode::ServerErrorEnd,
+                    message: "Server closed".into(),
+                });
                 if result_tx.send(res.into()).is_err() {
                     break;
                 }
@@ -222,11 +202,11 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
     let _ = process.child.kill();
 }
 
-fn send_message(
+fn send_request(
     mut writer: &mut impl Write,
     mut reader: &mut impl BufRead,
-    msg: Message,
-) -> Result<Option<Message>, io::Error> {
-    msg.write(&mut writer)?;
-    Ok(Message::read(&mut reader)?)
+    req: Request,
+) -> Result<Option<Response>, io::Error> {
+    req.write(&mut writer)?;
+    Ok(Response::read(&mut reader)?)
 }

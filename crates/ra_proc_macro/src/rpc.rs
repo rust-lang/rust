@@ -1,4 +1,10 @@
 //! Data struture serialization related stuffs for RPC
+//! 
+//! Define all necessary rpc serialization data structure, 
+//! which include ra_tt related data and some task messages. 
+//! Although adding Serialize and Deserialize trait to ra_tt directly seem to be much easier, 
+//! we deliberately duplicate the ra_tt struct with #[serde(with = "XXDef")] 
+//! for separation of code responsibility.
 
 use ra_tt::{
     Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, SmolStr, Spacing, Subtree, TokenId,
