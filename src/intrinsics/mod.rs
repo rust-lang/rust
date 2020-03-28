@@ -175,7 +175,7 @@ fn lane_type_and_count<'tcx>(
     (lane_layout, lane_count)
 }
 
-fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Option<Type> {
+pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Option<Type> {
     let (element, count) = match &layout.abi {
         Abi::Vector { element, count } => (element.clone(), *count),
         _ => unreachable!(),

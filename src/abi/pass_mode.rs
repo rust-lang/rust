@@ -100,7 +100,13 @@ pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) 
             }
 
             // FIXME implement Vector Abi in a cg_llvm compatible way
-            Abi::Vector { .. } => PassMode::ByRef { size: Some(layout.size) },
+            Abi::Vector { .. } => {
+                if let Some(vector_ty) = crate::intrinsics::clif_vector_type(tcx, layout) {
+                    PassMode::ByVal(vector_ty)
+                } else {
+                    PassMode::ByRef { size: Some(layout.size) }
+                }
+            }
 
             Abi::Aggregate { sized: true } => PassMode::ByRef { size: Some(layout.size) },
             Abi::Aggregate { sized: false } => PassMode::ByRef { size: None },
