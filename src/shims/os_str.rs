@@ -179,7 +179,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         let os_str: &'a OsStr = this.read_os_str_from_c_str(scalar)?;
 
-        Ok(match convert_path_separator(os_str, &this.tcx.sess.target.target.target_os) {
+        Ok(match convert_path_separator(os_str, &this.tcx.sess.target.target.target_os, false) {
             Cow::Borrowed(x) => Cow::Borrowed(Path::new(x)),
             Cow::Owned(y) => Cow::Owned(PathBuf::from(y)),
         })
@@ -190,7 +190,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         let os_str: OsString = this.read_os_str_from_wide_str(scalar)?;
 
-        Ok(PathBuf::from(&convert_path_separator(&os_str, &this.tcx.sess.target.target.target_os)))
+        Ok(PathBuf::from(&convert_path_separator(&os_str, &this.tcx.sess.target.target.target_os, false)))
     }
 
     /// Write a Path to the machine memory (as a null-terminated sequence of bytes),
@@ -202,7 +202,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
-        let os_str = convert_path_separator(path.as_os_str(), &this.tcx.sess.target.target.target_os);
+        let os_str = convert_path_separator(path.as_os_str(), &this.tcx.sess.target.target.target_os, true);
         this.write_os_str_to_c_str(&os_str, scalar, size)
     }
 
@@ -215,35 +215,40 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
-        let os_str = convert_path_separator(path.as_os_str(), &this.tcx.sess.target.target.target_os);
+        let os_str = convert_path_separator(path.as_os_str(), &this.tcx.sess.target.target.target_os, true);
         this.write_os_str_to_wide_str(&os_str, scalar, size)
     }
 }
 
 /// Perform path separator conversion if needed.
+/// if direction == true, Convert from 'host' to 'target'.
+/// if direction == false, Convert from 'target' to 'host'.
 fn convert_path_separator<'a>(
     os_str: &'a OsStr,
     target_os: &str,
+    direction: bool,
 ) -> Cow<'a, OsStr> {
     #[cfg(windows)]
     return if target_os == "windows" {
         // Windows-on-Windows, all fine.
         Cow::Borrowed(os_str)
     } else {
-        // Unix target, Windows host. Need to convert host '\\' to target '/'.
+        // Unix target, Windows host.
+        let (from, to) = if direction { ('\\', '/') } else { ('/', '\\') };
         let converted = os_str
             .encode_wide()
-            .map(|wchar| if wchar == '\\' as u16 { '/' as u16 } else { wchar })
+            .map(|wchar| if wchar == from as u16 { to as u16 } else { wchar })
             .collect::<Vec<_>>();
         Cow::Owned(OsString::from_wide(&converted))
     };
     #[cfg(unix)]
     return if target_os == "windows" {
-        // Windows target, Unix host. Need to convert host '/' to target '\'.
+        // Windows target, Unix host.
+        let (from, to) = if direction { ('/', '\\') } else { ('\\', '/') };
         let converted = os_str
             .as_bytes()
             .iter()
-            .map(|&wchar| if wchar == '/' as u8 { '\\' as u8 } else { wchar })
+            .map(|&wchar| if wchar == from as u8 { to as u8 } else { wchar })
             .collect::<Vec<_>>();
         Cow::Owned(OsString::from_vec(converted))
     } else {

@@ -357,7 +357,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn SetCurrentDirectoryW (
         &mut self,
         path_op: OpTy<'tcx, Tag>   // LPCTSTR
-    ) -> InterpResult<'tcx, i32> { // Returns BOOL(i32 in Windows)
+    ) -> InterpResult<'tcx, i32> { // Returns BOOL (i32 in Windows)
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "SetCurrentDirectoryW");
 

@@ -414,6 +414,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         use std::io::ErrorKind::*;
         let this = self.eval_context_mut();
         let target = &this.tcx.sess.target.target;
+        let target_os = &target.target_os;
         let last_error = if target.options.target_family == Some("unix".to_owned()) {
             this.eval_libc(match e.kind() {
                 ConnectionRefused => "ECONNREFUSED",
@@ -434,15 +435,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     throw_unsup_format!("io error {} cannot be transformed into a raw os error", e)
                 }
             })?
-        } else {
+        } else if target_os == "windows" {
             // FIXME: we have to finish implementing the Windows equivalent of this.
             this.eval_windows(match e.kind() {
                 NotFound => "ERROR_FILE_NOT_FOUND",
-                _ => throw_unsup_format!(
-                    "setting the last OS error from an io::Error is yet unsupported for {}.",
-                    target.target_os
-                )
+                _ => throw_unsup_format!("io error {} cannot be transformed into a raw os error", e)
             })?
+        } else {
+            throw_unsup_format!("setting the last OS error from an io::Error is unsupported for {}.", target_os)
         };
         this.set_last_error(last_error)
     }
