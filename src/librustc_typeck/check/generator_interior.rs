@@ -205,7 +205,7 @@ pub fn resolve_interior<'a, 'tcx>(
 }
 
 // This visitor has to have the same visit_expr calls as RegionResolutionVisitor in
-// librustc/middle/region.rs since `expr_count` is compared against the results
+// librustc_middle/middle/region.rs since `expr_count` is compared against the results
 // there.
 impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
     type Map = intravisit::ErasedMap<'tcx>;

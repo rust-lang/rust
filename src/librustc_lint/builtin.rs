@@ -50,7 +50,7 @@ use crate::nonstandard_style::{method_context, MethodLateContext};
 use log::debug;
 use std::fmt::Write;
 
-// hardwired lints from librustc
+// hardwired lints from librustc_middle
 pub use rustc_session::lint::builtin::*;
 
 declare_lint! {

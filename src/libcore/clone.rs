@@ -169,7 +169,7 @@ pub struct AssertParamIsCopy<T: Copy + ?Sized> {
 /// Implementations of `Clone` for primitive types.
 ///
 /// Implementations that cannot be described in Rust
-/// are implemented in `SelectionContext::copy_clone_conditions()` in librustc.
+/// are implemented in `SelectionContext::copy_clone_conditions()` in librustc_middle.
 mod impls {
 
     use super::Clone;

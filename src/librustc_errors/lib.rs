@@ -425,7 +425,7 @@ impl Handler {
     }
 
     // This is here to not allow mutation of flags;
-    // as of this writing it's only used in tests in librustc.
+    // as of this writing it's only used in tests in librustc_middle.
     pub fn can_emit_warnings(&self) -> bool {
         self.flags.can_emit_warnings
     }

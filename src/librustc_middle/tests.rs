@@ -1,6 +1,6 @@
 use super::*;
 
-// FIXME(#27438): right now the unit tests of librustc don't refer to any actual
+// FIXME(#27438): right now the unit tests of librustc_middle don't refer to any actual
 //                functions generated in librustc_data_structures (all
 //                references are through generic functions), but statics are
 //                referenced from time to time. Due to this bug we won't

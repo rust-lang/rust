@@ -13,8 +13,8 @@ use std::borrow::Cow;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-// The parameter `CTX` is required in librustc: implementations may need to access the `'tcx`
-// lifetime in `CTX = TyCtxt<'tcx>`.
+// The parameter `CTX` is required in librustc_middle:
+// implementations may need to access the `'tcx` lifetime in `CTX = TyCtxt<'tcx>`.
 pub trait QueryConfig<CTX> {
     const NAME: &'static str;
     const CATEGORY: ProfileCategory;

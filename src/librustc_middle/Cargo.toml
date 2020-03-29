@@ -1,11 +1,11 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "rustc"
+name = "rustc_middle"
 version = "0.0.0"
 edition = "2018"
 
 [lib]
-name = "rustc"
+name = "rustc_middle"
 path = "lib.rs"
 doctest = false
 

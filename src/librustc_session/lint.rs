@@ -195,7 +195,7 @@ pub enum BuiltinLintDiagnostics {
 }
 
 /// Lints that are buffered up early on in the `Session` before the
-/// `LintLevels` is calculated. These are later passed to `librustc`.
+/// `LintLevels` is calculated. These are later passed to `librustc_middle`.
 #[derive(PartialEq)]
 pub struct BufferedEarlyLint {
     /// The span of code that we are linting on.

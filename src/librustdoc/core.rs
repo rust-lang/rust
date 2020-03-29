@@ -103,7 +103,7 @@ impl<'tcx> DocContext<'tcx> {
     }
 
     // This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
-    // refactoring either librustdoc or librustc. In particular, allowing new DefIds to be
+    // refactoring either librustdoc or librustc_middle. In particular, allowing new DefIds to be
     // registered after the AST is constructed would require storing the defid mapping in a
     // RefCell, decreasing the performance for normal compilation for very little gain.
     //
