@@ -20,6 +20,14 @@ pub(crate) fn detect_features() -> cache::Initializer {
         enable_feature(&mut value, Feature::neon, bit::test(auxv.hwcap, 12));
         enable_feature(&mut value, Feature::pmull, bit::test(auxv.hwcap2, 1));
         enable_feature(&mut value, Feature::crc, bit::test(auxv.hwcap2, 4));
+        enable_feature(
+            &mut value,
+            Feature::crypto,
+            bit::test(auxv.hwcap2, 0)
+                && bit::test(auxv.hwcap2, 1)
+                && bit::test(auxv.hwcap2, 2)
+                && bit::test(auxv.hwcap2, 3),
+        );
         return value;
     }
 
@@ -31,6 +39,14 @@ pub(crate) fn detect_features() -> cache::Initializer {
         );
         enable_feature(&mut value, Feature::pmull, c.field("Features").has("pmull"));
         enable_feature(&mut value, Feature::crc, c.field("Features").has("crc32"));
+        enable_feature(
+            &mut value,
+            Feature::crypto,
+            c.field("Features").has("aes")
+                && c.field("Features").has("pmull")
+                && c.field("Features").has("sha1")
+                && c.field("Features").has("sha2"),
+        );
         return value;
     }
     value

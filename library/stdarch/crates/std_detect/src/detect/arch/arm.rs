@@ -16,4 +16,6 @@ features! {
     /// Polynomial Multiply
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] crc: "crc";
     /// CRC32 (Cyclic Redundancy Check)
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] crypto: "crypto";
+    /// Crypto: AES + PMULL + SHA1 + SHA2
 }

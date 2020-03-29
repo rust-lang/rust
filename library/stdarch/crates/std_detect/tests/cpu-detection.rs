@@ -25,6 +25,7 @@ fn arm_linux() {
     println!("neon: {}", is_arm_feature_detected!("neon"));
     println!("pmull: {}", is_arm_feature_detected!("pmull"));
     println!("crc: {}", is_arm_feature_detected!("crc"));
+    println!("crypto: {}", is_arm_feature_detected!("crypto"));
 }
 
 #[test]
