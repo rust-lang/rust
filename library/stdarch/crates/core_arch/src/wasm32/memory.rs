@@ -41,7 +41,7 @@ pub fn memory_size(mem: u32) -> usize {
 /// by the specified `delta` of pages. The current WebAssembly page size is
 /// 65536 bytes (64 KB). If memory is successfully grown then the previous size
 /// of memory, in pages, is returned. If memory cannot be grown then
-/// `usize::max_value()` is returned.
+/// `usize::MAX` is returned.
 ///
 /// The argument `mem` is the numerical index of which memory to return the
 /// size of. Note that currently the WebAssembly specification only supports one

@@ -790,7 +790,7 @@ pub unsafe fn _mm_ucomineq_ss(a: __m128, b: __m128) -> i32 {
 ///
 /// The result is rounded according to the current rounding mode. If the result
 /// cannot be represented as a 32 bit integer the result will be `0x8000_0000`
-/// (`std::i32::MIN`) or an invalid operation floating point exception if
+/// (`i32::MIN`) or an invalid operation floating point exception if
 /// unmasked (see [`_mm_setcsr`](fn._mm_setcsr.html)).
 ///
 /// This corresponds to the `CVTSS2SI` instruction (with 32 bit output).
@@ -821,7 +821,7 @@ pub unsafe fn _mm_cvt_ss2si(a: __m128) -> i32 {
 ///
 /// The result is rounded always using truncation (round towards zero). If the
 /// result cannot be represented as a 32 bit integer the result will be
-/// `0x8000_0000` (`std::i32::MIN`) or an invalid operation floating point
+/// `0x8000_0000` (`i32::MIN`) or an invalid operation floating point
 /// exception if unmasked (see [`_mm_setcsr`](fn._mm_setcsr.html)).
 ///
 /// This corresponds to the `CVTTSS2SI` instruction (with 32 bit output).

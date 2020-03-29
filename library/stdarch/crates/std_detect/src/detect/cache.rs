@@ -80,7 +80,7 @@ impl Initializer {
 // Note: on x64, we only use the first slot
 static CACHE: [Cache; 2] = [Cache::uninitialized(), Cache::uninitialized()];
 
-/// Feature cache with capacity for `usize::max_value() - 1` features.
+/// Feature cache with capacity for `usize::MAX - 1` features.
 ///
 /// Note: the last feature bit is used to represent an
 /// uninitialized cache.

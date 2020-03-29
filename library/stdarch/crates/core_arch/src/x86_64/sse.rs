@@ -19,7 +19,7 @@ extern "C" {
 ///
 /// The result is rounded according to the current rounding mode. If the result
 /// cannot be represented as a 64 bit integer the result will be
-/// `0x8000_0000_0000_0000` (`std::i64::MIN`) or trigger an invalid operation
+/// `0x8000_0000_0000_0000` (`i64::MIN`) or trigger an invalid operation
 /// floating point exception if unmasked (see
 /// [`_mm_setcsr`](fn._mm_setcsr.html)).
 ///
@@ -39,7 +39,7 @@ pub unsafe fn _mm_cvtss_si64(a: __m128) -> i64 {
 ///
 /// The result is rounded always using truncation (round towards zero). If the
 /// result cannot be represented as a 64 bit integer the result will be
-/// `0x8000_0000_0000_0000` (`std::i64::MIN`) or an invalid operation floating
+/// `0x8000_0000_0000_0000` (`i64::MIN`) or an invalid operation floating
 /// point exception if unmasked (see [`_mm_setcsr`](fn._mm_setcsr.html)).
 ///
 /// This corresponds to the `CVTTSS2SI` instruction (with 64 bit output).

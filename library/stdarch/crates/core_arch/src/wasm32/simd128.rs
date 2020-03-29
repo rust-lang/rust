@@ -1059,7 +1059,7 @@ pub fn i8x16_add(a: v128, b: v128) -> v128 {
 }
 
 /// Adds two 128-bit vectors as if they were two packed sixteen 8-bit signed
-/// integers, saturating on overflow to `i8::max_value()`.
+/// integers, saturating on overflow to `i8::MAX`.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.add_saturate_s))]
 pub fn i8x16_add_saturate_s(a: v128, b: v128) -> v128 {
@@ -1067,7 +1067,7 @@ pub fn i8x16_add_saturate_s(a: v128, b: v128) -> v128 {
 }
 
 /// Adds two 128-bit vectors as if they were two packed sixteen 8-bit unsigned
-/// integers, saturating on overflow to `u8::max_value()`.
+/// integers, saturating on overflow to `u8::MAX`.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.add_saturate_u))]
 pub fn i8x16_add_saturate_u(a: v128, b: v128) -> v128 {
@@ -1082,7 +1082,7 @@ pub fn i8x16_sub(a: v128, b: v128) -> v128 {
 }
 
 /// Subtracts two 128-bit vectors as if they were two packed sixteen 8-bit
-/// signed integers, saturating on overflow to `i8::min_value()`.
+/// signed integers, saturating on overflow to `i8::MIN`.
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.sub_saturate_s))]
 pub fn i8x16_sub_saturate_s(a: v128, b: v128) -> v128 {
@@ -1169,7 +1169,7 @@ pub fn i16x8_add(a: v128, b: v128) -> v128 {
 }
 
 /// Adds two 128-bit vectors as if they were two packed eight 16-bit signed
-/// integers, saturating on overflow to `i16::max_value()`.
+/// integers, saturating on overflow to `i16::MAX`.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.add_saturate_s))]
 pub fn i16x8_add_saturate_s(a: v128, b: v128) -> v128 {
@@ -1177,7 +1177,7 @@ pub fn i16x8_add_saturate_s(a: v128, b: v128) -> v128 {
 }
 
 /// Adds two 128-bit vectors as if they were two packed eight 16-bit unsigned
-/// integers, saturating on overflow to `u16::max_value()`.
+/// integers, saturating on overflow to `u16::MAX`.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.add_saturate_u))]
 pub fn i16x8_add_saturate_u(a: v128, b: v128) -> v128 {
@@ -1192,7 +1192,7 @@ pub fn i16x8_sub(a: v128, b: v128) -> v128 {
 }
 
 /// Subtracts two 128-bit vectors as if they were two packed eight 16-bit
-/// signed integers, saturating on overflow to `i16::min_value()`.
+/// signed integers, saturating on overflow to `i16::MIN`.
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.sub_saturate_s))]
 pub fn i16x8_sub_saturate_s(a: v128, b: v128) -> v128 {
