@@ -125,7 +125,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let buf_ptr = this.read_scalar(buf_op)?.not_undef()?;
                 // `buf_size` represents the size in characters.
                 let buf_size = u64::from(this.read_scalar(size_op)?.to_u32()?);
-                HowWasBufferSize(this.write_os_str_to_wide_str(&var, buf_ptr, buf_size)?)
+                windows_check_buffer_size(this.write_os_str_to_wide_str(&var, buf_ptr, buf_size)?)
             }
             None => {
                 let envvar_not_found = this.eval_windows("ERROR_ENVVAR_NOT_FOUND")?;
@@ -317,7 +317,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // If we cannot get the current directory, we return 0
         match env::current_dir() {
             Ok(cwd) =>
-                return Ok(HowWasBufferSize(this.write_path_to_wide_str(&cwd, buf, size)?)),
+                return Ok(windows_check_buffer_size(this.write_path_to_wide_str(&cwd, buf, size)?)),
             Err(e) => this.set_last_error_from_io_error(e)?,
         }
         Ok(0)
@@ -400,16 +400,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 }
 
-// Local helper function to be used in Windows shims
-#[allow(non_snake_case)]
-fn HowWasBufferSize((success, len): (bool, u64)) -> u32 {
+/// Check whether an operation that writes to a target buffer was successful.
+/// Accordingly select return value.
+/// Local helper function to be used in Windows shims.
+fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
     if success {
-        // If the function succeeds, the return value is the number of characters stored in the buffer pointed to by lpBuffer,
+        // If the function succeeds, the return value is the number of characters stored in the target buffer,
         // not including the terminating null character.
         u32::try_from(len).unwrap()
     } else {
-        // If lpBuffer is not large enough to hold the data, the return value is the buffer size, in characters,
-        // required to hold the string and its terminating null character and the contents of lpBuffer are undefined.
+        // If the target buffer was not large enough to hold the data, the return value is the buffer size, in characters,
+        // required to hold the string and its terminating null character.
         u32::try_from(len.checked_add(1).unwrap()).unwrap()
     }
 }
