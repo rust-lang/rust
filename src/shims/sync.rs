@@ -30,8 +30,7 @@ fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
     // Ensure that the following read at an offset to the attr pointer is within bounds
     assert_ptr_target_min_size(ecx, attr_op, 4)?;
     let attr_place = ecx.deref_operand(attr_op)?;
-    let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
-    let kind_place = attr_place.offset(Size::ZERO, MemPlaceMeta::None, i32_layout, ecx)?;
+    let kind_place = attr_place.offset(Size::ZERO, MemPlaceMeta::None, ecx.i32_layout()?, ecx)?;
     ecx.read_scalar(kind_place.into())
 }
 
@@ -43,8 +42,7 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
     // Ensure that the following write at an offset to the attr pointer is within bounds
     assert_ptr_target_min_size(ecx, attr_op, 4)?;
     let attr_place = ecx.deref_operand(attr_op)?;
-    let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
-    let kind_place = attr_place.offset(Size::ZERO, MemPlaceMeta::None, i32_layout, ecx)?;
+    let kind_place = attr_place.offset(Size::ZERO, MemPlaceMeta::None, ecx.i32_layout()?, ecx)?;
     ecx.write_scalar(kind.into(), kind_place.into())
 }
 
@@ -64,9 +62,8 @@ fn mutex_get_locked_count<'mir, 'tcx: 'mir>(
     // Ensure that the following read at an offset to the mutex pointer is within bounds
     assert_ptr_target_min_size(ecx, mutex_op, 20)?;
     let mutex_place = ecx.deref_operand(mutex_op)?;
-    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
     let locked_count_place =
-        mutex_place.offset(Size::from_bytes(4), MemPlaceMeta::None, u32_layout, ecx)?;
+        mutex_place.offset(Size::from_bytes(4), MemPlaceMeta::None, ecx.u32_layout()?, ecx)?;
     ecx.read_scalar(locked_count_place.into())
 }
 
@@ -78,9 +75,8 @@ fn mutex_set_locked_count<'mir, 'tcx: 'mir>(
     // Ensure that the following write at an offset to the mutex pointer is within bounds
     assert_ptr_target_min_size(ecx, mutex_op, 20)?;
     let mutex_place = ecx.deref_operand(mutex_op)?;
-    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
     let locked_count_place =
-        mutex_place.offset(Size::from_bytes(4), MemPlaceMeta::None, u32_layout, ecx)?;
+        mutex_place.offset(Size::from_bytes(4), MemPlaceMeta::None, ecx.u32_layout()?, ecx)?;
     ecx.write_scalar(locked_count.into(), locked_count_place.into())
 }
 
@@ -91,10 +87,13 @@ fn mutex_get_kind<'mir, 'tcx: 'mir>(
     // Ensure that the following read at an offset to the mutex pointer is within bounds
     assert_ptr_target_min_size(ecx, mutex_op, 20)?;
     let mutex_place = ecx.deref_operand(mutex_op)?;
-    let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
     let kind_offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
-    let kind_place =
-        mutex_place.offset(Size::from_bytes(kind_offset), MemPlaceMeta::None, i32_layout, ecx)?;
+    let kind_place = mutex_place.offset(
+        Size::from_bytes(kind_offset),
+        MemPlaceMeta::None,
+        ecx.i32_layout()?,
+        ecx,
+    )?;
     ecx.read_scalar(kind_place.into())
 }
 
@@ -106,10 +105,13 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
     // Ensure that the following write at an offset to the mutex pointer is within bounds
     assert_ptr_target_min_size(ecx, mutex_op, 20)?;
     let mutex_place = ecx.deref_operand(mutex_op)?;
-    let i32_layout = ecx.layout_of(ecx.tcx.types.i32)?;
     let kind_offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
-    let kind_place =
-        mutex_place.offset(Size::from_bytes(kind_offset), MemPlaceMeta::None, i32_layout, ecx)?;
+    let kind_place = mutex_place.offset(
+        Size::from_bytes(kind_offset),
+        MemPlaceMeta::None,
+        ecx.i32_layout()?,
+        ecx,
+    )?;
     ecx.write_scalar(kind.into(), kind_place.into())
 }
 
@@ -128,9 +130,8 @@ fn rwlock_get_readers<'mir, 'tcx: 'mir>(
     // Ensure that the following read at an offset to the rwlock pointer is within bounds
     assert_ptr_target_min_size(ecx, rwlock_op, 12)?;
     let rwlock_place = ecx.deref_operand(rwlock_op)?;
-    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
     let readers_place =
-        rwlock_place.offset(Size::from_bytes(4), MemPlaceMeta::None, u32_layout, ecx)?;
+        rwlock_place.offset(Size::from_bytes(4), MemPlaceMeta::None, ecx.u32_layout()?, ecx)?;
     ecx.read_scalar(readers_place.into())
 }
 
@@ -142,9 +143,8 @@ fn rwlock_set_readers<'mir, 'tcx: 'mir>(
     // Ensure that the following write at an offset to the rwlock pointer is within bounds
     assert_ptr_target_min_size(ecx, rwlock_op, 12)?;
     let rwlock_place = ecx.deref_operand(rwlock_op)?;
-    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
     let readers_place =
-        rwlock_place.offset(Size::from_bytes(4), MemPlaceMeta::None, u32_layout, ecx)?;
+        rwlock_place.offset(Size::from_bytes(4), MemPlaceMeta::None, ecx.u32_layout()?, ecx)?;
     ecx.write_scalar(readers.into(), readers_place.into())
 }
 
@@ -155,9 +155,8 @@ fn rwlock_get_writers<'mir, 'tcx: 'mir>(
     // Ensure that the following read at an offset to the rwlock pointer is within bounds
     assert_ptr_target_min_size(ecx, rwlock_op, 12)?;
     let rwlock_place = ecx.deref_operand(rwlock_op)?;
-    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
     let writers_place =
-        rwlock_place.offset(Size::from_bytes(8), MemPlaceMeta::None, u32_layout, ecx)?;
+        rwlock_place.offset(Size::from_bytes(8), MemPlaceMeta::None, ecx.u32_layout()?, ecx)?;
     ecx.read_scalar(writers_place.into())
 }
 
@@ -169,9 +168,8 @@ fn rwlock_set_writers<'mir, 'tcx: 'mir>(
     // Ensure that the following write at an offset to the rwlock pointer is within bounds
     assert_ptr_target_min_size(ecx, rwlock_op, 12)?;
     let rwlock_place = ecx.deref_operand(rwlock_op)?;
-    let u32_layout = ecx.layout_of(ecx.tcx.types.u32)?;
     let writers_place =
-        rwlock_place.offset(Size::from_bytes(8), MemPlaceMeta::None, u32_layout, ecx)?;
+        rwlock_place.offset(Size::from_bytes(8), MemPlaceMeta::None, ecx.u32_layout()?, ecx)?;
     ecx.write_scalar(writers.into(), writers_place.into())
 }
 
