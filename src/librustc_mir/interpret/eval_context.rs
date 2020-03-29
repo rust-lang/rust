@@ -24,6 +24,7 @@ use super::{
     Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
     ScalarMaybeUndef, StackPopJump,
 };
+use crate::util::storage::AlwaysLiveLocals;
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
@@ -610,17 +611,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Now mark those locals as dead that we do not want to initialize
             match self.tcx.def_kind(instance.def_id()) {
                 // statics and constants don't have `Storage*` statements, no need to look for them
+                //
+                // FIXME: The above is likely untrue. See
+                // <https://github.com/rust-lang/rust/pull/70004#issuecomment-602022110>. Is it
+                // okay to ignore `StorageDead`/`StorageLive` annotations during CTFE?
                 Some(DefKind::Static) | Some(DefKind::Const) | Some(DefKind::AssocConst) => {}
                 _ => {
-                    for block in body.basic_blocks() {
-                        for stmt in block.statements.iter() {
-                            use rustc_middle::mir::StatementKind::{StorageDead, StorageLive};
-                            match stmt.kind {
-                                StorageLive(local) | StorageDead(local) => {
-                                    locals[local].value = LocalValue::Dead;
-                                }
-                                _ => {}
-                            }
+                    // Mark locals that use `Storage*` annotations as dead on function entry.
+                    let always_live = AlwaysLiveLocals::new(self.body());
+                    for local in locals.indices() {
+                        if !always_live.contains(local) {
+                            locals[local].value = LocalValue::Dead;
                         }
                     }
                 }
