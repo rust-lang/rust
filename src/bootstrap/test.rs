@@ -716,6 +716,72 @@ impl Step for RustdocUi {
     }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustdocGUI {
+    pub host: Interned<String>,
+    pub target: Interned<String>,
+    pub compiler: Compiler,
+}
+
+impl Step for RustdocGUI {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/test/rustdoc-gui")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
+        run.builder.ensure(RustdocGUI { host: run.host, target: run.target, compiler });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        if let Some(ref nodejs) = builder.config.nodejs {
+            // First step: cloning repositories.
+            util::clone_repository(
+                "https://github.com/GuillaumeGomez/browser-UI-test",
+                &builder.out.join("browser-UI-test"),
+                Some("1de38b0962f9abbddc677aaa3a94b864c0f40668"),
+            );
+            util::clone_repository(
+                "https://github.com/GuillaumeGomez/test-rust-docs-ui",
+                &builder.out.join("test-rust-docs-ui"),
+                Some("03ea8284c2ab62607b6260793f08ea34953b14be"),
+            );
+            // Second step: install npm dependencies.
+            let mut cmd = Command::new("npm");
+            cmd.arg("install").current_dir(builder.out.join("browser-UI-test").to_str().unwrap());
+            try_run(builder, &mut cmd);
+
+            // Third step: building documentation with lastest rustdoc version.
+            let mut cmd = builder.rustdoc_cmd(self.compiler);
+            if let Some(linker) = builder.linker(self.compiler.host, true) {
+                cmd.env("RUSTC_TARGET_LINKER", linker);
+            }
+            try_run(builder, &mut cmd);
+            // Last step: running tests.
+            let mut command = Command::new(nodejs);
+            command
+                .arg("../browser-UI-test/src/index.js")
+                .arg("--no-sandbox")
+                .arg("--test-folder")
+                .arg("ui-tests")
+                .arg("--failure-folder")
+                .arg("failures")
+                .arg("--variable")
+                .arg("DOC_PATH")
+                .arg("test-docs/doc/test_docs")
+                .arg("--show-text")
+                .arg("--generate-images")
+                .current_dir(builder.out.join("test-rust-docs-ui"));
+            builder.run(&mut command);
+        } else {
+            builder.info("No nodejs found, skipping \"src/test/rustdoc-js-std\" tests");
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Tidy;
 

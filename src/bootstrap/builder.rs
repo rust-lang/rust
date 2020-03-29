@@ -429,6 +429,7 @@ impl<'a> Builder<'a> {
                 test::RustdocJSNotStd,
                 test::RustdocTheme,
                 test::RustdocUi,
+                test::RustdocGUI,
                 // Run bootstrap close to the end as it's unlikely to fail
                 test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows

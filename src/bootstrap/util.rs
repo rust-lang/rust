@@ -302,3 +302,36 @@ pub fn use_host_linker(target: TargetSelection) -> bool {
         || target.contains("fortanix")
         || target.contains("fuchsia"))
 }
+
+pub fn clone_repository(
+    repository_url: &str,
+    target_dir: &Path,
+    specific_commit_hash: Option<&str>,
+) {
+    if target_dir.is_dir() {
+        fs::remove_dir_all(target_dir).expect("failed to remove target folder");
+    }
+    let status =
+        Command::new("git").arg("clone").arg(repository_url).arg(target_dir.as_os_str()).status();
+    let success = match status {
+        Ok(s) => s.success(),
+        Err(_) => false,
+    };
+    if !success {
+        panic!("git clone unsuccessful (status: {:?})", status);
+    }
+    if let Some(specific_commit_hash) = specific_commit_hash {
+        let status = Command::new("git")
+            .arg("checkout")
+            .arg(specific_commit_hash)
+            .current_dir(target_dir.to_str().unwrap())
+            .status();
+        let success = match status {
+            Ok(s) => s.success(),
+            Err(_) => false,
+        };
+        if !success {
+            panic!("git checkout unsuccessful (status: {:?})", status);
+        }
+    }
+}
