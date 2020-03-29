@@ -870,7 +870,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_assoc_constraint(&mut self, constraint: &ast::AssocTyConstraint) {
+    pub fn print_assoc_constraint(&mut self, constraint: &ast::AssocTyConstraint) {
         self.print_ident(constraint.ident);
         self.s.space();
         match &constraint.kind {
@@ -884,7 +884,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_generic_arg(&mut self, generic_arg: &GenericArg) {
+    pub fn print_generic_arg(&mut self, generic_arg: &GenericArg) {
         match generic_arg {
             GenericArg::Lifetime(lt) => self.print_lifetime(*lt),
             GenericArg::Type(ty) => self.print_type(ty),

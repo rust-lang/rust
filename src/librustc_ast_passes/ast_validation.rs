@@ -640,6 +640,32 @@ impl<'a> AstValidator<'a> {
         }
     }
 
+    fn suggest_correct_generic_order(&self, data: &AngleBracketedArgs) -> String {
+        // Lifetimes always come first.
+        let lt_sugg = data.args.iter().filter_map(|arg| match arg {
+            AngleBracketedArg::Arg(lt @ GenericArg::Lifetime(_)) => {
+                Some(pprust::to_string(|s| s.print_generic_arg(lt)))
+            }
+            _ => None,
+        });
+        let args_sugg = data.args.iter().filter_map(|a| match a {
+            AngleBracketedArg::Arg(GenericArg::Lifetime(_)) => None,
+            AngleBracketedArg::Arg(arg) => Some(pprust::to_string(|s| s.print_generic_arg(arg))),
+            AngleBracketedArg::Constraint(_) => None,
+        });
+        // Cosntraints always come last.
+        let constraint_sugg = data.args.iter().filter_map(|a| match a {
+            AngleBracketedArg::Arg(_) => None,
+            AngleBracketedArg::Constraint(c) => {
+                Some(pprust::to_string(|s| s.print_assoc_constraint(c)))
+            }
+        });
+        format!(
+            "<{}>",
+            lt_sugg.chain(args_sugg).chain(constraint_sugg).collect::<Vec<String>>().join(", ")
+        )
+    }
+
     /// Enforce generic args coming before constraints in `<...>` of a path segment.
     fn check_generic_args_before_constraints(&self, data: &AngleBracketedArgs) {
         // Early exit in case it's partitioned as it should be.
@@ -663,20 +689,7 @@ impl<'a> AstValidator<'a> {
                 _ => None,
             })
             .collect::<Vec<_>>();
-        let snippet_span = match &constraint_spans[..] {
-            [single] => *single,
-            [first, .., last] => first.to(*last),
-            [] => unreachable!(),
-        };
-        let removal_span = match &arg_spans[..] {
-            [first, ..] => snippet_span.until(*first),
-            [] => unreachable!(),
-        };
-        let sugg_span = match &arg_spans[..] {
-            [.., last] => last.shrink_to_hi(),
-            [] => unreachable!(),
-        };
-        let snippet = self.session.source_map().span_to_snippet(snippet_span).unwrap();
+        let args_len = arg_spans.len();
         let constraint_len = constraint_spans.len();
         // ...and then error:
         self.err_handler()
@@ -693,13 +706,14 @@ impl<'a> AstValidator<'a> {
                 ),
             )
             .span_labels(arg_spans, "generic argument")
-            .multipart_suggestion(
-                "move the constraints after the generic arguments",
-                vec![
-                    (removal_span, String::new()),
-                    (sugg_span.shrink_to_lo(), ", ".to_string()),
-                    (sugg_span, snippet),
-                ],
+            .span_suggestion_verbose(
+                data.span,
+                &format!(
+                    "move the constraint{} after the generic argument{}",
+                    pluralize!(constraint_len),
+                    pluralize!(args_len)
+                ),
+                self.suggest_correct_generic_order(&data),
                 Applicability::MachineApplicable,
             )
             .emit();
