@@ -43,7 +43,7 @@ impl UseFactsExtractor<'_> {
 
     fn insert_path_access(&mut self, path: MovePathIndex, location: Location) {
         debug!("UseFactsExtractor::insert_path_access({:?}, {:?})", path, location);
-        self.path_accessed_at_base.push((path, self.location_table.start_index(location)));
+        self.path_accessed_at_base.push((path, self.location_to_index(location)));
     }
 
     fn place_to_mpi(&self, place: &Place<'_>) -> Option<MovePathIndex> {
