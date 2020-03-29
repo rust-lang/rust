@@ -105,10 +105,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn GetEnvironmentVariableW(
         &mut self,
-        name_op: OpTy<'tcx, Tag>, // LPCWSTR
-        buf_op: OpTy<'tcx, Tag>,  // LPWSTR
-        size_op: OpTy<'tcx, Tag>, // DWORD
-    ) -> InterpResult<'tcx, u32> {
+        name_op: OpTy<'tcx, Tag>,  // LPCWSTR
+        buf_op: OpTy<'tcx, Tag>,   // LPWSTR
+        size_op: OpTy<'tcx, Tag>,  // DWORD
+    ) -> InterpResult<'tcx, u32> { // Returns DWORD (u32 in Windows)
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetEnvironmentVariableW");
 
@@ -125,17 +125,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let buf_ptr = this.read_scalar(buf_op)?.not_undef()?;
                 // `buf_size` represents the size in characters.
                 let buf_size = u64::from(this.read_scalar(size_op)?.to_u32()?);
-                let (success, len) = this.write_os_str_to_wide_str(&var, buf_ptr, buf_size)?;
-
-                if success {
-                    // If the function succeeds, the return value is the number of characters stored in the buffer pointed to by lpBuffer,
-                    // not including the terminating null character.
-                    u32::try_from(len).unwrap()
-                } else {
-                    // If lpBuffer is not large enough to hold the data, the return value is the buffer size, in characters,
-                    // required to hold the string and its terminating null character and the contents of lpBuffer are undefined.
-                    u32::try_from(len).unwrap().checked_add(1).unwrap()
-                }
+                HowWasBufferSize(this.write_os_str_to_wide_str(&var, buf_ptr, buf_size)?)
             }
             None => {
                 let envvar_not_found = this.eval_windows("ERROR_ENVVAR_NOT_FOUND")?;
@@ -326,10 +316,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // If we cannot get the current directory, we return 0
         match env::current_dir() {
-            Ok(cwd) => {
-                let len = this.write_path_to_wide_str(&cwd, buf, size)?.1;
-                return Ok(u32::try_from(len).unwrap())
-            }
+            Ok(cwd) =>
+                return Ok(HowWasBufferSize(this.write_path_to_wide_str(&cwd, buf, size)?)),
             Err(e) => this.set_last_error_from_io_error(e)?,
         }
         Ok(0)
@@ -409,5 +397,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         )?;
 
         Ok(())
+    }
+}
+
+// Local helper function to be used in Windows shims
+#[allow(non_snake_case)]
+fn HowWasBufferSize((success, len): (bool, u64)) -> u32 {
+    if success {
+        // If the function succeeds, the return value is the number of characters stored in the buffer pointed to by lpBuffer,
+        // not including the terminating null character.
+        u32::try_from(len).unwrap()
+    } else {
+        // If lpBuffer is not large enough to hold the data, the return value is the buffer size, in characters,
+        // required to hold the string and its terminating null character and the contents of lpBuffer are undefined.
+        u32::try_from(len.checked_add(1).unwrap()).unwrap()
     }
 }
