@@ -179,4 +179,34 @@ impl Slice {
         let rc = self.inner.into_rc();
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Slice) }
     }
+
+    #[inline]
+    pub fn make_ascii_lowercase(&mut self) {
+        self.inner.make_ascii_lowercase()
+    }
+
+    #[inline]
+    pub fn make_ascii_uppercase(&mut self) {
+        self.inner.make_ascii_uppercase()
+    }
+
+    #[inline]
+    pub fn to_ascii_lowercase(&self) -> Buf {
+        Buf { inner: self.inner.to_ascii_lowercase() }
+    }
+
+    #[inline]
+    pub fn to_ascii_uppercase(&self) -> Buf {
+        Buf { inner: self.inner.to_ascii_uppercase() }
+    }
+
+    #[inline]
+    pub fn is_ascii(&self) -> bool {
+        self.inner.is_ascii()
+    }
+
+    #[inline]
+    pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
+        self.inner.eq_ignore_ascii_case(&other.inner)
+    }
 }
