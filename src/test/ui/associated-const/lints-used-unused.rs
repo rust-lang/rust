@@ -15,10 +15,12 @@ struct S;
 impl Foo for S {
     const N: i32 = 1 << 42;
     //~^ ERROR this arithmetic operation will overflow
+    //~| ERROR any use of this value will cause an error
 }
 
 impl<T: Foo> Foo for Vec<T> {
-    const N: i32 = --T::N + (-i32::MIN); //~ ERROR this arithmetic operation will overflow
+    const N: i32 = --T::N + (-i32::MIN);
+    //~^ ERROR this arithmetic operation will overflow
 }
 
 fn main() {

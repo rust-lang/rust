@@ -20,5 +20,11 @@ LL |     const N: i32 = 1 << 42;
    |
    = note: `#[deny(const_err)]` on by default
 
-error: aborting due to 2 previous errors
+error: this arithmetic operation will overflow
+  --> $DIR/lints-used-unused.rs:22:29
+   |
+LL |     const N: i32 = --T::N + (-i32::MIN);
+   |                             ^^^^^^^^^^^ attempt to negate with overflow
+
+error: aborting due to 3 previous errors
 

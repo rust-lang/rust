@@ -20,10 +20,14 @@ pub trait Foo {
 impl<T: Foo> Foo for Vec<T> {
     const NEG: i32 = -i32::MIN + T::NEG;
     //~^ ERROR arithmetic operation will overflow
+    //~| ERROR any use of this value will cause an error
     const ADD: i32 = (i32::MAX+1) + T::ADD;
     //~^ ERROR arithmetic operation will overflow
+    //~| ERROR any use of this value will cause an error
     const DIV: i32 = (1/0) + T::DIV;
     //~^ ERROR operation will panic
+    //~| ERROR any use of this value will cause an error
     const OOB: i32 = [1][1] + T::OOB;
     //~^ ERROR operation will panic
+    //~| ERROR any use of this value will cause an error
 }
