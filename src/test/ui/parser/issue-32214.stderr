@@ -5,6 +5,11 @@ LL | pub fn test<W, I: Trait<Item=(), W> >() {}
    |                         -------  ^ generic argument
    |                         |
    |                         the constraint is provided here
+   |
+help: move the constraints after the generic arguments
+   |
+LL | pub fn test<W, I: Trait<W, Item=()> >() {}
+   |                        --^^^^^^^
 
 error: aborting due to previous error
 

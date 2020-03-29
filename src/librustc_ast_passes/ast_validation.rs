@@ -663,6 +663,20 @@ impl<'a> AstValidator<'a> {
                 _ => None,
             })
             .collect::<Vec<_>>();
+        let snippet_span = match &constraint_spans[..] {
+            [single] => *single,
+            [first, .., last] => first.to(*last),
+            [] => unreachable!(),
+        };
+        let removal_span = match &arg_spans[..] {
+            [first, ..] => snippet_span.until(*first),
+            [] => unreachable!(),
+        };
+        let sugg_span = match &arg_spans[..] {
+            [.., last] => last.shrink_to_hi(),
+            [] => unreachable!(),
+        };
+        let snippet = self.session.source_map().span_to_snippet(snippet_span).unwrap();
         let constraint_len = constraint_spans.len();
         // ...and then error:
         self.err_handler()
@@ -679,6 +693,15 @@ impl<'a> AstValidator<'a> {
                 ),
             )
             .span_labels(arg_spans, "generic argument")
+            .multipart_suggestion(
+                "move the constraints after the generic arguments",
+                vec![
+                    (removal_span, String::new()),
+                    (sugg_span.shrink_to_lo(), ", ".to_string()),
+                    (sugg_span, snippet),
+                ],
+                Applicability::MachineApplicable,
+            )
             .emit();
     }
 }
