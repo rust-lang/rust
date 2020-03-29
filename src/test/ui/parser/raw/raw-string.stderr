@@ -1,5 +1,5 @@
 error[E0748]: unterminated raw string
-  --> $DIR/raw_string.rs:2:13
+  --> $DIR/raw-string.rs:2:13
    |
 LL |     let x = r##"lol"#;
    |             ^       - help: consider terminating the string here: `##`
