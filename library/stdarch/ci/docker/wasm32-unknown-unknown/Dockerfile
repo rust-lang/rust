@@ -9,6 +9,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
   libc6-dev \
   make \
   python \
+  python3 \
   xz-utils
 
 # Install `wasm2wat`
