@@ -1016,7 +1016,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         .map_err(|ErrorReported| ())?;
 
                 if node_item.is_final() {
-                    // Non-specializable items are always projectable
+                    // Non-specializable items are always projectable.
                     true
                 } else {
                     // Only reveal a specializable default if we're past type-checking

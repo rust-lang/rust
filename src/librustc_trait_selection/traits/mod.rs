@@ -54,7 +54,6 @@ pub use self::project::{
 };
 pub use self::select::{EvaluationCache, SelectionCache, SelectionContext};
 pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
-pub use self::specialize::find_associated_item;
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{specialization_graph, translate_substs, OverlapError};
