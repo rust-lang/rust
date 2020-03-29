@@ -475,15 +475,25 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                 Ok(true)
             }
             ty::RawPtr(..) => {
-                // We are conservative with undef for integers, but try to
-                // actually enforce our current rules for raw pointers.
-                let place = try_validation!(
-                    self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?),
-                    "undefined pointer",
-                    self.path
-                );
-                if place.layout.is_unsized() {
-                    self.check_wide_ptr_meta(place.meta, place.layout)?;
+                let imm = self.ecx.read_immediate(value)?;
+                let pointee_kind = &imm.layout.ty.builtin_deref(true).unwrap().ty.kind;
+                match pointee_kind {
+                    ty::Param(_) => {
+                        // Creating pointers to T is valid. We only reach this case for unused
+                        // associated consts.
+                    }
+                    _ => {
+                        // We are conservative with undef for integers, but try to
+                        // actually enforce our current rules for raw pointers.
+                        let place = try_validation!(
+                            self.ecx.ref_to_mplace(imm),
+                            "undefined pointer",
+                            self.path
+                        );
+                        if place.layout.is_unsized() {
+                            self.check_wide_ptr_meta(place.meta, place.layout)?;
+                        }
+                    }
                 }
                 Ok(true)
             }
