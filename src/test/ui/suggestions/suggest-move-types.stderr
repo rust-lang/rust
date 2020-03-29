@@ -4,7 +4,7 @@ error: generic arguments must come before the first constraint
 LL | struct A<T, M: One<A=(), T>> {
    |                    ----  ^ generic argument
    |                    |
-   |                    the constraint is provided here
+   |                    constraint
    |
 help: move the constraint after the generic argument
    |
@@ -18,7 +18,7 @@ LL | struct Al<'a, T, M: OneWithLifetime<A=(), T, 'a>> {
    |                                     ----  ^  ^^ generic argument
    |                                     |     |
    |                                     |     generic argument
-   |                                     the constraint is provided here
+   |                                     constraint
    |
 help: move the constraint after the generic arguments
    |
@@ -33,9 +33,9 @@ LL | struct B<T, U, V, M: Three<A=(), B=(), C=(), T, U, V>> {
    |                            |     |     |     |  |
    |                            |     |     |     |  generic argument
    |                            |     |     |     generic argument
-   |                            |     |     the constraints are provided here
-   |                            |     the constraints are provided here
-   |                            the constraints are provided here
+   |                            |     |     constraint
+   |                            |     constraint
+   |                            constraint
    |
 help: move the constraints after the generic arguments
    |
@@ -53,9 +53,9 @@ LL | struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<A=(), B=(), C=(), T, U,
    |                                                     |     |     |     |  |  generic argument
    |                                                     |     |     |     |  generic argument
    |                                                     |     |     |     generic argument
-   |                                                     |     |     the constraints are provided here
-   |                                                     |     the constraints are provided here
-   |                                                     the constraints are provided here
+   |                                                     |     |     constraint
+   |                                                     |     constraint
+   |                                                     constraint
    |
 help: move the constraints after the generic arguments
    |
@@ -69,9 +69,9 @@ LL | struct C<T, U, V, M: Three<T, A=(), B=(), C=(), U, V>> {
    |                            ^  ----  ----  ----  ^  ^ generic argument
    |                            |  |     |     |     |
    |                            |  |     |     |     generic argument
-   |                            |  |     |     the constraints are provided here
-   |                            |  |     the constraints are provided here
-   |                            |  the constraints are provided here
+   |                            |  |     |     constraint
+   |                            |  |     constraint
+   |                            |  constraint
    |                            generic argument
    |
 help: move the constraints after the generic arguments
@@ -88,9 +88,9 @@ LL | struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), C=()
    |                                                     |  |   |     |     |     |  |   generic argument
    |                                                     |  |   |     |     |     |  generic argument
    |                                                     |  |   |     |     |     generic argument
-   |                                                     |  |   |     |     the constraints are provided here
-   |                                                     |  |   |     the constraints are provided here
-   |                                                     |  |   the constraints are provided here
+   |                                                     |  |   |     |     constraint
+   |                                                     |  |   |     constraint
+   |                                                     |  |   constraint
    |                                                     |  generic argument
    |                                                     generic argument
    |
@@ -105,10 +105,10 @@ error: generic arguments must come before the first constraint
 LL | struct D<T, U, V, M: Three<T, A=(), B=(), U, C=(), V>> {
    |                            ^  ----  ----  ^  ----  ^ generic argument
    |                            |  |     |     |  |
-   |                            |  |     |     |  the constraints are provided here
+   |                            |  |     |     |  constraint
    |                            |  |     |     generic argument
-   |                            |  |     the constraints are provided here
-   |                            |  the constraints are provided here
+   |                            |  |     constraint
+   |                            |  constraint
    |                            generic argument
    |
 help: move the constraints after the generic arguments
@@ -123,11 +123,11 @@ LL | struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), U, '
    |                                                     ^  ^^  ----  ----  ^  ^^  ----  ^  ^^ generic argument
    |                                                     |  |   |     |     |  |   |     |
    |                                                     |  |   |     |     |  |   |     generic argument
-   |                                                     |  |   |     |     |  |   the constraints are provided here
+   |                                                     |  |   |     |     |  |   constraint
    |                                                     |  |   |     |     |  generic argument
    |                                                     |  |   |     |     generic argument
-   |                                                     |  |   |     the constraints are provided here
-   |                                                     |  |   the constraints are provided here
+   |                                                     |  |   |     constraint
+   |                                                     |  |   constraint
    |                                                     |  generic argument
    |                                                     generic argument
    |
