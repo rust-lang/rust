@@ -173,6 +173,8 @@ declare_features! (
     // no-tracking-issue-end
 
     /// Allows using `#[structural_match]` which indicates that a type is structurally matchable.
+    /// FIXME: Subsumed by trait `StructuralPartialEq`, cannot move to removed until a library
+    /// feature with the same name exists.
     (active, structural_match, "1.8.0", Some(31434), None),
 
     /// Allows using the `may_dangle` attribute (RFC 1327).

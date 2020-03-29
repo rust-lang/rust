@@ -452,7 +452,7 @@ declare_lint! {
     pub INDIRECT_STRUCTURAL_MATCH,
     // defaulting to allow until rust-lang/rust#62614 is fixed.
     Allow,
-    "pattern with const indirectly referencing non-`#[structural_match]` type",
+    "pattern with const indirectly referencing non-structural-match type",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #62411 <https://github.com/rust-lang/rust/issues/62411>",
         edition: None,

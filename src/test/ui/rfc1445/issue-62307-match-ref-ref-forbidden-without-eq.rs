@@ -8,8 +8,8 @@
 // resolve the question of what semantics is used for such matching.
 // (See RFC 1445 for more details and discussion.)
 
-// Issue 62307 pointed out a case where the checking for
-// `#[structural_match]` was too shallow.
+// Issue 62307 pointed out a case where the structural-match checking
+// was too shallow.
 #![warn(indirect_structural_match)]
 // run-pass
 
