@@ -1,13 +1,16 @@
 // ignore-windows: File handling is not implemented yet
 // compile-flags: -Zmiri-disable-isolation
 
-use std::fs::{File, create_dir, read_dir, remove_dir, remove_dir_all, remove_file, rename};
+use std::fs::{
+    File, create_dir, OpenOptions, read_dir, remove_dir, remove_dir_all, remove_file, rename,
+};
 use std::io::{Read, Write, ErrorKind, Result, Seek, SeekFrom};
 use std::path::{PathBuf, Path};
 
 fn main() {
     test_file();
     test_file_clone();
+    test_file_create_new();
     test_seek();
     test_metadata();
     test_symlink();
@@ -82,6 +85,20 @@ fn test_file_clone() {
     assert_eq!(bytes, contents.as_slice());
 
     // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
+fn test_file_create_new() {
+    let path = prepare("miri_test_fs_file_create_new.txt");
+
+    // Creating a new file that doesn't yet exist should succeed.
+    OpenOptions::new().write(true).create_new(true).open(&path).unwrap();
+    // Creating a new file that already exists should fail.
+    assert_eq!(ErrorKind::AlreadyExists, OpenOptions::new().write(true).create_new(true).open(&path).unwrap_err().kind());
+    // Optionally creating a new file that already exists should succeed.
+    OpenOptions::new().write(true).create(true).open(&path).unwrap();
+
+    // Clean up
     remove_file(&path).unwrap();
 }
 
