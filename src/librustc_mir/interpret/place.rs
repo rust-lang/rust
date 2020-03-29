@@ -8,7 +8,7 @@ use std::hash::Hash;
 use rustc::mir;
 use rustc::mir::interpret::truncate;
 use rustc::ty::layout::{
-    self, Align, HasDataLayout, LayoutOf, PrimitiveExt, Size, TyLayout, VariantIdx,
+    self, Align, HasDataLayout, LayoutOf, PrimitiveExt, Size, TyAndLayout, VariantIdx,
 };
 use rustc::ty::{self, Ty};
 use rustc_macros::HashStable;
@@ -86,7 +86,7 @@ pub enum Place<Tag = (), Id = AllocId> {
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceTy<'tcx, Tag = ()> {
     place: Place<Tag>, // Keep this private; it helps enforce invariants.
-    pub layout: TyLayout<'tcx>,
+    pub layout: TyAndLayout<'tcx>,
 }
 
 impl<'tcx, Tag> ::std::ops::Deref for PlaceTy<'tcx, Tag> {
@@ -101,7 +101,7 @@ impl<'tcx, Tag> ::std::ops::Deref for PlaceTy<'tcx, Tag> {
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct MPlaceTy<'tcx, Tag = ()> {
     mplace: MemPlace<Tag>,
-    pub layout: TyLayout<'tcx>,
+    pub layout: TyAndLayout<'tcx>,
 }
 
 impl<'tcx, Tag> ::std::ops::Deref for MPlaceTy<'tcx, Tag> {
@@ -178,7 +178,7 @@ impl<Tag> MemPlace<Tag> {
 impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     /// Produces a MemPlace that works for ZST but nothing else
     #[inline]
-    pub fn dangling(layout: TyLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
+    pub fn dangling(layout: TyAndLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
         let align = layout.align.abi;
         let ptr = Scalar::from_machine_usize(align.bytes(), cx);
         // `Poison` this to make sure that the pointer value `ptr` is never observable by the program.
@@ -196,14 +196,14 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
         self,
         offset: Size,
         meta: MemPlaceMeta<Tag>,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
         Ok(MPlaceTy { mplace: self.mplace.offset(offset, meta, cx)?, layout })
     }
 
     #[inline]
-    fn from_aligned_ptr(ptr: Pointer<Tag>, layout: TyLayout<'tcx>) -> Self {
+    fn from_aligned_ptr(ptr: Pointer<Tag>, layout: TyAndLayout<'tcx>) -> Self {
         MPlaceTy { mplace: MemPlace::from_ptr(ptr, layout.align.abi), layout }
     }
 
@@ -1030,7 +1030,7 @@ where
 
     pub fn allocate(
         &mut self,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> MPlaceTy<'tcx, M::PointerTag> {
         let ptr = self.memory.allocate(layout.size, layout.align.abi, kind);
@@ -1077,7 +1077,7 @@ where
                 ..
             } => {
                 // No need to validate that the discriminant here because the
-                // `TyLayout::for_variant()` call earlier already checks the variant is valid.
+                // `TyAndLayout::for_variant()` call earlier already checks the variant is valid.
 
                 let discr_val =
                     dest.layout.ty.discriminant_for_variant(*self.tcx, variant_index).unwrap().val;
@@ -1099,7 +1099,7 @@ where
                 ..
             } => {
                 // No need to validate that the discriminant here because the
-                // `TyLayout::for_variant()` call earlier already checks the variant is valid.
+                // `TyAndLayout::for_variant()` call earlier already checks the variant is valid.
 
                 if variant_index != dataful_variant {
                     let variants_start = niche_variants.start().as_u32();

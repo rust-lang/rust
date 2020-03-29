@@ -3,7 +3,7 @@ use super::Backend;
 use super::HasCodegen;
 use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
-use rustc::ty::layout::{self, TyLayout};
+use rustc::ty::layout::{self, TyAndLayout};
 use rustc::ty::{self, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
@@ -94,17 +94,17 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
 impl<T> DerivedTypeMethods<'tcx> for T where Self: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {}
 
 pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
-    fn backend_type(&self, layout: TyLayout<'tcx>) -> Self::Type;
+    fn backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
     fn cast_backend_type(&self, ty: &CastTarget) -> Self::Type;
     fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Self::Type;
     fn reg_backend_type(&self, ty: &Reg) -> Self::Type;
-    fn immediate_backend_type(&self, layout: TyLayout<'tcx>) -> Self::Type;
-    fn is_backend_immediate(&self, layout: TyLayout<'tcx>) -> bool;
-    fn is_backend_scalar_pair(&self, layout: TyLayout<'tcx>) -> bool;
-    fn backend_field_index(&self, layout: TyLayout<'tcx>, index: usize) -> u64;
+    fn immediate_backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
+    fn is_backend_immediate(&self, layout: TyAndLayout<'tcx>) -> bool;
+    fn is_backend_scalar_pair(&self, layout: TyAndLayout<'tcx>) -> bool;
+    fn backend_field_index(&self, layout: TyAndLayout<'tcx>, index: usize) -> u64;
     fn scalar_pair_element_backend_type(
         &self,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
         index: usize,
         immediate: bool,
     ) -> Self::Type;

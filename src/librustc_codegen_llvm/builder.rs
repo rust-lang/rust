@@ -7,7 +7,7 @@ use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use libc::{c_char, c_uint};
 use log::debug;
-use rustc::ty::layout::{self, Align, Size, TyLayout};
+use rustc::ty::layout::{self, Align, Size, TyAndLayout};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_codegen_ssa::base::to_immediate;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, TypeKind};
@@ -86,9 +86,9 @@ impl HasTargetSpec for Builder<'_, '_, 'tcx> {
 
 impl ty::layout::LayoutOf for Builder<'_, '_, 'tcx> {
     type Ty = Ty<'tcx>;
-    type TyLayout = TyLayout<'tcx>;
+    type TyAndLayout = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.cx.layout_of(ty)
     }
 }

@@ -1,7 +1,7 @@
 use crate::base;
 use crate::traits::*;
 use rustc::mir;
-use rustc::ty::layout::{FnAbiExt, HasTyCtxt, TyLayout};
+use rustc::ty::layout::{FnAbiExt, HasTyCtxt, TyAndLayout};
 use rustc::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_target::abi::call::{FnAbi, PassMode};
 
@@ -114,7 +114,7 @@ enum LocalRef<'tcx, V> {
 impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
     fn new_operand<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
     ) -> LocalRef<'tcx, V> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which

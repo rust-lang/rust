@@ -9,7 +9,7 @@ use std::fmt::Write;
 use std::ops::RangeInclusive;
 
 use rustc::ty;
-use rustc::ty::layout::{self, LayoutOf, TyLayout, VariantIdx};
+use rustc::ty::layout::{self, LayoutOf, TyAndLayout, VariantIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_span::symbol::{sym, Symbol};
@@ -177,7 +177,7 @@ struct ValidityVisitor<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 }
 
 impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M> {
-    fn aggregate_field_path_elem(&mut self, layout: TyLayout<'tcx>, field: usize) -> PathElem {
+    fn aggregate_field_path_elem(&mut self, layout: TyAndLayout<'tcx>, field: usize) -> PathElem {
         // First, check if we are projecting to a variant.
         match layout.variants {
             layout::Variants::Multiple { discr_index, .. } => {
@@ -266,7 +266,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
     fn check_wide_ptr_meta(
         &mut self,
         meta: MemPlaceMeta<M::PointerTag>,
-        pointee: TyLayout<'tcx>,
+        pointee: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx> {
         let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
         match tail.kind {

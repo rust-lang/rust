@@ -3,7 +3,7 @@
 
 use rustc::mir::interpret::InterpResult;
 use rustc::ty;
-use rustc::ty::layout::{self, TyLayout, VariantIdx};
+use rustc::ty::layout::{self, TyAndLayout, VariantIdx};
 
 use super::{InterpCx, MPlaceTy, Machine, OpTy};
 
@@ -12,7 +12,7 @@ use super::{InterpCx, MPlaceTy, Machine, OpTy};
 // that's just more convenient to work with (avoids repeating all the `Machine` bounds).
 pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
     /// Gets this value's layout.
-    fn layout(&self) -> TyLayout<'tcx>;
+    fn layout(&self) -> TyAndLayout<'tcx>;
 
     /// Makes this into an `OpTy`.
     fn to_op(self, ecx: &InterpCx<'mir, 'tcx, M>) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
@@ -36,7 +36,7 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
 // Places in general are not due to `place_field` having to do `force_allocation`.
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::PointerTag> {
     #[inline(always)]
-    fn layout(&self) -> TyLayout<'tcx> {
+    fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
     }
 
@@ -74,7 +74,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for MPlaceTy<'tcx, M::PointerTag> {
     #[inline(always)]
-    fn layout(&self) -> TyLayout<'tcx> {
+    fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
     }
 
