@@ -203,7 +203,7 @@ impl WorldState {
     /// FIXME: better API here
     pub fn process_changes(
         &mut self,
-        roots_to_scan: &mut usize,
+        roots_scanned: &mut usize,
     ) -> Option<Vec<(SourceRootId, Vec<(FileId, RelativePathBuf, Arc<String>)>)>> {
         let changes = self.vfs.write().commit_changes();
         if changes.is_empty() {
@@ -217,7 +217,7 @@ impl WorldState {
                     let root_path = self.vfs.read().root2path(root);
                     let is_local = self.roots.iter().any(|r| root_path.starts_with(r));
                     if is_local {
-                        *roots_to_scan -= 1;
+                        *roots_scanned += 1;
                         for (file, path, text) in files {
                             change.add_file(SourceRootId(root.0), FileId(file.0), path, text);
                         }
