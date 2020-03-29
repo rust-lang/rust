@@ -7,9 +7,23 @@ use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
 use std::panic::catch_unwind;
 use std::rc::Rc;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::DeterministicRng;
+
+// Value of node::CAPACITY, thus capacity of a tree with a single level,
+// i.e. a tree who's root is a leaf node at height 0.
+const NODE_CAPACITY: usize = 11;
+
+// Minimum number of elements to insert in order to guarantee a tree with 2 levels,
+// i.e. a tree who's root is an internal node at height 1, with edges to leaf nodes.
+// It's not the minimum size: removing an element from such a tree does not always reduce height.
+const MIN_INSERTS_HEIGHT_1: usize = NODE_CAPACITY + 1;
+
+// Minimum number of elements to insert in order to guarantee a tree with 3 levels,
+// i.e. a tree who's root is an internal node at height 2, with edges to more internal nodes.
+// It's not the minimum size: removing an element from such a tree does not always reduce height.
+const MIN_INSERTS_HEIGHT_2: usize = NODE_CAPACITY + (NODE_CAPACITY + 1) * NODE_CAPACITY + 1;
 
 #[test]
 fn test_basic_large() {
@@ -17,7 +31,7 @@ fn test_basic_large() {
     #[cfg(not(miri))] // Miri is too slow
     let size = 10000;
     #[cfg(miri)]
-    let size = 144; // to obtain height 3 tree (having edges to both kinds of nodes)
+    let size = MIN_INSERTS_HEIGHT_2;
     assert_eq!(map.len(), 0);
 
     for i in 0..size {
@@ -237,30 +251,26 @@ impl TryFrom<usize> for Align32 {
 
 #[test]
 fn test_iter_mut_mutation() {
-    // Check many alignments because various fields precede array in NodeHeader.
-    // Check with size 0 which should not iterate at all.
-    // Check with size 1 for a tree with one kind of node (root = leaf).
-    // Check with size 12 for a tree with two kinds of nodes (root and leaves).
-    // Check with size 144 for a tree with all kinds of nodes (root, internals and leaves).
+    // Check many alignments and trees with roots at various heights.
     do_test_iter_mut_mutation::<u8>(0);
     do_test_iter_mut_mutation::<u8>(1);
-    do_test_iter_mut_mutation::<u8>(12);
-    do_test_iter_mut_mutation::<u8>(127); // not enough unique values to test 144
+    do_test_iter_mut_mutation::<u8>(MIN_INSERTS_HEIGHT_1);
+    do_test_iter_mut_mutation::<u8>(127); // not enough unique values to test MIN_INSERTS_HEIGHT_2
     do_test_iter_mut_mutation::<u16>(1);
-    do_test_iter_mut_mutation::<u16>(12);
-    do_test_iter_mut_mutation::<u16>(144);
+    do_test_iter_mut_mutation::<u16>(MIN_INSERTS_HEIGHT_1);
+    do_test_iter_mut_mutation::<u16>(MIN_INSERTS_HEIGHT_2);
     do_test_iter_mut_mutation::<u32>(1);
-    do_test_iter_mut_mutation::<u32>(12);
-    do_test_iter_mut_mutation::<u32>(144);
+    do_test_iter_mut_mutation::<u32>(MIN_INSERTS_HEIGHT_1);
+    do_test_iter_mut_mutation::<u32>(MIN_INSERTS_HEIGHT_2);
     do_test_iter_mut_mutation::<u64>(1);
-    do_test_iter_mut_mutation::<u64>(12);
-    do_test_iter_mut_mutation::<u64>(144);
+    do_test_iter_mut_mutation::<u64>(MIN_INSERTS_HEIGHT_1);
+    do_test_iter_mut_mutation::<u64>(MIN_INSERTS_HEIGHT_2);
     do_test_iter_mut_mutation::<u128>(1);
-    do_test_iter_mut_mutation::<u128>(12);
-    do_test_iter_mut_mutation::<u128>(144);
+    do_test_iter_mut_mutation::<u128>(MIN_INSERTS_HEIGHT_1);
+    do_test_iter_mut_mutation::<u128>(MIN_INSERTS_HEIGHT_2);
     do_test_iter_mut_mutation::<Align32>(1);
-    do_test_iter_mut_mutation::<Align32>(12);
-    do_test_iter_mut_mutation::<Align32>(144);
+    do_test_iter_mut_mutation::<Align32>(MIN_INSERTS_HEIGHT_1);
+    do_test_iter_mut_mutation::<Align32>(MIN_INSERTS_HEIGHT_2);
 }
 
 #[test]
@@ -376,12 +386,11 @@ fn test_range_small() {
 }
 
 #[test]
-fn test_range_height_2() {
-    // Assuming that node.CAPACITY is 11, having 12 pairs implies a height 2 tree
-    // with 2 leaves. Depending on details we don't want or need to rely upon,
-    // the single key at the root will be 6 or 7.
+fn test_range_height_1() {
+    // Tests tree with a root and 2 leaves. Depending on details we don't want or need
+    // to rely upon, the single key at the root will be 6 or 7.
 
-    let map: BTreeMap<_, _> = (1..=12).map(|i| (i, i)).collect();
+    let map: BTreeMap<_, _> = (1..=MIN_INSERTS_HEIGHT_1 as i32).map(|i| (i, i)).collect();
     for &root in &[6, 7] {
         assert_eq!(range_keys(&map, (Excluded(root), Excluded(root + 1))), vec![]);
         assert_eq!(range_keys(&map, (Excluded(root), Included(root + 1))), vec![root + 1]);
@@ -519,7 +528,7 @@ fn test_range_1000() {
     #[cfg(not(miri))] // Miri is too slow
     let size = 1000;
     #[cfg(miri)]
-    let size = 144; // to obtain height 3 tree (having edges to both kinds of nodes)
+    let size = MIN_INSERTS_HEIGHT_2;
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test(map: &BTreeMap<u32, u32>, size: u32, min: Bound<&u32>, max: Bound<&u32>) {
@@ -755,7 +764,7 @@ fn test_bad_zst() {
 #[test]
 fn test_clone() {
     let mut map = BTreeMap::new();
-    let size = 12; // to obtain height 2 tree (having edges to leaf nodes)
+    let size = MIN_INSERTS_HEIGHT_1;
     assert_eq!(map.len(), 0);
 
     for i in 0..size {
@@ -783,20 +792,19 @@ fn test_clone() {
         assert_eq!(map, map.clone());
     }
 
-    // Full 2-level and minimal 3-level tree (sizes 143, 144 -- the only ones we clone for).
-    for i in 1..=144 {
-        assert_eq!(map.insert(i, i), None);
-        assert_eq!(map.len(), i);
-        if i >= 143 {
-            assert_eq!(map, map.clone());
-        }
-    }
+    // Test a tree with 2 chock-full levels and a tree with 3 levels.
+    map = (1..MIN_INSERTS_HEIGHT_2).map(|i| (i, i)).collect();
+    assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2 - 1);
+    assert_eq!(map, map.clone());
+    map.insert(0, 0);
+    assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2);
+    assert_eq!(map, map.clone());
 }
 
 #[test]
 fn test_clone_from() {
     let mut map1 = BTreeMap::new();
-    let max_size = 12; // to obtain height 2 tree (having edges to leaf nodes)
+    let max_size = MIN_INSERTS_HEIGHT_1;
 
     // Range to max_size inclusive, because i is the size of map1 being tested.
     for i in 0..=max_size {
@@ -1014,8 +1022,8 @@ fn test_split_off_large_random_sorted() {
 }
 
 #[test]
-fn test_into_iter_drop_leak_1() {
-    static DROPS: AtomicU32 = AtomicU32::new(0);
+fn test_into_iter_drop_leak_height_0() {
+    static DROPS: AtomicUsize = AtomicUsize::new(0);
 
     struct D;
 
@@ -1040,10 +1048,10 @@ fn test_into_iter_drop_leak_1() {
 }
 
 #[test]
-fn test_into_iter_drop_leak_2() {
-    let size = 12; // to obtain tree with 2 levels (having edges to leaf nodes)
-    static DROPS: AtomicU32 = AtomicU32::new(0);
-    static PANIC_POINT: AtomicU32 = AtomicU32::new(0);
+fn test_into_iter_drop_leak_height_1() {
+    let size = MIN_INSERTS_HEIGHT_1;
+    static DROPS: AtomicUsize = AtomicUsize::new(0);
+    static PANIC_POINT: AtomicUsize = AtomicUsize::new(0);
 
     struct D;
     impl Drop for D {
