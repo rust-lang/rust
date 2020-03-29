@@ -782,7 +782,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                         .split('"')
                         .next()
                         .map(|s| s.to_owned())
-                        .unwrap_or_else(|| String::new()),
+                        .unwrap_or_else(String::new),
                 );
             }
         }
@@ -2158,7 +2158,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                     docs = MarkdownSummaryLine(doc_value, &myitem.links()).to_string(),
                     class = myitem.type_(),
                     add = add,
-                    stab = stab.unwrap_or_else(|| String::new()),
+                    stab = stab.unwrap_or_else(String::new),
                     unsafety_flag = unsafety_flag,
                     href = item_path(myitem.type_(), myitem.name.as_ref().unwrap()),
                     title = [full_path(cx, myitem), myitem.type_().to_string()]
@@ -4593,12 +4593,9 @@ fn collect_paths_for_type(first_ty: clean::Type) -> Vec<String> {
                 let get_extern = || cache.external_paths.get(&did).map(|s| s.0.clone());
                 let fqp = cache.exact_paths.get(&did).cloned().or_else(get_extern);
 
-                match fqp {
-                    Some(path) => {
-                        out.push(path.join("::"));
-                    }
-                    _ => {}
-                };
+                if let Some(path) = fqp {
+                    out.push(path.join("::"));
+                }
             }
             clean::Type::Tuple(tys) => {
                 work.extend(tys.into_iter());
