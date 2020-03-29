@@ -237,7 +237,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         let os_str = this.read_os_str_from_wide_str(scalar)?;
 
-        Ok(PathBuf::from(&convert_path_separator(Cow::Borrowed(&os_str), &this.tcx.sess.target.target.target_os, Pathconversion::TargetToHost)))
+        Ok(convert_path_separator(Cow::Owned(os_str), &this.tcx.sess.target.target.target_os, Pathconversion::TargetToHost).into_owned().into())
     }
 
     /// Write a Path to the machine memory (as a null-terminated sequence of bytes),
