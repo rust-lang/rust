@@ -222,8 +222,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             &mut err,
                             &param.name.as_str(),
                             "Copy",
-                            tcx.sess.source_map(),
-                            span,
                             None,
                         );
                     }
