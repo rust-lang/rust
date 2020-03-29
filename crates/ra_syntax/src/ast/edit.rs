@@ -390,26 +390,12 @@ impl ast::MatchArmList {
             Some(t) => t,
             None => return self.clone(),
         };
-        let mut sib = r_curly.prev_sibling_or_token();
-        while let Some(s) = sib.clone() {
-            if let Some(tok) = s.as_token() {
-                if tok.kind() != WHITESPACE {
-                    break;
-                }
-                sib = s.prev_sibling_or_token();
-            } else {
-                break;
-            }
-        }
-        let indent = "    ".to_string() + &leading_indent(self.syntax()).unwrap_or_default();
-        let sib = match sib {
-            Some(s) => s,
-            None => return self.clone(),
-        };
-        let position = InsertPosition::After(sib.into());
-        let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
-        let to_insert: ArrayVec<[SyntaxElement; 2]> =
-            [ws.ws().into(), item.syntax().clone().into()].into();
+        let position = InsertPosition::Before(r_curly.into());
+        let arm_ws = tokens::WsBuilder::new("    ");
+        let match_indent = &leading_indent(self.syntax()).unwrap_or_default();
+        let match_ws = tokens::WsBuilder::new(&format!("\n{}", match_indent));
+        let to_insert: ArrayVec<[SyntaxElement; 3]> =
+            [arm_ws.ws().into(), item.syntax().clone().into(), match_ws.ws().into()].into();
         self.insert_children(position, to_insert)
     }
 }
