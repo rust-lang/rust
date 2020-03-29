@@ -287,9 +287,14 @@ impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
 fn mir_assign_valid_types<'tcx>(src: Ty<'tcx>, dest: Ty<'tcx>) -> bool {
     src == dest
         || match (&src.kind, &dest.kind) {
-            // After MIR optimizations, there can be assignments that change reference mutability.
             (ty::Ref(_, src_pointee, _), ty::Ref(_, dest_pointee, _)) => {
+                // After optimizations, there can be assignments that change reference mutability.
+                // This does not affect reference layout, so that is fine.
                 src_pointee == dest_pointee
+            }
+            (ty::FnPtr(_), ty::FnPtr(_)) => {
+                // All function pointers have equal layout, and thus can be assigned.
+                true
             }
             _ => false,
         }
@@ -882,7 +887,7 @@ where
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
         assert!(
             mir_assign_valid_types(src.layout.ty, dest.layout.ty),
-            "type mismatch when copying!\nsrc: {:?}, dest: {:?}",
+            "type mismatch when copying!\nsrc: {:?},\ndest: {:?}",
             src.layout.ty,
             dest.layout.ty,
         );
