@@ -2,7 +2,7 @@ error[E0748]: unterminated raw string
   --> $DIR/raw-byte-string-eof.rs:2:5
    |
 LL |     br##"a"#;
-   |     ^      - help: you might have intended to terminate the string here: `##`
+   |     ^      - help: consider terminating the string here: `##`
    |     |
    |     unterminated raw string
    |

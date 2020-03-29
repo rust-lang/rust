@@ -141,25 +141,41 @@ pub enum LiteralKind {
     RawByteStr(UnvalidatedRawStr),
 }
 
+/// Represents something that looks like a raw string, but may have some
+/// problems. Use `.validate()` to convert it into something
+/// usable.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UnvalidatedRawStr {
+    /// The prefix (`r###"`) is valid
     valid_start: bool,
+    /// The number of leading `#`
     n_start_hashes: usize,
+    /// The number of trailing `#`. `n_end_hashes` <= `n_start_hashes`
     n_end_hashes: usize,
+    /// The offset starting at `r` or `br` where the user may have intended to end the string.
+    /// Currently, it is the longest sequence of pattern `"#+"`.
     possible_terminator_offset: Option<usize>,
 }
 
+/// Error produced validating a raw string. Represents cases like:
+/// - `r##~"abcde"##`: `LexRawStrError::InvalidStarter`
+/// - `r###"abcde"##`: `LexRawStrError::NoTerminator { expected: 3, found: 2, possible_terminator_offset: Some(11)`
+/// - Too many `#`s (>65536): `TooManyDelimiters`
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LexRawStrError {
-    /// Non # characters between `r` and `"` eg. `r#~"..`
+    /// Non `#` characters exist between `r` and `"` eg. `r#~"..`
     InvalidStarter,
-    /// The string was never terminated. `possible_terminator_offset` is the best guess of where they
+    /// The string was never terminated. `possible_terminator_offset` is the number of characters after `r` or `br` where they
     /// may have intended to terminate it.
     NoTerminator { expected: usize, found: usize, possible_terminator_offset: Option<usize> },
-    /// More than 65536 # signs
+    /// More than 65536 `#`s exist.
     TooManyDelimiters,
 }
 
+/// Raw String that contains a valid prefix (`#+"`) and postfix (`"#+`) where
+/// there are a matching number of `#` characters in both. Note that this will
+/// not consume extra trailing `#` characters: `r###"abcde"####` is lexed as a
+/// `ValidatedRawString { n_hashes: 3 }` followed by a `#` token.
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct ValidatedRawStr {
     n_hashes: u16,
@@ -172,27 +188,26 @@ impl ValidatedRawStr {
 }
 
 impl UnvalidatedRawStr {
-    pub fn started(&self) -> bool {
-        self.valid_start
-    }
-
     pub fn validate(self) -> Result<ValidatedRawStr, LexRawStrError> {
         if !self.valid_start {
             return Err(LexRawStrError::InvalidStarter);
         }
 
+        // Only up to 65535 `#`s are allowed in raw strings
         let n_start_safe: u16 =
             self.n_start_hashes.try_into().map_err(|_| LexRawStrError::TooManyDelimiters)?;
-        match (self.n_start_hashes, self.n_end_hashes) {
-            (n_start, n_end) if n_start > n_end => Err(LexRawStrError::NoTerminator {
-                expected: n_start,
+
+        if self.n_start_hashes > self.n_end_hashes {
+            Err(LexRawStrError::NoTerminator {
+                expected: self.n_start_hashes,
                 found: self.n_end_hashes,
                 possible_terminator_offset: self.possible_terminator_offset,
-            }),
-            (n_start, n_end) => {
-                debug_assert_eq!(n_start, n_end);
-                Ok(ValidatedRawStr { n_hashes: n_start_safe })
-            }
+            })
+        } else {
+            // Since the lexer should never produce a literal with n_end > n_start, if n_start <= n_end,
+            // they must be equal.
+            debug_assert_eq!(self.n_start_hashes, self.n_end_hashes);
+            Ok(ValidatedRawStr { n_hashes: n_start_safe })
         }
     }
 }
@@ -656,7 +671,7 @@ impl Cursor<'_> {
         false
     }
 
-    /// Eats the double-quoted string an UnvalidatedRawStr
+    /// Eats the double-quoted string and returns an `UnvalidatedRawStr`.
     fn raw_double_quoted_string(&mut self, prefix_len: usize) -> UnvalidatedRawStr {
         debug_assert!(self.prev() == 'r');
         let mut valid_start: bool = false;

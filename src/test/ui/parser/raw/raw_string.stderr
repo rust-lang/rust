@@ -2,7 +2,7 @@ error[E0748]: unterminated raw string
   --> $DIR/raw_string.rs:2:13
    |
 LL |     let x = r##"lol"#;
-   |             ^       - help: you might have intended to terminate the string here: `##`
+   |             ^       - help: consider terminating the string here: `##`
    |             |
    |             unterminated raw string
    |

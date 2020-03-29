@@ -288,9 +288,12 @@ impl<'a> Parser<'a> {
 
     fn check_too_many_raw_str_terminators(&mut self, err: &mut DiagnosticBuilder<'_>) -> bool {
         let prev_token_raw_str = match self.prev_token {
-            Token { kind: TokenKind::Literal(Lit { kind: LitKind::StrRaw(n), .. }), .. } => Some(n),
             Token {
-                kind: TokenKind::Literal(Lit { kind: LitKind::ByteStrRaw(n), .. }), ..
+                kind:
+                    TokenKind::Literal(Lit {
+                        kind: LitKind::StrRaw(n) | LitKind::ByteStrRaw(n), ..
+                    }),
+                ..
             } => Some(n),
             _ => None,
         };
@@ -300,11 +303,11 @@ impl<'a> Parser<'a> {
                 err.set_primary_message("too many `#` when terminating raw string");
                 err.span_suggestion(
                     self.token.span,
-                    "Remove the extra `#`",
+                    "remove the extra `#`",
                     String::new(),
                     Applicability::MachineApplicable,
                 );
-                err.note(&format!("The raw string started with {} `#`s", n_hashes));
+                err.note(&format!("the raw string started with {} `#`s", n_hashes));
                 return true;
             }
         }

@@ -533,13 +533,12 @@ impl<'a> StringReader<'a> {
         }
 
         if let Some(possible_offset) = possible_offset {
-            let span = self.mk_sp(
-                start + BytePos(possible_offset as u32),
-                start + BytePos(possible_offset as u32) + BytePos(found_terminators as u32),
-            );
+            let lo = start + BytePos(possible_offset as u32);
+            let hi = lo + BytePos(found_terminators as u32);
+            let span = self.mk_sp(lo, hi);
             err.span_suggestion(
                 span,
-                "you might have intended to terminate the string here",
+                "consider terminating the string here",
                 "#".repeat(n_hashes),
                 Applicability::MaybeIncorrect,
             );
