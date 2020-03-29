@@ -76,7 +76,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let ptr_scalar = this.read_scalar(ptr_op)?.not_undef()?;
 
         // Default: no result.
-        let mut result = this.usize_max();
+        let mut result = this.machine_usize_max();
         if let Ok(ptr) = this.force_ptr(ptr_scalar) {
             // Only do anything if we can identify the allocation this goes to.
             let cur_align =

@@ -98,7 +98,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // The offset is used to strip the "{name}=" part of the string.
                 Scalar::from(var_ptr.offset(Size::from_bytes(u64::try_from(name.len()).unwrap().checked_add(1).unwrap()), this)?)
             }
-            None => Scalar::ptr_null(&*this.tcx),
+            None => Scalar::null_ptr(&*this.tcx),
         })
     }
 
@@ -305,7 +305,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             Err(e) => this.set_last_error_from_io_error(e)?,
         }
-        Ok(Scalar::ptr_null(&*this.tcx))
+        Ok(Scalar::null_ptr(&*this.tcx))
     }
 
     fn chdir(&mut self, path_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
@@ -343,7 +343,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Collect all the pointers to each variable in a vector.
         let mut vars: Vec<Scalar<Tag>> = this.machine.env_vars.map.values().map(|&ptr| ptr.into()).collect();
         // Add the trailing null pointer.
-        vars.push(Scalar::ptr_null(this));
+        vars.push(Scalar::null_ptr(this));
         // Make an array with all these pointers inside Miri.
         let tcx = this.tcx;
         let vars_layout =
