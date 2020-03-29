@@ -7,16 +7,15 @@ use std::hash::Hash;
 
 use rustc_macros::HashStable;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::truncate;
 use rustc_middle::ty::layout::{PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::{Abi, Align, DiscriminantKind, FieldsShape};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, VariantIdx, Variants};
 
 use super::{
-    AllocId, AllocMap, Allocation, AllocationExtra, ImmTy, Immediate, InterpCx, InterpResult,
-    LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer, PointerArithmetic, RawConst, Scalar,
-    ScalarMaybeUndef,
+    mir_assign_valid_types, truncate, AllocId, AllocMap, Allocation, AllocationExtra, ImmTy,
+    Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer,
+    PointerArithmetic, RawConst, Scalar, ScalarMaybeUndef,
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
@@ -281,23 +280,6 @@ impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
     pub fn assert_mem_place(self) -> MPlaceTy<'tcx, Tag> {
         MPlaceTy { mplace: self.place.assert_mem_place(), layout: self.layout }
     }
-}
-
-/// Test if it is valid for a MIR assignment to assign `src`-typed place to `dest`-typed value.
-fn mir_assign_valid_types<'tcx>(src: Ty<'tcx>, dest: Ty<'tcx>) -> bool {
-    src == dest
-        || match (&src.kind, &dest.kind) {
-            (ty::Ref(_, src_pointee, _), ty::Ref(_, dest_pointee, _)) => {
-                // After optimizations, there can be assignments that change reference mutability.
-                // This does not affect reference layout, so that is fine.
-                src_pointee == dest_pointee
-            }
-            (ty::FnPtr(_), ty::FnPtr(_)) => {
-                // All function pointers have equal layout, and thus can be assigned.
-                true
-            }
-            _ => false,
-        }
 }
 
 // separating the pointer tag for `impl Trait`, see https://github.com/rust-lang/rust/issues/54385

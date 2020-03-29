@@ -210,6 +210,48 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
     }
 }
 
+/// Test if it is valid for a MIR assignment to assign `src`-typed place to `dest`-typed value.
+/// This test should be symmetric, as it is primarily about layout compatibility.
+pub(super) fn mir_assign_valid_types<'tcx>(src: Ty<'tcx>, dest: Ty<'tcx>) -> bool {
+    src == dest
+        || match (&src.kind, &dest.kind) {
+            (ty::Ref(_, src_pointee, _), ty::Ref(_, dest_pointee, _)) => {
+                // After optimizations, there can be assignments that change reference mutability.
+                // This does not affect reference layout, so that is fine.
+                src_pointee == dest_pointee
+            }
+            (ty::FnPtr(_), ty::FnPtr(_)) => {
+                // All function pointers have equal layout, and thus can be assigned.
+                true
+            }
+            _ => false,
+        }
+}
+
+/// Use the already known layout if given (but sanity check in debug mode),
+/// or compute the layout.
+#[cfg_attr(not(debug_assertions), inline(always))]
+pub(super) fn from_known_layout<'tcx>(
+    known_layout: Option<TyAndLayout<'tcx>>,
+    compute: impl FnOnce() -> InterpResult<'tcx, TyAndLayout<'tcx>>,
+) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
+    match known_layout {
+        None => compute(),
+        Some(known_layout) => {
+            if cfg!(debug_assertions) {
+                let check_layout = compute()?;
+                assert!(
+                    mir_assign_valid_types(check_layout.ty, known_layout.ty),
+                    "expected type differs from actual type.\nexpected: {:?}\nactual: {:?}",
+                    known_layout.ty,
+                    check_layout.ty,
+                );
+            }
+            Ok(known_layout)
+        }
+    }
+}
+
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn new(
         tcx: TyCtxtAt<'tcx>,
@@ -377,7 +419,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // have to support that case (mostly by skipping all caching).
         match frame.locals.get(local).and_then(|state| state.layout.get()) {
             None => {
-                let layout = crate::interpret::operand::from_known_layout(layout, || {
+                let layout = from_known_layout(layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
                     let local_ty =
                         self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty);

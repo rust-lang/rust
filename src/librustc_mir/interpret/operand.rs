@@ -2,21 +2,21 @@
 //! All high-level functions to read from memory work on operands as sources.
 
 use std::convert::TryFrom;
+use std::fmt::Write;
 
-use super::{InterpCx, MPlaceTy, Machine, MemPlace, Place, PlaceTy};
 use rustc_hir::def::Namespace;
 use rustc_macros::HashStable;
-pub use rustc_middle::mir::interpret::ScalarMaybeUndef;
-use rustc_middle::mir::interpret::{
-    sign_extend, truncate, AllocId, ConstValue, GlobalId, InterpResult, Pointer, Scalar,
-};
 use rustc_middle::ty::layout::{IntegerExt, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
 use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
 use rustc_target::abi::{Abi, DiscriminantKind, HasDataLayout, Integer, LayoutOf, Size};
 use rustc_target::abi::{VariantIdx, Variants};
-use std::fmt::Write;
+
+use super::{
+    from_known_layout, sign_extend, truncate, AllocId, ConstValue, GlobalId, InterpCx,
+    InterpResult, MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUndef,
+};
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
 ///
@@ -200,29 +200,6 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     #[inline]
     pub fn from_int(i: impl Into<i128>, layout: TyAndLayout<'tcx>) -> Self {
         Self::from_scalar(Scalar::from_int(i, layout.size), layout)
-    }
-}
-
-// Use the existing layout if given (but sanity check in debug mode),
-// or compute the layout.
-#[inline(always)]
-pub(super) fn from_known_layout<'tcx>(
-    layout: Option<TyAndLayout<'tcx>>,
-    compute: impl FnOnce() -> InterpResult<'tcx, TyAndLayout<'tcx>>,
-) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-    match layout {
-        None => compute(),
-        Some(layout) => {
-            if cfg!(debug_assertions) {
-                let layout2 = compute()?;
-                assert_eq!(
-                    layout.layout, layout2.layout,
-                    "mismatch in layout of supposedly equal-layout types {:?} and {:?}",
-                    layout.ty, layout2.ty
-                );
-            }
-            Ok(layout)
-        }
     }
 }
 
