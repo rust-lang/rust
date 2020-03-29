@@ -6,10 +6,10 @@
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
 use crate::late::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
-use rustc::hir::map::Map;
-use rustc::middle::resolve_lifetime::*;
-use rustc::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
-use rustc::{bug, span_bug};
+use rustc_middle::hir::map::Map;
+use rustc_middle::middle::resolve_lifetime::*;
+use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_ast::walk_list;

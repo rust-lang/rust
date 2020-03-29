@@ -3,9 +3,9 @@
 use crate::locator::{CrateLocator, CratePaths};
 use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
 
-use rustc::middle::cstore::DepKind;
-use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn};
-use rustc::ty::TyCtxt;
+use rustc_middle::middle::cstore::DepKind;
+use rustc_middle::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn};
+use rustc_middle::ty::TyCtxt;
 use rustc_ast::expand::allocator::{global_allocator_spans, AllocatorKind};
 use rustc_ast::{ast, attr};
 use rustc_data_structures::svh::Svh;

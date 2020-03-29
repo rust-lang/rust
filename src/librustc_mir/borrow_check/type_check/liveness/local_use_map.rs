@@ -1,5 +1,5 @@
-use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::{Local, Location, ReadOnlyBodyAndCache};
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_middle::mir::{Local, Location, ReadOnlyBodyAndCache};
 use rustc_data_structures::vec_linked_list as vll;
 use rustc_index::vec::IndexVec;
 

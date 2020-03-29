@@ -1,4 +1,4 @@
-use rustc::ty::TyCtxt;
+use rustc_middle::ty::TyCtxt;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;

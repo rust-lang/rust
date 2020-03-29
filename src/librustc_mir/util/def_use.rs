@@ -1,10 +1,10 @@
 //! Def-use analysis.
 
-use rustc::mir::visit::{MutVisitor, PlaceContext, Visitor};
-use rustc::mir::{
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::{
     Body, BodyAndCache, Local, Location, PlaceElem, ReadOnlyBodyAndCache, VarDebugInfo,
 };
-use rustc::ty::TyCtxt;
+use rustc_middle::ty::TyCtxt;
 use rustc_index::vec::IndexVec;
 use std::mem;
 

@@ -1,11 +1,6 @@
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-use rustc::mir::{
-    Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
-    ConstraintCategory, Local, Location,
-};
-use rustc::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::binary_search_util;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -16,6 +11,11 @@ use rustc_index::vec::IndexVec;
 use rustc_infer::infer::canonical::QueryOutlivesConstraint;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin, RegionVariableOrigin};
+use rustc_middle::mir::{
+    Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
+    ConstraintCategory, Local, Location,
+};
+use rustc_middle::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 
 use crate::borrow_check::{
@@ -202,7 +202,7 @@ pub(crate) enum Cause {
 ///
 /// For more information about this translation, see
 /// `InferCtxt::process_registered_region_obligations` and
-/// `InferCtxt::type_must_outlive` in `rustc::infer::outlives`.
+/// `InferCtxt::type_must_outlive` in `rustc_middle::infer::outlives`.
 #[derive(Clone, Debug)]
 pub struct TypeTest<'tcx> {
     /// The type `T` that must outlive the region.

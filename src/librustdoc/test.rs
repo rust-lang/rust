@@ -1,5 +1,5 @@
-use rustc::hir::map::Map;
-use rustc::util::common::ErrorReported;
+use rustc_middle::hir::map::Map;
+use rustc_middle::util::common::ErrorReported;
 use rustc_ast::ast;
 use rustc_ast::with_globals;
 use rustc_data_structures::sync::Lrc;

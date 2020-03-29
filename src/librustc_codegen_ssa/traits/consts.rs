@@ -1,8 +1,8 @@
 use super::BackendTypes;
 use crate::mir::place::PlaceRef;
-use rustc::mir::interpret::Allocation;
-use rustc::mir::interpret::Scalar;
-use rustc::ty::layout;
+use rustc_middle::mir::interpret::Allocation;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::ty::layout;
 use rustc_span::Symbol;
 
 pub trait ConstMethods<'tcx>: BackendTypes {

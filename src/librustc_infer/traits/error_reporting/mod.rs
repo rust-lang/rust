@@ -1,7 +1,7 @@
 use super::ObjectSafetyViolation;
 
 use crate::infer::InferCtxt;
-use rustc::ty::TyCtxt;
+use rustc_middle::ty::TyCtxt;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};

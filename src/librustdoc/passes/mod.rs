@@ -1,7 +1,7 @@
 //! Contains information about "passes", used to modify crate information during the documentation
 //! process.
 
-use rustc::middle::privacy::AccessLevels;
+use rustc_middle::middle::privacy::AccessLevels;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_session::lint;
 use rustc_span::{InnerSpan, Span, DUMMY_SP};

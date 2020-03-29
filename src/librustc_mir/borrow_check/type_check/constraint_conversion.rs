@@ -1,6 +1,6 @@
-use rustc::mir::ConstraintCategory;
-use rustc::ty::subst::GenericArgKind;
-use rustc::ty::{self, TyCtxt};
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_infer::infer::canonical::QueryOutlivesConstraint;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;

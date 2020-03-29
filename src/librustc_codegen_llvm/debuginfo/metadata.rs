@@ -20,17 +20,6 @@ use crate::llvm_util;
 use crate::value::Value;
 
 use log::debug;
-use rustc::ich::NodeIdHashingMode;
-use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc::mir::interpret::truncate;
-use rustc::mir::{self, Field, GeneratorLayout};
-use rustc::ty::layout::{
-    self, Align, Integer, IntegerExt, LayoutOf, PrimitiveExt, Size, TyAndLayout, VariantIdx,
-};
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc::ty::Instance;
-use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::{bug, span_bug};
 use rustc_ast::ast;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
@@ -41,6 +30,17 @@ use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::ich::NodeIdHashingMode;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::interpret::truncate;
+use rustc_middle::mir::{self, Field, GeneratorLayout};
+use rustc_middle::ty::layout::{
+    self, Align, Integer, IntegerExt, LayoutOf, PrimitiveExt, Size, TyAndLayout, VariantIdx,
+};
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::Instance;
+use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::{Interner, Symbol};
 use rustc_span::{self, FileName, Span};

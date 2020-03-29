@@ -4,8 +4,8 @@
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError::SubSupConflict;
 use crate::infer::SubregionOrigin;
-use rustc::ty::RegionKind;
-use rustc::util::common::ErrorReported;
+use rustc_middle::ty::RegionKind;
+use rustc_middle::util::common::ErrorReported;
 use rustc_hir::{Expr, ExprKind::Closure, Node};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {

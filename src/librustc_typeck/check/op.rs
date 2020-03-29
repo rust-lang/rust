@@ -2,9 +2,9 @@
 
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs};
-use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
-use rustc::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
-use rustc::ty::{self, Ty, TypeFoldable};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
+use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_ast::ast::Ident;
 use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;

@@ -15,10 +15,10 @@ use crate::{
 };
 use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
 
-use rustc::bug;
-use rustc::hir::exports::Export;
-use rustc::middle::cstore::CrateStore;
-use rustc::ty;
+use rustc_middle::bug;
+use rustc_middle::hir::exports::Export;
+use rustc_middle::middle::cstore::CrateStore;
+use rustc_middle::ty;
 use rustc_ast::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use rustc_ast::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use rustc_ast::ast::{Ident, Name};

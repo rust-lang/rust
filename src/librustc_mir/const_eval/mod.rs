@@ -2,9 +2,9 @@
 
 use std::convert::TryFrom;
 
-use rustc::mir;
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::{self, TyCtxt};
+use rustc_middle::mir;
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
 
 use crate::interpret::{intern_const_alloc_recursive, ConstValue, InternKind, InterpCx};

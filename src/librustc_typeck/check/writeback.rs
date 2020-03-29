@@ -4,9 +4,9 @@
 
 use crate::check::FnCtxt;
 
-use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
-use rustc::ty::fold::{TypeFoldable, TypeFolder};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefIdSet;

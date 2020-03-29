@@ -3,7 +3,7 @@
 use super::namespace::item_namespace;
 use super::CrateDebugContext;
 
-use rustc::ty::DefIdTree;
+use rustc_middle::ty::DefIdTree;
 use rustc_hir::def_id::DefId;
 
 use crate::common::CodegenCx;

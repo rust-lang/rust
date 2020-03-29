@@ -2,7 +2,7 @@ use crate::build::matches::ArmHasGuard;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
-use rustc::mir::*;
+use rustc_middle::mir::*;
 use rustc_hir as hir;
 use rustc_span::Span;
 

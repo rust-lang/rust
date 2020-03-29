@@ -96,9 +96,9 @@
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use rustc::hir::map::Map;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, TyCtxt};
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;

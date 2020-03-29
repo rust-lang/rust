@@ -1,9 +1,9 @@
 use crate::infer::InferCtxtExt as _;
 use crate::traits::{self, PredicateObligation};
-use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
-use rustc::ty::free_region_map::FreeRegionRelations;
-use rustc::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
-use rustc::ty::{self, GenericParamDefKind, Ty, TyCtxt};
+use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
+use rustc_middle::ty::free_region_map::FreeRegionRelations;
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
+use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;

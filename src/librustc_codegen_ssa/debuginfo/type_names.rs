@@ -1,6 +1,6 @@
 // Type Names for Debug Info.
 
-use rustc::ty::{self, subst::SubstsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, subst::SubstsRef, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;

@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt;
 
-use rustc::mir::AssertKind;
+use rustc_middle::mir::AssertKind;
 use rustc_span::Symbol;
 
 use super::InterpCx;

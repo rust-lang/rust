@@ -1,5 +1,5 @@
-use rustc::mir::{BasicBlock, Body, Location, ReadOnlyBodyAndCache};
-use rustc::ty::{self, RegionVid};
+use rustc_middle::mir::{BasicBlock, Body, Location, ReadOnlyBodyAndCache};
+use rustc_middle::ty::{self, RegionVid};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::{HybridBitSet, SparseBitMatrix};
 use rustc_index::vec::Idx;

@@ -1,5 +1,5 @@
-use rustc::middle::cstore::{EncodedMetadata, LibSource, NativeLibrary, NativeLibraryKind};
-use rustc::middle::dependency_format::Linkage;
+use rustc_middle::middle::cstore::{EncodedMetadata, LibSource, NativeLibrary, NativeLibraryKind};
+use rustc_middle::middle::dependency_format::Linkage;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;

@@ -3,8 +3,8 @@
 use crate::build::expr::category::Category;
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
-use rustc::middle::region;
-use rustc::mir::*;
+use rustc_middle::middle::region;
+use rustc_middle::mir::*;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an operand suitable for use until the end of the current

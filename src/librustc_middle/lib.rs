@@ -93,6 +93,4 @@ pub mod util {
 }
 
 // Allows macros to refer to this crate as `::rustc`
-// FIXME(Centril): maybe change this at some point if `rustc_middle`
-// is something we're going with long-term.
-extern crate self as rustc;
+extern crate self as rustc_middle;

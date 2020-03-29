@@ -1,8 +1,8 @@
-use rustc::ty::error::{ExpectedFound, TypeError};
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::util::ExplicitSelf;
-use rustc::ty::{self, GenericParamDefKind, TyCtxt};
-use rustc::util::common::ErrorReported;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::util::ExplicitSelf;
+use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
+use rustc_middle::util::common::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};

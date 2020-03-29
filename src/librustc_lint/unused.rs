@@ -1,6 +1,6 @@
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc::ty::adjustment;
-use rustc::ty::{self, Ty};
+use rustc_middle::ty::adjustment;
+use rustc_middle::ty::{self, Ty};
 use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_ast::util::parser;

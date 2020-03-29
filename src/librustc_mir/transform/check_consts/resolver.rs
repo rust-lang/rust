@@ -2,8 +2,8 @@
 //!
 //! This contains the dataflow analysis used to track `Qualif`s on complex control-flow graphs.
 
-use rustc::mir::visit::Visitor;
-use rustc::mir::{self, BasicBlock, Local, Location};
+use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::{self, BasicBlock, Local, Location};
 use rustc_index::bit_set::BitSet;
 
 use std::marker::PhantomData;

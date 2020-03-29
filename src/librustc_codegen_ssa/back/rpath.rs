@@ -3,7 +3,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use rustc::middle::cstore::LibSource;
+use rustc_middle::middle::cstore::LibSource;
 use rustc_hir::def_id::CrateNum;
 
 pub struct RPathConfig<'a> {

@@ -1,8 +1,8 @@
 //! The Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for `clean`.
 
-use rustc::middle::privacy::AccessLevel;
-use rustc::ty::TyCtxt;
+use rustc_middle::middle::privacy::AccessLevel;
+use rustc_middle::ty::TyCtxt;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;

@@ -35,12 +35,12 @@ use super::{
 use crate::infer::{CombinedSnapshot, InferCtxt, InferOk, PlaceholderMap, TypeFreshener};
 use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::project::ProjectionCacheKeyExt;
-use rustc::dep_graph::{DepKind, DepNodeIndex};
-use rustc::middle::lang_items;
-use rustc::ty::fast_reject;
-use rustc::ty::relate::TypeRelation;
-use rustc::ty::subst::{Subst, SubstsRef};
-use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
+use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
+use rustc_middle::middle::lang_items;
+use rustc_middle::ty::fast_reject;
+use rustc_middle::ty::relate::TypeRelation;
+use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_ast::attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -55,7 +55,7 @@ use std::fmt::{self, Display};
 use std::iter;
 use std::rc::Rc;
 
-pub use rustc::traits::select::*;
+pub use rustc_middle::traits::select::*;
 
 pub struct SelectionContext<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,

@@ -1,9 +1,9 @@
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs, PlaceOp};
 
-use rustc::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
-use rustc::ty::{self, TraitRef, Ty, TyCtxt, WithConstness};
-use rustc::ty::{ToPredicate, TypeFoldable};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
+use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt, WithConstness};
+use rustc_middle::ty::{ToPredicate, TypeFoldable};
 use rustc_ast::ast::Ident;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;

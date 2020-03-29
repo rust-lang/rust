@@ -1,10 +1,10 @@
 //! The entry point of the NLL borrow checker.
 
-use rustc::mir::{
+use rustc_middle::mir::{
     BasicBlock, Body, BodyAndCache, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind,
     Location, Promoted, ReadOnlyBodyAndCache,
 };
-use rustc::ty::{self, RegionKind, RegionVid};
+use rustc_middle::ty::{self, RegionKind, RegionVid};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::DefId;

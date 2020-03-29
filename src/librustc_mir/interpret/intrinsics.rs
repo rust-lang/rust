@@ -4,15 +4,15 @@
 
 use std::convert::TryFrom;
 
-use rustc::mir::{
+use rustc_middle::mir::{
     self,
     interpret::{ConstValue, GlobalId, InterpResult, Scalar},
     BinOp,
 };
-use rustc::ty;
-use rustc::ty::layout::{LayoutOf, Primitive, Size};
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::TyCtxt;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{LayoutOf, Primitive, Size};
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::TyCtxt;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;

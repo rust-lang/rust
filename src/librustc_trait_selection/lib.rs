@@ -26,7 +26,7 @@ extern crate rustc_data_structures;
 #[macro_use]
 extern crate log;
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 
 pub mod infer;
 pub mod opaque_types;

@@ -11,8 +11,8 @@
 use crate::constrained_generic_params as cgp;
 use min_specialization::check_min_specialization;
 
-use rustc::ty::query::Providers;
-use rustc::ty::{self, TyCtxt, TypeFoldable};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;

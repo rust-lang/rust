@@ -9,8 +9,8 @@
 //! The functions in this file should fall back to the default set in their
 //! origin crate when the `TyCtxt` is not present in TLS.
 
-use rustc::ty::tls;
 use rustc_errors::{Diagnostic, TRACK_DIAGNOSTICS};
+use rustc_middle::ty::tls;
 use std::fmt;
 
 /// This is a callback from librustc_ast as it cannot access the implicit state
@@ -58,5 +58,5 @@ pub fn setup_callbacks() {
     rustc_span::SPAN_DEBUG.swap(&(span_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     rustc_hir::def_id::DEF_ID_DEBUG.swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     TRACK_DIAGNOSTICS.swap(&(track_diagnostic as fn(&_)));
-    rustc::ty::RESOLVE_INSTANCE.swap(&(rustc_ty::instance::resolve_instance as _));
+    rustc_middle::ty::RESOLVE_INSTANCE.swap(&(rustc_ty::instance::resolve_instance as _));
 }

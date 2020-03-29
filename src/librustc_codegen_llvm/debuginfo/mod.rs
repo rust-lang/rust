@@ -12,15 +12,15 @@ use crate::llvm;
 use crate::llvm::debuginfo::{
     DIArray, DIBuilder, DIFile, DIFlags, DILexicalBlock, DISPFlags, DIScope, DIType, DIVariable,
 };
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 
 use crate::abi::FnAbi;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::value::Value;
-use rustc::mir;
-use rustc::ty::{self, Instance, ParamEnv, Ty};
+use rustc_middle::mir;
+use rustc_middle::ty::{self, Instance, ParamEnv, Ty};
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -31,7 +31,7 @@ use libc::c_uint;
 use log::debug;
 use std::cell::RefCell;
 
-use rustc::ty::layout::{self, HasTyCtxt, LayoutOf, Size};
+use rustc_middle::ty::layout::{self, HasTyCtxt, LayoutOf, Size};
 use rustc_ast::ast;
 use rustc_codegen_ssa::traits::*;
 use rustc_span::symbol::Symbol;

@@ -4,18 +4,18 @@
 use std::convert::TryFrom;
 
 use super::{InterpCx, MPlaceTy, Machine, MemPlace, Place, PlaceTy};
-pub use rustc::mir::interpret::ScalarMaybeUndef;
-use rustc::mir::interpret::{
-    sign_extend, truncate, AllocId, ConstValue, GlobalId, InterpResult, Pointer, Scalar,
-};
-use rustc::ty::layout::{
-    self, HasDataLayout, IntegerExt, LayoutOf, PrimitiveExt, Size, TyAndLayout, VariantIdx,
-};
-use rustc::ty::print::{FmtPrinter, PrettyPrinter, Printer};
-use rustc::ty::Ty;
-use rustc::{mir, ty};
 use rustc_hir::def::Namespace;
 use rustc_macros::HashStable;
+pub use rustc_middle::mir::interpret::ScalarMaybeUndef;
+use rustc_middle::mir::interpret::{
+    sign_extend, truncate, AllocId, ConstValue, GlobalId, InterpResult, Pointer, Scalar,
+};
+use rustc_middle::ty::layout::{
+    self, HasDataLayout, IntegerExt, LayoutOf, PrimitiveExt, Size, TyAndLayout, VariantIdx,
+};
+use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
+use rustc_middle::ty::Ty;
+use rustc_middle::{mir, ty};
 use std::fmt::Write;
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -415,7 +415,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         base: OpTy<'tcx, M::PointerTag>,
         proj_elem: &mir::PlaceElem<'tcx>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        use rustc::mir::ProjectionElem::*;
+        use rustc_middle::mir::ProjectionElem::*;
         Ok(match *proj_elem {
             Field(field, _) => self.operand_field(base, field.index())?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
@@ -495,7 +495,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         mir_op: &mir::Operand<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        use rustc::mir::Operand::*;
+        use rustc_middle::mir::Operand::*;
         let op = match *mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location
             Copy(ref place) | Move(ref place) => self.eval_place_to_op(place, layout)?,

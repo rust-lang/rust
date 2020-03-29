@@ -1,8 +1,8 @@
 use crate::borrow_check::ArtificialField;
 use crate::borrow_check::Overlap;
 use crate::borrow_check::{AccessDepth, Deep, Shallow};
-use rustc::mir::{Body, BorrowKind, Local, Place, PlaceElem, PlaceRef, ProjectionElem};
-use rustc::ty::{self, TyCtxt};
+use rustc_middle::mir::{Body, BorrowKind, Local, Place, PlaceElem, PlaceRef, ProjectionElem};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_hir as hir;
 use std::cmp::max;
 

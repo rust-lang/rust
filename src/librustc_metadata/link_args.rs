@@ -1,4 +1,4 @@
-use rustc::ty::TyCtxt;
+use rustc_middle::ty::TyCtxt;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_span::symbol::sym;

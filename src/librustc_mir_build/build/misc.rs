@@ -3,9 +3,9 @@
 
 use crate::build::Builder;
 
-use rustc::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty};
 
-use rustc::mir::*;
+use rustc_middle::mir::*;
 use rustc_span::{Span, DUMMY_SP};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

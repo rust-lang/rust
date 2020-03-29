@@ -15,8 +15,8 @@
 //! for all lint attributes.
 
 use crate::{passes::LateLintPassObject, LateContext, LateLintPass, LintStore};
-use rustc::hir::map::Map;
-use rustc::ty::{self, TyCtxt};
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_ast::ast;
 use rustc_ast::walk_list;
 use rustc_data_structures::sync::{join, par_iter, ParallelIterator};

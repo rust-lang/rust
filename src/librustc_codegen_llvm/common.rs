@@ -8,13 +8,13 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use log::debug;
-use rustc::bug;
 use rustc_codegen_ssa::traits::*;
+use rustc_middle::bug;
 
 use crate::consts::const_alloc_to_llvm;
-use rustc::mir::interpret::{Allocation, GlobalAlloc, Scalar};
-use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size, TyAndLayout};
 use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_middle::mir::interpret::{Allocation, GlobalAlloc, Scalar};
+use rustc_middle::ty::layout::{self, HasDataLayout, LayoutOf, Size, TyAndLayout};
 
 use libc::{c_char, c_uint};
 

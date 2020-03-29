@@ -1,8 +1,8 @@
 //! The various pretty-printing routines.
 
-use rustc::hir::map as hir_map;
-use rustc::ty::{self, TyCtxt};
-use rustc::util::common::ErrorReported;
+use rustc_middle::hir::map as hir_map;
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::util::common::ErrorReported;
 use rustc_ast::ast;
 use rustc_ast_pretty::pprust;
 use rustc_hir as hir;

@@ -4,8 +4,8 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 use crate::transform::{MirPass, MirSource};
-use rustc::mir::{self, Body, BodyAndCache, Local, Location};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc_middle::mir::{self, Body, BodyAndCache, Local, Location};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 

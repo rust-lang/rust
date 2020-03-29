@@ -1,5 +1,5 @@
 use super::BackendTypes;
-use rustc::ty::layout::Align;
+use rustc_middle::ty::layout::Align;
 use rustc_hir::def_id::DefId;
 
 pub trait StaticMethods: BackendTypes {

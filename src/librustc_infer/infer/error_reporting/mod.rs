@@ -55,9 +55,9 @@ use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
 
-use rustc::middle::region;
-use rustc::ty::error::TypeError;
-use rustc::ty::{
+use rustc_middle::middle::region;
+use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::{
     self,
     subst::{Subst, SubstsRef},
     Region, Ty, TyCtxt, TypeFoldable,

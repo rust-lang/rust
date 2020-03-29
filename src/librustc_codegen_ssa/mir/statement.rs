@@ -1,4 +1,4 @@
-use rustc::mir;
+use rustc_middle::mir;
 use rustc_errors::struct_span_err;
 
 use super::FunctionCx;

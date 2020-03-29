@@ -8,10 +8,10 @@ use std::convert::TryFrom;
 use std::fmt::Write;
 use std::ops::RangeInclusive;
 
-use rustc::ty;
-use rustc::ty::layout::{self, LayoutOf, TyAndLayout, VariantIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout, VariantIdx};
 use rustc_span::symbol::{sym, Symbol};
 
 use std::hash::Hash;

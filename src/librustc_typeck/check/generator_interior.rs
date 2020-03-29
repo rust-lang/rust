@@ -4,8 +4,8 @@
 //! types computed here.
 
 use super::FnCtxt;
-use rustc::middle::region::{self, YieldData};
-use rustc::ty::{self, Ty};
+use rustc_middle::middle::region::{self, YieldData};
+use rustc_middle::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};

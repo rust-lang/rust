@@ -1,4 +1,4 @@
-use rustc::mir::{self, BasicBlock, Location};
+use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_index::bit_set::BitSet;
 
 use super::{Analysis, Results};

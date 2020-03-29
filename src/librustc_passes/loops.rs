@@ -1,8 +1,8 @@
 use Context::*;
 
-use rustc::hir::map::Map;
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;

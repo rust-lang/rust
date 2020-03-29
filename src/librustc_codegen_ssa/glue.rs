@@ -5,7 +5,7 @@
 use crate::common::IntPredicate;
 use crate::meth;
 use crate::traits::*;
-use rustc::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty};
 
 pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,

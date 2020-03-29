@@ -13,8 +13,8 @@
 //! DumpVisitor walks the AST and processes it, and Dumper is used for
 //! recording the output.
 
-use rustc::span_bug;
-use rustc::ty::{self, DefIdTree, TyCtxt};
+use rustc_middle::span_bug;
+use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_ast::ast::{self, Attribute, NodeId, PatKind};
 use rustc_ast::ptr::P;
 use rustc_ast::token;

@@ -3,9 +3,9 @@ use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
 use crate::type_error_struct;
 
-use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_ast::ast::Ident;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;

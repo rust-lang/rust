@@ -26,7 +26,7 @@
 use crate::imports::ImportKind;
 use crate::Resolver;
 
-use rustc::ty;
+use rustc_middle::ty;
 use rustc_ast::ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};

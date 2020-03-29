@@ -1,6 +1,6 @@
 use crate::check::FnCtxt;
-use rustc::ty::subst::GenericArg;
-use rustc::ty::{self, BindingMode, Ty, TypeFoldable};
+use rustc_middle::ty::subst::GenericArg;
+use rustc_middle::ty::{self, BindingMode, Ty, TypeFoldable};
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;

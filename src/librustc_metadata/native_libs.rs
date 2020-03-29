@@ -1,5 +1,5 @@
-use rustc::middle::cstore::{self, NativeLibrary};
-use rustc::ty::TyCtxt;
+use rustc_middle::middle::cstore::{self, NativeLibrary};
+use rustc_middle::ty::TyCtxt;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;

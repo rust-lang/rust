@@ -18,9 +18,9 @@ extern crate lazy_static;
 
 pub extern crate rustc_plugin_impl as plugin;
 
-use rustc::middle::cstore::MetadataLoader;
-use rustc::ty::TyCtxt;
-use rustc::util::common::ErrorReported;
+use rustc_middle::middle::cstore::MetadataLoader;
+use rustc_middle::ty::TyCtxt;
+use rustc_middle::util::common::ErrorReported;
 use rustc_ast::ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
 use rustc_data_structures::profiling::print_time_passes_entry;

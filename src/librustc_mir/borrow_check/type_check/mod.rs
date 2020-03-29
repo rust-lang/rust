@@ -5,19 +5,6 @@ use std::{fmt, iter, mem};
 
 use either::Either;
 
-use rustc::mir::tcx::PlaceTy;
-use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::AssertKind;
-use rustc::mir::*;
-use rustc::ty::adjustment::PointerCast;
-use rustc::ty::cast::CastTy;
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::subst::{GenericArgKind, Subst, SubstsRef, UserSubsts};
-use rustc::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPolyTraitRef, Ty,
-    TyCtxt, UserType, UserTypeAnnotationIndex,
-};
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
@@ -29,6 +16,19 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
     InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin,
+};
+use rustc_middle::mir::tcx::PlaceTy;
+use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::AssertKind;
+use rustc_middle::mir::*;
+use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::cast::CastTy;
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef, UserSubsts};
+use rustc_middle::ty::{
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPolyTraitRef, Ty,
+    TyCtxt, UserType, UserTypeAnnotationIndex,
 };
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -1053,7 +1053,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// regions which are extracted and stored as having occurred at
     /// `locations`.
     ///
-    /// **Any `rustc::infer` operations that might generate region
+    /// **Any `rustc_middle::infer` operations that might generate region
     /// constraints should occur within this method so that those
     /// constraints can be properly localized!**
     fn fully_perform_op<R>(

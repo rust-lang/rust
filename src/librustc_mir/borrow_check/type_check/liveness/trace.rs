@@ -1,5 +1,5 @@
-use rustc::mir::{BasicBlock, ConstraintCategory, Local, Location, ReadOnlyBodyAndCache};
-use rustc::ty::{Ty, TypeFoldable};
+use rustc_middle::mir::{BasicBlock, ConstraintCategory, Local, Location, ReadOnlyBodyAndCache};
+use rustc_middle::ty::{Ty, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::HybridBitSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;

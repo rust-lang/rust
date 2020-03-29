@@ -1,8 +1,8 @@
-use rustc::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::*;
-use rustc::ty::cast::CastTy;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, TyCtxt};
+use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
+use rustc_middle::ty::cast::CastTy;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;

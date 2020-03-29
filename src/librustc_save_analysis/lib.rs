@@ -8,10 +8,10 @@ mod dumper;
 mod span_utils;
 mod sig;
 
-use rustc::middle::cstore::ExternCrate;
-use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, DefIdTree, TyCtxt};
-use rustc::{bug, span_bug};
+use rustc_middle::middle::cstore::ExternCrate;
+use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::ty::{self, DefIdTree, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_ast::ast::{self, Attribute, NodeId, PatKind, DUMMY_NODE_ID};
 use rustc_ast::util::comments::strip_doc_comment_decoration;
 use rustc_ast::visit::{self, Visitor};

@@ -31,8 +31,8 @@
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
 
-use rustc::ty::fold::TypeFolder;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::fold::TypeFolder;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use rustc_data_structures::fx::FxHashMap;
 

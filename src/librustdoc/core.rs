@@ -1,6 +1,6 @@
-use rustc::middle::cstore::CrateStore;
-use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{Ty, TyCtxt};
+use rustc_middle::middle::cstore::CrateStore;
+use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_ast::ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

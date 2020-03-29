@@ -293,7 +293,7 @@ pub struct ScopeTree {
     ///
     /// Then:
     ///     1. From the ordering guarantee of HIR visitors (see
-    ///     `rustc::hir::intravisit`), `D` does not dominate `U`.
+    ///     `rustc_hir::intravisit`), `D` does not dominate `U`.
     ///     2. Therefore, `D` is *potentially* storage-dead at `U` (because
     ///     we might visit `U` without ever getting to `D`).
     ///     3. However, we guarantee that at each HIR point, each

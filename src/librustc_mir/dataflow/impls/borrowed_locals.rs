@@ -1,9 +1,9 @@
 pub use super::*;
 
 use crate::dataflow::{AnalysisDomain, GenKill, GenKillAnalysis};
-use rustc::mir::visit::Visitor;
-use rustc::mir::*;
-use rustc::ty::{ParamEnv, TyCtxt};
+use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_span::DUMMY_SP;
 
 pub type MaybeMutBorrowedLocals<'mir, 'tcx> = MaybeBorrowedLocals<MutBorrow<'mir, 'tcx>>;

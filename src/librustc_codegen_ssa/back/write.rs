@@ -10,10 +10,10 @@ use crate::{
 
 use crate::traits::*;
 use jobserver::{Acquired, Client};
-use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
-use rustc::middle::cstore::EncodedMetadata;
-use rustc::middle::exported_symbols::SymbolExportLevel;
-use rustc::ty::TyCtxt;
+use rustc_middle::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
+use rustc_middle::middle::cstore::EncodedMetadata;
+use rustc_middle::middle::exported_symbols::SymbolExportLevel;
+use rustc_middle::ty::TyCtxt;
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;

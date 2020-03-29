@@ -1,7 +1,7 @@
-use rustc::hir::map::Map;
-use rustc::ty::subst::{GenericArgKind, InternalSubsts, Subst};
-use rustc::ty::util::IntTypeExt;
-use rustc::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
+use rustc_middle::ty::util::IntTypeExt;
+use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, StashKey};
 use rustc_hir as hir;

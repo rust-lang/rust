@@ -3,9 +3,9 @@
 
 use crate::check::FnCtxt;
 use crate::middle::lang_items::FnOnceTraitLangItem;
-use rustc::hir::map as hir_map;
-use rustc::ty::print::with_crate_prefix;
-use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
+use rustc_middle::hir::map as hir_map;
+use rustc_middle::ty::print::with_crate_prefix;
+use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

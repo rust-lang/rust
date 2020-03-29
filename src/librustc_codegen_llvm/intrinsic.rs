@@ -7,9 +7,6 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 use crate::value::Value;
-use rustc::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf, Primitive};
-use rustc::ty::{self, Ty};
-use rustc::{bug, span_bug};
 use rustc_ast::ast;
 use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -18,6 +15,9 @@ use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::MemFlags;
 use rustc_hir as hir;
+use rustc_middle::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf, Primitive};
+use rustc_middle::ty::{self, Ty};
+use rustc_middle::{bug, span_bug};
 use rustc_target::abi::HasDataLayout;
 
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
@@ -1390,8 +1390,8 @@ fn generic_simd_intrinsic(
 
     fn simd_simple_float_intrinsic(
         name: &str,
-        in_elem: &::rustc::ty::TyS<'_>,
-        in_ty: &::rustc::ty::TyS<'_>,
+        in_elem: &::rustc_middle::ty::TyS<'_>,
+        in_ty: &::rustc_middle::ty::TyS<'_>,
         in_len: u64,
         bx: &mut Builder<'a, 'll, 'tcx>,
         span: Span,

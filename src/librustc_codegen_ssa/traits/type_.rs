@@ -3,8 +3,8 @@ use super::Backend;
 use super::HasCodegen;
 use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
-use rustc::ty::layout::{self, TyAndLayout};
-use rustc::ty::{self, Ty};
+use rustc_middle::ty::layout::{self, TyAndLayout};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
 
@@ -54,7 +54,7 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
     }
 
     fn type_from_integer(&self, i: layout::Integer) -> Self::Type {
-        use rustc::ty::layout::Integer::*;
+        use rustc_middle::ty::layout::Integer::*;
         match i {
             I8 => self.type_i8(),
             I16 => self.type_i16(),

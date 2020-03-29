@@ -6,10 +6,10 @@ use crate::glue;
 use crate::traits::*;
 use crate::MemFlags;
 
-use rustc::mir;
-use rustc::mir::interpret::{ConstValue, ErrorHandled, Pointer, Scalar};
-use rustc::ty::layout::{self, Align, LayoutOf, Size, TyAndLayout};
-use rustc::ty::Ty;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{ConstValue, ErrorHandled, Pointer, Scalar};
+use rustc_middle::ty::layout::{self, Align, LayoutOf, Size, TyAndLayout};
+use rustc_middle::ty::Ty;
 
 use std::fmt;
 

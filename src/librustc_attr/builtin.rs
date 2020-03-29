@@ -870,7 +870,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                     let parse_alignment = |node: &ast::LitKind| -> Result<u32, &'static str> {
                         if let ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed) = node {
                             if literal.is_power_of_two() {
-                                // rustc::ty::layout::Align restricts align to <= 2^29
+                                // rustc_middle::ty::layout::Align restricts align to <= 2^29
                                 if *literal <= 1 << 29 {
                                     Ok(*literal as u32)
                                 } else {

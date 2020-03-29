@@ -1,17 +1,17 @@
-use rustc::ty::layout::HasDataLayout;
-use rustc::ty::layout::HasParamEnv;
-use rustc::ty::layout::HasTyCtxt;
-use rustc::ty::layout::LayoutOf;
-use rustc::ty::layout::TargetDataLayout;
-use rustc::ty::layout::TyAndLayout;
-use rustc::ty::ParamEnv;
-use rustc::ty::Ty;
-use rustc::ty::TyCtxt;
 use rustc_ast::ast::Attribute;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::ItemKind;
+use rustc_middle::ty::layout::HasDataLayout;
+use rustc_middle::ty::layout::HasParamEnv;
+use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::TargetDataLayout;
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::ParamEnv;
+use rustc_middle::ty::Ty;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
 pub fn test_layout(tcx: TyCtxt<'_>) {

@@ -561,7 +561,7 @@ pub trait PrettyPrinter<'tcx>:
                 // We use verbose printing in 'NO_QUERIES' mode, to
                 // avoid needing to call `predicates_of`. This should
                 // only affect certain debug messages (e.g. messages printed
-                // from `rustc::ty` during the computation of `tcx.predicates_of`),
+                // from `rustc_middle::ty` during the computation of `tcx.predicates_of`),
                 // and should have no effect on any compiler output.
                 if self.tcx().sess.verbose() || NO_QUERIES.with(|q| q.get()) {
                     p!(write("Opaque({:?}, {:?})", def_id, substs));

@@ -1,14 +1,14 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
-use rustc::mir::{
+use rustc_middle::mir::{
     read_only, traversal, Body, BodyAndCache, ClearCrossCrate, Local, Location, Mutability,
     Operand, Place, PlaceElem, PlaceRef, ReadOnlyBodyAndCache,
 };
-use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
-use rustc::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
-use rustc::mir::{Terminator, TerminatorKind};
-use rustc::ty::query::Providers;
-use rustc::ty::{self, RegionVid, TyCtxt};
+use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
+use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
+use rustc_middle::mir::{Terminator, TerminatorKind};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_ast::ast::Name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
@@ -670,7 +670,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
             }
             TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
                 self.consume_operand(loc, (cond, span), flow_state);
-                use rustc::mir::AssertKind;
+                use rustc_middle::mir::AssertKind;
                 if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
                     self.consume_operand(loc, (len, span), flow_state);
                     self.consume_operand(loc, (index, span), flow_state);

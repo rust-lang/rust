@@ -1,7 +1,7 @@
 use crate::back::write::create_informational_target_machine;
 use crate::llvm;
 use libc::c_int;
-use rustc::bug;
+use rustc_middle::bug;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::UnstableFeatures;
 use rustc_session::config::PrintRequest;

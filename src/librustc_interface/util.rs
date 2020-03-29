@@ -1,5 +1,5 @@
 use log::info;
-use rustc::ty;
+use rustc_middle::ty;
 use rustc_ast::ast::{AttrVec, BlockCheckMode};
 use rustc_ast::mut_visit::{visit_clobber, MutVisitor, *};
 use rustc_ast::ptr::P;

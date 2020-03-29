@@ -1,5 +1,5 @@
-use rustc::ty::query::Providers;
-use rustc::ty::{ParamEnvAnd, TyCtxt};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;

@@ -13,10 +13,10 @@
 //! just returns them for other code to use.
 
 use either::Either;
-use rustc::middle::lang_items;
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc::ty::{self, RegionVid, Ty, TyCtxt};
+use rustc_middle::middle::lang_items;
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
+use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;

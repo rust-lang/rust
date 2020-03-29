@@ -1,7 +1,7 @@
-use rustc::mir::interpret::{
+use rustc_middle::mir::interpret::{
     truncate, Allocation, ConstValue, LitToConstError, LitToConstInput, Scalar,
 };
-use rustc::ty::{self, layout::Size, ParamEnv, TyCtxt, TyS};
+use rustc_middle::ty::{self, layout::Size, ParamEnv, TyCtxt, TyS};
 use rustc_ast::ast;
 use rustc_span::symbol::Symbol;
 

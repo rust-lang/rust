@@ -84,8 +84,8 @@ should go to.
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use crate::hair::{Expr, ExprRef, LintLevel};
-use rustc::middle::region;
-use rustc::mir::*;
+use rustc_middle::middle::region;
+use rustc_middle::mir::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::GeneratorKind;

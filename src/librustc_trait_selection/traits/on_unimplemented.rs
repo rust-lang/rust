@@ -1,7 +1,7 @@
 use fmt_macros::{Parser, Piece, Position};
 
-use rustc::ty::{self, GenericParamDefKind, TyCtxt};
-use rustc::util::common::ErrorReported;
+use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
+use rustc_middle::util::common::ErrorReported;
 
 use rustc_ast::ast::{MetaItem, NestedMetaItem};
 use rustc_attr as attr;

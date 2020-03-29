@@ -7,8 +7,8 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::{
     FulfillmentContext, Obligation, ObligationCause, SelectionContext, TraitEngine, Vtable,
 };
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::{self, TyCtxt};
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::{self, TyCtxt};
 
 /// Attempts to resolve an obligation to a vtable. The result is
 /// a shallow vtable resolution, meaning that we do not

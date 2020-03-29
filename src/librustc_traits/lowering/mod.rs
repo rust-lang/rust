@@ -1,13 +1,13 @@
 mod environment;
 
-use rustc::hir::map::Map;
-use rustc::traits::{
+use rustc_middle::hir::map::Map;
+use rustc_middle::traits::{
     Clause, Clauses, DomainGoal, FromEnv, GoalKind, PolyDomainGoal, ProgramClause,
     ProgramClauseCategory, WellFormed, WhereClause,
 };
-use rustc::ty::query::Providers;
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, List, TyCtxt};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::{self, List, TyCtxt};
 use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -91,7 +91,7 @@ where
 
 impl<'tcx> Lower<PolyDomainGoal<'tcx>> for ty::Predicate<'tcx> {
     fn lower(&self) -> PolyDomainGoal<'tcx> {
-        use rustc::ty::Predicate;
+        use rustc_middle::ty::Predicate;
 
         match self {
             Predicate::Trait(predicate, _) => predicate.lower(),

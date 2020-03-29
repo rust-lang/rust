@@ -1,12 +1,12 @@
 //! Borrow checker diagnostics.
 
-use rustc::mir::{
+use rustc_middle::mir::{
     AggregateKind, Constant, Field, Local, LocalInfo, LocalKind, Location, Operand, Place,
     PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::print::Print;
-use rustc::ty::{self, DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::print::Print;
+use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;

@@ -52,14 +52,14 @@
 
 use crate::astconv::AstConv;
 use crate::check::{FnCtxt, Needs};
-use rustc::ty::adjustment::{
+use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
-use rustc::ty::error::TypeError;
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::relate::RelateResult;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Ty, TypeAndMut};
+use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::relate::RelateResult;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};

@@ -11,10 +11,10 @@ pub use self::CandidateSource::*;
 pub use self::MethodError::*;
 
 use crate::check::FnCtxt;
-use rustc::ty::subst::Subst;
-use rustc::ty::subst::{InternalSubsts, SubstsRef};
-use rustc::ty::GenericParamDefKind;
-use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TypeFoldable, WithConstness};
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
+use rustc_middle::ty::GenericParamDefKind;
+use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TypeFoldable, WithConstness};
 use rustc_ast::ast;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};

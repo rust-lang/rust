@@ -5,9 +5,9 @@
 //! Note: A lot of this could looks very similar to what's already in `ty::print`.
 //! FIXME(eddyb) implement a custom `PrettyPrinter` for this.
 
-use rustc::bug;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Const, Instance, Ty, TyCtxt};
+use crate::bug;
+use crate::ty::subst::SubstsRef;
+use crate::ty::{self, Const, Instance, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use std::fmt::Write;

@@ -3,13 +3,13 @@
 #![feature(nll)]
 #![recursion_limit = "256"]
 
-use rustc::bug;
-use rustc::hir::map::Map;
-use rustc::middle::privacy::{AccessLevel, AccessLevels};
-use rustc::ty::fold::TypeVisitor;
-use rustc::ty::query::Providers;
-use rustc::ty::subst::InternalSubsts;
-use rustc::ty::{self, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::bug;
+use rustc_middle::hir::map::Map;
+use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
+use rustc_middle::ty::fold::TypeVisitor;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::{self, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable};
 use rustc_ast::ast::Ident;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;

@@ -1,6 +1,6 @@
-use rustc::ty::query::Providers;
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};

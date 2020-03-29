@@ -7,8 +7,6 @@ use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use libc::{c_char, c_uint};
 use log::debug;
-use rustc::ty::layout::{self, Align, Size, TyAndLayout};
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_codegen_ssa::base::to_immediate;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -18,6 +16,8 @@ use rustc_codegen_ssa::MemFlags;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::layout::{self, Align, Size, TyAndLayout};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::{self, Sanitizer};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
@@ -302,9 +302,9 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         lhs: Self::Value,
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value) {
-        use rustc::ty::{Int, Uint};
         use rustc_ast::ast::IntTy::*;
         use rustc_ast::ast::UintTy::*;
+        use rustc_middle::ty::{Int, Uint};
 
         let new_kind = match ty.kind {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.ptr_width)),

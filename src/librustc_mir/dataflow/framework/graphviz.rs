@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use std::{io, ops, str};
 
-use rustc::mir::{self, BasicBlock, Body, Location};
+use rustc_middle::mir::{self, BasicBlock, Body, Location};
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::{Idx, IndexVec};

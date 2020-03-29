@@ -11,7 +11,7 @@ use crate::{path_names_to_string, BindingError, CrateLint, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, NameBindingKind, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
-use rustc::{bug, span_bug};
+use rustc_middle::{bug, span_bug};
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_ast::util::lev_distance::find_best_match_for_name;

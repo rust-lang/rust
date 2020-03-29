@@ -2,7 +2,7 @@
 
 use std::borrow::Borrow;
 
-use rustc::mir::{self, BasicBlock, Location, TerminatorKind};
+use rustc_middle::mir::{self, BasicBlock, Location, TerminatorKind};
 use rustc_index::bit_set::BitSet;
 
 use super::{Analysis, Results};

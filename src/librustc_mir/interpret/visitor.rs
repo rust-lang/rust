@@ -1,9 +1,9 @@
 //! Visitor for a run-time value with a given layout: Traverse enums, structs and other compound
 //! types until we arrive at the leaves, with custom handling for primitive types.
 
-use rustc::mir::interpret::InterpResult;
-use rustc::ty;
-use rustc::ty::layout::{self, TyAndLayout, VariantIdx};
+use rustc_middle::mir::interpret::InterpResult;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{self, TyAndLayout, VariantIdx};
 
 use super::{InterpCx, MPlaceTy, Machine, OpTy};
 

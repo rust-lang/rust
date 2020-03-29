@@ -1,10 +1,10 @@
 use crate::context::{CheckLintNameResult, LintStore};
 use crate::late::unerased_lint_store;
-use rustc::hir::map::Map;
-use rustc::lint::LintDiagnosticBuilder;
-use rustc::lint::{struct_lint_level, LintLevelMap, LintLevelSets, LintSet, LintSource};
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
+use rustc_middle::hir::map::Map;
+use rustc_middle::lint::LintDiagnosticBuilder;
+use rustc_middle::lint::{struct_lint_level, LintLevelMap, LintLevelSets, LintSet, LintSource};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_ast::unwrap_or;

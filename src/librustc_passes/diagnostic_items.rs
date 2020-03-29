@@ -9,8 +9,8 @@
 //!
 //! * Compiler internal types like `Ty` and `TyCtxt`
 
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;

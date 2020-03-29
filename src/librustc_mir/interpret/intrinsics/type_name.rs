@@ -1,5 +1,5 @@
-use rustc::mir::interpret::Allocation;
-use rustc::ty::{
+use rustc_middle::mir::interpret::Allocation;
+use rustc_middle::ty::{
     self,
     print::{PrettyPrinter, Print, Printer},
     subst::{GenericArg, GenericArgKind},

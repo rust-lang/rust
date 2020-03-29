@@ -1,4 +1,4 @@
-use rustc::mir::{BasicBlock, Body, Location};
+use rustc_middle::mir::{BasicBlock, Body, Location};
 use rustc_index::vec::{Idx, IndexVec};
 
 /// Maps between a MIR Location, which identifies a particular

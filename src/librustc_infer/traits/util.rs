@@ -1,7 +1,7 @@
 use smallvec::smallvec;
 
-use rustc::ty::outlives::Component;
-use rustc::ty::{self, ToPolyTraitRef, TyCtxt};
+use rustc_middle::ty::outlives::Component;
+use rustc_middle::ty::{self, ToPolyTraitRef, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 
 fn anonymize_predicate<'tcx>(tcx: TyCtxt<'tcx>, pred: &ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {

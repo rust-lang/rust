@@ -2,8 +2,8 @@ pub use super::*;
 
 use crate::dataflow::BottomValue;
 use crate::dataflow::{self, GenKill, Results, ResultsRefCursor};
-use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::*;
+use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
 use std::cell::RefCell;
 
 #[derive(Copy, Clone)]

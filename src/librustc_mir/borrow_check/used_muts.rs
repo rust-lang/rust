@@ -1,5 +1,5 @@
-use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::{Local, Location, Place, Statement, StatementKind, TerminatorKind};
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_middle::mir::{Local, Location, Place, Statement, StatementKind, TerminatorKind};
 
 use rustc_data_structures::fx::FxHashSet;
 

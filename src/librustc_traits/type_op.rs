@@ -1,6 +1,6 @@
-use rustc::ty::query::Providers;
-use rustc::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
-use rustc::ty::{
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
+use rustc_middle::ty::{
     FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable, Variance,
 };
 use rustc_hir as hir;

@@ -1,7 +1,7 @@
 use crate::borrow_check::Upvar;
 use crate::borrow_check::{nll::ToRegionVid, region_infer::RegionInferenceContext};
-use rustc::mir::{Body, Local};
-use rustc::ty::{RegionVid, TyCtxt};
+use rustc_middle::mir::{Body, Local};
+use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;

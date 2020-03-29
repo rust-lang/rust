@@ -1,5 +1,5 @@
-use rustc::mir::Field;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc_middle::mir::Field;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};

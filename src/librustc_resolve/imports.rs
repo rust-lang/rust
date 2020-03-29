@@ -9,9 +9,9 @@ use crate::{BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{CrateLint, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet, Weak};
 use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBinding};
 
-use rustc::hir::exports::Export;
-use rustc::ty;
-use rustc::{bug, span_bug};
+use rustc_middle::hir::exports::Export;
+use rustc_middle::ty;
+use rustc_middle::{bug, span_bug};
 use rustc_ast::ast::{Ident, Name, NodeId};
 use rustc_ast::unwrap_or;
 use rustc_ast::util::lev_distance::find_best_match_for_name;

@@ -1,6 +1,6 @@
 //! Hook into libgraphviz for rendering dataflow graphs for MIR.
 
-use rustc::mir::{BasicBlock, Body};
+use rustc_middle::mir::{BasicBlock, Body};
 use rustc_hir::def_id::DefId;
 
 use std::fs;

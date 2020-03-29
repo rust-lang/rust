@@ -7,8 +7,8 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use rustc::mir::*;
-use rustc::ty::Ty;
+use rustc_middle::mir::*;
+use rustc_middle::ty::Ty;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 
 use rustc_index::vec::Idx;

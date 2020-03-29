@@ -5,10 +5,10 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
-use rustc::middle::privacy;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, TyCtxt};
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::middle::privacy;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;

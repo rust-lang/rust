@@ -1,7 +1,7 @@
 use crate::transform::{MirPass, MirSource};
 use crate::util::patch::MirPatch;
-use rustc::mir::*;
-use rustc::ty::TyCtxt;
+use rustc_middle::mir::*;
+use rustc_middle::ty::TyCtxt;
 use rustc_index::bit_set::BitSet;
 
 /// A pass that removes noop landing pads and replaces jumps to them with

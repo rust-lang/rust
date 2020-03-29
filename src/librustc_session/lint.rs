@@ -207,7 +207,7 @@ pub struct BufferedEarlyLint {
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
 
-    /// A lint Id that can be passed to `rustc::lint::Lint::from_parser_lint_id`.
+    /// A lint Id that can be passed to `rustc_session::lint::Lint::from_parser_lint_id`.
     pub lint_id: LintId,
 
     /// Customization of the `DiagnosticBuilder<'_>` for the lint.

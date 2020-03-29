@@ -1,11 +1,11 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
-use rustc::hir::map::Map;
-use rustc::middle::privacy::AccessLevels;
-use rustc::middle::stability::{DeprecationEntry, Index};
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
+use rustc_middle::hir::map::Map;
+use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::stability::{DeprecationEntry, Index};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use rustc_ast::ast::Attribute;
 use rustc_attr::{self as attr, ConstStability, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

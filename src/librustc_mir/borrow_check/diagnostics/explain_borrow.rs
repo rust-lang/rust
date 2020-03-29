@@ -2,12 +2,12 @@
 
 use std::collections::VecDeque;
 
-use rustc::mir::{
+use rustc_middle::mir::{
     Body, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place, Rvalue,
     Statement, StatementKind, TerminatorKind,
 };
-use rustc::ty::adjustment::PointerCast;
-use rustc::ty::{self, RegionVid, TyCtxt};
+use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_index::vec::IndexVec;

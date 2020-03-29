@@ -9,9 +9,9 @@ use crate::clean::{
 use crate::core::DocContext;
 
 use itertools::Itertools;
-use rustc::mir::interpret::{sign_extend, ConstValue, Scalar};
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc::ty::{self, DefIdTree, Ty};
+use rustc_middle::mir::interpret::{sign_extend, ConstValue, Scalar};
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::{self, DefIdTree, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};

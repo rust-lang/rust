@@ -1,6 +1,6 @@
-use rustc::mir::{self, ClearCrossCrate, Local, LocalInfo, Location};
-use rustc::mir::{Mutability, Place, PlaceRef, ProjectionElem};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc_middle::mir::{self, ClearCrossCrate, Local, LocalInfo, Location};
+use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_index::vec::Idx;

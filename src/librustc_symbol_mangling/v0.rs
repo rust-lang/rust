@@ -1,6 +1,6 @@
-use rustc::ty::print::{Print, Printer};
-use rustc::ty::subst::{GenericArg, GenericArgKind, Subst};
-use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::print::{Print, Printer};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_ast::ast::{FloatTy, IntTy, UintTy};
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
