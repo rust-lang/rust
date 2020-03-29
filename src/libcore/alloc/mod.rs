@@ -52,7 +52,7 @@ impl AllocInit {
     ///
     /// * `memory.ptr` must be [valid] for writes of `memory.size` bytes.
     ///
-    /// [valid]: ../../ptr/index.html#safety
+    /// [valid]: ../ptr/index.html#safety
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn init(self, memory: MemoryBlock) {
@@ -69,7 +69,7 @@ impl AllocInit {
     /// * `memory.ptr` must be [valid] for writes of `memory.size` bytes.
     /// * `offset` must be smaller than or equal to `memory.size`
     ///
-    /// [valid]: ../../ptr/index.html#safety
+    /// [valid]: ../ptr/index.html#safety
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn init_offset(self, memory: MemoryBlock, offset: usize) {
