@@ -291,7 +291,6 @@ pub mod redundant_pub_crate;
 pub mod redundant_static_lifetimes;
 pub mod reference;
 pub mod regex;
-pub mod replace_consts;
 pub mod returns;
 pub mod serde_api;
 pub mod shadow;
@@ -469,6 +468,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_removed(
         "clippy::unused_label",
         "this lint has been uplifted to rustc and is now called `unused_labels`",
+    );
+    store.register_removed(
+        "clippy::replace_consts",
+        "associated-constants `MIN`/`MAX` of integers are prefer to `{min,max}_value()` and module constants",
     );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
@@ -755,7 +758,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &regex::INVALID_REGEX,
         &regex::REGEX_MACRO,
         &regex::TRIVIAL_REGEX,
-        &replace_consts::REPLACE_CONSTS,
         &returns::LET_AND_RETURN,
         &returns::NEEDLESS_RETURN,
         &returns::UNUSED_UNIT,
@@ -953,7 +955,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box identity_conversion::IdentityConversion::default());
     store.register_late_pass(|| box types::ImplicitHasher);
     store.register_late_pass(|| box fallible_impl_from::FallibleImplFrom);
-    store.register_late_pass(|| box replace_consts::ReplaceConsts);
     store.register_late_pass(|| box types::UnitArg);
     store.register_late_pass(|| box double_comparison::DoubleComparisons);
     store.register_late_pass(|| box question_mark::QuestionMark);
@@ -1110,7 +1111,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&needless_pass_by_value::NEEDLESS_PASS_BY_VALUE),
         LintId::of(&non_expressive_names::SIMILAR_NAMES),
         LintId::of(&ranges::RANGE_PLUS_ONE),
-        LintId::of(&replace_consts::REPLACE_CONSTS),
         LintId::of(&shadow::SHADOW_UNRELATED),
         LintId::of(&strings::STRING_ADD_ASSIGN),
         LintId::of(&trait_bounds::TYPE_REPETITION_IN_BOUNDS),
