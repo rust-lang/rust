@@ -77,7 +77,7 @@ impl<'tcx> TlsData<'tcx> {
         match self.keys.get(&key) {
             Some(&TlsEntry { data, .. }) => {
                 trace!("TLS key {} loaded: {:?}", key, data);
-                Ok(data.unwrap_or_else(|| Scalar::ptr_null(cx).into()))
+                Ok(data.unwrap_or_else(|| Scalar::null_ptr(cx).into()))
             }
             None => throw_ub_format!("loading from a non-existing TLS key: {}", key),
         }
@@ -173,7 +173,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
             this.call_function(
                 thread_callback,
-                &[Scalar::ptr_null(this).into(), reason.into(), Scalar::ptr_null(this).into()],
+                &[Scalar::null_ptr(this).into(), reason.into(), Scalar::null_ptr(this).into()],
                 Some(ret_place),
                 StackPopCleanup::None { cleanup: true },
             )?;

@@ -92,7 +92,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Test if this immediate equals 0.
     fn is_null(&self, val: Scalar<Tag>) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_ref();
-        let null = Scalar::ptr_null(this);
+        let null = Scalar::null_ptr(this);
         this.ptr_eq(val, null)
     }
 
