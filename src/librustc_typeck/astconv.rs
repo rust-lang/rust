@@ -2440,6 +2440,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             continue;
                         }
                         err_for_ct = true;
+                        has_err = true;
                         (ct.span, "const")
                     }
                 };
