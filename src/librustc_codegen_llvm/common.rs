@@ -13,7 +13,7 @@ use rustc_codegen_ssa::traits::*;
 
 use crate::consts::const_alloc_to_llvm;
 use rustc::mir::interpret::{Allocation, GlobalAlloc, Scalar};
-use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size, TyLayout};
+use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size, TyAndLayout};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 
 use libc::{c_char, c_uint};
@@ -289,7 +289,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn from_const_alloc(
         &self,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
         alloc: &Allocation,
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {

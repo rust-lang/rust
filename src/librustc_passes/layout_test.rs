@@ -3,7 +3,7 @@ use rustc::ty::layout::HasParamEnv;
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::layout::TargetDataLayout;
-use rustc::ty::layout::TyLayout;
+use rustc::ty::layout::TyAndLayout;
 use rustc::ty::ParamEnv;
 use rustc::ty::Ty;
 use rustc::ty::TyCtxt;
@@ -118,9 +118,9 @@ struct UnwrapLayoutCx<'tcx> {
 
 impl LayoutOf for UnwrapLayoutCx<'tcx> {
     type Ty = Ty<'tcx>;
-    type TyLayout = TyLayout<'tcx>;
+    type TyAndLayout = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.tcx.layout_of(self.param_env.and(ty)).unwrap()
     }
 }

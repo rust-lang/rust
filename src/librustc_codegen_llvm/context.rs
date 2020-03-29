@@ -9,7 +9,7 @@ use crate::value::Value;
 use rustc::bug;
 use rustc::mir::mono::CodegenUnit;
 use rustc::ty::layout::{
-    HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx,
+    HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyAndLayout, VariantIdx,
 };
 use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc_codegen_ssa::base::wants_msvc_seh;
@@ -837,13 +837,13 @@ impl ty::layout::HasTyCtxt<'tcx> for CodegenCx<'ll, 'tcx> {
 
 impl LayoutOf for CodegenCx<'ll, 'tcx> {
     type Ty = Ty<'tcx>;
-    type TyLayout = TyLayout<'tcx>;
+    type TyAndLayout = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.spanned_layout_of(ty, DUMMY_SP)
     }
 
-    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::TyLayout {
+    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::TyAndLayout {
         self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap_or_else(|e| {
             if let LayoutError::SizeOverflow(_) = e {
                 self.sess().span_fatal(span, &e.to_string())

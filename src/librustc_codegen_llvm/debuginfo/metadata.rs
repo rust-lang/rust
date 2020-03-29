@@ -25,7 +25,7 @@ use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc::mir::interpret::truncate;
 use rustc::mir::{self, Field, GeneratorLayout};
 use rustc::ty::layout::{
-    self, Align, Integer, IntegerExt, LayoutOf, PrimitiveExt, Size, TyLayout, VariantIdx,
+    self, Align, Integer, IntegerExt, LayoutOf, PrimitiveExt, Size, TyAndLayout, VariantIdx,
 };
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::Instance;
@@ -1203,7 +1203,7 @@ fn prepare_tuple_metadata(
 //=-----------------------------------------------------------------------------
 
 struct UnionMemberDescriptionFactory<'tcx> {
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
     variant: &'tcx ty::VariantDef,
     span: Span,
 }
@@ -1325,7 +1325,7 @@ fn generator_layout_and_saved_local_names(
 /// offset of zero bytes).
 struct EnumMemberDescriptionFactory<'ll, 'tcx> {
     enum_type: Ty<'tcx>,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
     discriminant_type_metadata: Option<&'ll DIType>,
     containing_scope: &'ll DIScope,
     span: Span,
@@ -1494,7 +1494,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     fn compute_field_path<'a, 'tcx>(
                         cx: &CodegenCx<'a, 'tcx>,
                         name: &mut String,
-                        layout: TyLayout<'tcx>,
+                        layout: TyAndLayout<'tcx>,
                         offset: Size,
                         size: Size,
                     ) {
@@ -1695,7 +1695,7 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
 /// `RecursiveTypeDescription`.
 fn describe_enum_variant(
     cx: &CodegenCx<'ll, 'tcx>,
-    layout: layout::TyLayout<'tcx>,
+    layout: layout::TyAndLayout<'tcx>,
     variant: VariantInfo<'_, 'tcx>,
     discriminant_info: EnumDiscriminantInfo<'ll>,
     containing_scope: &'ll DIScope,

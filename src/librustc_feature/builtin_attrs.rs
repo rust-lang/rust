@@ -220,7 +220,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ABI, linking, symbols, and FFI
     ungated!(
         link, Whitelisted,
-        template!(List: r#"name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ cfg = "...""#),
+        template!(List: r#"name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...""#),
     ),
     ungated!(link_name, Whitelisted, template!(NameValueStr: "name")),
     ungated!(no_link, Normal, template!(Word)),

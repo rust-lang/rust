@@ -1,5 +1,5 @@
 use crate::abi::{self, Abi, Align, FieldPlacement, Size};
-use crate::abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use crate::abi::{HasDataLayout, LayoutOf, TyAndLayout, TyAndLayoutMethods};
 use crate::spec::{self, HasTargetSpec};
 
 mod aarch64;
@@ -264,7 +264,7 @@ impl HomogeneousAggregate {
     }
 }
 
-impl<'a, Ty> TyLayout<'a, Ty> {
+impl<'a, Ty> TyAndLayout<'a, Ty> {
     fn is_aggregate(&self) -> bool {
         match self.abi {
             Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } => false,
@@ -284,8 +284,8 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     /// specific targets.
     pub fn homogeneous_aggregate<C>(&self, cx: &C) -> Result<HomogeneousAggregate, Heterogeneous>
     where
-        Ty: TyLayoutMethods<'a, C> + Copy,
-        C: LayoutOf<Ty = Ty, TyLayout = Self>,
+        Ty: TyAndLayoutMethods<'a, C> + Copy,
+        C: LayoutOf<Ty = Ty, TyAndLayout = Self>,
     {
         match self.abi {
             Abi::Uninhabited => Err(Heterogeneous),
@@ -404,7 +404,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
 /// or return a value from, a function, under some ABI.
 #[derive(Debug)]
 pub struct ArgAbi<'a, Ty> {
-    pub layout: TyLayout<'a, Ty>,
+    pub layout: TyAndLayout<'a, Ty>,
 
     /// Dummy argument, which is emitted before the real argument.
     pub pad: Option<Reg>,
@@ -413,7 +413,7 @@ pub struct ArgAbi<'a, Ty> {
 }
 
 impl<'a, Ty> ArgAbi<'a, Ty> {
-    pub fn new(layout: TyLayout<'a, Ty>) -> Self {
+    pub fn new(layout: TyAndLayout<'a, Ty>) -> Self {
         ArgAbi { layout, pad: None, mode: PassMode::Direct(ArgAttributes::new()) }
     }
 
@@ -551,8 +551,8 @@ pub struct FnAbi<'a, Ty> {
 impl<'a, Ty> FnAbi<'a, Ty> {
     pub fn adjust_for_cabi<C>(&mut self, cx: &C, abi: spec::abi::Abi) -> Result<(), String>
     where
-        Ty: TyLayoutMethods<'a, C> + Copy,
-        C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
+        Ty: TyAndLayoutMethods<'a, C> + Copy,
+        C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
     {
         match &cx.target_spec().arch[..] {
             "x86" => {

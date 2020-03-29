@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 
-use rustc::ty::layout::{self, LayoutOf, TyLayout};
+use rustc::ty::layout::{self, LayoutOf, TyAndLayout};
 use rustc::ty::Instance;
 use rustc::{mir, ty};
 use rustc_span::source_map::Span;
@@ -134,8 +134,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn check_argument_compat(
         rust_abi: bool,
-        caller: TyLayout<'tcx>,
-        callee: TyLayout<'tcx>,
+        caller: TyAndLayout<'tcx>,
+        callee: TyAndLayout<'tcx>,
     ) -> bool {
         if caller.ty == callee.ty {
             // No question

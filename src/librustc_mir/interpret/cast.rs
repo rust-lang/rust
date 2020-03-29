@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use rustc::ty::adjustment::PointerCast;
-use rustc::ty::layout::{self, Size, TyLayout};
+use rustc::ty::layout::{self, Size, TyAndLayout};
 use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc_ast::ast::FloatTy;
 use rustc_span::symbol::sym;
@@ -102,7 +102,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn cast_immediate(
         &self,
         src: ImmTy<'tcx, M::PointerTag>,
-        dest_layout: TyLayout<'tcx>,
+        dest_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
         use rustc::ty::TyKind::*;
         trace!("Casting {:?}: {:?} to {:?}", *src, src.layout.ty, dest_layout.ty);
@@ -183,8 +183,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn cast_from_int_like(
         &self,
         v: u128, // raw bits
-        src_layout: TyLayout<'tcx>,
-        dest_layout: TyLayout<'tcx>,
+        src_layout: TyAndLayout<'tcx>,
+        dest_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         // Let's make sure v is sign-extended *if* it has a signed type.
         let signed = src_layout.abi.is_signed();

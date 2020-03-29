@@ -6,7 +6,7 @@
 
 use crate::abi::call::{ArgAbi, ArgAttribute, CastTarget, FnAbi, PassMode, Reg, RegKind, Uniform};
 use crate::abi::{
-    self, Abi, FieldPlacement, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods,
+    self, Abi, FieldPlacement, HasDataLayout, LayoutOf, Size, TyAndLayout, TyAndLayoutMethods,
 };
 use crate::spec::HasTargetSpec;
 
@@ -36,15 +36,15 @@ fn is_riscv_aggregate<'a, Ty>(arg: &ArgAbi<'a, Ty>) -> bool {
 
 fn should_use_fp_conv_helper<'a, Ty, C>(
     cx: &C,
-    arg_layout: &TyLayout<'a, Ty>,
+    arg_layout: &TyAndLayout<'a, Ty>,
     xlen: u64,
     flen: u64,
     field1_kind: &mut RegPassKind,
     field2_kind: &mut RegPassKind,
 ) -> Result<(), CannotUseFpConv>
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>>,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>>,
 {
     match arg_layout.abi {
         Abi::Scalar(ref scalar) => match scalar.value {
@@ -122,13 +122,13 @@ where
 
 fn should_use_fp_conv<'a, Ty, C>(
     cx: &C,
-    arg: &TyLayout<'a, Ty>,
+    arg: &TyAndLayout<'a, Ty>,
     xlen: u64,
     flen: u64,
 ) -> Option<FloatConv>
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>>,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>>,
 {
     let mut field1_kind = RegPassKind::Unknown;
     let mut field2_kind = RegPassKind::Unknown;
@@ -146,8 +146,8 @@ where
 
 fn classify_ret<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, xlen: u64, flen: u64) -> bool
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>>,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>>,
 {
     if let Some(conv) = should_use_fp_conv(cx, &arg.layout, xlen, flen) {
         match conv {
@@ -209,8 +209,8 @@ fn classify_arg<'a, Ty, C>(
     avail_gprs: &mut u64,
     avail_fprs: &mut u64,
 ) where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>>,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>>,
 {
     if !is_vararg {
         match should_use_fp_conv(cx, &arg.layout, xlen, flen) {
@@ -322,8 +322,8 @@ fn extend_integer_width<'a, Ty>(arg: &mut ArgAbi<'a, Ty>, xlen: u64) {
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
 {
     let flen = match &cx.target_spec().options.llvm_abiname[..] {
         "ilp32f" | "lp64f" => 32,

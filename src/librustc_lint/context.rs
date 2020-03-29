@@ -21,7 +21,7 @@ use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc::lint::LintDiagnosticBuilder;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
-use rustc::ty::layout::{LayoutError, LayoutOf, TyLayout};
+use rustc::ty::layout::{LayoutError, LayoutOf, TyAndLayout};
 use rustc::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
@@ -811,9 +811,9 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
 
 impl<'a, 'tcx> LayoutOf for LateContext<'a, 'tcx> {
     type Ty = Ty<'tcx>;
-    type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
+    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.tcx.layout_of(self.param_env.and(ty))
     }
 }

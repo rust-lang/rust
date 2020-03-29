@@ -15,7 +15,7 @@ use rustc::mir::{
     UnOp, RETURN_PLACE,
 };
 use rustc::ty::layout::{
-    HasDataLayout, HasTyCtxt, LayoutError, LayoutOf, Size, TargetDataLayout, TyLayout,
+    HasDataLayout, HasTyCtxt, LayoutError, LayoutOf, Size, TargetDataLayout, TyAndLayout,
 };
 use rustc::ty::subst::{InternalSubsts, Subst};
 use rustc::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
@@ -316,9 +316,9 @@ struct ConstPropagator<'mir, 'tcx> {
 
 impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
     type Ty = Ty<'tcx>;
-    type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
+    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.tcx.layout_of(self.param_env.and(ty))
     }
 }
@@ -573,7 +573,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn const_prop(
         &mut self,
         rvalue: &Rvalue<'tcx>,
-        place_layout: TyLayout<'tcx>,
+        place_layout: TyAndLayout<'tcx>,
         source_info: SourceInfo,
         place: &Place<'tcx>,
     ) -> Option<()> {
