@@ -364,8 +364,7 @@ impl ast::MatchArmList {
             Some(s) => s,
             None => start.clone(),
         };
-        let res = self.replace_children(start..=end, &mut iter::empty());
-        res
+        self.replace_children(start..=end, &mut iter::empty())
     }
 
     #[must_use]
@@ -411,8 +410,7 @@ impl ast::MatchArmList {
         let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
         let to_insert: ArrayVec<[SyntaxElement; 2]> =
             [ws.ws().into(), item.syntax().clone().into()].into();
-        let res = self.insert_children(position, to_insert);
-        res
+        self.insert_children(position, to_insert)
     }
 }
 
