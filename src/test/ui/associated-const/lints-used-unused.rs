@@ -23,5 +23,5 @@ impl<T: Foo> Foo for Vec<T> {
 
 fn main() {
     #[cfg(used)]
-    let _ = S::N; //[used]~ ERROR erroneous constant used
+    let _ = S::N; // FIXME: "erroneous constant used" -- awaiting #67176
 }
