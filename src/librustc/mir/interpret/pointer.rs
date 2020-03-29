@@ -46,13 +46,13 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     }
 
     #[inline]
-    fn usize_max(&self) -> u64 {
+    fn machine_usize_max(&self) -> u64 {
         let max_usize_plus_1 = 1u128 << self.pointer_size().bits();
         u64::try_from(max_usize_plus_1 - 1).unwrap()
     }
 
     #[inline]
-    fn isize_max(&self) -> i64 {
+    fn machine_isize_max(&self) -> i64 {
         let max_isize_plus_1 = 1u128 << (self.pointer_size().bits() - 1);
         i64::try_from(max_isize_plus_1 - 1).unwrap()
     }

@@ -54,10 +54,7 @@ impl<Tag> From<Pointer<Tag>> for Immediate<Tag> {
 
 impl<'tcx, Tag> Immediate<Tag> {
     pub fn new_slice(val: Scalar<Tag>, len: u64, cx: &impl HasDataLayout) -> Self {
-        Immediate::ScalarPair(
-            val.into(),
-            Scalar::from_uint(len, cx.data_layout().pointer_size).into(),
-        )
+        Immediate::ScalarPair(val.into(), Scalar::from_machine_usize(len, cx).into())
     }
 
     pub fn new_dyn_trait(val: Scalar<Tag>, vtable: Pointer<Tag>) -> Self {
@@ -621,7 +618,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let real_discr = if discr_val.layout.abi.is_signed() {
                     // going from layout tag type to typeck discriminant type
                     // requires first sign extending with the discriminant layout
-                    let sexted = sign_extend(bits_discr, discr_val.layout.size) as i128;
+                    let sexted = sign_extend(bits_discr, discr_val.layout.size);
                     // and then zeroing with the typeck discriminant type
                     let discr_ty = rval
                         .layout
@@ -631,8 +628,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .repr
                         .discr_type();
                     let size = layout::Integer::from_attr(self, discr_ty).size();
-                    let truncatee = sexted as u128;
-                    truncate(truncatee, size)
+                    truncate(sexted, size)
                 } else {
                     bits_discr
                 };

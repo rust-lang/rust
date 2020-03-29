@@ -139,7 +139,7 @@ impl<Tag> MemPlace<Tag> {
     /// Produces a Place that will error if attempted to be read from or written to
     #[inline(always)]
     fn null(cx: &impl HasDataLayout) -> Self {
-        Self::from_scalar_ptr(Scalar::ptr_null(cx), Align::from_bytes(1).unwrap())
+        Self::from_scalar_ptr(Scalar::null_ptr(cx), Align::from_bytes(1).unwrap())
     }
 
     #[inline(always)]
@@ -180,7 +180,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     #[inline]
     pub fn dangling(layout: TyLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
         let align = layout.align.abi;
-        let ptr = Scalar::from_uint(align.bytes(), cx.pointer_size());
+        let ptr = Scalar::from_machine_usize(align.bytes(), cx);
         // `Poison` this to make sure that the pointer value `ptr` is never observable by the program.
         MPlaceTy { mplace: MemPlace { ptr, align, meta: MemPlaceMeta::Poison }, layout }
     }
@@ -504,7 +504,7 @@ where
             // implement this.
             ty::Array(inner, _) => (MemPlaceMeta::None, self.tcx.mk_array(inner, inner_len)),
             ty::Slice(..) => {
-                let len = Scalar::from_uint(inner_len, self.pointer_size());
+                let len = Scalar::from_machine_usize(inner_len, self);
                 (MemPlaceMeta::Meta(len), base.layout.ty)
             }
             _ => bug!("cannot subslice non-array type: `{:?}`", base.layout.ty),
@@ -1044,7 +1044,7 @@ where
         kind: MemoryKind<M::MemoryKind>,
     ) -> MPlaceTy<'tcx, M::PointerTag> {
         let ptr = self.memory.allocate_bytes(str.as_bytes(), kind);
-        let meta = Scalar::from_uint(u128::try_from(str.len()).unwrap(), self.pointer_size());
+        let meta = Scalar::from_machine_usize(u64::try_from(str.len()).unwrap(), self);
         let mplace = MemPlace {
             ptr: ptr.into(),
             align: Align::from_bytes(1).unwrap(),

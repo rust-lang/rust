@@ -192,7 +192,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
-    pub fn ptr_null(cx: &impl HasDataLayout) -> Self {
+    pub fn null_ptr(cx: &impl HasDataLayout) -> Self {
         Scalar::Raw { data: 0, size: cx.data_layout().pointer_size.bytes() as u8 }
     }
 

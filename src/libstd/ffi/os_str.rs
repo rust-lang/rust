@@ -698,6 +698,147 @@ impl OsStr {
     fn bytes(&self) -> &[u8] {
         unsafe { &*(&self.inner as *const _ as *const [u8]) }
     }
+
+    /// Converts this string to its ASCII lower case equivalent in-place.
+    ///
+    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To return a new lowercased value without modifying the existing one, use
+    /// [`to_ascii_lowercase`].
+    ///
+    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstring_ascii)]
+    /// use std::ffi::OsString;
+    ///
+    /// let mut s = OsString::from("GRÜßE, JÜRGEN ❤");
+    ///
+    /// s.make_ascii_lowercase();
+    ///
+    /// assert_eq!("grÜße, jÜrgen ❤", s);
+    /// ```
+    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    pub fn make_ascii_lowercase(&mut self) {
+        self.inner.make_ascii_lowercase()
+    }
+
+    /// Converts this string to its ASCII upper case equivalent in-place.
+    ///
+    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To return a new uppercased value without modifying the existing one, use
+    /// [`to_ascii_uppercase`].
+    ///
+    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstring_ascii)]
+    /// use std::ffi::OsString;
+    ///
+    /// let mut s = OsString::from("Grüße, Jürgen ❤");
+    ///
+    /// s.make_ascii_uppercase();
+    ///
+    /// assert_eq!("GRüßE, JüRGEN ❤", s);
+    /// ```
+    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    pub fn make_ascii_uppercase(&mut self) {
+        self.inner.make_ascii_uppercase()
+    }
+
+    /// Returns a copy of this string where each character is mapped to its
+    /// ASCII lower case equivalent.
+    ///
+    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To lowercase the value in-place, use [`make_ascii_lowercase`].
+    ///
+    /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstring_ascii)]
+    /// use std::ffi::OsString;
+    /// let s = OsString::from("Grüße, Jürgen ❤");
+    ///
+    /// assert_eq!("grüße, jürgen ❤", s.to_ascii_lowercase());
+    /// ```
+    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    pub fn to_ascii_lowercase(&self) -> OsString {
+        OsString::from_inner(self.inner.to_ascii_lowercase())
+    }
+
+    /// Returns a copy of this string where each character is mapped to its
+    /// ASCII upper case equivalent.
+    ///
+    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To uppercase the value in-place, use [`make_ascii_uppercase`].
+    ///
+    /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstring_ascii)]
+    /// use std::ffi::OsString;
+    /// let s = OsString::from("Grüße, Jürgen ❤");
+    ///
+    /// assert_eq!("GRüßE, JüRGEN ❤", s.to_ascii_uppercase());
+    /// ```
+    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    pub fn to_ascii_uppercase(&self) -> OsString {
+        OsString::from_inner(self.inner.to_ascii_uppercase())
+    }
+
+    /// Checks if all characters in this string are within the ASCII range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstring_ascii)]
+    /// use std::ffi::OsString;
+    ///
+    /// let ascii = OsString::from("hello!\n");
+    /// let non_ascii = OsString::from("Grüße, Jürgen ❤");
+    ///
+    /// assert!(ascii.is_ascii());
+    /// assert!(!non_ascii.is_ascii());
+    /// ```
+    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    pub fn is_ascii(&self) -> bool {
+        self.inner.is_ascii()
+    }
+
+    /// Checks that two strings are an ASCII case-insensitive match.
+    ///
+    /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
+    /// but without allocating and copying temporaries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstring_ascii)]
+    /// use std::ffi::OsString;
+    ///
+    /// assert!(OsString::from("Ferris").eq_ignore_ascii_case("FERRIS"));
+    /// assert!(OsString::from("Ferrös").eq_ignore_ascii_case("FERRöS"));
+    /// assert!(!OsString::from("Ferrös").eq_ignore_ascii_case("FERRÖS"));
+    /// ```
+    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    pub fn eq_ignore_ascii_case<S: ?Sized + AsRef<OsStr>>(&self, other: &S) -> bool {
+        self.inner.eq_ignore_ascii_case(&other.as_ref().inner)
+    }
 }
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]
