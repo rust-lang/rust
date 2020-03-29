@@ -2,12 +2,21 @@ pub use super::*;
 
 use crate::dataflow::BottomValue;
 use crate::dataflow::{self, GenKill, Results, ResultsRefCursor};
+use crate::util::storage::AlwaysLiveLocals;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use std::cell::RefCell;
 
-#[derive(Copy, Clone)]
-pub struct MaybeStorageLive;
+#[derive(Clone)]
+pub struct MaybeStorageLive {
+    always_live_locals: AlwaysLiveLocals,
+}
+
+impl MaybeStorageLive {
+    pub fn new(always_live_locals: AlwaysLiveLocals) -> Self {
+        MaybeStorageLive { always_live_locals }
+    }
+}
 
 impl dataflow::AnalysisDomain<'tcx> for MaybeStorageLive {
     type Idx = Local;
@@ -19,9 +28,12 @@ impl dataflow::AnalysisDomain<'tcx> for MaybeStorageLive {
     }
 
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, on_entry: &mut BitSet<Self::Idx>) {
-        // The resume argument is live on function entry (we don't care about
-        // the `self` argument)
-        for arg in body.args_iter().skip(1) {
+        assert_eq!(body.local_decls.len(), self.always_live_locals.domain_size());
+        for local in self.always_live_locals.iter() {
+            on_entry.insert(local);
+        }
+
+        for arg in body.args_iter() {
             on_entry.insert(arg);
         }
     }
