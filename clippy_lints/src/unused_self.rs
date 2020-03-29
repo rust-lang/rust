@@ -2,7 +2,7 @@ use if_chain::if_chain;
 use rustc::hir::map::Map;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
-use rustc_hir::{AssocItemKind, HirId, ImplItem, ImplItemKind, ImplItemRef, ItemKind, Path};
+use rustc_hir::{HirId, ImplItem, ImplItemKind, ItemKind, Path};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -45,45 +45,36 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
             return;
         }
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id);
-        let item = cx.tcx.hir().expect_item(parent);
-        if let ItemKind::Impl {
-            of_trait: None,
-            items: impl_item_refs,
-            ..
-        } = item.kind
-        {
-            for impl_item_ref in impl_item_refs {
-                if_chain! {
-                    if let ImplItemRef {
-                        kind: AssocItemKind::Method { has_self: true },
-                        ..
-                    } = impl_item_ref;
-                    if let ImplItemKind::Fn(_, body_id) = &impl_item.kind;
-                    let body = cx.tcx.hir().body(*body_id);
-                    if !body.params.is_empty();
-                    then {
-                        let self_param = &body.params[0];
-                        let self_hir_id = self_param.pat.hir_id;
-                        let mut visitor = UnusedSelfVisitor {
-                            cx,
-                            uses_self: false,
-                            self_hir_id: &self_hir_id,
-                        };
-                        visitor.visit_body(body);
-                        if !visitor.uses_self {
-                            span_lint_and_help(
-                                cx,
-                                UNUSED_SELF,
-                                self_param.span,
-                                "unused `self` argument",
-                                "consider refactoring to a associated function",
-                            );
-                            return;
-                        }
-                    }
+        let parent_item = cx.tcx.hir().expect_item(parent);
+        let def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
+        let assoc_item = cx.tcx.associated_item(def_id);
+        if_chain! {
+            if let ItemKind::Impl { of_trait: None, .. } = parent_item.kind;
+            if assoc_item.method_has_self_argument;
+            if let ImplItemKind::Fn(.., body_id) = &impl_item.kind;
+            let body = cx.tcx.hir().body(*body_id);
+            if !body.params.is_empty();
+            then {
+                let self_param = &body.params[0];
+                let self_hir_id = self_param.pat.hir_id;
+                let mut visitor = UnusedSelfVisitor {
+                    cx,
+                    uses_self: false,
+                    self_hir_id: &self_hir_id,
+                };
+                visitor.visit_body(body);
+                if !visitor.uses_self {
+                    span_lint_and_help(
+                        cx,
+                        UNUSED_SELF,
+                        self_param.span,
+                        "unused `self` argument",
+                        "consider refactoring to a associated function",
+                    );
+                    return;
                 }
             }
-        };
+        }
     }
 }
 
