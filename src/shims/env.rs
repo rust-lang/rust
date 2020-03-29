@@ -10,6 +10,21 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc::ty::layout::Size;
 use rustc_mir::interpret::Pointer;
 
+/// Check whether an operation that writes to a target buffer was successful.
+/// Accordingly select return value.
+/// Local helper function to be used in Windows shims.
+fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
+    if success {
+        // If the function succeeds, the return value is the number of characters stored in the target buffer,
+        // not including the terminating null character.
+        u32::try_from(len).unwrap()
+    } else {
+        // If the target buffer was not large enough to hold the data, the return value is the buffer size, in characters,
+        // required to hold the string and its terminating null character.
+        u32::try_from(len.checked_add(1).unwrap()).unwrap()
+    }
+}
+
 #[derive(Default)]
 pub struct EnvVars<'tcx> {
     /// Stores pointers to the environment variables. These variables must be stored as
@@ -105,10 +120,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn GetEnvironmentVariableW(
         &mut self,
-        name_op: OpTy<'tcx, Tag>, // LPCWSTR
-        buf_op: OpTy<'tcx, Tag>,  // LPWSTR
-        size_op: OpTy<'tcx, Tag>, // DWORD
-    ) -> InterpResult<'tcx, u32> {
+        name_op: OpTy<'tcx, Tag>,  // LPCWSTR
+        buf_op: OpTy<'tcx, Tag>,   // LPWSTR
+        size_op: OpTy<'tcx, Tag>,  // DWORD
+    ) -> InterpResult<'tcx, u32> { // Returns DWORD (u32 in Windows)
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetEnvironmentVariableW");
 
@@ -125,21 +140,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let buf_ptr = this.read_scalar(buf_op)?.not_undef()?;
                 // `buf_size` represents the size in characters.
                 let buf_size = u64::from(this.read_scalar(size_op)?.to_u32()?);
-                let (success, len) = this.write_os_str_to_wide_str(&var, buf_ptr, buf_size)?;
-
-                if success {
-                    // If the function succeeds, the return value is the number of characters stored in the buffer pointed to by lpBuffer,
-                    // not including the terminating null character.
-                    u32::try_from(len).unwrap()
-                } else {
-                    // If lpBuffer is not large enough to hold the data, the return value is the buffer size, in characters,
-                    // required to hold the string and its terminating null character and the contents of lpBuffer are undefined.
-                    u32::try_from(len).unwrap().checked_add(1).unwrap()
-                }
+                windows_check_buffer_size(this.write_os_str_to_wide_str(&var, buf_ptr, buf_size)?)
             }
             None => {
-                let envvar_not_found = this.eval_path_scalar(&["std", "sys", "windows", "c", "ERROR_ENVVAR_NOT_FOUND"])?;
-                this.set_last_error(envvar_not_found.not_undef()?)?;
+                let envvar_not_found = this.eval_windows("ERROR_ENVVAR_NOT_FOUND")?;
+                this.set_last_error(envvar_not_found)?;
                 0 // return zero upon failure
             }
         })
@@ -289,6 +294,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
+        let target_os = &this.tcx.sess.target.target.target_os;
+        assert!(target_os == "linux" || target_os == "macos", "`getcwd` is only available for the UNIX target family");
 
         this.check_no_isolation("getcwd")?;
 
@@ -308,8 +315,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(Scalar::null_ptr(&*this.tcx))
     }
 
+    #[allow(non_snake_case)]
+    fn GetCurrentDirectoryW(
+        &mut self,
+        size_op: OpTy<'tcx, Tag>, // DWORD
+        buf_op: OpTy<'tcx, Tag>,  // LPTSTR
+    ) -> InterpResult<'tcx, u32> {
+        let this = self.eval_context_mut();
+        this.assert_target_os("windows", "GetCurrentDirectoryW");
+
+        this.check_no_isolation("GetCurrentDirectoryW")?;
+
+        let size = u64::from(this.read_scalar(size_op)?.to_u32()?);
+        let buf = this.read_scalar(buf_op)?.not_undef()?;
+
+        // If we cannot get the current directory, we return 0
+        match env::current_dir() {
+            Ok(cwd) =>
+                return Ok(windows_check_buffer_size(this.write_path_to_wide_str(&cwd, buf, size)?)),
+            Err(e) => this.set_last_error_from_io_error(e)?,
+        }
+        Ok(0)
+    }
+
     fn chdir(&mut self, path_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
+        let target_os = &this.tcx.sess.target.target.target_os;
+        assert!(target_os == "linux" || target_os == "macos", "`getcwd` is only available for the UNIX target family");
 
         this.check_no_isolation("chdir")?;
 
@@ -320,6 +352,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Err(e) => {
                 this.set_last_error_from_io_error(e)?;
                 Ok(-1)
+            }
+        }
+    }
+
+    #[allow(non_snake_case)]
+    fn SetCurrentDirectoryW (
+        &mut self,
+        path_op: OpTy<'tcx, Tag>   // LPCTSTR
+    ) -> InterpResult<'tcx, i32> { // Returns BOOL (i32 in Windows)
+        let this = self.eval_context_mut();
+        this.assert_target_os("windows", "SetCurrentDirectoryW");
+
+        this.check_no_isolation("SetCurrentDirectoryW")?;
+
+        let path = this.read_path_from_wide_str(this.read_scalar(path_op)?.not_undef()?)?;
+
+        match env::set_current_dir(path) {
+            Ok(()) => Ok(1),
+            Err(e) => {
+                this.set_last_error_from_io_error(e)?;
+                Ok(0)
             }
         }
     }

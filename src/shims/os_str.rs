@@ -13,6 +13,53 @@ use rustc::ty::layout::LayoutOf;
 
 use crate::*;
 
+/// Represent how path separator conversion should be done.
+enum Pathconversion {
+    HostToTarget,
+    TargetToHost,
+}
+
+/// Perform path separator conversion if needed.
+fn convert_path_separator<'a>(
+    os_str: &'a OsStr,
+    target_os: &str,
+    direction: Pathconversion,
+) -> Cow<'a, OsStr> {
+    #[cfg(windows)]
+    return if target_os == "windows" {
+        // Windows-on-Windows, all fine.
+        Cow::Borrowed(os_str)
+    } else {
+        // Unix target, Windows host.
+        let (from, to) = match direction {
+            Pathconversion::HostToTarget => ('\\', '/'),
+            Pathconversion::TargetToHost => ('/', '\\'),
+        };
+        let converted = os_str
+            .encode_wide()
+            .map(|wchar| if wchar == from as u16 { to as u16 } else { wchar })
+            .collect::<Vec<_>>();
+        Cow::Owned(OsString::from_wide(&converted))
+    };
+    #[cfg(unix)]
+    return if target_os == "windows" {
+        // Windows target, Unix host.
+        let (from, to) = match direction {
+            Pathconversion::HostToTarget => ('/', '\\'),
+            Pathconversion::TargetToHost => ('\\', '/'),
+        };
+        let converted = os_str
+            .as_bytes()
+            .iter()
+            .map(|&wchar| if wchar == from as u8 { to as u8 } else { wchar })
+            .collect::<Vec<_>>();
+        Cow::Owned(OsString::from_vec(converted))
+    } else {
+        // Unix-on-Unix, all is fine.
+        Cow::Borrowed(os_str)
+    };
+}
+
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Helper function to read an OsString from a null-terminated sequence of bytes, which is what
@@ -179,34 +226,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         let os_str = this.read_os_str_from_c_str(scalar)?;
 
-        #[cfg(windows)]
-        return Ok(if this.tcx.sess.target.target.target_os == "windows" {
-            // Windows-on-Windows, all fine.
-            Cow::Borrowed(Path::new(os_str))
-        } else {
-            // Unix target, Windows host. Need to convert target '/' to host '\'.
-            let converted = os_str
-                .encode_wide()
-                .map(|wchar| if wchar == '/' as u16 { '\\' as u16 } else { wchar })
-                .collect::<Vec<_>>();
-            Cow::Owned(PathBuf::from(OsString::from_wide(&converted)))
-        });
-        #[cfg(unix)]
-        return Ok(if this.tcx.sess.target.target.target_os == "windows" {
-            // Windows target, Unix host. Need to convert target '\' to host '/'.
-            let converted = os_str
-                .as_bytes()
-                .iter()
-                .map(|&wchar| if wchar == '/' as u8 { '\\' as u8 } else { wchar })
-                .collect::<Vec<_>>();
-            Cow::Owned(PathBuf::from(OsString::from_vec(converted)))
-        } else {
-            // Unix-on-Unix, all is fine.
-            Cow::Borrowed(Path::new(os_str))
-        });
+        Ok(match convert_path_separator(os_str, &this.tcx.sess.target.target.target_os, Pathconversion::TargetToHost) {
+            Cow::Borrowed(x) => Cow::Borrowed(Path::new(x)),
+            Cow::Owned(y) => Cow::Owned(PathBuf::from(y)),
+        })
     }
 
-    /// Write a Path to the machine memory, adjusting path separators if needed.
+    /// Read a null-terminated sequence of `u16`s, and perform path separator conversion if needed.
+    fn read_path_from_wide_str(&self, scalar: Scalar<Tag>) -> InterpResult<'tcx, PathBuf> {
+        let this = self.eval_context_ref();
+        let os_str = this.read_os_str_from_wide_str(scalar)?;
+
+        Ok(PathBuf::from(&convert_path_separator(&os_str, &this.tcx.sess.target.target.target_os, Pathconversion::TargetToHost)))
+    }
+
+    /// Write a Path to the machine memory (as a null-terminated sequence of bytes),
+    /// adjusting path separators if needed.
     fn write_path_to_c_str(
         &mut self,
         path: &Path,
@@ -214,35 +249,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
-
-        #[cfg(windows)]
-        let os_str = if this.tcx.sess.target.target.target_os == "windows" {
-            // Windows-on-Windows, all fine.
-            Cow::Borrowed(path.as_os_str())
-        } else {
-            // Unix target, Windows host. Need to convert host '\\' to target '/'.
-            let converted = path
-                .as_os_str()
-                .encode_wide()
-                .map(|wchar| if wchar == '\\' as u16 { '/' as u16 } else { wchar })
-                .collect::<Vec<_>>();
-            Cow::Owned(OsString::from_wide(&converted))
-        };
-        #[cfg(unix)]
-        let os_str = if this.tcx.sess.target.target.target_os == "windows" {
-            // Windows target, Unix host. Need to convert host '/' to target '\'.
-            let converted = path
-                .as_os_str()
-                .as_bytes()
-                .iter()
-                .map(|&wchar| if wchar == '/' as u8 { '\\' as u8 } else { wchar })
-                .collect::<Vec<_>>();
-            Cow::Owned(OsString::from_vec(converted))
-        } else {
-            // Unix-on-Unix, all is fine.
-            Cow::Borrowed(path.as_os_str())
-        };
-
+        let os_str = convert_path_separator(path.as_os_str(), &this.tcx.sess.target.target.target_os, Pathconversion::HostToTarget);
         this.write_os_str_to_c_str(&os_str, scalar, size)
+    }
+
+    /// Write a Path to the machine memory (as a null-terminated sequence of `u16`s),
+    /// adjusting path separators if needed.
+    fn write_path_to_wide_str(
+        &mut self,
+        path: &Path,
+        scalar: Scalar<Tag>,
+        size: u64,
+    ) -> InterpResult<'tcx, (bool, u64)> {
+        let this = self.eval_context_mut();
+        let os_str = convert_path_separator(path.as_os_str(), &this.tcx.sess.target.target.target_os, Pathconversion::HostToTarget);
+        this.write_os_str_to_wide_str(&os_str, scalar, size)
     }
 }

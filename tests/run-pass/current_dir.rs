@@ -1,7 +1,6 @@
-// ignore-windows: TODO the windows hook is not done yet
 // compile-flags: -Zmiri-disable-isolation
 use std::env;
-use std::path::Path;
+use std::io::ErrorKind;
 
 fn main() {
     // Test that `getcwd` is available
@@ -11,7 +10,9 @@ fn main() {
     // keep the current directory equal to `cwd`.
     let parent = cwd.parent().unwrap_or(&cwd);
     // Test that `chdir` is available
-    assert!(env::set_current_dir(&Path::new("..")).is_ok());
+    assert!(env::set_current_dir("..").is_ok());
     // Test that `..` goes to the parent directory
     assert_eq!(env::current_dir().unwrap(), parent);
+    // Test that `chdir` to a non-existing directory returns a proper error
+    assert_eq!(env::set_current_dir("thisdoesnotexist").unwrap_err().kind(), ErrorKind::NotFound);
 }
