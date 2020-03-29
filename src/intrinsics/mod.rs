@@ -631,12 +631,29 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, CValue::by_val(res, base.layout()));
         };
 
-        transmute, <src_ty, dst_ty> (c from) {
-            assert_eq!(from.layout().ty, src_ty);
-            let (addr, meta) = from.force_stack(fx);
-            assert!(meta.is_none());
-            let dst_layout = fx.layout_of(dst_ty);
-            ret.write_cvalue(fx, CValue::by_ref(addr, dst_layout))
+        transmute, (c from) {
+            assert_eq!(from.layout().size, ret.layout().size);
+            if from.layout().ty.kind == ret.layout().ty.kind {
+                ret.write_cvalue(fx, from);
+            } else if let (Some(src_ty), Some(dst_ty)) = (fx.clif_type(from.layout().ty), fx.clif_type(ret.layout().ty)) {
+                let from = from.load_scalar(fx);
+                let val = match (src_ty, dst_ty) {
+                    (_, _) if src_ty == dst_ty => from,
+                    (types::I32, types::F32) | (types::F32, types::I32)
+                    | (types::I64, types::F64) | (types::F64, types::I64) => {
+                        fx.bcx.ins().bitcast(dst_ty, from)
+                    }
+                    (_, _) if src_ty.is_vector() && dst_ty.is_vector() => {
+                        fx.bcx.ins().raw_bitcast(dst_ty, from)
+                    }
+                    _ => unreachable!("{:?} -> {:?}", src_ty, dst_ty),
+                };
+                ret.write_cvalue(fx, CValue::by_val(val, ret.layout()));
+            } else {
+                let (addr, meta) = from.force_stack(fx);
+                assert!(meta.is_none());
+                ret.write_cvalue(fx, CValue::by_ref(addr, ret.layout()));
+            }
         };
         write_bytes, (c dst, v val, v count) {
             let pointee_ty = dst.layout().ty.builtin_deref(true).unwrap().ty;
