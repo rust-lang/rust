@@ -32,8 +32,8 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
     // "wasm-bindgen-test_bg". When running in node this is actually a shim JS
     // file. Ask node where that JS file is, and then we use that with a wasm
     // extension to find the wasm file itself.
-    let js_shim = resolve("wasm-bindgen-test_bg");
-    let js_shim = Path::new(&js_shim).with_extension("wasm");
+    let js_shim = resolve("wasm-bindgen-test");
+    let js_shim = Path::new(&js_shim).with_file_name("wasm-bindgen-test_bg.wasm");
 
     // Execute `wasm2wat` synchronously, waiting for and capturing all of its
     // output. Note that we pass in a custom `maxBuffer` parameter because we're
