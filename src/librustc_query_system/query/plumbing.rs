@@ -80,6 +80,7 @@ enum QueryResult<CTX: QueryContext> {
 }
 
 impl<CTX: QueryContext, C: QueryCache> QueryState<CTX, C> {
+    #[inline(always)]
     pub fn iter_results<R>(
         &self,
         f: impl for<'a> FnOnce(
@@ -89,6 +90,7 @@ impl<CTX: QueryContext, C: QueryCache> QueryState<CTX, C> {
         self.cache.iter(&self.shards, |shard| &mut shard.cache, f)
     }
 
+    #[inline(always)]
     pub fn all_inactive(&self) -> bool {
         let shards = self.shards.lock_shards();
         shards.iter().all(|shard| shard.active.is_empty())
@@ -645,6 +647,7 @@ where
 /// side-effects -- e.g., in order to report errors for erroneous programs.
 ///
 /// Note: The optimization is only available during incr. comp.
+#[inline(never)]
 fn ensure_query_impl<CTX, C>(
     tcx: CTX,
     state: &QueryState<CTX, C>,
@@ -681,7 +684,8 @@ fn ensure_query_impl<CTX, C>(
     }
 }
 
-fn force_query_impl<C, CTX>(
+#[inline(never)]
+fn force_query_impl<CTX, C>(
     tcx: CTX,
     state: &QueryState<CTX, C>,
     key: C::Key,
@@ -715,6 +719,7 @@ fn force_query_impl<C, CTX>(
     );
 }
 
+#[inline(always)]
 pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key) -> Q::Stored
 where
     Q: QueryDescription<CTX>,
@@ -726,6 +731,7 @@ where
     get_query_impl(tcx, Q::query_state(tcx), span, key, &Q::VTABLE)
 }
 
+#[inline(always)]
 pub fn ensure_query<Q, CTX>(tcx: CTX, key: Q::Key)
 where
     Q: QueryDescription<CTX>,
@@ -735,6 +741,7 @@ where
     ensure_query_impl(tcx, Q::query_state(tcx), key, &Q::VTABLE)
 }
 
+#[inline(always)]
 pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, span: Span, dep_node: DepNode<CTX::DepKind>)
 where
     Q: QueryDescription<CTX>,
