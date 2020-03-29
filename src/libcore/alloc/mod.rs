@@ -44,7 +44,7 @@ pub enum AllocInit {
 impl AllocInit {
     /// Initialize the specified memory block.
     ///
-    /// This behaves like calling [`AllocInit::initialize_offset(ptr, layout, 0)`][off].
+    /// This behaves like calling [`AllocInit::init_offset(memory, 0)`][off].
     ///
     /// [off]: AllocInit::init_offset
     ///
@@ -61,8 +61,8 @@ impl AllocInit {
 
     /// Initialize the memory block like specified by `init` at the specified `offset`.
     ///
-    /// This is a no-op for [`AllocInit::Uninitialized`] and writes zeroes for [`AllocInit::Zeroed`]
-    /// at `ptr + offset` until `ptr + layout.size()`.
+    /// This is a no-op for [`AllocInit::Uninitialized`][] and writes zeroes for
+    /// [`AllocInit::Zeroed`][] at `ptr + offset` until `ptr + layout.size()`.
     ///
     /// # Safety
     ///
