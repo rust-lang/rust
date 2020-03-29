@@ -485,7 +485,7 @@ fn trans_stmt<'tcx>(
                 | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), operand, to_ty) => {
                     let to_layout = fx.layout_of(fx.monomorphize(to_ty));
                     let operand = trans_operand(fx, operand);
-                    lval.write_cvalue(fx, operand.unchecked_cast_to(to_layout));
+                    lval.write_cvalue(fx, operand.cast_pointer_to(to_layout));
                 }
                 Rvalue::Cast(CastKind::Misc, operand, to_ty) => {
                     let operand = trans_operand(fx, operand);
@@ -509,7 +509,7 @@ fn trans_stmt<'tcx>(
                     if is_fat_ptr(fx, from_ty) {
                         if is_fat_ptr(fx, to_ty) {
                             // fat-ptr -> fat-ptr
-                            lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
+                            lval.write_cvalue(fx, operand.cast_pointer_to(dest_layout));
                         } else {
                             // fat-ptr -> thin-ptr
                             let (ptr, _extra) = operand.load_scalar_pair(fx);

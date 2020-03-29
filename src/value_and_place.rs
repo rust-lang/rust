@@ -243,7 +243,10 @@ impl<'tcx> CValue<'tcx> {
         CValue::by_val(val, layout)
     }
 
-    pub(crate) fn unchecked_cast_to(self, layout: TyAndLayout<'tcx>) -> Self {
+    pub(crate) fn cast_pointer_to(self, layout: TyAndLayout<'tcx>) -> Self {
+        assert!(matches!(self.layout().ty.kind, ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..)));
+        assert!(matches!(layout.ty.kind, ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..)));
+        assert_eq!(self.layout().abi, layout.abi);
         CValue(self.0, layout)
     }
 }
@@ -560,20 +563,16 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
-    pub(crate) fn unchecked_cast_to(self, layout: TyAndLayout<'tcx>) -> Self {
-        assert!(!self.layout().is_unsized());
-        CPlace {
-            inner: self.inner,
-            layout,
-        }
-    }
-
     pub(crate) fn downcast_variant(
         self,
         fx: &FunctionCx<'_, 'tcx, impl Backend>,
         variant: VariantIdx,
     ) -> Self {
+        assert!(!self.layout().is_unsized());
         let layout = self.layout().for_variant(fx, variant);
-        self.unchecked_cast_to(layout)
+        CPlace {
+            inner: self.inner,
+            layout,
+        }
     }
 }
