@@ -283,6 +283,18 @@ impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
     }
 }
 
+/// Test if it is valid for a MIR assignment to assign `src`-typed place to `dest`-typed value.
+fn mir_assign_valid_types<'tcx>(src: Ty<'tcx>, dest: Ty<'tcx>) -> bool {
+    src == dest
+        || match (&src.kind, &dest.kind) {
+            // After MIR optimizations, there can be assignments that change reference mutability.
+            (ty::Ref(_, src_pointee, _), ty::Ref(_, dest_pointee, _)) => {
+                src_pointee == dest_pointee
+            }
+            _ => false,
+        }
+}
+
 // separating the pointer tag for `impl Trait`, see https://github.com/rust-lang/rust/issues/54385
 impl<'mir, 'tcx, Tag, M> InterpCx<'mir, 'tcx, M>
 where
@@ -869,10 +881,10 @@ where
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
         assert!(
-            src.layout.layout == dest.layout.layout,
-            "Layout mismatch when copying!\nsrc: {:#?}\ndest: {:#?}",
-            src,
-            dest
+            mir_assign_valid_types(src.layout.ty, dest.layout.ty),
+            "type mismatch when copying!\nsrc: {:?}, dest: {:?}",
+            src.layout.ty,
+            dest.layout.ty,
         );
 
         // Let us see if the layout is simple so we take a shortcut, avoid force_allocation.
@@ -923,7 +935,7 @@ where
         src: OpTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        if src.layout.layout == dest.layout.layout {
+        if mir_assign_valid_types(src.layout.ty, dest.layout.ty) {
             // Fast path: Just use normal `copy_op`
             return self.copy_op(src, dest);
         }
