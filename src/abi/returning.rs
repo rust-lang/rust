@@ -70,7 +70,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
     let return_ptr = match output_pass_mode {
         PassMode::NoPass => None,
         PassMode::ByRef { sized: true } => match ret_place {
-            Some(ret_place) => Some(ret_place.to_ptr(fx).get_addr(fx)),
+            Some(ret_place) => Some(ret_place.to_ptr().get_addr(fx)),
             None => Some(fx.bcx.ins().iconst(fx.pointer_type, 43)),
         },
         PassMode::ByRef { sized: false } => todo!(),

@@ -730,7 +730,7 @@ fn codegen_array_len<'tcx>(
             fx.bcx.ins().iconst(fx.pointer_type, len)
         }
         ty::Slice(_elem_ty) => place
-            .to_ptr_maybe_unsized(fx)
+            .to_ptr_maybe_unsized()
             .1
             .expect("Length metadata for slice place"),
         _ => bug!("Rvalue::Len({:?})", place),
@@ -776,7 +776,7 @@ pub(crate) fn trans_place<'tcx>(
                     ty::Array(elem_ty, _len) => {
                         assert!(!from_end, "array subslices are never `from_end`");
                         let elem_layout = fx.layout_of(elem_ty);
-                        let ptr = cplace.to_ptr(fx);
+                        let ptr = cplace.to_ptr();
                         cplace = CPlace::for_ptr(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * from as i64),
                             fx.layout_of(fx.tcx.mk_array(elem_ty, to as u64 - from as u64)),
@@ -785,7 +785,7 @@ pub(crate) fn trans_place<'tcx>(
                     ty::Slice(elem_ty) => {
                         assert!(from_end, "slice subslices should be `from_end`");
                         let elem_layout = fx.layout_of(elem_ty);
-                        let (ptr, len) = cplace.to_ptr_maybe_unsized(fx);
+                        let (ptr, len) = cplace.to_ptr_maybe_unsized();
                         let len = len.unwrap();
                         cplace = CPlace::for_ptr_with_extra(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * from as i64),

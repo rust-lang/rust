@@ -657,7 +657,7 @@ pub(crate) fn codegen_drop<'tcx>(
         let drop_fn_ty = drop_fn.monomorphic_ty(fx.tcx);
         match ty.kind {
             ty::Dynamic(..) => {
-                let (ptr, vtable) = drop_place.to_ptr_maybe_unsized(fx);
+                let (ptr, vtable) = drop_place.to_ptr_maybe_unsized();
                 let ptr = ptr.get_addr(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());
 

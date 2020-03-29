@@ -348,7 +348,6 @@ fn place_location<'a, 'tcx>(
             // For PointerBase::Stack:
             //AttributeValue::Exprloc(Expression(translate_loc(ValueLoc::Stack(*stack_slot), &context.func.stack_slots).unwrap()))
         }
-        CPlaceInner::NoPlace => AttributeValue::Exprloc(Expression(vec![])),
     }
 }
 
