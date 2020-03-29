@@ -10,6 +10,21 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc::ty::layout::Size;
 use rustc_mir::interpret::Pointer;
 
+/// Check whether an operation that writes to a target buffer was successful.
+/// Accordingly select return value.
+/// Local helper function to be used in Windows shims.
+fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
+    if success {
+        // If the function succeeds, the return value is the number of characters stored in the target buffer,
+        // not including the terminating null character.
+        u32::try_from(len).unwrap()
+    } else {
+        // If the target buffer was not large enough to hold the data, the return value is the buffer size, in characters,
+        // required to hold the string and its terminating null character.
+        u32::try_from(len.checked_add(1).unwrap()).unwrap()
+    }
+}
+
 #[derive(Default)]
 pub struct EnvVars<'tcx> {
     /// Stores pointers to the environment variables. These variables must be stored as
@@ -397,20 +412,5 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         )?;
 
         Ok(())
-    }
-}
-
-/// Check whether an operation that writes to a target buffer was successful.
-/// Accordingly select return value.
-/// Local helper function to be used in Windows shims.
-fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
-    if success {
-        // If the function succeeds, the return value is the number of characters stored in the target buffer,
-        // not including the terminating null character.
-        u32::try_from(len).unwrap()
-    } else {
-        // If the target buffer was not large enough to hold the data, the return value is the buffer size, in characters,
-        // required to hold the string and its terminating null character.
-        u32::try_from(len.checked_add(1).unwrap()).unwrap()
     }
 }
