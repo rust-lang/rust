@@ -21,14 +21,14 @@ enum Pathconversion {
 
 /// Perform path separator conversion if needed.
 fn convert_path_separator<'a>(
-    os_str: &'a OsStr,
+    os_str: Cow<'a, OsStr>,
     target_os: &str,
     direction: Pathconversion,
 ) -> Cow<'a, OsStr> {
     #[cfg(windows)]
     return if target_os == "windows" {
         // Windows-on-Windows, all fine.
-        Cow::Borrowed(os_str)
+        os_str
     } else {
         // Unix target, Windows host.
         let (from, to) = match direction {
@@ -56,7 +56,7 @@ fn convert_path_separator<'a>(
         Cow::Owned(OsString::from_vec(converted))
     } else {
         // Unix-on-Unix, all is fine.
-        Cow::Borrowed(os_str)
+        os_str
     };
 }
 
@@ -226,7 +226,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         let os_str = this.read_os_str_from_c_str(scalar)?;
 
-        Ok(match convert_path_separator(os_str, &this.tcx.sess.target.target.target_os, Pathconversion::TargetToHost) {
+        Ok(match convert_path_separator(Cow::Borrowed(os_str), &this.tcx.sess.target.target.target_os, Pathconversion::TargetToHost) {
             Cow::Borrowed(x) => Cow::Borrowed(Path::new(x)),
             Cow::Owned(y) => Cow::Owned(PathBuf::from(y)),
         })
@@ -237,7 +237,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         let os_str = this.read_os_str_from_wide_str(scalar)?;
 
-        Ok(PathBuf::from(&convert_path_separator(&os_str, &this.tcx.sess.target.target.target_os, Pathconversion::TargetToHost)))
+        Ok(convert_path_separator(Cow::Owned(os_str), &this.tcx.sess.target.target.target_os, Pathconversion::TargetToHost).into_owned().into())
     }
 
     /// Write a Path to the machine memory (as a null-terminated sequence of bytes),
@@ -249,7 +249,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
-        let os_str = convert_path_separator(path.as_os_str(), &this.tcx.sess.target.target.target_os, Pathconversion::HostToTarget);
+        let os_str = convert_path_separator(Cow::Borrowed(path.as_os_str()), &this.tcx.sess.target.target.target_os, Pathconversion::HostToTarget);
         this.write_os_str_to_c_str(&os_str, scalar, size)
     }
 
@@ -262,7 +262,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
-        let os_str = convert_path_separator(path.as_os_str(), &this.tcx.sess.target.target.target_os, Pathconversion::HostToTarget);
+        let os_str = convert_path_separator(Cow::Borrowed(path.as_os_str()), &this.tcx.sess.target.target.target_os, Pathconversion::HostToTarget);
         this.write_os_str_to_wide_str(&os_str, scalar, size)
     }
 }
