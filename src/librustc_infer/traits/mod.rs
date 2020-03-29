@@ -8,9 +8,9 @@ mod project;
 mod structural_impls;
 mod util;
 
+use rustc_hir as hir;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty};
-use rustc_hir as hir;
 use rustc_span::Span;
 
 pub use self::FulfillmentErrorCode::*;

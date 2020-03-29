@@ -1,5 +1,11 @@
 mod environment;
 
+use rustc_ast::ast;
+use rustc_hir as hir;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefId;
+use rustc_hir::definitions::DefPathData;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_middle::hir::map::Map;
 use rustc_middle::traits::{
     Clause, Clauses, DomainGoal, FromEnv, GoalKind, PolyDomainGoal, ProgramClause,
@@ -8,12 +14,6 @@ use rustc_middle::traits::{
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, List, TyCtxt};
-use rustc_ast::ast;
-use rustc_hir as hir;
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
-use rustc_hir::definitions::DefPathData;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_span::symbol::sym;
 
 use std::iter;

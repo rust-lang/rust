@@ -1,9 +1,9 @@
+use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def_id::DefId;
 use rustc_middle::traits::{
     Clause, Clauses, DomainGoal, Environment, FromEnv, ProgramClause, ProgramClauseCategory,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::def_id::DefId;
 
 struct ClauseVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,

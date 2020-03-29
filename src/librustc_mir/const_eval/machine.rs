@@ -7,8 +7,8 @@ use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;
 
-use rustc_middle::mir::AssertMessage;
 use rustc_ast::ast::Mutability;
+use rustc_middle::mir::AssertMessage;
 use rustc_span::symbol::Symbol;
 use rustc_span::{def_id::DefId, Span};
 

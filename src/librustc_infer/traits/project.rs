@@ -2,9 +2,9 @@
 
 use super::PredicateObligation;
 
+use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty};
-use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 
 pub use rustc_middle::traits::Reveal;
 

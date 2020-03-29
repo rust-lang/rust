@@ -9,9 +9,9 @@
 
 use super::MirBorrowckCtxt;
 
+use rustc_hir as hir;
 use rustc_middle::mir::{Place, PlaceRef, ProjectionElem, ReadOnlyBodyAndCache};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_hir as hir;
 
 pub trait IsPrefixOf<'tcx> {
     fn is_prefix_of(&self, other: PlaceRef<'tcx>) -> bool;

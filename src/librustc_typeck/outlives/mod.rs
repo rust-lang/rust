@@ -1,9 +1,9 @@
 use hir::Node;
+use rustc_hir as hir;
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, CratePredicatesMap, TyCtxt};
-use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 

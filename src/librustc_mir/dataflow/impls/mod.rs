@@ -2,11 +2,11 @@
 //! bitvectors attached to each basic block, represented via a
 //! zero-sized structure.
 
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::layout::VariantIdx;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_index::bit_set::BitSet;
-use rustc_index::vec::Idx;
 
 use super::MoveDataParamEnv;
 

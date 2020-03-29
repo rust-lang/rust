@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
 
+use super::{FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_ast::ast::FloatTy;
@@ -10,8 +11,6 @@ use rustc_middle::ty::layout::{self, Size, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc_span::symbol::sym;
 use rustc_target::abi::LayoutOf;
-
-use super::{FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn cast(

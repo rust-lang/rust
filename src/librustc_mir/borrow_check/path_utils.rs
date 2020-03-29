@@ -2,10 +2,10 @@ use crate::borrow_check::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation}
 use crate::borrow_check::places_conflict;
 use crate::borrow_check::AccessDepth;
 use crate::dataflow::indexes::BorrowIndex;
+use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::mir::{BasicBlock, Body, Location, Place};
 use rustc_middle::ty::TyCtxt;
-use rustc_data_structures::graph::dominators::Dominators;
 
 /// Returns `true` if the borrow represented by `kind` is
 /// allowed to be split into separate Reservation and

@@ -1,7 +1,7 @@
-use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::RegionVid;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::ty::RegionVid;
 use std::fmt;
 use std::ops::Index;
 

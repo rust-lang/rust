@@ -1,3 +1,4 @@
+use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::visit::TyContext;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
@@ -7,7 +8,6 @@ use rustc_middle::mir::{
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, RegionVid, Ty};
-use rustc_infer::infer::InferCtxt;
 
 use crate::borrow_check::{
     borrow_set::BorrowSet, facts::AllFacts, location::LocationTable, nll::ToRegionVid,

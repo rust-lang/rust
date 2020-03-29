@@ -1,5 +1,7 @@
 use std::convert::TryFrom;
 
+use rustc_apfloat::Float;
+use rustc_ast::ast::FloatTy;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::{
@@ -7,8 +9,6 @@ use rustc_middle::ty::{
     layout::{LayoutOf, TyAndLayout},
     Ty,
 };
-use rustc_apfloat::Float;
-use rustc_ast::ast::FloatTy;
 
 use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
 

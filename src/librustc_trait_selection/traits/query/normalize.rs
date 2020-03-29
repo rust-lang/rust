@@ -7,10 +7,10 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
+use rustc_infer::traits::Normalized;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_infer::traits::Normalized;
 
 use super::NoSolution;
 

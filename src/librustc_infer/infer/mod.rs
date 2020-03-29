@@ -8,6 +8,13 @@ pub use self::ValuePairs::*;
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 
+use rustc_ast::ast;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::unify as ut;
+use rustc_errors::DiagnosticBuilder;
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
@@ -23,13 +30,6 @@ use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Substs
 pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
-use rustc_ast::ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::unify as ut;
-use rustc_errors::DiagnosticBuilder;
-use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_session::config::BorrowckMode;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;

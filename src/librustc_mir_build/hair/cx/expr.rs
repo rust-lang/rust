@@ -3,14 +3,16 @@ use crate::hair::cx::to_ref::ToRef;
 use crate::hair::cx::Cx;
 use crate::hair::util::UserAnnotatedTyHelpers;
 use crate::hair::*;
-use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::mir::BorrowKind;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast};
-use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
-use rustc_middle::ty::{self, AdtKind, Ty};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_index::vec::Idx;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::BorrowKind;
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast,
+};
+use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
+use rustc_middle::ty::{self, AdtKind, Ty};
 use rustc_span::Span;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr<'tcx> {

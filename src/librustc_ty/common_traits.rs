@@ -1,8 +1,8 @@
 //! Queries for checking whether a type implements one of a few common traits.
 
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::middle::lang_items;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits;
 

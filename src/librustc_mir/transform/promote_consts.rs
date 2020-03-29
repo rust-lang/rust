@@ -12,14 +12,14 @@
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
 
+use rustc_ast::ast::LitKind;
+use rustc_hir::def_id::DefId;
 use rustc_middle::mir::traversal::ReversePostorder;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, List, TyCtxt, TypeFoldable};
-use rustc_ast::ast::LitKind;
-use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 

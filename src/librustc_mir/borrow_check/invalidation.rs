@@ -1,10 +1,10 @@
+use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::mir::{BasicBlock, Body, Location, Place, ReadOnlyBodyAndCache, Rvalue};
 use rustc_middle::mir::{BorrowKind, Mutability, Operand};
 use rustc_middle::mir::{Statement, StatementKind};
 use rustc_middle::ty::TyCtxt;
-use rustc_data_structures::graph::dominators::Dominators;
 
 use crate::dataflow::indexes::BorrowIndex;
 

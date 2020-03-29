@@ -1,12 +1,6 @@
 use std::collections::hash_map::Entry::*;
 use std::sync::Arc;
 
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::middle::exported_symbols::{metadata_symbol_name, ExportedSymbol, SymbolExportLevel};
-use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::Instance;
-use rustc_middle::ty::{SymbolName, TyCtxt};
 use rustc_ast::expand::allocator::ALLOCATOR_METHODS;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -14,6 +8,14 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::exported_symbols::{
+    metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
+};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::Instance;
+use rustc_middle::ty::{SymbolName, TyCtxt};
 use rustc_session::config::{self, Sanitizer};
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {

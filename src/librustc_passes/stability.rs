@@ -1,11 +1,6 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
-use rustc_middle::hir::map::Map;
-use rustc_middle::middle::privacy::AccessLevels;
-use rustc_middle::middle::stability::{DeprecationEntry, Index};
-use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::TyCtxt;
 use rustc_ast::ast::Attribute;
 use rustc_attr::{self as attr, ConstStability, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -15,6 +10,11 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Generics, HirId, Item, StructField, Variant};
+use rustc_middle::hir::map::Map;
+use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::stability::{DeprecationEntry, Index};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;

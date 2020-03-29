@@ -1,6 +1,6 @@
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Body, Local, ReadOnlyBodyAndCache};
 use rustc_middle::ty::{RegionVid, TyCtxt};
-use rustc_data_structures::fx::FxHashSet;
 use std::rc::Rc;
 
 use crate::dataflow::move_paths::MoveData;

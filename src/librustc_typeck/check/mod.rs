@@ -89,21 +89,6 @@ pub mod writeback;
 
 use crate::astconv::{AstConv, GenericArgCountMismatch, PathSeg};
 use crate::middle::lang_items;
-use rustc_middle::hir::map::blocks::FnLikeNode;
-use rustc_middle::middle::region;
-use rustc_middle::mir::interpret::ConstValue;
-use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
-};
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
-use rustc_middle::ty::layout::VariantIdx;
-use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSelfTy, UserSubsts};
-use rustc_middle::ty::util::{Discr, IntTypeExt, Representability};
-use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, Const, GenericParamDefKind, RegionKind, ToPolyTraitRef,
-    ToPredicate, Ty, TyCtxt, UserType, WithConstness,
-};
 use rustc_ast::ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_attr as attr;
@@ -122,6 +107,23 @@ use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, InferOk, InferResult, TyCtxtInferExt};
+use rustc_middle::hir::map::blocks::FnLikeNode;
+use rustc_middle::middle::region;
+use rustc_middle::mir::interpret::ConstValue;
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
+};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{
+    GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSelfTy, UserSubsts,
+};
+use rustc_middle::ty::util::{Discr, IntTypeExt, Representability};
+use rustc_middle::ty::{
+    self, AdtKind, CanonicalUserType, Const, GenericParamDefKind, RegionKind, ToPolyTraitRef,
+    ToPredicate, Ty, TyCtxt, UserType, WithConstness,
+};
 use rustc_session::config::{self, EntryFnType};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;

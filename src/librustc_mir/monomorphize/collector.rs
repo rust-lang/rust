@@ -176,6 +176,12 @@
 
 use crate::monomorphize;
 
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, DefIdMap, LOCAL_CRATE};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc_middle::mir::interpret::{AllocId, ConstValue};
@@ -187,12 +193,6 @@ use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc_middle::ty::print::obsolete::DefPathBasedNames;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
-use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, DefIdMap, LOCAL_CRATE};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_index::bit_set::GrowableBitSet;
 use rustc_session::config::EntryFnType;
 use smallvec::SmallVec;
 use std::iter;

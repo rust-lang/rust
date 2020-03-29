@@ -1,6 +1,3 @@
-use rustc_middle::middle::cstore::CrateStore;
-use rustc_middle::middle::privacy::AccessLevels;
-use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_ast::ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -12,6 +9,9 @@ use rustc_hir::def::Namespace::TypeNS;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc_hir::HirId;
 use rustc_interface::interface;
+use rustc_middle::middle::cstore::CrateStore;
+use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_resolve as resolve;
 use rustc_session::config::ErrorOutputType;
 use rustc_session::lint;
