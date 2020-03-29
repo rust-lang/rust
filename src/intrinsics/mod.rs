@@ -182,10 +182,8 @@ pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx
     };
 
     match scalar_to_clif_type(tcx, element).by(u16::try_from(count).unwrap()) {
-        // Cranelift currently only implements icmp for 128bit vectors. While 64bit lanes are
-        // supported, this needs either the `use_sse41_simd` or `use_sse42_simd` target flag
-        // to be enabled.
-        Some(vector_ty) if vector_ty.bits() == 128 && vector_ty.lane_type() != types::I64 => Some(vector_ty),
+        // Cranelift currently only implements icmp for 128bit vectors.
+        Some(vector_ty) if vector_ty.bits() == 128 => Some(vector_ty),
         _ => None,
     }
 }
