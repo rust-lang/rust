@@ -211,7 +211,7 @@ impl<'tcx> Ancestors<'tcx> {
             if let Some(item) = node.item(tcx, trait_item_name, trait_item_kind, trait_def_id) {
                 if finalizing_node.is_none() {
                     let is_specializable = item.defaultness.is_default()
-                        || super::util::impl_is_default(tcx, node.def_id());
+                        || tcx.impl_defaultness(node.def_id()).is_default();
 
                     if !is_specializable {
                         finalizing_node = Some(node);

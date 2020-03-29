@@ -8,7 +8,6 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::outlives::Component;
 use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
 use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
-use rustc_middle::traits::util::impl_is_default;
 
 use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
 
@@ -652,7 +651,7 @@ pub fn generator_trait_ref_and_outputs(
 }
 
 pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {
-    assoc_item.defaultness.is_final() && !impl_is_default(tcx, assoc_item.container.id())
+    assoc_item.defaultness.is_final() && tcx.impl_defaultness(assoc_item.container.id()).is_final()
 }
 
 pub enum TupleArgumentsFlag {

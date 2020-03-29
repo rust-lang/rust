@@ -110,7 +110,6 @@ use rustc_infer::infer::{self, InferCtxt, InferOk, InferResult, TyCtxtInferExt};
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::ConstValue;
-use rustc_middle::traits::util::impl_is_default;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
@@ -1943,7 +1942,7 @@ fn check_specialization_validity<'tcx>(
             // grandparent. In that case, if parent is a `default impl`, inherited items use the
             // "defaultness" from the grandparent, else they are final.
             None => {
-                if impl_is_default(tcx, parent_impl.def_id()) {
+                if tcx.impl_defaultness(parent_impl.def_id()).is_default() {
                     None
                 } else {
                     Some(Err(parent_impl.def_id()))
@@ -2118,7 +2117,7 @@ fn check_impl_items_against_trait<'tcx>(
                 .map(|node_item| !node_item.defining_node.is_from_trait())
                 .unwrap_or(false);
 
-            if !is_implemented && !impl_is_default(tcx, impl_id) {
+            if !is_implemented && tcx.impl_defaultness(impl_id).is_final() {
                 if !trait_item.defaultness.has_value() {
                     missing_items.push(*trait_item);
                 }
