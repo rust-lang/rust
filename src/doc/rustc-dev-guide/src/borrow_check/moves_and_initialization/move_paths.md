@@ -118,10 +118,10 @@ they are also structured into a tree. So for example if you have the
 you might iterate to find the path `a.b.c` (here you are iterating
 just over the paths that are **actually referenced** in the source,
 not all **possible** paths that could have been referenced). These
-references are used for example in the [`has_any_child_of`] function,
-which checks whether the dataflow results contain a value for the
-given move-path (e.g., `a.b`) or any child of that move-path (e.g.,
-`a.b.c`).
+references are used for example in the
+[`find_in_move_path_or_its_descendants`] function, which determines
+whether a move-path (e.g., `a.b`) or any child of that move-path 
+(e.g.,`a.b.c`) matches a given predicate.
 
 [`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/struct.Place.html
-[`has_any_child_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/at_location/struct.FlowAtLocation.html#method.has_any_child_of
+[`find_in_move_path_or_its_descendants`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MoveData.html#method.find_in_move_path_or_its_descendants
