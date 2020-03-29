@@ -546,6 +546,8 @@ pub struct FnAbi<'a, Ty> {
     pub fixed_count: usize,
 
     pub conv: Conv,
+
+    pub can_unwind: bool,
 }
 
 impl<'a, Ty> FnAbi<'a, Ty> {

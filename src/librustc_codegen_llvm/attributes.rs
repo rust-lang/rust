@@ -13,8 +13,6 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::{OptLevel, Sanitizer};
 use rustc_session::Session;
-use rustc_target::abi::call::Conv;
-use rustc_target::spec::PanicStrategy;
 
 use crate::abi::FnAbi;
 use crate::attributes;
@@ -315,45 +313,7 @@ pub fn from_fn_attrs(
     }
     sanitize(cx, codegen_fn_attrs.flags, llfn);
 
-    unwind(
-        llfn,
-        if cx.tcx.sess.panic_strategy() != PanicStrategy::Unwind {
-            // In panic=abort mode we assume nothing can unwind anywhere, so
-            // optimize based on this!
-            false
-        } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
-            // If a specific #[unwind] attribute is present, use that.
-            true
-        } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
-            // Special attribute for allocator functions, which can't unwind.
-            false
-        } else {
-            if fn_abi.conv == Conv::Rust {
-                // Any Rust method (or `extern "Rust" fn` or `extern
-                // "rust-call" fn`) is explicitly allowed to unwind
-                // (unless it has no-unwind attribute, handled above).
-                true
-            } else {
-                // Anything else is either:
-                //
-                //  1. A foreign item using a non-Rust ABI (like `extern "C" { fn foo(); }`), or
-                //
-                //  2. A Rust item using a non-Rust ABI (like `extern "C" fn foo() { ... }`).
-                //
-                // Foreign items (case 1) are assumed to not unwind; it is
-                // UB otherwise. (At least for now; see also
-                // rust-lang/rust#63909 and Rust RFC 2753.)
-                //
-                // Items defined in Rust with non-Rust ABIs (case 2) are also
-                // not supposed to unwind. Whether this should be enforced
-                // (versus stating it is UB) and *how* it would be enforced
-                // is currently under discussion; see rust-lang/rust#58794.
-                //
-                // In either case, we mark item as explicitly nounwind.
-                false
-            }
-        },
-    );
+    unwind(llfn, fn_abi.can_unwind);
 
     // Always annotate functions with the target-cpu they are compiled for.
     // Without this, ThinLTO won't inline Rust functions into Clang generated
