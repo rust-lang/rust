@@ -41,27 +41,22 @@ pub enum AllocInit {
     Zeroed,
 }
 
-/// Represents a block of allocated memory returned by an allocator.
-#[derive(Debug, Copy, Clone)]
-#[unstable(feature = "allocator_api", issue = "32838")]
-pub struct MemoryBlock {
-    pub ptr: NonNull<u8>,
-    pub size: usize,
-}
-
-impl MemoryBlock {
-    /// Initialize the memory block like specified by `init`.
+impl AllocInit {
+    /// Initialize the specified memory block.
     ///
-    /// This behaves like calling [`MemoryBlock::initialize_offset(ptr, layout, 0)`][off].
+    /// This behaves like calling [`AllocInit::initialize_offset(ptr, layout, 0)`][off].
     ///
-    /// [off]: MemoryBlock::init_offset
+    /// [off]: AllocInit::init_offset
     ///
-    /// [*fit*]: trait.AllocRef.html#memory-fitting
+    /// # Safety
+    ///
+    /// * `memory.ptr` must be [valid] for writes of `memory.size` bytes.
+    ///
+    /// [valid]: ../ptr/index.html#safety
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn init(&mut self, init: AllocInit) {
-        // SAFETY: 0 is always smaller or equal to the size
-        unsafe { self.init_offset(init, 0) }
+    pub unsafe fn init(self, memory: MemoryBlock) {
+        self.init_offset(memory, 0)
     }
 
     /// Initialize the memory block like specified by `init` at the specified `offset`.
@@ -71,18 +66,32 @@ impl MemoryBlock {
     ///
     /// # Safety
     ///
-    /// * `offset` must be smaller than or equal to `size()`
+    /// * `memory.ptr` must be [valid] for writes of `memory.size` bytes.
+    /// * `offset` must be smaller than or equal to `memory.size`
     ///
-    /// [*fit*]: trait.AllocRef.html#memory-fitting
+    /// [valid]: ../ptr/index.html#safety
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn init_offset(&mut self, init: AllocInit, offset: usize) {
-        debug_assert!(offset <= self.size, "`offset` must be smaller than or equal to `size()`");
-        match init {
+    pub unsafe fn init_offset(self, memory: MemoryBlock, offset: usize) {
+        debug_assert!(
+            offset <= memory.size,
+            "`offset` must be smaller than or equal to `memory.size`"
+        );
+        match self {
             AllocInit::Uninitialized => (),
-            AllocInit::Zeroed => self.ptr.as_ptr().add(offset).write_bytes(0, self.size - offset),
+            AllocInit::Zeroed => {
+                memory.ptr.as_ptr().add(offset).write_bytes(0, memory.size - offset)
+            }
         }
     }
+}
+
+/// Represents a block of allocated memory returned by an allocator.
+#[derive(Debug, Copy, Clone)]
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub struct MemoryBlock {
+    pub ptr: NonNull<u8>,
+    pub size: usize,
 }
 
 /// A placement constraint when growing or shrinking an existing allocation.

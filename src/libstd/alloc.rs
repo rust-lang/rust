@@ -188,12 +188,12 @@ unsafe impl AllocRef for System {
                 self.alloc(new_layout, init)
             }
             ReallocPlacement::MayMove => {
-                // `realloc` probably checks for `new_size > old_size` or something similar.
+                // `realloc` probably checks for `new_size > size` or something similar.
                 intrinsics::assume(new_size > size);
                 let ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
-                let mut memory =
+                let memory =
                     MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size };
-                memory.init_offset(init, size);
+                init.init_offset(memory, size);
                 Ok(memory)
             }
         }
@@ -224,7 +224,7 @@ unsafe impl AllocRef for System {
                 Ok(MemoryBlock { ptr: layout.dangling(), size: 0 })
             }
             ReallocPlacement::MayMove => {
-                // `realloc` probably checks for `new_size < old_size` or something similar.
+                // `realloc` probably checks for `new_size < size` or something similar.
                 intrinsics::assume(new_size < size);
                 let ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
                 Ok(MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size })
