@@ -208,7 +208,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Char => {
                 // `u8` to `char` cast
-                Ok(Scalar::from_uint(u8::try_from(v).unwrap(), Size::from_bytes(4)))
+                Ok(Scalar::from_u32(u8::try_from(v).unwrap().into()))
             }
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
