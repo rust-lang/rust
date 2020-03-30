@@ -14,9 +14,6 @@ pub struct ArenaMap<ID, V> {
 impl<T, V> ArenaMap<Idx<T>, V> {
     pub fn insert(&mut self, id: Idx<T>, t: V) {
         let idx = Self::to_idx(id);
-        if self.v.capacity() <= idx {
-            self.v.reserve(idx + 1 - self.v.capacity());
-        }
 
         let fill = (idx + 1).saturating_sub(self.v.len());
         self.v.extend(std::iter::repeat_with(|| None).take(fill));
