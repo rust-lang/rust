@@ -74,7 +74,7 @@ fn vec_reallocate() -> Vec<u8> {
 fn vec_push_ptr_stable() {
     let mut v = Vec::with_capacity(10);
     v.push(0);
-    let v0 = unsafe { &*(&v[0] as *const _) }; // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
+    let v0 = unsafe { &mut *(&mut v[0] as *mut _) }; // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
     v.push(1);
     let _val = *v0;
 }
@@ -82,7 +82,7 @@ fn vec_push_ptr_stable() {
 fn vec_extend_ptr_stable() {
     let mut v = Vec::with_capacity(10);
     v.push(0);
-    let v0 = unsafe { &*(&v[0] as *const _) }; // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
+    let v0 = unsafe { &mut *(&mut v[0] as *mut _) }; // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
     // `slice::Iter` (with `T: Copy`) specialization
     v.extend(&[1]);
     let _val = *v0;
@@ -99,7 +99,7 @@ fn vec_extend_ptr_stable() {
 
 fn vec_truncate_ptr_stable() {
     let mut v = vec![0; 10];
-    let v0 = unsafe { &*(&v[0] as *const _) }; // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
+    let v0 = unsafe { &mut *(&mut v[0] as *mut _) }; // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
     v.truncate(5);
     let _val = *v0;
 }
