@@ -1371,7 +1371,12 @@ fn test_stable_pointers() {
     v.pop().unwrap();
     assert_eq!(*v0, 13);
 
+    // Appending
+    v.append(&mut vec![27, 19]);
+    assert_eq!(*v0, 13);
+
     // Extending
+    v.extend_from_slice(&[1, 2]);
     v.extend(&[1, 2]); // `slice::Iter` (with `T: Copy`) specialization
     v.extend(vec![2, 3]); // `vec::IntoIter` specialization
     v.extend(std::iter::once(3)); // `TrustedLen` specialization
@@ -1382,6 +1387,31 @@ fn test_stable_pointers() {
 
     // Truncation
     v.truncate(2);
+    assert_eq!(*v0, 13);
+
+    // Resizing
+    v.resize_with(v.len() + 10, || 42);
+    assert_eq!(*v0, 13);
+    v.resize_with(2, || panic!());
+    assert_eq!(*v0, 13);
+
+    // No-op reservation
+    v.reserve(32);
+    v.reserve_exact(32);
+    assert_eq!(*v0, 13);
+
+    // Partial draining
+    v.resize_with(10, || 42);
+    drop(v.drain(5..));
+    assert_eq!(*v0, 13);
+
+    // Splicing
+    v.resize_with(10, || 42);
+    drop(v.splice(5.., vec![1, 2, 3, 4, 5])); // empty tail after range
+    assert_eq!(*v0, 13);
+    drop(v.splice(5..8, vec![1])); // replacement is smaller than original range
+    assert_eq!(*v0, 13);
+    drop(v.splice(5..6, vec![1; 10].into_iter().filter(|_| true))); // lower bound not exact
     assert_eq!(*v0, 13);
 }
 
