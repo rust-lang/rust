@@ -1351,23 +1351,37 @@ fn test_try_reserve_exact() {
 }
 
 #[test]
-fn test_stable_push_pop() {
+fn test_stable_pointers() {
     // Test that, if we reserved enough space, adding and removing elements does not
     // invalidate references into the vector (such as `v0`).  This test also
     // runs in Miri, which would detect such problems.
-    let mut v = Vec::with_capacity(10);
+    let mut v = Vec::with_capacity(128);
     v.push(13);
 
-    // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
+    // Laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
     let v0 = unsafe { &*(&v[0] as *const _) };
-
     // Now do a bunch of things and occasionally use `v0` again to assert it is still valid.
+
+    // Pushing/inserting and popping/removing
     v.push(1);
     v.push(2);
     v.insert(1, 1);
     assert_eq!(*v0, 13);
     v.remove(1);
     v.pop().unwrap();
+    assert_eq!(*v0, 13);
+
+    // Extending
+    v.extend(&[1, 2]); // `slice::Iter` (with `T: Copy`) specialization
+    v.extend(vec![2, 3]); // `vec::IntoIter` specialization
+    v.extend(std::iter::once(3)); // `TrustedLen` specialization
+    v.extend(std::iter::empty::<i32>()); // `TrustedLen` specialization with empty iterator
+    v.extend(std::iter::once(3).filter(|_| true)); // base case
+    v.extend(std::iter::once(&3)); // `cloned` specialization
+    assert_eq!(*v0, 13);
+
+    // Truncation
+    v.truncate(2);
     assert_eq!(*v0, 13);
 }
 
