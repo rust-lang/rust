@@ -5,7 +5,7 @@ you have to do is mark a function as a test and include some asserts like so:
 ```rust,ignore
 #[test]
 fn my_test() {
-  assert!(2+2 == 4);
+    assert!(2+2 == 4);
 }
 ```
 
@@ -16,14 +16,15 @@ can even put tests inside private modules:
 
 ```rust,ignore
 mod my_priv_mod {
-  fn my_priv_func() -> bool {}
+    fn my_priv_func() -> bool {}
 
-  #[test]
-  fn test_priv_func() {
-    assert!(my_priv_func());
-  }
+    #[test]
+    fn test_priv_func() {
+        assert!(my_priv_func());
+    }
 }
 ```
+
 Private items can thus be easily tested without worrying about how to expose
 them to any sort of external testing apparatus. This is key to the
 ergonomics of testing in Rust. Semantically, however, it's rather odd.
@@ -44,15 +45,15 @@ the above example into:
 
 ```rust,ignore
 mod my_priv_mod {
-  fn my_priv_func() -> bool {}
+    fn my_priv_func() -> bool {}
 
-  pub fn test_priv_func() {
-    assert!(my_priv_func());
-  }
+    pub fn test_priv_func() {
+        assert!(my_priv_func());
+    }
 
-  pub mod __test_reexports {
-    pub use super::test_priv_func;
-  }
+    pub mod __test_reexports {
+        pub use super::test_priv_func;
+    }
 }
 ```
 
@@ -83,8 +84,8 @@ something with them. `librustc_ast` generates a module like so:
 ```rust,ignore
 #[main]
 pub fn main() {
-  extern crate test;
-  test::test_main_static(&[&path::to::test1, /*...*/]);
+    extern crate test;
+    test::test_main_static(&[&path::to::test1, /*...*/]);
 }
 ```
 
@@ -108,7 +109,7 @@ looks something like this:
 #[test]
 #[should_panic]
 fn foo() {
-  panic!("intentional");
+    panic!("intentional");
 }
 ```
 
