@@ -739,7 +739,8 @@ impl<T> Vec<T> {
             if len > self.len {
                 return;
             }
-            let s = self.get_unchecked_mut(len..) as *mut _;
+            let remaining_len = self.len - len;
+            let s = slice::from_raw_parts_mut(self.as_mut_ptr().add(len), remaining_len);
             self.len = len;
             ptr::drop_in_place(s);
         }
