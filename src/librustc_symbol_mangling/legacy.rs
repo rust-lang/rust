@@ -308,9 +308,8 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
         self = print_prefix(self)?;
 
         // Skip `::{{constructor}}` on tuple/unit structs.
-        match disambiguated_data.data {
-            DefPathData::Ctor => return Ok(self),
-            _ => {}
+        if let DefPathData::Ctor = disambiguated_data.data {
+            return Ok(self);
         }
 
         if self.keep_within_component {

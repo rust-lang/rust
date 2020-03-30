@@ -1332,17 +1332,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                         self.resolver.definitions().as_local_node_id(def_id)
                                     {
                                         for param in &generics.params {
-                                            match param.kind {
-                                                GenericParamKind::Type { .. } => {
-                                                    if node_id == param.id {
-                                                        add_bounds
-                                                            .entry(param.id)
-                                                            .or_default()
-                                                            .push(bound.clone());
-                                                        continue 'next_bound;
-                                                    }
+                                            if let GenericParamKind::Type { .. } = param.kind {
+                                                if node_id == param.id {
+                                                    add_bounds
+                                                        .entry(param.id)
+                                                        .or_default()
+                                                        .push(bound.clone());
+                                                    continue 'next_bound;
                                                 }
-                                                _ => {}
                                             }
                                         }
                                     }

@@ -177,9 +177,8 @@ impl<'hir> PrinterSupport for IdentifiedAnnotation<'hir> {
 
 impl<'hir> pprust::PpAnn for IdentifiedAnnotation<'hir> {
     fn pre(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) {
-        match node {
-            pprust::AnnNode::Expr(_) => s.popen(),
-            _ => {}
+        if let pprust::AnnNode::Expr(_) = node {
+            s.popen();
         }
     }
     fn post(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) {
@@ -232,9 +231,8 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
         }
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
-        match node {
-            pprust_hir::AnnNode::Expr(_) => s.popen(),
-            _ => {}
+        if let pprust_hir::AnnNode::Expr(_) = node {
+            s.popen();
         }
     }
     fn post(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
@@ -339,21 +337,17 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
         self.tables.set(old_tables);
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
-        match node {
-            pprust_hir::AnnNode::Expr(_) => s.popen(),
-            _ => {}
+        if let pprust_hir::AnnNode::Expr(_) = node {
+            s.popen();
         }
     }
     fn post(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
-        match node {
-            pprust_hir::AnnNode::Expr(expr) => {
-                s.s.space();
-                s.s.word("as");
-                s.s.space();
-                s.s.word(self.tables.get().expr_ty(expr).to_string());
-                s.pclose();
-            }
-            _ => {}
+        if let pprust_hir::AnnNode::Expr(expr) = node {
+            s.s.space();
+            s.s.word("as");
+            s.s.space();
+            s.s.word(self.tables.get().expr_ty(expr).to_string());
+            s.pclose();
         }
     }
 }

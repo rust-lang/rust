@@ -675,10 +675,9 @@ impl dataflow::ResultsVisitor<'mir, 'tcx> for StorageConflictVisitor<'mir, 'tcx,
 impl<'body, 'tcx, 's> StorageConflictVisitor<'body, 'tcx, 's> {
     fn apply_state(&mut self, flow_state: &BitSet<Local>, loc: Location) {
         // Ignore unreachable blocks.
-        match self.body.basic_blocks()[loc.block].terminator().kind {
-            TerminatorKind::Unreachable => return,
-            _ => (),
-        };
+        if self.body.basic_blocks()[loc.block].terminator().kind == TerminatorKind::Unreachable {
+            return;
+        }
 
         let mut eligible_storage_live = flow_state.clone();
         eligible_storage_live.intersect(&self.stored_locals);

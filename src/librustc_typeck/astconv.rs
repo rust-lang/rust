@@ -1785,9 +1785,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ));
             }
         }
-
-        match (&potential_assoc_types[..], &trait_bounds) {
-            ([], [bound]) => match &bound.trait_ref.path.segments[..] {
+        if let ([], [bound]) = (&potential_assoc_types[..], &trait_bounds) {
+            match &bound.trait_ref.path.segments[..] {
                 // FIXME: `trait_ref.path.span` can point to a full path with multiple
                 // segments, even though `trait_ref.path.segments` is of length `1`. Work
                 // around that bug here, even though it should be fixed elsewhere.
@@ -1819,8 +1818,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         .collect();
                 }
                 _ => {}
-            },
-            _ => {}
+            }
         }
         names.sort();
         trait_bound_spans.sort();

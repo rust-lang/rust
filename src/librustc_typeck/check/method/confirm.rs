@@ -551,12 +551,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
 
             // If we have an autoref followed by unsizing at the end, fix the unsize target.
-            match adjustments[..] {
-                [.., Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. }, Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), ref mut target }] =>
-                {
-                    *target = method.sig.inputs()[0];
-                }
-                _ => {}
+
+            if let [.., Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. }, Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), ref mut target }] =
+                adjustments[..]
+            {
+                *target = method.sig.inputs()[0];
             }
         }
     }

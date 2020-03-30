@@ -1356,11 +1356,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         {
             let mut used_variants = BitSet::new_empty(info.variant_fields.len());
             for assignment in &assignments {
-                match assignment {
-                    Assigned(idx) => {
-                        used_variants.insert(*idx);
-                    }
-                    _ => {}
+                if let Assigned(idx) = assignment {
+                    used_variants.insert(*idx);
                 }
             }
             if used_variants.count() < 2 {

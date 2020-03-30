@@ -558,26 +558,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         .hir()
                                         .as_local_hir_id(def.did)
                                         .map(|id| self.tcx.hir().get(id));
-                                    match node {
-                                        Some(hir::Node::Item(hir::Item { kind, .. })) => {
-                                            if let Some(g) = kind.generics() {
-                                                let key = match &g.where_clause.predicates[..] {
-                                                    [.., pred] => {
-                                                        (pred.span().shrink_to_hi(), false)
-                                                    }
-                                                    [] => (
-                                                        g.where_clause
-                                                            .span_for_predicates_or_empty_place(),
-                                                        true,
-                                                    ),
-                                                };
-                                                type_params
-                                                    .entry(key)
-                                                    .or_insert_with(FxHashSet::default)
-                                                    .insert(obligation.to_owned());
-                                            }
+                                    if let Some(hir::Node::Item(hir::Item { kind, .. })) = node {
+                                        if let Some(g) = kind.generics() {
+                                            let key = match &g.where_clause.predicates[..] {
+                                                [.., pred] => (pred.span().shrink_to_hi(), false),
+                                                [] => (
+                                                    g.where_clause
+                                                        .span_for_predicates_or_empty_place(),
+                                                    true,
+                                                ),
+                                            };
+                                            type_params
+                                                .entry(key)
+                                                .or_insert_with(FxHashSet::default)
+                                                .insert(obligation.to_owned());
                                         }
-                                        _ => {}
                                     }
                                 }
                             }

@@ -314,19 +314,17 @@ impl AutoTraitFinder<'tcx> {
                 &Ok(Some(ref vtable)) => {
                     // If we see an explicit negative impl (e.g., `impl !Send for MyStruct`),
                     // we immediately bail out, since it's impossible for us to continue.
-                    match vtable {
-                        Vtable::VtableImpl(VtableImplData { impl_def_id, .. }) => {
-                            // Blame 'tidy' for the weird bracket placement.
-                            if infcx.tcx.impl_polarity(*impl_def_id) == ty::ImplPolarity::Negative {
-                                debug!(
-                                    "evaluate_nested_obligations: found explicit negative impl\
+
+                    if let Vtable::VtableImpl(VtableImplData { impl_def_id, .. }) = vtable {
+                        // Blame 'tidy' for the weird bracket placement.
+                        if infcx.tcx.impl_polarity(*impl_def_id) == ty::ImplPolarity::Negative {
+                            debug!(
+                                "evaluate_nested_obligations: found explicit negative impl\
                                         {:?}, bailing out",
-                                    impl_def_id
-                                );
-                                return None;
-                            }
+                                impl_def_id
+                            );
+                            return None;
                         }
-                        _ => {}
                     }
 
                     let obligations = vtable.clone().nested_obligations().into_iter();
@@ -417,80 +415,77 @@ impl AutoTraitFinder<'tcx> {
     ) {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
-            match (&new_pred, old_pred) {
-                (&ty::Predicate::Trait(new_trait, _), ty::Predicate::Trait(old_trait, _)) => {
-                    if new_trait.def_id() == old_trait.def_id() {
-                        let new_substs = new_trait.skip_binder().trait_ref.substs;
-                        let old_substs = old_trait.skip_binder().trait_ref.substs;
+            if let (&ty::Predicate::Trait(new_trait, _), ty::Predicate::Trait(old_trait, _)) =
+                (&new_pred, old_pred)
+            {
+                if new_trait.def_id() == old_trait.def_id() {
+                    let new_substs = new_trait.skip_binder().trait_ref.substs;
+                    let old_substs = old_trait.skip_binder().trait_ref.substs;
 
-                        if !new_substs.types().eq(old_substs.types()) {
-                            // We can't compare lifetimes if the types are different,
-                            // so skip checking `old_pred`.
-                            return true;
-                        }
+                    if !new_substs.types().eq(old_substs.types()) {
+                        // We can't compare lifetimes if the types are different,
+                        // so skip checking `old_pred`.
+                        return true;
+                    }
 
-                        for (new_region, old_region) in
-                            new_substs.regions().zip(old_substs.regions())
-                        {
-                            match (new_region, old_region) {
-                                // If both predicates have an `ReLateBound` (a HRTB) in the
-                                // same spot, we do nothing.
-                                (
-                                    ty::RegionKind::ReLateBound(_, _),
-                                    ty::RegionKind::ReLateBound(_, _),
-                                ) => {}
+                    for (new_region, old_region) in new_substs.regions().zip(old_substs.regions()) {
+                        match (new_region, old_region) {
+                            // If both predicates have an `ReLateBound` (a HRTB) in the
+                            // same spot, we do nothing.
+                            (
+                                ty::RegionKind::ReLateBound(_, _),
+                                ty::RegionKind::ReLateBound(_, _),
+                            ) => {}
 
-                                (ty::RegionKind::ReLateBound(_, _), _)
-                                | (_, ty::RegionKind::ReVar(_)) => {
-                                    // One of these is true:
-                                    // The new predicate has a HRTB in a spot where the old
-                                    // predicate does not (if they both had a HRTB, the previous
-                                    // match arm would have executed). A HRBT is a 'stricter'
-                                    // bound than anything else, so we want to keep the newer
-                                    // predicate (with the HRBT) in place of the old predicate.
-                                    //
-                                    // OR
-                                    //
-                                    // The old predicate has a region variable where the new
-                                    // predicate has some other kind of region. An region
-                                    // variable isn't something we can actually display to a user,
-                                    // so we choose their new predicate (which doesn't have a region
-                                    // variable).
-                                    //
-                                    // In both cases, we want to remove the old predicate,
-                                    // from `user_computed_preds`, and replace it with the new
-                                    // one. Having both the old and the new
-                                    // predicate in a `ParamEnv` would confuse `SelectionContext`.
-                                    //
-                                    // We're currently in the predicate passed to 'retain',
-                                    // so we return `false` to remove the old predicate from
-                                    // `user_computed_preds`.
-                                    return false;
-                                }
-                                (_, ty::RegionKind::ReLateBound(_, _))
-                                | (ty::RegionKind::ReVar(_), _) => {
-                                    // This is the opposite situation as the previous arm.
-                                    // One of these is true:
-                                    //
-                                    // The old predicate has a HRTB lifetime in a place where the
-                                    // new predicate does not.
-                                    //
-                                    // OR
-                                    //
-                                    // The new predicate has a region variable where the old
-                                    // predicate has some other type of region.
-                                    //
-                                    // We want to leave the old
-                                    // predicate in `user_computed_preds`, and skip adding
-                                    // new_pred to `user_computed_params`.
-                                    should_add_new = false
-                                }
-                                _ => {}
+                            (ty::RegionKind::ReLateBound(_, _), _)
+                            | (_, ty::RegionKind::ReVar(_)) => {
+                                // One of these is true:
+                                // The new predicate has a HRTB in a spot where the old
+                                // predicate does not (if they both had a HRTB, the previous
+                                // match arm would have executed). A HRBT is a 'stricter'
+                                // bound than anything else, so we want to keep the newer
+                                // predicate (with the HRBT) in place of the old predicate.
+                                //
+                                // OR
+                                //
+                                // The old predicate has a region variable where the new
+                                // predicate has some other kind of region. An region
+                                // variable isn't something we can actually display to a user,
+                                // so we choose their new predicate (which doesn't have a region
+                                // variable).
+                                //
+                                // In both cases, we want to remove the old predicate,
+                                // from `user_computed_preds`, and replace it with the new
+                                // one. Having both the old and the new
+                                // predicate in a `ParamEnv` would confuse `SelectionContext`.
+                                //
+                                // We're currently in the predicate passed to 'retain',
+                                // so we return `false` to remove the old predicate from
+                                // `user_computed_preds`.
+                                return false;
                             }
+                            (_, ty::RegionKind::ReLateBound(_, _))
+                            | (ty::RegionKind::ReVar(_), _) => {
+                                // This is the opposite situation as the previous arm.
+                                // One of these is true:
+                                //
+                                // The old predicate has a HRTB lifetime in a place where the
+                                // new predicate does not.
+                                //
+                                // OR
+                                //
+                                // The new predicate has a region variable where the old
+                                // predicate has some other type of region.
+                                //
+                                // We want to leave the old
+                                // predicate in `user_computed_preds`, and skip adding
+                                // new_pred to `user_computed_params`.
+                                should_add_new = false
+                            }
+                            _ => {}
                         }
                     }
                 }
-                _ => {}
             }
             true
         });

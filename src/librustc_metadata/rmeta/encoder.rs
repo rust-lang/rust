@@ -1623,12 +1623,9 @@ impl EncodeContext<'tcx> {
     }
 
     fn encode_info_for_expr(&mut self, expr: &hir::Expr<'_>) {
-        match expr.kind {
-            hir::ExprKind::Closure(..) => {
-                let def_id = self.tcx.hir().local_def_id(expr.hir_id);
-                self.encode_info_for_closure(def_id);
-            }
-            _ => {}
+        if let hir::ExprKind::Closure(..) = expr.kind {
+            let def_id = self.tcx.hir().local_def_id(expr.hir_id);
+            self.encode_info_for_closure(def_id);
         }
     }
 

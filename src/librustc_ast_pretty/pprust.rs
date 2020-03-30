@@ -637,9 +637,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         match tt {
             TokenTree::Token(ref token) => {
                 self.word(token_to_string_ext(&token, convert_dollar_crate));
-                match token.kind {
-                    token::DocComment(..) => self.hardbreak(),
-                    _ => {}
+                if let token::DocComment(..) = token.kind {
+                    self.hardbreak()
                 }
             }
             TokenTree::Delimited(dspan, delim, tts) => {
@@ -1390,13 +1389,10 @@ impl<'a> State<'a> {
         self.print_visibility(&v.vis);
         let generics = ast::Generics::default();
         self.print_struct(&v.data, &generics, v.ident, v.span, false);
-        match v.disr_expr {
-            Some(ref d) => {
-                self.s.space();
-                self.word_space("=");
-                self.print_expr(&d.value)
-            }
-            _ => {}
+        if let Some(ref d) = v.disr_expr {
+            self.s.space();
+            self.word_space("=");
+            self.print_expr(&d.value)
         }
     }
 
@@ -2082,12 +2078,10 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::Yield(ref e) => {
                 self.s.word("yield");
-                match *e {
-                    Some(ref expr) => {
-                        self.s.space();
-                        self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
-                    }
-                    _ => (),
+
+                if let Some(ref expr) = *e {
+                    self.s.space();
+                    self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
             }
             ast::ExprKind::Try(ref e) => {
@@ -2139,9 +2133,8 @@ impl<'a> State<'a> {
         self.s.word("::");
         let item_segment = path.segments.last().unwrap();
         self.print_ident(item_segment.ident);
-        match item_segment.args {
-            Some(ref args) => self.print_generic_args(args, colons_before_params),
-            None => {}
+        if let Some(ref args) = item_segment.args {
+            self.print_generic_args(args, colons_before_params)
         }
     }
 

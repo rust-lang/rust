@@ -1719,7 +1719,7 @@ impl EmitterWriter {
                 if !self.short_message {
                     for child in children {
                         let span = child.render_span.as_ref().unwrap_or(&child.span);
-                        match self.emit_message_default(
+                        if let Err(err) = self.emit_message_default(
                             &span,
                             &child.styled_message(),
                             &None,
@@ -1727,15 +1727,14 @@ impl EmitterWriter {
                             max_line_num_len,
                             true,
                         ) {
-                            Err(e) => panic!("failed to emit error: {}", e),
-                            _ => (),
+                            panic!("failed to emit error: {}", err);
                         }
                     }
                     for sugg in suggestions {
                         if sugg.style == SuggestionStyle::CompletelyHidden {
                             // do not display this suggestion, it is meant only for tools
                         } else if sugg.style == SuggestionStyle::HideCodeAlways {
-                            match self.emit_message_default(
+                            if let Err(e) = self.emit_message_default(
                                 &MultiSpan::new(),
                                 &[(sugg.msg.to_owned(), Style::HeaderMsg)],
                                 &None,
@@ -1743,16 +1742,13 @@ impl EmitterWriter {
                                 max_line_num_len,
                                 true,
                             ) {
-                                Err(e) => panic!("failed to emit error: {}", e),
-                                _ => (),
+                                panic!("failed to emit error: {}", e);
                             }
-                        } else {
-                            match self.emit_suggestion_default(sugg, &Level::Help, max_line_num_len)
-                            {
-                                Err(e) => panic!("failed to emit error: {}", e),
-                                _ => (),
-                            }
-                        }
+                        } else if let Err(e) =
+                            self.emit_suggestion_default(sugg, &Level::Help, max_line_num_len)
+                        {
+                            panic!("failed to emit error: {}", e);
+                        };
                     }
                 }
             }
@@ -1762,10 +1758,11 @@ impl EmitterWriter {
         let mut dst = self.dst.writable();
         match writeln!(dst) {
             Err(e) => panic!("failed to emit error: {}", e),
-            _ => match dst.flush() {
-                Err(e) => panic!("failed to emit error: {}", e),
-                _ => (),
-            },
+            _ => {
+                if let Err(e) = dst.flush() {
+                    panic!("failed to emit error: {}", e)
+                }
+            }
         }
     }
 }
@@ -2149,11 +2146,8 @@ impl<'a> Write for WritableDst<'a> {
 
 impl<'a> Drop for WritableDst<'a> {
     fn drop(&mut self) {
-        match *self {
-            WritableDst::Buffered(ref mut dst, ref mut buf) => {
-                drop(dst.print(buf));
-            }
-            _ => {}
+        if let WritableDst::Buffered(ref mut dst, ref mut buf) = self {
+            drop(dst.print(buf));
         }
     }
 }
