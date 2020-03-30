@@ -224,9 +224,10 @@ Let's go over them one by one:
     of `Steal` for more details. New uses of `Steal` should **not** be
     added without alerting `@rust-lang/compiler`.
 - **Query modifiers:** various flags and options that customize how the
-  query is processed.
+  query is processed (mostly with respect to [incremental compilation][incrcomp]).
 
 [Key]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/query/keys/trait.Key.html
+[incrcomp]: queries/incremental-compilation-in-detail.html#query-modifiers
 
 So, to add a query:
 

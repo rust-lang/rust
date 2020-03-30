@@ -402,11 +402,11 @@ would save.
 
 
 
-## Query Attributes
+## Query Modifiers
 
-The query system allows for applying attributes to queries. These attributes
-affect certain aspects of how the system treats the query with respect to
-incremental compilation:
+The query system allows for applying [modifiers][mod] to queries. These
+modifiers affect certain aspects of how the system treats the query with
+respect to incremental compilation:
 
  - `eval_always` - A query with the `eval_always` attribute is re-executed
    unconditionally during incremental compilation. I.e. the system will not
@@ -433,7 +433,7 @@ incremental compilation:
 
  - `cache_on_disk_if` - This attribute is what determines which query results
    are persisted in the incremental compilation query result cache. The
-   attribute takes an expression that allows to make per query invocation
+   attribute takes an expression that allows per query invocation
    decisions. For example, it makes no sense to store values from upstream
    crates in the cache because they are already available in the upstream
    crate's metadata.
@@ -444,6 +444,8 @@ incremental compilation:
    allows the red-green system to do its change detection even if there is no
    query key available for a given dep-node -- something which is needed for
    handling trait selection because it is not based on queries.
+
+[mod]: ../query.html#adding-a-new-kind-of-query
 
 
 ## The Projection Query Pattern
@@ -482,7 +484,7 @@ directly depended on `monolithic_query` then all of them would have had to be
 re-evaluated.
 
 This pattern works even without `eval_always` and `no_hash` but the two
-attributes can be used to avoid unnecessary overhead. If the monolithic query
+modifiers can be used to avoid unnecessary overhead. If the monolithic query
 is likely to change at any minor modification of the compiler's input it makes
 sense to mark it as `eval_always`, thus getting rid of its dependency tracking
 cost. And it always makes sense to mark the monolithic query as `no_hash`
