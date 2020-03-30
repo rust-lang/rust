@@ -83,9 +83,10 @@ pub fn project(fixture: &str) -> Server {
 pub struct Server {
     req_id: Cell<u64>,
     messages: RefCell<Vec<Message>>,
-    dir: TempDir,
     _thread: jod_thread::JoinHandle<()>,
     client: Connection,
+    /// XXX: remove the tempdir last
+    dir: TempDir,
 }
 
 impl Server {
