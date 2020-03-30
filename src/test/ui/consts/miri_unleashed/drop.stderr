@@ -17,7 +17,7 @@ LL | | }
   ::: $DIR/drop.rs:23:1
    |
 LL |   };
-   |   - inside call to `std::intrinsics::drop_in_place::<std::vec::Vec<i32>> - shim(Some(std::vec::Vec<i32>))` at $DIR/drop.rs:23:1
+   |   - inside `TEST_BAD` at $DIR/drop.rs:23:1
 
 error: aborting due to previous error
 
