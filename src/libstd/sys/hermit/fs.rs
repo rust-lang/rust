@@ -6,7 +6,7 @@ use crate::io::{IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
 use crate::sys::cvt;
 use crate::sys::hermit::abi;
-use crate::sys::hermit::abi::{O_RDONLY, O_WRONLY, O_RDWR,O_CREAT, O_EXCL, O_TRUNC, O_APPEND};
+use crate::sys::hermit::abi::{O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
 use crate::sys::hermit::fd::FileDesc;
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, Void};
