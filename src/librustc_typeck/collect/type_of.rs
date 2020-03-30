@@ -1,7 +1,3 @@
-use rustc::hir::map::Map;
-use rustc::ty::subst::{GenericArgKind, InternalSubsts, Subst};
-use rustc::ty::util::IntTypeExt;
-use rustc::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, StashKey};
 use rustc_hir as hir;
@@ -10,6 +6,10 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
+use rustc_middle::ty::util::IntTypeExt;
+use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};

@@ -1,6 +1,6 @@
-use rustc::mir::*;
-use rustc::ty;
 use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_middle::mir::*;
+use rustc_middle::ty;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::{Span, Symbol};
 

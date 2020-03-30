@@ -3,16 +3,16 @@
 
 use super::FunctionCx;
 use crate::traits::*;
-use rustc::mir::traversal;
-use rustc::mir::visit::{
-    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
-};
-use rustc::mir::{self, Location, TerminatorKind};
-use rustc::ty;
-use rustc::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::traversal;
+use rustc_middle::mir::visit::{
+    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
+};
+use rustc_middle::mir::{self, Location, TerminatorKind};
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,

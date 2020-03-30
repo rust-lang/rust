@@ -92,5 +92,5 @@ pub mod util {
     pub mod common;
 }
 
-// Allows macros to refer to this crate as `::rustc`
-extern crate self as rustc;
+// Allows macros to refer to this crate as `::rustc_middle`
+extern crate self as rustc_middle;

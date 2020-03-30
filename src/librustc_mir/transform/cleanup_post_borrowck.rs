@@ -11,16 +11,16 @@
 //! temporaries read by [`ForMatchGuard`] reads, and [`DeleteFakeBorrows`]
 //! deletes the initialization of those temporaries.
 //!
-//! [`AscribeUserType`]: rustc::mir::StatementKind::AscribeUserType
-//! [`Shallow`]: rustc::mir::BorrowKind::Shallow
-//! [`FakeRead`]: rustc::mir::StatementKind::FakeRead
-//! [`Nop`]: rustc::mir::StatementKind::Nop
+//! [`AscribeUserType`]: rustc_middle::mir::StatementKind::AscribeUserType
+//! [`Shallow`]: rustc_middle::mir::BorrowKind::Shallow
+//! [`FakeRead`]: rustc_middle::mir::StatementKind::FakeRead
+//! [`Nop`]: rustc_middle::mir::StatementKind::Nop
 
 use crate::transform::{MirPass, MirSource};
-use rustc::mir::visit::MutVisitor;
-use rustc::mir::{BodyAndCache, BorrowKind, Location, Rvalue};
-use rustc::mir::{Statement, StatementKind};
-use rustc::ty::TyCtxt;
+use rustc_middle::mir::visit::MutVisitor;
+use rustc_middle::mir::{BodyAndCache, BorrowKind, Location, Rvalue};
+use rustc_middle::mir::{Statement, StatementKind};
+use rustc_middle::ty::TyCtxt;
 
 pub struct CleanupNonCodegenStatements;
 

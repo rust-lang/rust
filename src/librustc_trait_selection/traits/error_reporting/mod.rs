@@ -11,19 +11,19 @@ use super::{
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt, TyCtxtInferExt};
-use rustc::mir::interpret::ErrorHandled;
-use rustc::ty::error::ExpectedFound;
-use rustc::ty::fast_reject;
-use rustc::ty::fold::TypeFolder;
-use rustc::ty::SubtypePredicate;
-use rustc::ty::{
-    self, AdtKind, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
-};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{Node, QPath, TyKind, WhereBoundPredicate, WherePredicate};
+use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::ty::error::ExpectedFound;
+use rustc_middle::ty::fast_reject;
+use rustc_middle::ty::fold::TypeFolder;
+use rustc_middle::ty::SubtypePredicate;
+use rustc_middle::ty::{
+    self, AdtKind, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+};
 use rustc_session::DiagnosticMessageId;
 use rustc_span::{BytePos, ExpnKind, Span, DUMMY_SP};
 use std::fmt;

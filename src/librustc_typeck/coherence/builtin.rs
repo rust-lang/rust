@@ -1,11 +1,6 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
-use rustc::middle::lang_items::UnsizeTraitLangItem;
-use rustc::middle::region;
-use rustc::ty::adjustment::CoerceUnsizedInfo;
-use rustc::ty::TypeFoldable;
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -13,6 +8,11 @@ use rustc_hir::ItemKind;
 use rustc_infer::infer;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionckMode, TyCtxtInferExt};
+use rustc_middle::middle::lang_items::UnsizeTraitLangItem;
+use rustc_middle::middle::region;
+use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
+use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
 use rustc_trait_selection::traits::predicate_for_trait_def;

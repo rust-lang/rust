@@ -10,10 +10,6 @@ use crate::{
 
 use crate::traits::*;
 use jobserver::{Acquired, Client};
-use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
-use rustc::middle::cstore::EncodedMetadata;
-use rustc::middle::exported_symbols::SymbolExportLevel;
-use rustc::ty::TyCtxt;
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -28,6 +24,10 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
     copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
+use rustc_middle::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
+use rustc_middle::middle::cstore::EncodedMetadata;
+use rustc_middle::middle::exported_symbols::SymbolExportLevel;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_session::config::{
     self, Lto, OutputFilenames, OutputType, Passes, Sanitizer, SwitchWithOptPath,

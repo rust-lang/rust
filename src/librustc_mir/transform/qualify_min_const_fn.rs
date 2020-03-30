@@ -1,8 +1,8 @@
-use rustc::mir::*;
-use rustc::ty::{self, adjustment::PointerCast, Predicate, Ty, TyCtxt};
 use rustc_attr as attr;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, adjustment::PointerCast, Predicate, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -152,7 +152,7 @@ fn check_rvalue(
         | Rvalue::Ref(_, _, place)
         | Rvalue::AddressOf(_, place) => check_place(tcx, place, span, def_id, body),
         Rvalue::Cast(CastKind::Misc, operand, cast_ty) => {
-            use rustc::ty::cast::CastTy;
+            use rustc_middle::ty::cast::CastTy;
             let cast_in = CastTy::from_ty(operand.ty(body, tcx)).expect("bad input type for cast");
             let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
             match (cast_in, cast_out) {

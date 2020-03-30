@@ -1,14 +1,14 @@
 //! Inlining pass for MIR functions
 
-use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc::mir::visit::*;
-use rustc::mir::*;
-use rustc::ty::subst::{Subst, SubstsRef};
-use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_attr as attr;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::visit::*;
+use rustc_middle::mir::*;
+use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::Sanitizer;
 use rustc_target::spec::abi::Abi;
 

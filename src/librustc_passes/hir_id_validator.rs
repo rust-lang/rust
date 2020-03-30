@@ -1,5 +1,3 @@
-use rustc::hir::map::Map;
-use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
 use rustc_hir as hir;
@@ -7,6 +5,8 @@ use rustc_hir::def_id::{LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ItemLocalId};
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::TyCtxt;
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
     tcx.dep_graph.assert_ignored();

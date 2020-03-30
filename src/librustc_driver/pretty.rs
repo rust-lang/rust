@@ -1,13 +1,13 @@
 //! The various pretty-printing routines.
 
-use rustc::hir::map as hir_map;
-use rustc::ty::{self, TyCtxt};
-use rustc::util::common::ErrorReported;
 use rustc_ast::ast;
 use rustc_ast_pretty::pprust;
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir_pretty as pprust_hir;
+use rustc_middle::hir::map as hir_map;
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::util::common::ErrorReported;
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
 use rustc_session::config::{Input, PpMode, PpSourceMode};
 use rustc_session::Session;

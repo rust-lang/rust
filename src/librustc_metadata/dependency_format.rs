@@ -53,12 +53,12 @@
 
 use crate::creader::CStore;
 
-use rustc::middle::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
-use rustc::middle::cstore::{self, DepKind};
-use rustc::middle::dependency_format::{Dependencies, DependencyList, Linkage};
-use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::CrateNum;
+use rustc_middle::middle::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
+use rustc_middle::middle::cstore::{self, DepKind};
+use rustc_middle::middle::dependency_format::{Dependencies, DependencyList, Linkage};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::config;
 use rustc_target::spec::PanicStrategy;
 

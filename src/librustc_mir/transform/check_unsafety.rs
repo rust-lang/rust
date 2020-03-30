@@ -1,14 +1,14 @@
-use rustc::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::*;
-use rustc::ty::cast::CastTy;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit;
 use rustc_hir::Node;
+use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
+use rustc_middle::ty::cast::CastTy;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
 use rustc_span::symbol::{sym, Symbol};
 

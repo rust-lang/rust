@@ -4,16 +4,16 @@
 
 use std::convert::TryFrom;
 
-use rustc::mir::{
+use rustc_hir::def_id::DefId;
+use rustc_middle::mir::{
     self,
     interpret::{ConstValue, GlobalId, InterpResult, Scalar},
     BinOp,
 };
-use rustc::ty;
-use rustc::ty::layout::{LayoutOf, Primitive, Size};
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::TyCtxt;
-use rustc_hir::def_id::DefId;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{LayoutOf, Primitive, Size};
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
@@ -98,7 +98,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         // Keep the patterns in this match ordered the same as the list in
-        // `src/librustc/ty/constness.rs`
+        // `src/librustc_middle/ty/constness.rs`
         match intrinsic_name {
             sym::caller_location => {
                 let span = self.find_closest_untracked_caller_location().unwrap_or(span);

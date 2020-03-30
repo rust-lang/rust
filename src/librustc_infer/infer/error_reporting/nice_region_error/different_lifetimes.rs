@@ -5,7 +5,7 @@ use crate::infer::error_reporting::nice_region_error::util::AnonymousParamInfo;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::SubregionOrigin;
-use rustc::util::common::ErrorReported;
+use rustc_middle::util::common::ErrorReported;
 
 use rustc_errors::struct_span_err;
 

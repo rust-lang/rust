@@ -1,11 +1,11 @@
 use crate::infer::InferCtxt;
 use crate::opaque_types::required_region_bounds;
 use crate::traits::{self, AssocTypeBoundData};
-use rustc::middle::lang_items;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::middle::lang_items;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 

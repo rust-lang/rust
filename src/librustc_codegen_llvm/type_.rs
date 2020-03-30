@@ -1,20 +1,19 @@
 pub use crate::llvm::Type;
 
+use crate::abi::{FnAbiLlvmExt, LlvmType};
+use crate::common;
 use crate::context::CodegenCx;
 use crate::llvm;
 use crate::llvm::{Bool, False, True};
-use crate::value::Value;
-use rustc::bug;
-use rustc_codegen_ssa::traits::*;
-
-use crate::abi::{FnAbiLlvmExt, LlvmType};
-use crate::common;
 use crate::type_of::LayoutLlvmExt;
-use rustc::ty::layout::{self, Align, Size, TyAndLayout};
-use rustc::ty::Ty;
+use crate::value::Value;
 use rustc_ast::ast;
 use rustc_codegen_ssa::common::TypeKind;
+use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_middle::bug;
+use rustc_middle::ty::layout::{self, Align, Size, TyAndLayout};
+use rustc_middle::ty::Ty;
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 
 use std::fmt;

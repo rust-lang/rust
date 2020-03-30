@@ -1,5 +1,5 @@
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_errors::{struct_span_err, DiagnosticBuilder, DiagnosticId};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{MultiSpan, Span};
 
 impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {

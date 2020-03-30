@@ -6,6 +6,7 @@ use crate::dep_graph::{self, DepConstructor};
 use crate::hir::exports::Export;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
+use crate::lint::LintDiagnosticBuilder;
 use crate::lint::{struct_lint_level, LintSource};
 use crate::middle;
 use crate::middle::cstore::CrateStoreDyn;
@@ -38,7 +39,6 @@ use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, Pr
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
 use crate::util::common::ErrorReported;
-use rustc::lint::LintDiagnosticBuilder;
 use rustc_ast::ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::node_id::NodeMap;

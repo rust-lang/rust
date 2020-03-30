@@ -2,8 +2,8 @@
 //!
 //! See the `Qualif` trait for more info.
 
-use rustc::mir::*;
-use rustc::ty::{self, AdtDef, Ty};
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
 
 use super::Item as ConstCx;

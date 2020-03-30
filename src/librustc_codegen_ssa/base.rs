@@ -25,16 +25,6 @@ use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
 
-use rustc::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc::middle::cstore::EncodedMetadata;
-use rustc::middle::cstore::{self, LinkagePreference};
-use rustc::middle::lang_items;
-use rustc::middle::lang_items::StartFnLangItem;
-use rustc::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
-use rustc::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyAndLayout, VariantIdx};
-use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
-use rustc::ty::query::Providers;
-use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::print_time_passes_entry;
@@ -42,6 +32,16 @@ use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::Idx;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::cstore::EncodedMetadata;
+use rustc_middle::middle::cstore::{self, LinkagePreference};
+use rustc_middle::middle::lang_items;
+use rustc_middle::middle::lang_items::StartFnLangItem;
+use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
+use rustc_middle::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyAndLayout, VariantIdx};
+use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, EntryFnType, Lto};
 use rustc_session::Session;
@@ -557,7 +557,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // one instead. If nothing exists then it's our job to generate the
     // allocator!
     let any_dynamic_crate = tcx.dependency_formats(LOCAL_CRATE).iter().any(|(_, list)| {
-        use rustc::middle::dependency_format::Linkage;
+        use rustc_middle::middle::dependency_format::Linkage;
         list.iter().any(|&linkage| linkage == Linkage::Dynamic)
     });
     let allocator_module = if any_dynamic_crate {

@@ -1,7 +1,7 @@
-use rustc::mir::tcx::RvalueInitializationState;
-use rustc::mir::*;
-use rustc::ty::{self, TyCtxt};
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir::tcx::RvalueInitializationState;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, TyCtxt};
 use smallvec::{smallvec, SmallVec};
 
 use std::convert::TryInto;

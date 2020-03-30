@@ -1,5 +1,5 @@
-use rustc::ty;
 use rustc_ast::ast::{self, MetaItem};
+use rustc_middle::ty;
 use rustc_span::symbol::{sym, Symbol};
 
 pub(crate) use self::drop_flag_effects::*;

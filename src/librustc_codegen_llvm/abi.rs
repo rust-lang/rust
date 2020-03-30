@@ -5,19 +5,19 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 
-use rustc::bug;
-use rustc::ty::layout::{self};
-use rustc::ty::Ty;
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
+use rustc_middle::bug;
+use rustc_middle::ty::layout::{self};
+use rustc_middle::ty::Ty;
 use rustc_target::abi::call::ArgAbi;
 use rustc_target::abi::{HasDataLayout, LayoutOf};
 
 use libc::c_uint;
 
-pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
+pub use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 pub use rustc_target::abi::call::*;
 pub use rustc_target::spec::abi::Abi;
 

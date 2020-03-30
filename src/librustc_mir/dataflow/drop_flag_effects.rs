@@ -1,6 +1,6 @@
 use crate::util::elaborate_drops::DropFlagState;
-use rustc::mir::{self, Body, Location};
-use rustc::ty::{self, TyCtxt};
+use rustc_middle::mir::{self, Body, Location};
+use rustc_middle::ty::{self, TyCtxt};
 
 use super::indexes::MovePathIndex;
 use super::move_paths::{InitKind, LookupResult, MoveData};

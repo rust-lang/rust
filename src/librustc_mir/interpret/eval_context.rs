@@ -2,21 +2,21 @@ use std::cell::Cell;
 use std::fmt::Write;
 use std::mem;
 
-use rustc::ich::StableHashingContext;
-use rustc::mir;
-use rustc::mir::interpret::{
-    sign_extend, truncate, AllocId, FrameInfo, GlobalId, InterpResult, Pointer, Scalar,
-};
-use rustc::ty::layout::{self, Align, HasDataLayout, LayoutOf, Size, TyAndLayout};
-use rustc::ty::query::TyCtxtAt;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
+use rustc_middle::ich::StableHashingContext;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{
+    sign_extend, truncate, AllocId, FrameInfo, GlobalId, InterpResult, Pointer, Scalar,
+};
+use rustc_middle::ty::layout::{self, Align, HasDataLayout, LayoutOf, Size, TyAndLayout};
+use rustc_middle::ty::query::TyCtxtAt;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map::{self, Span, DUMMY_SP};
 
 use super::{
@@ -544,7 +544,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     trace!("push_stack_frame: {:?}: num_bbs: {}", span, body.basic_blocks().len());
                     for block in body.basic_blocks() {
                         for stmt in block.statements.iter() {
-                            use rustc::mir::StatementKind::{StorageDead, StorageLive};
+                            use rustc_middle::mir::StatementKind::{StorageDead, StorageLive};
                             match stmt.kind {
                                 StorageLive(local) | StorageDead(local) => {
                                     locals[local].value = LocalValue::Dead;

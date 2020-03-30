@@ -1,13 +1,13 @@
 use crate::util::patch::MirPatch;
-use rustc::middle::lang_items;
-use rustc::mir::*;
-use rustc::traits::Reveal;
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::util::IntTypeExt;
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
+use rustc_middle::middle::lang_items;
+use rustc_middle::mir::*;
+use rustc_middle::traits::Reveal;
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::util::IntTypeExt;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::fmt;
 
 use std::convert::TryInto;

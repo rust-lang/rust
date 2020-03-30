@@ -1,7 +1,7 @@
 // Namespace Handling.
 
 use super::utils::{debug_context, DIB};
-use rustc::ty::{self, Instance};
+use rustc_middle::ty::{self, Instance};
 
 use crate::common::CodegenCx;
 use crate::llvm;

@@ -6,18 +6,18 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::value::Value;
 
-use rustc::bug;
-use rustc::mir::mono::CodegenUnit;
-use rustc::ty::layout::{
-    HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyAndLayout, VariantIdx,
-};
-use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_middle::bug;
+use rustc_middle::mir::mono::CodegenUnit;
+use rustc_middle::ty::layout::{
+    HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyAndLayout, VariantIdx,
+};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::{self, CFGuard, DebugInfo};
 use rustc_session::Session;
 use rustc_span::source_map::{Span, DUMMY_SP};

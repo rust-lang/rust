@@ -1,8 +1,8 @@
-use rustc::mir::ConstraintCategory;
-use rustc::ty::relate::TypeRelation;
-use rustc::ty::{self, Ty};
 use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
 use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::ty::relate::TypeRelation;
+use rustc_middle::ty::{self, Ty};
 use rustc_trait_selection::traits::query::Fallible;
 use rustc_trait_selection::traits::DomainGoal;
 

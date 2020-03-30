@@ -1,12 +1,12 @@
 //! Error reporting machinery for lifetime errors.
 
-use rustc::mir::ConstraintCategory;
-use rustc::ty::{self, RegionVid, Ty};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_infer::infer::{
     error_reporting::nice_region_error::NiceRegionError,
     error_reporting::unexpected_hidden_region_diagnostic, NLLRegionVariableOrigin,
 };
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 

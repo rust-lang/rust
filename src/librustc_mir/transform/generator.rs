@@ -56,17 +56,17 @@ use crate::transform::simplify;
 use crate::transform::{MirPass, MirSource};
 use crate::util::dump_mir;
 use crate::util::liveness;
-use rustc::mir::visit::{MutVisitor, PlaceContext, Visitor};
-use rustc::mir::*;
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::GeneratorSubsts;
-use rustc::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitMatrix, BitSet};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::*;
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GeneratorSubsts;
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use std::borrow::Cow;
 use std::iter;
 
@@ -1079,7 +1079,7 @@ fn create_generator_resume_function<'tcx>(
 
     let mut cases = create_cases(body, &transform, Operation::Resume);
 
-    use rustc::mir::AssertKind::{ResumedAfterPanic, ResumedAfterReturn};
+    use rustc_middle::mir::AssertKind::{ResumedAfterPanic, ResumedAfterReturn};
 
     // Jump to the entry point on the unresumed
     cases.insert(0, (UNRESUMED, BasicBlock::new(0)));

@@ -1,7 +1,7 @@
 //! Routines for manipulating the control-flow graph.
 
 use crate::build::CFG;
-use rustc::mir::*;
+use rustc_middle::mir::*;
 
 impl<'tcx> CFG<'tcx> {
     crate fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {

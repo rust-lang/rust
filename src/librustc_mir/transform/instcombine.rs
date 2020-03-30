@@ -1,14 +1,14 @@
 //! Performs various peephole optimizations.
 
 use crate::transform::{MirPass, MirSource};
-use rustc::mir::visit::{MutVisitor, Visitor};
-use rustc::mir::{
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_index::vec::Idx;
+use rustc_middle::mir::visit::{MutVisitor, Visitor};
+use rustc_middle::mir::{
     read_only, Body, BodyAndCache, Constant, Local, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue,
 };
-use rustc::ty::{self, TyCtxt};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_index::vec::Idx;
+use rustc_middle::ty::{self, TyCtxt};
 use std::mem;
 
 pub struct InstCombine;

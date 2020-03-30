@@ -16,7 +16,6 @@
 
 extern crate env_logger;
 extern crate getopts;
-extern crate rustc;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
@@ -33,6 +32,7 @@ extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_metadata;
+extern crate rustc_middle;
 extern crate rustc_mir;
 extern crate rustc_parse;
 extern crate rustc_resolve;

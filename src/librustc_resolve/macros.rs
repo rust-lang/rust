@@ -6,8 +6,6 @@ use crate::Namespace::*;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy};
 use crate::{CrateLint, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
-use rustc::middle::stability;
-use rustc::{span_bug, ty};
 use rustc_ast::ast::{self, Ident, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, StabilityLevel};
@@ -19,6 +17,8 @@ use rustc_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationK
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id;
+use rustc_middle::middle::stability;
+use rustc_middle::{span_bug, ty};
 use rustc_session::lint::builtin::UNUSED_MACROS;
 use rustc_session::Session;
 use rustc_span::edition::Edition;

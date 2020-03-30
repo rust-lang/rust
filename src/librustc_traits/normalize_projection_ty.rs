@@ -1,9 +1,9 @@
-use rustc::ty::query::Providers;
-use rustc::ty::{ParamEnvAnd, TyCtxt};
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::TraitEngineExt as _;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::{

@@ -1,5 +1,3 @@
-use rustc::hir::map::Map;
-use rustc::util::common::ErrorReported;
 use rustc_ast::ast;
 use rustc_ast::with_globals;
 use rustc_data_structures::sync::Lrc;
@@ -7,6 +5,8 @@ use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_interface::interface;
+use rustc_middle::hir::map::Map;
+use rustc_middle::util::common::ErrorReported;
 use rustc_session::{self, config, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;

@@ -13,7 +13,7 @@ doctest = false
 graphviz = { path = "../libgraphviz" }
 log = "0.4"
 rand = "0.7"
-rustc = { path = "../librustc" }
+rustc_middle = { path = "../librustc_middle" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }

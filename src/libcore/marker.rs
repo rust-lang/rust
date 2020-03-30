@@ -759,7 +759,7 @@ impl<T: ?Sized> Unpin for *mut T {}
 /// Implementations of `Copy` for primitive types.
 ///
 /// Implementations that cannot be described in Rust
-/// are implemented in `SelectionContext::copy_clone_conditions()` in librustc.
+/// are implemented in `SelectionContext::copy_clone_conditions()` in librustc_middle.
 mod copy_impls {
 
     use super::Copy;

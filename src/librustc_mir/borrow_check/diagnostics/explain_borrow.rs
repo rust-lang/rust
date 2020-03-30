@@ -2,16 +2,16 @@
 
 use std::collections::VecDeque;
 
-use rustc::mir::{
-    Body, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place, Rvalue,
-    Statement, StatementKind, TerminatorKind,
-};
-use rustc::ty::adjustment::PointerCast;
-use rustc::ty::{self, RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::NLLRegionVariableOrigin;
+use rustc_middle::mir::{
+    Body, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place, Rvalue,
+    Statement, StatementKind, TerminatorKind,
+};
+use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 

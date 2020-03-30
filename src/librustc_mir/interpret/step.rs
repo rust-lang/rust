@@ -2,9 +2,9 @@
 //!
 //! The main entry point is the `step` method.
 
-use rustc::mir;
-use rustc::mir::interpret::{InterpResult, Scalar};
-use rustc::ty::layout::LayoutOf;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{InterpResult, Scalar};
+use rustc_middle::ty::layout::LayoutOf;
 
 use super::{InterpCx, Machine};
 
@@ -12,7 +12,7 @@ use super::{InterpCx, Machine};
 /// same type as the result.
 #[inline]
 fn binop_left_homogeneous(op: mir::BinOp) -> bool {
-    use rustc::mir::BinOp::*;
+    use rustc_middle::mir::BinOp::*;
     match op {
         Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Offset | Shl | Shr => true,
         Eq | Ne | Lt | Le | Gt | Ge => false,
@@ -22,7 +22,7 @@ fn binop_left_homogeneous(op: mir::BinOp) -> bool {
 /// same type as the LHS.
 #[inline]
 fn binop_right_homogeneous(op: mir::BinOp) -> bool {
-    use rustc::mir::BinOp::*;
+    use rustc_middle::mir::BinOp::*;
     match op {
         Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Eq | Ne | Lt | Le | Gt | Ge => true,
         Offset | Shl | Shr => false,
@@ -79,7 +79,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
 
-        use rustc::mir::StatementKind::*;
+        use rustc_middle::mir::StatementKind::*;
 
         // Some statements (e.g., box) push new stack frames.
         // We have to record the stack frame number *before* executing the statement.
@@ -142,7 +142,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         let dest = self.eval_place(place)?;
 
-        use rustc::mir::Rvalue::*;
+        use rustc_middle::mir::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
                 // Avoid recomputing the layout

@@ -1238,7 +1238,7 @@ pub type Region<'tcx> = &'tcx RegionKind;
 ///
 /// The scope regions are related to one another based on the AST
 /// structure. (See `RegionRelations` type, and particularly the
-/// `rustc::middle::region::ScopeTree`.)
+/// `rustc_middle::middle::region::ScopeTree`.)
 ///
 /// Note that inference variables and bound regions are not included
 /// in this diagram. In the case of inference variables, they should

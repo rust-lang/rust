@@ -28,11 +28,11 @@
 //! return.
 
 use crate::transform::{MirPass, MirSource};
-use rustc::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::*;
-use rustc::ty::{self, TyCtxt};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, TyCtxt};
 use std::borrow::Cow;
 
 pub struct SimplifyCfg {

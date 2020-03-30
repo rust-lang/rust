@@ -1,14 +1,14 @@
 use std::convert::TryFrom;
 
-use rustc::mir;
-use rustc::mir::interpret::{InterpResult, Scalar};
-use rustc::ty::{
+use rustc_apfloat::Float;
+use rustc_ast::ast::FloatTy;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{InterpResult, Scalar};
+use rustc_middle::ty::{
     self,
     layout::{LayoutOf, TyAndLayout},
     Ty,
 };
-use rustc_apfloat::Float;
-use rustc_ast::ast::FloatTy;
 
 use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
 
@@ -55,7 +55,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         l: char,
         r: char,
     ) -> (Scalar<M::PointerTag>, bool, Ty<'tcx>) {
-        use rustc::mir::BinOp::*;
+        use rustc_middle::mir::BinOp::*;
 
         let res = match bin_op {
             Eq => l == r,
@@ -75,7 +75,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         l: bool,
         r: bool,
     ) -> (Scalar<M::PointerTag>, bool, Ty<'tcx>) {
-        use rustc::mir::BinOp::*;
+        use rustc_middle::mir::BinOp::*;
 
         let res = match bin_op {
             Eq => l == r,
@@ -99,7 +99,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         l: F,
         r: F,
     ) -> (Scalar<M::PointerTag>, bool, Ty<'tcx>) {
-        use rustc::mir::BinOp::*;
+        use rustc_middle::mir::BinOp::*;
 
         let (val, ty) = match bin_op {
             Eq => (Scalar::from_bool(l == r), self.tcx.types.bool),
@@ -127,7 +127,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         r: u128,
         right_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
-        use rustc::mir::BinOp::*;
+        use rustc_middle::mir::BinOp::*;
 
         // Shift ops can have an RHS with a different numeric type.
         if bin_op == Shl || bin_op == Shr {
@@ -362,7 +362,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         un_op: mir::UnOp,
         val: ImmTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
-        use rustc::mir::UnOp::*;
+        use rustc_middle::mir::UnOp::*;
 
         let layout = val.layout;
         let val = val.to_scalar()?;

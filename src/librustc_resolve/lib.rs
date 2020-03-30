@@ -16,11 +16,6 @@ pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
 
-use rustc::hir::exports::ExportMap;
-use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};
-use rustc::span_bug;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, DefIdTree, ResolverOutputs};
 use rustc_ast::ast::{self, FloatTy, Ident, IntTy, Name, NodeId, UintTy};
 use rustc_ast::ast::{Crate, CRATE_NODE_ID};
 use rustc_ast::ast::{ItemKind, Path};
@@ -41,6 +36,11 @@ use rustc_hir::definitions::{DefKey, Definitions};
 use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
 use rustc_hir::{GlobMap, TraitMap};
 use rustc_metadata::creader::{CStore, CrateLoader};
+use rustc_middle::hir::exports::ExportMap;
+use rustc_middle::middle::cstore::{CrateStore, MetadataLoaderDyn};
+use rustc_middle::span_bug;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, DefIdTree, ResolverOutputs};
 use rustc_session::lint;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;

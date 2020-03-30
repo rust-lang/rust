@@ -1,6 +1,6 @@
-use rustc::mir::visit::PlaceContext;
-use rustc::mir::visit::Visitor;
-use rustc::mir::{Body, Local, Location};
+use rustc_middle::mir::visit::PlaceContext;
+use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::{Body, Local, Location};
 
 crate trait FindAssignments {
     // Finds all statements that assign directly to local (i.e., X = ...)

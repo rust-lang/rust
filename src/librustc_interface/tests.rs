@@ -2,9 +2,9 @@ extern crate getopts;
 
 use crate::interface::parse_cfgspecs;
 
-use rustc::middle::cstore;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
+use rustc_middle::middle::cstore;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
 use rustc_session::config::{ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};

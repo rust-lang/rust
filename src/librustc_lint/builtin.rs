@@ -1,9 +1,8 @@
 //! Lints in the Rust compiler.
 //!
 //! This contains lints which can feasibly be implemented as their own
-//! AST visitor. Also see `rustc::lint::builtin`, which contains the
-//! definitions of lints that are emitted directly inside the main
-//! compiler.
+//! AST visitor. Also see `rustc_session::lint::builtin`, which contains the
+//! definitions of lints that are emitted directly inside the main compiler.
 //!
 //! To add a new lint to rustc, declare it here using `declare_lint!()`.
 //! Then add code to emit the new lint in the appropriate circumstances.
@@ -11,7 +10,7 @@
 //! new `LintPass`, or using `Session::add_lint` elsewhere in the
 //! compiler. Only do the latter if the check can't be written cleanly as a
 //! `LintPass` (also, note that such lints will need to be defined in
-//! `rustc::lint::builtin`, not here).
+//! `rustc_session::lint::builtin`, not here).
 //!
 //! If you define a new `EarlyLintPass`, you will also need to add it to the
 //! `add_early_builtin!` or `add_early_builtin_with_new!` invocation in
@@ -22,8 +21,6 @@
 //! `late_lint_methods!` invocation in `lib.rs`.
 
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc::lint::LintDiagnosticBuilder;
-use rustc::ty::{self, layout::VariantIdx, Ty, TyCtxt};
 use rustc_ast::ast::{self, Expr};
 use rustc_ast::attr::{self, HasAttrs};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
@@ -38,6 +35,8 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{GenericParamKind, PatKind};
 use rustc_hir::{HirIdSet, Node};
+use rustc_middle::lint::LintDiagnosticBuilder;
+use rustc_middle::ty::{self, layout::VariantIdx, Ty, TyCtxt};
 use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
@@ -50,7 +49,7 @@ use crate::nonstandard_style::{method_context, MethodLateContext};
 use log::debug;
 use std::fmt::Write;
 
-// hardwired lints from librustc
+// hardwired lints from librustc_middle
 pub use rustc_session::lint::builtin::*;
 
 declare_lint! {
@@ -1207,8 +1206,8 @@ declare_lint_pass!(
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'tcx>) {
-        use rustc::ty::fold::TypeFoldable;
-        use rustc::ty::Predicate::*;
+        use rustc_middle::ty::fold::TypeFoldable;
+        use rustc_middle::ty::Predicate::*;
 
         if cx.tcx.features().trivial_bounds {
             let def_id = cx.tcx.hir().local_def_id(item.hir_id);
@@ -1558,7 +1557,7 @@ impl ExplicitOutlivesRequirements {
         inferred_outlives: &[ty::Region<'tcx>],
         infer_static: bool,
     ) -> Vec<(usize, Span)> {
-        use rustc::middle::resolve_lifetime::Region;
+        use rustc_middle::middle::resolve_lifetime::Region;
 
         bounds
             .iter()
@@ -1641,7 +1640,7 @@ impl ExplicitOutlivesRequirements {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
-        use rustc::middle::resolve_lifetime::Region;
+        use rustc_middle::middle::resolve_lifetime::Region;
 
         let infer_static = cx.tcx.features().infer_static_outlives_requirements;
         let def_id = cx.tcx.hir().local_def_id(item.hir_id);
@@ -1926,7 +1925,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             ty: Ty<'tcx>,
             init: InitKind,
         ) -> Option<InitError> {
-            use rustc::ty::TyKind::*;
+            use rustc_middle::ty::TyKind::*;
             match ty.kind {
                 // Primitive types that don't like 0 as a value.
                 Ref(..) => Some(("references must be non-null".to_string(), None)),

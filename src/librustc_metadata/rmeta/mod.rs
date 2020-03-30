@@ -1,12 +1,6 @@
 use decoder::Metadata;
 use table::{Table, TableBuilder};
 
-use rustc::hir::exports::Export;
-use rustc::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLibrary};
-use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
-use rustc::middle::lang_items;
-use rustc::mir;
-use rustc::ty::{self, ReprOptions, Ty};
 use rustc_ast::ast::{self, MacroDef};
 use rustc_attr as attr;
 use rustc_data_structures::svh::Svh;
@@ -15,6 +9,12 @@ use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_index::vec::IndexVec;
+use rustc_middle::hir::exports::Export;
+use rustc_middle::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLibrary};
+use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
+use rustc_middle::middle::lang_items;
+use rustc_middle::mir;
+use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_session::CrateDisambiguator;

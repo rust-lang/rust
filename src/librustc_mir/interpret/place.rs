@@ -5,13 +5,13 @@
 use std::convert::TryFrom;
 use std::hash::Hash;
 
-use rustc::mir;
-use rustc::mir::interpret::truncate;
-use rustc::ty::layout::{
+use rustc_macros::HashStable;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::truncate;
+use rustc_middle::ty::layout::{
     self, Align, HasDataLayout, LayoutOf, PrimitiveExt, Size, TyAndLayout, VariantIdx,
 };
-use rustc::ty::{self, Ty};
-use rustc_macros::HashStable;
+use rustc_middle::ty::{self, Ty};
 
 use super::{
     AllocId, AllocMap, Allocation, AllocationExtra, ImmTy, Immediate, InterpCx, InterpResult,
@@ -529,7 +529,7 @@ where
         base: MPlaceTy<'tcx, M::PointerTag>,
         proj_elem: &mir::PlaceElem<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        use rustc::mir::ProjectionElem::*;
+        use rustc_middle::mir::ProjectionElem::*;
         Ok(match *proj_elem {
             Field(field, _) => self.mplace_field(base, field.index())?,
             Downcast(_, variant) => self.mplace_downcast(base, variant)?,
@@ -617,7 +617,7 @@ where
         base: PlaceTy<'tcx, M::PointerTag>,
         proj_elem: &mir::ProjectionElem<mir::Local, Ty<'tcx>>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
-        use rustc::mir::ProjectionElem::*;
+        use rustc_middle::mir::ProjectionElem::*;
         Ok(match *proj_elem {
             Field(field, _) => self.place_field(base, field.index())?,
             Downcast(_, variant) => self.place_downcast(base, variant)?,

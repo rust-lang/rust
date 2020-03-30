@@ -1,10 +1,10 @@
-use rustc::mir::visit::Visitor;
-use rustc::mir::TerminatorKind;
-use rustc::mir::{BasicBlock, Body, Location, Place, ReadOnlyBodyAndCache, Rvalue};
-use rustc::mir::{BorrowKind, Mutability, Operand};
-use rustc::mir::{Statement, StatementKind};
-use rustc::ty::TyCtxt;
 use rustc_data_structures::graph::dominators::Dominators;
+use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::TerminatorKind;
+use rustc_middle::mir::{BasicBlock, Body, Location, Place, ReadOnlyBodyAndCache, Rvalue};
+use rustc_middle::mir::{BorrowKind, Mutability, Operand};
+use rustc_middle::mir::{Statement, StatementKind};
+use rustc_middle::ty::TyCtxt;
 
 use crate::dataflow::indexes::BorrowIndex;
 
@@ -153,7 +153,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             }
             TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
                 self.consume_operand(location, cond);
-                use rustc::mir::AssertKind;
+                use rustc_middle::mir::AssertKind;
                 if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
                     self.consume_operand(location, len);
                     self.consume_operand(location, index);

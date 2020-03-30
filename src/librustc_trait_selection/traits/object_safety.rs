@@ -13,11 +13,11 @@ use super::elaborate_predicates;
 use crate::infer::TyCtxtInferExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_errors::{Applicability, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -420,7 +420,7 @@ fn virtual_call_violation_for_method<'tcx>(
         } else {
             // Do sanity check to make sure the receiver actually has the layout of a pointer.
 
-            use rustc::ty::layout::Abi;
+            use rustc_middle::ty::layout::Abi;
 
             let param_env = tcx.param_env(method.def_id);
 

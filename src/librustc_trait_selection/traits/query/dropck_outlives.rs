@@ -2,10 +2,10 @@ use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferOk;
 
-use rustc::ty::subst::GenericArg;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::subst::GenericArg;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
-pub use rustc::traits::query::{DropckOutlivesResult, DtorckConstraint};
+pub use rustc_middle::traits::query::{DropckOutlivesResult, DtorckConstraint};
 
 pub trait AtExt<'tcx> {
     fn dropck_outlives(&self, ty: Ty<'tcx>) -> InferOk<'tcx, Vec<GenericArg<'tcx>>>;

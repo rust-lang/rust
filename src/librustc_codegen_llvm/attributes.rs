@@ -2,15 +2,15 @@
 
 use std::ffi::CString;
 
-use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc::ty::layout::HasTyCtxt;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::{OptLevel, Sanitizer};
 use rustc_session::Session;
 use rustc_target::abi::call::Conv;

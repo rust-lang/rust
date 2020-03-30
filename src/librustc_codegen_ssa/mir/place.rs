@@ -6,10 +6,10 @@ use crate::glue;
 use crate::traits::*;
 use crate::MemFlags;
 
-use rustc::mir;
-use rustc::mir::tcx::PlaceTy;
-use rustc::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyAndLayout, VariantIdx};
-use rustc::ty::{self, Ty};
+use rustc_middle::mir;
+use rustc_middle::mir::tcx::PlaceTy;
+use rustc_middle::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyAndLayout, VariantIdx};
+use rustc_middle::ty::{self, Ty};
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceRef<'tcx, V> {

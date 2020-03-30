@@ -11,8 +11,8 @@
 
 use crate::transform::{simplify, MirPass, MirSource};
 use itertools::Itertools as _;
-use rustc::mir::*;
-use rustc::ty::{Ty, TyCtxt};
+use rustc_middle::mir::*;
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
 /// Simplifies arms of form `Variant(x) => Variant(x)` to just a move.

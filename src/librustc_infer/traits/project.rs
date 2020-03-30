@@ -2,11 +2,11 @@
 
 use super::PredicateObligation;
 
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::{self, Ty};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::{self, Ty};
 
-pub use rustc::traits::Reveal;
+pub use rustc_middle::traits::Reveal;
 
 #[derive(Clone)]
 pub struct MismatchedProjectionTypes<'tcx> {

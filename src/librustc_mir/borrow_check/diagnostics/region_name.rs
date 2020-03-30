@@ -1,11 +1,11 @@
 use std::fmt::{self, Display};
 
-use rustc::ty::print::RegionHighlightMode;
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc::ty::{self, RegionVid, Ty};
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_middle::ty::print::RegionHighlightMode;
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_span::symbol::kw;
 use rustc_span::{symbol::Symbol, Span, DUMMY_SP};
 

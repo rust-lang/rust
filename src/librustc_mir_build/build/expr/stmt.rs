@@ -1,8 +1,8 @@
 use crate::build::scope::BreakableTarget;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
-use rustc::middle::region;
-use rustc::mir::*;
+use rustc_middle::middle::region;
+use rustc_middle::mir::*;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Builds a block of MIR statements to evaluate the HAIR `expr`.

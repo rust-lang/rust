@@ -5,14 +5,16 @@ use super::{
 use crate::infer::InferCtxt;
 use crate::traits::error_reporting::suggest_constraining_type_param;
 
-use rustc::ty::TypeckTables;
-use rustc::ty::{self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
+use rustc_middle::ty::TypeckTables;
+use rustc_middle::ty::{
+    self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;

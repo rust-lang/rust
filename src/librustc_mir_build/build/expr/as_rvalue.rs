@@ -5,10 +5,10 @@ use rustc_index::vec::Idx;
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
-use rustc::middle::region;
-use rustc::mir::AssertKind;
-use rustc::mir::*;
-use rustc::ty::{self, Ty, UpvarSubsts};
+use rustc_middle::middle::region;
+use rustc_middle::mir::AssertKind;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

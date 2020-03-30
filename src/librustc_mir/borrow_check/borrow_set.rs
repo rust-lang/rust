@@ -3,13 +3,13 @@ use crate::borrow_check::path_utils::allow_two_phase_borrow;
 use crate::borrow_check::place_ext::PlaceExt;
 use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::MoveData;
-use rustc::mir::traversal;
-use rustc::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
-use rustc::mir::{self, Body, Local, Location, ReadOnlyBodyAndCache};
-use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir::traversal;
+use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::{self, Body, Local, Location, ReadOnlyBodyAndCache};
+use rustc_middle::ty::{RegionVid, TyCtxt};
 use std::fmt;
 use std::ops::Index;
 

@@ -1,6 +1,6 @@
-use rustc::ty::query::Providers;
-use rustc::ty::{ParamEnvAnd, TyCtxt};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_trait_selection::traits::query::CanonicalPredicateGoal;
 use rustc_trait_selection::traits::{

@@ -11,9 +11,9 @@ use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::ptr;
 
-use rustc::ty::layout::{Align, HasDataLayout, Size, TargetDataLayout};
-use rustc::ty::{self, query::TyCtxtAt, Instance, ParamEnv};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_middle::ty::layout::{Align, HasDataLayout, Size, TargetDataLayout};
+use rustc_middle::ty::{self, query::TyCtxtAt, Instance, ParamEnv};
 
 use rustc_ast::ast::Mutability;
 

@@ -3,9 +3,9 @@
 use crate::infer::InferCtxtExt as _;
 use crate::traits::{self, ObligationCause};
 
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use crate::traits::error_reporting::InferCtxtExt;
 

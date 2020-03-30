@@ -1,6 +1,4 @@
 use crate::check::FnCtxt;
-use rustc::ty::subst::GenericArg;
-use rustc::ty::{self, BindingMode, Ty, TypeFoldable};
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
@@ -11,6 +9,8 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_middle::ty::subst::GenericArg;
+use rustc_middle::ty::{self, BindingMode, Ty, TypeFoldable};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_trait_selection::traits::{ObligationCause, Pattern};

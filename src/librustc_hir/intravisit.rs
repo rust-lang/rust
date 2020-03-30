@@ -119,7 +119,7 @@ impl<'a> FnKind<'a> {
     }
 }
 
-/// An abstract representation of the HIR `rustc::hir::map::Map`.
+/// An abstract representation of the HIR `rustc_middle::hir::map::Map`.
 pub trait Map<'hir> {
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
     fn find(&self, hir_id: HirId) -> Option<Node<'hir>>;

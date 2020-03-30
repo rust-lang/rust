@@ -1,5 +1,5 @@
 //! This module contains `HashStable` implementations for various data types
-//! from rustc::ty in no particular order.
+//! from `rustc_middle::ty` in no particular order.
 
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::middle::region;

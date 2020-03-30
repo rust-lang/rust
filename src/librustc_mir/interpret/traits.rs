@@ -1,8 +1,8 @@
 use std::convert::TryFrom;
 
-use rustc::mir::interpret::{InterpResult, Pointer, PointerArithmetic, Scalar};
-use rustc::ty::layout::{Align, HasDataLayout, LayoutOf, Size};
-use rustc::ty::{self, Instance, Ty, TypeFoldable};
+use rustc_middle::mir::interpret::{InterpResult, Pointer, PointerArithmetic, Scalar};
+use rustc_middle::ty::layout::{Align, HasDataLayout, LayoutOf, Size};
+use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 
 use super::{FnVal, InterpCx, Machine, MemoryKind};
 

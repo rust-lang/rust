@@ -1,5 +1,5 @@
-use rustc::mir::{self, BasicBlock, Location};
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Results};
 use crate::dataflow::impls::{borrows::Borrows, EverInitializedPlaces, MaybeUninitializedPlaces};

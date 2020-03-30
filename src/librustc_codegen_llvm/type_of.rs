@@ -2,11 +2,11 @@ use crate::abi::FnAbi;
 use crate::common::*;
 use crate::type_::Type;
 use log::debug;
-use rustc::bug;
-use rustc::ty::layout::{self, Align, FnAbiExt, LayoutOf, PointeeInfo, Size, TyAndLayout};
-use rustc::ty::print::obsolete::DefPathBasedNames;
-use rustc::ty::{self, Ty, TypeFoldable};
 use rustc_codegen_ssa::traits::*;
+use rustc_middle::bug;
+use rustc_middle::ty::layout::{self, Align, FnAbiExt, LayoutOf, PointeeInfo, Size, TyAndLayout};
+use rustc_middle::ty::print::obsolete::DefPathBasedNames;
+use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_target::abi::TyAndLayoutMethods;
 
 use std::fmt::Write;
@@ -221,7 +221,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         }
     }
 
-    /// Gets the LLVM type corresponding to a Rust type, i.e., `rustc::ty::Ty`.
+    /// Gets the LLVM type corresponding to a Rust type, i.e., `rustc_middle::ty::Ty`.
     /// The pointee type of the pointer in `PlaceRef` is always this type.
     /// For sized types, it is also the right LLVM type for an `alloca`
     /// containing a value of that type, and most immediates (except `bool`).

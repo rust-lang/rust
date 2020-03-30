@@ -9,12 +9,6 @@ mod simplify;
 pub mod types;
 pub mod utils;
 
-use rustc::middle::lang_items;
-use rustc::middle::resolve_lifetime as rl;
-use rustc::middle::stability;
-use rustc::ty::fold::TypeFolder;
-use rustc::ty::subst::InternalSubsts;
-use rustc::ty::{self, AdtKind, Lift, Ty, TyCtxt};
 use rustc_ast::ast::{self, Ident};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -23,6 +17,12 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
+use rustc_middle::middle::lang_items;
+use rustc_middle::middle::resolve_lifetime as rl;
+use rustc_middle::middle::stability;
+use rustc_middle::ty::fold::TypeFolder;
+use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::{self, AdtKind, Lift, Ty, TyCtxt};
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym};
@@ -480,7 +480,7 @@ impl Clean<WherePredicate> for hir::WherePredicate<'_> {
 
 impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
-        use rustc::ty::Predicate;
+        use rustc_middle::ty::Predicate;
 
         match *self {
             Predicate::Trait(ref pred, _) => Some(pred.clean(cx)),
@@ -2186,7 +2186,7 @@ impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
                 cx,
                 res,
                 self.name,
-                Some(rustc::ty::Attributes::Borrowed(self.attrs)),
+                Some(rustc_middle::ty::Attributes::Borrowed(self.attrs)),
                 &mut visited,
             ) {
                 return items;
@@ -2256,7 +2256,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                     cx,
                     path.res,
                     name,
-                    Some(rustc::ty::Attributes::Borrowed(self.attrs)),
+                    Some(rustc_middle::ty::Attributes::Borrowed(self.attrs)),
                     &mut visited,
                 ) {
                     return items;

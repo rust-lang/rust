@@ -2,10 +2,10 @@ use super::{
     ObligationCauseCode, OnUnimplementedDirective, OnUnimplementedNote, PredicateObligation,
 };
 use crate::infer::InferCtxt;
-use rustc::ty::subst::Subst;
-use rustc::ty::{self, GenericParamDefKind};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::{self, GenericParamDefKind};
 use rustc_span::symbol::sym;
 
 use super::InferCtxtPrivExt;

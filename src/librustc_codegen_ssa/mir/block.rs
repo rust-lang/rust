@@ -9,12 +9,12 @@ use crate::meth;
 use crate::traits::*;
 use crate::MemFlags;
 
-use rustc::middle::lang_items;
-use rustc::mir;
-use rustc::mir::AssertKind;
-use rustc::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf};
-use rustc::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_index::vec::Idx;
+use rustc_middle::middle::lang_items;
+use rustc_middle::mir;
+use rustc_middle::mir::AssertKind;
+use rustc_middle::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf};
+use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_span::{source_map::Span, symbol::Symbol};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::abi::Abi;

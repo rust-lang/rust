@@ -17,12 +17,6 @@ use crate::check::TupleArgumentsFlag::DontTupleArguments;
 use crate::type_error_struct;
 use crate::util::common::ErrorReported;
 
-use rustc::middle::lang_items;
-use rustc::ty;
-use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
-use rustc::ty::Ty;
-use rustc::ty::TypeFoldable;
-use rustc::ty::{AdtKind, Visibility};
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
@@ -33,6 +27,14 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_middle::middle::lang_items;
+use rustc_middle::ty;
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
+};
+use rustc_middle::ty::Ty;
+use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::{AdtKind, Visibility};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};

@@ -55,19 +55,19 @@ use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
 
-use rustc::middle::region;
-use rustc::ty::error::TypeError;
-use rustc::ty::{
-    self,
-    subst::{Subst, SubstsRef},
-    Region, Ty, TyCtxt, TypeFoldable,
-};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
+use rustc_middle::middle::region;
+use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::{
+    self,
+    subst::{Subst, SubstsRef},
+    Region, Ty, TyCtxt, TypeFoldable,
+};
 use rustc_span::{DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::{cmp, fmt};

@@ -2,9 +2,9 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::ObligationCause;
 use crate::traits::{self, ConstPatternStructural, TraitEngine};
 
-use rustc::ty::{self, AdtDef, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_span::Span;
 
 #[derive(Debug)]

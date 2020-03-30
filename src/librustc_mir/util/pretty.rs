@@ -1,13 +1,15 @@
 use super::graphviz::write_mir_fn_graphviz;
 use crate::transform::MirSource;
 use either::Either;
-use rustc::mir::interpret::{read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc};
-use rustc::mir::visit::Visitor;
-use rustc::mir::*;
-use rustc::ty::{self, layout::Size, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::Idx;
+use rustc_middle::mir::interpret::{
+    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc,
+};
+use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, layout::Size, TyCtxt, TypeFoldable, TypeVisitor};
 use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::fmt::Write as _;

@@ -13,9 +13,6 @@
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 
-use rustc::dep_graph::{label_strs, DepNode, DepNodeExt};
-use rustc::hir::map::Map;
-use rustc::ty::TyCtxt;
 use rustc_ast::ast::{self, Attribute, NestedMetaItem};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
@@ -25,6 +22,9 @@ use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Node as HirNode;
 use rustc_hir::{ImplItemKind, ItemKind as HirItem, TraitItemKind};
+use rustc_middle::dep_graph::{label_strs, DepNode, DepNodeExt};
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::iter::FromIterator;
@@ -306,7 +306,7 @@ impl DirtyCleanVisitor<'tcx> {
                     // michaelwoerister and vitiral came up with a possible solution,
                     // to just do this before every query
                     // ```
-                    // ::rustc::ty::query::plumbing::force_from_dep_node(tcx, dep_node)
+                    // ::rustc_middle::ty::query::plumbing::force_from_dep_node(tcx, dep_node)
                     // ```
                     //
                     // However, this did not seem to work effectively and more bugs were hit.

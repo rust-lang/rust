@@ -42,7 +42,7 @@ pub use self::type_::{
 };
 pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
 
-use rustc::ty::layout::{HasParamEnv, HasTyCtxt};
+use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt};
 use rustc_target::spec::HasTargetSpec;
 
 use std::fmt;

@@ -1,14 +1,14 @@
-use rustc::mir;
-use rustc::ty::layout::HasTyCtxt;
-use rustc::ty::{self, Ty};
+use rustc_middle::mir;
+use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::{self, Ty};
 use std::borrow::{Borrow, Cow};
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;
 
-use rustc::mir::AssertMessage;
 use rustc_ast::ast::Mutability;
+use rustc_middle::mir::AssertMessage;
 use rustc_span::symbol::Symbol;
 use rustc_span::{def_id::DefId, Span};
 
@@ -267,7 +267,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
         msg: &AssertMessage<'tcx>,
         _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        use rustc::mir::AssertKind::*;
+        use rustc_middle::mir::AssertKind::*;
         // Convert `AssertKind<Operand>` to `AssertKind<u64>`.
         let err = match msg {
             BoundsCheck { ref len, ref index } => {

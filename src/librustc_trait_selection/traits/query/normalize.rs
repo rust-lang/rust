@@ -7,14 +7,14 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
-use rustc::ty::fold::{TypeFoldable, TypeFolder};
-use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_infer::traits::Normalized;
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 use super::NoSolution;
 
-pub use rustc::traits::query::NormalizationResult;
+pub use rustc_middle::traits::query::NormalizationResult;
 
 pub trait AtExt<'tcx> {
     fn normalize<T>(&self, value: &T) -> Result<Normalized<'tcx, T>, NoSolution>

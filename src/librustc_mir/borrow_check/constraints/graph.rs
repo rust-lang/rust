@@ -1,7 +1,7 @@
-use rustc::mir::ConstraintCategory;
-use rustc::ty::RegionVid;
 use rustc_data_structures::graph;
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::ty::RegionVid;
 use rustc_span::DUMMY_SP;
 
 use crate::borrow_check::{

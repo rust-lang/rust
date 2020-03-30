@@ -19,16 +19,6 @@ use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::constrained_generic_params as cgp;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime as rl;
-use rustc::hir::map::blocks::FnLikeNode;
-use rustc::hir::map::Map;
-use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
-use rustc::mir::mono::Linkage;
-use rustc::ty::query::Providers;
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::util::Discr;
-use rustc::ty::util::IntTypeExt;
-use rustc::ty::{self, AdtKind, Const, ToPolyTraitRef, Ty, TyCtxt};
-use rustc::ty::{ReprOptions, ToPredicate, WithConstness};
 use rustc_ast::ast;
 use rustc_ast::ast::{Ident, MetaItemKind};
 use rustc_attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
@@ -40,6 +30,16 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{GenericParamKind, Node, Unsafety};
+use rustc_middle::hir::map::blocks::FnLikeNode;
+use rustc_middle::hir::map::Map;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::mir::mono::Linkage;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::util::Discr;
+use rustc_middle::ty::util::IntTypeExt;
+use rustc_middle::ty::{self, AdtKind, Const, ToPolyTraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -2301,7 +2301,7 @@ fn from_target_feature(
 }
 
 fn linkage_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str) -> Linkage {
-    use rustc::mir::mono::Linkage::*;
+    use rustc_middle::mir::mono::Linkage::*;
 
     // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
     // applicable to variable declarations and may not really make sense for

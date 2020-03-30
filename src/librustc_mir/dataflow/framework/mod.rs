@@ -32,12 +32,12 @@
 
 use std::io;
 
-use rustc::mir::{self, BasicBlock, Location};
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::{self, TyCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::{self, BasicBlock, Location};
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::{self, TyCtxt};
 
 mod cursor;
 mod engine;

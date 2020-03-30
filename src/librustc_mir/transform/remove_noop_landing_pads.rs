@@ -1,8 +1,8 @@
 use crate::transform::{MirPass, MirSource};
 use crate::util::patch::MirPatch;
-use rustc::mir::*;
-use rustc::ty::TyCtxt;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::*;
+use rustc_middle::ty::TyCtxt;
 
 /// A pass that removes noop landing pads and replaces jumps to them with
 /// `None`. This is important because otherwise LLVM generates terrible

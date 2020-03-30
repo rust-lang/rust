@@ -1,10 +1,10 @@
-use rustc::ty::TyCtxt;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
 use rustc_span::Span;
 
