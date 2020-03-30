@@ -83,11 +83,24 @@ fn vec_extend_ptr_stable() {
     let mut v = Vec::with_capacity(10);
     v.push(0);
     let v0 = unsafe { &*(&v[0] as *const _) }; // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
+    // `slice::Iter` (with `T: Copy`) specialization
     v.extend(&[1]);
     let _val = *v0;
+    // `vec::IntoIter` specialization
     v.extend(vec![2]);
     let _val = *v0;
+    // `TrustedLen` specialization
     v.extend(std::iter::once(3));
+    let _val = *v0;
+    // base case
+    v.extend(std::iter::once(3).filter(|_| true));
+    let _val = *v0;
+}
+
+fn vec_truncate_ptr_stable() {
+    let mut v = vec![0; 10];
+    let v0 = unsafe { &*(&v[0] as *const _) }; // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
+    v.truncate(5);
     let _val = *v0;
 }
 
@@ -112,4 +125,5 @@ fn main() {
 
     vec_push_ptr_stable();
     vec_extend_ptr_stable();
+    vec_truncate_ptr_stable();
 }
