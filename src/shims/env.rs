@@ -165,8 +165,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         // Allocate environment block & Store environment variables to environment block.
         // Final null terminator(block terminator) is added by `alloc_os_str_to_wide_str`.
-        // FIXME: MemoryKind should be `Env`, blocked on https://github.com/rust-lang/rust/pull/70479.
-        let envblock_ptr = this.alloc_os_str_as_wide_str(&env_vars, MiriMemoryKind::WinHeap.into());
+        let envblock_ptr = this.alloc_os_str_as_wide_str(&env_vars, MiriMemoryKind::Env.into());
         // If the function succeeds, the return value is a pointer to the environment block of the current process.
         Ok(envblock_ptr.into())
     }
@@ -177,8 +176,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.assert_target_os("windows", "FreeEnvironmentStringsW");
 
         let env_block_ptr = this.read_scalar(env_block_op)?.not_undef()?;
-        // FIXME: MemoryKind should be `Env`, blocked on https://github.com/rust-lang/rust/pull/70479.
-        let result = this.memory.deallocate(this.force_ptr(env_block_ptr)?, None, MiriMemoryKind::WinHeap.into());
+        let result = this.memory.deallocate(this.force_ptr(env_block_ptr)?, None, MiriMemoryKind::Env.into());
         // If the function succeeds, the return value is nonzero.
         Ok(result.is_ok() as i32)
     }
