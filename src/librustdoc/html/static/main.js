@@ -2686,7 +2686,7 @@ function defocusSearchBar() {
         hideSidebar();
     };
 
-    autoCollapse(getPageId(), getCurrentValue("rustdoc-collapse") === "true");
+    autoCollapse(pageId, getCurrentValue("rustdoc-collapse") === "true");
 
     if (window.location.hash && window.location.hash.length > 0) {
         expandSection(window.location.hash.replace(/^#/, ""));
