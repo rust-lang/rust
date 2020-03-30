@@ -14,7 +14,7 @@ use lsp_types::{
     CodeAction, CodeActionResponse, CodeLens, Command, CompletionItem, Diagnostic,
     DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams,
     Hover, HoverContents, Location, MarkupContent, MarkupKind, Position, PrepareRenameResponse,
-    Range, RenameParams, SemanticTokens, SemanticTokensParams, SemanticTokensRangeParams,
+    Range, RenameParams, SemanticTokensParams, SemanticTokensRangeParams,
     SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, TextDocumentIdentifier,
     TextEdit, WorkspaceEdit,
 };
@@ -1145,7 +1145,7 @@ pub fn handle_semantic_tokens(
         }
     }
 
-    let tokens = SemanticTokens { data: builder.build(), ..Default::default() };
+    let tokens = builder.build();
 
     Ok(Some(tokens.into()))
 }
@@ -1166,7 +1166,7 @@ pub fn handle_semantic_tokens_range(
         builder.push(highlight_range.range.conv_with(&line_index), token_type, token_modifiers);
     }
 
-    let tokens = SemanticTokens { data: builder.build(), ..Default::default() };
+    let tokens = builder.build();
 
     Ok(Some(tokens.into()))
 }
