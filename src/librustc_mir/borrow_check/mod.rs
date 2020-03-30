@@ -1282,7 +1282,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     fn propagate_closure_used_mut_upvar(&mut self, operand: &Operand<'tcx>) {
-        let propagate_closure_used_mut_place = |this: &mut Self, place: &Place<'tcx>| {
+        let propagate_closure_used_mut_place = |this: &mut Self, place: Place<'tcx>| {
             if !place.projection.is_empty() {
                 if let Some(field) = this.is_upvar_field_projection(place.as_ref()) {
                     this.used_mut_upvars.push(field);
@@ -1296,7 +1296,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // captures of a closure are copied/moved directly
         // when generating MIR.
         match *operand {
-            Operand::Move(ref place) | Operand::Copy(ref place) => {
+            Operand::Move(place) | Operand::Copy(place) => {
                 match place.as_local() {
                     Some(local) if !self.body.local_decls[local].is_user_variable() => {
                         if self.body.local_decls[local].ty.is_mutable_ptr() {
@@ -1335,8 +1335,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let stmt = &bbd.statements[loc.statement_index];
                         debug!("temporary assigned in: stmt={:?}", stmt);
 
-                        if let StatementKind::Assign(box (_, Rvalue::Ref(_, _, ref source))) =
-                            stmt.kind
+                        if let StatementKind::Assign(box (_, Rvalue::Ref(_, _, source))) = stmt.kind
                         {
                             propagate_closure_used_mut_place(self, source);
                         } else {
