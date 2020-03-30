@@ -327,11 +327,11 @@ enum UnusedDelimsCtx {
     AssignedValue,
     IfCond,
     WhileCond,
-    ForHeadExpr,
-    MatchHeadExpr,
+    ForIterExpr,
+    MatchScrutineeExpr,
     ReturnValue,
     BlockRetValue,
-    LetHeadExpr,
+    LetScrutineeExpr,
     ArrayLenExpr,
     AnonConst,
 }
@@ -344,11 +344,11 @@ impl From<UnusedDelimsCtx> for &'static str {
             UnusedDelimsCtx::AssignedValue => "assigned value",
             UnusedDelimsCtx::IfCond => "`if` condition",
             UnusedDelimsCtx::WhileCond => "`while` condition",
-            UnusedDelimsCtx::ForHeadExpr => "`for` head expression",
-            UnusedDelimsCtx::MatchHeadExpr => "`match` head expression",
+            UnusedDelimsCtx::ForIterExpr => "`for` iterator expression",
+            UnusedDelimsCtx::MatchScrutineeExpr => "`match` scrutinee expression",
             UnusedDelimsCtx::ReturnValue => "`return` value",
             UnusedDelimsCtx::BlockRetValue => "block return value",
-            UnusedDelimsCtx::LetHeadExpr => "`let` head expression",
+            UnusedDelimsCtx::LetScrutineeExpr => "`let` scrutinee expression",
             UnusedDelimsCtx::ArrayLenExpr | UnusedDelimsCtx::AnonConst => "const expression",
         }
     }
@@ -399,7 +399,6 @@ trait UnusedDelimLint {
         self.emit_unused_delims(cx, value.span, &expr_text, ctx.into(), keep_space);
     }
 
-    /// emits a lint
     fn emit_unused_delims(
         &self,
         cx: &EarlyContext<'_>,
@@ -471,12 +470,12 @@ trait UnusedDelimLint {
             }
 
             ForLoop(_, ref cond, ref block, ..) => {
-                (cond, UnusedDelimsCtx::ForHeadExpr, true, None, Some(block.span.lo()))
+                (cond, UnusedDelimsCtx::ForIterExpr, true, None, Some(block.span.lo()))
             }
 
             Match(ref head, _) => {
                 let left = e.span.lo() + rustc_span::BytePos(5);
-                (head, UnusedDelimsCtx::MatchHeadExpr, true, Some(left), None)
+                (head, UnusedDelimsCtx::MatchScrutineeExpr, true, Some(left), None)
             }
 
             Ret(Some(ref value)) => {
@@ -597,7 +596,7 @@ impl UnusedDelimLint for UnusedParens {
                 self.check_unused_delims_expr(
                     cx,
                     expr,
-                    UnusedDelimsCtx::LetHeadExpr,
+                    UnusedDelimsCtx::LetScrutineeExpr,
                     followed_by_block,
                     None,
                     None,
@@ -732,7 +731,7 @@ impl EarlyLintPass for UnusedParens {
 declare_lint! {
     pub(super) UNUSED_BRACES,
     Warn,
-    "suggests removing `{` and `}`  in case they are not necessary"
+    "unnecessary braces around an expression"
 }
 
 declare_lint_pass!(UnusedBraces => [UNUSED_BRACES]);
@@ -804,7 +803,7 @@ impl UnusedDelimLint for UnusedBraces {
                 self.check_unused_delims_expr(
                     cx,
                     expr,
-                    UnusedDelimsCtx::LetHeadExpr,
+                    UnusedDelimsCtx::LetScrutineeExpr,
                     followed_by_block,
                     None,
                     None,
