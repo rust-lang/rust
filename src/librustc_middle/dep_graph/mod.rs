@@ -12,7 +12,7 @@ mod dep_node;
 pub(crate) use rustc_query_system::dep_graph::DepNodeParams;
 pub use rustc_query_system::dep_graph::{
     debug, hash_result, DepContext, DepNodeColor, DepNodeIndex, SerializedDepNodeIndex,
-    WorkProduct, WorkProductFileKind, WorkProductId,
+    WorkProduct, WorkProductId,
 };
 
 pub use dep_node::{label_strs, DepConstructor, DepKind, DepNode, DepNodeExt};
