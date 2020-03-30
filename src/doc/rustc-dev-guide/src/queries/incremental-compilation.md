@@ -81,7 +81,7 @@ Try-mark-green works as follows:
 ### The query DAG
 
 The query DAG code is stored in
-[`src/librustc/dep_graph`][dep_graph]. Construction of the DAG is done
+[`src/librustc_middle/dep_graph`][dep_graph]. Construction of the DAG is done
 by instrumenting the query execution.
 
 One key point is that the query DAG also tracks ordering; that is, for
@@ -113,7 +113,7 @@ of order, however, it might visit `subquery2` before `subquery1`, and hence
 execute it.
 This can lead to ICEs and other problems in the compiler.
 
-[dep_graph]: https://github.com/rust-lang/rust/tree/master/src/librustc/dep_graph
+[dep_graph]: https://github.com/rust-lang/rust/tree/master/src/librustc_middle/dep_graph
 
 ## Improvements to the basic algorithm
 

@@ -219,7 +219,7 @@ Here are some of the fields of the struct:
 
 [`constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.constraints
 [`liveness_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.liveness_constraints
-[`location`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/struct.Location.html
+[`location`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html
 [`universal_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.universal_regions
 [`universal_region_relations`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.universal_region_relations
 [`type_tests`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/region_infer/struct.RegionInferenceContext.html#structfield.type_tests

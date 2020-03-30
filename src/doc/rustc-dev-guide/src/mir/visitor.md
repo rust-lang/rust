@@ -7,7 +7,7 @@ them, generated via a single macro: `Visitor` (which operates on a
 `&Mir` and gives back shared references) and `MutVisitor` (which
 operates on a `&mut Mir` and gives back mutable references).
 
-[m-v]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/visit/index.html
+[m-v]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/index.html
 
 To implement a visitor, you have to create a type that represents
 your visitor. Typically, this type wants to "hang on" to whatever
@@ -50,6 +50,6 @@ contains useful functions for walking the MIR CFG in
 [different standard orders][traversal] (e.g. pre-order, reverse
 post-order, and so forth).
 
-[t]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/traversal/index.html
+[t]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/traversal/index.html
 [traversal]: https://en.wikipedia.org/wiki/Tree_traversal
 

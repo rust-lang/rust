@@ -41,8 +41,8 @@ only variant of [`ty::RegionKind`] that we use is the [`ReVar`]
 variant. These region variables are broken into two major categories,
 based on their index:
 
-[`ty::RegionKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.RegionKind.html
-[`ReVar`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.RegionKind.html#variant.ReVar
+[`ty::RegionKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.RegionKind.html
+[`ReVar`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.RegionKind.html#variant.ReVar
 
 - 0..N: universal regions -- the ones we are discussing here. In this
   case, the code must be correct with respect to any value of those

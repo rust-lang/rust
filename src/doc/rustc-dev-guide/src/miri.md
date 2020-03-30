@@ -95,14 +95,14 @@ Miri, but just use the cached result.
 
 [`Operand`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/enum.Operand.html
 [`Immediate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/enum.Immediate.html
-[`ConstValue`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/interpret/enum.ConstValue.html
-[`Scalar`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/interpret/enum.Scalar.html
+[`ConstValue`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/enum.ConstValue.html
+[`Scalar`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/enum.Scalar.html
 [`op_to_const`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/const_eval/eval_queries/fn.op_to_const.html
 
 ## Datastructures
 
 Miri's outside-facing datastructures can be found in
-[librustc/mir/interpret](https://github.com/rust-lang/rust/blob/master/src/librustc/mir/interpret).
+[librustc_middle/mir/interpret](https://github.com/rust-lang/rust/blob/master/src/librustc_middle/mir/interpret).
 This is mainly the error enum and the [`ConstValue`] and [`Scalar`] types. A
 `ConstValue` can be either `Scalar` (a single `Scalar`, i.e., integer or thin
 pointer), `Slice` (to represent byte slices and strings, as needed for pattern
@@ -177,9 +177,9 @@ needed to support circular statics, where we need to have a `Pointer` to a
 bytes of its value.
 
 [`Memory`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/struct.Memory.html
-[`Allocation`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/interpret/struct.Allocation.html
-[`Pointer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/interpret/struct.Pointer.html
-[`GlobalAlloc`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/interpret/enum.GlobalAlloc.html
+[`Allocation`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/struct.Allocation.html
+[`Pointer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/struct.Pointer.html
+[`GlobalAlloc`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/interpret/enum.GlobalAlloc.html
 
 ### Pointer values vs Pointer types
 

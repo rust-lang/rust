@@ -12,13 +12,13 @@ The `ty` module defines how the Rust compiler represents types internally. It al
 When we talk about how rustc represents types,  we usually refer to a type called `Ty` . There are
 quite a few modules and types for `Ty` in the compiler ([Ty documentation][ty]).
 
-[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/index.html
+[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
 
 The specific `Ty` we are referring to is [`rustc::ty::Ty`][ty_ty] (and not
 [`rustc_hir::Ty`][hir_ty]). The distinction is important, so we will discuss it first before going
 into the details of `ty::Ty`.
 
-[ty_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/type.Ty.html
+[ty_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.Ty.html
 [hir_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Ty.html
 
 ## `rustc_hir::Ty` vs `ty::Ty`
@@ -124,9 +124,9 @@ are [interned](./memory.md), so that the `ty::Ty` can be a thin pointer-like
 type. This allows us to do cheap comparisons for equality, along with the other
 benefits of interning.
 
-[tys]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyS.html
-[kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyS.html#structfield.kind
-[tykind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html
+[tys]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html
+[kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html#structfield.kind
+[tykind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html
 
 ## Allocating and working with types
 
@@ -150,7 +150,7 @@ allocate exactly the same type twice).
 You can also find various common types in the `tcx` itself by accessing `tcx.types.bool`,
 `tcx.types.char`, etc (see [`CommonTypes`] for more).
 
-[`CommonTypes`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/context/struct.CommonTypes.html
+[`CommonTypes`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.CommonTypes.html
 
 ## `ty::TyKind` Variants
 
@@ -207,16 +207,16 @@ will discuss this more later.
 [**And Many More**...][kindvars]
 
 [wikiadt]: https://en.wikipedia.org/wiki/Algebraic_data_type
-[kindadt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html#variant.Adt
-[kindforeign]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html#variant.Foreign
-[kindstr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html#variant.Str
-[kindslice]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html#variant.Slice
-[kindarray]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html#variant.Array
-[kindrawptr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html#variant.RawPtr
-[kindref]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html#variant.Ref
-[kindparam]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html#variant.Param
-[kinderr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html#variant.Error
-[kindvars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.TyKind.html#variants
+[kindadt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Adt
+[kindforeign]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Foreign
+[kindstr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Str
+[kindslice]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Slice
+[kindarray]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Array
+[kindrawptr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.RawPtr
+[kindref]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Ref
+[kindparam]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Param
+[kinderr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Error
+[kindvars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variants
 
 ## Import conventions
 
@@ -259,8 +259,8 @@ There are two parts:
   generic parameters.  In our example of `MyStruct<u32>`, we would end up with a list like `[u32]`.
   We’ll dig more into generics and substitutions in a little bit.
 
-[adtdef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.AdtDef.html
-[substsref]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/subst/type.SubstsRef.html
+[adtdef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.AdtDef.html
+[substsref]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/type.SubstsRef.html
 
 **`AdtDef` and `DefId`**
 
@@ -275,7 +275,7 @@ essentially a one-to-one relationship between `AdtDef` and `DefId`. You can get 
 `DefId` with the [`tcx.adt_def(def_id)` query][adtdefq].  The `AdtDef`s are all interned (as you can
 see `'tcx` lifetime on it).
 
-[adtdefq]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyCtxt.html#method.adt_def
+[adtdefq]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.adt_def
 
 
 ## Type errors

@@ -15,9 +15,9 @@ generic type parameters of the ADT.
 indicating what kind of generic the type parameter is (type, lifetime, or const).  Thus, `SubstsRef`
 is conceptually like a `&'tcx [GenericArgKind<'tcx>]` slice (but it is actually a `List`).
 
-[list]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.List.html
-[`GenericArg`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/subst/struct.GenericArg.html
-[`GenericArgKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/subst/enum.GenericArgKind.html
+[list]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.List.html
+[`GenericArg`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/struct.GenericArg.html
+[`GenericArgKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/enum.GenericArgKind.html
 
 So why do we use this `List` type instead of making it really a slice? It has the length "inline",
 so `&List` is only 32 bits. As a consequence, it cannot be "subsliced" (that only works if the
@@ -41,7 +41,7 @@ struct MyStruct<T>
 - This is one `TyKind::Adt` containing the `AdtDef` of `MyStruct` with the `SubstsRef` above.
 
 Finally, we will quickly mention the
-[`Generics`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.Generics.html) type. It
+[`Generics`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Generics.html) type. It
 is used to give information about the type parameters of a type.
 
 ### Unsubstituted Generics
@@ -125,7 +125,7 @@ You may have a couple of followup questions…
  `MyStruct`: `Adt(Foo, &[Param(0), Param(1)])`.
 
 **`subst`** How do we actually do the substitutions? There is a function for that too! You use
-[`subst`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/subst/trait.Subst.html) to
+[`subst`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/trait.Subst.html) to
 replace a `SubstRef` with another list of types.
 
 [Here is an example of actually using `subst` in the compiler][substex].  The exact details are not

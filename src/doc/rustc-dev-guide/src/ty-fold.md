@@ -6,9 +6,9 @@ on a type like we did with `Vec` above. But we might also have a more complex ty
 nested inside that also need substitutions.
 
 The answer is a couple of traits:
-[`TypeFoldable`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/fold/trait.TypeFoldable.html)
+[`TypeFoldable`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/fold/trait.TypeFoldable.html)
 and
-[`TypeFolder`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/fold/trait.TypeFolder.html).
+[`TypeFolder`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/fold/trait.TypeFolder.html).
 
 - `TypeFoldable` is implemented by types that embed type information. It allows you to recursively
   process the contents of the `TypeFoldable` and do stuff to them.
@@ -16,7 +16,7 @@ and
   `TypeFoldable`.
 
 For example, the `TypeFolder` trait has a method
-[`fold_ty`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/fold/trait.TypeFolder.html#method.fold_ty)
+[`fold_ty`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/fold/trait.TypeFolder.html#method.fold_ty)
 that takes a type as input a type and returns a new type as a result. `TypeFoldable` invokes the
 `TypeFolder` `fold_foo` methods on itself, giving the `TypeFolder` access to its contents (the
 types, regions, etc that are contained within).
@@ -35,7 +35,7 @@ So to reiterate:
 - `TypeFoldable`  is a trait that is implemented by things that embed types.
 
 In the case of `subst`, we can see that it is implemented as a `TypeFolder`:
-[`SubstFolder`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/subst/struct.SubstFolder.html).
+[`SubstFolder`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/struct.SubstFolder.html).
 Looking at its implementation, we see where the actual substitutions are happening.
 
 However, you might also notice that the implementation calls this `super_fold_with` method. What is
@@ -93,13 +93,13 @@ defined
 [here](https://github.com/rust-lang/rust/blob/master/src/librustc_macros/src/type_foldable.rs).
 
 **`subst`** In the case of substitutions the [actual
-folder](https://github.com/rust-lang/rust/blob/04e69e4f4234beb4f12cc76dcc53e2cc4247a9be/src/librustc/ty/subst.rs#L467-L482)
+folder](https://github.com/rust-lang/rust/blob/04e69e4f4234beb4f12cc76dcc53e2cc4247a9be/src/librustc_middle/ty/subst.rs#L467-L482)
 is going to be doing the indexing we’ve already mentioned. There we define a `Folder` and call
 `fold_with` on the `TypeFoldable` to process yourself.  Then
-[fold_ty](https://github.com/rust-lang/rust/blob/04e69e4f4234beb4f12cc76dcc53e2cc4247a9be/src/librustc/ty/subst.rs#L545-L573)
+[fold_ty](https://github.com/rust-lang/rust/blob/04e69e4f4234beb4f12cc76dcc53e2cc4247a9be/src/librustc_middle/ty/subst.rs#L545-L573)
 the method that process each type it looks for a `ty::Param` and for those it replaces it for
 something from the list of substitutions, otherwise recursively process the type.  To replace it,
 calls
-[ty_for_param](https://github.com/rust-lang/rust/blob/04e69e4f4234beb4f12cc76dcc53e2cc4247a9be/src/librustc/ty/subst.rs#L589-L624)
+[ty_for_param](https://github.com/rust-lang/rust/blob/04e69e4f4234beb4f12cc76dcc53e2cc4247a9be/src/librustc_middle/ty/subst.rs#L589-L624)
 and all that does is index into the list of substitutions with the index of the `Param`.
 

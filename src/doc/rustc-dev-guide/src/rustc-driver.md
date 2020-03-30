@@ -42,7 +42,7 @@ replaces this functionality.
 [`rustc_driver`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/
 [`Compiler`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Compiler.html
 [`Session`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html
-[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyCtxt.html
+[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
 [`SourceMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/source_map/struct.SourceMap.html
 [stupid-stats]: https://github.com/nrc/stupid-stats
 [Appendix A]: appendix/stupid-stats.html

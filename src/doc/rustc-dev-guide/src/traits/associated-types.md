@@ -94,12 +94,12 @@ They are used internally by the trait system only, as we will see
 shortly.
 
 In rustc, they correspond to the `TyKind::UnnormalizedProjectionTy` enum
-variant, declared in [`librustc/ty/sty.rs`][sty]. In chalk, we use an
+variant, declared in [`librustc_middle/ty/sty.rs`][sty]. In chalk, we use an
 `ApplicationTy` with a name living in a special namespace dedicated to
 placeholder associated types (see the `TypeName` enum declared in
 [`chalk-ir/src/lib.rs`][chalk_type_name]).
 
-[sty]: https://github.com/rust-lang/rust/blob/master/src/librustc/ty/sty.rs
+[sty]: https://github.com/rust-lang/rust/blob/master/src/librustc_middle/ty/sty.rs
 [chalk_type_name]: https://github.com/rust-lang-nursery/chalk/blob/master/chalk-ir/src/lib.rs
 
 ## Projection equality

@@ -10,7 +10,7 @@ some new part of the compiler that they haven't worked on before.
 
 You may also find the rustdocs [for the compiler itself][rustdocs] useful.
 
-[rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
+[rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
 
 ### Contributing to the guide
 

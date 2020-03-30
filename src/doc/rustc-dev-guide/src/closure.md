@@ -115,9 +115,9 @@ Let's start with defining a term that we will be using quite a bit in the rest o
 *upvar*. An **upvar** is a variable that is local to the function where the closure is defined. So,
 in the above examples, **x** will be an upvar to the closure. They are also sometimes referred to as
 the *free variables* meaning they are not bound to the context of the closure.
-[`src/librustc/ty/query/mod.rs`][upvars] defines a query called *upvars* for this purpose.
+[`src/librustc_middle/ty/query/mod.rs`][upvars] defines a query called *upvars* for this purpose.
 
-[upvars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/query/queries/struct.upvars.html
+[upvars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/query/queries/struct.upvars.html
 
 Other than lazy invocation, one other thing that the distinguishes a closure from a
 normal function is that it can use the upvars. It borrows these upvars from its surrounding
@@ -135,10 +135,10 @@ and `FnOnce` for move semantics.
 
 Most of the code related to the closure is in the
 [`src/librustc_typeck/check/upvar.rs`][upvar] file and the data structures are
-declared in the file [`src/librustc/ty/mod.rs`][ty].
+declared in the file [`src/librustc_middle/ty/mod.rs`][ty].
 
 [upvar]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/check/upvar/index.html
-[ty]:https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/index.html
+[ty]:https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
 
 Before we go any further, let's discuss how we can examine the flow of control through the rustc
 codebase. For closures specifically, set the `RUST_LOG` env variable as below and collect the
@@ -183,9 +183,9 @@ The callbacks are defined by implementing the [`Delegate`] trait. The
 records for each upvar which mode of borrow was required. The modes of borrow
 can be `ByValue` (moved) or `ByRef` (borrowed). For `ByRef` borrows, it can be
 `shared`, `shallow`, `unique` or `mut` as defined in the
-[`src/librustc/mir/mod.rs`][mir_mod].
+[`src/librustc_middle/mir/mod.rs`][mir_mod].
 
-[mir_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/index.html
+[mir_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html
 
 `Delegate` defines a few different methods (the different callbacks):
 **consume**: for *move* of a variable, **borrow** for a *borrow* of some kind
@@ -193,7 +193,7 @@ can be `ByValue` (moved) or `ByRef` (borrowed). For `ByRef` borrows, it can be
 
 All of these callbacks have a common argument *cmt* which stands for Category,
 Mutability and Type and is defined in
-[`src/librustc/middle/mem_categorization.rs`][cmt]. Borrowing from the code
+[`src/librustc_middle/middle/mem_categorization.rs`][cmt]. Borrowing from the code
 comments, "`cmt` is a complete categorization of a value indicating where it
 originated and how it is located, as well as the mutability of the memory in
 which the value is stored". Based on the callback (consume, borrow etc.), we

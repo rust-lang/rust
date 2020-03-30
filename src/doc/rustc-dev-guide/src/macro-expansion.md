@@ -383,7 +383,7 @@ implementation of macro_rules, turns macro_rules DSL into something with
 signature Fn(TokenStream) -> TokenStream that can eat and produce tokens,
 @mark-i-m knows more about this librustc_resolve/macros.rs - resolving macro
 paths, validating those resolutions, reporting various "not found"/"found, but
-it's unstable"/"expected x, found y" errors librustc/hir/map/def_collector.rs +
+it's unstable"/"expected x, found y" errors librustc_middle/hir/map/def_collector.rs +
 librustc_resolve/build_reduced_graph.rs - integrate an AST fragment freshly
 expanded from a macro into various parent/child structures like module
 hierarchy or "definition paths"

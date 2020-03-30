@@ -116,10 +116,10 @@ the [`hir::map`] module). The [HIR map] contains a [number of methods] to
 convert between IDs of various kinds and to lookup data associated
 with an HIR node.
 
-[`tcx.hir_map`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/context/struct.GlobalCtxt.html#structfield.hir_map
-[`hir::map`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/index.html
-[HIR map]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html
-[number of methods]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html#methods
+[`tcx.hir_map`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.GlobalCtxt.html#structfield.hir_map
+[`hir::map`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/index.html
+[HIR map]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html
+[number of methods]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#methods
 
 For example, if you have a [`DefId`], and you would like to convert it
 to a [`NodeId`], you can use
@@ -129,7 +129,7 @@ something outside of the current crate (since then it has no HIR
 node), but otherwise returns `Some(n)` where `n` is the node-id of the
 definition.
 
-[as_local_node_id]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html#method.as_local_node_id
+[as_local_node_id]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.as_local_node_id
 
 Similarly, you can use [`tcx.hir.find(n)`][find] to lookup the node for a
 [`NodeId`]. This returns a `Option<Node<'tcx>>`, where [`Node`] is an enum
@@ -140,15 +140,15 @@ that `n` must be some HIR expression, you can do
 [`tcx.hir.expect_expr(n)`][expect_expr], which will extract and return the
 [`&hir::Expr`][Expr], panicking if `n` is not in fact an expression.
 
-[find]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html#method.find
+[find]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.find
 [`Node`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/enum.Node.html
-[expect_expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html#method.expect_expr
+[expect_expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.expect_expr
 [Expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Expr.html
 
 Finally, you can use the HIR map to find the parents of nodes, via
 calls like [`tcx.hir.get_parent_node(n)`][get_parent_node].
 
-[get_parent_node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html#method.get_parent_node
+[get_parent_node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.get_parent_node
 
 ### HIR Bodies
 
@@ -161,5 +161,5 @@ associated with a given def-id ([`maybe_body_owned_by`]) or to find
 the owner of a body ([`body_owner_def_id`]).
 
 [`rustc_hir::Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Body.html
-[`maybe_body_owned_by`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html#method.maybe_body_owned_by
-[`body_owner_def_id`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/hir/map/struct.Map.html#method.body_owner_def_id
+[`maybe_body_owned_by`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.maybe_body_owned_by
+[`body_owner_def_id`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.body_owner_def_id

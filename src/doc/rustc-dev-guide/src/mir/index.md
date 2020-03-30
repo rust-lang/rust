@@ -15,7 +15,7 @@ graphs and desugaring), you may enjoy the
 
 ## Introduction to MIR
 
-MIR is defined in the [`src/librustc/mir/`][mir] module, but much of the code
+MIR is defined in the [`src/librustc_middle/mir/`][mir] module, but much of the code
 that manipulates it is found in [`src/librustc_mir`][mirmanip].
 
 [RFC 1211]: https://rust-lang.github.io/rfcs/1211-mir.html
@@ -212,7 +212,7 @@ over the overflow checks.)
 
 ## MIR data types
 
-The MIR data types are defined in the [`src/librustc/mir/`][mir]
+The MIR data types are defined in the [`src/librustc_middle/mir/`][mir]
 module.  Each of the key concepts mentioned in the previous section
 maps in a fairly straightforward way to a Rust type.
 
@@ -253,7 +253,7 @@ but [you can read about those below](#promoted)).
 *to be written*
 
 
-[mir]: https://github.com/rust-lang/rust/tree/master/src/librustc/mir
+[mir]: https://github.com/rust-lang/rust/tree/master/src/librustc_middle/mir
 [mirmanip]: https://github.com/rust-lang/rust/tree/master/src/librustc_mir
-[mir]: https://github.com/rust-lang/rust/tree/master/src/librustc/mir
+[mir]: https://github.com/rust-lang/rust/tree/master/src/librustc_middle/mir
 [newtype'd]: ../appendix/glossary.html

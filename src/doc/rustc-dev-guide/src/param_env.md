@@ -8,7 +8,7 @@ type's `Layout`, but you can do all kinds of other checks on it (e.g. whether a
 type implements `Copy`) or you can evaluate an associated constant whose value
 does not depend on anything from the parameter environment.
 
-[pe]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.ParamEnv.html
+[pe]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html
 
 For example if you have a function
 
@@ -65,5 +65,5 @@ method. This will produce a [`ParamEnvAnd<Ty>`][pea], making clear that you
 should probably not be using the inner value without taking care to also use
 the [`ParamEnv`][pe].
 
-[and]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.ParamEnv.html#method.and
-[pea]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.ParamEnvAnd.html
+[and]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html#method.and
+[pea]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnvAnd.html

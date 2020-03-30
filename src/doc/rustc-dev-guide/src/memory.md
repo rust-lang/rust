@@ -16,8 +16,8 @@ types for equality: for each interned type `X`, we implemented [`PartialEq for
 X`][peqimpl], so we can just compare pointers. The [`CtxtInterners`] type
 contains a bunch of maps of interned types and the arena itself.
 
-[peqimpl]: https://github.com/rust-lang/rust/blob/3ee936378662bd2e74be951d6a7011a95a6bd84d/src/librustc/ty/mod.rs#L528-L534
-[`CtxtInterners`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.CtxtInterners.html#structfield.arena
+[peqimpl]: https://github.com/rust-lang/rust/blob/3ee936378662bd2e74be951d6a7011a95a6bd84d/src/librustc_middle/ty/mod.rs#L528-L534
+[`CtxtInterners`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.CtxtInterners.html#structfield.arena
 
 ### Example: `ty::TyS`
 
@@ -49,10 +49,10 @@ allocate, and which are found in this module. Here are a few examples:
 - [`Predicate`] defines something the trait system has to prove (see `traits` module).
 
 [subst]: ./generic_arguments.html#subst
-[`TraitRef`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TraitRef.html
-[`Predicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.Predicate.html
+[`TraitRef`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TraitRef.html
+[`Predicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.Predicate.html
 
-[`ty::TyS`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyS.html
+[`ty::TyS`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html
 
 ## The tcx and how it uses lifetimes
 
@@ -85,4 +85,4 @@ duplication while also preventing a lot of the ergonomic issues due to many
 pervasive lifetimes. The [`rustc::ty::tls`][tls] module is used to access these
 thread-locals, although you should rarely need to touch it.
 
-[tls]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/tls/index.html
+[tls]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/tls/index.html

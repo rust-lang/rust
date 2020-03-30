@@ -259,7 +259,7 @@ We give some background about the query model of the Rust compiler.
 In the query model, many queries have a key that consists of a Def ID. The Rust
 compiler uses Def IDs to distinguish definitions in the input Rust program.
 
-From the compiler source code (`src/librustc/hir/def_id.rs`):
+From the compiler source code (`src/librustc_middle/hir/def_id.rs`):
 
 ```
 /// A DefId identifies a particular *definition*, by combining a crate

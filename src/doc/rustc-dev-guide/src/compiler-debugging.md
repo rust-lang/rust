@@ -130,11 +130,11 @@ stack backtrace:
   (~~~ IRRELEVANT PART OF BACKTRACE REMOVED BY ME ~~~)
    7: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'tcx>>
              ::report_selection_error
-             at /home/user/rust/src/librustc/traits/error_reporting.rs:823
+             at /home/user/rust/src/librustc_middle/traits/error_reporting.rs:823
    8: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'tcx>>
              ::report_fulfillment_errors
-             at /home/user/rust/src/librustc/traits/error_reporting.rs:160
-             at /home/user/rust/src/librustc/traits/error_reporting.rs:112
+             at /home/user/rust/src/librustc_middle/traits/error_reporting.rs:160
+             at /home/user/rust/src/librustc_middle/traits/error_reporting.rs:112
    9: rustc_typeck::check::FnCtxt::select_obligations_where_possible
              at /home/user/rust/src/librustc_typeck/check/mod.rs:2192
   (~~~ IRRELEVANT PART OF BACKTRACE REMOVED BY ME ~~~)
@@ -172,11 +172,11 @@ look at the log output with a text editor.
 So to put it together.
 
 ```bash
-# This puts the output of all debug calls in `librustc/traits` into
+# This puts the output of all debug calls in `librustc_middle/traits` into
 # standard error, which might fill your console backscroll.
 $ RUSTC_LOG=rustc::traits rustc +local my-file.rs
 
-# This puts the output of all debug calls in `librustc/traits` in
+# This puts the output of all debug calls in `librustc_middle/traits` in
 # `traits-log`, so you can then see it with a text editor.
 $ RUSTC_LOG=rustc::traits rustc +local my-file.rs 2>traits-log
 

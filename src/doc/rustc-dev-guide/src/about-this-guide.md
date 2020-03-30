@@ -26,6 +26,6 @@ You might also find the following sites useful:
   of the team procedures, active working groups, and the team calendar.
 
 [GitHub repository]: https://github.com/rust-lang/rustc-dev-guide/
-[Rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
+[Rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
 [Forge]: https://forge.rust-lang.org/
 [compiler-team]: https://github.com/rust-lang/compiler-team/
