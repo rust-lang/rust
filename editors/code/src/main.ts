@@ -13,6 +13,7 @@ import { log, assert } from './util';
 import { PersistentState } from './persistent_state';
 import { fetchRelease, download } from './net';
 import { spawnSync } from 'child_process';
+import { activateTaskProvider } from './tasks';
 
 let ctx: Ctx | undefined;
 
@@ -41,11 +42,13 @@ export async function activate(context: vscode.ExtensionContext) {
     const state = new PersistentState(context.globalState);
     const serverPath = await bootstrap(config, state);
 
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0] ?? null;
+
     // Note: we try to start the server before we activate type hints so that it
     // registers its `onDidChangeDocument` handler before us.
     //
     // This a horribly, horribly wrong way to deal with this problem.
-    ctx = await Ctx.create(config, context, serverPath);
+    ctx = await Ctx.create(config, context, serverPath, workspaceFolder);
 
     // Commands which invokes manually via command palette, shortcut, etc.
 
@@ -84,6 +87,10 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('showReferences', commands.showReferences);
     ctx.registerCommand('applySourceChange', commands.applySourceChange);
     ctx.registerCommand('selectAndApplySourceChange', commands.selectAndApplySourceChange);
+
+    if (workspaceFolder !== null) {
+        ctx.pushCleanup(activateTaskProvider(workspaceFolder));
+    }
 
     activateStatusDisplay(ctx);
 

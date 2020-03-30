@@ -30,15 +30,14 @@ export function configToServerOptions(config: Config) {
     };
 }
 
-export async function createClient(config: Config, serverPath: string): Promise<lc.LanguageClient> {
+export async function createClient(config: Config, serverPath: string, workspaceFolder: vscode.WorkspaceFolder | null): Promise<lc.LanguageClient> {
     // '.' Is the fallback if no folder is open
     // TODO?: Workspace folders support Uri's (eg: file://test.txt).
     // It might be a good idea to test if the uri points to a file.
-    const workspaceFolderPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.';
 
     const run: lc.Executable = {
         command: serverPath,
-        options: { cwd: workspaceFolderPath },
+        options: { cwd: workspaceFolder?.uri.fsPath ?? '.' },
     };
     const serverOptions: lc.ServerOptions = {
         run,

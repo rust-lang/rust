@@ -15,8 +15,13 @@ export class Ctx {
 
     }
 
-    static async create(config: Config, extCtx: vscode.ExtensionContext, serverPath: string): Promise<Ctx> {
-        const client = await createClient(config, serverPath);
+    static async create(
+        config: Config,
+        extCtx: vscode.ExtensionContext,
+        serverPath: string,
+        workspaceFolder: vscode.WorkspaceFolder | null,
+    ): Promise<Ctx> {
+        const client = await createClient(config, serverPath, workspaceFolder);
         const res = new Ctx(config, extCtx, client, serverPath);
         res.pushCleanup(client.start());
         await client.onReady();
