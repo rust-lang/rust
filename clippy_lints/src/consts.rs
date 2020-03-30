@@ -2,14 +2,14 @@
 
 use crate::utils::{clip, higher, sext, unsext};
 use if_chain::if_chain;
-use rustc::ty::subst::{Subst, SubstsRef};
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::{bug, span_bug};
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, QPath, UnOp};
 use rustc_lint::LateContext;
+use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
 use std::convert::TryInto;
@@ -333,7 +333,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     .tcx
                     .const_eval_resolve(self.param_env, def_id, substs, None, None)
                     .ok()
-                    .map(|val| rustc::ty::Const::from_value(self.lcx.tcx, val, ty))?;
+                    .map(|val| rustc_middle::ty::Const::from_value(self.lcx.tcx, val, ty))?;
                 let result = miri_to_const(&result);
                 if result.is_some() {
                     self.needed_resolution = true;
@@ -460,7 +460,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 }
 
 pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
-    use rustc::mir::interpret::{ConstValue, Scalar};
+    use rustc_middle::mir::interpret::{ConstValue, Scalar};
     match result.val {
         ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data: d, .. })) => match result.ty.kind {
             ty::Bool => Some(Constant::Bool(d == 1)),

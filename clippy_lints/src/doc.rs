@@ -1,12 +1,12 @@
 use crate::utils::{implements_trait, is_entrypoint_fn, match_type, paths, return_ty, span_lint};
 use if_chain::if_chain;
 use itertools::Itertools;
-use rustc::lint::in_external_macro;
-use rustc::ty;
 use rustc_ast::ast::{AttrKind, Attribute};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{BytePos, MultiSpan, Span};
 use rustc_span::Pos;

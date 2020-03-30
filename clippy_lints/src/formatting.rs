@@ -1,8 +1,8 @@
 use crate::utils::{differing_macro_contexts, snippet_opt, span_lint_and_help, span_lint_and_note};
 use if_chain::if_chain;
-use rustc::lint::in_external_macro;
 use rustc_ast::ast::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 

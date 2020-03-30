@@ -16,7 +16,7 @@ pub fn derive(_: TokenStream) -> TokenStream {
     let output = quote! {
         // Should not trigger `useless_attribute`
         #[allow(dead_code)]
-        extern crate rustc;
+        extern crate rustc_middle;
     };
     output
 }

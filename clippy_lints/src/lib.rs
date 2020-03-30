@@ -18,8 +18,6 @@
 #[allow(unused_extern_crates)]
 extern crate fmt_macros;
 #[allow(unused_extern_crates)]
-extern crate rustc;
-#[allow(unused_extern_crates)]
 extern crate rustc_ast;
 #[allow(unused_extern_crates)]
 extern crate rustc_ast_pretty;
@@ -43,6 +41,8 @@ extern crate rustc_infer;
 extern crate rustc_lexer;
 #[allow(unused_extern_crates)]
 extern crate rustc_lint;
+#[allow(unused_extern_crates)]
+extern crate rustc_middle;
 #[allow(unused_extern_crates)]
 extern crate rustc_mir;
 #[allow(unused_extern_crates)]
@@ -82,7 +82,7 @@ use rustc_session::Session;
 /// ```
 /// # #![feature(rustc_private)]
 /// # #[allow(unused_extern_crates)]
-/// # extern crate rustc;
+/// # extern crate rustc_middle;
 /// # #[allow(unused_extern_crates)]
 /// # extern crate rustc_session;
 /// # #[macro_use]

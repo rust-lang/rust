@@ -3,9 +3,9 @@
 #![deny(clippy::internal)]
 #![feature(rustc_private)]
 
-extern crate rustc;
 extern crate rustc_hir;
 extern crate rustc_lint;
+extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_session;
 use rustc_hir::Expr;

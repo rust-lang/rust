@@ -1,11 +1,11 @@
 use crate::utils::paths;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{match_qpath, match_trait_method, span_lint};
-use rustc::hir::map::Map;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_lint::LateContext;
+use rustc_middle::hir::map::Map;
 
 use if_chain::if_chain;
 

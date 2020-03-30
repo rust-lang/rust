@@ -3,12 +3,12 @@ use crate::utils::{
     span_lint_and_then, SpanlessEq,
 };
 use if_chain::if_chain;
-use rustc::hir::map::Map;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 

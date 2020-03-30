@@ -4,7 +4,6 @@ use crate::utils::{
     snippet, snippet_opt, span_lint_and_then,
 };
 use if_chain::if_chain;
-use rustc::ty::{self, TypeFoldable};
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -12,6 +11,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingAnnotation, Body, FnDecl, GenericArg, HirId, ItemKind, Node, PatKind, QPath, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::{self, TypeFoldable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;

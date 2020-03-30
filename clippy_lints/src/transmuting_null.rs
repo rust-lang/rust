@@ -1,10 +1,10 @@
 use crate::consts::{constant_context, Constant};
 use crate::utils::{match_qpath, paths, span_lint};
 use if_chain::if_chain;
-use rustc::lint::in_external_macro;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {

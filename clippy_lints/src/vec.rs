@@ -1,10 +1,10 @@
 use crate::consts::constant;
 use crate::utils::{higher, is_copy, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
-use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
