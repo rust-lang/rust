@@ -3,6 +3,7 @@
 
 pub const ANY_TRAIT: [&str; 3] = ["std", "any", "Any"];
 pub const ARC: [&str; 3] = ["alloc", "sync", "Arc"];
+pub const ARC_PTR_EQ: [&str; 4] = ["alloc", "sync", "Arc", "ptr_eq"];
 pub const ASMUT_TRAIT: [&str; 3] = ["core", "convert", "AsMut"];
 pub const ASREF_TRAIT: [&str; 3] = ["core", "convert", "AsRef"];
 pub const BEGIN_PANIC: [&str; 3] = ["std", "panicking", "begin_panic"];
@@ -74,6 +75,7 @@ pub const PATH: [&str; 3] = ["std", "path", "Path"];
 pub const PATH_BUF: [&str; 3] = ["std", "path", "PathBuf"];
 pub const PATH_BUF_AS_PATH: [&str; 4] = ["std", "path", "PathBuf", "as_path"];
 pub const PATH_TO_PATH_BUF: [&str; 4] = ["std", "path", "Path", "to_path_buf"];
+pub const PTR_EQ: [&str; 3] = ["core", "ptr", "eq"];
 pub const PTR_NULL: [&str; 2] = ["ptr", "null"];
 pub const PTR_NULL_MUT: [&str; 2] = ["ptr", "null_mut"];
 pub const RANGE: [&str; 3] = ["core", "ops", "Range"];
@@ -90,6 +92,7 @@ pub const RANGE_TO_INCLUSIVE: [&str; 3] = ["core", "ops", "RangeToInclusive"];
 pub const RANGE_TO_INCLUSIVE_STD: [&str; 3] = ["std", "ops", "RangeToInclusive"];
 pub const RANGE_TO_STD: [&str; 3] = ["std", "ops", "RangeTo"];
 pub const RC: [&str; 3] = ["alloc", "rc", "Rc"];
+pub const RC_PTR_EQ: [&str; 4] = ["alloc", "rc", "Rc", "ptr_eq"];
 pub const RECEIVER: [&str; 4] = ["std", "sync", "mpsc", "Receiver"];
 pub const REGEX: [&str; 3] = ["regex", "re_unicode", "Regex"];
 pub const REGEX_BUILDER_NEW: [&str; 5] = ["regex", "re_builder", "unicode", "RegexBuilder", "new"];
