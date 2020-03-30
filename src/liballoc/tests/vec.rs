@@ -1366,7 +1366,8 @@ fn test_stable_pointers() {
     v.push(13);
 
     // Laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
-    let v0 = unsafe { &*(&v[0] as *const _) };
+    let v0 = &mut v[0];
+    let v0 = unsafe { &mut *(v0 as *mut _) };
     // Now do a bunch of things and occasionally use `v0` again to assert it is still valid.
 
     // Pushing/inserting and popping/removing
@@ -1420,6 +1421,10 @@ fn test_stable_pointers() {
     assert_eq!(*v0, 13);
     next_then_drop(v.splice(5..6, vec![1; 10].into_iter().filter(|_| true))); // lower bound not exact
     assert_eq!(*v0, 13);
+
+    // Smoke test that would fire even outside Miri if an actual relocation happened.
+    *v0 -= 13;
+    assert_eq!(v[0], 0);
 }
 
 // https://github.com/rust-lang/rust/pull/49496 introduced specialization based on:

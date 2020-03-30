@@ -1200,7 +1200,7 @@ impl<T> Vec<T> {
         } else {
             unsafe {
                 self.len -= 1;
-                Some(ptr::read(self.get_unchecked(self.len())))
+                Some(ptr::read(self.as_ptr().add(self.len())))
             }
         }
     }
@@ -2020,9 +2020,7 @@ where
                 let (lower, _) = iterator.size_hint();
                 let mut vector = Vec::with_capacity(lower.saturating_add(1));
                 unsafe {
-                    // `vector` is new, cannot have aliases, so us getting exclusive references
-                    // here is okay.
-                    ptr::write(vector.get_unchecked_mut(0), element);
+                    ptr::write(vector.as_mut_ptr(), element);
                     vector.set_len(1);
                 }
                 vector
