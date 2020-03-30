@@ -1,6 +1,7 @@
 //! Format attributes and meta items.
 
 use rustc_ast::ast;
+use rustc_ast::attr::HasAttrs;
 use rustc_span::{symbol::sym, BytePos, Span, DUMMY_SP};
 
 use self::doc_comment::DocCommentFormatter;
@@ -18,14 +19,8 @@ use crate::utils::{count_newlines, mk_sp};
 mod doc_comment;
 
 /// Returns attributes on the given statement.
-pub(crate) fn get_attrs_from_stmt(stmt: &ast::Stmt) -> Option<&[ast::Attribute]> {
-    match stmt.kind {
-        ast::StmtKind::Local(ref local) => Some(&local.attrs),
-        ast::StmtKind::Item(ref item) => Some(&item.attrs),
-        ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => Some(&expr.attrs),
-        ast::StmtKind::MacCall(ref mac) => Some(&mac.2),
-        ast::StmtKind::Empty => None,
-    }
+pub(crate) fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
+    stmt.attrs()
 }
 
 pub(crate) fn get_span_without_attrs(stmt: &ast::Stmt) -> Span {

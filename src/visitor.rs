@@ -133,18 +133,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.format_missing(stmt.span().hi());
             }
             ast::StmtKind::Local(..) | ast::StmtKind::Expr(..) | ast::StmtKind::Semi(..) => {
-                if let Some(attrs) = get_attrs_from_stmt(stmt.as_ast_node()) {
-                    if contains_skip(attrs) {
-                        self.push_skipped_with_span(
-                            attrs,
-                            stmt.span(),
-                            get_span_without_attrs(stmt.as_ast_node()),
-                        );
-                    } else {
-                        let shape = self.shape();
-                        let rewrite = self.with_context(|ctx| stmt.rewrite(&ctx, shape));
-                        self.push_rewrite(stmt.span(), rewrite)
-                    }
+                let attrs = get_attrs_from_stmt(stmt.as_ast_node());
+                if contains_skip(attrs) {
+                    self.push_skipped_with_span(
+                        attrs,
+                        stmt.span(),
+                        get_span_without_attrs(stmt.as_ast_node()),
+                    );
                 } else {
                     let shape = self.shape();
                     let rewrite = self.with_context(|ctx| stmt.rewrite(&ctx, shape));
