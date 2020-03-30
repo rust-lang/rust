@@ -31,7 +31,7 @@ use crate::{
 use ra_db::ExternSourceId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-fn create_watcher(workspaces: &[ProjectWorkspace], options: &Options) -> CheckWatcher {
+fn create_watcher(workspaces: &[ProjectWorkspace], options: &Options) -> Option<CheckWatcher> {
     // FIXME: Figure out the multi-workspace situation
     workspaces
         .iter()
