@@ -3,17 +3,17 @@ use crate::utils::{
     span_lint_hir_and_then, walk_ptrs_ty_depth,
 };
 use if_chain::if_chain;
-use rustc::mir::{
-    self, traversal,
-    visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor as _},
-};
-use rustc::ty::{self, fold::TypeVisitor, Ty};
 use rustc_data_structures::{fx::FxHashMap, transitive_relation::TransitiveRelation};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{def_id, Body, FnDecl, HirId};
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::mir::{
+    self, traversal,
+    visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor as _},
+};
+use rustc_middle::ty::{self, fold::TypeVisitor, Ty};
 use rustc_mir::dataflow::BottomValue;
 use rustc_mir::dataflow::{Analysis, AnalysisDomain, GenKill, GenKillAnalysis, ResultsCursor};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -335,7 +335,7 @@ fn base_local_and_movability<'tcx>(
     mir: &mir::Body<'tcx>,
     place: mir::Place<'tcx>,
 ) -> Option<(mir::Local, CannotMoveOut)> {
-    use rustc::mir::PlaceRef;
+    use rustc_middle::mir::PlaceRef;
 
     // Dereference. You cannot move things out from a borrowed value.
     let mut deref = false;
@@ -556,7 +556,7 @@ impl TypeVisitor<'_> for ContainsRegion {
 }
 
 fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
-    use rustc::mir::Rvalue::{Aggregate, BinaryOp, Cast, CheckedBinaryOp, Repeat, UnaryOp, Use};
+    use rustc_middle::mir::Rvalue::{Aggregate, BinaryOp, Cast, CheckedBinaryOp, Repeat, UnaryOp, Use};
 
     let mut visit_op = |op: &mir::Operand<'_>| match op {
         mir::Operand::Copy(p) | mir::Operand::Move(p) => visit(p.local),

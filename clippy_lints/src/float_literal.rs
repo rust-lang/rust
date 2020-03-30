@@ -1,10 +1,10 @@
 use crate::utils::{numeric_literal, span_lint_and_sugg};
 use if_chain::if_chain;
-use rustc::ty;
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::{f32, f64, fmt};
 

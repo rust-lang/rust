@@ -25,14 +25,6 @@ use std::borrow::Cow;
 use std::mem;
 
 use if_chain::if_chain;
-use rustc::hir::map::Map;
-use rustc::traits;
-use rustc::ty::{
-    self,
-    layout::{self, IntegerExt},
-    subst::GenericArg,
-    Binder, Ty, TyCtxt, TypeFoldable,
-};
 use rustc_ast::ast::{self, Attribute, LitKind};
 use rustc_attr as attr;
 use rustc_errors::Applicability;
@@ -47,6 +39,14 @@ use rustc_hir::{
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
+use rustc_middle::hir::map::Map;
+use rustc_middle::traits;
+use rustc_middle::ty::{
+    self,
+    layout::{self, IntegerExt},
+    subst::GenericArg,
+    Binder, Ty, TyCtxt, TypeFoldable,
+};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::symbol::{self, kw, Symbol};
@@ -230,7 +230,7 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
 /// }
 ///
 /// if match_path(ty_path, &["rustc", "lint", "Lint"]) {
-///     // This is a `rustc::lint::Lint`.
+///     // This is a `rustc_middle::lint::Lint`.
 /// }
 /// ```
 pub fn match_path(path: &Path<'_>, segments: &[&str]) -> bool {
@@ -832,7 +832,7 @@ pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
 /// Examples of coercions can be found in the Nomicon at
 /// <https://doc.rust-lang.org/nomicon/coercions.html>.
 ///
-/// See `rustc::ty::adjustment::Adjustment` and `rustc_typeck::check::coercion` for more
+/// See `rustc_middle::ty::adjustment::Adjustment` and `rustc_typeck::check::coercion` for more
 /// information on adjustments and coercions.
 pub fn is_adjusted(cx: &LateContext<'_, '_>, e: &Expr<'_>) -> bool {
     cx.tables.adjustments().get(e.hir_id).is_some()
@@ -1224,7 +1224,7 @@ pub fn match_function_call<'a, 'tcx>(
 /// to avoid crashes on `layout_of`.
 pub fn is_normalizable<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
     cx.tcx.infer_ctxt().enter(|infcx| {
-        let cause = rustc::traits::ObligationCause::dummy();
+        let cause = rustc_middle::traits::ObligationCause::dummy();
         infcx.at(&cause, param_env).normalize(&ty).is_ok()
     })
 }

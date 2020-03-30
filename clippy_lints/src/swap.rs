@@ -4,10 +4,10 @@ use crate::utils::{
     span_lint_and_then, walk_ptrs_ty, SpanlessEq,
 };
 use if_chain::if_chain;
-use rustc::ty;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Symbol;
 

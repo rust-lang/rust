@@ -3,7 +3,6 @@ use crate::utils::{
     span_lint_and_then,
 };
 use if_chain::if_chain;
-use rustc::lint::in_external_macro;
 use rustc_ast::ast::{
     BindingMode, Block, Expr, ExprKind, GenericParamKind, Generics, Lit, LitFloatType, LitIntType, LitKind, Mutability,
     NodeId, Pat, PatKind, StmtKind, UnOp,
@@ -12,6 +11,7 @@ use rustc_ast::visit::{walk_expr, FnKind, Visitor};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 

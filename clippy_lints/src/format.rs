@@ -91,7 +91,7 @@ fn on_argumentv1_new<'a, 'tcx>(
         if pats.len() == 1;
         then {
             let ty = walk_ptrs_ty(cx.tables.pat_ty(&pats[0]));
-            if ty.kind != rustc::ty::Str && !match_type(cx, ty, &paths::STRING) {
+            if ty.kind != rustc_middle::ty::Str && !match_type(cx, ty, &paths::STRING) {
                 return None;
             }
             if let ExprKind::Lit(ref lit) = format_args.kind {
