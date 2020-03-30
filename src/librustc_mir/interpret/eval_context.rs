@@ -860,30 +860,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> Vec<FrameInfo<'tcx>> {
-        let mut last_span = None;
         let mut frames = Vec::new();
         for frame in self.stack().iter().rev() {
-            // make sure we don't emit frames that are duplicates of the previous
-            if explicit_span == Some(frame.span) {
-                last_span = Some(frame.span);
-                continue;
-            }
-            if let Some(last) = last_span {
-                if last == frame.span {
-                    continue;
-                }
-            } else {
-                last_span = Some(frame.span);
-            }
-
-            let lint_root = frame.current_source_info().and_then(|source_info| {
+            let source_info = frame.current_source_info();
+            let lint_root = source_info.and_then(|source_info| {
                 match &frame.body.source_scopes[source_info.scope].local_data {
                     mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
                     mir::ClearCrossCrate::Clear => None,
                 }
             });
+            let span = source_info.map_or(DUMMY_SP, |source_info| source_info.span);
 
-            frames.push(FrameInfo { call_site: frame.span, instance: frame.instance, lint_root });
+            frames.push(FrameInfo { span, instance: frame.instance, lint_root });
         }
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
         frames
