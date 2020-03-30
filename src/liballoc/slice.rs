@@ -141,6 +141,7 @@ mod hack {
     use crate::string::ToString;
     use crate::vec::Vec;
 
+    #[inline]
     pub fn into_vec<T>(b: Box<[T]>) -> Vec<T> {
         unsafe {
             let len = b.len();
