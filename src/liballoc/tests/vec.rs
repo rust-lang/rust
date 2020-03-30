@@ -1352,6 +1352,13 @@ fn test_try_reserve_exact() {
 
 #[test]
 fn test_stable_pointers() {
+    /// Pull an element from the iterator, then drop it.
+    /// Useful to cover both the `next` and `drop` paths of an iterator.
+    fn next_then_drop<I: Iterator>(mut i: I) {
+        i.next().unwrap();
+        drop(i);
+    }
+
     // Test that, if we reserved enough space, adding and removing elements does not
     // invalidate references into the vector (such as `v0`).  This test also
     // runs in Miri, which would detect such problems.
@@ -1402,16 +1409,16 @@ fn test_stable_pointers() {
 
     // Partial draining
     v.resize_with(10, || 42);
-    drop(v.drain(5..));
+    next_then_drop(v.drain(5..));
     assert_eq!(*v0, 13);
 
     // Splicing
     v.resize_with(10, || 42);
-    drop(v.splice(5.., vec![1, 2, 3, 4, 5])); // empty tail after range
+    next_then_drop(v.splice(5.., vec![1, 2, 3, 4, 5])); // empty tail after range
     assert_eq!(*v0, 13);
-    drop(v.splice(5..8, vec![1])); // replacement is smaller than original range
+    next_then_drop(v.splice(5..8, vec![1])); // replacement is smaller than original range
     assert_eq!(*v0, 13);
-    drop(v.splice(5..6, vec![1; 10].into_iter().filter(|_| true))); // lower bound not exact
+    next_then_drop(v.splice(5..6, vec![1; 10].into_iter().filter(|_| true))); // lower bound not exact
     assert_eq!(*v0, 13);
 }
 
