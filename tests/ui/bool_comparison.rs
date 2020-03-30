@@ -111,3 +111,19 @@ fn issue3703() {
     if Foo < false {}
     if false < Foo {}
 }
+
+#[allow(dead_code)]
+fn issue4983() {
+    let a = true;
+    let b = false;
+
+    if a == !b {};
+    if !a == b {};
+    if a == b {};
+    if !a == !b {};
+
+    if b == !a {};
+    if !b == a {};
+    if b == a {};
+    if !b == !a {};
+}
