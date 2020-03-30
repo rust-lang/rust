@@ -65,12 +65,12 @@ use rustc_span::Span;
 // variant argument) that does not require visiting, as in
 // `is_cleanup` above.
 
-macro_rules! body_cache_type {
-    (mut $a:lifetime, $tcx:lifetime) => {
+macro_rules! body_type {
+    (mut $tcx:lifetime) => {
         &mut BodyAndCache<$tcx>
     };
-    ($a:lifetime, $tcx:lifetime) => {
-        ReadOnlyBodyAndCache<$a, $tcx>
+    ($tcx:lifetime) => {
+        &Body<$tcx>
     };
 }
 
@@ -82,7 +82,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_body(
                 &mut self,
-                body: body_cache_type!($($mutability)? '_, 'tcx)
+                body: body_type!($($mutability)? 'tcx)
             ) {
                 self.super_body(body);
             }
@@ -254,7 +254,7 @@ macro_rules! make_mir_visitor {
 
             fn super_body(
                 &mut self,
-                $($mutability)? body: body_cache_type!($($mutability)? '_, 'tcx)
+                $($mutability)? body: body_type!($($mutability)? 'tcx)
             ) {
                 let span = body.span;
                 if let Some(yield_ty) = &$($mutability)? body.yield_ty {
@@ -819,7 +819,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_location(
                 &mut self,
-                body: body_cache_type!($($mutability)? '_, 'tcx),
+                body: body_type!($($mutability)? 'tcx),
                 location: Location
             ) {
                 let basic_block = & $($mutability)? body[location.block];

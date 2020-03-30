@@ -210,7 +210,7 @@ fn type_check_internal<'a, 'tcx, R>(
     );
     let errors_reported = {
         let mut verifier = TypeVerifier::new(&mut checker, *body, promoted);
-        verifier.visit_body(body);
+        verifier.visit_body(&body);
         verifier.errors_reported
     };
 
@@ -435,7 +435,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_body(&mut self, body: ReadOnlyBodyAndCache<'_, 'tcx>) {
+    fn visit_body(&mut self, body: &Body<'tcx>) {
         self.sanitize_type(&"return type", body.return_ty());
         for local_decl in &body.local_decls {
             self.sanitize_type(local_decl, local_decl.ty);
@@ -563,7 +563,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         swap_constraints(self);
 
-        self.visit_body(promoted_body);
+        self.visit_body(&promoted_body);
 
         if !self.errors_reported {
             // if verifier failed, don't do further checks to avoid ICEs

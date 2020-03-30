@@ -81,7 +81,7 @@ impl LocalUseMap {
         live_locals.iter().for_each(|&local| locals_with_use_data[local] = true);
 
         LocalUseMapBuild { local_use_map: &mut local_use_map, elements, locals_with_use_data }
-            .visit_body(body);
+            .visit_body(&body);
 
         local_use_map
     }

@@ -83,7 +83,7 @@ impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
     ) -> Self {
         MaybeRequiresStorage {
             body,
-            borrowed_locals: RefCell::new(ResultsRefCursor::new(*body, borrowed_locals)),
+            borrowed_locals: RefCell::new(ResultsRefCursor::new(&body, borrowed_locals)),
         }
     }
 }
@@ -250,7 +250,7 @@ impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
     /// Kill locals that are fully moved and have not been borrowed.
     fn check_for_move(&self, trans: &mut impl GenKill<Local>, loc: Location) {
         let mut visitor = MoveVisitor { trans, borrowed_locals: &self.borrowed_locals };
-        visitor.visit_location(self.body, loc);
+        visitor.visit_location(&self.body, loc);
     }
 }
 

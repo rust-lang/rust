@@ -507,7 +507,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
     // mir_built ensures that body has a computed cache, so we don't (and can't) attempt to
     // recompute it here.
     let body = body.unwrap_read_only();
-    checker.visit_body(body);
+    checker.visit_body(&body);
 
     check_unused_unsafe(tcx, def_id, &checker.used_unsafe, &mut checker.inherited_blocks);
     UnsafetyCheckResult {

@@ -37,7 +37,7 @@ pub(super) fn generate_invalidates<'tcx>(
             body: &body,
             dominators,
         };
-        ig.visit_body(body);
+        ig.visit_body(&body);
     }
 }
 

@@ -778,7 +778,7 @@ impl CanConstProp {
                 trace!("local {:?} can't be const propagated because it's not a temporary", local);
             }
         }
-        cpv.visit_body(body);
+        cpv.visit_body(&body);
         cpv.can_const_prop
     }
 }

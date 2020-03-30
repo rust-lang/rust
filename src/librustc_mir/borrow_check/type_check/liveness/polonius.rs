@@ -101,7 +101,7 @@ pub(super) fn populate_access_facts(
             location_table,
             move_data,
         };
-        extractor.visit_body(body);
+        extractor.visit_body(&body);
 
         facts.var_dropped_at.extend(
             dropped_at.iter().map(|&(local, location)| (local, location_table.mid_index(location))),

@@ -26,7 +26,7 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
         let optimizations = {
             let read_only_cache = read_only!(body);
             let mut optimization_finder = OptimizationFinder::new(body, tcx);
-            optimization_finder.visit_body(read_only_cache);
+            optimization_finder.visit_body(&read_only_cache);
             optimization_finder.optimizations
         };
 

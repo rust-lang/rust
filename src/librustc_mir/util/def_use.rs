@@ -38,7 +38,7 @@ impl DefUseAnalysis {
             var_debug_info_index: 0,
             in_var_debug_info: false,
         };
-        finder.visit_body(body);
+        finder.visit_body(&body);
         self.info = finder.info
     }
 

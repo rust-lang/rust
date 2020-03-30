@@ -469,7 +469,7 @@ fn locals_live_across_suspend_points(
     // Find the MIR locals which do not use StorageLive/StorageDead statements.
     // The storage of these locals are always live.
     let mut ignored = StorageIgnored(BitSet::new_filled(body.local_decls.len()));
-    ignored.visit_body(body);
+    ignored.visit_body(&body);
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).

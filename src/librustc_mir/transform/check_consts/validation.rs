@@ -183,7 +183,7 @@ impl Validator<'a, 'mir, 'tcx> {
             self.check_op_spanned(ops::Loop, body.span);
         }
 
-        self.visit_body(body);
+        self.visit_body(&body);
 
         // Ensure that the end result is `Sync` in a non-thread local `static`.
         let should_check_for_sync =

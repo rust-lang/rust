@@ -20,7 +20,7 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let mir = fx.mir;
     let mut analyzer = LocalAnalyzer::new(fx);
 
-    analyzer.visit_body(mir);
+    analyzer.visit_body(&mir);
 
     for (local, decl) in mir.local_decls.iter_enumerated() {
         let ty = fx.monomorphize(&decl.ty);

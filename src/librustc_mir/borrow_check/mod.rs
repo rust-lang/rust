@@ -299,8 +299,8 @@ fn do_mir_borrowck<'a, 'tcx>(
     }
 
     dataflow::visit_results(
-        &*body,
-        traversal::reverse_postorder(&*body).map(|(bb, _)| bb),
+        &body,
+        traversal::reverse_postorder(&body).map(|(bb, _)| bb),
         &results,
         &mut mbcx,
     );

@@ -1162,7 +1162,7 @@ fn collect_neighbours<'tcx>(
     debug!("collect_neighbours: {:?}", instance.def_id());
     let body = tcx.instance_mir(instance.def);
 
-    MirNeighborCollector { tcx, body: &body, output, instance }.visit_body(body);
+    MirNeighborCollector { tcx, body: &body, output, instance }.visit_body(&body);
 }
 
 fn def_id_to_string(tcx: TyCtxt<'_>, def_id: DefId) -> String {
