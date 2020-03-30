@@ -17,10 +17,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     crate fn find_closest_untracked_caller_location(&self) -> Option<Span> {
         let mut caller_span = None;
         for next_caller in self.stack.iter().rev() {
+            caller_span = next_caller.current_source_info().map(|si| si.span).or_else(|| caller_span);
             if !next_caller.instance.def.requires_caller_location(*self.tcx) {
                 return caller_span;
             }
-            caller_span = Some(next_caller.span);
         }
 
         caller_span

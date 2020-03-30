@@ -46,7 +46,6 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 
     ecx.push_stack_frame(
         cid.instance,
-        body.span,
         body,
         Some(ret.into()),
         StackPopCleanup::None { cleanup: false },

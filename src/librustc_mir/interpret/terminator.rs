@@ -259,7 +259,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 self.push_stack_frame(
                     instance,
-                    span,
                     body,
                     ret.map(|p| p.0),
                     StackPopCleanup::Goto { ret: ret.map(|p| p.1), unwind },

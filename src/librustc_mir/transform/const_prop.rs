@@ -364,7 +364,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         ecx.push_stack_frame(
             Instance::new(def_id, substs),
-            span,
             dummy_body,
             ret.map(Into::into),
             StackPopCleanup::None { cleanup: false },
