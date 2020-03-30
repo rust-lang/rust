@@ -95,6 +95,9 @@ impl CheckWatcherThread {
     }
 
     fn run(&mut self, task_send: &Sender<CheckTask>, cmd_recv: &Receiver<CheckCommand>) {
+        // If we rerun the thread, we need to discard the previous check results first
+        self.clean_previous_results(task_send);
+
         loop {
             select! {
                 recv(&cmd_recv) -> cmd => match cmd {
@@ -125,6 +128,13 @@ impl CheckWatcherThread {
                 self.watcher = WatchThread::new(&self.options, &self.workspace_root);
             }
         }
+    }
+
+    fn clean_previous_results(&self, task_send: &Sender<CheckTask>) {
+        task_send.send(CheckTask::ClearDiagnostics).unwrap();
+        task_send
+            .send(CheckTask::Status(WorkDoneProgress::End(WorkDoneProgressEnd { message: None })))
+            .unwrap();
     }
 
     fn should_recheck(&mut self) -> bool {
