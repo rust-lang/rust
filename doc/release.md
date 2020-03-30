@@ -78,7 +78,7 @@ be changed by this PR.
 
 ## Update the `beta` branch
 
-This step must be done, **after** the PR of the previous step was merged.
+This step must be done **after** the PR of the previous step was merged.
 
 First, the Clippy commit of the `beta` branch of the Rust repository has to be
 determined.
