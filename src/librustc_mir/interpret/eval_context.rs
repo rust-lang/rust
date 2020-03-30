@@ -17,7 +17,7 @@ use rustc_middle::ty::layout::{self, Align, HasDataLayout, LayoutOf, Size, TyAnd
 use rustc_middle::ty::query::TyCtxtAt;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc_span::source_map::{Span, DUMMY_SP};
+use rustc_span::source_map::DUMMY_SP;
 
 use super::{
     Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
@@ -853,7 +853,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> Vec<FrameInfo<'tcx>> {
+    pub fn generate_stacktrace(&self) -> Vec<FrameInfo<'tcx>> {
         let mut frames = Vec::new();
         for frame in self.stack().iter().rev() {
             let source_info = frame.current_source_info();
@@ -867,7 +867,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             frames.push(FrameInfo { span, instance: frame.instance, lint_root });
         }
-        trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
+        trace!("generate stacktrace: {:#?}", frames);
         frames
     }
 }
