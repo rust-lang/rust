@@ -27,7 +27,7 @@ pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     _location: Location,
-    access_place: (AccessDepth, &Place<'tcx>),
+    access_place: (AccessDepth, Place<'tcx>),
     borrow_set: &BorrowSet<'tcx>,
     candidates: I,
     mut op: F,
@@ -48,7 +48,7 @@ pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
         if places_conflict::borrow_conflicts_with_place(
             tcx,
             body,
-            &borrowed.borrowed_place,
+            borrowed.borrowed_place,
             borrowed.kind,
             place.as_ref(),
             access,

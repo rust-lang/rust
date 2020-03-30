@@ -206,7 +206,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             let idx = self.idx_vec.push(borrow);
             self.location_map.insert(location, idx);
 
-            self.insert_as_pending_if_two_phase(location, &assigned_place, kind, idx);
+            self.insert_as_pending_if_two_phase(location, assigned_place, kind, idx);
 
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
         }

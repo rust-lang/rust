@@ -247,7 +247,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(in crate::borrow_check) fn report_move_out_while_borrowed(
         &mut self,
         location: Location,
-        (place, span): (&Place<'tcx>, Span),
+        (place, span): (Place<'tcx>, Span),
         borrow: &BorrowData<'tcx>,
     ) {
         debug!(
@@ -291,7 +291,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(in crate::borrow_check) fn report_use_while_mutably_borrowed(
         &mut self,
         location: Location,
-        (place, _span): (&Place<'tcx>, Span),
+        (place, _span): (Place<'tcx>, Span),
         borrow: &BorrowData<'tcx>,
     ) -> DiagnosticBuilder<'cx> {
         let borrow_spans = self.retrieve_borrow_spans(borrow);
@@ -330,7 +330,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(in crate::borrow_check) fn report_conflicting_borrow(
         &mut self,
         location: Location,
-        (place, span): (&Place<'tcx>, Span),
+        (place, span): (Place<'tcx>, Span),
         gen_borrow_kind: BorrowKind,
         issued_borrow: &BorrowData<'tcx>,
     ) -> DiagnosticBuilder<'cx> {
@@ -347,7 +347,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
 
         let (desc_place, msg_place, msg_borrow, union_type_name) =
-            self.describe_place_for_conflicting_borrow(place, &issued_borrow.borrowed_place);
+            self.describe_place_for_conflicting_borrow(place, issued_borrow.borrowed_place);
 
         let explanation = self.explain_why_borrow_contains_point(location, issued_borrow, None);
         let second_borrow_desc = if explanation.is_explained() { "second " } else { "" };
@@ -584,8 +584,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// >  mutable (via `a.u.s.b`) [E0502]
     pub(in crate::borrow_check) fn describe_place_for_conflicting_borrow(
         &self,
-        first_borrowed_place: &Place<'tcx>,
-        second_borrowed_place: &Place<'tcx>,
+        first_borrowed_place: Place<'tcx>,
+        second_borrowed_place: Place<'tcx>,
     ) -> (String, String, String, String) {
         // Define a small closure that we can use to check if the type of a place
         // is a union.
@@ -615,13 +615,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     cursor = proj_base;
 
                     match elem {
-                        ProjectionElem::Field(field, _)
-                            if union_ty(*local, proj_base).is_some() =>
-                        {
-                            return Some((
-                                PlaceRef { local: *local, projection: proj_base },
-                                field,
-                            ));
+                        ProjectionElem::Field(field, _) if union_ty(local, proj_base).is_some() => {
+                            return Some((PlaceRef { local, projection: proj_base }, field));
                         }
                         _ => {}
                     }
@@ -631,7 +626,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .and_then(|(target_base, target_field)| {
                 // With the place of a union and a field access into it, we traverse the second
                 // borrowed place and look for a access to a different field of the same union.
-                let Place { local, ref projection } = *second_borrowed_place;
+                let Place { local, ref projection } = second_borrowed_place;
 
                 let mut cursor = &projection[..];
                 while let [proj_base @ .., elem] = cursor {
@@ -682,7 +677,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         borrow: &BorrowData<'tcx>,
-        place_span: (&Place<'tcx>, Span),
+        place_span: (Place<'tcx>, Span),
         kind: Option<WriteKind>,
     ) {
         debug!(
@@ -967,7 +962,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         location: Location,
         borrow: &BorrowData<'tcx>,
-        (place, drop_span): (&Place<'tcx>, Span),
+        (place, drop_span): (Place<'tcx>, Span),
         kind: Option<WriteKind>,
         dropped_ty: Ty<'tcx>,
     ) {
@@ -1379,7 +1374,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(in crate::borrow_check) fn report_illegal_mutation_of_borrowed(
         &mut self,
         location: Location,
-        (place, span): (&Place<'tcx>, Span),
+        (place, span): (Place<'tcx>, Span),
         loan: &BorrowData<'tcx>,
     ) {
         let loan_spans = self.retrieve_borrow_spans(loan);
@@ -1432,9 +1427,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(in crate::borrow_check) fn report_illegal_reassignment(
         &mut self,
         _location: Location,
-        (place, span): (&Place<'tcx>, Span),
+        (place, span): (Place<'tcx>, Span),
         assigned_span: Span,
-        err_place: &Place<'tcx>,
+        err_place: Place<'tcx>,
     ) {
         let (from_arg, local_decl, local_name) = match err_place.as_local() {
             Some(local) => (
