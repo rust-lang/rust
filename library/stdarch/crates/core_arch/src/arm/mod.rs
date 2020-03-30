@@ -34,6 +34,11 @@ mod neon;
 ))]
 pub use self::neon::*;
 
+#[cfg(any(target_arch = "aarch64", target_feature = "v7"))]
+mod crc;
+#[cfg(any(target_arch = "aarch64", target_feature = "v7"))]
+pub use self::crc::*;
+
 pub use crate::core_arch::acle::*;
 
 #[cfg(test)]
