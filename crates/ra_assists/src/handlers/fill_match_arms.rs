@@ -7,7 +7,7 @@ use itertools::Itertools;
 use ra_ide_db::RootDatabase;
 
 use crate::{Assist, AssistCtx, AssistId};
-use ra_syntax::ast::{self, edit::IndentLevel, make, AstNode, NameOwner};
+use ra_syntax::ast::{self, make, AstNode, NameOwner};
 
 use ast::{MatchArm, Pat};
 
@@ -97,10 +97,8 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
     }
 
     ctx.add_assist(AssistId("fill_match_arms"), "Fill match arms", |edit| {
-        arms.extend(missing_arms);
-
-        let indent_level = IndentLevel::from_node(match_arm_list.syntax());
-        let new_arm_list = indent_level.increase_indent(make::match_arm_list(arms));
+        let new_arm_list =
+            match_arm_list.remove_placeholder().append_arms(missing_arms.into_iter());
 
         edit.target(match_expr.syntax().text_range());
         edit.set_cursor(expr.syntax().text_range().start());
@@ -650,6 +648,71 @@ mod tests {
                 match <|>X {
                     X => {}
                     foo::E::Y => {}
+                }
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn fill_match_arms_preserves_comments() {
+        check_assist(
+            fill_match_arms,
+            r#"
+            enum A {
+                One,
+                Two,
+            }
+            fn foo(a: A) {
+                match a {
+                    // foo bar baz<|>
+                    A::One => {}
+                    // This is where the rest should be
+                }
+            }
+            "#,
+            r#"
+            enum A {
+                One,
+                Two,
+            }
+            fn foo(a: A) {
+                match <|>a {
+                    // foo bar baz
+                    A::One => {}
+                    // This is where the rest should be
+                    A::Two => {}
+                }
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn fill_match_arms_preserves_comments_empty() {
+        check_assist(
+            fill_match_arms,
+            r#"
+            enum A {
+                One,
+                Two,
+            }
+            fn foo(a: A) {
+                match a {
+                    // foo bar baz<|>
+                }
+            }
+            "#,
+            r#"
+            enum A {
+                One,
+                Two,
+            }
+            fn foo(a: A) {
+                match <|>a {
+                    // foo bar baz
+                    A::One => {}
+                    A::Two => {}
                 }
             }
             "#,
