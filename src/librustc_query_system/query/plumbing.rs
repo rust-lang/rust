@@ -29,7 +29,7 @@ use std::ptr;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub struct QueryStateShard<CTX: QueryContext, K, C> {
+pub(super) struct QueryStateShard<CTX: QueryContext, K, C> {
     pub(super) cache: C,
     active: FxHashMap<K, QueryResult<CTX>>,
 
