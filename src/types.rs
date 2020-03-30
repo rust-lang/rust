@@ -233,14 +233,18 @@ fn rewrite_segment(
 
     if let Some(ref args) = segment.args {
         match **args {
-            ast::GenericArgs::AngleBracketed(ref data)
-                if !data.args.is_empty() || !data.constraints.is_empty() =>
-            {
+            ast::GenericArgs::AngleBracketed(ref data) if !data.args.is_empty() => {
                 let param_list = data
                     .args
                     .iter()
-                    .map(SegmentParam::from_generic_arg)
-                    .chain(data.constraints.iter().map(|x| SegmentParam::Binding(&*x)))
+                    .map(|x| match x {
+                        ast::AngleBracketedArg::Arg(generic_arg) => {
+                            SegmentParam::from_generic_arg(generic_arg)
+                        }
+                        ast::AngleBracketedArg::Constraint(constraint) => {
+                            SegmentParam::Binding(constraint)
+                        }
+                    })
                     .collect::<Vec<_>>();
 
                 // HACK: squeeze out the span between the identifier and the parameters.

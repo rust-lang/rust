@@ -148,7 +148,15 @@ impl ChainItemKind {
             ast::ExprKind::MethodCall(ref segment, ref expressions) => {
                 let types = if let Some(ref generic_args) = segment.args {
                     if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
-                        data.args.clone()
+                        data.args
+                            .iter()
+                            .filter_map(|x| match x {
+                                ast::AngleBracketedArg::Arg(ref generic_arg) => {
+                                    Some(generic_arg.clone())
+                                }
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>()
                     } else {
                         vec![]
                     }
