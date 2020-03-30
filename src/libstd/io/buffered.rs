@@ -360,7 +360,7 @@ impl<R: Seek> Seek for BufReader<R> {
         let result: u64;
         if let SeekFrom::Current(n) = pos {
             if n == 0 {
-                return Ok(self.pos as u64)
+                return Ok(self.pos as u64);
             }
 
             let remainder = (self.cap - self.pos) as i64;
