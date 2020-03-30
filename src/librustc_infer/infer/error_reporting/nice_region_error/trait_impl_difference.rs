@@ -148,10 +148,8 @@ struct TypeParamSpanVisitor<'tcx> {
 impl Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
     type Map = hir::intravisit::Map<'tcx>;
 
-    fn nested_visit_map<'this>(
-        &'this mut self,
-    ) -> hir::intravisit::NestedVisitorMap<'this, Self::Map> {
-        hir::intravisit::NestedVisitorMap::OnlyBodies(&self.tcx.hir())
+    fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
+        hir::intravisit::NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
     fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
