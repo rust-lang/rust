@@ -17,6 +17,11 @@ if [[ -n $TAG_NAME ]]; then
   ln -s "$TAG_NAME" out/stable
 fi
 
+if [[ $BETA = "true" ]]; then
+  echo "Update documentation for the beta release"
+  cp -r out/master out/beta
+fi
+
 # Generate version index that is shown as root index page
 cp util/gh-pages/versions.html out/index.html
 
@@ -35,12 +40,15 @@ fi
 
 if [[ -n $TAG_NAME ]]; then
   # Add the new dir
-  git add $TAG_NAME
+  git add "$TAG_NAME"
   # Update the symlink
   git add stable
   # Update versions file
   git add versions.json
   git commit -m "Add documentation for ${TAG_NAME} release: ${SHA}"
+elif [[ $BETA = "true" ]]; then
+  git add beta
+  git commit -m "Automatic deploy to GitHub Pages (beta): ${SHA}"
 else
   git add .
   git commit -m "Automatic deploy to GitHub Pages: ${SHA}"
