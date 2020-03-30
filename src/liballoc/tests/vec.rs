@@ -1378,6 +1378,11 @@ fn test_stable_pointers() {
     v.remove(1);
     v.pop().unwrap();
     assert_eq!(*v0, 13);
+    v.push(1);
+    v.swap_remove(1);
+    assert_eq!(v.len(), 2);
+    v.swap_remove(1); // swap_remove the last element
+    assert_eq!(*v0, 13);
 
     // Appending
     v.append(&mut vec![27, 19]);
