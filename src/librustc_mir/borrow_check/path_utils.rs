@@ -130,7 +130,7 @@ pub(super) fn is_active<'tcx>(
 
 /// Determines if a given borrow is borrowing local data
 /// This is called for all Yield expressions on movable generators
-pub(super) fn borrow_of_local_data(place: &Place<'_>) -> bool {
+pub(super) fn borrow_of_local_data(place: Place<'_>) -> bool {
     // Reborrow of already borrowed data is ignored
     // Any errors will be caught on the initial borrow
     !place.is_indirect()

@@ -166,7 +166,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 let borrow_set = self.borrow_set.clone();
                 let resume = self.location_table.start_index(resume.start_location());
                 for i in borrow_set.borrows.indices() {
-                    if borrow_of_local_data(&borrow_set.borrows[i].borrowed_place) {
+                    if borrow_of_local_data(borrow_set.borrows[i].borrowed_place) {
                         self.all_facts.invalidates.push((resume, i));
                     }
                 }
@@ -178,7 +178,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 let borrow_set = self.borrow_set.clone();
                 let start = self.location_table.start_index(location);
                 for i in borrow_set.borrows.indices() {
-                    if borrow_of_local_data(&borrow_set.borrows[i].borrowed_place) {
+                    if borrow_of_local_data(borrow_set.borrows[i].borrowed_place) {
                         self.all_facts.invalidates.push((start, i));
                     }
                 }
