@@ -17,11 +17,9 @@ impl<T, V> ArenaMap<Idx<T>, V> {
         if self.v.capacity() <= idx {
             self.v.reserve(idx + 1 - self.v.capacity());
         }
-        if self.v.len() <= idx {
-            while self.v.len() <= idx {
-                self.v.push(None);
-            }
-        }
+
+        let fill = (idx + 1).saturating_sub(self.v.len());
+        self.v.extend(std::iter::repeat_with(|| None).take(fill));
         self.v[idx] = Some(t);
     }
 
