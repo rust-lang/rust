@@ -1,0 +1,12 @@
+warning: unnecessary braces around assigned value
+  --> $DIR/unused_parens_borrow.rs:20:13
+   |
+LL |     let _ = { a.b };
+   |             ^^^^^^^ help: remove these braces
+   |
+note: the lint level is defined here
+  --> $DIR/unused_parens_borrow.rs:2:9
+   |
+LL | #![warn(unused_braces)]
+   |         ^^^^^^^^^^^^^
+
