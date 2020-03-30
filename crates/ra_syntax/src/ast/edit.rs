@@ -80,12 +80,12 @@ where
 
 impl ast::ItemList {
     #[must_use]
-    pub fn append_items(&self, items: impl Iterator<Item = ast::ImplItem>) -> ast::ItemList {
+    pub fn append_items(&self, items: impl IntoIterator<Item = ast::ImplItem>) -> ast::ItemList {
         let mut res = self.clone();
         if !self.syntax().text().contains_char('\n') {
             res = make_multiline(res);
         }
-        items.for_each(|it| res = res.append_item(it));
+        items.into_iter().for_each(|it| res = res.append_item(it));
         res
     }
 
@@ -339,13 +339,13 @@ impl ast::UseTree {
 
 impl ast::MatchArmList {
     #[must_use]
-    pub fn append_arms(&self, items: impl Iterator<Item = ast::MatchArm>) -> ast::MatchArmList {
+    pub fn append_arms(&self, items: impl IntoIterator<Item = ast::MatchArm>) -> ast::MatchArmList {
         let mut res = self.clone();
         res = res.strip_if_only_whitespace();
         if !res.syntax().text().contains_char('\n') {
             res = make_multiline(res);
         }
-        items.for_each(|it| res = res.append_arm(it));
+        items.into_iter().for_each(|it| res = res.append_arm(it));
         res
     }
 
