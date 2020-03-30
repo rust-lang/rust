@@ -112,9 +112,11 @@ function defocusSearchBar() {
     }
 
     function getPageId() {
-        var id = document.location.href.split("#")[1];
-        if (id) {
-            return id.split("?")[0].split("&")[0];
+        if (window.location.hash) {
+            var tmp = window.location.hash.replace(/^#/, "");
+            if (tmp.length > 0) {
+                return tmp;
+            }
         }
         return null;
     }
@@ -2688,8 +2690,8 @@ function defocusSearchBar() {
 
     autoCollapse(pageId, getCurrentValue("rustdoc-collapse") === "true");
 
-    if (window.location.hash && window.location.hash.length > 0) {
-        expandSection(window.location.hash.replace(/^#/, ""));
+    if (pageId !== null) {
+        expandSection(pageId);
     }
 
     if (main) {
