@@ -79,7 +79,7 @@ MIRI_LOG=info ./miri run tests/run-pass/vecs.rs
 ```
 
 Setting `MIRI_LOG` like this will configure logging for Miri itself as well as
-the `rustc::mir::interpret` and `rustc_mir::interpret` modules in rustc.  You
+the `rustc_middle::mir::interpret` and `rustc_mir::interpret` modules in rustc.  You
 can also do more targeted configuration, e.g. the following helps debug the
 stacked borrows implementation:
 

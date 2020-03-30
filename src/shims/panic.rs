@@ -11,8 +11,10 @@
 //!   gets popped *during unwinding*, we take the panic payload and store it according to the extra
 //!   metadata we remembered when pushing said frame.
 
-use rustc::mir;
-use rustc::ty::{self, layout::LayoutOf};
+use log::trace;
+
+use rustc_middle::mir;
+use rustc_middle::ty::{self, layout::LayoutOf};
 use rustc_target::spec::PanicStrategy;
 
 use crate::*;
@@ -186,7 +188,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         msg: &mir::AssertMessage<'tcx>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        use rustc::mir::AssertKind::*;
+        use rustc_middle::mir::AssertKind::*;
         let this = self.eval_context_mut();
 
         match msg {

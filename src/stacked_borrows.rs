@@ -6,9 +6,11 @@ use std::fmt;
 use std::num::NonZeroU64;
 use std::rc::Rc;
 
+use log::trace;
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc::mir::RetagKind;
-use rustc::ty::{self, layout::Size};
+use rustc_middle::mir::RetagKind;
+use rustc_middle::ty::{self, layout::Size};
 use rustc_hir::Mutability;
 
 use crate::*;

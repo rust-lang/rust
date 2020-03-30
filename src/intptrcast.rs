@@ -2,10 +2,11 @@ use std::cell::RefCell;
 use std::cmp::max;
 use std::collections::hash_map::Entry;
 
+use log::trace;
 use rand::Rng;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc::ty::layout::HasDataLayout;
+use rustc_middle::ty::layout::HasDataLayout;
 use rustc_mir::interpret::{AllocCheck, AllocId, InterpResult, Memory, Machine, Pointer, PointerArithmetic};
 use rustc_target::abi::Size;
 

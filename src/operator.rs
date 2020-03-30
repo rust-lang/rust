@@ -1,7 +1,9 @@
 use std::convert::TryFrom;
 
-use rustc::mir;
-use rustc::ty::{
+use log::trace;
+
+use rustc_middle::mir;
+use rustc_middle::ty::{
     layout::{LayoutOf, Size},
     Ty,
 };
@@ -33,7 +35,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         left: ImmTy<'tcx, Tag>,
         right: ImmTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, (Scalar<Tag>, bool, Ty<'tcx>)> {
-        use rustc::mir::BinOp::*;
+        use rustc_middle::mir::BinOp::*;
 
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
 

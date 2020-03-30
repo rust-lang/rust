@@ -7,13 +7,9 @@
 #![warn(rust_2018_idioms)]
 #![allow(clippy::cast_lossless)]
 
-#[macro_use]
-extern crate log;
-// From rustc.
 extern crate rustc_apfloat;
 extern crate rustc_ast;
-#[macro_use]
-extern crate rustc;
+#[macro_use] extern crate rustc_middle;
 extern crate rustc_data_structures;
 extern crate rustc_hir;
 extern crate rustc_mir;
