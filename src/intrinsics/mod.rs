@@ -140,8 +140,8 @@ macro atomic_minmax($fx:expr, $cc:expr, <$T:ident> ($ptr:ident, $src:ident) -> $
 
 fn lane_type_and_count<'tcx>(
     tcx: TyCtxt<'tcx>,
-    layout: TyLayout<'tcx>,
-) -> (TyLayout<'tcx>, u16) {
+    layout: TyAndLayout<'tcx>,
+) -> (TyAndLayout<'tcx>, u16) {
     assert!(layout.ty.is_simd());
     let lane_count = match layout.fields {
         layout::FieldPlacement::Array { stride: _, count } => u16::try_from(count).unwrap(),
@@ -154,7 +154,7 @@ fn lane_type_and_count<'tcx>(
     (lane_layout, lane_count)
 }
 
-fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyLayout<'tcx>) -> Option<Type> {
+fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Option<Type> {
     let (element, count) = match &layout.abi {
         Abi::Vector { element, count } => (element.clone(), *count),
         _ => unreachable!(),
@@ -175,8 +175,8 @@ fn simd_for_each_lane<'tcx, B: Backend>(
     ret: CPlace<'tcx>,
     f: impl Fn(
         &mut FunctionCx<'_, 'tcx, B>,
-        TyLayout<'tcx>,
-        TyLayout<'tcx>,
+        TyAndLayout<'tcx>,
+        TyAndLayout<'tcx>,
         Value,
     ) -> CValue<'tcx>,
 ) {
@@ -203,8 +203,8 @@ fn simd_pair_for_each_lane<'tcx, B: Backend>(
     ret: CPlace<'tcx>,
     f: impl Fn(
         &mut FunctionCx<'_, 'tcx, B>,
-        TyLayout<'tcx>,
-        TyLayout<'tcx>,
+        TyAndLayout<'tcx>,
+        TyAndLayout<'tcx>,
         Value,
         Value,
     ) -> CValue<'tcx>,
@@ -229,7 +229,7 @@ fn simd_pair_for_each_lane<'tcx, B: Backend>(
 
 fn bool_to_zero_or_max_uint<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
     val: Value,
 ) -> CValue<'tcx> {
     let ty = fx.clif_type(layout.ty).unwrap();

@@ -43,8 +43,8 @@ pub(crate) fn unsized_info<'tcx>(
 fn unsize_thin_ptr<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     src: Value,
-    src_layout: TyLayout<'tcx>,
-    dst_layout: TyLayout<'tcx>,
+    src_layout: TyAndLayout<'tcx>,
+    dst_layout: TyAndLayout<'tcx>,
 ) -> (Value, Value) {
     match (&src_layout.ty.kind, &dst_layout.ty.kind) {
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _))
@@ -139,7 +139,7 @@ pub(crate) fn coerce_unsized_into<'tcx>(
 
 pub(crate) fn size_and_align_of_dst<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
     info: Value,
 ) -> (Value, Value) {
     if !layout.is_unsized() {

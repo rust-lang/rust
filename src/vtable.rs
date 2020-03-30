@@ -69,7 +69,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
 
 pub(crate) fn get_vtable<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
     let data_id = if let Some(data_id) = fx.vtables.get(&(layout.ty, trait_ref)) {
@@ -86,7 +86,7 @@ pub(crate) fn get_vtable<'tcx>(
 
 fn build_vtable<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> DataId {
     let tcx = fx.tcx;

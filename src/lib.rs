@@ -72,7 +72,7 @@ mod prelude {
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
     pub(crate) use rustc::mir::{self, *};
     pub(crate) use rustc_session::Session;
-    pub(crate) use rustc::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyLayout, VariantIdx};
+    pub(crate) use rustc::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyAndLayout, VariantIdx};
     pub(crate) use rustc::ty::{
         self, FnSig, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeAndMut, TypeFoldable,
     };

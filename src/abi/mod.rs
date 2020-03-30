@@ -271,7 +271,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
 fn local_place<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     local: Local,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
     is_ssa: bool,
 ) -> CPlace<'tcx> {
     let place = if is_ssa {

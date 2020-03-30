@@ -76,7 +76,7 @@ impl PassMode {
     }
 }
 
-pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyLayout<'tcx>) -> PassMode {
+pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> PassMode {
     if layout.is_zst() {
         // WARNING zst arguments must never be passed, as that will break CastKind::ClosureFnPointer
         PassMode::NoPass

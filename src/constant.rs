@@ -46,7 +46,7 @@ pub(crate) fn codegen_static(constants_cx: &mut ConstantCx, def_id: DefId) {
 fn codegen_static_ref<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     def_id: DefId,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
 ) -> CPlace<'tcx> {
     let linkage = crate::linkage::get_static_ref_linkage(fx.tcx, def_id);
     let data_id = data_id_for_static(fx.tcx, fx.module, def_id, linkage);
@@ -277,7 +277,7 @@ fn data_id_for_static(
 
 fn cplace_for_dataid<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
     local_data_id: GlobalValue,
 ) -> CPlace<'tcx> {
     let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);

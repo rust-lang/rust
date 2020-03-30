@@ -61,7 +61,7 @@ pub(super) fn add_local_place_comments<'tcx>(
     place: CPlace<'tcx>,
     local: Local,
 ) {
-    let TyLayout { ty, layout } = place.layout();
+    let TyAndLayout { ty, layout } = place.layout();
     let ty::layout::Layout {
         size,
         align,

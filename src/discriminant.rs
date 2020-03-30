@@ -55,7 +55,7 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
 pub(crate) fn codegen_get_discriminant<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     value: CValue<'tcx>,
-    dest_layout: TyLayout<'tcx>,
+    dest_layout: TyAndLayout<'tcx>,
 ) -> CValue<'tcx> {
     let layout = value.layout();
 

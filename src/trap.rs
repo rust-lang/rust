@@ -80,7 +80,7 @@ pub(crate) fn trap_unreachable(
 /// Trap code: user65535
 pub(crate) fn trap_unreachable_ret_value<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl cranelift_module::Backend>,
-    dest_layout: TyLayout<'tcx>,
+    dest_layout: TyAndLayout<'tcx>,
     msg: impl AsRef<str>,
 ) -> CValue<'tcx> {
     trap_unreachable(fx, msg);
@@ -106,7 +106,7 @@ pub(crate) fn trap_unimplemented(
 /// Trap code: user65535
 pub(crate) fn trap_unimplemented_ret_value<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl cranelift_module::Backend>,
-    dest_layout: TyLayout<'tcx>,
+    dest_layout: TyAndLayout<'tcx>,
     msg: impl AsRef<str>,
 ) -> CValue<'tcx> {
     trap_unimplemented(fx, msg);

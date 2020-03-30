@@ -282,9 +282,9 @@ pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
 
 impl<'tcx, B: Backend> LayoutOf for FunctionCx<'_, 'tcx, B> {
     type Ty = Ty<'tcx>;
-    type TyLayout = TyLayout<'tcx>;
+    type TyAndLayout = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> TyLayout<'tcx> {
+    fn layout_of(&self, ty: Ty<'tcx>) -> TyAndLayout<'tcx> {
         assert!(!ty.needs_subst());
         self.tcx
             .layout_of(ParamEnv::reveal_all().and(&ty))

@@ -6,9 +6,9 @@ fn codegen_field<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     base: Pointer,
     extra: Option<Value>,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
     field: mir::Field,
-) -> (Pointer, TyLayout<'tcx>) {
+) -> (Pointer, TyAndLayout<'tcx>) {
     let field_offset = layout.fields.offset(field.index());
     let field_layout = layout.field(&*fx, field.index());
 
@@ -62,7 +62,7 @@ fn scalar_pair_calculate_b_offset(tcx: TyCtxt<'_>, a_scalar: &Scalar, b_scalar: 
 
 /// A read-only value
 #[derive(Debug, Copy, Clone)]
-pub(crate) struct CValue<'tcx>(CValueInner, TyLayout<'tcx>);
+pub(crate) struct CValue<'tcx>(CValueInner, TyAndLayout<'tcx>);
 
 #[derive(Debug, Copy, Clone)]
 enum CValueInner {
@@ -72,23 +72,23 @@ enum CValueInner {
 }
 
 impl<'tcx> CValue<'tcx> {
-    pub(crate) fn by_ref(ptr: Pointer, layout: TyLayout<'tcx>) -> CValue<'tcx> {
+    pub(crate) fn by_ref(ptr: Pointer, layout: TyAndLayout<'tcx>) -> CValue<'tcx> {
         CValue(CValueInner::ByRef(ptr, None), layout)
     }
 
-    pub(crate) fn by_ref_unsized(ptr: Pointer, meta: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
+    pub(crate) fn by_ref_unsized(ptr: Pointer, meta: Value, layout: TyAndLayout<'tcx>) -> CValue<'tcx> {
         CValue(CValueInner::ByRef(ptr, Some(meta)), layout)
     }
 
-    pub(crate) fn by_val(value: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
+    pub(crate) fn by_val(value: Value, layout: TyAndLayout<'tcx>) -> CValue<'tcx> {
         CValue(CValueInner::ByVal(value), layout)
     }
 
-    pub(crate) fn by_val_pair(value: Value, extra: Value, layout: TyLayout<'tcx>) -> CValue<'tcx> {
+    pub(crate) fn by_val_pair(value: Value, extra: Value, layout: TyAndLayout<'tcx>) -> CValue<'tcx> {
         CValue(CValueInner::ByValPair(value, extra), layout)
     }
 
-    pub(crate) fn layout(&self) -> TyLayout<'tcx> {
+    pub(crate) fn layout(&self) -> TyAndLayout<'tcx> {
         self.1
     }
 
@@ -194,7 +194,7 @@ impl<'tcx> CValue<'tcx> {
     /// If `ty` is signed, `const_val` must already be sign extended.
     pub(crate) fn const_val(
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
         const_val: u128,
     ) -> CValue<'tcx> {
         use cranelift_codegen::ir::immediates::{Ieee32, Ieee64};
@@ -243,7 +243,7 @@ impl<'tcx> CValue<'tcx> {
         CValue::by_val(val, layout)
     }
 
-    pub(crate) fn unchecked_cast_to(self, layout: TyLayout<'tcx>) -> Self {
+    pub(crate) fn unchecked_cast_to(self, layout: TyAndLayout<'tcx>) -> Self {
         CValue(self.0, layout)
     }
 }
@@ -252,7 +252,7 @@ impl<'tcx> CValue<'tcx> {
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct CPlace<'tcx> {
     inner: CPlaceInner,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -263,7 +263,7 @@ pub(crate) enum CPlaceInner {
 }
 
 impl<'tcx> CPlace<'tcx> {
-    pub(crate) fn layout(&self) -> TyLayout<'tcx> {
+    pub(crate) fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
     }
 
@@ -271,7 +271,7 @@ impl<'tcx> CPlace<'tcx> {
         &self.inner
     }
 
-    pub(crate) fn no_place(layout: TyLayout<'tcx>) -> CPlace<'tcx> {
+    pub(crate) fn no_place(layout: TyAndLayout<'tcx>) -> CPlace<'tcx> {
         CPlace {
             inner: CPlaceInner::NoPlace,
             layout,
@@ -280,7 +280,7 @@ impl<'tcx> CPlace<'tcx> {
 
     pub(crate) fn new_stack_slot(
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
         assert!(!layout.is_unsized());
         if layout.size.bytes() == 0 {
@@ -304,7 +304,7 @@ impl<'tcx> CPlace<'tcx> {
     pub(crate) fn new_var(
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         local: Local,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
         fx.bcx
             .declare_var(mir_var(local), fx.clif_type(layout.ty).unwrap());
@@ -314,14 +314,14 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
-    pub(crate) fn for_ptr(ptr: Pointer, layout: TyLayout<'tcx>) -> CPlace<'tcx> {
+    pub(crate) fn for_ptr(ptr: Pointer, layout: TyAndLayout<'tcx>) -> CPlace<'tcx> {
         CPlace {
             inner: CPlaceInner::Addr(ptr, None),
             layout,
         }
     }
 
-    pub(crate) fn for_ptr_with_extra(ptr: Pointer, extra: Value, layout: TyLayout<'tcx>) -> CPlace<'tcx> {
+    pub(crate) fn for_ptr_with_extra(ptr: Pointer, extra: Value, layout: TyAndLayout<'tcx>) -> CPlace<'tcx> {
         CPlace {
             inner: CPlaceInner::Addr(ptr, Some(extra)),
             layout,
@@ -578,7 +578,7 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
-    pub(crate) fn unchecked_cast_to(self, layout: TyLayout<'tcx>) -> Self {
+    pub(crate) fn unchecked_cast_to(self, layout: TyAndLayout<'tcx>) -> Self {
         assert!(!self.layout().is_unsized());
         match self.inner {
             CPlaceInner::NoPlace => {

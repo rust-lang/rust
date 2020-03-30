@@ -1,11 +1,11 @@
 use crate::abi::pass_mode::*;
 use crate::prelude::*;
 
-fn return_layout<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> TyLayout<'tcx> {
+fn return_layout<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> TyAndLayout<'tcx> {
     fx.layout_of(fx.monomorphize(&fx.mir.local_decls[RETURN_PLACE].ty))
 }
 
-pub(crate) fn can_return_to_ssa_var<'tcx>(tcx: TyCtxt<'tcx>, dest_layout: TyLayout<'tcx>) -> bool {
+pub(crate) fn can_return_to_ssa_var<'tcx>(tcx: TyCtxt<'tcx>, dest_layout: TyAndLayout<'tcx>) -> bool {
     match get_pass_mode(tcx, dest_layout) {
         PassMode::NoPass | PassMode::ByVal(_) => true,
         // FIXME Make it possible to return ByValPair and ByRef to an ssa var.
