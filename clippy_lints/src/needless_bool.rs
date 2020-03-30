@@ -212,7 +212,7 @@ fn one_side_is_unary_not<'tcx>(left_side: &'tcx Expr<'_>, right_side: &'tcx Expr
     let right = is_unary_not(right_side);
 
     ExpressionInfoWithSpan {
-        one_side_is_unary_not: left.0 ^ right.0,
+        one_side_is_unary_not: left.0 != right.0,
         left_span: left.1,
         right_span: right.1,
     }
