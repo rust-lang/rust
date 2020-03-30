@@ -93,7 +93,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
             .into_results_cursor(mir);
         let mut possible_borrower = {
             let mut vis = PossibleBorrowerVisitor::new(cx, mir);
-            vis.visit_body(mir_read_only);
+            vis.visit_body(&mir_read_only);
             vis.into_map(cx, maybe_storage_live_result)
         };
 
