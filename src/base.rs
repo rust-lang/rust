@@ -169,6 +169,12 @@ pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
         crate::optimize::optimize_function(tcx, instance, context, &cold_blocks, &mut clif_comments);
     });
 
+    // If the return block is not reachable, then the SSA builder may have inserted a `iconst.i128`
+    // instruction, which doesn't have an encoding.
+    context.compute_cfg();
+    context.compute_domtree();
+    context.eliminate_unreachable_code(cx.module.isa()).unwrap();
+
     // Define function
     let module = &mut cx.module;
     tcx.sess.time(
@@ -265,6 +271,23 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
 
         match &bb_data.terminator().kind {
             TerminatorKind::Goto { target } => {
+                if let TerminatorKind::Return = fx.mir[*target].terminator().kind {
+                    let mut can_immediately_return = true;
+                    for stmt in &fx.mir[*target].statements {
+                        if let StatementKind::StorageDead(_) = stmt.kind {
+                        } else {
+                            // FIXME Can sometimes happen, see rust-lang/rust#70531
+                            can_immediately_return = false;
+                            break;
+                        }
+                    }
+
+                    if can_immediately_return {
+                        crate::abi::codegen_return(fx);
+                        continue;
+                    }
+                }
+
                 let block = fx.get_block(*target);
                 fx.bcx.ins().jump(block, &[]);
             }
