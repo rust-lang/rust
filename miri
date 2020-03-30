@@ -49,6 +49,7 @@ fi
 # We enable debug-assertions to get tracing.
 # We enable line-only debuginfo for backtraces.
 export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR -C debug-assertions -C debuginfo=1 $RUSTC_EXTRA_FLAGS"
+export CARGO_INCREMENTAL=1
 
 ## Helper functions
 
