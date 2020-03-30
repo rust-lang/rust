@@ -287,15 +287,14 @@ impl<'a> Parser<'a> {
     }
 
     fn check_too_many_raw_str_terminators(&mut self, err: &mut DiagnosticBuilder<'_>) -> bool {
-        let prev_token_raw_str = match self.prev_token.kind {
-            TokenKind::Literal(Lit {
-                kind: LitKind::StrRaw(n) | LitKind::ByteStrRaw(n), ..
-            }) => Some(n),
-            _ => None,
-        };
-
-        if let Some(n_hashes) = prev_token_raw_str {
-            if self.token.kind == TokenKind::Pound {
+        match (&self.prev_token.kind, &self.token.kind) {
+            (
+                TokenKind::Literal(Lit {
+                    kind: LitKind::StrRaw(n_hashes) | LitKind::ByteStrRaw(n_hashes),
+                    ..
+                }),
+                TokenKind::Pound,
+            ) => {
                 err.set_primary_message("too many `#` when terminating raw string");
                 err.span_suggestion(
                     self.token.span,
@@ -304,10 +303,10 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 );
                 err.note(&format!("the raw string started with {} `#`s", n_hashes));
-                return true;
+                true
             }
+            _ => false,
         }
-        false
     }
 
     pub fn maybe_annotate_with_ascription(

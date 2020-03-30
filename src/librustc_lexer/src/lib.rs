@@ -731,7 +731,7 @@ impl Cursor<'_> {
                     n_end_hashes,
                     possible_terminator_offset: None,
                 };
-            } else if n_end_hashes > 0 && n_end_hashes > max_hashes {
+            } else if n_end_hashes > max_hashes {
                 // Keep track of possible terminators to give a hint about where there might be
                 // a missing terminator
                 possible_terminator_offset =
