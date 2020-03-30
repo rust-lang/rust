@@ -1098,6 +1098,7 @@ impl<'a> Builder<'a> {
         }
 
         if let Mode::Rustc | Mode::Codegen = mode {
+            rustflags.arg("-Zshare-generics");
             rustflags.arg("-Zunstable-options");
             rustflags.arg("-Wrustc::internal");
         }
