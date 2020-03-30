@@ -4,7 +4,7 @@ use std::mem;
 use rustc::mir;
 use rustc::ty::{
     self,
-    layout::{self, LayoutOf, Size, TyLayout},
+    layout::{self, LayoutOf, Size, TyAndLayout},
     List, TyCtxt,
 };
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
@@ -84,8 +84,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         self.eval_libc(name)?.to_i32()
     }
 
-    /// Helper function to get the `TyLayout` of a `libc` type
-    fn libc_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyLayout<'tcx>> {
+    /// Helper function to get the `TyAndLayout` of a `libc` type
+    fn libc_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         let this = self.eval_context_mut();
         let ty = this.resolve_path(&["libc", name]).monomorphic_ty(*this.tcx);
         this.layout_of(ty)
@@ -469,7 +469,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
 pub fn immty_from_int_checked<'tcx>(
     int: impl Into<i128>,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
 ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
     let int = int.into();
     Ok(ImmTy::try_from_int(int, layout).ok_or_else(|| {
@@ -479,7 +479,7 @@ pub fn immty_from_int_checked<'tcx>(
 
 pub fn immty_from_uint_checked<'tcx>(
     int: impl Into<u128>,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
 ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
     let int = int.into();
     Ok(ImmTy::try_from_uint(int, layout).ok_or_else(|| {

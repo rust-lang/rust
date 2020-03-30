@@ -35,7 +35,7 @@ fn slice_index() -> u8 {
     arr[5]
 }
 
-fn try_from() {
+fn from() {
     const N: usize = 16;
     type Array = [u8; N];
     let array: Array = [0; N];
@@ -43,6 +43,9 @@ fn try_from() {
 
     let result = <&Array>::try_from(slice);
     assert_eq!(&array, result.unwrap());
+
+    let vec = Vec::from(array);
+    assert_eq!(vec.len(), N);
 }
 
 fn eq() {
@@ -69,7 +72,7 @@ fn main() {
     assert_eq!(array_array(), [[5, 4], [3, 2], [1, 0]]);
     assert_eq!(array_repeat(), [42; 8]);
     assert_eq!(mini_array(), [42]);
-    try_from();
+    from();
     eq();
     debug();
 }
