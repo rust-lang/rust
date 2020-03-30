@@ -17,9 +17,13 @@
 mod cursor;
 pub mod unescape;
 
+#[cfg(test)]
+mod tests;
+
 use self::LiteralKind::*;
 use self::TokenKind::*;
 use crate::cursor::{Cursor, EOF_CHAR};
+use std::convert::TryInto;
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,
@@ -132,9 +136,80 @@ pub enum LiteralKind {
     /// "b"abc"", "b"abc"
     ByteStr { terminated: bool },
     /// "r"abc"", "r#"abc"#", "r####"ab"###"c"####", "r#"a"
-    RawStr { n_hashes: usize, started: bool, terminated: bool },
+    RawStr(UnvalidatedRawStr),
     /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a"
-    RawByteStr { n_hashes: usize, started: bool, terminated: bool },
+    RawByteStr(UnvalidatedRawStr),
+}
+
+/// Represents something that looks like a raw string, but may have some
+/// problems. Use `.validate()` to convert it into something
+/// usable.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct UnvalidatedRawStr {
+    /// The prefix (`r###"`) is valid
+    valid_start: bool,
+    /// The number of leading `#`
+    n_start_hashes: usize,
+    /// The number of trailing `#`. `n_end_hashes` <= `n_start_hashes`
+    n_end_hashes: usize,
+    /// The offset starting at `r` or `br` where the user may have intended to end the string.
+    /// Currently, it is the longest sequence of pattern `"#+"`.
+    possible_terminator_offset: Option<usize>,
+}
+
+/// Error produced validating a raw string. Represents cases like:
+/// - `r##~"abcde"##`: `LexRawStrError::InvalidStarter`
+/// - `r###"abcde"##`: `LexRawStrError::NoTerminator { expected: 3, found: 2, possible_terminator_offset: Some(11)`
+/// - Too many `#`s (>65536): `TooManyDelimiters`
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum LexRawStrError {
+    /// Non `#` characters exist between `r` and `"` eg. `r#~"..`
+    InvalidStarter,
+    /// The string was never terminated. `possible_terminator_offset` is the number of characters after `r` or `br` where they
+    /// may have intended to terminate it.
+    NoTerminator { expected: usize, found: usize, possible_terminator_offset: Option<usize> },
+    /// More than 65536 `#`s exist.
+    TooManyDelimiters,
+}
+
+/// Raw String that contains a valid prefix (`#+"`) and postfix (`"#+`) where
+/// there are a matching number of `#` characters in both. Note that this will
+/// not consume extra trailing `#` characters: `r###"abcde"####` is lexed as a
+/// `ValidatedRawString { n_hashes: 3 }` followed by a `#` token.
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub struct ValidatedRawStr {
+    n_hashes: u16,
+}
+
+impl ValidatedRawStr {
+    pub fn num_hashes(&self) -> u16 {
+        self.n_hashes
+    }
+}
+
+impl UnvalidatedRawStr {
+    pub fn validate(self) -> Result<ValidatedRawStr, LexRawStrError> {
+        if !self.valid_start {
+            return Err(LexRawStrError::InvalidStarter);
+        }
+
+        // Only up to 65535 `#`s are allowed in raw strings
+        let n_start_safe: u16 =
+            self.n_start_hashes.try_into().map_err(|_| LexRawStrError::TooManyDelimiters)?;
+
+        if self.n_start_hashes > self.n_end_hashes {
+            Err(LexRawStrError::NoTerminator {
+                expected: self.n_start_hashes,
+                found: self.n_end_hashes,
+                possible_terminator_offset: self.possible_terminator_offset,
+            })
+        } else {
+            // Since the lexer should never produce a literal with n_end > n_start, if n_start <= n_end,
+            // they must be equal.
+            debug_assert_eq!(self.n_start_hashes, self.n_end_hashes);
+            Ok(ValidatedRawStr { n_hashes: n_start_safe })
+        }
+    }
 }
 
 /// Base of numeric literal encoding according to its prefix.
@@ -209,7 +284,7 @@ pub fn is_whitespace(c: char) -> bool {
         // Dedicated whitespace characters from Unicode
         | '\u{2028}' // LINE SEPARATOR
         | '\u{2029}' // PARAGRAPH SEPARATOR
-            => true,
+        => true,
         _ => false,
     }
 }
@@ -258,12 +333,12 @@ impl Cursor<'_> {
             'r' => match (self.first(), self.second()) {
                 ('#', c1) if is_id_start(c1) => self.raw_ident(),
                 ('#', _) | ('"', _) => {
-                    let (n_hashes, started, terminated) = self.raw_double_quoted_string();
+                    let raw_str_i = self.raw_double_quoted_string(1);
                     let suffix_start = self.len_consumed();
-                    if terminated {
+                    if raw_str_i.n_end_hashes == raw_str_i.n_start_hashes {
                         self.eat_literal_suffix();
                     }
-                    let kind = RawStr { n_hashes, started, terminated };
+                    let kind = RawStr(raw_str_i);
                     Literal { kind, suffix_start }
                 }
                 _ => self.ident(),
@@ -293,12 +368,14 @@ impl Cursor<'_> {
                 }
                 ('r', '"') | ('r', '#') => {
                     self.bump();
-                    let (n_hashes, started, terminated) = self.raw_double_quoted_string();
+                    let raw_str_i = self.raw_double_quoted_string(2);
                     let suffix_start = self.len_consumed();
+                    let terminated = raw_str_i.n_start_hashes == raw_str_i.n_end_hashes;
                     if terminated {
                         self.eat_literal_suffix();
                     }
-                    let kind = RawByteStr { n_hashes, started, terminated };
+
+                    let kind = RawByteStr(raw_str_i);
                     Literal { kind, suffix_start }
                 }
                 _ => self.ident(),
@@ -594,29 +671,41 @@ impl Cursor<'_> {
         false
     }
 
-    /// Eats the double-quoted string and returns a tuple of
-    /// (amount of the '#' symbols, raw string started, raw string terminated)
-    fn raw_double_quoted_string(&mut self) -> (usize, bool, bool) {
+    /// Eats the double-quoted string and returns an `UnvalidatedRawStr`.
+    fn raw_double_quoted_string(&mut self, prefix_len: usize) -> UnvalidatedRawStr {
         debug_assert!(self.prev() == 'r');
-        let mut started: bool = false;
-        let mut finished: bool = false;
+        let mut valid_start: bool = false;
+        let start_pos = self.len_consumed();
+        let (mut possible_terminator_offset, mut max_hashes) = (None, 0);
 
         // Count opening '#' symbols.
-        let n_hashes = self.eat_while(|c| c == '#');
+        let n_start_hashes = self.eat_while(|c| c == '#');
 
         // Check that string is started.
         match self.bump() {
-            Some('"') => started = true,
-            _ => return (n_hashes, started, finished),
+            Some('"') => valid_start = true,
+            _ => {
+                return UnvalidatedRawStr {
+                    valid_start,
+                    n_start_hashes,
+                    n_end_hashes: 0,
+                    possible_terminator_offset,
+                };
+            }
         }
 
         // Skip the string contents and on each '#' character met, check if this is
         // a raw string termination.
-        while !finished {
+        loop {
             self.eat_while(|c| c != '"');
 
             if self.is_eof() {
-                return (n_hashes, started, finished);
+                return UnvalidatedRawStr {
+                    valid_start,
+                    n_start_hashes,
+                    n_end_hashes: max_hashes,
+                    possible_terminator_offset,
+                };
             }
 
             // Eat closing double quote.
@@ -624,7 +713,7 @@ impl Cursor<'_> {
 
             // Check that amount of closing '#' symbols
             // is equal to the amount of opening ones.
-            let mut hashes_left = n_hashes;
+            let mut hashes_left = n_start_hashes;
             let is_closing_hash = |c| {
                 if c == '#' && hashes_left != 0 {
                     hashes_left -= 1;
@@ -633,10 +722,23 @@ impl Cursor<'_> {
                     false
                 }
             };
-            finished = self.eat_while(is_closing_hash) == n_hashes;
-        }
+            let n_end_hashes = self.eat_while(is_closing_hash);
 
-        (n_hashes, started, finished)
+            if n_end_hashes == n_start_hashes {
+                return UnvalidatedRawStr {
+                    valid_start,
+                    n_start_hashes,
+                    n_end_hashes,
+                    possible_terminator_offset: None,
+                };
+            } else if n_end_hashes > max_hashes {
+                // Keep track of possible terminators to give a hint about where there might be
+                // a missing terminator
+                possible_terminator_offset =
+                    Some(self.len_consumed() - start_pos - n_end_hashes + prefix_len);
+                max_hashes = n_end_hashes;
+            }
+        }
     }
 
     fn eat_decimal_digits(&mut self) -> bool {
