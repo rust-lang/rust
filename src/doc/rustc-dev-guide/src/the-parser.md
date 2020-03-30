@@ -25,7 +25,7 @@ macro-expansion).
 
 The parser is defined in [`librustc_parse`][librustc_parse], along with a
 high-level interface to the lexer and some validation routines that run after
-macro expansion. In particular, the [`rustc_parser::parser`][parser] contains
+macro expansion. In particular, the [`rustc_parse::parser`][parser] contains
 the parser implementation.
 
 The main entrypoint to the parser is via the various `parse_*` functions in the
