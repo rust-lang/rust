@@ -2,9 +2,9 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use itertools::Itertools;
-use rustc_span::{source_map::SourceMap, BytePos, Span};
-use syntax::token::{DelimToken, LitKind};
-use syntax::{ast, ptr};
+use rustc_ast::token::{DelimToken, LitKind};
+use rustc_ast::{ast, ptr};
+use rustc_span::{BytePos, Span};
 
 use crate::chains::rewrite_chain;
 use crate::closures;
@@ -199,7 +199,7 @@ pub(crate) fn format_expr(
         ast::ExprKind::Try(..) | ast::ExprKind::Field(..) | ast::ExprKind::MethodCall(..) => {
             rewrite_chain(expr, context, shape)
         }
-        ast::ExprKind::Mac(ref mac) => {
+        ast::ExprKind::MacCall(ref mac) => {
             rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
                 wrap_str(
                     context.snippet(expr.span).to_owned(),
@@ -322,7 +322,7 @@ pub(crate) fn format_expr(
         }
         // We do not format these expressions yet, but they should still
         // satisfy our width restrictions.
-        ast::ExprKind::InlineAsm(..) => Some(context.snippet(expr.span).to_owned()),
+        ast::ExprKind::LlvmInlineAsm(..) => Some(context.snippet(expr.span).to_owned()),
         ast::ExprKind::TryBlock(ref block) => {
             if let rw @ Some(_) =
                 rewrite_single_line_block(context, "try ", block, Some(&expr.attrs), None, shape)
@@ -430,7 +430,7 @@ fn rewrite_empty_block(
         return None;
     }
 
-    if !block_contains_comment(block, context.source_map) && shape.width >= 2 {
+    if !block_contains_comment(context, block) && shape.width >= 2 {
         return Some(format!("{}{}{{}}", prefix, label_str));
     }
 
@@ -487,7 +487,7 @@ fn rewrite_single_line_block(
     label: Option<ast::Label>,
     shape: Shape,
 ) -> Option<String> {
-    if is_simple_block(block, attrs, context.source_map) {
+    if is_simple_block(context, block, attrs) {
         let expr_shape = shape.offset_left(last_line_width(prefix))?;
         let expr_str = block.stmts[0].rewrite(context, expr_shape)?;
         let label_str = rewrite_label(label);
@@ -750,8 +750,8 @@ impl<'a> ControlFlow<'a> {
         let fixed_cost = self.keyword.len() + "  {  } else {  }".len();
 
         if let ast::ExprKind::Block(ref else_node, _) = else_block.kind {
-            if !is_simple_block(self.block, None, context.source_map)
-                || !is_simple_block(else_node, None, context.source_map)
+            if !is_simple_block(context, self.block, None)
+                || !is_simple_block(context, else_node, None)
                 || pat_expr_str.contains('\n')
             {
                 return None;
@@ -1134,9 +1134,8 @@ fn extract_comment(span: Span, context: &RewriteContext<'_>, shape: Shape) -> Op
     }
 }
 
-pub(crate) fn block_contains_comment(block: &ast::Block, source_map: &SourceMap) -> bool {
-    let snippet = source_map.span_to_snippet(block.span).unwrap();
-    contains_comment(&snippet)
+pub(crate) fn block_contains_comment(context: &RewriteContext<'_>, block: &ast::Block) -> bool {
+    contains_comment(context.snippet(block.span))
 }
 
 // Checks that a block contains no statements, an expression and no comments or
@@ -1144,37 +1143,37 @@ pub(crate) fn block_contains_comment(block: &ast::Block, source_map: &SourceMap)
 // FIXME: incorrectly returns false when comment is contained completely within
 // the expression.
 pub(crate) fn is_simple_block(
+    context: &RewriteContext<'_>,
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
-    source_map: &SourceMap,
 ) -> bool {
     block.stmts.len() == 1
         && stmt_is_expr(&block.stmts[0])
-        && !block_contains_comment(block, source_map)
+        && !block_contains_comment(context, block)
         && attrs.map_or(true, |a| a.is_empty())
 }
 
 /// Checks whether a block contains at most one statement or expression, and no
 /// comments or attributes.
 pub(crate) fn is_simple_block_stmt(
+    context: &RewriteContext<'_>,
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
-    source_map: &SourceMap,
 ) -> bool {
     block.stmts.len() <= 1
-        && !block_contains_comment(block, source_map)
+        && !block_contains_comment(context, block)
         && attrs.map_or(true, |a| a.is_empty())
 }
 
 /// Checks whether a block contains no statements, expressions, comments, or
 /// inner attributes.
 pub(crate) fn is_empty_block(
+    context: &RewriteContext<'_>,
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
-    source_map: &SourceMap,
 ) -> bool {
     block.stmts.is_empty()
-        && !block_contains_comment(block, source_map)
+        && !block_contains_comment(context, block)
         && attrs.map_or(true, |a| inner_attributes(a).is_empty())
 }
 
@@ -1313,9 +1312,9 @@ pub(crate) fn can_be_overflowed_expr(
             context.config.overflow_delimited_expr()
                 || (context.use_block_indent() && args_len == 1)
         }
-        ast::ExprKind::Mac(ref mac) => {
+        ast::ExprKind::MacCall(ref mac) => {
             match (
-                syntax::ast::MacDelimiter::from_token(mac.args.delim()),
+                rustc_ast::ast::MacDelimiter::from_token(mac.args.delim()),
                 context.config.overflow_delimited_expr(),
             ) {
                 (Some(ast::MacDelimiter::Bracket), true)
@@ -1341,7 +1340,7 @@ pub(crate) fn can_be_overflowed_expr(
 
 pub(crate) fn is_nested_call(expr: &ast::Expr) -> bool {
     match expr.kind {
-        ast::ExprKind::Call(..) | ast::ExprKind::Mac(..) => true,
+        ast::ExprKind::Call(..) | ast::ExprKind::MacCall(..) => true,
         ast::ExprKind::AddrOf(_, _, ref expr)
         | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)

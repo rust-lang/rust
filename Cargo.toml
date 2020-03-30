@@ -56,43 +56,45 @@ ignore = "0.4.11"
 annotate-snippets = { version = "0.6", features = ["ansi_term"] }
 structopt = "0.3"
 rustfmt-config_proc_macro = { version = "0.2", path = "config_proc_macro" }
+lazy_static = "1.0.0"
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
 # for more information.
 rustc-workspace-hack = "1.0.0"
 
+[dependencies.rustc_ast]
+package = "rustc-ap-rustc_ast"
+version = "651.0.0"
+
 [dependencies.rustc_ast_pretty]
 package = "rustc-ap-rustc_ast_pretty"
-version = "642.0.0"
+version = "651.0.0"
 
 [dependencies.rustc_data_structures]
 package = "rustc-ap-rustc_data_structures"
-version = "642.0.0"
+version = "651.0.0"
 
 [dependencies.rustc_errors]
 package = "rustc-ap-rustc_errors"
-version = "642.0.0"
+version = "651.0.0"
+
+[dependencies.rustc_expand]
+package = "rustc-ap-rustc_expand"
+version = "651.0.0"
 
 [dependencies.rustc_parse]
 package = "rustc-ap-rustc_parse"
-version = "642.0.0"
+version = "651.0.0"
 
 [dependencies.rustc_session]
 package = "rustc-ap-rustc_session"
-version = "642.0.0"
+version = "651.0.0"
 
 [dependencies.rustc_span]
 package = "rustc-ap-rustc_span"
-version = "642.0.0"
+version = "651.0.0"
 
 [dependencies.rustc_target]
 package = "rustc-ap-rustc_target"
-version = "642.0.0"
-
-[dependencies.syntax]
-package = "rustc-ap-syntax"
-version = "642.0.0"
-
-[dev-dependencies]
-lazy_static = "1.0.0"
+version = "651.0.0"

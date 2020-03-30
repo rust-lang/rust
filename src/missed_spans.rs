@@ -86,9 +86,8 @@ impl<'a> FmtVisitor<'a> {
 
         assert!(
             start < end,
-            "Request to format inverted span: {:?} to {:?}",
-            self.source_map.lookup_char_pos(start),
-            self.source_map.lookup_char_pos(end)
+            "Request to format inverted span: {}",
+            self.parse_sess.span_to_debug_info(mk_sp(start, end)),
         );
 
         self.last_pos = end;
@@ -139,26 +138,22 @@ impl<'a> FmtVisitor<'a> {
         // Get a snippet from the file start to the span's hi without allocating.
         // We need it to determine what precedes the current comment. If the comment
         // follows code on the same line, we won't touch it.
-        let big_span_lo = self.source_map.lookup_char_pos(span.lo()).file.start_pos;
-        let local_begin = self.source_map.lookup_byte_offset(big_span_lo);
-        let local_end = self.source_map.lookup_byte_offset(span.hi());
-        let start_index = local_begin.pos.to_usize();
-        let end_index = local_end.pos.to_usize();
-        let big_snippet = &local_begin.sf.src.as_ref().unwrap()[start_index..end_index];
-
+        let big_span_lo = self.snippet_provider.start_pos();
+        let big_snippet = self.snippet_provider.entire_snippet();
         let big_diff = (span.lo() - big_span_lo).to_usize();
+
         let snippet = self.snippet(span);
 
         debug!("write_snippet `{}`", snippet);
 
-        self.write_snippet_inner(big_snippet, big_diff, snippet, span, process_last_snippet);
+        self.write_snippet_inner(big_snippet, snippet, big_diff, span, process_last_snippet);
     }
 
     fn write_snippet_inner<F>(
         &mut self,
         big_snippet: &str,
-        big_diff: usize,
         old_snippet: &str,
+        big_diff: usize,
         span: Span,
         process_last_snippet: F,
     ) where
@@ -167,9 +162,9 @@ impl<'a> FmtVisitor<'a> {
         // Trim whitespace from the right hand side of each line.
         // Annoyingly, the library functions for splitting by lines etc. are not
         // quite right, so we must do it ourselves.
-        let char_pos = self.source_map.lookup_char_pos(span.lo());
-        let file_name = &char_pos.file.name.clone().into();
-        let mut status = SnippetStatus::new(char_pos.line);
+        let line = self.parse_sess.line_of_byte_pos(span.lo());
+        let file_name = &self.parse_sess.span_to_filename(span);
+        let mut status = SnippetStatus::new(line);
 
         let snippet = &*transform_missing_snippet(self.config, old_snippet);
 

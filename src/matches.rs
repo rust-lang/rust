@@ -2,8 +2,8 @@
 
 use std::iter::repeat;
 
+use rustc_ast::{ast, ptr};
 use rustc_span::{BytePos, Span};
-use syntax::{ast, ptr};
 
 use crate::comment::{combine_strs_with_missing_comments, rewrite_comment};
 use crate::config::lists::*;
@@ -276,7 +276,7 @@ fn block_can_be_flattened<'a>(
         ast::ExprKind::Block(ref block, _)
             if !is_unsafe_block(block)
                 && !context.inside_macro()
-                && is_simple_block(block, Some(&expr.attrs), context.source_map) =>
+                && is_simple_block(context, block, Some(&expr.attrs)) =>
         {
             Some(&*block)
         }
@@ -332,10 +332,7 @@ fn rewrite_match_body(
         shape.offset_left(extra_offset(pats_str, shape) + 4),
     );
     let (is_block, is_empty_block) = if let ast::ExprKind::Block(ref block, _) = body.kind {
-        (
-            true,
-            is_empty_block(block, Some(&body.attrs), context.source_map),
-        )
+        (true, is_empty_block(context, block, Some(&body.attrs)))
     } else {
         (false, false)
     };
@@ -562,7 +559,7 @@ fn can_flatten_block_around_this(body: &ast::Expr) -> bool {
         | ast::ExprKind::Array(..)
         | ast::ExprKind::Call(..)
         | ast::ExprKind::MethodCall(..)
-        | ast::ExprKind::Mac(..)
+        | ast::ExprKind::MacCall(..)
         | ast::ExprKind::Struct(..)
         | ast::ExprKind::Tup(..) => true,
         ast::ExprKind::AddrOf(_, _, ref expr)

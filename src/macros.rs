@@ -12,12 +12,12 @@
 use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
+use rustc_ast::token::{BinOpToken, DelimToken, Token, TokenKind};
+use rustc_ast::tokenstream::{Cursor, TokenStream, TokenTree};
+use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
 use rustc_parse::{new_parser_from_tts, parser::Parser};
 use rustc_span::{symbol::kw, BytePos, Span, Symbol, DUMMY_SP};
-use syntax::token::{BinOpToken, DelimToken, Token, TokenKind};
-use syntax::tokenstream::{Cursor, TokenStream, TokenTree};
-use syntax::{ast, ptr};
 
 use crate::comment::{
     contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
@@ -178,8 +178,8 @@ fn return_macro_parse_failure_fallback(
     }
 
     context.skipped_range.borrow_mut().push((
-        context.source_map.lookup_line(span.lo()).unwrap().line,
-        context.source_map.lookup_line(span.hi()).unwrap().line,
+        context.parse_sess.line_of_byte_pos(span.lo()),
+        context.parse_sess.line_of_byte_pos(span.hi()),
     ));
 
     // Return the snippet unmodified if the macro is not block-like
@@ -187,7 +187,7 @@ fn return_macro_parse_failure_fallback(
 }
 
 pub(crate) fn rewrite_macro(
-    mac: &ast::Mac,
+    mac: &ast::MacCall,
     extra_ident: Option<ast::Ident>,
     context: &RewriteContext<'_>,
     shape: Shape,
@@ -231,7 +231,7 @@ fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
         {
             parser.bump();
             let macro_arg =
-                MacroArg::Keyword(ast::Ident::with_dummy_span(keyword), parser.prev_span);
+                MacroArg::Keyword(ast::Ident::with_dummy_span(keyword), parser.prev_token.span);
             return Some(macro_arg);
         }
     }
@@ -239,7 +239,7 @@ fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
 }
 
 fn rewrite_macro_inner(
-    mac: &ast::Mac,
+    mac: &ast::MacCall,
     extra_ident: Option<ast::Ident>,
     context: &RewriteContext<'_>,
     shape: Shape,
@@ -286,7 +286,7 @@ fn rewrite_macro_inner(
         }
     }
 
-    let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
+    let mut parser = new_parser_from_tts(context.parse_sess.inner(), ts.trees().collect());
     let mut arg_vec = Vec::new();
     let mut vec_with_semi = false;
     let mut trailing_comma = false;
@@ -495,7 +495,7 @@ pub(crate) fn rewrite_macro_def(
         None => return snippet,
     };
 
-    let mut result = if def.legacy {
+    let mut result = if def.macro_rules {
         String::from("macro_rules!")
     } else {
         format!("{}macro", format_visibility(context, vis))
@@ -504,7 +504,7 @@ pub(crate) fn rewrite_macro_def(
     result += " ";
     result += rewrite_ident(context, ident);
 
-    let multi_branch_style = def.legacy || parsed_def.branches.len() != 1;
+    let multi_branch_style = def.macro_rules || parsed_def.branches.len() != 1;
 
     let arm_shape = if multi_branch_style {
         shape
@@ -537,7 +537,7 @@ pub(crate) fn rewrite_macro_def(
     .collect::<Vec<_>>();
 
     let fmt = ListFormatting::new(arm_shape, context.config)
-        .separator(if def.legacy { ";" } else { "" })
+        .separator(if def.macro_rules { ";" } else { "" })
         .trailing_separator(SeparatorTactic::Always)
         .preserve_newline(true);
 
@@ -1186,11 +1186,14 @@ fn next_space(tok: &TokenKind) -> SpaceState {
 /// Tries to convert a macro use into a short hand try expression. Returns `None`
 /// when the macro is not an instance of `try!` (or parsing the inner expression
 /// failed).
-pub(crate) fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext<'_>) -> Option<ast::Expr> {
+pub(crate) fn convert_try_mac(
+    mac: &ast::MacCall,
+    context: &RewriteContext<'_>,
+) -> Option<ast::Expr> {
     let path = &pprust::path_to_string(&mac.path);
     if path == "try" || path == "r#try" {
         let ts = mac.args.inner_tokens();
-        let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
+        let mut parser = new_parser_from_tts(context.parse_sess.inner(), ts.trees().collect());
 
         Some(ast::Expr {
             id: ast::NodeId::root(), // dummy value
@@ -1203,7 +1206,7 @@ pub(crate) fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext<'_>) -> O
     }
 }
 
-pub(crate) fn macro_style(mac: &ast::Mac, context: &RewriteContext<'_>) -> DelimToken {
+pub(crate) fn macro_style(mac: &ast::MacCall, context: &RewriteContext<'_>) -> DelimToken {
     let snippet = context.snippet(mac.span());
     let paren_pos = snippet.find_uncommented("(").unwrap_or(usize::max_value());
     let bracket_pos = snippet.find_uncommented("[").unwrap_or(usize::max_value());
@@ -1422,7 +1425,7 @@ fn format_lazy_static(
     ts: &TokenStream,
 ) -> Option<String> {
     let mut result = String::with_capacity(1024);
-    let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
+    let mut parser = new_parser_from_tts(context.parse_sess.inner(), ts.trees().collect());
     let nested_shape = shape
         .block_indent(context.config.tab_spaces())
         .with_max_width(context.config);

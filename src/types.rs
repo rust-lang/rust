@@ -1,8 +1,8 @@
 use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
+use rustc_ast::ast::{self, FnRetTy, Mutability};
 use rustc_span::{symbol::kw, BytePos, Span};
-use syntax::ast::{self, FunctionRetTy, Mutability};
 
 use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity, Version};
@@ -233,14 +233,18 @@ fn rewrite_segment(
 
     if let Some(ref args) = segment.args {
         match **args {
-            ast::GenericArgs::AngleBracketed(ref data)
-                if !data.args.is_empty() || !data.constraints.is_empty() =>
-            {
+            ast::GenericArgs::AngleBracketed(ref data) if !data.args.is_empty() => {
                 let param_list = data
                     .args
                     .iter()
-                    .map(SegmentParam::from_generic_arg)
-                    .chain(data.constraints.iter().map(|x| SegmentParam::Binding(&*x)))
+                    .map(|x| match x {
+                        ast::AngleBracketedArg::Arg(generic_arg) => {
+                            SegmentParam::from_generic_arg(generic_arg)
+                        }
+                        ast::AngleBracketedArg::Constraint(constraint) => {
+                            SegmentParam::Binding(constraint)
+                        }
+                    })
                     .collect::<Vec<_>>();
 
                 // HACK: squeeze out the span between the identifier and the parameters.
@@ -292,7 +296,7 @@ fn rewrite_segment(
 
 fn format_function_type<'a, I>(
     inputs: I,
-    output: &FunctionRetTy,
+    output: &FnRetTy,
     variadic: bool,
     span: Span,
     context: &RewriteContext<'_>,
@@ -311,11 +315,11 @@ where
         IndentStyle::Visual => shape.block_left(4)?,
     };
     let output = match *output {
-        FunctionRetTy::Ty(ref ty) => {
+        FnRetTy::Ty(ref ty) => {
             let type_str = ty.rewrite(context, ty_shape)?;
             format!(" -> {}", type_str)
         }
-        FunctionRetTy::Default(..) => String::new(),
+        FnRetTy::Default(..) => String::new(),
     };
 
     let list_shape = if context.use_block_indent() {
@@ -551,7 +555,7 @@ impl Rewrite for ast::GenericParam {
             _ => (),
         }
 
-        if let syntax::ast::GenericParamKind::Const { ref ty } = &self.kind {
+        if let rustc_ast::ast::GenericParamKind::Const { ref ty } = &self.kind {
             result.push_str("const ");
             result.push_str(rewrite_ident(context, self.ident));
             result.push_str(": ");
@@ -732,7 +736,7 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::BareFn(ref bare_fn) => rewrite_bare_fn(bare_fn, self.span, context, shape),
             ast::TyKind::Never => Some(String::from("!")),
-            ast::TyKind::Mac(ref mac) => {
+            ast::TyKind::MacCall(ref mac) => {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
             }
             ast::TyKind::ImplicitSelf => Some(String::from("")),

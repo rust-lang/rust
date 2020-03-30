@@ -58,8 +58,8 @@
 use std::borrow::Cow;
 use std::cmp::min;
 
+use rustc_ast::{ast, ptr};
 use rustc_span::{BytePos, Span};
-use syntax::{ast, ptr};
 
 use crate::comment::{rewrite_comment, CharClasses, FullCodeCharKind, RichChar};
 use crate::config::IndentStyle;
@@ -148,7 +148,15 @@ impl ChainItemKind {
             ast::ExprKind::MethodCall(ref segment, ref expressions) => {
                 let types = if let Some(ref generic_args) = segment.args {
                     if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
-                        data.args.clone()
+                        data.args
+                            .iter()
+                            .filter_map(|x| match x {
+                                ast::AngleBracketedArg::Arg(ref generic_arg) => {
+                                    Some(generic_arg.clone())
+                                }
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>()
                     } else {
                         vec![]
                     }
@@ -403,7 +411,7 @@ impl Chain {
 
     fn convert_try(expr: &ast::Expr, context: &RewriteContext<'_>) -> ast::Expr {
         match expr.kind {
-            ast::ExprKind::Mac(ref mac) if context.config.use_try_shorthand() => {
+            ast::ExprKind::MacCall(ref mac) if context.config.use_try_shorthand() => {
                 if let Some(subexpr) = convert_try_mac(mac, context) {
                     subexpr
                 } else {

@@ -1,6 +1,6 @@
+use rustc_ast::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::ptr;
 use rustc_span::{BytePos, Span};
-use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd, RangeSyntax};
-use syntax::ptr;
 
 use crate::comment::{combine_strs_with_missing_comments, FindUncommented};
 use crate::config::lists::*;
@@ -40,7 +40,7 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
         ast::PatKind::Rest | ast::PatKind::Wild | ast::PatKind::Lit(_) => true,
         ast::PatKind::Ident(_, _, ref pat) => pat.is_none(),
         ast::PatKind::Struct(..)
-        | ast::PatKind::Mac(..)
+        | ast::PatKind::MacCall(..)
         | ast::PatKind::Slice(..)
         | ast::PatKind::Path(..)
         | ast::PatKind::Range(..) => false,
@@ -231,7 +231,9 @@ impl Rewrite for Pat {
             PatKind::Struct(ref path, ref fields, ellipsis) => {
                 rewrite_struct_pat(path, fields, ellipsis, self.span, context, shape)
             }
-            PatKind::Mac(ref mac) => rewrite_macro(mac, None, context, shape, MacroPosition::Pat),
+            PatKind::MacCall(ref mac) => {
+                rewrite_macro(mac, None, context, shape, MacroPosition::Pat)
+            }
             PatKind::Paren(ref pat) => pat
                 .rewrite(context, shape.offset_left(1)?.sub_width(1)?)
                 .map(|inner_pat| format!("({})", inner_pat)),

@@ -1,5 +1,5 @@
+use rustc_ast::{ast, ptr};
 use rustc_span::Span;
-use syntax::{ast, ptr};
 
 use crate::attr::get_attrs_from_stmt;
 use crate::config::lists::*;
@@ -25,7 +25,7 @@ use crate::utils::{last_line_width, left_most_sub_expr, stmt_expr, NodeIdExt};
 
 pub(crate) fn rewrite_closure(
     capture: ast::CaptureBy,
-    is_async: &ast::IsAsync,
+    is_async: &ast::Async,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -43,14 +43,14 @@ pub(crate) fn rewrite_closure(
 
     if let ast::ExprKind::Block(ref block, _) = body.kind {
         // The body of the closure is an empty block.
-        if block.stmts.is_empty() && !block_contains_comment(block, context.source_map) {
+        if block.stmts.is_empty() && !block_contains_comment(context, block) {
             return body
                 .rewrite(context, shape)
                 .map(|s| format!("{} {}", prefix, s));
         }
 
         let result = match fn_decl.output {
-            ast::FunctionRetTy::Default(_) if !context.inside_macro() => {
+            ast::FnRetTy::Default(_) if !context.inside_macro() => {
                 try_rewrite_without_block(body, &prefix, context, shape, body_shape)
             }
             _ => None,
@@ -112,7 +112,7 @@ fn needs_block(block: &ast::Block, prefix: &str, context: &RewriteContext<'_>) -
     is_unsafe_block(block)
         || block.stmts.len() > 1
         || has_attributes
-        || block_contains_comment(block, context.source_map)
+        || block_contains_comment(context, block)
         || prefix.contains('\n')
 }
 
@@ -214,7 +214,7 @@ fn rewrite_closure_block(
 // Return type is (prefix, extra_offset)
 fn rewrite_closure_fn_decl(
     capture: ast::CaptureBy,
-    asyncness: &ast::IsAsync,
+    asyncness: &ast::Async,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -305,7 +305,7 @@ pub(crate) fn rewrite_last_closure(
             ast::ExprKind::Block(ref block, _)
                 if !is_unsafe_block(block)
                     && !context.inside_macro()
-                    && is_simple_block(block, Some(&body.attrs), context.source_map) =>
+                    && is_simple_block(context, block, Some(&body.attrs)) =>
             {
                 stmt_expr(&block.stmts[0]).unwrap_or(body)
             }

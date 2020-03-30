@@ -1,13 +1,9 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use rustc_session::parse::ParseSess;
-use rustc_span::{
-    source_map::{self, SourceMap},
-    BytePos, Pos, Span,
-};
-use syntax::token::DelimToken;
-use syntax::{ast, visit};
+use rustc_ast::token::DelimToken;
+use rustc_ast::{ast, visit};
+use rustc_span::{BytePos, Pos, Span};
 
 use crate::attr::*;
 use crate::comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
@@ -27,6 +23,7 @@ use crate::skip::{is_skip_attr, SkipContext};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
 use crate::stmt::Stmt;
+use crate::syntux::session::ParseSess;
 use crate::utils::{
     self, contains_skip, count_newlines, depr_skip_annotation, inner_attributes, last_line_width,
     mk_sp, ptr_vec_to_ref_vec, rewrite_ident, stmt_expr,
@@ -34,23 +31,23 @@ use crate::utils::{
 use crate::{ErrorKind, FormatReport, FormattingError};
 
 /// Creates a string slice corresponding to the specified span.
-pub(crate) struct SnippetProvider<'a> {
+pub(crate) struct SnippetProvider {
     /// A pointer to the content of the file we are formatting.
-    big_snippet: &'a str,
+    big_snippet: Rc<String>,
     /// A position of the start of `big_snippet`, used as an offset.
     start_pos: usize,
     /// A end position of the file that this snippet lives.
     end_pos: usize,
 }
 
-impl<'a> SnippetProvider<'a> {
+impl SnippetProvider {
     pub(crate) fn span_to_snippet(&self, span: Span) -> Option<&str> {
         let start_index = span.lo().to_usize().checked_sub(self.start_pos)?;
         let end_index = span.hi().to_usize().checked_sub(self.start_pos)?;
         Some(&self.big_snippet[start_index..end_index])
     }
 
-    pub(crate) fn new(start_pos: BytePos, end_pos: BytePos, big_snippet: &'a str) -> Self {
+    pub(crate) fn new(start_pos: BytePos, end_pos: BytePos, big_snippet: Rc<String>) -> Self {
         let start_pos = start_pos.to_usize();
         let end_pos = end_pos.to_usize();
         SnippetProvider {
@@ -60,6 +57,14 @@ impl<'a> SnippetProvider<'a> {
         }
     }
 
+    pub(crate) fn entire_snippet(&self) -> &str {
+        self.big_snippet.as_str()
+    }
+
+    pub(crate) fn start_pos(&self) -> BytePos {
+        BytePos::from_usize(self.start_pos)
+    }
+
     pub(crate) fn end_pos(&self) -> BytePos {
         BytePos::from_usize(self.end_pos)
     }
@@ -67,15 +72,14 @@ impl<'a> SnippetProvider<'a> {
 
 pub(crate) struct FmtVisitor<'a> {
     parent_context: Option<&'a RewriteContext<'a>>,
-    pub(crate) parse_session: &'a ParseSess,
-    pub(crate) source_map: &'a SourceMap,
+    pub(crate) parse_sess: &'a ParseSess,
     pub(crate) buffer: String,
     pub(crate) last_pos: BytePos,
     // FIXME: use an RAII util or closure for indenting
     pub(crate) block_indent: Indent,
     pub(crate) config: &'a Config,
     pub(crate) is_if_else_block: bool,
-    pub(crate) snippet_provider: &'a SnippetProvider<'a>,
+    pub(crate) snippet_provider: &'a SnippetProvider,
     pub(crate) line_number: usize,
     /// List of 1-based line ranges which were annotated with skip
     /// Both bounds are inclusifs.
@@ -110,10 +114,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     fn visit_stmt(&mut self, stmt: &Stmt<'_>) {
         debug!(
-            "visit_stmt: {:?} {:?} `{}`",
-            self.source_map.lookup_char_pos(stmt.span().lo()),
-            self.source_map.lookup_char_pos(stmt.span().hi()),
-            self.snippet(stmt.span()),
+            "visit_stmt: {}",
+            self.parse_sess.span_to_debug_info(stmt.span())
         );
 
         // https://github.com/rust-lang/rust/issues/63679.
@@ -144,7 +146,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.push_rewrite(stmt.span(), rewrite)
                 }
             }
-            ast::StmtKind::Mac(ref mac) => {
+            ast::StmtKind::MacCall(ref mac) => {
                 let (ref mac, _macro_style, ref attrs) = **mac;
                 if self.visit_attrs(attrs, ast::AttrStyle::Outer) {
                     self.push_skipped_with_span(
@@ -157,6 +159,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 }
                 self.format_missing(stmt.span().hi());
             }
+            ast::StmtKind::Empty => (),
         }
     }
 
@@ -195,9 +198,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         has_braces: bool,
     ) {
         debug!(
-            "visit_block: {:?} {:?}",
-            self.source_map.lookup_char_pos(b.span.lo()),
-            self.source_map.lookup_char_pos(b.span.hi())
+            "visit_block: {}",
+            self.parse_sess.span_to_debug_info(b.span),
         );
 
         // Check if this block has braces.
@@ -497,7 +499,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.format_missing_with_indent(source!(self, item.span).lo());
                     self.format_mod(module, &item.vis, item.span, item.ident, attrs, is_inline);
                 }
-                ast::ItemKind::Mac(ref mac) => {
+                ast::ItemKind::MacCall(ref mac) => {
                     self.visit_mac(mac, Some(item.ident), MacroPosition::Item);
                 }
                 ast::ItemKind::ForeignMod(ref foreign_mod) => {
@@ -507,7 +509,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => {
                     self.visit_static(&StaticParts::from_item(item));
                 }
-                ast::ItemKind::Fn(ref fn_signature, ref generics, ref body) => {
+                ast::ItemKind::Fn(defaultness, ref fn_signature, ref generics, Some(ref body)) => {
                     let inner_attrs = inner_attributes(&item.attrs);
                     let fn_ctxt = match fn_signature.header.ext {
                         ast::Extern::None => visit::FnCtxt::Free,
@@ -519,28 +521,40 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                             item.ident,
                             &fn_signature,
                             &item.vis,
-                            body.as_deref(),
+                            Some(body),
                         ),
                         generics,
                         &fn_signature.decl,
                         item.span,
-                        ast::Defaultness::Final,
+                        defaultness,
                         Some(&inner_attrs),
                     )
                 }
-                ast::ItemKind::TyAlias(ref ty, ref generics) => match ty.kind.opaque_top_hack() {
-                    None => {
+                ast::ItemKind::Fn(_, ref fn_signature, ref generics, None) => {
+                    let indent = self.block_indent;
+                    let rewrite = self.rewrite_required_fn(
+                        indent,
+                        item.ident,
+                        &fn_signature,
+                        generics,
+                        item.span,
+                    );
+
+                    self.push_rewrite(item.span, rewrite);
+                }
+                ast::ItemKind::TyAlias(_, ref generics, ref generic_bounds, ref ty) => match ty {
+                    Some(ty) => {
                         let rewrite = rewrite_type_alias(
                             &self.get_context(),
                             self.block_indent,
                             item.ident,
-                            ty,
+                            &*ty,
                             generics,
                             &item.vis,
                         );
                         self.push_rewrite(item.span, rewrite);
                     }
-                    Some(generic_bounds) => {
+                    None => {
                         let rewrite = rewrite_opaque_type(
                             &self.get_context(),
                             self.block_indent,
@@ -583,37 +597,36 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         match ti.kind {
             ast::AssocItemKind::Const(..) => self.visit_static(&StaticParts::from_trait_item(ti)),
-            ast::AssocItemKind::Fn(ref sig, None) => {
+            ast::AssocItemKind::Fn(_, ref sig, ref generics, None) => {
                 let indent = self.block_indent;
-                let rewrite =
-                    self.rewrite_required_fn(indent, ti.ident, sig, &ti.generics, ti.span);
+                let rewrite = self.rewrite_required_fn(indent, ti.ident, sig, generics, ti.span);
                 self.push_rewrite(ti.span, rewrite);
             }
-            ast::AssocItemKind::Fn(ref sig, Some(ref body)) => {
+            ast::AssocItemKind::Fn(defaultness, ref sig, ref generics, Some(ref body)) => {
                 let inner_attrs = inner_attributes(&ti.attrs);
                 let vis = rustc_span::source_map::dummy_spanned(ast::VisibilityKind::Inherited);
                 let fn_ctxt = visit::FnCtxt::Assoc(visit::AssocCtxt::Trait);
                 self.visit_fn(
                     visit::FnKind::Fn(fn_ctxt, ti.ident, sig, &vis, Some(body)),
-                    &ti.generics,
+                    generics,
                     &sig.decl,
                     ti.span,
-                    ast::Defaultness::Final,
+                    defaultness,
                     Some(&inner_attrs),
                 );
             }
-            ast::AssocItemKind::TyAlias(ref generic_bounds, ref type_default) => {
+            ast::AssocItemKind::TyAlias(_, ref generics, ref generic_bounds, ref type_default) => {
                 let rewrite = rewrite_associated_type(
                     ti.ident,
                     type_default.as_ref(),
-                    &ti.generics,
+                    generics,
                     Some(generic_bounds),
                     &self.get_context(),
                     self.block_indent,
                 );
                 self.push_rewrite(ti.span, rewrite);
             }
-            ast::AssocItemKind::Macro(ref mac) => {
+            ast::AssocItemKind::MacCall(ref mac) => {
                 self.visit_mac(mac, Some(ti.ident), MacroPosition::Item);
             }
         }
@@ -628,32 +641,31 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         }
 
         match ii.kind {
-            ast::AssocItemKind::Fn(ref sig, Some(ref body)) => {
+            ast::AssocItemKind::Fn(defaultness, ref sig, ref generics, Some(ref body)) => {
                 let inner_attrs = inner_attributes(&ii.attrs);
                 let fn_ctxt = visit::FnCtxt::Assoc(visit::AssocCtxt::Impl);
                 self.visit_fn(
                     visit::FnKind::Fn(fn_ctxt, ii.ident, sig, &ii.vis, Some(body)),
-                    &ii.generics,
+                    generics,
                     &sig.decl,
                     ii.span,
-                    ii.defaultness,
+                    defaultness,
                     Some(&inner_attrs),
                 );
             }
-            ast::AssocItemKind::Fn(ref sig, None) => {
+            ast::AssocItemKind::Fn(_, ref sig, ref generics, None) => {
                 let indent = self.block_indent;
-                let rewrite =
-                    self.rewrite_required_fn(indent, ii.ident, sig, &ii.generics, ii.span);
+                let rewrite = self.rewrite_required_fn(indent, ii.ident, sig, generics, ii.span);
                 self.push_rewrite(ii.span, rewrite);
             }
             ast::AssocItemKind::Const(..) => self.visit_static(&StaticParts::from_impl_item(ii)),
-            ast::AssocItemKind::TyAlias(_, ref ty) => {
+            ast::AssocItemKind::TyAlias(defaultness, ref generics, _, ref ty) => {
                 let rewrite_associated = || {
                     rewrite_associated_impl_type(
                         ii.ident,
-                        ii.defaultness,
+                        defaultness,
                         ty.as_ref(),
-                        &ii.generics,
+                        &generics,
                         &self.get_context(),
                         self.block_indent,
                     )
@@ -664,7 +676,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         Some(generic_bounds) => rewrite_opaque_impl_type(
                             &self.get_context(),
                             ii.ident,
-                            &ii.generics,
+                            generics,
                             generic_bounds,
                             self.block_indent,
                         ),
@@ -673,13 +685,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 };
                 self.push_rewrite(ii.span, rewrite);
             }
-            ast::AssocItemKind::Macro(ref mac) => {
+            ast::AssocItemKind::MacCall(ref mac) => {
                 self.visit_mac(mac, Some(ii.ident), MacroPosition::Item);
             }
         }
     }
 
-    fn visit_mac(&mut self, mac: &ast::Mac, ident: Option<ast::Ident>, pos: MacroPosition) {
+    fn visit_mac(&mut self, mac: &ast::MacCall, ident: Option<ast::Ident>, pos: MacroPosition) {
         skip_out_of_file_lines_range_visitor!(self, mac.span());
 
         // 1 = ;
@@ -740,10 +752,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         // do not take into account the lines with attributes as part of the skipped range
         let attrs_end = attrs
             .iter()
-            .map(|attr| self.source_map.lookup_char_pos(attr.span.hi()).line)
+            .map(|attr| self.parse_sess.line_of_byte_pos(attr.span.hi()))
             .max()
             .unwrap_or(1);
-        let first_line = self.source_map.lookup_char_pos(main_span.lo()).line;
+        let first_line = self.parse_sess.line_of_byte_pos(main_span.lo());
         // Statement can start after some newlines and/or spaces
         // or it can be on the same line as the last attribute.
         // So here we need to take a minimum between the two.
@@ -754,8 +766,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     }
 
     pub(crate) fn from_context(ctx: &'a RewriteContext<'_>) -> FmtVisitor<'a> {
-        let mut visitor = FmtVisitor::from_source_map(
-            ctx.parse_session,
+        let mut visitor = FmtVisitor::from_parse_sess(
+            ctx.parse_sess,
             ctx.config,
             ctx.snippet_provider,
             ctx.report.clone(),
@@ -765,16 +777,15 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         visitor
     }
 
-    pub(crate) fn from_source_map(
+    pub(crate) fn from_parse_sess(
         parse_session: &'a ParseSess,
         config: &'a Config,
-        snippet_provider: &'a SnippetProvider<'_>,
+        snippet_provider: &'a SnippetProvider,
         report: FormatReport,
     ) -> FmtVisitor<'a> {
         FmtVisitor {
             parent_context: None,
-            parse_session,
-            source_map: parse_session.source_map(),
+            parse_sess: parse_session,
             buffer: String::with_capacity(snippet_provider.big_snippet.len() * 2),
             last_pos: BytePos(0),
             block_indent: Indent::empty(),
@@ -801,12 +812,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     pub(crate) fn visit_attrs(&mut self, attrs: &[ast::Attribute], style: ast::AttrStyle) -> bool {
         for attr in attrs {
             if attr.check_name(depr_skip_annotation()) {
-                let file_name = self.source_map.span_to_filename(attr.span).into();
+                let file_name = self.parse_sess.span_to_filename(attr.span);
                 self.report.append(
                     file_name,
                     vec![FormattingError::from_span(
                         attr.span,
-                        &self.source_map,
+                        self.parse_sess,
                         ErrorKind::DeprecatedAttr,
                     )],
                 );
@@ -815,12 +826,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     ast::AttrKind::Normal(ref attribute_item)
                         if self.is_unknown_rustfmt_attr(&attribute_item.path.segments) =>
                     {
-                        let file_name = self.source_map.span_to_filename(attr.span).into();
+                        let file_name = self.parse_sess.span_to_filename(attr.span);
                         self.report.append(
                             file_name,
                             vec![FormattingError::from_span(
                                 attr.span,
-                                self.source_map,
+                                self.parse_sess,
                                 ErrorKind::BadAttr,
                             )],
                         );
@@ -928,14 +939,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         }
     }
 
-    pub(crate) fn format_separate_mod(
-        &mut self,
-        m: &ast::Mod,
-        source_file: &source_map::SourceFile,
-    ) {
+    pub(crate) fn format_separate_mod(&mut self, m: &ast::Mod, end_pos: BytePos) {
         self.block_indent = Indent::empty();
         self.walk_mod_items(m);
-        self.format_missing_with_indent(source_file.end_pos);
+        self.format_missing_with_indent(end_pos);
     }
 
     pub(crate) fn skip_empty_lines(&mut self, end_pos: BytePos) {
@@ -966,8 +973,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     pub(crate) fn get_context(&self) -> RewriteContext<'_> {
         RewriteContext {
-            parse_session: self.parse_session,
-            source_map: self.source_map,
+            parse_sess: self.parse_sess,
             config: self.config,
             inside_macro: Rc::new(Cell::new(false)),
             use_block: Cell::new(false),

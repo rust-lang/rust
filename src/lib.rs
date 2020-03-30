@@ -3,7 +3,6 @@
 
 #[macro_use]
 extern crate derive_new;
-#[cfg(test)]
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -20,14 +19,14 @@ use std::rc::Rc;
 
 use failure::Fail;
 use ignore;
-use rustc_parse::DirectoryOwnership;
-use syntax::ast;
+use rustc_ast::ast;
 
 use crate::comment::LineClasses;
 use crate::emitter::Emitter;
 use crate::formatting::{FormatErrorMap, FormattingError, ReportedErrors, SourceFile};
 use crate::issues::Issue;
 use crate::shape::Indent;
+use crate::syntux::parser::DirectoryOwnership;
 use crate::utils::indent_next_line;
 
 pub use crate::config::{
@@ -75,6 +74,7 @@ pub(crate) mod source_map;
 mod spanned;
 mod stmt;
 mod string;
+mod syntux;
 #[cfg(test)]
 mod test;
 mod types;
@@ -509,13 +509,6 @@ pub enum Input {
 }
 
 impl Input {
-    fn is_text(&self) -> bool {
-        match *self {
-            Input::File(_) => false,
-            Input::Text(_) => true,
-        }
-    }
-
     fn file_name(&self) -> FileName {
         match *self {
             Input::File(ref file) => FileName::Real(file.clone()),

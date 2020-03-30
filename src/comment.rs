@@ -1556,10 +1556,10 @@ pub(crate) fn recover_comment_removed(
         // We missed some comments. Warn and keep the original text.
         if context.config.error_on_unformatted() {
             context.report.append(
-                context.source_map.span_to_filename(span).into(),
+                context.parse_sess.span_to_filename(span),
                 vec![FormattingError::from_span(
                     span,
-                    &context.source_map,
+                    &context.parse_sess,
                     ErrorKind::LostComment,
                 )],
             );

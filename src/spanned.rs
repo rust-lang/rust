@@ -1,7 +1,7 @@
 use std::cmp::max;
 
+use rustc_ast::{ast, ptr};
 use rustc_span::{source_map, Span};
-use syntax::{ast, ptr};
 
 use crate::macros::MacroArg;
 use crate::utils::{mk_sp, outer_attributes};
@@ -66,7 +66,7 @@ impl Spanned for ast::Stmt {
             ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => {
                 mk_sp(expr.span().lo(), self.span.hi())
             }
-            ast::StmtKind::Mac(ref mac) => {
+            ast::StmtKind::MacCall(ref mac) => {
                 let (_, _, ref attrs) = **mac;
                 if attrs.is_empty() {
                     self.span
@@ -74,6 +74,7 @@ impl Spanned for ast::Stmt {
                     mk_sp(attrs[0].span.lo(), self.span.hi())
                 }
             }
+            ast::StmtKind::Empty => self.span,
         }
     }
 }
@@ -151,11 +152,11 @@ impl Spanned for ast::WherePredicate {
     }
 }
 
-impl Spanned for ast::FunctionRetTy {
+impl Spanned for ast::FnRetTy {
     fn span(&self) -> Span {
         match *self {
-            ast::FunctionRetTy::Default(span) => span,
-            ast::FunctionRetTy::Ty(ref ty) => ty.span,
+            ast::FnRetTy::Default(span) => span,
+            ast::FnRetTy::Ty(ref ty) => ty.span,
         }
     }
 }

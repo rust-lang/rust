@@ -560,7 +560,7 @@ pub(crate) struct ListItems<'a, I, F1, F2, F3>
 where
     I: Iterator,
 {
-    snippet_provider: &'a SnippetProvider<'a>,
+    snippet_provider: &'a SnippetProvider,
     inner: Peekable<I>,
     get_lo: F1,
     get_hi: F2,
@@ -777,7 +777,7 @@ where
 #[allow(clippy::too_many_arguments)]
 // Creates an iterator over a list's items with associated comments.
 pub(crate) fn itemize_list<'a, T, I, F1, F2, F3>(
-    snippet_provider: &'a SnippetProvider<'_>,
+    snippet_provider: &'a SnippetProvider,
     inner: I,
     terminator: &'a str,
     separator: &'a str,

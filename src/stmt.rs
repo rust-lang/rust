@@ -1,5 +1,5 @@
+use rustc_ast::ast;
 use rustc_span::Span;
-use syntax::ast;
 
 use crate::comment::recover_comment_removed;
 use crate::config::Version;
@@ -106,7 +106,7 @@ fn format_stmt(
             let shape = shape.sub_width(suffix.len())?;
             format_expr(ex, expr_type, context, shape).map(|s| s + suffix)
         }
-        ast::StmtKind::Mac(..) | ast::StmtKind::Item(..) => None,
+        ast::StmtKind::MacCall(..) | ast::StmtKind::Item(..) | ast::StmtKind::Empty => None,
     };
     result.and_then(|res| recover_comment_removed(res, stmt.span(), context))
 }

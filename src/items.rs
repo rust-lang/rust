@@ -4,9 +4,9 @@ use std::borrow::Cow;
 use std::cmp::{max, min, Ordering};
 
 use regex::Regex;
+use rustc_ast::visit;
+use rustc_ast::{ast, ptr};
 use rustc_span::{source_map, symbol, BytePos, Span, DUMMY_SP};
-use syntax::visit;
-use syntax::{ast, ptr};
 
 use crate::attr::filter_inline_attrs;
 use crate::comment::{
@@ -165,10 +165,10 @@ pub(crate) struct FnSig<'a> {
     decl: &'a ast::FnDecl,
     generics: &'a ast::Generics,
     ext: ast::Extern,
-    is_async: Cow<'a, ast::IsAsync>,
-    constness: ast::Constness,
+    is_async: Cow<'a, ast::Async>,
+    constness: ast::Const,
     defaultness: ast::Defaultness,
-    unsafety: ast::Unsafety,
+    unsafety: ast::Unsafe,
     visibility: ast::Visibility,
 }
 
@@ -182,10 +182,10 @@ impl<'a> FnSig<'a> {
             decl,
             generics,
             ext: ast::Extern::None,
-            is_async: Cow::Owned(ast::IsAsync::NotAsync),
-            constness: ast::Constness::NotConst,
+            is_async: Cow::Owned(ast::Async::No),
+            constness: ast::Const::No,
             defaultness: ast::Defaultness::Final,
-            unsafety: ast::Unsafety::Normal,
+            unsafety: ast::Unsafe::No,
             visibility: vis,
         }
     }
@@ -196,8 +196,8 @@ impl<'a> FnSig<'a> {
     ) -> FnSig<'a> {
         FnSig {
             unsafety: method_sig.header.unsafety,
-            is_async: Cow::Borrowed(&method_sig.header.asyncness.node),
-            constness: method_sig.header.constness.node,
+            is_async: Cow::Borrowed(&method_sig.header.asyncness),
+            constness: method_sig.header.constness,
             defaultness: ast::Defaultness::Final,
             ext: method_sig.header.ext,
             decl: &*method_sig.decl,
@@ -224,8 +224,8 @@ impl<'a> FnSig<'a> {
                     decl,
                     generics,
                     ext: fn_sig.header.ext,
-                    constness: fn_sig.header.constness.node,
-                    is_async: Cow::Borrowed(&fn_sig.header.asyncness.node),
+                    constness: fn_sig.header.constness,
+                    is_async: Cow::Borrowed(&fn_sig.header.asyncness),
                     defaultness,
                     unsafety: fn_sig.header.unsafety,
                     visibility: vis.clone(),
@@ -298,8 +298,14 @@ impl<'a> FmtVisitor<'a> {
 
     fn format_foreign_item(&mut self, item: &ast::ForeignItem) {
         let rewrite = item.rewrite(&self.get_context(), self.shape());
-        self.push_rewrite(item.span(), rewrite);
-        self.last_pos = item.span.hi();
+        let hi = item.span.hi();
+        let span = if item.attrs.is_empty() {
+            item.span
+        } else {
+            mk_sp(item.attrs[0].span.lo(), hi)
+        };
+        self.push_rewrite(span, rewrite);
+        self.last_pos = hi;
     }
 
     pub(crate) fn rewrite_fn_before_block(
@@ -363,17 +369,17 @@ impl<'a> FmtVisitor<'a> {
             return None;
         }
 
-        let source_map = self.get_context().source_map;
+        let context = self.get_context();
 
         if self.config.empty_item_single_line()
-            && is_empty_block(block, None, source_map)
+            && is_empty_block(&context, block, None)
             && self.block_indent.width() + fn_str.len() + 3 <= self.config.max_width()
             && !last_line_contains_single_line_comment(fn_str)
         {
             return Some(format!("{} {{}}", fn_str));
         }
 
-        if !self.config.fn_single_line() || !is_simple_block_stmt(block, None, source_map) {
+        if !self.config.fn_single_line() || !is_simple_block_stmt(&context, block, None) {
             return None;
         }
 
@@ -588,7 +594,7 @@ impl<'a> FmtVisitor<'a> {
                 self.buffer.clear();
             }
 
-            fn is_type(ty: &Option<syntax::ptr::P<ast::Ty>>) -> bool {
+            fn is_type(ty: &Option<rustc_ast::ptr::P<ast::Ty>>) -> bool {
                 match ty {
                     None => true,
                     Some(lty) => match lty.kind.opaque_top_hack() {
@@ -598,7 +604,7 @@ impl<'a> FmtVisitor<'a> {
                 }
             }
 
-            fn is_opaque(ty: &Option<syntax::ptr::P<ast::Ty>>) -> bool {
+            fn is_opaque(ty: &Option<rustc_ast::ptr::P<ast::Ty>>) -> bool {
                 match ty {
                     None => false,
                     Some(lty) => match lty.kind.opaque_top_hack() {
@@ -609,15 +615,15 @@ impl<'a> FmtVisitor<'a> {
             }
 
             fn both_type(
-                a: &Option<syntax::ptr::P<ast::Ty>>,
-                b: &Option<syntax::ptr::P<ast::Ty>>,
+                a: &Option<rustc_ast::ptr::P<ast::Ty>>,
+                b: &Option<rustc_ast::ptr::P<ast::Ty>>,
             ) -> bool {
                 is_type(a) && is_type(b)
             }
 
             fn both_opaque(
-                a: &Option<syntax::ptr::P<ast::Ty>>,
-                b: &Option<syntax::ptr::P<ast::Ty>>,
+                a: &Option<rustc_ast::ptr::P<ast::Ty>>,
+                b: &Option<rustc_ast::ptr::P<ast::Ty>>,
             ) -> bool {
                 is_opaque(a) && is_opaque(b)
             }
@@ -629,7 +635,7 @@ impl<'a> FmtVisitor<'a> {
             use crate::ast::AssocItemKind::*;
             fn need_empty_line(a: &ast::AssocItemKind, b: &ast::AssocItemKind) -> bool {
                 match (a, b) {
-                    (TyAlias(_, ref lty), TyAlias(_, ref rty))
+                    (TyAlias(_, _, _, ref lty), TyAlias(_, _, _, ref rty))
                         if both_type(lty, rty) || both_opaque(lty, rty) =>
                     {
                         false
@@ -640,23 +646,23 @@ impl<'a> FmtVisitor<'a> {
             }
 
             buffer.sort_by(|(_, a), (_, b)| match (&a.kind, &b.kind) {
-                (TyAlias(_, ref lty), TyAlias(_, ref rty))
+                (TyAlias(_, _, _, ref lty), TyAlias(_, _, _, ref rty))
                     if both_type(lty, rty) || both_opaque(lty, rty) =>
                 {
                     a.ident.as_str().cmp(&b.ident.as_str())
                 }
-                (Const(..), Const(..)) | (Macro(..), Macro(..)) => {
+                (Const(..), Const(..)) | (MacCall(..), MacCall(..)) => {
                     a.ident.as_str().cmp(&b.ident.as_str())
                 }
                 (Fn(..), Fn(..)) => a.span.lo().cmp(&b.span.lo()),
-                (TyAlias(_, ref ty), _) if is_type(ty) => Ordering::Less,
-                (_, TyAlias(_, ref ty)) if is_type(ty) => Ordering::Greater,
+                (TyAlias(_, _, _, ref ty), _) if is_type(ty) => Ordering::Less,
+                (_, TyAlias(_, _, _, ref ty)) if is_type(ty) => Ordering::Greater,
                 (TyAlias(..), _) => Ordering::Less,
                 (_, TyAlias(..)) => Ordering::Greater,
                 (Const(..), _) => Ordering::Less,
                 (_, Const(..)) => Ordering::Greater,
-                (Macro(..), _) => Ordering::Less,
-                (_, Macro(..)) => Ordering::Greater,
+                (MacCall(..), _) => Ordering::Less,
+                (_, MacCall(..)) => Ordering::Greater,
             });
             let mut prev_kind = None;
             for (buf, item) in buffer {
@@ -868,10 +874,9 @@ fn format_impl_ref_and_type(
         let generics_str = rewrite_generics(context, "impl", generics, shape)?;
         result.push_str(&generics_str);
 
-        let polarity_str = if polarity == ast::ImplPolarity::Negative {
-            "!"
-        } else {
-            ""
+        let polarity_str = match polarity {
+            ast::ImplPolarity::Negative(_) => "!",
+            ast::ImplPolarity::Positive => "",
         };
 
         if let Some(ref trait_ref) = *trait_ref {
@@ -1714,9 +1719,13 @@ pub(crate) struct StaticParts<'a> {
 
 impl<'a> StaticParts<'a> {
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
-        let (prefix, ty, mutability, expr) = match item.kind {
-            ast::ItemKind::Static(ref ty, mutability, ref expr) => ("static", ty, mutability, expr),
-            ast::ItemKind::Const(ref ty, ref expr) => ("const", ty, ast::Mutability::Not, expr),
+        let (defaultness, prefix, ty, mutability, expr) = match item.kind {
+            ast::ItemKind::Static(ref ty, mutability, ref expr) => {
+                (None, "static", ty, mutability, expr)
+            }
+            ast::ItemKind::Const(defaultness, ref ty, ref expr) => {
+                (Some(defaultness), "const", ty, ast::Mutability::Not, expr)
+            }
             _ => unreachable!(),
         };
         StaticParts {
@@ -1725,15 +1734,17 @@ impl<'a> StaticParts<'a> {
             ident: item.ident,
             ty,
             mutability,
-            expr_opt: Some(expr),
-            defaultness: None,
+            expr_opt: expr.as_ref(),
+            defaultness,
             span: item.span,
         }
     }
 
     pub(crate) fn from_trait_item(ti: &'a ast::AssocItem) -> Self {
-        let (ty, expr_opt) = match ti.kind {
-            ast::AssocItemKind::Const(ref ty, ref expr_opt) => (ty, expr_opt),
+        let (defaultness, ty, expr_opt) = match ti.kind {
+            ast::AssocItemKind::Const(defaultness, ref ty, ref expr_opt) => {
+                (defaultness, ty, expr_opt)
+            }
             _ => unreachable!(),
         };
         StaticParts {
@@ -1743,14 +1754,14 @@ impl<'a> StaticParts<'a> {
             ty,
             mutability: ast::Mutability::Not,
             expr_opt: expr_opt.as_ref(),
-            defaultness: None,
+            defaultness: Some(defaultness),
             span: ti.span,
         }
     }
 
     pub(crate) fn from_impl_item(ii: &'a ast::AssocItem) -> Self {
-        let (ty, expr) = match ii.kind {
-            ast::AssocItemKind::Const(ref ty, ref expr) => (ty, expr),
+        let (defaultness, ty, expr) = match ii.kind {
+            ast::AssocItemKind::Const(defaultness, ref ty, ref expr) => (defaultness, ty, expr),
             _ => unreachable!(),
         };
         StaticParts {
@@ -1760,7 +1771,7 @@ impl<'a> StaticParts<'a> {
             ty,
             mutability: ast::Mutability::Not,
             expr_opt: expr.as_ref(),
-            defaultness: Some(ii.defaultness),
+            defaultness: Some(defaultness),
             span: ii.span,
         }
     }
@@ -1903,16 +1914,16 @@ pub(crate) fn rewrite_associated_impl_type(
     let result = rewrite_associated_type(ident, ty_opt, generics, None, context, indent)?;
 
     match defaultness {
-        ast::Defaultness::Default => Some(format!("default {}", result)),
+        ast::Defaultness::Default(..) => Some(format!("default {}", result)),
         _ => Some(result),
     }
 }
 
-impl Rewrite for ast::FunctionRetTy {
+impl Rewrite for ast::FnRetTy {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match *self {
-            ast::FunctionRetTy::Default(_) => Some(String::new()),
-            ast::FunctionRetTy::Ty(ref ty) => {
+            ast::FnRetTy::Default(_) => Some(String::new()),
+            ast::FnRetTy::Ty(ref ty) => {
                 if context.config.version() == Version::One
                     || context.config.indent_style() == IndentStyle::Visual
                 {
@@ -2290,7 +2301,7 @@ fn rewrite_fn_base(
     }
 
     // Return type.
-    if let ast::FunctionRetTy::Ty(..) = fd.output {
+    if let ast::FnRetTy::Ty(..) = fd.output {
         let ret_should_indent = match context.config.indent_style() {
             // If our params are block layout then we surely must have space.
             IndentStyle::Block if put_params_in_block || fd.inputs.is_empty() => false,
@@ -2396,8 +2407,8 @@ fn rewrite_fn_base(
     }
 
     let pos_before_where = match fd.output {
-        ast::FunctionRetTy::Default(..) => params_span.hi(),
-        ast::FunctionRetTy::Ty(ref ty) => ty.span.hi(),
+        ast::FnRetTy::Default(..) => params_span.hi(),
+        ast::FnRetTy::Ty(ref ty) => ty.span.hi(),
     };
 
     let is_params_multi_lined = param_str.contains('\n');
@@ -2425,7 +2436,7 @@ fn rewrite_fn_base(
     // If there are neither where-clause nor return type, we may be missing comments between
     // params and `{`.
     if where_clause_str.is_empty() {
-        if let ast::FunctionRetTy::Default(ret_span) = fd.output {
+        if let ast::FnRetTy::Default(ret_span) = fd.output {
             match recover_missing_comment_in_span(
                 mk_sp(params_span.hi(), ret_span.hi()),
                 shape,
@@ -3083,7 +3094,7 @@ impl Rewrite for ast::ForeignItem {
         let span = mk_sp(self.span.lo(), self.span.hi() - BytePos(1));
 
         let item_str = match self.kind {
-            ast::ForeignItemKind::Fn(ref fn_sig, ref generics, _) => rewrite_fn_base(
+            ast::ForeignItemKind::Fn(_, ref fn_sig, ref generics, _) => rewrite_fn_base(
                 context,
                 shape.indent,
                 self.ident,
@@ -3092,7 +3103,7 @@ impl Rewrite for ast::ForeignItem {
                 FnBraceStyle::None,
             )
             .map(|(s, _)| format!("{};", s)),
-            ast::ForeignItemKind::Static(ref ty, mutability) => {
+            ast::ForeignItemKind::Static(ref ty, mutability, _) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function kw here.
                 let vis = format_visibility(context, &self.vis);
@@ -3106,7 +3117,7 @@ impl Rewrite for ast::ForeignItem {
                 // 1 = ;
                 rewrite_assign_rhs(context, prefix, &**ty, shape.sub_width(1)?).map(|s| s + ";")
             }
-            ast::ForeignItemKind::Ty => {
+            ast::ForeignItemKind::TyAlias(..) => {
                 let vis = format_visibility(context, &self.vis);
                 Some(format!(
                     "{}type {};",
@@ -3114,7 +3125,7 @@ impl Rewrite for ast::ForeignItem {
                     rewrite_ident(context, self.ident)
                 ))
             }
-            ast::ForeignItemKind::Macro(ref mac) => {
+            ast::ForeignItemKind::MacCall(ref mac) => {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Item)
             }
         }?;
