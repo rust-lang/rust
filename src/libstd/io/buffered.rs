@@ -359,6 +359,10 @@ impl<R: Seek> Seek for BufReader<R> {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         let result: u64;
         if let SeekFrom::Current(n) = pos {
+            if n == 0 {
+                return Ok(self.pos)
+            }
+
             let remainder = (self.cap - self.pos) as i64;
             // it should be safe to assume that remainder fits within an i64 as the alternative
             // means we managed to allocate 8 exbibytes and that's absurd.
