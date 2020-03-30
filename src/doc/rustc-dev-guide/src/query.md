@@ -264,7 +264,7 @@ if you *don't* implement it, you get a pretty generic error ("processing `foo`..
 You can put new impls into the `config` module. They look something like this:
 
 [QueryConfig]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/query/trait.QueryConfig.html
-[QueryDescription]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/query/config/trait.QueryDescription.html
+[QueryDescription]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_query_system/query/config/trait.QueryDescription.html
 
 ```rust,ignore
 impl<'tcx> QueryDescription for queries::type_of<'tcx> {
