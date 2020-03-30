@@ -208,6 +208,9 @@ pub fn main_loop(
         )
     };
 
+    loop_state.roots_total = world_state.vfs.read().n_roots();
+    loop_state.roots_scanned = 0;
+
     let pool = ThreadPool::default();
     let (task_sender, task_receiver) = unbounded::<Task>();
     let (libdata_sender, libdata_receiver) = unbounded::<LibraryData>();
@@ -333,7 +336,10 @@ struct LoopState {
     in_flight_libraries: usize,
     pending_libraries: Vec<(SourceRootId, Vec<(FileId, RelativePathBuf, Arc<String>)>)>,
     workspace_loaded: bool,
-    roots_scanned_progress: Option<usize>,
+
+    roots_progress_reported: Option<usize>,
+    roots_scanned: usize,
+    roots_total: usize,
 }
 
 impl LoopState {
@@ -377,6 +383,7 @@ fn loop_turn(
             world_state.add_lib(lib);
             world_state.maybe_collect_garbage();
             loop_state.in_flight_libraries -= 1;
+            loop_state.roots_scanned += 1;
         }
         Event::CheckWatcher(task) => on_check_task(task, world_state, task_sender)?,
         Event::Msg(msg) => match msg {
@@ -408,7 +415,7 @@ fn loop_turn(
     };
 
     let mut state_changed = false;
-    if let Some(changes) = world_state.process_changes() {
+    if let Some(changes) = world_state.process_changes(&mut loop_state.roots_scanned) {
         state_changed = true;
         loop_state.pending_libraries.extend(changes);
     }
@@ -427,8 +434,11 @@ fn loop_turn(
         });
     }
 
+    let show_progress = !loop_state.workspace_loaded
+        && world_state.feature_flags.get("notifications.workspace-loaded");
+
     if !loop_state.workspace_loaded
-        && world_state.roots_to_scan == 0
+        && loop_state.roots_scanned == loop_state.roots_total
         && loop_state.pending_libraries.is_empty()
         && loop_state.in_flight_libraries == 0
     {
@@ -439,9 +449,10 @@ fn loop_turn(
             let snap = world_state.snapshot();
             move || snap.analysis().prime_caches(subs).unwrap_or_else(|_: Canceled| ())
         });
-        send_startup_progress(&connection.sender, loop_state, world_state);
-    } else if !loop_state.workspace_loaded {
-        send_startup_progress(&connection.sender, loop_state, world_state);
+    }
+
+    if show_progress {
+        send_startup_progress(&connection.sender, loop_state);
     }
 
     if state_changed {
@@ -706,21 +717,13 @@ fn on_diagnostic_task(task: DiagnosticTask, msg_sender: &Sender<Message>, state:
     }
 }
 
-fn send_startup_progress(
-    sender: &Sender<Message>,
-    loop_state: &mut LoopState,
-    world_state: &WorldState,
-) {
-    if !world_state.feature_flags.get("notifications.workspace-loaded") {
-        return;
-    }
+fn send_startup_progress(sender: &Sender<Message>, loop_state: &mut LoopState) {
+    let total: usize = loop_state.roots_total;
+    let prev = loop_state.roots_progress_reported;
+    let progress = loop_state.roots_scanned;
+    loop_state.roots_progress_reported = Some(progress);
 
-    let total: usize = world_state.workspaces.iter().map(|it| it.n_packages()).sum();
-    let prev_progress = loop_state.roots_scanned_progress;
-    let progress = total - world_state.roots_to_scan;
-    loop_state.roots_scanned_progress = Some(progress);
-
-    match (prev_progress, loop_state.workspace_loaded) {
+    match (prev, loop_state.workspace_loaded) {
         (None, false) => {
             let work_done_progress_create = request_new::<req::WorkDoneProgressCreate>(
                 loop_state.next_request_id(),
