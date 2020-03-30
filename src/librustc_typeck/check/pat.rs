@@ -1355,7 +1355,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let err = self.tcx.types.err;
         let expected = self.structurally_resolved_type(span, expected);
-        let (element_ty, slice_ty, expected) = match expected.kind {
+        let (element_ty, slice_ty, inferred) = match expected.kind {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
             ty::Array(element_ty, len) => {
                 let min = before.len() as u64 + after.len() as u64;
@@ -1385,7 +1385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for elt in after {
             self.check_pat(&elt, element_ty, def_bm, ti);
         }
-        expected
+        inferred
     }
 
     /// Type check the length of an array pattern.
