@@ -1,8 +1,8 @@
 use crate::utils::{match_type, paths, span_lint_and_help};
-use rustc_middle::hir::map::Map;
 use rustc_hir::intravisit::{self as visit, NestedVisitorMap, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
