@@ -288,8 +288,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         let o_creat = this.eval_libc_i32("O_CREAT")?;
         if flag & o_creat != 0 {
-            options.create(true);
             mirror |= o_creat;
+
+            let o_excl = this.eval_libc_i32("O_EXCL")?;
+            if flag & o_excl != 0 {
+                mirror |= o_excl;
+                options.create_new(true);
+            } else {
+                options.create(true);
+            }
         }
         let o_cloexec = this.eval_libc_i32("O_CLOEXEC")?;
         if flag & o_cloexec != 0 {
