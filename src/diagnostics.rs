@@ -129,7 +129,7 @@ fn report_msg<'tcx, 'mir>(
         err.help(help);
     }
     // Add backtrace
-    let frames = ecx.generate_stacktrace(None);
+    let frames = ecx.generate_stacktrace();
     for (idx, frame_info) in frames.iter().enumerate() {
         let is_local = frame_info.instance.def_id().is_local();
         // No span for non-local frames and the first frame (which is the error site).

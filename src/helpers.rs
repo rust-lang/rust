@@ -10,7 +10,6 @@ use rustc_middle::ty::{
     List, TyCtxt,
 };
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc_span::source_map::DUMMY_SP;
 
 use rand::RngCore;
 
@@ -170,13 +169,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Push frame.
         let mir = &*this.load_mir(f.def, None)?;
-        let span = this
-            .stack()
-            .last()
-            .and_then(Frame::current_source_info)
-            .map(|si| si.span)
-            .unwrap_or(DUMMY_SP);
-        this.push_stack_frame(f, span, mir, dest, stack_pop)?;
+        this.push_stack_frame(f, mir, dest, stack_pop)?;
 
         // Initialize arguments.
         let mut callee_args = this.frame().body.args_iter();
