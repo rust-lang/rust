@@ -36,7 +36,7 @@ pub struct CheckOptions {
 #[derive(Debug)]
 pub struct CheckWatcher {
     // XXX: drop order is significant
-    cmd_send: Option<Sender<CheckCommand>>,
+    cmd_send: Sender<CheckCommand>,
     handle: Option<jod_thread::JoinHandle<()>>,
     pub task_recv: Receiver<CheckTask>,
 }
@@ -51,19 +51,12 @@ impl CheckWatcher {
             let mut check = CheckWatcherThread::new(options, workspace_root);
             check.run(&task_send, &cmd_recv);
         });
-        CheckWatcher { task_recv, cmd_send: Some(cmd_send), handle: Some(handle) }
-    }
-
-    /// Returns a CheckWatcher that doesn't actually do anything
-    pub fn dummy() -> CheckWatcher {
-        CheckWatcher { task_recv: never(), cmd_send: None, handle: None }
+        CheckWatcher { task_recv, cmd_send, handle: Some(handle) }
     }
 
     /// Schedule a re-start of the cargo check worker.
     pub fn update(&self) {
-        if let Some(cmd_send) = &self.cmd_send {
-            cmd_send.send(CheckCommand::Update).unwrap();
-        }
+        self.cmd_send.send(CheckCommand::Update).unwrap();
     }
 }
 

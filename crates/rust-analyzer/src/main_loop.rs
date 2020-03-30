@@ -14,7 +14,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crossbeam_channel::{select, unbounded, RecvError, Sender};
+use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{
     ClientCapabilities, NumberOrString, WorkDoneProgress, WorkDoneProgressBegin,
@@ -232,7 +232,7 @@ pub fn main_loop(
                     Err(RecvError) => return Err("vfs died".into()),
                 },
                 recv(libdata_receiver) -> data => Event::Lib(data.unwrap()),
-                recv(world_state.check_watcher.task_recv) -> task => match task {
+                recv(world_state.check_watcher.as_ref().map_or(&never(), |it| &it.task_recv)) -> task => match task {
                     Ok(task) => Event::CheckWatcher(task),
                     Err(RecvError) => return Err("check watcher died".into()),
                 }
@@ -443,7 +443,9 @@ fn loop_turn(
         && loop_state.in_flight_libraries == 0
     {
         loop_state.workspace_loaded = true;
-        world_state.check_watcher.update();
+        if let Some(check_watcher) = &world_state.check_watcher {
+            check_watcher.update();
+        }
         pool.execute({
             let subs = loop_state.subscriptions.subscriptions();
             let snap = world_state.snapshot();
@@ -615,7 +617,9 @@ fn on_notification(
     };
     let not = match notification_cast::<req::DidSaveTextDocument>(not) {
         Ok(_params) => {
-            state.check_watcher.update();
+            if let Some(check_watcher) = &state.check_watcher {
+                check_watcher.update();
+            }
             return Ok(());
         }
         Err(not) => not,

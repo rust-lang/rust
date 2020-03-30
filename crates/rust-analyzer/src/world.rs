@@ -57,7 +57,7 @@ pub struct WorldState {
     pub vfs: Arc<RwLock<Vfs>>,
     pub task_receiver: Receiver<VfsTask>,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
-    pub check_watcher: CheckWatcher,
+    pub check_watcher: Option<CheckWatcher>,
     pub diagnostics: DiagnosticCollection,
 }
 
@@ -176,11 +176,11 @@ impl WorldState {
             })
             .map(|cargo| {
                 let cargo_project_root = cargo.workspace_root().to_path_buf();
-                CheckWatcher::new(&options.cargo_watch, cargo_project_root)
+                Some(CheckWatcher::new(&options.cargo_watch, cargo_project_root))
             })
             .unwrap_or_else(|| {
                 log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
-                CheckWatcher::dummy()
+                None
             });
 
         let mut analysis_host = AnalysisHost::new(lru_capacity);
