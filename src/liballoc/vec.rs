@@ -2019,6 +2019,8 @@ where
                 let (lower, _) = iterator.size_hint();
                 let mut vector = Vec::with_capacity(lower.saturating_add(1));
                 unsafe {
+                    // `vector` is new, cannot have aliases, so us getting exclusive references
+                    // here is okay.
                     ptr::write(vector.get_unchecked_mut(0), element);
                     vector.set_len(1);
                 }
@@ -2145,7 +2147,7 @@ impl<T> Vec<T> {
                 self.reserve(lower.saturating_add(1));
             }
             unsafe {
-                ptr::write(self.get_unchecked_mut(len), element);
+                ptr::write(self.as_mut_ptr().add(len), element);
                 // NB can't overflow since we would have had to alloc the address space
                 self.set_len(len + 1);
             }
