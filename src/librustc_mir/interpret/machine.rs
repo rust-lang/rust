@@ -7,7 +7,7 @@ use std::hash::Hash;
 
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{def_id::DefId, Span};
+use rustc_span::def_id::DefId;
 
 use super::{
     AllocId, Allocation, AllocationExtra, Frame, ImmTy, InterpCx, InterpResult, Memory, MemoryKind,
@@ -135,7 +135,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// was used.
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
@@ -156,7 +155,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// responsibility to advance the instruction pointer as appropriate.
     fn call_intrinsic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,

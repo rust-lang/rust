@@ -14,16 +14,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
     /// frame which is not `#[track_caller]`. If the first frame found lacks `#[track_caller]`, then
     /// `None` is returned and the callsite of the function invocation itself should be used.
-    crate fn find_closest_untracked_caller_location(&self) -> Option<Span> {
-        let mut caller_span = None;
-        for next_caller in self.stack.iter().rev() {
-            caller_span = next_caller.current_source_info().map(|si| si.span).or_else(|| caller_span);
-            if !next_caller.instance.def.requires_caller_location(*self.tcx) {
-                return caller_span;
-            }
-        }
-
-        caller_span
+    crate fn find_closest_untracked_caller_location(&self) -> Span {
+        self.stack
+            .iter()
+            .rev()
+            // Skip `#[track_caller]` frames.
+            .skip_while(|frame| frame.instance.def.requires_caller_location(*self.tcx))
+            // Find next frame with source info.
+            .find_map(|frame| frame.current_source_info())
+            .map(|si| si.span)
+            // Fallback to current frame. That one has to have source_info as only
+            // currently unwinding frames without cleanup do *not* have it -- and those
+            // frames do not call this intrinsic.
+            .unwrap_or_else(|| self.frame().current_source_info().unwrap().span)
     }
 
     /// Allocate a `const core::panic::Location` with the provided filename and line/column numbers.
