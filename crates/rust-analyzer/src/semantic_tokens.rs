@@ -2,7 +2,7 @@
 
 use std::ops;
 
-use lsp_types::{Range, SemanticToken, SemanticTokenModifier, SemanticTokenType};
+use lsp_types::{Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens};
 
 pub(crate) const ATTRIBUTE: SemanticTokenType = SemanticTokenType::new("attribute");
 pub(crate) const BUILTIN_TYPE: SemanticTokenType = SemanticTokenType::new("builtinType");
@@ -109,8 +109,8 @@ impl SemanticTokensBuilder {
         self.prev_char = range.start.character as u32;
     }
 
-    pub fn build(self) -> Vec<SemanticToken> {
-        self.data
+    pub fn build(self) -> SemanticTokens {
+        SemanticTokens { result_id: None, data: self.data }
     }
 }
 
