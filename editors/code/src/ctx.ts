@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import { Config } from './config';
-import { createClient } from './client';
+import { createClient, configToServerOptions } from './client';
 import { isRustEditor, RustEditor } from './util';
 
 export class Ctx {
@@ -20,6 +20,7 @@ export class Ctx {
         const res = new Ctx(config, extCtx, client, serverPath);
         res.pushCleanup(client.start());
         await client.onReady();
+        client.onRequest('workspace/configuration', _ => [configToServerOptions(config)]);
         return res;
     }
 

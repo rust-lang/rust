@@ -17,8 +17,9 @@ use std::{
 use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{
-    ClientCapabilities, NumberOrString, WorkDoneProgress, WorkDoneProgressBegin,
-    WorkDoneProgressCreateParams, WorkDoneProgressEnd, WorkDoneProgressReport,
+    ClientCapabilities, NumberOrString, TextDocumentClientCapabilities, WorkDoneProgress,
+    WorkDoneProgressBegin, WorkDoneProgressCreateParams, WorkDoneProgressEnd,
+    WorkDoneProgressReport,
 };
 use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckTask};
 use ra_ide::{Canceled, FileId, InlayHintsOptions, LibraryData, SourceRootId};
@@ -40,6 +41,7 @@ use crate::{
     world::{Options, WorldSnapshot, WorldState},
     Result, ServerConfig,
 };
+use req::ConfigurationParams;
 
 #[derive(Debug)]
 pub struct LspError {
@@ -62,6 +64,53 @@ impl fmt::Display for LspError {
 }
 
 impl Error for LspError {}
+
+fn get_feature_flags(config: &ServerConfig, connection: &Connection) -> FeatureFlags {
+    let mut ff = FeatureFlags::default();
+    for (flag, &value) in &config.feature_flags {
+        if ff.set(flag.as_str(), value).is_err() {
+            log::error!("unknown feature flag: {:?}", flag);
+            show_message(
+                req::MessageType::Error,
+                format!("unknown feature flag: {:?}", flag),
+                &connection.sender,
+            );
+        }
+    }
+    log::info!("feature_flags: {:#?}", ff);
+    ff
+}
+
+fn get_options(
+    config: &ServerConfig,
+    text_document_caps: Option<&TextDocumentClientCapabilities>,
+) -> Options {
+    Options {
+        publish_decorations: config.publish_decorations,
+        supports_location_link: text_document_caps
+            .and_then(|it| it.definition)
+            .and_then(|it| it.link_support)
+            .unwrap_or(false),
+        line_folding_only: text_document_caps
+            .and_then(|it| it.folding_range.as_ref())
+            .and_then(|it| it.line_folding_only)
+            .unwrap_or(false),
+        inlay_hints: InlayHintsOptions {
+            type_hints: config.inlay_hints_type,
+            parameter_hints: config.inlay_hints_parameter,
+            chaining_hints: config.inlay_hints_chaining,
+            max_length: config.inlay_hints_max_length,
+        },
+        cargo_watch: CheckOptions {
+            enable: config.cargo_watch_enable,
+            args: config.cargo_watch_args.clone(),
+            command: config.cargo_watch_command.clone(),
+            all_targets: config.cargo_watch_all_targets,
+        },
+        rustfmt_args: config.rustfmt_args.clone(),
+        vscode_lldb: config.vscode_lldb,
+    }
+}
 
 pub fn main_loop(
     ws_roots: Vec<PathBuf>,
@@ -90,23 +139,10 @@ pub fn main_loop(
         SetThreadPriority(thread, thread_priority_above_normal);
     }
 
+    let text_document_caps = client_caps.text_document.as_ref();
     let mut loop_state = LoopState::default();
     let mut world_state = {
-        let feature_flags = {
-            let mut ff = FeatureFlags::default();
-            for (flag, value) in config.feature_flags {
-                if ff.set(flag.as_str(), value).is_err() {
-                    log::error!("unknown feature flag: {:?}", flag);
-                    show_message(
-                        req::MessageType::Error,
-                        format!("unknown feature flag: {:?}", flag),
-                        &connection.sender,
-                    );
-                }
-            }
-            ff
-        };
-        log::info!("feature_flags: {:#?}", feature_flags);
+        let feature_flags = get_feature_flags(&config, &connection);
 
         // FIXME: support dynamic workspace loading.
         let workspaces = {
@@ -168,42 +204,13 @@ pub fn main_loop(
             connection.sender.send(request.into()).unwrap();
         }
 
-        let options = {
-            let text_document_caps = client_caps.text_document.as_ref();
-            Options {
-                publish_decorations: config.publish_decorations,
-                supports_location_link: text_document_caps
-                    .and_then(|it| it.definition)
-                    .and_then(|it| it.link_support)
-                    .unwrap_or(false),
-                line_folding_only: text_document_caps
-                    .and_then(|it| it.folding_range.as_ref())
-                    .and_then(|it| it.line_folding_only)
-                    .unwrap_or(false),
-                inlay_hints: InlayHintsOptions {
-                    type_hints: config.inlay_hints_type,
-                    parameter_hints: config.inlay_hints_parameter,
-                    chaining_hints: config.inlay_hints_chaining,
-                    max_length: config.inlay_hints_max_length,
-                },
-                cargo_watch: CheckOptions {
-                    enable: config.cargo_watch_enable,
-                    args: config.cargo_watch_args,
-                    command: config.cargo_watch_command,
-                    all_targets: config.cargo_watch_all_targets,
-                },
-                rustfmt_args: config.rustfmt_args,
-                vscode_lldb: config.vscode_lldb,
-            }
-        };
-
         WorldState::new(
             ws_roots,
             workspaces,
             config.lru_capacity,
             &globs,
             Watch(!config.use_client_watching),
-            options,
+            get_options(&config, text_document_caps),
             feature_flags,
         )
     };
@@ -247,6 +254,7 @@ pub fn main_loop(
                 &task_sender,
                 &libdata_sender,
                 &connection,
+                text_document_caps,
                 &mut world_state,
                 &mut loop_state,
                 event,
@@ -336,10 +344,10 @@ struct LoopState {
     in_flight_libraries: usize,
     pending_libraries: Vec<(SourceRootId, Vec<(FileId, RelativePathBuf, Arc<String>)>)>,
     workspace_loaded: bool,
-
     roots_progress_reported: Option<usize>,
     roots_scanned: usize,
     roots_total: usize,
+    configuration_request_id: Option<RequestId>,
 }
 
 impl LoopState {
@@ -357,6 +365,7 @@ fn loop_turn(
     task_sender: &Sender<Task>,
     libdata_sender: &Sender<LibraryData>,
     connection: &Connection,
+    text_document_caps: Option<&TextDocumentClientCapabilities>,
     world_state: &mut WorldState,
     loop_state: &mut LoopState,
     event: Event,
@@ -397,18 +406,46 @@ fn loop_turn(
                 req,
             )?,
             Message::Notification(not) => {
-                on_notification(
-                    &connection.sender,
-                    world_state,
-                    &mut loop_state.pending_requests,
-                    &mut loop_state.subscriptions,
-                    not,
-                )?;
+                on_notification(&connection.sender, world_state, loop_state, not)?;
             }
             Message::Response(resp) => {
                 let removed = loop_state.pending_responses.remove(&resp.id);
                 if !removed {
                     log::error!("unexpected response: {:?}", resp)
+                }
+
+                if Some(&resp.id) == loop_state.configuration_request_id.as_ref() {
+                    loop_state.configuration_request_id = None;
+                    log::debug!("config update response: '{:?}", resp);
+                    let Response { error, result, .. } = resp;
+
+                    match (
+                        error,
+                        result.map(|result| serde_json::from_value::<Vec<ServerConfig>>(result)),
+                    ) {
+                        (Some(err), _) => {
+                            log::error!("failed to fetch the server settings: {:?}", err)
+                        }
+                        (None, Some(Ok(new_config))) => {
+                            let new_config = new_config
+                                .first()
+                                .expect(
+                                    "the client is expected to always send a non-empty config data",
+                                )
+                                .to_owned();
+                            world_state.update_configuration(
+                                new_config.lru_capacity,
+                                get_options(&new_config, text_document_caps),
+                                get_feature_flags(&new_config, connection),
+                            );
+                        }
+                        (None, Some(Err(e))) => {
+                            log::error!("failed to parse client config response: {}", e)
+                        }
+                        (None, None) => {
+                            log::error!("received empty server settings response from the client")
+                        }
+                    }
                 }
             }
         },
@@ -569,8 +606,7 @@ fn on_request(
 fn on_notification(
     msg_sender: &Sender<Message>,
     state: &mut WorldState,
-    pending_requests: &mut PendingRequests,
-    subs: &mut Subscriptions,
+    loop_state: &mut LoopState,
     not: Notification,
 ) -> Result<()> {
     let not = match notification_cast::<req::Cancel>(not) {
@@ -579,7 +615,7 @@ fn on_notification(
                 NumberOrString::Number(id) => id.into(),
                 NumberOrString::String(id) => id.into(),
             };
-            if pending_requests.cancel(&id) {
+            if loop_state.pending_requests.cancel(&id) {
                 let response = Response::new_err(
                     id,
                     ErrorCode::RequestCanceled as i32,
@@ -598,7 +634,7 @@ fn on_notification(
             if let Some(file_id) =
                 state.vfs.write().add_file_overlay(&path, params.text_document.text)
             {
-                subs.add_sub(FileId(file_id.0));
+                loop_state.subscriptions.add_sub(FileId(file_id.0));
             }
             return Ok(());
         }
@@ -629,7 +665,7 @@ fn on_notification(
             let uri = params.text_document.uri;
             let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
             if let Some(file_id) = state.vfs.write().remove_file_overlay(path.as_path()) {
-                subs.remove_sub(FileId(file_id.0));
+                loop_state.subscriptions.remove_sub(FileId(file_id.0));
             }
             let params =
                 req::PublishDiagnosticsParams { uri, diagnostics: Vec::new(), version: None };
@@ -640,7 +676,17 @@ fn on_notification(
         Err(not) => not,
     };
     let not = match notification_cast::<req::DidChangeConfiguration>(not) {
-        Ok(_params) => {
+        Ok(_) => {
+            // As stated in https://github.com/microsoft/language-server-protocol/issues/676,
+            // this notification's parameters should be ignored and the actual config queried separately.
+            let request_id = loop_state.next_request_id();
+            let request = request_new::<req::WorkspaceConfiguration>(
+                request_id.clone(),
+                ConfigurationParams::default(),
+            );
+            msg_sender.send(request.into())?;
+            loop_state.configuration_request_id = Some(request_id);
+
             return Ok(());
         }
         Err(not) => not,

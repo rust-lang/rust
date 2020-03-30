@@ -91,6 +91,12 @@ export async function activate(context: vscode.ExtensionContext) {
         activateHighlighting(ctx);
     }
     activateInlayHints(ctx);
+
+    vscode.workspace.onDidChangeConfiguration(
+        _ => ctx?.client?.sendNotification('workspace/didChangeConfiguration', { settings: "" }),
+        null,
+        ctx.subscriptions,
+    );
 }
 
 export async function deactivate() {

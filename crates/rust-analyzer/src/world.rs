@@ -31,6 +31,24 @@ use crate::{
 use ra_db::ExternSourceId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
+fn create_watcher(workspaces: &[ProjectWorkspace], options: &Options) -> Option<CheckWatcher> {
+    // FIXME: Figure out the multi-workspace situation
+    workspaces
+        .iter()
+        .find_map(|w| match w {
+            ProjectWorkspace::Cargo { cargo, .. } => Some(cargo),
+            ProjectWorkspace::Json { .. } => None,
+        })
+        .map(|cargo| {
+            let cargo_project_root = cargo.workspace_root().to_path_buf();
+            Some(CheckWatcher::new(&options.cargo_watch, cargo_project_root))
+        })
+        .unwrap_or_else(|| {
+            log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
+            None
+        })
+}
+
 #[derive(Debug, Clone)]
 pub struct Options {
     pub publish_decorations: bool,
@@ -167,21 +185,7 @@ impl WorldState {
             });
         change.set_crate_graph(crate_graph);
 
-        // FIXME: Figure out the multi-workspace situation
-        let check_watcher = workspaces
-            .iter()
-            .find_map(|w| match w {
-                ProjectWorkspace::Cargo { cargo, .. } => Some(cargo),
-                ProjectWorkspace::Json { .. } => None,
-            })
-            .map(|cargo| {
-                let cargo_project_root = cargo.workspace_root().to_path_buf();
-                Some(CheckWatcher::new(&options.cargo_watch, cargo_project_root))
-            })
-            .unwrap_or_else(|| {
-                log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
-                None
-            });
+        let check_watcher = create_watcher(&workspaces, &options);
 
         let mut analysis_host = AnalysisHost::new(lru_capacity);
         analysis_host.apply_change(change);
@@ -197,6 +201,18 @@ impl WorldState {
             check_watcher,
             diagnostics: Default::default(),
         }
+    }
+
+    pub fn update_configuration(
+        &mut self,
+        lru_capacity: Option<usize>,
+        options: Options,
+        feature_flags: FeatureFlags,
+    ) {
+        self.feature_flags = Arc::new(feature_flags);
+        self.analysis_host.update_lru_capacity(lru_capacity);
+        self.check_watcher = create_watcher(&self.workspaces, &options);
+        self.options = options;
     }
 
     /// Returns a vec of libraries
