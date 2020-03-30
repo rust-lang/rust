@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
 use crate::completion::{CompletionContext, Completions};
+use ra_syntax::{ast::NameOwner, SmolStr};
 
 pub(super) fn complete_record_pattern(acc: &mut Completions, ctx: &CompletionContext) {
     let (ty, variant) = match ctx.record_lit_pat.as_ref().and_then(|it| {
@@ -10,8 +11,24 @@ pub(super) fn complete_record_pattern(acc: &mut Completions, ctx: &CompletionCon
         _ => return,
     };
 
+    let already_present_names: Vec<SmolStr> = ctx
+        .record_lit_pat
+        .as_ref()
+        .and_then(|record_pat| record_pat.record_field_pat_list())
+        .map(|pat_list| pat_list.bind_pats())
+        .map(|bind_pats| {
+            bind_pats
+                .into_iter()
+                .filter_map(|pat| pat.name())
+                .map(|name| name.text().clone())
+                .collect()
+        })
+        .unwrap_or_default();
+
     for (field, field_ty) in ty.variant_fields(ctx.db, variant) {
-        acc.add_field(ctx, field, &field_ty);
+        if !already_present_names.contains(&SmolStr::from(field.name(ctx.db).to_string())) {
+            acc.add_field(ctx, field, &field_ty);
+        }
     }
 }
 
@@ -109,6 +126,50 @@ mod tests {
                 source_range: [171; 172),
                 delete: [171; 172),
                 insert: "foo",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###);
+    }
+
+    #[test]
+    fn only_missing_fields_are_completed_in_destruct_pats() {
+        let completions = complete(
+            r"
+            struct S {
+                foo1: u32,
+                foo2: u32,
+                bar: u32,
+                baz: u32,
+            }
+
+            fn main() {
+                let s = S {
+                    foo1: 1,
+                    foo2: 2,
+                    bar: 3,
+                    baz: 4,
+                };
+                if let S { foo1, foo2, <|> } = s {}
+            }
+            ",
+        );
+        assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "bar",
+                source_range: [369; 369),
+                delete: [369; 369),
+                insert: "bar",
+                kind: Field,
+                detail: "u32",
+            },
+            CompletionItem {
+                label: "baz",
+                source_range: [369; 369),
+                delete: [369; 369),
+                insert: "baz",
                 kind: Field,
                 detail: "u32",
             },
