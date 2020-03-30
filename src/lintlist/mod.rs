@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 362] = [
+pub const ALL_LINTS: [Lint; 361] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1791,13 +1791,6 @@ pub const ALL_LINTS: [Lint; 362] = [
         desc: "use of `regex!(_)` instead of `Regex::new(_)`",
         deprecation: None,
         module: "regex",
-    },
-    Lint {
-        name: "replace_consts",
-        group: "pedantic",
-        desc: "Lint usages of standard library `const`s that could be replaced by `const fn`s",
-        deprecation: None,
-        module: "replace_consts",
     },
     Lint {
         name: "rest_pat_in_fully_bound_structs",
