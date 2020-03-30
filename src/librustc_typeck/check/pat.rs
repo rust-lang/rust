@@ -1423,7 +1423,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if slice.is_none() {
             // We have a pattern with a fixed length,
             // which we can use to infer the length of the array.
-            // of the array.
             let updated_arr_ty = self.tcx.mk_array(element_ty, min_len);
             self.demand_eqtype(span, updated_arr_ty, arr_ty);
             return (self.tcx.types.err, updated_arr_ty);
