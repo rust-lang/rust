@@ -368,18 +368,22 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
             if location.statement_index != block.statements.len() {
                 let stmt = &block.statements[location.statement_index];
 
-                if let StatementKind::Assign(box (p, Rvalue::Use(Operand::Constant(c)))) =
-                    &stmt.kind
-                {
-                    match c.literal.val {
-                        // Keep assignments from unevaluated constants around, since the evaluation
-                        // may report errors, even if the use of the constant is dead code.
-                        ty::ConstKind::Unevaluated(..) => {}
-                        _ => {
-                            if !p.is_indirect() {
-                                trace!("skipping store of const value {:?} to {:?}", c, p);
-                                return;
+                if let StatementKind::Assign(box (dest, rvalue)) = &stmt.kind {
+                    if !dest.is_indirect() && dest.local == *local {
+                        if let Rvalue::Use(Operand::Constant(c)) = rvalue {
+                            match c.literal.val {
+                                // Keep assignments from unevaluated constants around, since the
+                                // evaluation may report errors, even if the use of the constant
+                                // is dead code.
+                                ty::ConstKind::Unevaluated(..) => {}
+                                _ => {
+                                    trace!("skipping store of const value {:?} to {:?}", c, dest);
+                                    return;
+                                }
                             }
+                        } else if let Rvalue::Discriminant(d) = rvalue {
+                            trace!("skipping store of discriminant value {:?} to {:?}", d, dest);
+                            return;
                         }
                     }
                 }
