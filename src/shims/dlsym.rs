@@ -1,4 +1,4 @@
-use rustc::mir;
+use rustc_middle::mir;
 
 use crate::*;
 

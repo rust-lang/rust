@@ -7,7 +7,7 @@
 
 use std::ops;
 
-use rustc::ty::layout::Size;
+use rustc_middle::ty::layout::Size;
 
 #[derive(Clone, Debug)]
 struct Elem<T> {

@@ -10,7 +10,9 @@ pub mod tls;
 
 use std::convert::TryFrom;
 
-use rustc::{mir, ty};
+use log::trace;
+
+use rustc_middle::{mir, ty};
 
 use crate::*;
 

@@ -7,11 +7,12 @@ use std::num::NonZeroU64;
 use std::rc::Rc;
 use std::time::Instant;
 
+use log::trace;
 use rand::rngs::StdRng;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc::mir;
-use rustc::ty::{
+use rustc_middle::mir;
+use rustc_middle::ty::{
     self,
     layout::{LayoutOf, Size},
     Ty,

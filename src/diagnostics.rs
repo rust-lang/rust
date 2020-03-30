@@ -1,6 +1,8 @@
 use std::cell::RefCell;
 use std::fmt;
 
+use log::trace;
+
 use rustc_span::DUMMY_SP;
 
 use crate::*;

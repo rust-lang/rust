@@ -7,7 +7,7 @@ use crate::rustc_target::abi::LayoutOf;
 use crate::*;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc::ty::layout::Size;
+use rustc_middle::ty::layout::Size;
 use rustc_mir::interpret::Pointer;
 
 /// Check whether an operation that writes to a target buffer was successful.

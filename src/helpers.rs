@@ -1,8 +1,10 @@
 use std::convert::TryFrom;
 use std::mem;
 
-use rustc::mir;
-use rustc::ty::{
+use log::trace;
+
+use rustc_middle::mir;
+use rustc_middle::ty::{
     self,
     layout::{self, LayoutOf, Size, TyAndLayout},
     List, TyCtxt,

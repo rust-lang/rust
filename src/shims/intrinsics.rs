@@ -1,9 +1,9 @@
 use std::iter;
 use std::convert::TryFrom;
 
-use rustc::mir;
-use rustc::ty;
-use rustc::ty::layout::{Align, LayoutOf};
+use rustc_middle::mir;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{Align, LayoutOf};
 use rustc_apfloat::Float;
 use rustc_span::source_map::Span;
 

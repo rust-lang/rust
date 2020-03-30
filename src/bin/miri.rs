@@ -1,12 +1,6 @@
 #![feature(rustc_private)]
 
-extern crate env_logger;
-extern crate getopts;
-#[macro_use]
-extern crate log;
-extern crate log_settings;
-extern crate miri;
-extern crate rustc;
+extern crate rustc_middle;
 extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_interface;
@@ -17,12 +11,13 @@ use std::env;
 use std::str::FromStr;
 
 use hex::FromHexError;
+use log::debug;
 
 use rustc_session::CtfeBacktrace;
 use rustc_driver::Compilation;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::{interface, Queries};
-use rustc::ty::TyCtxt;
+use rustc_middle::ty::TyCtxt;
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
@@ -84,7 +79,7 @@ fn init_late_loggers(tcx: TyCtxt<'_>) {
             if log::Level::from_str(&var).is_ok() {
                 env::set_var(
                     "RUSTC_LOG",
-                    &format!("rustc::mir::interpret={0},rustc_mir::interpret={0}", var),
+                    &format!("rustc_middle::mir::interpret={0},rustc_mir::interpret={0}", var),
                 );
             } else {
                 env::set_var("RUSTC_LOG", &var);

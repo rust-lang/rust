@@ -1,6 +1,6 @@
 use crate::*;
-use rustc::mir;
-use rustc::ty::layout::Size;
+use rustc_middle::mir;
+use rustc_middle::ty::layout::Size;
 use std::iter;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}

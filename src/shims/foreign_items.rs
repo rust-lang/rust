@@ -4,9 +4,9 @@ mod posix;
 use std::{convert::{TryInto, TryFrom}, iter};
 
 use rustc_hir::def_id::DefId;
-use rustc::mir;
-use rustc::ty;
-use rustc::ty::layout::{Align, Size};
+use rustc_middle::mir;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{Align, Size};
 use rustc_apfloat::Float;
 use rustc_span::symbol::sym;
 use rustc_ast::attr;

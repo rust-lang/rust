@@ -1,16 +1,12 @@
-extern crate getopts;
-extern crate miri;
-extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_interface;
-extern crate test;
 
-use self::miri::eval_main;
-use crate::test::Bencher;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_driver::Compilation;
 use rustc_interface::{interface, Queries};
+
+use crate::test::Bencher;
 
 struct MiriCompilerCalls<'a> {
     bencher: &'a mut Bencher,
@@ -30,7 +26,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls<'_> {
 
             self.bencher.iter(|| {
                 let config = miri::MiriConfig::default();
-                eval_main(tcx, entry_def_id, config);
+                miri::eval_main(tcx, entry_def_id, config);
             });
         });
 

@@ -3,9 +3,11 @@ mod macos;
 
 use std::convert::TryFrom;
 
+use log::trace;
+
 use crate::*;
-use rustc::mir;
-use rustc::ty::layout::{Align, LayoutOf, Size};
+use rustc_middle::mir;
+use rustc_middle::ty::layout::{Align, LayoutOf, Size};
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {

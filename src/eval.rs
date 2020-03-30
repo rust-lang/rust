@@ -6,8 +6,8 @@ use std::convert::TryFrom;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
-use rustc::ty::layout::LayoutOf;
-use rustc::ty::{self, TyCtxt};
+use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_hir::def_id::DefId;
 
 use crate::*;
