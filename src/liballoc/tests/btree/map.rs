@@ -528,7 +528,7 @@ fn test_range_1000() {
     #[cfg(not(miri))] // Miri is too slow
     let size = 1000;
     #[cfg(miri)]
-    let size = MIN_INSERTS_HEIGHT_2;
+    let size = MIN_INSERTS_HEIGHT_2 as u32;
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test(map: &BTreeMap<u32, u32>, size: u32, min: Bound<&u32>, max: Bound<&u32>) {
