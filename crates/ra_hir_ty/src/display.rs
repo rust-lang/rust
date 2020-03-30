@@ -159,20 +159,13 @@ impl HirDisplay for ApplicationTy {
             }
             TypeCtor::FnDef(def) => {
                 let sig = f.db.callable_item_signature(def).subst(&self.parameters);
-                let name = match def {
-                    CallableDef::FunctionId(ff) => f.db.function_data(ff).name.clone(),
-                    CallableDef::StructId(s) => f.db.struct_data(s).name.clone(),
+                match def {
+                    CallableDef::FunctionId(ff) => write!(f, "fn {}", f.db.function_data(ff).name)?,
+                    CallableDef::StructId(s) => write!(f, "{}", f.db.struct_data(s).name)?,
                     CallableDef::EnumVariantId(e) => {
-                        let enum_data = f.db.enum_data(e.parent);
-                        enum_data.variants[e.local_id].name.clone()
+                        write!(f, "{}", f.db.enum_data(e.parent).variants[e.local_id].name)?
                     }
                 };
-                match def {
-                    CallableDef::FunctionId(_) => write!(f, "fn {}", name)?,
-                    CallableDef::StructId(_) | CallableDef::EnumVariantId(_) => {
-                        write!(f, "{}", name)?
-                    }
-                }
                 if self.parameters.len() > 0 {
                     let generics = generics(f.db.upcast(), def.into());
                     let (parent_params, self_param, type_params, _impl_trait_params) =
