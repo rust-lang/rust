@@ -142,22 +142,10 @@ impl ProjectWorkspace {
     pub fn out_dirs(&self) -> Vec<PathBuf> {
         match self {
             ProjectWorkspace::Json { project } => {
-                let mut out_dirs = Vec::with_capacity(project.crates.len());
-                for krate in &project.crates {
-                    if let Some(out_dir) = &krate.out_dir {
-                        out_dirs.push(out_dir.to_path_buf());
-                    }
-                }
-                out_dirs
+                project.crates.iter().filter_map(|krate| krate.out_dir.as_ref()).cloned().collect()
             }
-            ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => {
-                let mut out_dirs = Vec::with_capacity(cargo.packages().len());
-                for pkg in cargo.packages() {
-                    if let Some(out_dir) = &cargo[pkg].out_dir {
-                        out_dirs.push(out_dir.to_path_buf());
-                    }
-                }
-                out_dirs
+            ProjectWorkspace::Cargo { cargo, sysroot: _ } => {
+                cargo.packages().filter_map(|pkg| cargo[pkg].out_dir.as_ref()).cloned().collect()
             }
         }
     }
