@@ -1103,7 +1103,6 @@ dependencies = [
  "ra_arena",
  "ra_cfg",
  "ra_db",
- "ra_flycheck",
  "ra_proc_macro",
  "rustc-hash",
  "serde",

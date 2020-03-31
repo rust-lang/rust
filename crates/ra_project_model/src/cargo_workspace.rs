@@ -1,16 +1,17 @@
 //! FIXME: write short doc here
 
 use std::{
+    env,
     ffi::OsStr,
     ops,
     path::{Path, PathBuf},
+    process::Command,
 };
 
 use anyhow::{Context, Result};
 use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
 use ra_arena::{Arena, Idx};
 use ra_db::Edition;
-use ra_flycheck::run_cargo;
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
 
@@ -163,7 +164,7 @@ impl CargoWorkspace {
         let mut out_dir_by_id = FxHashMap::default();
         let mut proc_macro_dylib_paths = FxHashMap::default();
         if cargo_features.load_out_dirs_from_check {
-            let resources = load_extern_resources(cargo_toml, cargo_features);
+            let resources = load_extern_resources(cargo_toml, cargo_features)?;
             out_dir_by_id = resources.out_dirs;
             proc_macro_dylib_paths = resources.proc_dylib_paths;
         }
@@ -272,53 +273,51 @@ pub struct ExternResources {
     proc_dylib_paths: FxHashMap<PackageId, PathBuf>,
 }
 
-pub fn load_extern_resources(cargo_toml: &Path, cargo_features: &CargoFeatures) -> ExternResources {
-    let mut args: Vec<String> = vec![
-        "check".to_string(),
-        "--message-format=json".to_string(),
-        "--manifest-path".to_string(),
-        cargo_toml.display().to_string(),
-    ];
-
+pub fn load_extern_resources(
+    cargo_toml: &Path,
+    cargo_features: &CargoFeatures,
+) -> Result<ExternResources> {
+    let mut cmd = Command::new(cargo_binary());
+    cmd.args(&["check", "--message-format=json", "--manifest-path"]).arg(cargo_toml);
     if cargo_features.all_features {
-        args.push("--all-features".to_string());
+        cmd.arg("--all-features");
     } else if cargo_features.no_default_features {
         // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
         // https://github.com/oli-obk/cargo_metadata/issues/79
-        args.push("--no-default-features".to_string());
+        cmd.arg("--no-default-features");
     } else {
-        args.extend(cargo_features.features.iter().cloned());
+        cmd.args(&cargo_features.features);
     }
 
-    let mut acc = ExternResources::default();
-    let res = run_cargo(&args, cargo_toml.parent(), &mut |message| {
-        match message {
-            Message::BuildScriptExecuted(BuildScript { package_id, out_dir, .. }) => {
-                acc.out_dirs.insert(package_id, out_dir);
-            }
+    let output = cmd.output()?;
 
-            Message::CompilerArtifact(message) => {
-                if message.target.kind.contains(&"proc-macro".to_string()) {
-                    let package_id = message.package_id;
-                    // Skip rmeta file
-                    if let Some(filename) =
-                        message.filenames.iter().filter(|name| is_dylib(name)).next()
-                    {
-                        acc.proc_dylib_paths.insert(package_id, filename.clone());
+    let mut res = ExternResources::default();
+
+    let stdout = String::from_utf8(output.stdout)?;
+    for line in stdout.lines() {
+        if let Ok(message) = serde_json::from_str::<cargo_metadata::Message>(&line) {
+            match message {
+                Message::BuildScriptExecuted(BuildScript { package_id, out_dir, .. }) => {
+                    res.out_dirs.insert(package_id, out_dir);
+                }
+
+                Message::CompilerArtifact(message) => {
+                    if message.target.kind.contains(&"proc-macro".to_string()) {
+                        let package_id = message.package_id;
+                        // Skip rmeta file
+                        if let Some(filename) =
+                            message.filenames.iter().filter(|name| is_dylib(name)).next()
+                        {
+                            res.proc_dylib_paths.insert(package_id, filename.clone());
+                        }
                     }
                 }
+                Message::CompilerMessage(_) => (),
+                Message::Unknown => (),
             }
-            Message::CompilerMessage(_) => (),
-            Message::Unknown => (),
         }
-        true
-    });
-
-    if let Err(err) = res {
-        log::error!("Failed to load outdirs: {:?}", err);
     }
-
-    acc
+    Ok(res)
 }
 
 // FIXME: File a better way to know if it is a dylib
@@ -327,4 +326,8 @@ fn is_dylib(path: &Path) -> bool {
         None => false,
         Some(ext) => matches!(ext.as_str(), "dll" | "dylib" | "so"),
     }
+}
+
+fn cargo_binary() -> String {
+    env::var("CARGO").unwrap_or_else(|_| "cargo".to_string())
 }
