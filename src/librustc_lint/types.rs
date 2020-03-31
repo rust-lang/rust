@@ -10,12 +10,13 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{is_range_literal, ExprKind, Node};
 use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{sign_extend, truncate};
-use rustc_middle::ty::layout::{self, IntegerExt, LayoutOf, SizeSkeleton, VariantIdx};
+use rustc_middle::ty::layout::{IntegerExt, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_target::abi::{DiscriminantKind, Integer, LayoutOf, VariantIdx, Variants};
 use rustc_target::spec::abi::Abi;
 
 use log::debug;
@@ -150,7 +151,7 @@ fn report_bin_hex_error(
     val: u128,
     negative: bool,
 ) {
-    let size = layout::Integer::from_attr(&cx.tcx, ty).size();
+    let size = Integer::from_attr(&cx.tcx, ty).size();
     cx.struct_span_lint(OVERFLOWING_LITERALS, expr.span, |lint| {
         let (t, actually) = match ty {
             attr::IntType::SignedInt(t) => {
@@ -1034,8 +1035,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                 | Err(ty::layout::LayoutError::SizeOverflow(_)) => return,
             };
             let (variants, tag) = match layout.variants {
-                layout::Variants::Multiple {
-                    discr_kind: layout::DiscriminantKind::Tag,
+                Variants::Multiple {
+                    discr_kind: DiscriminantKind::Tag,
                     ref discr,
                     ref variants,
                     ..

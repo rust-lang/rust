@@ -8,35 +8,35 @@ use self::namespace::mangled_name_of_instance;
 use self::type_names::compute_debuginfo_type_name;
 use self::utils::{create_DIArray, is_node_local_to_unit, DIB};
 
+use crate::abi::FnAbi;
+use crate::builder::Builder;
+use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{
     DIArray, DIBuilder, DIFile, DIFlags, DILexicalBlock, DISPFlags, DIScope, DIType, DIVariable,
 };
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-
-use crate::abi::FnAbi;
-use crate::builder::Builder;
-use crate::common::CodegenCx;
 use crate::value::Value;
+
+use rustc_ast::ast;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
+use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
+use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty};
 use rustc_session::config::{self, DebugInfo};
+use rustc_span::symbol::Symbol;
+use rustc_span::{self, BytePos, Span};
+use rustc_target::abi::{LayoutOf, Primitive, Size};
 
 use libc::c_uint;
 use log::debug;
-use std::cell::RefCell;
-
-use rustc_ast::ast;
-use rustc_codegen_ssa::traits::*;
-use rustc_middle::ty::layout::{self, HasTyCtxt, LayoutOf, Size};
-use rustc_span::symbol::Symbol;
-use rustc_span::{self, BytePos, Span};
 use smallvec::SmallVec;
+use std::cell::RefCell;
 
 mod create_scope_map;
 pub mod gdb;
@@ -60,7 +60,7 @@ pub struct CrateDebugContext<'a, 'tcx> {
     llmod: &'a llvm::Module,
     builder: &'a mut DIBuilder<'a>,
     created_files: RefCell<FxHashMap<(Option<String>, Option<String>), &'a DIFile>>,
-    created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Primitive), &'a DIType>>,
+    created_enum_disr_types: RefCell<FxHashMap<(DefId, Primitive), &'a DIType>>,
 
     type_map: RefCell<TypeMap<'a, 'tcx>>,
     namespace_map: RefCell<DefIdMap<&'a DIScope>>,

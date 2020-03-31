@@ -1,7 +1,7 @@
 use super::{AllocId, CheckInAllocMsg, Pointer, RawConst, ScalarMaybeUndef};
 
 use crate::mir::interpret::ConstValue;
-use crate::ty::layout::{Align, LayoutError, Size};
+use crate::ty::layout::LayoutError;
 use crate::ty::query::TyCtxtAt;
 use crate::ty::tls;
 use crate::ty::{self, layout, Ty};
@@ -14,6 +14,7 @@ use rustc_hir::definitions::DefPathData;
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::{def_id::DefId, Pos, Span};
+use rustc_target::abi::{Align, Size};
 use std::{any::Any, fmt, mem};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]

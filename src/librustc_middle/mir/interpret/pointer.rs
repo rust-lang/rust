@@ -1,8 +1,7 @@
 use super::{AllocId, InterpResult};
 
-use crate::ty::layout::{self, HasDataLayout, Size};
-
 use rustc_macros::HashStable;
+use rustc_target::abi::{HasDataLayout, Size};
 
 use std::convert::TryFrom;
 use std::fmt::{self, Display};
@@ -37,7 +36,7 @@ impl Display for CheckInAllocMsg {
 // Pointer arithmetic
 ////////////////////////////////////////////////////////////////////////////////
 
-pub trait PointerArithmetic: layout::HasDataLayout {
+pub trait PointerArithmetic: HasDataLayout {
     // These are not supposed to be overridden.
 
     #[inline(always)]
@@ -100,7 +99,7 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     }
 }
 
-impl<T: layout::HasDataLayout> PointerArithmetic for T {}
+impl<T: HasDataLayout> PointerArithmetic for T {}
 
 /// `Pointer` is generic over the type that represents a reference to `Allocation`s,
 /// thus making it possible for the most convenient representation to be used in

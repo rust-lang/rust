@@ -12,8 +12,9 @@ use crate::mir::operand::OperandRef;
 use crate::mir::place::PlaceRef;
 use crate::MemFlags;
 
-use rustc_middle::ty::layout::{Align, HasParamEnv, Size};
+use rustc_middle::ty::layout::HasParamEnv;
 use rustc_middle::ty::Ty;
+use rustc_target::abi::{Align, Size};
 use rustc_target::spec::HasTargetSpec;
 
 use std::iter::TrustedLen;

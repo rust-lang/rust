@@ -18,7 +18,6 @@ use crate::mir::GeneratorLayout;
 use crate::mir::ReadOnlyBodyAndCache;
 use crate::traits::{self, Reveal};
 use crate::ty;
-use crate::ty::layout::VariantIdx;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
 use crate::ty::walk::TypeWalker;
@@ -43,7 +42,7 @@ use rustc_session::DataTypeKind;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use rustc_target::abi::Align;
+use rustc_target::abi::{Align, VariantIdx};
 
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
@@ -2078,7 +2077,7 @@ pub struct AdtDef {
     /// The `DefId` of the struct, enum or union item.
     pub did: DefId,
     /// Variants of the ADT. If this is a struct or union, then there will be a single variant.
-    pub variants: IndexVec<self::layout::VariantIdx, VariantDef>,
+    pub variants: IndexVec<VariantIdx, VariantDef>,
     /// Flags of the ADT (e.g., is this a struct? is this non-exhaustive?).
     flags: AdtFlags,
     /// Repr options provided by the user.

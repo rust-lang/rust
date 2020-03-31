@@ -1,9 +1,9 @@
 use super::BackendTypes;
 use crate::mir::place::PlaceRef;
-use rustc_middle::mir::interpret::Allocation;
-use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::ty::layout;
+use rustc_middle::mir::interpret::{Allocation, Scalar};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::Symbol;
+use rustc_target::abi::{self, Size};
 
 pub trait ConstMethods<'tcx>: BackendTypes {
     // Constant constructors
@@ -26,17 +26,12 @@ pub trait ConstMethods<'tcx>: BackendTypes {
     fn const_to_opt_uint(&self, v: Self::Value) -> Option<u64>;
     fn const_to_opt_u128(&self, v: Self::Value, sign_ext: bool) -> Option<u128>;
 
-    fn scalar_to_backend(
-        &self,
-        cv: Scalar,
-        layout: &layout::Scalar,
-        llty: Self::Type,
-    ) -> Self::Value;
+    fn scalar_to_backend(&self, cv: Scalar, layout: &abi::Scalar, llty: Self::Type) -> Self::Value;
     fn from_const_alloc(
         &self,
-        layout: layout::TyAndLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
         alloc: &Allocation,
-        offset: layout::Size,
+        offset: Size,
     ) -> PlaceRef<'tcx, Self::Value>;
 
     fn const_ptrcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
