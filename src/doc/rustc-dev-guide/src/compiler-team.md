@@ -36,8 +36,7 @@ They are held on [Zulip][zulip]. It works roughly as follows:
 - **Look over new regressions:** we then look for new cases where the
   compiler broke previously working code in the wild. Regressions are
   almost always marked as P-high; the major exception would be bug
-  fixes (though even there we often
-  [aim to give warnings first][procedure]).
+  fixes (though even there we often [aim to give warnings first][procedure]).
 - **Check I-nominated issues:** These are issues where feedback from
   the team is desired.
 - **Check for beta nominations:** These are nominations of things to
@@ -52,7 +51,7 @@ complicated).
 The meeting is held over a "chat medium", currently on [zulip].
 
 [etherpad]: https://public.etherpad-mozilla.org/p/rust-compiler-meeting
-[procedure]: https://forge.rust-lang.org/rustc-bug-fix-procedure.html
+[procedure]: ./bug-fix-procedure.md
 [zulip]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
 
 ## Team membership

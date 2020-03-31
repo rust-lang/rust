@@ -129,7 +129,7 @@ Rust's [platform tiers]).
 [Azure Pipelines]: https://dev.azure.com/rust-lang/rust/
 [bors]: https://github.com/servo/homu
 [queue]: https://buildbot2.rust-lang.org/homu/queue/rust
-[platform tiers]: https://forge.rust-lang.org/platform-support.html
+[platform tiers]: https://forge.rust-lang.org/release/platform-support.html#rust-platform-support
 
 ## Testing with Docker images
 

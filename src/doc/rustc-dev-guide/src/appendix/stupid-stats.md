@@ -17,7 +17,7 @@ complex make project or Cargo build, etc. That could be a lot of work;
 rustc, like most compilers, takes a large number of command line arguments which
 can affect compilation in complex and interacting ways. Emulating all of this
 behaviour in your tool is annoying at best, especically if you are making many
-of the same calls into librustc that the compiler is.
+of the same calls into librustc_middle that the compiler is.
 
 The kind of things I have in mind are tools like rustdoc or a future rustfmt.
 These want to operate as closely as possible to real compilation, but have
@@ -27,7 +27,7 @@ custom code generation phase after macro expansion, then creating a new tool
 should be easier than forking the compiler (and keeping it up to date as the
 compiler evolves).
 
-I have gradually been trying to improve the API of librustc to make creating a
+I have gradually been trying to improve the API of librustc_middle to make creating a
 drop-in tool easier to produce (many others have also helped improve these
 interfaces over the same time frame). It is now pretty simple to make a tool
 which is as close to rustc as you want it to be. In this tutorial I'll show
@@ -73,7 +73,7 @@ checking, borrow checking, type and lifetime inference, trait selection, method
 selection, linting, and so forth. Most error detection is done in this phase
 (although parse errors are found during parsing). The 'output' of this phase is
 a bunch of side tables containing semantic information about the source program.
-The analysis code is in [librustc](https://github.com/rust-lang/rust/tree/master/src/librustc)
+The analysis code is in [librustc_middle](https://github.com/rust-lang/rust/tree/master/src/librustc_middle)
 and a bunch of other crates with the 'librustc_' prefix.
 
 Next is translation, this translates the AST (and all those side tables) into
