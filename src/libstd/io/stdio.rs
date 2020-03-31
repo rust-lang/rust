@@ -496,7 +496,7 @@ pub fn stdout() -> Stdout {
         unsafe {
             let ret = Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))));
             ret.init();
-            return ret;
+            ret
         }
     }
 }
@@ -664,7 +664,7 @@ pub fn stderr() -> Stderr {
             *INSTANCE.lock().borrow_mut() = Maybe::Real(stderr);
         }
     });
-    return Stderr { inner: &INSTANCE };
+    Stderr { inner: &INSTANCE }
 }
 
 impl Stderr {

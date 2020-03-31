@@ -590,7 +590,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     for item in search_index {
         item.parent_idx = item.parent.and_then(|defid| {
             if defid_to_pathid.contains_key(&defid) {
-                defid_to_pathid.get(&defid).map(|x| *x)
+                defid_to_pathid.get(&defid).copied()
             } else {
                 let pathid = lastpathid;
                 defid_to_pathid.insert(defid, pathid);

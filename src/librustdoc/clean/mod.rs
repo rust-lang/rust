@@ -521,11 +521,8 @@ impl<'tcx> Clean<Option<WherePredicate>>
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
         let ty::OutlivesPredicate(ref a, ref b) = *self;
 
-        match (a, b) {
-            (ty::ReEmpty(_), ty::ReEmpty(_)) => {
-                return None;
-            }
-            _ => {}
+        if let (ty::ReEmpty(_), ty::ReEmpty(_)) = (a, b) {
+            return None;
         }
 
         Some(WherePredicate::RegionPredicate {
@@ -539,9 +536,8 @@ impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty:
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
         let ty::OutlivesPredicate(ref ty, ref lt) = *self;
 
-        match lt {
-            ty::ReEmpty(_) => return None,
-            _ => {}
+        if let ty::ReEmpty(_) = lt {
+            return None;
         }
 
         Some(WherePredicate::BoundPredicate {
@@ -2239,15 +2235,12 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
         } else {
             let name = self.name;
             if !please_inline {
-                match path.res {
-                    Res::Def(DefKind::Mod, did) => {
-                        if !did.is_local() && did.index == CRATE_DEF_INDEX {
-                            // if we're `pub use`ing an extern crate root, don't inline it unless we
-                            // were specifically asked for it
-                            denied = true;
-                        }
+                if let Res::Def(DefKind::Mod, did) = path.res {
+                    if !did.is_local() && did.index == CRATE_DEF_INDEX {
+                        // if we're `pub use`ing an extern crate root, don't inline it unless we
+                        // were specifically asked for it
+                        denied = true;
                     }
-                    _ => {}
                 }
             }
             if !denied {
@@ -2426,10 +2419,9 @@ impl From<GenericBound> for SimpleBound {
             GenericBound::TraitBound(t, mod_) => match t.trait_ {
                 Type::ResolvedPath { path, param_names, .. } => SimpleBound::TraitBound(
                     path.segments,
-                    param_names.map_or_else(
-                        || Vec::new(),
-                        |v| v.iter().map(|p| SimpleBound::from(p.clone())).collect(),
-                    ),
+                    param_names.map_or_else(Vec::new, |v| {
+                        v.iter().map(|p| SimpleBound::from(p.clone())).collect()
+                    }),
                     t.generic_params,
                     mod_,
                 ),
