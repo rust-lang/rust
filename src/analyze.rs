@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use rustc::mir::StatementKind::*;
+use rustc_middle::mir::StatementKind::*;
 use rustc_index::vec::IndexVec;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

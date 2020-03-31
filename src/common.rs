@@ -1,4 +1,4 @@
-use rustc::ty::layout::{Integer, Primitive};
+use rustc_middle::ty::layout::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 use rustc_index::vec::IndexVec;
 

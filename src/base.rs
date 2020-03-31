@@ -1,4 +1,4 @@
-use rustc::ty::adjustment::PointerCast;
+use rustc_middle::ty::adjustment::PointerCast;
 use rustc_index::vec::IndexVec;
 
 use crate::prelude::*;
@@ -592,7 +592,7 @@ fn trans_stmt<'tcx>(
                     lval.write_cvalue(fx, CValue::by_val(len, usize_layout));
                 }
                 Rvalue::NullaryOp(NullOp::Box, content_ty) => {
-                    use rustc::middle::lang_items::ExchangeMallocFnLangItem;
+                    use rustc_middle::middle::lang_items::ExchangeMallocFnLangItem;
 
                     let usize_type = fx.clif_type(fx.tcx.types.usize).unwrap();
                     let content_ty = fx.monomorphize(content_ty);

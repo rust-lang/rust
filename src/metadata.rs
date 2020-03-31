@@ -2,9 +2,9 @@ use std::convert::TryFrom;
 use std::fs::File;
 use std::path::Path;
 
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
+use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc_session::config;
-use rustc::ty::TyCtxt;
+use rustc_middle::ty::TyCtxt;
 use rustc_codegen_ssa::METADATA_FILENAME;
 use rustc_data_structures::owning_ref::{self, OwningRef};
 use rustc_data_structures::rustc_erase_owner;
@@ -104,7 +104,7 @@ pub(crate) fn write_metadata<P: WriteMetadata>(tcx: TyCtxt<'_>, product: &mut P)
         .unwrap();
 
     product.add_rustc_section(
-        rustc::middle::exported_symbols::metadata_symbol_name(tcx),
+        rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx),
         compressed,
         tcx.sess.target.target.options.is_like_osx,
     );

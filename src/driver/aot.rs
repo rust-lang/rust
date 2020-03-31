@@ -1,6 +1,6 @@
-use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
-use rustc::middle::cstore::EncodedMetadata;
-use rustc::mir::mono::CodegenUnit;
+use rustc_middle::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
+use rustc_middle::middle::cstore::EncodedMetadata;
+use rustc_middle::mir::mono::CodegenUnit;
 use rustc_session::config::{DebugInfo, OutputType};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_codegen_ssa::back::linker::LinkerInfo;
@@ -170,7 +170,7 @@ pub(super) fn run_aot(
 
             let dep_node = cgu.codegen_dep_node(tcx);
             let (ModuleCodegenResult(module, work_product), _) =
-                tcx.dep_graph.with_task(dep_node, tcx, cgu.name(), module_codegen, rustc::dep_graph::hash_result);
+                tcx.dep_graph.with_task(dep_node, tcx, cgu.name(), module_codegen, rustc_middle::dep_graph::hash_result);
 
             if let Some((id, product)) = work_product {
                 work_products.insert(id, product);
@@ -207,7 +207,7 @@ pub(super) fn run_aot(
     let metadata_module = if need_metadata_module {
         let _timer = tcx.prof.generic_activity("codegen crate metadata");
         let (metadata_cgu_name, tmp_file) = tcx.sess.time("write compressed metadata", || {
-            use rustc::mir::mono::CodegenUnitNameBuilder;
+            use rustc_middle::mir::mono::CodegenUnitNameBuilder;
 
             let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
             let metadata_cgu_name = cgu_name_builder

@@ -225,7 +225,7 @@ impl<'tcx> CValue<'tcx> {
                     .iconst(clif_ty, u64::try_from(const_val).expect("uint") as i64)
             }
             ty::TyKind::Int(_) => {
-                let const_val = rustc::mir::interpret::sign_extend(const_val, layout.size);
+                let const_val = rustc_middle::mir::interpret::sign_extend(const_val, layout.size);
                 fx.bcx.ins().iconst(clif_ty, i64::try_from(const_val as i128).unwrap())
             }
             ty::TyKind::Float(FloatTy::F32) => {

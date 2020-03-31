@@ -15,7 +15,7 @@ use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS
 /// Returns whether an allocator shim was created
 pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut Module<impl Backend + 'static>) -> bool {
     let any_dynamic_crate = tcx.dependency_formats(LOCAL_CRATE).iter().any(|(_, list)| {
-        use rustc::middle::dependency_format::Linkage;
+        use rustc_middle::middle::dependency_format::Linkage;
         list.iter().any(|&linkage| linkage == Linkage::Dynamic)
     });
     if any_dynamic_crate {

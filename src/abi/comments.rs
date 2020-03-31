@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use rustc::mir;
+use rustc_middle::mir;
 
 use crate::abi::pass_mode::*;
 use crate::prelude::*;

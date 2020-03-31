@@ -81,7 +81,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
 }
 
 fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
-    use rustc::middle::dependency_format::Linkage;
+    use rustc_middle::middle::dependency_format::Linkage;
 
     let mut dylib_paths = Vec::new();
 

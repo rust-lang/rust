@@ -67,7 +67,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let total_len = lane_count * 2;
 
             let indexes = {
-                use rustc::mir::interpret::*;
+                use rustc_middle::mir::interpret::*;
                 let idx_const = crate::constant::mir_operand_get_const_val(fx, idx).expect("simd_shuffle* idx not const");
 
                 let idx_bytes = match idx_const.val {
@@ -81,7 +81,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
                 (0..ret_lane_count).map(|i| {
                     let i = usize::try_from(i).unwrap();
-                    let idx = rustc::mir::interpret::read_target_uint(
+                    let idx = rustc_middle::mir::interpret::read_target_uint(
                         fx.tcx.data_layout.endian,
                         &idx_bytes[4*i.. 4*i + 4],
                     ).expect("read_target_uint");

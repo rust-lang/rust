@@ -1,7 +1,7 @@
 use std::any::Any;
 
-use rustc::middle::cstore::EncodedMetadata;
-use rustc::mir::mono::{Linkage as RLinkage, MonoItem, Visibility};
+use rustc_middle::middle::cstore::EncodedMetadata;
+use rustc_middle::mir::mono::{Linkage as RLinkage, MonoItem, Visibility};
 
 use crate::prelude::*;
 
