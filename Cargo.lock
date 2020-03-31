@@ -887,19 +887,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_cargo_watch"
-version = "0.1.0"
-dependencies = [
- "cargo_metadata",
- "crossbeam-channel",
- "insta",
- "jod-thread",
- "log",
- "lsp-types",
- "serde_json",
-]
-
-[[package]]
 name = "ra_cfg"
 version = "0.1.0"
 dependencies = [
@@ -921,6 +908,19 @@ dependencies = [
  "rustc-hash",
  "salsa",
  "test_utils",
+]
+
+[[package]]
+name = "ra_flycheck"
+version = "0.1.0"
+dependencies = [
+ "cargo_metadata",
+ "crossbeam-channel",
+ "insta",
+ "jod-thread",
+ "log",
+ "lsp-types",
+ "serde_json",
 ]
 
 [[package]]
@@ -1101,9 +1101,9 @@ dependencies = [
  "cargo_metadata",
  "log",
  "ra_arena",
- "ra_cargo_watch",
  "ra_cfg",
  "ra_db",
+ "ra_flycheck",
  "ra_proc_macro",
  "rustc-hash",
  "serde",
@@ -1300,8 +1300,8 @@ dependencies = [
  "lsp-types",
  "parking_lot",
  "pico-args",
- "ra_cargo_watch",
  "ra_db",
+ "ra_flycheck",
  "ra_hir",
  "ra_hir_def",
  "ra_hir_ty",

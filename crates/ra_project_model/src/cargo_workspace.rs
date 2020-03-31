@@ -9,8 +9,8 @@ use std::{
 use anyhow::{Context, Result};
 use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
 use ra_arena::{Arena, Idx};
-use ra_cargo_watch::run_cargo;
 use ra_db::Edition;
+use ra_flycheck::run_cargo;
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
 

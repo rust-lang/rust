@@ -1,31 +1,31 @@
 ---
-source: crates/ra_cargo_watch/src/conv/test.rs
+source: crates/ra_flycheck/src/conv/test.rs
 expression: diag
 ---
 [
     MappedRustDiagnostic {
         location: Location {
-            uri: "file:///test/src/main.rs",
+            uri: "file:///test/compiler/ty/list_iter.rs",
             range: Range {
                 start: Position {
-                    line: 1,
+                    line: 51,
                     character: 4,
                 },
                 end: Position {
-                    line: 1,
-                    character: 26,
+                    line: 51,
+                    character: 47,
                 },
             },
         },
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {
-                    line: 1,
+                    line: 51,
                     character: 4,
                 },
                 end: Position {
-                    line: 1,
-                    character: 26,
+                    line: 51,
+                    character: 47,
                 },
             },
             severity: Some(
@@ -33,13 +33,13 @@ expression: diag
             ),
             code: Some(
                 String(
-                    "E0277",
+                    "E0053",
                 ),
             ),
             source: Some(
                 "rustc",
             ),
-            message: "can\'t compare `{integer}` with `&str`\nthe trait `std::cmp::PartialEq<&str>` is not implemented for `{integer}`",
+            message: "method `next` has an incompatible type for trait\nexpected type `fn(&mut ty::list_iter::ListIterator<\'list, M>) -> std::option::Option<&ty::Ref<M>>`\n   found type `fn(&ty::list_iter::ListIterator<\'list, M>) -> std::option::Option<&\'list ty::Ref<M>>`",
             related_information: None,
             tags: None,
         },

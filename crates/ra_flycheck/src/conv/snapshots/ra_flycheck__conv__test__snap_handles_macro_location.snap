@@ -1,31 +1,31 @@
 ---
-source: crates/ra_cargo_watch/src/conv/test.rs
+source: crates/ra_flycheck/src/conv/test.rs
 expression: diag
 ---
 [
     MappedRustDiagnostic {
         location: Location {
-            uri: "file:///test/runtime/compiler_support.rs",
+            uri: "file:///test/src/main.rs",
             range: Range {
                 start: Position {
-                    line: 47,
-                    character: 64,
+                    line: 1,
+                    character: 4,
                 },
                 end: Position {
-                    line: 47,
-                    character: 69,
+                    line: 1,
+                    character: 26,
                 },
             },
         },
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {
-                    line: 47,
-                    character: 64,
+                    line: 1,
+                    character: 4,
                 },
                 end: Position {
-                    line: 47,
-                    character: 69,
+                    line: 1,
+                    character: 26,
                 },
             },
             severity: Some(
@@ -33,13 +33,13 @@ expression: diag
             ),
             code: Some(
                 String(
-                    "E0308",
+                    "E0277",
                 ),
             ),
             source: Some(
                 "rustc",
             ),
-            message: "mismatched types\nexpected usize, found u32",
+            message: "can\'t compare `{integer}` with `&str`\nthe trait `std::cmp::PartialEq<&str>` is not implemented for `{integer}`",
             related_information: None,
             tags: None,
         },
