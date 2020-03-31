@@ -167,10 +167,11 @@ impl<'tcx> ConstEvalErr<'tcx> {
             if let Some(span_msg) = span_msg {
                 err.span_label(self.span, span_msg);
             }
-            // Add spans for the stacktrace.
-            // Skip the first, which is the place of the error.
-            for frame_info in self.stacktrace.iter().skip(1) {
-                err.span_label(frame_info.span, frame_info.to_string());
+            // Add spans for the stacktrace. Don't print a single-line backtrace though.
+            if self.stacktrace.len() > 1 {
+                for frame_info in &self.stacktrace {
+                    err.span_label(frame_info.span, frame_info.to_string());
+                }
             }
             // Let the caller finish the job.
             emit(err)

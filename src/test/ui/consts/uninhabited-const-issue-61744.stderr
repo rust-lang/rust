@@ -67,6 +67,7 @@ LL |     hint_unreachable()
    |     inside `fake_type::<!>` at $DIR/uninhabited-const-issue-61744.rs:4:5
    |     inside `fake_type::<!>` at $DIR/uninhabited-const-issue-61744.rs:4:5
    |     inside `fake_type::<!>` at $DIR/uninhabited-const-issue-61744.rs:4:5
+   |     inside `fake_type::<!>` at $DIR/uninhabited-const-issue-61744.rs:4:5
    |     inside `fake_type::<i32>` at $DIR/uninhabited-const-issue-61744.rs:4:5
 ...
 LL |     fake_type()
