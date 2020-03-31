@@ -16,7 +16,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// is assumed to be uninitialized.
     crate fn into_expr(
         &mut self,
-        destination: &Place<'tcx>,
+        destination: Place<'tcx>,
         mut block: BasicBlock,
         expr: Expr<'tcx>,
     ) -> BlockAnd<()> {
@@ -160,7 +160,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // introduce a unit temporary as the destination for the loop body.
                         let tmp = this.get_unit_temp();
                         // Execute the body, branching back to the test.
-                        let body_block_end = unpack!(this.into(&tmp, body_block, body));
+                        let body_block_end = unpack!(this.into(tmp, body_block, body));
                         this.cfg.goto(body_block_end, source_info, loop_block);
                     },
                 );
@@ -202,8 +202,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         is_block_tail: None,
                     });
                     let ptr_temp = Place::from(ptr_temp);
-                    let block = unpack!(this.into(&ptr_temp, block, ptr));
-                    this.into(&this.hir.tcx().mk_place_deref(ptr_temp), block, val)
+                    let block = unpack!(this.into(ptr_temp, block, ptr));
+                    this.into(this.hir.tcx().mk_place_deref(ptr_temp), block, val)
                 } else {
                     let args: Vec<_> = args
                         .into_iter()
@@ -228,7 +228,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             destination: if expr.ty.is_never() {
                                 None
                             } else {
-                                Some((*destination, success))
+                                Some((destination, success))
                             },
                             from_hir_call,
                         },
@@ -373,12 +373,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::Yield {
-                        value,
-                        resume,
-                        resume_arg: *destination,
-                        drop: cleanup,
-                    },
+                    TerminatorKind::Yield { value, resume, resume_arg: destination, drop: cleanup },
                 );
                 resume.unit()
             }

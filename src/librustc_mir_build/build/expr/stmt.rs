@@ -50,7 +50,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } else {
                     let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
                     let lhs = unpack!(block = this.as_place(block, lhs));
-                    this.cfg.push_assign(block, source_info, &lhs, rhs);
+                    this.cfg.push_assign(block, source_info, lhs, rhs);
                 }
 
                 this.block_context.pop();
@@ -82,7 +82,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block =
                         this.build_binary_op(block, op, expr_span, lhs_ty, Operand::Copy(lhs), rhs)
                 );
-                this.cfg.push_assign(block, source_info, &lhs, result);
+                this.cfg.push_assign(block, source_info, lhs, result);
 
                 this.block_context.pop();
                 block.unit()

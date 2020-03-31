@@ -9,7 +9,7 @@ use rustc_span::Span;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn ast_block(
         &mut self,
-        destination: &Place<'tcx>,
+        destination: Place<'tcx>,
         block: BasicBlock,
         ast_block: &'tcx hir::Block<'tcx>,
         source_info: SourceInfo,
@@ -43,7 +43,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn ast_block_stmts(
         &mut self,
-        destination: &Place<'tcx>,
+        destination: Place<'tcx>,
         mut block: BasicBlock,
         span: Span,
         stmts: Vec<StmtRef<'tcx>>,

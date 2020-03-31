@@ -12,7 +12,7 @@ pub(in crate::build) trait EvalInto<'tcx> {
     fn eval_into(
         self,
         builder: &mut Builder<'_, 'tcx>,
-        destination: &Place<'tcx>,
+        destination: Place<'tcx>,
         block: BasicBlock,
     ) -> BlockAnd<()>;
 }
@@ -20,7 +20,7 @@ pub(in crate::build) trait EvalInto<'tcx> {
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn into<E>(
         &mut self,
-        destination: &Place<'tcx>,
+        destination: Place<'tcx>,
         block: BasicBlock,
         expr: E,
     ) -> BlockAnd<()>
@@ -35,7 +35,7 @@ impl<'tcx> EvalInto<'tcx> for ExprRef<'tcx> {
     fn eval_into(
         self,
         builder: &mut Builder<'_, 'tcx>,
-        destination: &Place<'tcx>,
+        destination: Place<'tcx>,
         block: BasicBlock,
     ) -> BlockAnd<()> {
         let expr = builder.hir.mirror(self);
@@ -47,7 +47,7 @@ impl<'tcx> EvalInto<'tcx> for Expr<'tcx> {
     fn eval_into(
         self,
         builder: &mut Builder<'_, 'tcx>,
-        destination: &Place<'tcx>,
+        destination: Place<'tcx>,
         block: BasicBlock,
     ) -> BlockAnd<()> {
         builder.into_expr(destination, block, self)
