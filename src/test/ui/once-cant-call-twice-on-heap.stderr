@@ -8,11 +8,10 @@ LL |     blk();
 LL |     blk();
    |     ^^^ value used here after move
    |
-help: consider further restricting this bound with `+ Copy`
-  --> $DIR/once-cant-call-twice-on-heap.rs:7:10
+help: consider further restricting this bound
    |
-LL | fn foo<F:FnOnce()>(blk: F) {
-   |          ^^^^^^^^
+LL | fn foo<F:FnOnce() + Copy>(blk: F) {
+   |                   ^^^^^^
 
 error: aborting due to previous error
 

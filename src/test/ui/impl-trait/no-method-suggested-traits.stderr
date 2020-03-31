@@ -83,6 +83,16 @@ error[E0599]: no method named `method` found for struct `std::rc::Rc<&mut std::b
    |
 LL |     std::rc::Rc::new(&mut Box::new(&1i32)).method();
    |                                            ^^^^^^ method not found in `std::rc::Rc<&mut std::boxed::Box<&i32>>`
+   | 
+  ::: $DIR/auxiliary/no_method_suggested_traits.rs:8:12
+   |
+LL |         fn method(&self) {}
+   |            ------
+   |            |
+   |            the method is available for `std::boxed::Box<std::rc::Rc<&mut std::boxed::Box<&i32>>>` here
+   |            the method is available for `std::pin::Pin<std::rc::Rc<&mut std::boxed::Box<&i32>>>` here
+   |            the method is available for `std::sync::Arc<std::rc::Rc<&mut std::boxed::Box<&i32>>>` here
+   |            the method is available for `std::rc::Rc<std::rc::Rc<&mut std::boxed::Box<&i32>>>` here
    |
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:

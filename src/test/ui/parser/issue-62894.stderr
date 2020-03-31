@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-62894.rs:7:14
+  --> $DIR/issue-62894.rs:12:14
    |
 LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
    |        -           -                   - unclosed delimiter
@@ -11,7 +11,7 @@ LL | fn main() {}
    |              ^
 
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-62894.rs:7:14
+  --> $DIR/issue-62894.rs:12:14
    |
 LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
    |        -           -                   - unclosed delimiter
@@ -23,7 +23,7 @@ LL | fn main() {}
    |              ^
 
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-62894.rs:7:14
+  --> $DIR/issue-62894.rs:12:14
    |
 LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
    |        -           -                   - unclosed delimiter
@@ -35,13 +35,18 @@ LL | fn main() {}
    |              ^
 
 error: expected one of `(`, `[`, or `{`, found keyword `fn`
-  --> $DIR/issue-62894.rs:7:1
+  --> $DIR/issue-62894.rs:12:1
    |
 LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
    |                                                   - expected one of `(`, `[`, or `{`
 LL | 
 LL | fn main() {}
    | ^^ unexpected token
+   | 
+  ::: $SRC_DIR/libcore/macros/mod.rs:LL:COL
+   |
+LL |     ($left:expr, $right:expr) => ({
+   |      ---------- while parsing argument for this `expr` macro fragment
 
 error: aborting due to 4 previous errors
 

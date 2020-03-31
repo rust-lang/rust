@@ -637,6 +637,36 @@ impl Wtf8 {
         let rc: Rc<[u8]> = Rc::from(&self.bytes);
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Wtf8) }
     }
+
+    #[inline]
+    pub fn make_ascii_lowercase(&mut self) {
+        self.bytes.make_ascii_lowercase()
+    }
+
+    #[inline]
+    pub fn make_ascii_uppercase(&mut self) {
+        self.bytes.make_ascii_uppercase()
+    }
+
+    #[inline]
+    pub fn to_ascii_lowercase(&self) -> Wtf8Buf {
+        Wtf8Buf { bytes: self.bytes.to_ascii_lowercase() }
+    }
+
+    #[inline]
+    pub fn to_ascii_uppercase(&self) -> Wtf8Buf {
+        Wtf8Buf { bytes: self.bytes.to_ascii_uppercase() }
+    }
+
+    #[inline]
+    pub fn is_ascii(&self) -> bool {
+        self.bytes.is_ascii()
+    }
+
+    #[inline]
+    pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
+        self.bytes.eq_ignore_ascii_case(&other.bytes)
+    }
 }
 
 /// Returns a slice of the given string for the byte range [`begin`..`end`).
@@ -834,12 +864,6 @@ impl Hash for Wtf8 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write(&self.bytes);
         0xfeu8.hash(state)
-    }
-}
-
-impl Wtf8 {
-    pub fn make_ascii_uppercase(&mut self) {
-        self.bytes.make_ascii_uppercase()
     }
 }
 

@@ -1,11 +1,11 @@
 use crate::infer::InferCtxt;
 use crate::opaque_types::required_region_bounds;
 use crate::traits::{self, AssocTypeBoundData};
-use rustc::middle::lang_items;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::middle::lang_items;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 
@@ -186,7 +186,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     _ => (None, None),
                 };
 
-                let item_span = item.map(|i| tcx.sess.source_map().def_span(i.span));
+                let item_span = item.map(|i| tcx.sess.source_map().guess_head_span(i.span));
                 match pred {
                     ty::Predicate::Projection(proj) => {
                         // The obligation comes not from the current `impl` nor the `trait` being
@@ -474,7 +474,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // generators don't take arguments.
                 }
 
-                ty::Closure(def_id, substs) => {
+                ty::Closure(_, substs) => {
                     // Only check the upvar types for WF, not the rest
                     // of the types within. This is needed because we
                     // capture the signature and it may not be WF
@@ -505,7 +505,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // anyway, except via auto trait matching (which
                     // only inspects the upvar types).
                     subtys.skip_current_subtree(); // subtree handled by compute_projection
-                    for upvar_ty in substs.as_closure().upvar_tys(def_id, self.infcx.tcx) {
+                    for upvar_ty in substs.as_closure().upvar_tys() {
                         self.compute(upvar_ty);
                     }
                 }
@@ -737,17 +737,14 @@ fn get_generic_bound_spans(
 }
 
 fn is_self_path(kind: &hir::TyKind<'_>) -> bool {
-    match kind {
-        hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
-            let mut s = path.segments.iter();
-            if let (Some(segment), None) = (s.next(), s.next()) {
-                if segment.ident.name == kw::SelfUpper {
-                    // `type(Self)`
-                    return true;
-                }
+    if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = kind {
+        let mut s = path.segments.iter();
+        if let (Some(segment), None) = (s.next(), s.next()) {
+            if segment.ident.name == kw::SelfUpper {
+                // `type(Self)`
+                return true;
             }
         }
-        _ => {}
     }
     false
 }

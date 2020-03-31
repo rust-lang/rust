@@ -28,7 +28,7 @@ macro_rules! arena_types {
             [] fn_decl: rustc_hir::FnDecl<$tcx>,
             [] foreign_item: rustc_hir::ForeignItem<$tcx>,
             [] impl_item_ref: rustc_hir::ImplItemRef<$tcx>,
-            [] inline_asm: rustc_hir::InlineAsm<$tcx>,
+            [] inline_asm: rustc_hir::LlvmInlineAsm<$tcx>,
             [] local: rustc_hir::Local<$tcx>,
             [few] macro_def: rustc_hir::MacroDef<$tcx>,
             [] param: rustc_hir::Param<$tcx>,

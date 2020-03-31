@@ -1,7 +1,7 @@
-use rustc::mir::tcx::RvalueInitializationState;
-use rustc::mir::*;
-use rustc::ty::{self, TyCtxt};
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir::tcx::RvalueInitializationState;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, TyCtxt};
 use smallvec::{smallvec, SmallVec};
 
 use std::convert::TryInto;
@@ -144,15 +144,16 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                         },
                     ));
                 }
-                ty::Array(..) => match elem {
-                    ProjectionElem::Index(..) => {
+
+                ty::Array(..) => {
+                    if let ProjectionElem::Index(..) = elem {
                         return Err(MoveError::cannot_move_out_of(
                             self.loc,
                             InteriorOfSliceOrArray { ty: place_ty, is_index: true },
                         ));
                     }
-                    _ => {}
-                },
+                }
+
                 _ => {}
             };
 
@@ -295,7 +296,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             StatementKind::FakeRead(_, ref place) => {
                 self.create_move_path(place);
             }
-            StatementKind::InlineAsm(ref asm) => {
+            StatementKind::LlvmInlineAsm(ref asm) => {
                 for (output, kind) in asm.outputs.iter().zip(&asm.asm.outputs) {
                     if !kind.is_indirect {
                         self.gather_init(output.as_ref(), InitKind::Deep);

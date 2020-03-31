@@ -17,16 +17,16 @@ use super::{VtableClosureData, VtableFnPointerData, VtableGeneratorData, VtableI
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::InferCtxtExt;
-use rustc::ty::fold::{TypeFoldable, TypeFolder};
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_ast::ast::Ident;
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 
-pub use rustc::traits::Reveal;
+pub use rustc_middle::traits::Reveal;
 
 pub type PolyProjectionObligation<'tcx> = Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
 
@@ -387,6 +387,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 
     fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        let constant = constant.super_fold_with(self);
         constant.eval(self.selcx.tcx(), self.param_env)
     }
 }
@@ -1009,7 +1010,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // type.
                 //
                 // NOTE: This should be kept in sync with the similar code in
-                // `rustc::ty::instance::resolve_associated_item()`.
+                // `rustc_middle::ty::instance::resolve_associated_item()`.
                 let node_item =
                     assoc_ty_def(selcx, impl_data.impl_def_id, obligation.predicate.item_def_id)
                         .map_err(|ErrorReported| ())?;
@@ -1237,7 +1238,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     vtable: VtableGeneratorData<'tcx, PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let gen_sig = vtable.substs.as_generator().poly_sig(vtable.generator_def_id, selcx.tcx());
+    let gen_sig = vtable.substs.as_generator().poly_sig();
     let Normalized { value: gen_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
@@ -1310,8 +1311,7 @@ fn confirm_closure_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     vtable: VtableClosureData<'tcx, PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let tcx = selcx.tcx();
-    let closure_sig = vtable.substs.as_closure().sig(vtable.closure_def_id, tcx);
+    let closure_sig = vtable.substs.as_closure().sig();
     let Normalized { value: closure_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,

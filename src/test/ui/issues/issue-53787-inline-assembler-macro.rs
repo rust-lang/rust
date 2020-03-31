@@ -3,12 +3,12 @@
 // build-fail
 // ignore-emscripten
 
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 macro_rules! fake_jump {
     ($id:expr) => {
         unsafe {
-            asm!(
+            llvm_asm!(
             "
             jmp $0
             lea eax, [ebx]

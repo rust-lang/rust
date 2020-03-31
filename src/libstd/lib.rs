@@ -91,7 +91,8 @@
 //! pull-requests for your suggested changes.
 //!
 //! Contributions are appreciated! If you see a part of the docs that can be
-//! improved, submit a PR, or chat with us first on irc.mozilla.org #rust-docs.
+//! improved, submit a PR, or chat with us first on [Discord][rust-discord]
+//! #docs.
 //!
 //! # A Tour of The Rust Standard Library
 //!
@@ -194,6 +195,7 @@
 //! [multithreading]: thread/index.html
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/ch03-02-data-types.html
+//! [rust-discord]: https://discord.gg/rust-lang
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(
@@ -274,10 +276,12 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
+#![feature(llvm_asm)]
 #![feature(log_syntax)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(needs_panic_runtime)]
+#![cfg_attr(not(bootstrap), feature(negative_impls))]
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
@@ -310,6 +314,7 @@
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(vec_into_raw_parts)]
+#![feature(wake_trait)]
 // NB: the above list is sorted to minimize merge conflicts.
 #![default_lib_allocator]
 
@@ -463,9 +468,14 @@ pub mod time;
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {
     //! Types and Traits for working with asynchronous tasks.
+
     #[doc(inline)]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub use core::task::*;
+
+    #[doc(inline)]
+    #[unstable(feature = "wake_trait", issue = "69912")]
+    pub use alloc::task::*;
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
@@ -526,29 +536,9 @@ pub use core::{
 // Re-export built-in macros defined through libcore.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 pub use core::{
-    // Unstable
-    asm,
-    // Stable
-    assert,
-    cfg,
-    column,
-    compile_error,
-    concat,
-    concat_idents,
-    env,
-    file,
-    format_args,
-    format_args_nl,
-    global_asm,
-    include,
-    include_bytes,
-    include_str,
-    line,
-    log_syntax,
-    module_path,
-    option_env,
-    stringify,
-    trace_macros,
+    asm, assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
+    format_args_nl, global_asm, include, include_bytes, include_str, line, llvm_asm, log_syntax,
+    module_path, option_env, stringify, trace_macros,
 };
 
 #[stable(feature = "core_primitive", since = "1.43.0")]

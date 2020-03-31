@@ -2,7 +2,7 @@ error[E0603]: function `f` is private
   --> $DIR/privacy.rs:16:14
    |
 LL |         foo::f()
-   |              ^ this function is private
+   |              ^ private function
    |
 note: the function `f` is defined here
   --> $DIR/privacy.rs:4:5

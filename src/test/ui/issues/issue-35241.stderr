@@ -5,14 +5,16 @@ LL | struct Foo(u32);
    | ---------------- fn(u32) -> Foo {Foo} defined here
 LL | 
 LL | fn test() -> Foo { Foo }
-   |              ---   ^^^
-   |              |     |
-   |              |     expected struct `Foo`, found fn item
-   |              |     help: use parentheses to instantiate this tuple struct: `Foo(_)`
+   |              ---   ^^^ expected struct `Foo`, found fn item
+   |              |
    |              expected `Foo` because of return type
    |
    = note: expected struct `Foo`
              found fn item `fn(u32) -> Foo {Foo}`
+help: use parentheses to instantiate this tuple struct
+   |
+LL | fn test() -> Foo { Foo(_) }
+   |                       ^^^
 
 error: aborting due to previous error
 

@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use build_helper::t;
+use build_helper::{output, t};
 
 use crate::cache::{Cache, Interned, INTERNER};
 use crate::check;
@@ -21,9 +21,10 @@ use crate::doc;
 use crate::flags::Subcommand;
 use crate::install;
 use crate::native;
+use crate::run;
 use crate::test;
 use crate::tool;
-use crate::util::{self, add_lib_path, exe, libdir};
+use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir};
 use crate::{Build, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
@@ -313,6 +314,7 @@ pub enum Kind {
     Dist,
     Doc,
     Install,
+    Run,
 }
 
 impl<'a> Builder<'a> {
@@ -353,6 +355,7 @@ impl<'a> Builder<'a> {
             }
             Kind::Test => describe!(
                 crate::toolstate::ToolStateCheck,
+                test::ExpandYamlAnchors,
                 test::Tidy,
                 test::Ui,
                 test::CompileFail,
@@ -454,6 +457,7 @@ impl<'a> Builder<'a> {
                 install::Src,
                 install::Rustc
             ),
+            Kind::Run => describe!(run::ExpandYamlAnchors,),
         }
     }
 
@@ -507,6 +511,7 @@ impl<'a> Builder<'a> {
             Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
+            Subcommand::Run { ref paths } => (Kind::Run, &paths[..]),
             Subcommand::Format { .. } | Subcommand::Clean { .. } => panic!(),
         };
 
@@ -660,7 +665,7 @@ impl<'a> Builder<'a> {
             return;
         }
 
-        add_lib_path(vec![self.rustc_libdir(compiler)], &mut cmd.command);
+        add_dylib_path(vec![self.rustc_libdir(compiler)], &mut cmd.command);
     }
 
     /// Gets a path to the compiler specified.
@@ -696,6 +701,20 @@ impl<'a> Builder<'a> {
             cmd.env("RUSTC_TARGET_LINKER", linker);
         }
         cmd
+    }
+
+    /// Return the path to `llvm-config` for the target, if it exists.
+    ///
+    /// Note that this returns `None` if LLVM is disabled, or if we're in a
+    /// check build or dry-run, where there's no need to build all of LLVM.
+    fn llvm_config(&self, target: Interned<String>) -> Option<PathBuf> {
+        if self.config.llvm_enabled() && self.kind != Kind::Check && !self.config.dry_run {
+            let llvm_config = self.ensure(native::Llvm { target });
+            if llvm_config.is_file() {
+                return Some(llvm_config);
+            }
+        }
+        None
     }
 
     /// Prepares an invocation of `cargo` to be run.
@@ -1032,6 +1051,17 @@ impl<'a> Builder<'a> {
             cargo
                 .env("RUSTC_SNAPSHOT", self.rustc(compiler))
                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
+        }
+
+        // Tools that use compiler libraries may inherit the `-lLLVM` link
+        // requirement, but the `-L` library path is not propagated across
+        // separate Cargo projects. We can add LLVM's library path to the
+        // platform-specific environment variable as a workaround.
+        if mode == Mode::ToolRustc {
+            if let Some(llvm_config) = self.llvm_config(target) {
+                let llvm_libdir = output(Command::new(&llvm_config).arg("--libdir"));
+                add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cargo);
+            }
         }
 
         if self.config.incremental {

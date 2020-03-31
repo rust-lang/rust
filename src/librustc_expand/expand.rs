@@ -204,7 +204,7 @@ ast_fragments! {
 }
 
 impl AstFragmentKind {
-    fn dummy(self, span: Span) -> AstFragment {
+    crate fn dummy(self, span: Span) -> AstFragment {
         self.make_from(DummyResult::any(span)).expect("couldn't create a dummy AST fragment")
     }
 
@@ -682,7 +682,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
                     self.gate_proc_macro_expansion_kind(span, fragment_kind);
-                    let tok_result = expander.expand(self.cx, span, mac.args.inner_tokens());
+                    let tok_result = match expander.expand(self.cx, span, mac.args.inner_tokens()) {
+                        Err(_) => return ExpandResult::Ready(fragment_kind.dummy(span)),
+                        Ok(ts) => ts,
+                    };
                     self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
@@ -709,8 +712,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     if let MacArgs::Eq(..) = attr_item.args {
                         self.cx.span_err(span, "key-value macro attributes are not supported");
                     }
-                    let tok_result =
-                        expander.expand(self.cx, span, attr_item.args.inner_tokens(), tokens);
+                    let inner_tokens = attr_item.args.inner_tokens();
+                    let tok_result = match expander.expand(self.cx, span, inner_tokens, tokens) {
+                        Err(_) => return ExpandResult::Ready(fragment_kind.dummy(span)),
+                        Ok(ts) => ts,
+                    };
                     self.parse_ast_fragment(tok_result, fragment_kind, &attr_item.path, span)
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {
@@ -1139,6 +1145,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             // macros are expanded before any lint passes so this warning has to be hardcoded
             if attr.has_name(sym::derive) {
                 self.cx
+                    .parse_sess()
+                    .span_diagnostic
                     .struct_span_warn(attr.span, "`#[derive]` does nothing on macro invocations")
                     .note("this may become a hard error in a future release")
                     .emit();

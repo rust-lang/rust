@@ -151,6 +151,7 @@ fn main() {
 
     if env::var_os("LLVM_NDEBUG").is_some() {
         cfg.define("NDEBUG", None);
+        cfg.debug(false);
     }
 
     build_helper::rerun_if_changed_anything_in_dir(Path::new("../rustllvm"));

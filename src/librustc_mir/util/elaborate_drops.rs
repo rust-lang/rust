@@ -1,13 +1,13 @@
 use crate::util::patch::MirPatch;
-use rustc::middle::lang_items;
-use rustc::mir::*;
-use rustc::traits::Reveal;
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::util::IntTypeExt;
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
+use rustc_middle::middle::lang_items;
+use rustc_middle::mir::*;
+use rustc_middle::traits::Reveal;
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::util::IntTypeExt;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::fmt;
 
 use std::convert::TryInto;
@@ -798,8 +798,8 @@ where
     fn open_drop(&mut self) -> BasicBlock {
         let ty = self.place_ty(self.place);
         match ty.kind {
-            ty::Closure(def_id, substs) => {
-                let tys: Vec<_> = substs.as_closure().upvar_tys(def_id, self.tcx()).collect();
+            ty::Closure(_, substs) => {
+                let tys: Vec<_> = substs.as_closure().upvar_tys().collect();
                 self.open_drop_for_tuple(&tys)
             }
             // Note that `elaborate_drops` only drops the upvars of a generator,
@@ -808,8 +808,8 @@ where
             // This should only happen for the self argument on the resume function.
             // It effetively only contains upvars until the generator transformation runs.
             // See librustc_body/transform/generator.rs for more details.
-            ty::Generator(def_id, substs, _) => {
-                let tys: Vec<_> = substs.as_generator().upvar_tys(def_id, self.tcx()).collect();
+            ty::Generator(_, substs, _) => {
+                let tys: Vec<_> = substs.as_generator().upvar_tys().collect();
                 self.open_drop_for_tuple(&tys)
             }
             ty::Tuple(..) => {

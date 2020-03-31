@@ -1,5 +1,5 @@
-use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::{Local, Location, Place, Statement, StatementKind, TerminatorKind};
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_middle::mir::{Local, Location, Place, Statement, StatementKind, TerminatorKind};
 
 use rustc_data_structures::fx::FxHashSet;
 
@@ -32,7 +32,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 never_initialized_mut_locals: &mut never_initialized_mut_locals,
                 mbcx: self,
             };
-            visitor.visit_body(visitor.mbcx.body);
+            visitor.visit_body(&visitor.mbcx.body);
         }
 
         // Take the union of the existed `used_mut` set with those variables we've found were
@@ -76,16 +76,13 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
     }
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, _location: Location) {
-        match &statement.kind {
-            StatementKind::Assign(box (into, _)) => {
-                debug!(
-                    "visit_statement: statement={:?} local={:?} \
+        if let StatementKind::Assign(box (into, _)) = &statement.kind {
+            debug!(
+                "visit_statement: statement={:?} local={:?} \
                     never_initialized_mut_locals={:?}",
-                    statement, into.local, self.never_initialized_mut_locals
-                );
-                self.remove_never_initialized_mut_locals(into);
-            }
-            _ => {}
+                statement, into.local, self.never_initialized_mut_locals
+            );
+            self.remove_never_initialized_mut_locals(into);
         }
     }
 

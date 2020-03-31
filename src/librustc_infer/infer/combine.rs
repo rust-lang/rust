@@ -34,13 +34,13 @@ use super::{InferCtxt, MiscVariable, TypeTrace};
 
 use crate::traits::{Obligation, PredicateObligations};
 
-use rustc::ty::error::TypeError;
-use rustc::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, InferConst, Ty, TyCtxt};
-use rustc::ty::{IntType, UintType};
 use rustc_ast::ast;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
+use rustc_middle::ty::{IntType, UintType};
 use rustc_span::{Span, DUMMY_SP};
 
 #[derive(Clone)]
@@ -579,10 +579,6 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
             // nor for erased regions.
             ty::ReLateBound(..) | ty::ReErased => {
                 return Ok(r);
-            }
-
-            ty::ReClosureBound(..) => {
-                span_bug!(self.span, "encountered unexpected ReClosureBound: {:?}", r,);
             }
 
             ty::RePlaceholder(..)

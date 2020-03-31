@@ -1,5 +1,5 @@
-use rustc::ty::{self, Ty, TyVid};
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::{self, Ty, TyVid};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
@@ -54,6 +54,7 @@ pub enum TypeVariableOriginKind {
 
     /// One of the upvars or closure kind parameters in a `ClosureSubsts`
     /// (before it has been determined).
+    // FIXME(eddyb) distinguish upvar inference variables from the rest.
     ClosureSynthetic,
     SubstitutionPlaceholder,
     AutoDeref,

@@ -9,13 +9,13 @@ use crate::clean::{
 use crate::core::DocContext;
 
 use itertools::Itertools;
-use rustc::mir::interpret::{sign_extend, ConstValue, Scalar};
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc::ty::{self, DefIdTree, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::mir::interpret::{sign_extend, ConstValue, Scalar};
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::{self, DefIdTree, Ty};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 
@@ -578,7 +578,7 @@ pub fn print_const_expr(cx: &DocContext<'_>, body: hir::BodyId) -> String {
         None
     };
 
-    snippet.unwrap_or_else(|| cx.tcx.hir().hir_to_pretty_string(body.hir_id))
+    snippet.unwrap_or_else(|| rustc_hir_pretty::id_to_string(&cx.tcx.hir(), body.hir_id))
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt

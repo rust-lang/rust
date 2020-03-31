@@ -8,12 +8,6 @@ use crate::check::FnCtxt;
 use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
 
-use rustc::middle::stability;
-use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc::ty::GenericParamDefKind;
-use rustc::ty::{
-    self, ParamEnvAnd, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
-};
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance::{find_best_match_for_name, lev_distance};
 use rustc_data_structures::fx::FxHashSet;
@@ -26,6 +20,12 @@ use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_middle::middle::stability;
+use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
+use rustc_middle::ty::GenericParamDefKind;
+use rustc_middle::ty::{
+    self, ParamEnvAnd, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+};
 use rustc_session::config::nightly_options;
 use rustc_session::lint;
 use rustc_span::{symbol::Symbol, Span, DUMMY_SP};

@@ -750,6 +750,35 @@ impl Step for Tidy {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ExpandYamlAnchors;
+
+impl Step for ExpandYamlAnchors {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    /// Ensure the `generate-ci-config` tool was run locally.
+    ///
+    /// The tool in `src/tools` reads the CI definition in `src/ci/builders.yml` and generates the
+    /// appropriate configuration for all our CI providers. This step ensures the tool was called
+    /// by the user before committing CI changes.
+    fn run(self, builder: &Builder<'_>) {
+        builder.info("Ensuring the YAML anchors in the GitHub Actions config were expanded");
+        try_run(
+            builder,
+            &mut builder.tool_cmd(Tool::ExpandYamlAnchors).arg("check").arg(&builder.src),
+        );
+    }
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/expand-yaml-anchors")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(ExpandYamlAnchors);
+    }
+}
+
 fn testdir(builder: &Builder<'_>, host: Interned<String>) -> PathBuf {
     builder.out.join(host).join("test")
 }
@@ -1141,6 +1170,8 @@ impl Step for Compiletest {
             let llvm_config = builder.ensure(native::Llvm { target: builder.config.build });
             if !builder.config.dry_run {
                 let llvm_version = output(Command::new(&llvm_config).arg("--version"));
+                // Remove trailing newline from llvm-config output.
+                let llvm_version = llvm_version.trim_end();
                 cmd.arg("--llvm-version").arg(llvm_version);
             }
             if !builder.is_rust_llvm(target) {

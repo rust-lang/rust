@@ -1,5 +1,14 @@
+error[E0277]: arrays only have std trait implementations for lengths 0..=32
+  --> $DIR/alloc-types-no-impls-length-33.rs:6:29
+   |
+LL |     let v: Vec<_> = [0; 33].into();
+   |                             ^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[{integer}; 33]`
+   |
+   = note: required because of the requirements on the impl of `std::convert::From<[{integer}; 33]>` for `std::vec::Vec<{integer}>`
+   = note: required because of the requirements on the impl of `std::convert::Into<std::vec::Vec<{integer}>>` for `[{integer}; 33]`
+
 error[E0277]: the trait bound `std::boxed::Box<[i32; 33]>: std::convert::From<std::boxed::Box<[i32]>>` is not satisfied
-  --> $DIR/alloc-types-no-impls-length-33.rs:7:23
+  --> $DIR/alloc-types-no-impls-length-33.rs:12:23
    |
 LL |     let boxed_array = <Box<[i32; 33]>>::try_from(boxed_slice);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<std::boxed::Box<[i32]>>` is not implemented for `std::boxed::Box<[i32; 33]>`
@@ -14,7 +23,7 @@ LL |     let boxed_array = <Box<[i32; 33]>>::try_from(boxed_slice);
    = note: required because of the requirements on the impl of `std::convert::TryFrom<std::boxed::Box<[i32]>>` for `std::boxed::Box<[i32; 33]>`
 
 error[E0277]: the trait bound `std::boxed::Box<[i32; 33]>: std::convert::TryFrom<std::boxed::Box<[i32]>>` is not satisfied
-  --> $DIR/alloc-types-no-impls-length-33.rs:7:23
+  --> $DIR/alloc-types-no-impls-length-33.rs:12:23
    |
 LL |     let boxed_array = <Box<[i32; 33]>>::try_from(boxed_slice);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::TryFrom<std::boxed::Box<[i32]>>` is not implemented for `std::boxed::Box<[i32; 33]>`
@@ -23,7 +32,7 @@ LL |     let boxed_array = <Box<[i32; 33]>>::try_from(boxed_slice);
              <std::boxed::Box<[T; _]> as std::convert::TryFrom<std::boxed::Box<[T]>>>
 
 error[E0277]: the trait bound `std::rc::Rc<[i32; 33]>: std::convert::From<std::rc::Rc<[i32]>>` is not satisfied
-  --> $DIR/alloc-types-no-impls-length-33.rs:14:23
+  --> $DIR/alloc-types-no-impls-length-33.rs:19:23
    |
 LL |     let boxed_array = <Rc<[i32; 33]>>::try_from(boxed_slice);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<std::rc::Rc<[i32]>>` is not implemented for `std::rc::Rc<[i32; 33]>`
@@ -38,7 +47,7 @@ LL |     let boxed_array = <Rc<[i32; 33]>>::try_from(boxed_slice);
    = note: required because of the requirements on the impl of `std::convert::TryFrom<std::rc::Rc<[i32]>>` for `std::rc::Rc<[i32; 33]>`
 
 error[E0277]: the trait bound `std::rc::Rc<[i32; 33]>: std::convert::TryFrom<std::rc::Rc<[i32]>>` is not satisfied
-  --> $DIR/alloc-types-no-impls-length-33.rs:14:23
+  --> $DIR/alloc-types-no-impls-length-33.rs:19:23
    |
 LL |     let boxed_array = <Rc<[i32; 33]>>::try_from(boxed_slice);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::TryFrom<std::rc::Rc<[i32]>>` is not implemented for `std::rc::Rc<[i32; 33]>`
@@ -47,7 +56,7 @@ LL |     let boxed_array = <Rc<[i32; 33]>>::try_from(boxed_slice);
              <std::rc::Rc<[T; _]> as std::convert::TryFrom<std::rc::Rc<[T]>>>
 
 error[E0277]: the trait bound `std::sync::Arc<[i32; 33]>: std::convert::From<std::sync::Arc<[i32]>>` is not satisfied
-  --> $DIR/alloc-types-no-impls-length-33.rs:21:23
+  --> $DIR/alloc-types-no-impls-length-33.rs:26:23
    |
 LL |     let boxed_array = <Arc<[i32; 33]>>::try_from(boxed_slice);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<std::sync::Arc<[i32]>>` is not implemented for `std::sync::Arc<[i32; 33]>`
@@ -62,7 +71,7 @@ LL |     let boxed_array = <Arc<[i32; 33]>>::try_from(boxed_slice);
    = note: required because of the requirements on the impl of `std::convert::TryFrom<std::sync::Arc<[i32]>>` for `std::sync::Arc<[i32; 33]>`
 
 error[E0277]: the trait bound `std::sync::Arc<[i32; 33]>: std::convert::TryFrom<std::sync::Arc<[i32]>>` is not satisfied
-  --> $DIR/alloc-types-no-impls-length-33.rs:21:23
+  --> $DIR/alloc-types-no-impls-length-33.rs:26:23
    |
 LL |     let boxed_array = <Arc<[i32; 33]>>::try_from(boxed_slice);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::TryFrom<std::sync::Arc<[i32]>>` is not implemented for `std::sync::Arc<[i32; 33]>`
@@ -70,6 +79,6 @@ LL |     let boxed_array = <Arc<[i32; 33]>>::try_from(boxed_slice);
    = help: the following implementations were found:
              <std::sync::Arc<[T; _]> as std::convert::TryFrom<std::sync::Arc<[T]>>>
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

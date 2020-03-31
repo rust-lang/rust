@@ -2,7 +2,7 @@ error[E0624]: associated function `nap` is private
   --> $DIR/private-method.rs:22:8
    |
 LL |   nyan.nap();
-   |        ^^^
+   |        ^^^ private associated function
 
 error: aborting due to previous error
 

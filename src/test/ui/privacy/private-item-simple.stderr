@@ -2,7 +2,7 @@ error[E0603]: function `f` is private
   --> $DIR/private-item-simple.rs:6:8
    |
 LL |     a::f();
-   |        ^ this function is private
+   |        ^ private function
    |
 note: the function `f` is defined here
   --> $DIR/private-item-simple.rs:2:5

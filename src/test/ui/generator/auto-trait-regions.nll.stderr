@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/auto-trait-regions.rs:45:24
+  --> $DIR/auto-trait-regions.rs:46:24
    |
 LL |         let a = A(&mut true, &mut true, No);
    |                        ^^^^                - temporary value is freed at the end of this statement
@@ -12,7 +12,7 @@ LL |         assert_foo(a);
    = note: consider using a `let` binding to create a longer lived value
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/auto-trait-regions.rs:45:35
+  --> $DIR/auto-trait-regions.rs:46:35
    |
 LL |         let a = A(&mut true, &mut true, No);
    |                                   ^^^^     - temporary value is freed at the end of this statement
@@ -25,13 +25,13 @@ LL |         assert_foo(a);
    = note: consider using a `let` binding to create a longer lived value
 
 error: higher-ranked subtype error
-  --> $DIR/auto-trait-regions.rs:30:5
+  --> $DIR/auto-trait-regions.rs:31:5
    |
 LL |     assert_foo(gen);
    |     ^^^^^^^^^^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/auto-trait-regions.rs:49:5
+  --> $DIR/auto-trait-regions.rs:50:5
    |
 LL |     assert_foo(gen);
    |     ^^^^^^^^^^^^^^^

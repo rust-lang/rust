@@ -1,8 +1,9 @@
 use std::borrow::Cow;
+use std::convert::TryFrom;
 
-use rustc::ty::layout::{self, LayoutOf, TyLayout};
-use rustc::ty::Instance;
-use rustc::{mir, ty};
+use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout};
+use rustc_middle::ty::Instance;
+use rustc_middle::{mir, ty};
 use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
@@ -15,7 +16,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         terminator: &mir::Terminator<'tcx>,
     ) -> InterpResult<'tcx> {
-        use rustc::mir::TerminatorKind::*;
+        use rustc_middle::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
                 self.frame().return_place.map(|r| self.dump_place(*r));
@@ -29,6 +30,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 trace!("SwitchInt({:?})", *discr);
 
                 // Branch to the `otherwise` case by default, if no match is found.
+                assert!(targets.len() > 0);
                 let mut target_block = targets[targets.len() - 1];
 
                 for (index, &const_int) in values.iter().enumerate() {
@@ -132,8 +134,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn check_argument_compat(
         rust_abi: bool,
-        caller: TyLayout<'tcx>,
-        callee: TyLayout<'tcx>,
+        caller: TyAndLayout<'tcx>,
+        callee: TyAndLayout<'tcx>,
     ) -> bool {
         if caller.ty == callee.ty {
             // No question
@@ -307,7 +309,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                     .map(|&a| Ok(a))
                                     .chain(
                                         (0..untuple_arg.layout.fields.count())
-                                            .map(|i| self.operand_field(untuple_arg, i as u64)),
+                                            .map(|i| self.operand_field(untuple_arg, i)),
                                     )
                                     .collect::<InterpResult<'_, Vec<OpTy<'tcx, M::PointerTag>>>>(
                                     )?,
@@ -330,7 +332,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if Some(local) == body.spread_arg {
                             // Must be a tuple
                             for i in 0..dest.layout.fields.count() {
-                                let dest = self.place_field(dest, i as u64)?;
+                                let dest = self.place_field(dest, i)?;
                                 self.pass_argument(rust_abi, &mut caller_iter, dest)?;
                             }
                         } else {
@@ -392,7 +394,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 // Find and consult vtable
                 let vtable = receiver_place.vtable();
-                let drop_fn = self.get_vtable_slot(vtable, idx)?;
+                let drop_fn = self.get_vtable_slot(vtable, u64::try_from(idx).unwrap())?;
 
                 // `*mut receiver_place.layout.ty` is almost the layout that we
                 // want for args[0]: We have to project to field 0 because we want

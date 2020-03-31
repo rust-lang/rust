@@ -2,10 +2,10 @@ use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferOk;
 
-use rustc::ty::subst::GenericArg;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::subst::GenericArg;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
-pub use rustc::traits::query::{DropckOutlivesResult, DtorckConstraint};
+pub use rustc_middle::traits::query::{DropckOutlivesResult, DtorckConstraint};
 
 pub trait AtExt<'tcx> {
     fn dropck_outlives(&self, ty: Ty<'tcx>) -> InferOk<'tcx, Vec<GenericArg<'tcx>>>;
@@ -109,8 +109,8 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *any* of those are trivial.
         ty::Tuple(ref tys) => tys.iter().all(|t| trivial_dropck_outlives(tcx, t.expect_ty())),
-        ty::Closure(def_id, ref substs) => {
-            substs.as_closure().upvar_tys(def_id, tcx).all(|t| trivial_dropck_outlives(tcx, t))
+        ty::Closure(_, ref substs) => {
+            substs.as_closure().upvar_tys().all(|t| trivial_dropck_outlives(tcx, t))
         }
 
         ty::Adt(def, _) => {

@@ -1,9 +1,9 @@
 use crate::infer::error_reporting::{note_and_explain_region, ObligationCauseExt};
 use crate::infer::{self, InferCtxt, SubregionOrigin};
-use rustc::middle::region;
-use rustc::ty::error::TypeError;
-use rustc::ty::{self, Region};
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_middle::middle::region;
+use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::{self, Region};
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(

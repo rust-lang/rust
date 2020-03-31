@@ -1,9 +1,9 @@
 //! Visitor for a run-time value with a given layout: Traverse enums, structs and other compound
 //! types until we arrive at the leaves, with custom handling for primitive types.
 
-use rustc::mir::interpret::InterpResult;
-use rustc::ty;
-use rustc::ty::layout::{self, TyLayout, VariantIdx};
+use rustc_middle::mir::interpret::InterpResult;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{self, TyAndLayout, VariantIdx};
 
 use super::{InterpCx, MPlaceTy, Machine, OpTy};
 
@@ -12,7 +12,7 @@ use super::{InterpCx, MPlaceTy, Machine, OpTy};
 // that's just more convenient to work with (avoids repeating all the `Machine` bounds).
 pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
     /// Gets this value's layout.
-    fn layout(&self) -> TyLayout<'tcx>;
+    fn layout(&self) -> TyAndLayout<'tcx>;
 
     /// Makes this into an `OpTy`.
     fn to_op(self, ecx: &InterpCx<'mir, 'tcx, M>) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
@@ -28,14 +28,15 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
     ) -> InterpResult<'tcx, Self>;
 
     /// Projects to the n-th field.
-    fn project_field(self, ecx: &InterpCx<'mir, 'tcx, M>, field: u64) -> InterpResult<'tcx, Self>;
+    fn project_field(self, ecx: &InterpCx<'mir, 'tcx, M>, field: usize)
+    -> InterpResult<'tcx, Self>;
 }
 
 // Operands and memory-places are both values.
 // Places in general are not due to `place_field` having to do `force_allocation`.
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::PointerTag> {
     #[inline(always)]
-    fn layout(&self) -> TyLayout<'tcx> {
+    fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
     }
 
@@ -62,14 +63,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::
     }
 
     #[inline(always)]
-    fn project_field(self, ecx: &InterpCx<'mir, 'tcx, M>, field: u64) -> InterpResult<'tcx, Self> {
+    fn project_field(
+        self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+        field: usize,
+    ) -> InterpResult<'tcx, Self> {
         ecx.operand_field(self, field)
     }
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for MPlaceTy<'tcx, M::PointerTag> {
     #[inline(always)]
-    fn layout(&self) -> TyLayout<'tcx> {
+    fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
     }
 
@@ -96,7 +101,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for MPlaceTy<'tcx,
     }
 
     #[inline(always)]
-    fn project_field(self, ecx: &InterpCx<'mir, 'tcx, M>, field: u64) -> InterpResult<'tcx, Self> {
+    fn project_field(
+        self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+        field: usize,
+    ) -> InterpResult<'tcx, Self> {
         ecx.mplace_field(self, field)
     }
 }
@@ -206,7 +215,7 @@ macro_rules! make_value_visitor {
                         // errors: Projecting to a field needs access to `ecx`.
                         let fields: Vec<InterpResult<'tcx, Self::V>> =
                             (0..offsets.len()).map(|i| {
-                                v.project_field(self.ecx(), i as u64)
+                                v.project_field(self.ecx(), i)
                             })
                             .collect();
                         self.visit_aggregate(v, fields.into_iter())?;

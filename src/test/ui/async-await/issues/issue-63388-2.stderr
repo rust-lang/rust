@@ -8,21 +8,6 @@ LL |     ) -> &dyn Foo
    |
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `foo` or `bar`
 
-error: cannot infer an appropriate lifetime
-  --> $DIR/issue-63388-2.rs:11:9
-   |
-LL |         foo: &dyn Foo, bar: &'a dyn Foo
-   |         ^^^ ...but this borrow...
-...
-LL |         foo
-   |         --- this return type evaluates to the `'static` lifetime...
-   |
-note: ...can't outlive the lifetime `'_` as defined on the method body at 11:14
-  --> $DIR/issue-63388-2.rs:11:14
-   |
-LL |         foo: &dyn Foo, bar: &'a dyn Foo
-   |              ^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0106`.

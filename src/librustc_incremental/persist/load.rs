@@ -1,9 +1,9 @@
 //! Code to save/load the dep-graph from files.
 
-use rustc::dep_graph::{PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
-use rustc::ty::query::OnDiskCache;
-use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::dep_graph::{PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
+use rustc_middle::ty::query::OnDiskCache;
+use rustc_middle::ty::TyCtxt;
 use rustc_serialize::opaque::Decoder;
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_session::Session;
@@ -195,7 +195,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 }
 
 pub fn load_query_result_cache(sess: &Session) -> OnDiskCache<'_> {
-    if sess.opts.incremental.is_none() || !sess.opts.debugging_opts.incremental_queries {
+    if sess.opts.incremental.is_none() {
         return OnDiskCache::new_empty(sess.source_map());
     }
 

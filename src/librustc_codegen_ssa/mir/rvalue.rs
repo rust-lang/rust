@@ -7,12 +7,12 @@ use crate::common::{self, IntPredicate, RealPredicate};
 use crate::traits::*;
 use crate::MemFlags;
 
-use rustc::middle::lang_items::ExchangeMallocFnLangItem;
-use rustc::mir;
-use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::layout::{self, HasTyCtxt, LayoutOf};
-use rustc::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_apfloat::{ieee, Float, Round, Status};
+use rustc_middle::middle::lang_items::ExchangeMallocFnLangItem;
+use rustc_middle::mir;
+use rustc_middle::ty::cast::{CastTy, IntTy};
+use rustc_middle::ty::layout::{self, HasTyCtxt, LayoutOf};
+use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::sym;
 
@@ -105,6 +105,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         return bx;
                     }
                 }
+
+                let count =
+                    self.monomorphize(&count).eval_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
 
                 bx.write_operand_repeatedly(cg_elem, count, dest)
             }

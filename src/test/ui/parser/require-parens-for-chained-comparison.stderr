@@ -2,19 +2,29 @@ error: comparison operators cannot be chained
   --> $DIR/require-parens-for-chained-comparison.rs:5:11
    |
 LL |     false == false == false;
-   |           ^^^^^^^^^^^
+   |           ^^       ^^
+   |
+help: split the comparison into two
+   |
+LL |     false == false && false == false;
+   |                    ^^^^^^^^
 
 error: comparison operators cannot be chained
-  --> $DIR/require-parens-for-chained-comparison.rs:8:11
+  --> $DIR/require-parens-for-chained-comparison.rs:9:11
    |
 LL |     false == 0 < 2;
-   |           ^^^^^^
+   |           ^^   ^
+   |
+help: parenthesize the comparison
+   |
+LL |     false == (0 < 2);
+   |              ^     ^
 
 error: comparison operators cannot be chained
   --> $DIR/require-parens-for-chained-comparison.rs:13:6
    |
 LL |     f<X>();
-   |      ^^^
+   |      ^ ^
    |
 help: use `::<...>` instead of `<...>` to specify type arguments
    |
@@ -25,42 +35,21 @@ error: comparison operators cannot be chained
   --> $DIR/require-parens-for-chained-comparison.rs:17:6
    |
 LL |     f<Result<Option<X>, Option<Option<X>>>(1, 2);
-   |      ^^^^^^^^
+   |      ^      ^
    |
-help: split the comparison into two...
-   |
-LL |     f < Result && Result <Option<X>, Option<Option<X>>>(1, 2);
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-help: ...or parenthesize one of the comparisons
-   |
-LL |     (f < Result) <Option<X>, Option<Option<X>>>(1, 2);
-   |     ^^^^^^^^^^^^^^
 help: use `::<...>` instead of `<...>` to specify type arguments
    |
 LL |     f::<Result<Option<X>, Option<Option<X>>>(1, 2);
    |      ^^
 
 error: comparison operators cannot be chained
-  --> $DIR/require-parens-for-chained-comparison.rs:24:21
+  --> $DIR/require-parens-for-chained-comparison.rs:22:21
    |
 LL |     let _ = identity<u8>;
-   |                     ^^^^
+   |                     ^  ^
    |
    = help: use `::<...>` instead of `<...>` to specify type arguments
    = help: or use `(...)` if you meant to specify fn arguments
 
-error[E0308]: mismatched types
-  --> $DIR/require-parens-for-chained-comparison.rs:8:14
-   |
-LL |     false == 0 < 2;
-   |              ^ expected `bool`, found integer
+error: aborting due to 5 previous errors
 
-error[E0308]: mismatched types
-  --> $DIR/require-parens-for-chained-comparison.rs:8:18
-   |
-LL |     false == 0 < 2;
-   |                  ^ expected `bool`, found integer
-
-error: aborting due to 7 previous errors
-
-For more information about this error, try `rustc --explain E0308`.

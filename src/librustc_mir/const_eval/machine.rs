@@ -1,25 +1,25 @@
-use rustc::mir;
-use rustc::ty::layout::HasTyCtxt;
-use rustc::ty::{self, Ty};
+use rustc_middle::mir;
+use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::{self, Ty};
 use std::borrow::{Borrow, Cow};
 use std::collections::hash_map::Entry;
-use std::convert::TryFrom;
 use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;
 
-use rustc::mir::AssertMessage;
-use rustc_span::source_map::Span;
+use rustc_ast::ast::Mutability;
+use rustc_middle::mir::AssertMessage;
 use rustc_span::symbol::Symbol;
+use rustc_span::{def_id::DefId, Span};
 
 use crate::interpret::{
-    self, snapshot, AllocId, Allocation, GlobalId, ImmTy, InterpCx, InterpResult, Memory,
-    MemoryKind, OpTy, PlaceTy, Pointer, Scalar,
+    self, AllocId, Allocation, GlobalId, ImmTy, InterpCx, InterpResult, Memory, MemoryKind, OpTy,
+    PlaceTy, Pointer, Scalar,
 };
 
 use super::error::*;
 
-impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
+impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter> {
     /// Evaluate a const function where all arguments (if any) are zero-sized types.
     /// The evaluation is memoized thanks to the query system.
     ///
@@ -86,22 +86,13 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
     }
 }
 
-/// The number of steps between loop detector snapshots.
-/// Should be a power of two for performance reasons.
-const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
-
-// Extra machine state for CTFE, and the Machine instance
-pub struct CompileTimeInterpreter<'mir, 'tcx> {
-    /// When this value is negative, it indicates the number of interpreter
-    /// steps *until* the loop detector is enabled. When it is positive, it is
-    /// the number of steps after the detector has been enabled modulo the loop
-    /// detector period.
-    pub(super) steps_since_detector_enabled: isize,
-
-    pub(super) is_detector_enabled: bool,
-
-    /// Extra state to detect loops.
-    pub(super) loop_detector: snapshot::InfiniteLoopDetector<'mir, 'tcx>,
+/// Extra machine state for CTFE, and the Machine instance
+pub struct CompileTimeInterpreter {
+    /// For now, the number of terminators that can be evaluated before we throw a resource
+    /// exhuastion error.
+    ///
+    /// Setting this to `0` disables the limit and allows the interpreter to run forever.
+    pub steps_remaining: usize,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -110,16 +101,9 @@ pub struct MemoryExtra {
     pub(super) can_access_statics: bool,
 }
 
-impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
+impl CompileTimeInterpreter {
     pub(super) fn new(const_eval_limit: usize) -> Self {
-        let steps_until_detector_enabled =
-            isize::try_from(const_eval_limit).unwrap_or(std::isize::MAX);
-
-        CompileTimeInterpreter {
-            loop_detector: Default::default(),
-            steps_since_detector_enabled: -steps_until_detector_enabled,
-            is_detector_enabled: const_eval_limit != 0,
-        }
+        CompileTimeInterpreter { steps_remaining: const_eval_limit }
     }
 }
 
@@ -173,8 +157,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
     }
 }
 
-crate type CompileTimeEvalContext<'mir, 'tcx> =
-    InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
+crate type CompileTimeEvalContext<'mir, 'tcx> = InterpCx<'mir, 'tcx, CompileTimeInterpreter>;
 
 impl interpret::MayLeak for ! {
     #[inline(always)]
@@ -184,8 +167,8 @@ impl interpret::MayLeak for ! {
     }
 }
 
-impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir, 'tcx> {
-    type MemoryKinds = !;
+impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
+    type MemoryKind = !;
     type PointerTag = ();
     type ExtraFnVal = !;
 
@@ -195,7 +178,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
 
-    const STATIC_KIND: Option<!> = None; // no copying of statics allowed
+    const GLOBAL_KIND: Option<!> = None; // no copying of globals from `tcx` to machine memory
 
     // We do not check for alignment to avoid having to carry an `Align`
     // in `ConstValue::ByRef`.
@@ -284,7 +267,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         msg: &AssertMessage<'tcx>,
         _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        use rustc::mir::AssertKind::*;
+        use rustc_middle::mir::AssertKind::*;
         // Convert `AssertKind<Operand>` to `AssertKind<u64>`.
         let err = match msg {
             BoundsCheck { ref len, ref index } => {
@@ -335,7 +318,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     #[inline(always)]
-    fn tag_static_base_pointer(_memory_extra: &MemoryExtra, _id: AllocId) -> Self::PointerTag {}
+    fn tag_global_base_pointer(_memory_extra: &MemoryExtra, _id: AllocId) -> Self::PointerTag {}
 
     fn box_alloc(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -345,26 +328,17 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        if !ecx.machine.is_detector_enabled {
+        // The step limit has already been hit in a previous call to `before_terminator`.
+        if ecx.machine.steps_remaining == 0 {
             return Ok(());
         }
 
-        {
-            let steps = &mut ecx.machine.steps_since_detector_enabled;
-
-            *steps += 1;
-            if *steps < 0 {
-                return Ok(());
-            }
-
-            *steps %= DETECTOR_SNAPSHOT_PERIOD;
-            if *steps != 0 {
-                return Ok(());
-            }
+        ecx.machine.steps_remaining -= 1;
+        if ecx.machine.steps_remaining == 0 {
+            throw_exhaust!(StepLimitReached)
         }
 
-        let span = ecx.frame().span;
-        ecx.machine.loop_detector.observe_and_analyze(*ecx.tcx, span, &ecx.memory, &ecx.stack[..])
+        Ok(())
     }
 
     #[inline(always)]
@@ -372,11 +346,19 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         Ok(())
     }
 
-    fn before_access_static(
+    fn before_access_global(
         memory_extra: &MemoryExtra,
-        _allocation: &Allocation,
+        alloc_id: AllocId,
+        allocation: &Allocation,
+        static_def_id: Option<DefId>,
+        is_write: bool,
     ) -> InterpResult<'tcx> {
-        if memory_extra.can_access_statics {
+        if is_write && allocation.mutability == Mutability::Not {
+            Err(err_ub!(WriteToReadOnly(alloc_id)).into())
+        } else if is_write {
+            Err(ConstEvalErrKind::ModifiedGlobal.into())
+        } else if memory_extra.can_access_statics || static_def_id.is_none() {
+            // `static_def_id.is_none()` indicates this is not a static, but a const or so.
             Ok(())
         } else {
             Err(ConstEvalErrKind::ConstAccessesStatic.into())

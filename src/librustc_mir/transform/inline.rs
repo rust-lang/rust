@@ -1,14 +1,14 @@
 //! Inlining pass for MIR functions
 
-use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc::mir::visit::*;
-use rustc::mir::*;
-use rustc::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_attr as attr;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::visit::*;
+use rustc_middle::mir::*;
+use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::Sanitizer;
 use rustc_target::spec::abi::Abi;
 
@@ -66,14 +66,7 @@ impl Inliner<'tcx> {
 
         let mut callsites = VecDeque::new();
 
-        let mut param_env = self.tcx.param_env(self.source.def_id());
-
-        let substs = &InternalSubsts::identity_for_item(self.tcx, self.source.def_id());
-
-        // For monomorphic functions, we can use `Reveal::All` to resolve specialized instances.
-        if !substs.needs_subst() {
-            param_env = param_env.with_reveal_all();
-        }
+        let param_env = self.tcx.param_env(self.source.def_id()).with_reveal_all();
 
         // Only do inlining into fn bodies.
         let id = self.tcx.hir().as_local_hir_id(self.source.def_id()).unwrap();

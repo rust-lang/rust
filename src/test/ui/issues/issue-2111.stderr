@@ -5,6 +5,7 @@ LL |   match (a,b) {
    |         ^^^^^ pattern `(None, None)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `(std::option::Option<usize>, std::option::Option<usize>)`
 
 error: aborting due to previous error
 

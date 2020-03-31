@@ -1,10 +1,10 @@
 use crate::mir::operand::OperandRef;
 use crate::traits::*;
-use rustc::mir;
-use rustc::mir::interpret::{ConstValue, ErrorHandled};
-use rustc::ty::layout::{self, HasTyCtxt};
-use rustc::ty::{self, Ty};
 use rustc_index::vec::Idx;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{ConstValue, ErrorHandled};
+use rustc_middle::ty::layout::{self, HasTyCtxt};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Span;
 
 use super::FunctionCx;

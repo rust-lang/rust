@@ -73,6 +73,14 @@ pub enum Visibility {
     Protected = 2,
 }
 
+/// LLVMUnnamedAddr
+#[repr(C)]
+pub enum UnnamedAddr {
+    No,
+    Local,
+    Global,
+}
+
 /// LLVMDLLStorageClass
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -381,10 +389,10 @@ pub enum AsmDialect {
 }
 
 impl AsmDialect {
-    pub fn from_generic(asm: rustc_ast::ast::AsmDialect) -> Self {
+    pub fn from_generic(asm: rustc_ast::ast::LlvmAsmDialect) -> Self {
         match asm {
-            rustc_ast::ast::AsmDialect::Att => AsmDialect::Att,
-            rustc_ast::ast::AsmDialect::Intel => AsmDialect::Intel,
+            rustc_ast::ast::LlvmAsmDialect::Att => AsmDialect::Att,
+            rustc_ast::ast::LlvmAsmDialect::Intel => AsmDialect::Intel,
         }
     }
 }
@@ -727,11 +735,11 @@ extern "C" {
     pub fn LLVMCloneModule(M: &Module) -> &Module;
 
     /// Data layout. See Module::getDataLayout.
-    pub fn LLVMGetDataLayout(M: &Module) -> *const c_char;
+    pub fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
     pub fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
 
     /// See Module::setModuleInlineAsm.
-    pub fn LLVMSetModuleInlineAsm(M: &Module, Asm: *const c_char);
+    pub fn LLVMSetModuleInlineAsm2(M: &Module, Asm: *const c_char, AsmLen: size_t);
     pub fn LLVMRustAppendModuleInlineAsm(M: &Module, Asm: *const c_char, AsmLen: size_t);
 
     /// See llvm::LLVMTypeKind::getTypeID.
@@ -1853,7 +1861,7 @@ extern "C" {
         UniqueIdLen: size_t,
     ) -> &'a DIDerivedType;
 
-    pub fn LLVMSetUnnamedAddr(GlobalVar: &Value, UnnamedAddr: Bool);
+    pub fn LLVMSetUnnamedAddress(Global: &Value, UnnamedAddr: UnnamedAddr);
 
     pub fn LLVMRustDIBuilderCreateTemplateTypeParameter(
         Builder: &DIBuilder<'a>,

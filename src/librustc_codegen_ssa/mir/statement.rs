@@ -1,5 +1,5 @@
-use rustc::mir;
 use rustc_errors::struct_span_err;
+use rustc_middle::mir;
 
 use super::FunctionCx;
 use super::LocalRef;
@@ -66,7 +66,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 bx
             }
-            mir::StatementKind::InlineAsm(ref asm) => {
+            mir::StatementKind::LlvmInlineAsm(ref asm) => {
                 let outputs = asm
                     .outputs
                     .iter()
@@ -93,7 +93,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
 
                 if input_vals.len() == asm.inputs.len() {
-                    let res = bx.codegen_inline_asm(
+                    let res = bx.codegen_llvm_inline_asm(
                         &asm.asm,
                         outputs,
                         input_vals,

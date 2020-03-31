@@ -24,12 +24,13 @@ Rust MIR: a lowered representation of Rust.
 #![feature(range_is_empty)]
 #![feature(stmt_expr_attributes)]
 #![feature(trait_alias)]
+#![feature(option_expect_none)]
 #![recursion_limit = "256"]
 
 #[macro_use]
 extern crate log;
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 
 mod borrow_check;
 pub mod const_eval;
@@ -40,7 +41,7 @@ mod shim;
 pub mod transform;
 pub mod util;
 
-use rustc::ty::query::Providers;
+use rustc_middle::ty::query::Providers;
 
 pub fn provide(providers: &mut Providers<'_>) {
     borrow_check::provide(providers);

@@ -1,0 +1,48 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/cast.rs:3:11: 3:11
+      let _1: u32;                         // in scope 0 at $DIR/cast.rs:4:9: 4:10
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/cast.rs:4:9: 4:10
+          let _2: u8;                      // in scope 1 at $DIR/cast.rs:6:9: 6:10
+          scope 2 {
+              debug y => _2;               // in scope 2 at $DIR/cast.rs:6:9: 6:10
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/cast.rs:4:9: 4:10
+-         _1 = const 42u8 as u32 (Misc);   // bb0[1]: scope 0 at $DIR/cast.rs:4:13: 4:24
++         _1 = const 42u32;                // bb0[1]: scope 0 at $DIR/cast.rs:4:13: 4:24
+                                           // ty::Const
+-                                          // + ty: u8
+-                                          // + val: Value(Scalar(0x2a))
+-                                          // mir::Constant
+-                                          // + span: $DIR/cast.rs:4:13: 4:17
+-                                          // + literal: Const { ty: u8, val: Value(Scalar(0x2a)) }
+-         StorageLive(_2);                 // bb0[2]: scope 1 at $DIR/cast.rs:6:9: 6:10
+-         _2 = const 42u32 as u8 (Misc);   // bb0[3]: scope 1 at $DIR/cast.rs:6:13: 6:24
+-                                          // ty::Const
+                                           // + ty: u32
+                                           // + val: Value(Scalar(0x0000002a))
+                                           // mir::Constant
+-                                          // + span: $DIR/cast.rs:6:13: 6:18
++                                          // + span: $DIR/cast.rs:4:13: 4:24
+                                           // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
++         StorageLive(_2);                 // bb0[2]: scope 1 at $DIR/cast.rs:6:9: 6:10
++         _2 = const 42u8;                 // bb0[3]: scope 1 at $DIR/cast.rs:6:13: 6:24
++                                          // ty::Const
++                                          // + ty: u8
++                                          // + val: Value(Scalar(0x2a))
++                                          // mir::Constant
++                                          // + span: $DIR/cast.rs:6:13: 6:24
++                                          // + literal: Const { ty: u8, val: Value(Scalar(0x2a)) }
+          _0 = ();                         // bb0[4]: scope 0 at $DIR/cast.rs:3:11: 7:2
+          StorageDead(_2);                 // bb0[5]: scope 1 at $DIR/cast.rs:7:1: 7:2
+          StorageDead(_1);                 // bb0[6]: scope 0 at $DIR/cast.rs:7:1: 7:2
+          return;                          // bb0[7]: scope 0 at $DIR/cast.rs:7:2: 7:2
+      }
+  }
+  

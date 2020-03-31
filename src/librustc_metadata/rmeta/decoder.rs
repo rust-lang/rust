@@ -4,17 +4,6 @@ use crate::creader::CrateMetadataRef;
 use crate::rmeta::table::{FixedSizeEncoding, Table};
 use crate::rmeta::*;
 
-use rustc::dep_graph::{self, DepNode, DepNodeIndex};
-use rustc::hir::exports::Export;
-use rustc::middle::cstore::{CrateSource, ExternCrate};
-use rustc::middle::cstore::{ForeignModule, LinkagePreference, NativeLibrary};
-use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
-use rustc::middle::lang_items;
-use rustc::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc::mir::{self, interpret, BodyAndCache, Promoted};
-use rustc::ty::codec::TyDecoder;
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::util::common::record_time;
 use rustc_ast::ast::{self, Ident};
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
@@ -30,6 +19,17 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, 
 use rustc_hir::definitions::DefPathTable;
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::dep_graph::{self, DepNode, DepNodeExt, DepNodeIndex};
+use rustc_middle::hir::exports::Export;
+use rustc_middle::middle::cstore::{CrateSource, ExternCrate};
+use rustc_middle::middle::cstore::{ForeignModule, LinkagePreference, NativeLibrary};
+use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
+use rustc_middle::middle::lang_items;
+use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
+use rustc_middle::mir::{self, interpret, BodyAndCache, Promoted};
+use rustc_middle::ty::codec::TyDecoder;
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::util::common::record_time;
 use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
 use rustc_session::Session;
 use rustc_span::source_map::{self, respan, Spanned};
@@ -509,14 +509,6 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
     }
 }
 
-impl SpecializedDecoder<Ident> for DecodeContext<'_, '_> {
-    fn specialized_decode(&mut self) -> Result<Ident, Self::Error> {
-        // FIXME(jseyfried): intercrate hygiene
-
-        Ok(Ident::with_dummy_span(Symbol::decode(self)?))
-    }
-}
-
 impl<'a, 'tcx> SpecializedDecoder<Fingerprint> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
         Fingerprint::decode_opaque(&mut self.opaque)
@@ -663,15 +655,27 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         &self.raw_proc_macros.unwrap()[pos]
     }
 
-    fn item_name(&self, item_index: DefIndex) -> Symbol {
+    fn item_ident(&self, item_index: DefIndex, sess: &Session) -> Ident {
         if !self.is_proc_macro(item_index) {
-            self.def_key(item_index)
+            let name = self
+                .def_key(item_index)
                 .disambiguated_data
                 .data
                 .get_opt_name()
-                .expect("no name in item_name")
+                .expect("no name in item_ident");
+            let span = self
+                .root
+                .per_def
+                .ident_span
+                .get(self, item_index)
+                .map(|data| data.decode((self, sess)))
+                .unwrap_or_else(|| panic!("Missing ident span for {:?} ({:?})", name, item_index));
+            Ident::new(name, span)
         } else {
-            Symbol::intern(self.raw_proc_macro(item_index).name())
+            Ident::new(
+                Symbol::intern(self.raw_proc_macro(item_index).name()),
+                self.get_span(item_index, sess),
+            )
         }
     }
 
@@ -750,6 +754,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         kind: &EntryKind,
         index: DefIndex,
         parent_did: DefId,
+        sess: &Session,
     ) -> ty::VariantDef {
         let data = match kind {
             EntryKind::Variant(data) | EntryKind::Struct(data, _) | EntryKind::Union(data, _) => {
@@ -771,7 +776,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
         ty::VariantDef::new(
             tcx,
-            Ident::with_dummy_span(self.item_name(index)),
+            self.item_ident(index, sess),
             variant_did,
             ctor_did,
             data.discr,
@@ -783,7 +788,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .decode(self)
                 .map(|index| ty::FieldDef {
                     did: self.local_def_id(index),
-                    ident: Ident::with_dummy_span(self.item_name(index)),
+                    ident: self.item_ident(index, sess),
                     vis: self.get_visibility(index),
                 })
                 .collect(),
@@ -812,10 +817,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .get(self, item_id)
                 .unwrap_or(Lazy::empty())
                 .decode(self)
-                .map(|index| self.get_variant(tcx, &self.kind(index), index, did))
+                .map(|index| self.get_variant(tcx, &self.kind(index), index, did, tcx.sess))
                 .collect()
         } else {
-            std::iter::once(self.get_variant(tcx, &kind, item_id, did)).collect()
+            std::iter::once(self.get_variant(tcx, &kind, item_id, did, tcx.sess)).collect()
         };
 
         tcx.alloc_adt_def(did, adt_kind, variants, repr)
@@ -1007,7 +1012,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                             if let Some(kind) = self.def_kind(child_index) {
                                 callback(Export {
                                     res: Res::Def(kind, self.local_def_id(child_index)),
-                                    ident: Ident::with_dummy_span(self.item_name(child_index)),
+                                    ident: self.item_ident(child_index, sess),
                                     vis: self.get_visibility(child_index),
                                     span: self
                                         .root
@@ -1028,10 +1033,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
                 let def_key = self.def_key(child_index);
                 let span = self.get_span(child_index, sess);
-                if let (Some(kind), Some(name)) =
-                    (self.def_kind(child_index), def_key.disambiguated_data.data.get_opt_name())
-                {
-                    let ident = Ident::with_dummy_span(name);
+                if let (Some(kind), true) = (
+                    self.def_kind(child_index),
+                    def_key.disambiguated_data.data.get_opt_name().is_some(),
+                ) {
+                    let ident = self.item_ident(child_index, sess);
                     let vis = self.get_visibility(child_index);
                     let def_id = self.local_def_id(child_index);
                     let res = Res::Def(kind, def_id);
@@ -1138,10 +1144,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_associated_item(&self, id: DefIndex) -> ty::AssocItem {
+    fn get_associated_item(&self, id: DefIndex, sess: &Session) -> ty::AssocItem {
         let def_key = self.def_key(id);
         let parent = self.local_def_id(def_key.parent.unwrap());
-        let name = def_key.disambiguated_data.data.get_opt_name().unwrap();
+        let ident = self.item_ident(id, sess);
 
         let (kind, container, has_self) = match self.kind(id) {
             EntryKind::AssocConst(container, _, _) => (ty::AssocKind::Const, container, false),
@@ -1155,7 +1161,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         };
 
         ty::AssocItem {
-            ident: Ident::with_dummy_span(name),
+            ident,
             kind,
             vis: self.get_visibility(id),
             defaultness: container.defaultness(),
@@ -1219,7 +1225,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .get(self, id)
             .unwrap_or(Lazy::empty())
             .decode(self)
-            .map(|index| respan(self.get_span(index, sess), self.item_name(index)))
+            .map(|index| respan(self.get_span(index, sess), self.item_ident(index, sess).name))
             .collect()
     }
 

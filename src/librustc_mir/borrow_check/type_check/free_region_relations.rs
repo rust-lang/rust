@@ -1,13 +1,13 @@
-use rustc::mir::ConstraintCategory;
-use rustc::traits::query::OutlivesBound;
-use rustc::ty::free_region_map::FreeRegionRelations;
-use rustc::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives;
 use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::traits::query::OutlivesBound;
+use rustc_middle::ty::free_region_map::FreeRegionRelations;
+use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use std::rc::Rc;

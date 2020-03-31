@@ -1,11 +1,11 @@
 use std::fmt::{self, Display};
 
-use rustc::ty::print::RegionHighlightMode;
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc::ty::{self, RegionVid, Ty};
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_middle::ty::print::RegionHighlightMode;
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_span::symbol::kw;
 use rustc_span::{symbol::Symbol, Span, DUMMY_SP};
 
@@ -245,7 +245,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         .expect("non-local mir");
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
-                    if let DefiningTy::Closure(def_id, substs) = def_ty {
+                    if let DefiningTy::Closure(_, substs) = def_ty {
                         let args_span = if let hir::ExprKind::Closure(_, _, _, span, _) =
                             tcx.hir().expect_expr(mir_hir_id).kind
                         {
@@ -255,7 +255,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         };
                         let region_name = self.synthesize_region_name();
 
-                        let closure_kind_ty = substs.as_closure().kind_ty(def_id, tcx);
+                        let closure_kind_ty = substs.as_closure().kind_ty();
                         let note = match closure_kind_ty.to_opt_closure_kind() {
                             Some(ty::ClosureKind::Fn) => {
                                 "closure implements `Fn`, so references to captured variables \
@@ -292,8 +292,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             | ty::ReVar(..)
             | ty::RePlaceholder(..)
             | ty::ReEmpty(_)
-            | ty::ReErased
-            | ty::ReClosureBound(..) => None,
+            | ty::ReErased => None,
         }
     }
 

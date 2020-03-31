@@ -1,6 +1,6 @@
 use crate::traits::*;
 
-use rustc::ty::{self, Instance, Ty};
+use rustc_middle::ty::{self, Instance, Ty};
 use rustc_target::abi::call::FnAbi;
 
 #[derive(Copy, Clone, Debug)]

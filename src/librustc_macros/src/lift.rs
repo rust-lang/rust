@@ -39,11 +39,11 @@ pub fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStre
 
     s.add_impl_generic(newtcx);
     s.bound_impl(
-        quote!(::rustc::ty::Lift<'__lifted>),
+        quote!(::rustc_middle::ty::Lift<'__lifted>),
         quote! {
             type Lifted = #lifted;
 
-            fn lift_to_tcx(&self, __tcx: ::rustc::ty::TyCtxt<'__lifted>) -> Option<#lifted> {
+            fn lift_to_tcx(&self, __tcx: ::rustc_middle::ty::TyCtxt<'__lifted>) -> Option<#lifted> {
                 Some(match *self { #body })
             }
         },

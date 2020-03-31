@@ -24,12 +24,12 @@
 use crate::infer::InferCtxt;
 use crate::infer::{ConstVarValue, ConstVariableValue};
 use crate::traits::DomainGoal;
-use rustc::ty::error::TypeError;
-use rustc::ty::fold::{TypeFoldable, TypeVisitor};
-use rustc::ty::relate::{self, Relate, RelateResult, TypeRelation};
-use rustc::ty::subst::GenericArg;
-use rustc::ty::{self, InferConst, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::fold::{TypeFoldable, TypeVisitor};
+use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::subst::GenericArg;
+use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
 use std::fmt::Debug;
 
 #[derive(PartialEq)]

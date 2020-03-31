@@ -2,19 +2,19 @@ error: type `m::Priv` is private
   --> $DIR/private-inferred-type-2.rs:16:5
    |
 LL |     m::Pub::get_priv;
-   |     ^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^ private type
 
 error: type `m::Priv` is private
   --> $DIR/private-inferred-type-2.rs:17:5
    |
 LL |     m::Pub::static_method;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^ private type
 
 error: type `ext::Priv` is private
   --> $DIR/private-inferred-type-2.rs:18:5
    |
 LL |     ext::Pub::static_method;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ private type
 
 error: aborting due to 3 previous errors
 

@@ -105,19 +105,8 @@ impl ::std::fmt::Debug for CrateNum {
     }
 }
 
-#[derive(
-    Copy,
-    Clone,
-    Hash,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Debug,
-    RustcEncodable,
-    RustcDecodable,
-    HashStable_Generic
-)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable_Generic)]
 pub struct DefPathHash(pub Fingerprint);
 
 impl Borrow<Fingerprint> for DefPathHash {

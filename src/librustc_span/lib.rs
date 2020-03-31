@@ -9,6 +9,7 @@
 #![feature(const_if_match)]
 #![feature(const_fn)]
 #![feature(const_panic)]
+#![cfg_attr(not(bootstrap), feature(negative_impls))]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![feature(specialization)]
@@ -72,18 +73,8 @@ impl Globals {
 scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
 /// Differentiates between real files and common virtual files.
-#[derive(
-    Debug,
-    Eq,
-    PartialEq,
-    Clone,
-    Ord,
-    PartialOrd,
-    Hash,
-    RustcDecodable,
-    RustcEncodable,
-    HashStable_Generic
-)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
+#[derive(HashStable_Generic)]
 pub enum FileName {
     Real(PathBuf),
     /// Call to `quote!`.
@@ -1553,7 +1544,7 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
-/// instead of implementing everything in librustc.
+/// instead of implementing everything in librustc_middle.
 pub trait HashStableContext {
     fn hash_spans(&self) -> bool;
     fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);

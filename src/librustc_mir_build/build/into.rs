@@ -6,7 +6,7 @@
 
 use crate::build::{BlockAnd, Builder};
 use crate::hair::*;
-use rustc::mir::*;
+use rustc_middle::mir::*;
 
 pub(in crate::build) trait EvalInto<'tcx> {
     fn eval_into(

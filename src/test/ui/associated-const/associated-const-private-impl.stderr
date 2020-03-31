@@ -1,8 +1,8 @@
 error[E0624]: associated constant `ID` is private
-  --> $DIR/associated-const-private-impl.rs:13:19
+  --> $DIR/associated-const-private-impl.rs:13:30
    |
 LL |     assert_eq!(1, bar1::Foo::ID);
-   |                   ^^^^^^^^^^^^^
+   |                              ^^ private associated constant
 
 error: aborting due to previous error
 

@@ -5,7 +5,6 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{self, *};
 use rustc_expand::module::DirectoryOwnership;
-use rustc_expand::panictry;
 use rustc_parse::{self, new_parser_from_file, parser::Parser};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_span::symbol::Symbol;
@@ -126,7 +125,7 @@ pub fn expand_include<'cx>(
     }
     impl<'a> base::MacResult for ExpandResult<'a> {
         fn make_expr(mut self: Box<ExpandResult<'a>>) -> Option<P<ast::Expr>> {
-            let r = panictry!(self.p.parse_expr());
+            let r = base::parse_expr(&mut self.p)?;
             if self.p.token != token::Eof {
                 self.p.sess.buffer_lint(
                     &INCOMPLETE_INCLUDE,
@@ -141,18 +140,17 @@ pub fn expand_include<'cx>(
         fn make_items(mut self: Box<ExpandResult<'a>>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
             let mut ret = SmallVec::new();
             while self.p.token != token::Eof {
-                match panictry!(self.p.parse_item()) {
-                    Some(item) => ret.push(item),
-                    None => {
+                match self.p.parse_item() {
+                    Err(mut err) => {
+                        err.emit();
+                        break;
+                    }
+                    Ok(Some(item)) => ret.push(item),
+                    Ok(None) => {
                         let token = pprust::token_to_string(&self.p.token);
-                        self.p
-                            .sess
-                            .span_diagnostic
-                            .span_fatal(
-                                self.p.token.span,
-                                &format!("expected item, found `{}`", token),
-                            )
-                            .raise();
+                        let msg = format!("expected item, found `{}`", token);
+                        self.p.struct_span_err(self.p.token.span, &msg).emit();
+                        break;
                     }
                 }
             }

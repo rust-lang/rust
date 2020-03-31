@@ -1,20 +1,20 @@
 use crate::dataflow;
-use crate::dataflow::generic::{Analysis, ResultsCursor};
 use crate::dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use crate::dataflow::on_lookup_result_bits;
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{on_all_children_bits, on_all_drop_children_bits};
+use crate::dataflow::{Analysis, ResultsCursor};
 use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use crate::transform::{MirPass, MirSource};
 use crate::util::elaborate_drops::{elaborate_drop, DropFlagState, Unwind};
 use crate::util::elaborate_drops::{DropElaborator, DropFlagMode, DropStyle};
 use crate::util::patch::MirPatch;
-use rustc::mir::*;
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::*;
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
 use std::fmt;
 

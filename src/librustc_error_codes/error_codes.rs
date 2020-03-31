@@ -97,7 +97,6 @@ E0184: include_str!("./error_codes/E0184.md"),
 E0185: include_str!("./error_codes/E0185.md"),
 E0186: include_str!("./error_codes/E0186.md"),
 E0191: include_str!("./error_codes/E0191.md"),
-E0192: include_str!("./error_codes/E0192.md"),
 E0193: include_str!("./error_codes/E0193.md"),
 E0195: include_str!("./error_codes/E0195.md"),
 E0197: include_str!("./error_codes/E0197.md"),
@@ -390,10 +389,12 @@ E0698: include_str!("./error_codes/E0698.md"),
 E0699: include_str!("./error_codes/E0699.md"),
 E0700: include_str!("./error_codes/E0700.md"),
 E0701: include_str!("./error_codes/E0701.md"),
+E0703: include_str!("./error_codes/E0703.md"),
 E0704: include_str!("./error_codes/E0704.md"),
 E0705: include_str!("./error_codes/E0705.md"),
 E0706: include_str!("./error_codes/E0706.md"),
 E0708: include_str!("./error_codes/E0708.md"),
+E0710: include_str!("./error_codes/E0710.md"),
 E0712: include_str!("./error_codes/E0712.md"),
 E0713: include_str!("./error_codes/E0713.md"),
 E0714: include_str!("./error_codes/E0714.md"),
@@ -426,6 +427,9 @@ E0745: include_str!("./error_codes/E0745.md"),
 E0746: include_str!("./error_codes/E0746.md"),
 E0747: include_str!("./error_codes/E0747.md"),
 E0748: include_str!("./error_codes/E0748.md"),
+E0749: include_str!("./error_codes/E0749.md"),
+E0750: include_str!("./error_codes/E0750.md"),
+E0751: include_str!("./error_codes/E0751.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
@@ -460,6 +464,7 @@ E0748: include_str!("./error_codes/E0748.md"),
 //  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
+//  E0192, // negative impl only applicable to auto traits
 //  E0194, // merged into E0403
 //  E0196, // cannot determine a type for this closure
     E0208,
@@ -538,7 +543,7 @@ E0748: include_str!("./error_codes/E0748.md"),
 //  E0467, removed
 //  E0470, removed
 //  E0471, // constant evaluation error (in pattern)
-    E0472, // asm! is unsupported on this target
+    E0472, // llvm_asm! is unsupported on this target
     E0473, // dereference of reference outside its lifetime
     E0474, // captured variable `..` does not outlive the enclosing closure
     E0475, // index of slice outside its lifetime
@@ -600,10 +605,8 @@ E0748: include_str!("./error_codes/E0748.md"),
 //  E0694, // an unknown tool name found in scoped attributes
     E0696, // `continue` pointing to a labeled block
 //  E0702, // replaced with a generic attribute input check
-    E0703, // invalid ABI
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
 //  E0709, // multiple different lifetimes used in arguments of `async fn`
-    E0710, // an unknown tool name found in scoped lint
     E0711, // a feature has been declared with conflicting stability attributes
     E0717, // rustc_promotable without stability attribute
 //  E0721, // `await` keyword

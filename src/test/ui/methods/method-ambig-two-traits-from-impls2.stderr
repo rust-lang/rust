@@ -1,8 +1,8 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/method-ambig-two-traits-from-impls2.rs:15:5
+  --> $DIR/method-ambig-two-traits-from-impls2.rs:15:9
    |
 LL |     AB::foo();
-   |     ^^^^^^^ multiple `foo` found
+   |         ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in an impl of the trait `A` for the type `AB`
   --> $DIR/method-ambig-two-traits-from-impls2.rs:7:5

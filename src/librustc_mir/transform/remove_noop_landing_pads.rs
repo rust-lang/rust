@@ -1,8 +1,8 @@
 use crate::transform::{MirPass, MirSource};
 use crate::util::patch::MirPatch;
-use rustc::mir::*;
-use rustc::ty::TyCtxt;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::*;
+use rustc_middle::ty::TyCtxt;
 
 /// A pass that removes noop landing pads and replaces jumps to them with
 /// `None`. This is important because otherwise LLVM generates terrible
@@ -52,7 +52,7 @@ impl RemoveNoopLandingPads {
 
                 StatementKind::Assign { .. }
                 | StatementKind::SetDiscriminant { .. }
-                | StatementKind::InlineAsm { .. }
+                | StatementKind::LlvmInlineAsm { .. }
                 | StatementKind::Retag { .. } => {
                     return false;
                 }
@@ -107,16 +107,13 @@ impl RemoveNoopLandingPads {
                 }
             }
 
-            match body[bb].terminator_mut().unwind_mut() {
-                Some(unwind) => {
-                    if *unwind == Some(resume_block) {
-                        debug!("    removing noop landing pad");
-                        jumps_folded -= 1;
-                        landing_pads_removed += 1;
-                        *unwind = None;
-                    }
+            if let Some(unwind) = body[bb].terminator_mut().unwind_mut() {
+                if *unwind == Some(resume_block) {
+                    debug!("    removing noop landing pad");
+                    jumps_folded -= 1;
+                    landing_pads_removed += 1;
+                    *unwind = None;
                 }
-                _ => {}
             }
 
             let is_nop_landing_pad = self.is_nop_landing_pad(bb, body, &nop_landing_pads);

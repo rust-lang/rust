@@ -3,13 +3,6 @@
 #![feature(nll)]
 #![recursion_limit = "256"]
 
-use rustc::bug;
-use rustc::hir::map::Map;
-use rustc::middle::privacy::{AccessLevel, AccessLevels};
-use rustc::ty::fold::TypeVisitor;
-use rustc::ty::query::Providers;
-use rustc::ty::subst::InternalSubsts;
-use rustc::ty::{self, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable};
 use rustc_ast::ast::Ident;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
@@ -19,6 +12,13 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, DeepVisitor, NestedVisitorMap, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, Node, PatKind};
+use rustc_middle::bug;
+use rustc_middle::hir::map::Map;
+use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
+use rustc_middle::ty::fold::TypeVisitor;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::{self, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym};
@@ -1023,12 +1023,19 @@ impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
         span: Span,            // span of the field pattern, e.g., `x: 0`
         def: &'tcx ty::AdtDef, // definition of the struct or enum
         field: &'tcx ty::FieldDef,
+        in_update_syntax: bool,
     ) {
         // definition of the field
         let ident = Ident::new(kw::Invalid, use_ctxt);
         let current_hir = self.current_item;
         let def_id = self.tcx.adjust_ident_and_get_scope(ident, def.did, current_hir).1;
         if !def.is_enum() && !field.vis.is_accessible_from(def_id, self.tcx) {
+            let label = if in_update_syntax {
+                format!("field `{}` is private", field.ident)
+            } else {
+                "private field".to_string()
+            };
+
             struct_span_err!(
                 self.tcx.sess,
                 span,
@@ -1038,7 +1045,7 @@ impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
                 def.variant_descr(),
                 self.tcx.def_path_str(def.did)
             )
-            .span_label(span, format!("field `{}` is private", field.ident))
+            .span_label(span, label)
             .emit();
         }
     }
@@ -1089,52 +1096,46 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        match expr.kind {
-            hir::ExprKind::Struct(ref qpath, fields, ref base) => {
-                let res = self.tables.qpath_res(qpath, expr.hir_id);
-                let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
-                let variant = adt.variant_of_res(res);
-                if let Some(ref base) = *base {
-                    // If the expression uses FRU we need to make sure all the unmentioned fields
-                    // are checked for privacy (RFC 736). Rather than computing the set of
-                    // unmentioned fields, just check them all.
-                    for (vf_index, variant_field) in variant.fields.iter().enumerate() {
-                        let field = fields
-                            .iter()
-                            .find(|f| self.tcx.field_index(f.hir_id, self.tables) == vf_index);
-                        let (use_ctxt, span) = match field {
-                            Some(field) => (field.ident.span, field.span),
-                            None => (base.span, base.span),
-                        };
-                        self.check_field(use_ctxt, span, adt, variant_field);
-                    }
-                } else {
-                    for field in fields {
-                        let use_ctxt = field.ident.span;
-                        let index = self.tcx.field_index(field.hir_id, self.tables);
-                        self.check_field(use_ctxt, field.span, adt, &variant.fields[index]);
-                    }
+        if let hir::ExprKind::Struct(ref qpath, fields, ref base) = expr.kind {
+            let res = self.tables.qpath_res(qpath, expr.hir_id);
+            let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
+            let variant = adt.variant_of_res(res);
+            if let Some(ref base) = *base {
+                // If the expression uses FRU we need to make sure all the unmentioned fields
+                // are checked for privacy (RFC 736). Rather than computing the set of
+                // unmentioned fields, just check them all.
+                for (vf_index, variant_field) in variant.fields.iter().enumerate() {
+                    let field = fields
+                        .iter()
+                        .find(|f| self.tcx.field_index(f.hir_id, self.tables) == vf_index);
+                    let (use_ctxt, span) = match field {
+                        Some(field) => (field.ident.span, field.span),
+                        None => (base.span, base.span),
+                    };
+                    self.check_field(use_ctxt, span, adt, variant_field, true);
+                }
+            } else {
+                for field in fields {
+                    let use_ctxt = field.ident.span;
+                    let index = self.tcx.field_index(field.hir_id, self.tables);
+                    self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
                 }
             }
-            _ => {}
         }
 
         intravisit::walk_expr(self, expr);
     }
 
     fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
-        match pat.kind {
-            PatKind::Struct(ref qpath, fields, _) => {
-                let res = self.tables.qpath_res(qpath, pat.hir_id);
-                let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
-                let variant = adt.variant_of_res(res);
-                for field in fields {
-                    let use_ctxt = field.ident.span;
-                    let index = self.tcx.field_index(field.hir_id, self.tables);
-                    self.check_field(use_ctxt, field.span, adt, &variant.fields[index]);
-                }
+        if let PatKind::Struct(ref qpath, fields, _) = pat.kind {
+            let res = self.tables.qpath_res(qpath, pat.hir_id);
+            let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
+            let variant = adt.variant_of_res(res);
+            for field in fields {
+                let use_ctxt = field.ident.span;
+                let index = self.tcx.field_index(field.hir_id, self.tables);
+                self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
             }
-            _ => {}
         }
 
         intravisit::walk_pat(self, pat);
@@ -1180,7 +1181,11 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
-            self.tcx.sess.span_err(self.span, &format!("{} `{}` is private", kind, descr));
+            self.tcx
+                .sess
+                .struct_span_err(self.span, &format!("{} `{}` is private", kind, descr))
+                .span_label(self.span, &format!("private {}", kind))
+                .emit();
         }
         is_error
     }
@@ -1309,12 +1314,20 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             let is_local_static =
                 if let DefKind::Static = kind { def_id.is_local() } else { false };
             if !self.item_is_accessible(def_id) && !is_local_static {
-                let name = match *qpath {
-                    hir::QPath::Resolved(_, ref path) => path.to_string(),
-                    hir::QPath::TypeRelative(_, ref segment) => segment.ident.to_string(),
+                let sess = self.tcx.sess;
+                let sm = sess.source_map();
+                let name = match qpath {
+                    hir::QPath::Resolved(_, path) => sm.span_to_snippet(path.span).ok(),
+                    hir::QPath::TypeRelative(_, segment) => Some(segment.ident.to_string()),
                 };
-                let msg = format!("{} `{}` is private", kind.descr(def_id), name);
-                self.tcx.sess.span_err(span, &msg);
+                let kind = kind.descr(def_id);
+                let msg = match name {
+                    Some(name) => format!("{} `{}` is private", kind, name),
+                    None => format!("{} is private", kind),
+                };
+                sess.struct_span_err(span, &msg)
+                    .span_label(span, &format!("private {}", kind))
+                    .emit();
                 return;
             }
         }

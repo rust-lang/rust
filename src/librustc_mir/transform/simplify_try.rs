@@ -11,8 +11,8 @@
 
 use crate::transform::{simplify, MirPass, MirSource};
 use itertools::Itertools as _;
-use rustc::mir::*;
-use rustc::ty::{Ty, TyCtxt};
+use rustc_middle::mir::*;
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
 /// Simplifies arms of form `Variant(x) => Variant(x)` to just a move.
@@ -172,7 +172,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranchSame {
                     // so we cannot assume that the `unreachable` terminator itself is reachable.
                     // FIXME(Centril): use a normalization pass instead of a check.
                     || bb.statements.iter().any(|stmt| match stmt.kind {
-                        StatementKind::InlineAsm(..) => true,
+                        StatementKind::LlvmInlineAsm(..) => true,
                         _ => false,
                     })
                 })

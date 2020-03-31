@@ -9,14 +9,13 @@ mod memory;
 mod operand;
 mod operator;
 mod place;
-pub(crate) mod snapshot; // for const_eval
 mod step;
 mod terminator;
 mod traits;
 mod validity;
 mod visitor;
 
-pub use rustc::mir::interpret::*; // have all the `interpret` symbols in one place: here
+pub use rustc_middle::mir::interpret::*; // have all the `interpret` symbols in one place: here
 
 pub use self::eval_context::{Frame, InterpCx, LocalState, LocalValue, StackPopCleanup};
 

@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{create_dir_all, File};
 use std::io::prelude::*;
 use std::path::PathBuf;
 
@@ -40,6 +40,11 @@ pub fn render(
     diag: &rustc_errors::Handler,
     edition: Edition,
 ) -> i32 {
+    if let Err(e) = create_dir_all(&options.output) {
+        diag.struct_err(&format!("{}: {}", options.output.display(), e)).emit();
+        return 4;
+    }
+
     let mut output = options.output;
     output.push(input.file_name().unwrap());
     output.set_extension("html");

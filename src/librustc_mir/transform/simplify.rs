@@ -28,11 +28,11 @@
 //! return.
 
 use crate::transform::{MirPass, MirSource};
-use rustc::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::*;
-use rustc::ty::{self, TyCtxt};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, TyCtxt};
 use std::borrow::Cow;
 
 pub struct SimplifyCfg {
@@ -309,7 +309,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
         let locals = {
             let read_only_cache = read_only!(body);
             let mut marker = DeclMarker { locals: BitSet::new_empty(body.local_decls.len()), body };
-            marker.visit_body(read_only_cache);
+            marker.visit_body(&read_only_cache);
             // Return pointer and arguments are always live
             marker.locals.insert(RETURN_PLACE);
             for arg in body.args_iter() {

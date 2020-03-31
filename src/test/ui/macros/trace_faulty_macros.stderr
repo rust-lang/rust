@@ -13,7 +13,7 @@ LL |     my_faulty_macro!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: trace_macro
-  --> $DIR/trace_faulty_macros.rs:33:5
+  --> $DIR/trace_faulty_macros.rs:31:5
    |
 LL |     my_faulty_macro!();
    |     ^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL |     my_recursive_macro!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: trace_macro
-  --> $DIR/trace_faulty_macros.rs:34:5
+  --> $DIR/trace_faulty_macros.rs:32:5
    |
 LL |     my_recursive_macro!();
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -60,5 +60,22 @@ LL |     let a = pat_macro!();
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 3 previous errors
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/trace_faulty_macros.rs:42:1
+   |
+LL | #[derive(Debug)]
+   | ^^^^^^^^^^^^^^^^
+
+note: trace_macro
+  --> $DIR/trace_faulty_macros.rs:36:13
+   |
+LL |     let a = pat_macro!();
+   |             ^^^^^^^^^^^^
+   |
+   = note: expanding `pat_macro! {  }`
+   = note: to `pat_macro ! (A { a : a, b : 0, c : _, .. }) ;`
+   = note: expanding `pat_macro! { A { a : a, b : 0, c : _, .. } }`
+   = note: to `A { a: a, b: 0, c: _, .. }`
+
+error: aborting due to 4 previous errors
 

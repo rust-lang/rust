@@ -1,8 +1,8 @@
-use rustc::mir::Field;
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_middle::mir::Field;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::Span;
 use rustc_trait_selection::traits::predicate_for_trait_def;

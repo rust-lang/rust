@@ -11,22 +11,21 @@ use super::{
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt, TyCtxtInferExt};
-use rustc::mir::interpret::ErrorHandled;
-use rustc::ty::error::ExpectedFound;
-use rustc::ty::fast_reject;
-use rustc::ty::fold::TypeFolder;
-use rustc::ty::SubtypePredicate;
-use rustc::ty::{
-    self, AdtKind, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
-};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{Node, QPath, TyKind, WhereBoundPredicate, WherePredicate};
+use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::ty::error::ExpectedFound;
+use rustc_middle::ty::fast_reject;
+use rustc_middle::ty::fold::TypeFolder;
+use rustc_middle::ty::SubtypePredicate;
+use rustc_middle::ty::{
+    self, AdtKind, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+};
 use rustc_session::DiagnosticMessageId;
-use rustc_span::source_map::SourceMap;
-use rustc_span::{ExpnKind, Span, DUMMY_SP};
+use rustc_span::{BytePos, ExpnKind, Span, DUMMY_SP};
 use std::fmt;
 
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -481,12 +480,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
 
                     ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
-                        let found_kind = self.closure_kind(closure_def_id, closure_substs).unwrap();
-                        let closure_span = self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .def_span(self.tcx.hir().span_if_local(closure_def_id).unwrap());
+                        let found_kind = self.closure_kind(closure_substs).unwrap();
+                        let closure_span =
+                            self.tcx.sess.source_map().guess_head_span(
+                                self.tcx.hir().span_if_local(closure_def_id).unwrap(),
+                            );
                         let hir_id = self.tcx.hir().as_local_hir_id(closure_def_id).unwrap();
                         let mut err = struct_span_err!(
                             self.tcx.sess,
@@ -580,7 +578,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 let found_span = found_did
                     .and_then(|did| self.tcx.hir().span_if_local(did))
-                    .map(|sp| self.tcx.sess.source_map().def_span(sp)); // the sp could be an fn def
+                    .map(|sp| self.tcx.sess.source_map().guess_head_span(sp)); // the sp could be an fn def
 
                 if self.reported_closure_mismatch.borrow().contains(&(span, found_span)) {
                     // We check closures twice, with obligations flowing in different directions,
@@ -680,7 +678,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 kind: hir::ExprKind::Closure(_, ref _decl, id, span, _),
                 ..
             }) => (
-                self.tcx.sess.source_map().def_span(span),
+                self.tcx.sess.source_map().guess_head_span(span),
                 self.tcx
                     .hir()
                     .body(id)
@@ -723,7 +721,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 kind: hir::TraitItemKind::Fn(ref sig, _),
                 ..
             }) => (
-                self.tcx.sess.source_map().def_span(span),
+                self.tcx.sess.source_map().guess_head_span(span),
                 sig.decl
                     .inputs
                     .iter()
@@ -741,7 +739,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .ctor_hir_id()
                     .map(|hir_id| self.tcx.hir().span(hir_id))
                     .unwrap_or(DUMMY_SP);
-                let span = self.tcx.sess.source_map().def_span(span);
+                let span = self.tcx.sess.source_map().guess_head_span(span);
 
                 (span, vec![ArgKind::empty(); variant_data.fields().len()])
             }
@@ -815,11 +813,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // For example, if `expected_args_length` is 2, suggest `|_, _|`.
             if found_args.is_empty() && is_closure {
                 let underscores = vec!["_"; expected_args.len()].join(", ");
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     pipe_span,
                     &format!(
                         "consider changing the closure to take and ignore the expected argument{}",
-                        if expected_args.len() < 2 { "" } else { "s" }
+                        pluralize!(expected_args.len())
                     ),
                     format!("|{}|", underscores),
                     Applicability::MachineApplicable,
@@ -833,7 +831,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         .map(|(name, _)| name.to_owned())
                         .collect::<Vec<String>>()
                         .join(", ");
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         found_span,
                         "change the closure to take multiple arguments instead of a single tuple",
                         format!("|{}|", sugg),
@@ -870,7 +868,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             String::new()
                         },
                     );
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         found_span,
                         "change the closure to accept a tuple instead of individual arguments",
                         sugg,
@@ -1420,15 +1418,14 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                         //    |
                         //    = note: cannot resolve `_: Tt`
 
-                        err.span_suggestion(
-                            span,
+                        err.span_suggestion_verbose(
+                            span.shrink_to_hi(),
                             &format!(
                                 "consider specifying the type argument{} in the function call",
-                                if generics.params.len() > 1 { "s" } else { "" },
+                                pluralize!(generics.params.len()),
                             ),
                             format!(
-                                "{}::<{}>",
-                                snippet,
+                                "::<{}>",
                                 generics
                                     .params
                                     .iter()
@@ -1583,14 +1580,15 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 for param in generics.params {
                     if param.span == *span
                         && !param.bounds.iter().any(|bound| {
-                            bound.trait_def_id() == self.tcx.lang_items().sized_trait()
+                            bound.trait_ref().and_then(|trait_ref| trait_ref.trait_def_id())
+                                == self.tcx.lang_items().sized_trait()
                         })
                     {
                         let (span, separator) = match param.bounds {
                             [] => (span.shrink_to_hi(), ":"),
                             [.., bound] => (bound.span().shrink_to_hi(), " + "),
                         };
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             span,
                             "consider relaxing the implicit `Sized` restriction",
                             format!("{} ?Sized", separator),
@@ -1625,7 +1623,7 @@ pub fn recursive_type_with_infinite_size_error(
 ) -> DiagnosticBuilder<'tcx> {
     assert!(type_def_id.is_local());
     let span = tcx.hir().span_if_local(type_def_id).unwrap();
-    let span = tcx.sess.source_map().def_span(span);
+    let span = tcx.sess.source_map().guess_head_span(span);
     let mut err = struct_span_err!(
         tcx.sess,
         span,
@@ -1680,14 +1678,8 @@ pub fn suggest_constraining_type_param(
     err: &mut DiagnosticBuilder<'_>,
     param_name: &str,
     constraint: &str,
-    source_map: &SourceMap,
-    span: Span,
     def_id: Option<DefId>,
 ) -> bool {
-    const MSG_RESTRICT_BOUND_FURTHER: &str = "consider further restricting this bound with";
-    const MSG_RESTRICT_TYPE: &str = "consider restricting this type parameter with";
-    const MSG_RESTRICT_TYPE_FURTHER: &str = "consider further restricting this type parameter with";
-
     let param = generics.params.iter().find(|p| p.name.ident().as_str() == param_name);
 
     let param = if let Some(param) = param {
@@ -1696,11 +1688,24 @@ pub fn suggest_constraining_type_param(
         return false;
     };
 
+    const MSG_RESTRICT_BOUND_FURTHER: &str = "consider further restricting this bound";
+    let msg_restrict_type = format!("consider restricting type parameter `{}`", param_name);
+    let msg_restrict_type_further =
+        format!("consider further restricting type parameter `{}`", param_name);
+
     if def_id == tcx.lang_items().sized_trait() {
         // Type parameters are already `Sized` by default.
         err.span_label(param.span, &format!("this type parameter needs to be `{}`", constraint));
         return true;
     }
+    let mut suggest_restrict = |span| {
+        err.span_suggestion_verbose(
+            span,
+            MSG_RESTRICT_BOUND_FURTHER,
+            format!(" + {}", constraint),
+            Applicability::MachineApplicable,
+        );
+    };
 
     if param_name.starts_with("impl ") {
         // If there's an `impl Trait` used in argument position, suggest
@@ -1718,19 +1723,15 @@ pub fn suggest_constraining_type_param(
         //             |
         //             replace with: `impl Foo + Bar`
 
-        err.span_help(param.span, &format!("{} `+ {}`", MSG_RESTRICT_BOUND_FURTHER, constraint));
-
-        err.tool_only_span_suggestion(
-            param.span,
-            MSG_RESTRICT_BOUND_FURTHER,
-            format!("{} + {}", param_name, constraint),
-            Applicability::MachineApplicable,
-        );
-
+        suggest_restrict(param.span.shrink_to_hi());
         return true;
     }
 
-    if generics.where_clause.predicates.is_empty() {
+    if generics.where_clause.predicates.is_empty()
+        // Given `trait Base<T = String>: Super<T>` where `T: Copy`, suggest restricting in the
+        // `where` clause instead of `trait Base<T: Copy = String>: Super<T>`.
+        && !matches!(param.kind, hir::GenericParamKind::Type { default: Some(_), .. })
+    {
         if let Some(bounds_span) = param.bounds_span() {
             // If user has provided some bounds, suggest restricting them:
             //
@@ -1745,38 +1746,16 @@ pub fn suggest_constraining_type_param(
             //          --
             //          |
             //          replace with: `T: Bar +`
-
-            err.span_help(
-                bounds_span,
-                &format!("{} `+ {}`", MSG_RESTRICT_BOUND_FURTHER, constraint),
-            );
-
-            let span_hi = param.span.with_hi(span.hi());
-            let span_with_colon = source_map.span_through_char(span_hi, ':');
-
-            if span_hi != param.span && span_with_colon != span_hi {
-                err.tool_only_span_suggestion(
-                    span_with_colon,
-                    MSG_RESTRICT_BOUND_FURTHER,
-                    format!("{}: {} + ", param_name, constraint),
-                    Applicability::MachineApplicable,
-                );
-            }
+            suggest_restrict(bounds_span.shrink_to_hi());
         } else {
             // If user hasn't provided any bounds, suggest adding a new one:
             //
             //   fn foo<T>(t: T) { ... }
             //          - help: consider restricting this type parameter with `T: Foo`
-
-            err.span_help(
-                param.span,
-                &format!("{} `{}: {}`", MSG_RESTRICT_TYPE, param_name, constraint),
-            );
-
-            err.tool_only_span_suggestion(
-                param.span,
-                MSG_RESTRICT_TYPE,
-                format!("{}: {}", param_name, constraint),
+            err.span_suggestion_verbose(
+                param.span.shrink_to_hi(),
+                &msg_restrict_type,
+                format!(": {}", constraint),
                 Applicability::MachineApplicable,
             );
         }
@@ -1840,55 +1819,25 @@ pub fn suggest_constraining_type_param(
             }
         }
 
-        let where_clause_span =
-            generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi();
+        let where_clause_span = generics.where_clause.span_for_predicates_or_empty_place();
+        // Account for `fn foo<T>(t: T) where T: Foo,` so we don't suggest two trailing commas.
+        let mut trailing_comma = false;
+        if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(where_clause_span) {
+            trailing_comma = snippet.ends_with(",");
+        }
+        let where_clause_span = if trailing_comma {
+            let hi = where_clause_span.hi();
+            Span::new(hi - BytePos(1), hi, where_clause_span.ctxt())
+        } else {
+            where_clause_span.shrink_to_hi()
+        };
 
         match &param_spans[..] {
-            &[] => {
-                err.span_help(
-                    param.span,
-                    &format!("{} `where {}: {}`", MSG_RESTRICT_TYPE, param_name, constraint),
-                );
-
-                err.tool_only_span_suggestion(
-                    where_clause_span,
-                    MSG_RESTRICT_TYPE,
-                    format!(", {}: {}", param_name, constraint),
-                    Applicability::MachineApplicable,
-                );
-            }
-
-            &[&param_span] => {
-                err.span_help(
-                    param_span,
-                    &format!("{} `+ {}`", MSG_RESTRICT_BOUND_FURTHER, constraint),
-                );
-
-                let span_hi = param_span.with_hi(span.hi());
-                let span_with_colon = source_map.span_through_char(span_hi, ':');
-
-                if span_hi != param_span && span_with_colon != span_hi {
-                    err.tool_only_span_suggestion(
-                        span_with_colon,
-                        MSG_RESTRICT_BOUND_FURTHER,
-                        format!("{}: {} +", param_name, constraint),
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-
+            &[&param_span] => suggest_restrict(param_span.shrink_to_hi()),
             _ => {
-                err.span_help(
-                    param.span,
-                    &format!(
-                        "{} `where {}: {}`",
-                        MSG_RESTRICT_TYPE_FURTHER, param_name, constraint,
-                    ),
-                );
-
-                err.tool_only_span_suggestion(
+                err.span_suggestion_verbose(
                     where_clause_span,
-                    MSG_RESTRICT_BOUND_FURTHER,
+                    &msg_restrict_type_further,
                     format!(", {}: {}", param_name, constraint),
                     Applicability::MachineApplicable,
                 );

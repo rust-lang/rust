@@ -1,6 +1,4 @@
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc::ty::adjustment;
-use rustc::ty::{self, Ty};
 use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_ast::util::parser;
@@ -11,6 +9,8 @@ use rustc_feature::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::adjustment;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::builtin::UNUSED_ATTRIBUTES;
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
@@ -285,12 +285,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
         let attr_info = attr.ident().and_then(|ident| self.builtin_attributes.get(&ident.name));
 
         if let Some(&&(name, ty, ..)) = attr_info {
-            match ty {
-                AttributeType::Whitelisted => {
-                    debug!("{:?} is Whitelisted", name);
-                    return;
-                }
-                _ => (),
+            if let AttributeType::Whitelisted = ty {
+                debug!("{:?} is Whitelisted", name);
+                return;
             }
         }
 

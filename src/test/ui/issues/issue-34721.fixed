@@ -18,7 +18,7 @@ pub mod bar {
 mod baz {
     use bar;
     use Foo;
-    pub fn baz<T: Copy +  Foo>(x: T) -> T {
+    pub fn baz<T: Foo + Copy>(x: T) -> T {
         if 0 == 1 {
             bar::bar(x.zero())
         } else {

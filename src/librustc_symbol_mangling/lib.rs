@@ -94,15 +94,15 @@
 #![recursion_limit = "256"]
 
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 
-use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc::mir::mono::{InstantiationMode, MonoItem};
-use rustc::ty::query::Providers;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Instance, TyCtxt};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::Node;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
 
 use rustc_span::symbol::Symbol;

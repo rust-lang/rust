@@ -5,12 +5,11 @@ LL | impl <T:Sync+'static> RequiresRequiresShareAndSend for X<T> { }
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `T` cannot be sent between threads safely
    |
    = help: within `X<T>`, the trait `std::marker::Send` is not implemented for `T`
-help: consider further restricting this bound with `+ std::marker::Send`
-  --> $DIR/builtin-superkinds-in-metadata.rs:13:9
-   |
-LL | impl <T:Sync+'static> RequiresRequiresShareAndSend for X<T> { }
-   |         ^^^^^^^^^^^^
    = note: required because it appears within the type `X<T>`
+help: consider further restricting this bound
+   |
+LL | impl <T:Sync+'static + std::marker::Send> RequiresRequiresShareAndSend for X<T> { }
+   |                      ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

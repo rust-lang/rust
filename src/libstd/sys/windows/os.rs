@@ -94,7 +94,7 @@ impl Iterator for Env {
                 if *self.cur == 0 {
                     return None;
                 }
-                let p = &*self.cur as *const u16;
+                let p = self.cur as *const u16;
                 let mut len = 0;
                 while *p.offset(len) != 0 {
                     len += 1;

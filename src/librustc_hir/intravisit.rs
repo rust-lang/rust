@@ -119,8 +119,10 @@ impl<'a> FnKind<'a> {
     }
 }
 
-/// An abstract representation of the HIR `rustc::hir::map::Map`.
+/// An abstract representation of the HIR `rustc_middle::hir::map::Map`.
 pub trait Map<'hir> {
+    /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
+    fn find(&self, hir_id: HirId) -> Option<Node<'hir>>;
     fn body(&self, id: BodyId) -> &'hir Body<'hir>;
     fn item(&self, id: HirId) -> &'hir Item<'hir>;
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
@@ -132,6 +134,9 @@ pub trait Map<'hir> {
 pub struct ErasedMap<'hir>(&'hir dyn Map<'hir>);
 
 impl<'hir> Map<'hir> for ErasedMap<'hir> {
+    fn find(&self, _: HirId) -> Option<Node<'hir>> {
+        None
+    }
     fn body(&self, id: BodyId) -> &'hir Body<'hir> {
         self.0.body(id)
     }
@@ -590,6 +595,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             defaultness: _,
             polarity: _,
             constness: _,
+            defaultness_span: _,
             ref generics,
             ref of_trait,
             ref self_ty,
@@ -1150,7 +1156,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::Ret(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }
-        ExprKind::InlineAsm(ref asm) => {
+        ExprKind::LlvmInlineAsm(ref asm) => {
             walk_list!(visitor, visit_expr, asm.outputs_exprs);
             walk_list!(visitor, visit_expr, asm.inputs_exprs);
         }

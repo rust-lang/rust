@@ -2,7 +2,7 @@ warning: unused variable: `i_think_continually`
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:26:9
    |
 LL |     let i_think_continually = 2;
-   |         ^^^^^^^^^^^^^^^^^^^ help: consider prefixing with an underscore: `_i_think_continually`
+   |         ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_i_think_continually`
    |
 note: the lint level is defined here
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:5:9
@@ -15,19 +15,19 @@ warning: unused variable: `mut_unused_var`
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:33:13
    |
 LL |     let mut mut_unused_var = 1;
-   |             ^^^^^^^^^^^^^^ help: consider prefixing with an underscore: `_mut_unused_var`
+   |             ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_mut_unused_var`
 
 warning: unused variable: `var`
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:37:14
    |
 LL |     let (mut var, unused_var) = (1, 2);
-   |              ^^^ help: consider prefixing with an underscore: `_var`
+   |              ^^^ help: if this is intentional, prefix it with an underscore: `_var`
 
 warning: unused variable: `unused_var`
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:37:19
    |
 LL |     let (mut var, unused_var) = (1, 2);
-   |                   ^^^^^^^^^^ help: consider prefixing with an underscore: `_unused_var`
+   |                   ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused_var`
 
 warning: unused variable: `corridors_of_light`
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:45:26

@@ -5,9 +5,9 @@
 //! optimal solution to the constraints. The final variance for each
 //! inferred is then written into the `variance_map` in the tcx.
 
-use rustc::ty;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty;
 
 use super::constraints::*;
 use super::terms::VarianceTerm::*;

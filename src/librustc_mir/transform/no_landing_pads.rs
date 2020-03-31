@@ -2,9 +2,9 @@
 //! specified.
 
 use crate::transform::{MirPass, MirSource};
-use rustc::mir::visit::MutVisitor;
-use rustc::mir::*;
-use rustc::ty::TyCtxt;
+use rustc_middle::mir::visit::MutVisitor;
+use rustc_middle::mir::*;
+use rustc_middle::ty::TyCtxt;
 
 pub struct NoLandingPads<'tcx> {
     tcx: TyCtxt<'tcx>,

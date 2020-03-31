@@ -1,12 +1,6 @@
 use std::collections::hash_map::Entry::*;
 use std::sync::Arc;
 
-use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc::middle::exported_symbols::{metadata_symbol_name, ExportedSymbol, SymbolExportLevel};
-use rustc::ty::query::Providers;
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc::ty::Instance;
-use rustc::ty::{SymbolName, TyCtxt};
 use rustc_ast::expand::allocator::ALLOCATOR_METHODS;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -14,6 +8,14 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::exported_symbols::{
+    metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
+};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::Instance;
+use rustc_middle::ty::{SymbolName, TyCtxt};
 use rustc_session::config::{self, Sanitizer};
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
@@ -221,8 +223,8 @@ fn exported_symbols_provider_local(
     }
 
     if tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics() {
-        use rustc::mir::mono::{Linkage, MonoItem, Visibility};
-        use rustc::ty::InstanceDef;
+        use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
+        use rustc_middle::ty::InstanceDef;
 
         // Normally, we require that shared monomorphizations are not hidden,
         // because if we want to re-use a monomorphization from a Rust dylib, it

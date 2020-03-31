@@ -3,9 +3,9 @@
 use crate::infer::error_reporting::msg_span_from_free_region;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
-use rustc::ty::{BoundRegion, FreeRegion, RegionKind};
-use rustc::util::common::ErrorReported;
 use rustc_errors::Applicability;
+use rustc_middle::ty::{BoundRegion, FreeRegion, RegionKind};
+use rustc_middle::util::common::ErrorReported;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static impl Trait.

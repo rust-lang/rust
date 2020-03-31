@@ -8,7 +8,7 @@ error[E0603]: derive macro import `Empty` is private
   --> $DIR/disappearing-resolution.rs:11:8
    |
 LL | use m::Empty;
-   |        ^^^^^ this derive macro import is private
+   |        ^^^^^ private derive macro import
    |
 note: the derive macro import `Empty` is defined here
   --> $DIR/disappearing-resolution.rs:9:9

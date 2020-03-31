@@ -36,3 +36,4 @@ LL | #[allow(foo::bar)]
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0710`.

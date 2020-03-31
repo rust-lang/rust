@@ -1,22 +1,24 @@
 use crate::base;
 use crate::common::CodegenCx;
 use crate::debuginfo;
-use crate::llvm::{self, SetUnnamedAddr, True};
+use crate::llvm::{self, True};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use libc::c_uint;
 use log::debug;
-use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
-use rustc::mir::interpret::{read_target_uint, Allocation, ConstValue, ErrorHandled, Pointer};
-use rustc::mir::mono::MonoItem;
-use rustc::ty::layout::{self, Align, LayoutOf, Size};
-use rustc::ty::{self, Instance, Ty};
-use rustc::{bug, span_bug};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::mir::interpret::{
+    read_target_uint, Allocation, ConstValue, ErrorHandled, Pointer,
+};
+use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::ty::layout::{self, Align, LayoutOf, Size};
+use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::HasDataLayout;
@@ -183,7 +185,7 @@ impl CodegenCx<'ll, 'tcx> {
             };
             llvm::LLVMSetInitializer(gv, cv);
             set_global_alignment(&self, gv, align);
-            SetUnnamedAddr(gv, true);
+            llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::Global);
             gv
         }
     }

@@ -2,9 +2,9 @@
 //!
 //! The main entry point is the `step` method.
 
-use rustc::mir;
-use rustc::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
-use rustc::ty::layout::LayoutOf;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{InterpResult, Scalar};
+use rustc_middle::ty::layout::LayoutOf;
 
 use super::{InterpCx, Machine};
 
@@ -12,7 +12,7 @@ use super::{InterpCx, Machine};
 /// same type as the result.
 #[inline]
 fn binop_left_homogeneous(op: mir::BinOp) -> bool {
-    use rustc::mir::BinOp::*;
+    use rustc_middle::mir::BinOp::*;
     match op {
         Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Offset | Shl | Shr => true,
         Eq | Ne | Lt | Le | Gt | Ge => false,
@@ -22,7 +22,7 @@ fn binop_left_homogeneous(op: mir::BinOp) -> bool {
 /// same type as the LHS.
 #[inline]
 fn binop_right_homogeneous(op: mir::BinOp) -> bool {
-    use rustc::mir::BinOp::*;
+    use rustc_middle::mir::BinOp::*;
     match op {
         Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Eq | Ne | Lt | Le | Gt | Ge => true,
         Offset | Shl | Shr => false,
@@ -79,7 +79,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
 
-        use rustc::mir::StatementKind::*;
+        use rustc_middle::mir::StatementKind::*;
 
         // Some statements (e.g., box) push new stack frames.
         // We have to record the stack frame number *before* executing the statement.
@@ -124,7 +124,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // size of MIR constantly.
             Nop => {}
 
-            InlineAsm { .. } => throw_unsup_format!("inline assembly is not supported"),
+            LlvmInlineAsm { .. } => throw_unsup_format!("inline assembly is not supported"),
         }
 
         self.stack[frame_idx].stmt += 1;
@@ -142,7 +142,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         let dest = self.eval_place(place)?;
 
-        use rustc::mir::Rvalue::*;
+        use rustc_middle::mir::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
                 // Avoid recomputing the layout
@@ -192,7 +192,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Ignore zero-sized fields.
                     if !op.layout.is_zst() {
                         let field_index = active_field_index.unwrap_or(i);
-                        let field_dest = self.place_field(dest, field_index as u64)?;
+                        let field_dest = self.place_field(dest, field_index)?;
                         self.copy_op(op, field_dest)?;
                     }
                 }
@@ -229,8 +229,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let src = self.eval_place(place)?;
                 let mplace = self.force_allocation(src)?;
                 let len = mplace.len(self)?;
-                let size = self.pointer_size();
-                self.write_scalar(Scalar::from_uint(len, size), dest)?;
+                self.write_scalar(Scalar::from_machine_usize(len, self), dest)?;
             }
 
             AddressOf(_, ref place) | Ref(_, _, ref place) => {
@@ -254,8 +253,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     !layout.is_unsized(),
                     "SizeOf nullary MIR operator called for unsized type"
                 );
-                let size = self.pointer_size();
-                self.write_scalar(Scalar::from_uint(layout.size.bytes(), size), dest)?;
+                self.write_scalar(Scalar::from_machine_usize(layout.size.bytes(), self), dest)?;
             }
 
             Cast(kind, ref operand, _) => {

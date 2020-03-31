@@ -14,7 +14,7 @@ error[E0603]: module import `foo` is private
   --> $DIR/reexports.rs:33:15
    |
 LL |     use b::a::foo::S;
-   |               ^^^ this module import is private
+   |               ^^^ private module import
    |
 note: the module import `foo` is defined here...
   --> $DIR/reexports.rs:21:17
@@ -31,7 +31,7 @@ error[E0603]: module import `foo` is private
   --> $DIR/reexports.rs:34:15
    |
 LL |     use b::b::foo::S as T;
-   |               ^^^ this module import is private
+   |               ^^^ private module import
    |
 note: the module import `foo` is defined here...
   --> $DIR/reexports.rs:26:17

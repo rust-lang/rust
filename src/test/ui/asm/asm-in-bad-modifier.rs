@@ -8,7 +8,7 @@
 // ignore-mips
 // ignore-mips64
 
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 fn foo(x: isize) { println!("{}", x); }
 
@@ -20,8 +20,8 @@ pub fn main() {
     let x: isize;
     let y: isize;
     unsafe {
-        asm!("mov $1, $0" : "=r"(x) : "=r"(5)); //~ ERROR operand constraint contains '='
-        asm!("mov $1, $0" : "=r"(y) : "+r"(5)); //~ ERROR operand constraint contains '+'
+        llvm_asm!("mov $1, $0" : "=r"(x) : "=r"(5)); //~ ERROR operand constraint contains '='
+        llvm_asm!("mov $1, $0" : "=r"(y) : "+r"(5)); //~ ERROR operand constraint contains '+'
     }
     foo(x);
     foo(y);

@@ -1,8 +1,8 @@
 use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::Fallible;
-use rustc::ty::{ParamEnvAnd, Predicate, TyCtxt};
+use rustc_middle::ty::{ParamEnvAnd, Predicate, TyCtxt};
 
-pub use rustc::traits::query::type_op::ProvePredicate;
+pub use rustc_middle::traits::query::type_op::ProvePredicate;
 
 impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
     type QueryResponse = ();

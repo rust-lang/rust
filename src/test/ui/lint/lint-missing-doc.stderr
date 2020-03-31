@@ -40,13 +40,13 @@ error: missing documentation for a trait
 LL | pub trait C {
    | ^^^^^^^^^^^
 
-error: missing documentation for a trait method
+error: missing documentation for an associated function
   --> $DIR/lint-missing-doc.rs:53:5
    |
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
 
-error: missing documentation for a trait method
+error: missing documentation for an associated function
   --> $DIR/lint-missing-doc.rs:54:5
    |
 LL |     fn foo_with_impl(&self) {}
@@ -64,7 +64,7 @@ error: missing documentation for an associated type
 LL |     type AssociatedTypeDef = Self;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: missing documentation for a method
+error: missing documentation for an associated function
   --> $DIR/lint-missing-doc.rs:81:5
    |
 LL |     pub fn foo() {}

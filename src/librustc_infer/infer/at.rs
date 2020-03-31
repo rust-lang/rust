@@ -27,8 +27,8 @@
 
 use super::*;
 
-use rustc::ty::relate::{Relate, TypeRelation};
-use rustc::ty::Const;
+use rustc_middle::ty::relate::{Relate, TypeRelation};
+use rustc_middle::ty::Const;
 
 pub struct At<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'a, 'tcx>,

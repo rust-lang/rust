@@ -1,9 +1,5 @@
 use crate::infer::InferCtxtExt as _;
 use crate::traits::{self, PredicateObligation};
-use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
-use rustc::ty::free_region_map::FreeRegionRelations;
-use rustc::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
-use rustc::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
@@ -12,6 +8,10 @@ use rustc_hir::Node;
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, InferOk};
+use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
+use rustc_middle::ty::free_region_map::FreeRegionRelations;
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
+use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use rustc_session::config::nightly_options;
 use rustc_span::Span;
 
@@ -423,7 +423,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
             for required_region in required_region_bounds {
                 concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-                    tcx: self.tcx,
                     op: |r| self.sub_regions(infer::CallReturn(span), required_region, r),
                 });
             }
@@ -504,7 +503,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-            tcx: self.tcx,
             op: |r| self.sub_regions(infer::CallReturn(span), least_region, r),
         });
     }
@@ -541,7 +539,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         );
 
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-            tcx: self.tcx,
             op: |r| {
                 self.member_constraint(
                     opaque_type_def_id,
@@ -682,15 +679,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 //
 // We ignore any type parameters because impl trait values are assumed to
 // capture all the in-scope type parameters.
-struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
-where
-    OP: FnMut(ty::Region<'tcx>),
-{
-    tcx: TyCtxt<'tcx>,
+struct ConstrainOpaqueTypeRegionVisitor<OP> {
     op: OP,
 }
 
-impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
+impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<OP>
 where
     OP: FnMut(ty::Region<'tcx>),
 {
@@ -717,27 +710,27 @@ where
         }
 
         match ty.kind {
-            ty::Closure(def_id, ref substs) => {
+            ty::Closure(_, ref substs) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
-                for upvar_ty in substs.as_closure().upvar_tys(def_id, self.tcx) {
+                for upvar_ty in substs.as_closure().upvar_tys() {
                     upvar_ty.visit_with(self);
                 }
 
-                substs.as_closure().sig_as_fn_ptr_ty(def_id, self.tcx).visit_with(self);
+                substs.as_closure().sig_as_fn_ptr_ty().visit_with(self);
             }
 
-            ty::Generator(def_id, ref substs, _) => {
+            ty::Generator(_, ref substs, _) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
 
-                for upvar_ty in substs.as_generator().upvar_tys(def_id, self.tcx) {
+                for upvar_ty in substs.as_generator().upvar_tys() {
                     upvar_ty.visit_with(self);
                 }
 
-                substs.as_generator().return_ty(def_id, self.tcx).visit_with(self);
-                substs.as_generator().yield_ty(def_id, self.tcx).visit_with(self);
-                substs.as_generator().resume_ty(def_id, self.tcx).visit_with(self);
+                substs.as_generator().return_ty().visit_with(self);
+                substs.as_generator().yield_ty().visit_with(self);
+                substs.as_generator().resume_ty().visit_with(self);
             }
             _ => {
                 ty.super_visit_with(self);
@@ -823,11 +816,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
             // The regions that we expect from borrow checking.
             ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReEmpty(ty::UniverseIndex::ROOT) => {}
 
-            ty::ReEmpty(_)
-            | ty::RePlaceholder(_)
-            | ty::ReVar(_)
-            | ty::ReScope(_)
-            | ty::ReClosureBound(_) => {
+            ty::ReEmpty(_) | ty::RePlaceholder(_) | ty::ReVar(_) | ty::ReScope(_) => {
                 // All of the regions in the type should either have been
                 // erased by writeback, or mapped back to named regions by
                 // borrow checking.

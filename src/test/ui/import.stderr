@@ -17,7 +17,7 @@ error[E0603]: unresolved item import `foo` is private
   --> $DIR/import.rs:15:10
    |
 LL |     zed::foo();
-   |          ^^^ this unresolved item import is private
+   |          ^^^ private unresolved item import
    |
 note: the unresolved item import `foo` is defined here
   --> $DIR/import.rs:10:9

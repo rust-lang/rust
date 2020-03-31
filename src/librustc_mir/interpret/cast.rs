@@ -1,16 +1,16 @@
-use rustc::ty::adjustment::PointerCast;
-use rustc::ty::layout::{self, Size, TyLayout};
-use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
-use rustc_ast::ast::FloatTy;
-use rustc_span::symbol::sym;
-use rustc_target::abi::LayoutOf;
-
-use rustc::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
-use rustc::mir::CastKind;
-use rustc_apfloat::ieee::{Double, Single};
-use rustc_apfloat::{Float, FloatConvert};
+use std::convert::TryFrom;
 
 use super::{FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy};
+use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::{Float, FloatConvert};
+use rustc_ast::ast::FloatTy;
+use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
+use rustc_middle::mir::CastKind;
+use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::layout::{self, Size, TyAndLayout};
+use rustc_middle::ty::{self, Ty, TypeAndMut, TypeFoldable};
+use rustc_span::symbol::sym;
+use rustc_target::abi::LayoutOf;
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn cast(
@@ -19,7 +19,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         kind: CastKind,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        use rustc::mir::CastKind::*;
+        use rustc_middle::mir::CastKind::*;
         match kind {
             Pointer(PointerCast::Unsize) => {
                 self.unsize_into(src, dest)?;
@@ -100,9 +100,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn cast_immediate(
         &self,
         src: ImmTy<'tcx, M::PointerTag>,
-        dest_layout: TyLayout<'tcx>,
+        dest_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
-        use rustc::ty::TyKind::*;
+        use rustc_middle::ty::TyKind::*;
         trace!("Casting {:?}: {:?} to {:?}", *src, src.layout.ty, dest_layout.ty);
 
         match src.layout.ty.kind {
@@ -181,14 +181,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn cast_from_int_like(
         &self,
         v: u128, // raw bits
-        src_layout: TyLayout<'tcx>,
-        dest_layout: TyLayout<'tcx>,
+        src_layout: TyAndLayout<'tcx>,
+        dest_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         // Let's make sure v is sign-extended *if* it has a signed type.
         let signed = src_layout.abi.is_signed();
         let v = if signed { self.sign_extend(v, src_layout) } else { v };
         trace!("cast_from_int: {}, {}, {}", v, src_layout.ty, dest_layout.ty);
-        use rustc::ty::TyKind::*;
+        use rustc_middle::ty::TyKind::*;
         match dest_layout.ty.kind {
             Int(_) | Uint(_) | RawPtr(_) => {
                 let v = self.truncate(v, dest_layout);
@@ -206,8 +206,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Char => {
                 // `u8` to `char` cast
-                assert_eq!(v as u8 as u128, v);
-                Ok(Scalar::from_uint(v, Size::from_bytes(4)))
+                Ok(Scalar::from_u32(u8::try_from(v).unwrap().into()))
             }
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
@@ -223,20 +222,24 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     where
         F: Float + Into<Scalar<M::PointerTag>> + FloatConvert<Single> + FloatConvert<Double>,
     {
-        use rustc::ty::TyKind::*;
+        use rustc_middle::ty::TyKind::*;
         match dest_ty.kind {
             // float -> uint
             Uint(t) => {
-                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits() as usize);
-                let v = f.to_u128(width).value;
+                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits());
+                // `to_u128` is a saturating cast, which is what we need
+                // (https://doc.rust-lang.org/nightly/nightly-rustc/rustc_apfloat/trait.Float.html#method.to_i128_r).
+                let v = f.to_u128(usize::try_from(width).unwrap()).value;
                 // This should already fit the bit width
-                Ok(Scalar::from_uint(v, Size::from_bits(width as u64)))
+                Ok(Scalar::from_uint(v, Size::from_bits(width)))
             }
             // float -> int
             Int(t) => {
-                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits() as usize);
-                let v = f.to_i128(width).value;
-                Ok(Scalar::from_int(v, Size::from_bits(width as u64)))
+                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits());
+                // `to_i128` is a saturating cast, which is what we need
+                // (https://doc.rust-lang.org/nightly/nightly-rustc/rustc_apfloat/trait.Float.html#method.to_i128_r).
+                let v = f.to_i128(usize::try_from(width).unwrap()).value;
+                Ok(Scalar::from_int(v, Size::from_bits(width)))
             }
             // float -> f32
             Float(FloatTy::F32) => Ok(Scalar::from_f32(f.convert(&mut false).value)),
@@ -319,11 +322,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Example: `Arc<T>` -> `Arc<Trait>`
                 // here we need to increase the size of every &T thin ptr field to a fat ptr
                 for i in 0..src.layout.fields.count() {
-                    let dst_field = self.place_field(dest, i as u64)?;
+                    let dst_field = self.place_field(dest, i)?;
                     if dst_field.layout.is_zst() {
                         continue;
                     }
-                    let src_field = self.operand_field(src, i as u64)?;
+                    let src_field = self.operand_field(src, i)?;
                     if src_field.layout.ty == dst_field.layout.ty {
                         self.copy_op(src_field, dst_field)?;
                     } else {

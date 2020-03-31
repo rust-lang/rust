@@ -2,7 +2,7 @@ error[E0624]: associated function `method` is private
   --> $DIR/E0624.rs:11:9
    |
 LL |     foo.method();
-   |         ^^^^^^
+   |         ^^^^^^ private associated function
 
 error: aborting due to previous error
 

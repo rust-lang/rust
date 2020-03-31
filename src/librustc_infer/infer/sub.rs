@@ -2,10 +2,10 @@ use super::combine::{CombineFields, RelationDir};
 use super::SubregionOrigin;
 
 use crate::traits::Obligation;
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
-use rustc::ty::TyVar;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::TyVar;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.

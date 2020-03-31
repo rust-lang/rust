@@ -139,11 +139,17 @@ def start_breakpoint_listener(target):
 def start_watchdog():
     """Starts a watchdog thread that will terminate the process after a certain
     period of time"""
-    watchdog_start_time = time.clock()
+
+    try:
+        from time import clock
+    except ImportError:
+        from time import perf_counter as clock
+
+    watchdog_start_time = clock()
     watchdog_max_time = watchdog_start_time + 30
 
     def watchdog():
-        while time.clock() < watchdog_max_time:
+        while clock() < watchdog_max_time:
             time.sleep(1)
         print("TIMEOUT: lldb_batchmode.py has been running for too long. Aborting!")
         thread.interrupt_main()

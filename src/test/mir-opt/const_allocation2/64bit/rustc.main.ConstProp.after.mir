@@ -1,0 +1,67 @@
+// MIR for `main` after ConstProp
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/const_allocation2.rs:4:11: 4:11
+    let _1: &[(std::option::Option<i32>, &[&u8])]; // in scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
+    let mut _2: &&[(std::option::Option<i32>, &[&u8])]; // in scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
+
+    bb0: {
+        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
+        StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
+        _2 = const {alloc0+0: &&[(std::option::Option<i32>, &[&u8])]}; // bb0[2]: scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
+                                         // ty::Const
+                                         // + ty: &&[(std::option::Option<i32>, &[&u8])]
+                                         // + val: Value(Scalar(alloc0+0))
+                                         // mir::Constant
+                                         // + span: $DIR/const_allocation2.rs:5:5: 5:8
+                                         // + literal: Const { ty: &&[(std::option::Option<i32>, &[&u8])], val: Value(Scalar(alloc0+0)) }
+        _1 = (*_2);                      // bb0[3]: scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
+        StorageDead(_2);                 // bb0[4]: scope 0 at $DIR/const_allocation2.rs:5:8: 5:9
+        StorageDead(_1);                 // bb0[5]: scope 0 at $DIR/const_allocation2.rs:5:8: 5:9
+        _0 = ();                         // bb0[6]: scope 0 at $DIR/const_allocation2.rs:4:11: 6:2
+        return;                          // bb0[7]: scope 0 at $DIR/const_allocation2.rs:6:2: 6:2
+    }
+}
+
+alloc0 (static: FOO, size: 16, align: 8) {
+    ╾──────alloc24+0──────╼ 03 00 00 00 00 00 00 00 │ ╾──────╼........
+}
+
+alloc24 (size: 72, align: 8) {
+    0x00 │ 00 00 00 00 __ __ __ __ ╾──────alloc9+0───────╼ │ ....░░░░╾──────╼
+    0x10 │ 00 00 00 00 00 00 00 00 00 00 00 00 __ __ __ __ │ ............░░░░
+    0x20 │ ╾──────alloc14+0──────╼ 02 00 00 00 00 00 00 00 │ ╾──────╼........
+    0x30 │ 01 00 00 00 2a 00 00 00 ╾──────alloc22+0──────╼ │ ....*...╾──────╼
+    0x40 │ 03 00 00 00 00 00 00 00                         │ ........
+}
+
+alloc9 (size: 0, align: 8) {}
+
+alloc14 (size: 16, align: 8) {
+    ╾──────alloc12+0──────╼ ╾──────alloc13+0──────╼ │ ╾──────╼╾──────╼
+}
+
+alloc12 (size: 1, align: 1) {
+    05                                              │ .
+}
+
+alloc13 (size: 1, align: 1) {
+    06                                              │ .
+}
+
+alloc22 (size: 24, align: 8) {
+    0x00 │ ╾──────alloc18+3──────╼ ╾──────alloc19+0──────╼ │ ╾──────╼╾──────╼
+    0x10 │ ╾──────alloc21+2──────╼                         │ ╾──────╼
+}
+
+alloc18 (size: 4, align: 1) {
+    2a 45 15 6f                                     │ *E.o
+}
+
+alloc19 (size: 1, align: 1) {
+    2a                                              │ *
+}
+
+alloc21 (size: 4, align: 1) {
+    2a 45 15 6f                                     │ *E.o
+}

@@ -76,15 +76,15 @@ use crate::check::dropck;
 use crate::check::FnCtxt;
 use crate::mem_categorization as mc;
 use crate::middle::region;
-use rustc::ty::adjustment;
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc::ty::{self, Ty};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::PatKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, RegionObligation, RegionckMode};
+use rustc_middle::ty::adjustment;
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::infer::OutlivesEnvironmentExt;
 use rustc_trait_selection::opaque_types::InferCtxtExt;
@@ -1228,8 +1228,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
         // A closure capture can't be borrowed for longer than the
         // reference to the closure.
-        if let ty::Closure(closure_def_id, substs) = ty.kind {
-            match self.infcx.closure_kind(closure_def_id, substs) {
+        if let ty::Closure(_, substs) = ty.kind {
+            match self.infcx.closure_kind(substs) {
                 Some(ty::ClosureKind::Fn) | Some(ty::ClosureKind::FnMut) => {
                     // Region of environment pointer
                     let env_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {

@@ -10,7 +10,7 @@ warning: unused variable: `foo`
   --> $DIR/issue-62187-encountered-polymorphic-const.rs:15:9
    |
 LL |     let foo = <[u8; 2]>::BIT_LEN;
-   |         ^^^ help: consider prefixing with an underscore: `_foo`
+   |         ^^^ help: if this is intentional, prefix it with an underscore: `_foo`
    |
    = note: `#[warn(unused_variables)]` on by default
 

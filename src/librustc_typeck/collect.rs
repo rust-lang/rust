@@ -19,16 +19,6 @@ use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::constrained_generic_params as cgp;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime as rl;
-use rustc::hir::map::blocks::FnLikeNode;
-use rustc::hir::map::Map;
-use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
-use rustc::mir::mono::Linkage;
-use rustc::ty::query::Providers;
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::util::Discr;
-use rustc::ty::util::IntTypeExt;
-use rustc::ty::{self, AdtKind, Const, ToPolyTraitRef, Ty, TyCtxt};
-use rustc::ty::{ReprOptions, ToPredicate, WithConstness};
 use rustc_ast::ast;
 use rustc_ast::ast::{Ident, MetaItemKind};
 use rustc_attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
@@ -40,6 +30,16 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{GenericParamKind, Node, Unsafety};
+use rustc_middle::hir::map::blocks::FnLikeNode;
+use rustc_middle::hir::map::Map;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::mir::mono::Linkage;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::util::Discr;
+use rustc_middle::ty::util::IntTypeExt;
+use rustc_middle::ty::{self, AdtKind, Const, ToPolyTraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -162,8 +162,10 @@ crate fn placeholder_type_error(
         // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
         sugg.push((arg.span, (*type_name).to_string()));
     } else {
+        let last = generics.iter().last().unwrap();
         sugg.push((
-            generics.iter().last().unwrap().span.shrink_to_hi(),
+            // Account for bounds, we want `fn foo<T: E, K>(_: K)` not `fn foo<T, K: E>(_: K)`.
+            last.bounds_span().unwrap_or(last.span).shrink_to_hi(),
             format!(", {}", type_name),
         ));
     }
@@ -1374,9 +1376,9 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
     // and we don't do that for closures.
     if let Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(.., gen), .. }) = node {
         let dummy_args = if gen.is_some() {
-            &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>"][..]
+            &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
         } else {
-            &["<closure_kind>", "<closure_signature>"][..]
+            &["<closure_kind>", "<closure_signature>", "<upvars>"][..]
         };
 
         params.extend(dummy_args.iter().enumerate().map(|(i, &arg)| ty::GenericParamDef {
@@ -1390,22 +1392,6 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                 synthetic: None,
             },
         }));
-
-        if let Some(upvars) = tcx.upvars(def_id) {
-            params.extend(upvars.iter().zip((dummy_args.len() as u32)..).map(|(_, i)| {
-                ty::GenericParamDef {
-                    index: type_start + i,
-                    name: Symbol::intern("<upvar>"),
-                    def_id,
-                    pure_wrt_drop: false,
-                    kind: ty::GenericParamDefKind::Type {
-                        has_default: false,
-                        object_lifetime_default: rl::Set1::Empty,
-                        synthetic: None,
-                    },
-                }
-            }));
-        }
     }
 
     let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();
@@ -1502,7 +1488,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     sig.header.unsafety,
                     sig.header.abi,
                     &sig.decl,
-                    &generics.params[..],
+                    &generics,
                     Some(ident.span),
                 ),
             }
@@ -1513,18 +1499,17 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             ident,
             generics,
             ..
-        }) => AstConv::ty_of_fn(
-            &icx,
-            header.unsafety,
-            header.abi,
-            decl,
-            &generics.params[..],
-            Some(ident.span),
-        ),
+        }) => {
+            AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl, &generics, Some(ident.span))
+        }
 
-        ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(ref fn_decl, _, _), .. }) => {
+        ForeignItem(&hir::ForeignItem {
+            kind: ForeignItemKind::Fn(ref fn_decl, _, _),
+            ident,
+            ..
+        }) => {
             let abi = tcx.hir().get_foreign_abi(hir_id);
-            compute_sig_of_foreign_fn_decl(tcx, def_id, fn_decl, abi)
+            compute_sig_of_foreign_fn_decl(tcx, def_id, fn_decl, abi, ident)
         }
 
         Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor_hir_id().is_some() => {
@@ -1580,9 +1565,10 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
     let item = tcx.hir().expect_item(hir_id);
     match &item.kind {
-        hir::ItemKind::Impl { polarity: hir::ImplPolarity::Negative(_), .. } => {
+        hir::ItemKind::Impl { polarity: hir::ImplPolarity::Negative(span), of_trait, .. } => {
             if is_rustc_reservation {
-                tcx.sess.span_err(item.span, "reservation impls can't be negative");
+                let span = span.to(of_trait.as_ref().map(|t| t.path.span).unwrap_or(*span));
+                tcx.sess.span_err(span, "reservation impls can't be negative");
             }
             ty::ImplPolarity::Negative
         }
@@ -2136,13 +2122,21 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     def_id: DefId,
     decl: &'tcx hir::FnDecl<'tcx>,
     abi: abi::Abi,
+    ident: Ident,
 ) -> ty::PolyFnSig<'tcx> {
     let unsafety = if abi == abi::Abi::RustIntrinsic {
         intrinsic_operation_unsafety(&tcx.item_name(def_id).as_str())
     } else {
         hir::Unsafety::Unsafe
     };
-    let fty = AstConv::ty_of_fn(&ItemCtxt::new(tcx, def_id), unsafety, abi, decl, &[], None);
+    let fty = AstConv::ty_of_fn(
+        &ItemCtxt::new(tcx, def_id),
+        unsafety,
+        abi,
+        decl,
+        &hir::Generics::empty(),
+        Some(ident.span),
+    );
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw
@@ -2152,13 +2146,18 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     {
         let check = |ast_ty: &hir::Ty<'_>, ty: Ty<'_>| {
             if ty.is_simd() {
+                let snip = tcx
+                    .sess
+                    .source_map()
+                    .span_to_snippet(ast_ty.span)
+                    .map_or(String::new(), |s| format!(" `{}`", s));
                 tcx.sess
                     .struct_span_err(
                         ast_ty.span,
                         &format!(
-                            "use of SIMD type `{}` in FFI is highly experimental and \
+                            "use of SIMD type{} in FFI is highly experimental and \
                              may result in invalid code",
-                            tcx.hir().hir_to_pretty_string(ast_ty.hir_id)
+                            snip
                         ),
                     )
                     .help("add `#![feature(simd_ffi)]` to the crate attributes to enable")
@@ -2302,7 +2301,7 @@ fn from_target_feature(
 }
 
 fn linkage_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str) -> Linkage {
-    use rustc::mir::mono::Linkage::*;
+    use rustc_middle::mir::mono::Linkage::*;
 
     // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
     // applicable to variable declarations and may not really make sense for

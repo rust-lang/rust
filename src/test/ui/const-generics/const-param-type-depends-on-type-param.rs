@@ -2,7 +2,7 @@
 //~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
 
 // Currently, const parameters cannot depend on type parameters, because there is no way to
-// enforce the `structural_match` property on an arbitrary type parameter. This restriction
+// enforce the structural-match property on an arbitrary type parameter. This restriction
 // may be relaxed in the future. See https://github.com/rust-lang/rfcs/pull/2000 for more
 // details.
 

@@ -1,8 +1,8 @@
-use rustc::ty::TyCtxt;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_middle::ty::TyCtxt;
 use rustc_trait_selection::traits::{self, SkipLeakCheck};
 
 pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, crate_num: CrateNum) {
