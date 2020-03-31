@@ -46,14 +46,14 @@ LL |     while(true && false) {
    |          ^^^^^^^^^^^^^^^ help: remove these parentheses
 
 "}
-{"message":"unnecessary parentheses around `for` head expression","code":{"code":"unused_parens","explanation":null},"level":"error","spans":[{"file_name":"$DIR/unused_parens_remove_json_suggestion.rs","byte_start":987,"byte_end":995,"line_start":44,"line_end":44,"column_start":18,"column_end":26,"is_primary":true,"text":[{"text":"        for _ in (0 .. 3){
+{"message":"unnecessary parentheses around `for` iterator expression","code":{"code":"unused_parens","explanation":null},"level":"error","spans":[{"file_name":"$DIR/unused_parens_remove_json_suggestion.rs","byte_start":987,"byte_end":995,"line_start":44,"line_end":44,"column_start":18,"column_end":26,"is_primary":true,"text":[{"text":"        for _ in (0 .. 3){
   --> $DIR/unused_parens_remove_json_suggestion.rs:44:18
    |
 LL |         for _ in (0 .. 3){
    |                  ^^^^^^^^ help: remove these parentheses
 
 "}
-{"message":"unnecessary parentheses around `for` head expression","code":{"code":"unused_parens","explanation":null},"level":"error","spans":[{"file_name":"$DIR/unused_parens_remove_json_suggestion.rs","byte_start":1088,"byte_end":1096,"line_start":49,"line_end":49,"column_start":14,"column_end":22,"is_primary":true,"text":[{"text":"    for _ in (0 .. 3) {
+{"message":"unnecessary parentheses around `for` iterator expression","code":{"code":"unused_parens","explanation":null},"level":"error","spans":[{"file_name":"$DIR/unused_parens_remove_json_suggestion.rs","byte_start":1088,"byte_end":1096,"line_start":49,"line_end":49,"column_start":14,"column_end":22,"is_primary":true,"text":[{"text":"    for _ in (0 .. 3) {
   --> $DIR/unused_parens_remove_json_suggestion.rs:49:14
    |
 LL |     for _ in (0 .. 3) {
