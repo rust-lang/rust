@@ -98,7 +98,7 @@ class AstInspector implements vscode.HoverProvider, Disposable {
     }
 
     private onDidCloseTextDocument(doc: vscode.TextDocument) {
-        if (!!this.rustEditor && doc.uri.toString() === this.rustEditor.document.uri.toString()) {
+        if (this.rustEditor && doc.uri.toString() === this.rustEditor.document.uri.toString()) {
             this.setRustEditor(undefined);
         }
     }
