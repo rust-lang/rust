@@ -14,14 +14,8 @@ pub struct ArenaMap<ID, V> {
 impl<T, V> ArenaMap<Idx<T>, V> {
     pub fn insert(&mut self, id: Idx<T>, t: V) {
         let idx = Self::to_idx(id);
-        if self.v.capacity() <= idx {
-            self.v.reserve(idx + 1 - self.v.capacity());
-        }
-        if self.v.len() <= idx {
-            while self.v.len() <= idx {
-                self.v.push(None);
-            }
-        }
+
+        self.v.resize_with((idx + 1).max(self.v.len()), || None);
         self.v[idx] = Some(t);
     }
 
