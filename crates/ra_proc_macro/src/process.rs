@@ -12,32 +12,24 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
+    sync::{Arc, Weak},
 };
 
 #[derive(Debug, Default)]
 pub(crate) struct ProcMacroProcessSrv {
-    inner: Option<Sender<Task>>,
+    inner: Option<Weak<Sender<Task>>>,
 }
 
 #[derive(Debug)]
 pub(crate) struct ProcMacroProcessThread {
     // XXX: drop order is significant
-    sender: SenderGuard,
+    sender: Arc<Sender<Task>>,
     handle: jod_thread::JoinHandle<()>,
 }
 
-#[derive(Debug)]
-struct SenderGuard(pub Sender<Task>);
-
-impl std::ops::Drop for SenderGuard {
-    fn drop(&mut self) {
-        self.0.send(Task::Close).unwrap();
-    }
-}
-
-enum Task {
-    Request { req: Request, result_tx: Sender<Response> },
-    Close,
+struct Task {
+    req: Request,
+    result_tx: Sender<Response>,
 }
 
 struct Process {
@@ -88,8 +80,9 @@ impl ProcMacroProcessSrv {
             client_loop(task_rx, process);
         });
 
-        let srv = ProcMacroProcessSrv { inner: Some(task_tx.clone()) };
-        let thread = ProcMacroProcessThread { handle, sender: SenderGuard(task_tx) };
+        let task_tx = Arc::new(task_tx);
+        let srv = ProcMacroProcessSrv { inner: Some(Arc::downgrade(&task_tx)) };
+        let thread = ProcMacroProcessThread { handle, sender: task_tx };
 
         Ok((thread, srv))
     }
@@ -131,8 +124,13 @@ impl ProcMacroProcessSrv {
         };
 
         let (result_tx, result_rx) = bounded(0);
-
-        sender.send(Task::Request { req: req.into(), result_tx }).unwrap();
+        let sender = match sender.upgrade() {
+            None => {
+                return Err(ra_tt::ExpansionError::Unknown("Proc macro process is closed.".into()))
+            }
+            Some(it) => it,
+        };
+        sender.send(Task { req: req.into(), result_tx }).unwrap();
 
         let res = result_rx.recv().unwrap();
         match res {
@@ -155,16 +153,8 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
         Some(it) => it,
     };
 
-    loop {
-        let task = match task_rx.recv() {
-            Ok(task) => task,
-            Err(_) => break,
-        };
-
-        let (req, result_tx) = match task {
-            Task::Request { req, result_tx } => (req, result_tx),
-            Task::Close => break,
-        };
+    for task in task_rx {
+        let Task { req, result_tx } = task;
 
         let res = match send_request(&mut stdin, &mut stdout, req) {
             Ok(res) => res,
