@@ -93,9 +93,6 @@ impl<'a> StringReader<'a> {
     }
 
     /// Returns the next token, including trivia like whitespace or comments.
-    ///
-    /// `Err(())` means that some errors were encountered, which can be
-    /// retrieved using `buffer_fatal_errors`.
     pub fn next_token(&mut self) -> Token {
         let start_src_index = self.src_index(self.pos);
         let text: &str = &self.src[start_src_index..self.end_src_index];
