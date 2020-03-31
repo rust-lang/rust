@@ -2,6 +2,7 @@
 //! panic branches.
 
 // compile-flags: -C panic=abort
+// no-prefer-dynamic
 
 #![feature(generators, generator_trait)]
 
