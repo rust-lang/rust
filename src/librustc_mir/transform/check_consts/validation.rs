@@ -1,10 +1,10 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
 use rustc_errors::struct_span_err;
+use rustc_hir::lang_items;
 use rustc_hir::{def_id::DefId, HirId};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_middle::middle::lang_items;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;

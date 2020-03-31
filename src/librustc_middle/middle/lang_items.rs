@@ -7,16 +7,12 @@
 //! * Traits that represent operators; e.g., `Add`, `Sub`, `Index`.
 //! * Functions called by the compiler itself.
 
-pub use self::LangItem::*;
-
 use crate::ty::{self, TyCtxt};
 
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem;
 use rustc_span::Span;
 use rustc_target::spec::PanicStrategy;
-
-pub use rustc_hir::weak_lang_items::link_name;
-pub use rustc_hir::{LangItem, LanguageItems};
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Returns the `DefId` for a given `LangItem`.

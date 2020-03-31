@@ -8,7 +8,7 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_apfloat::{ieee, Float, Round, Status};
-use rustc_middle::middle::lang_items::ExchangeMallocFnLangItem;
+use rustc_hir::lang_items::ExchangeMallocFnLangItem;
 use rustc_middle::mir;
 use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::HasTyCtxt;

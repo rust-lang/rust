@@ -9,8 +9,8 @@ use crate::meth;
 use crate::traits::*;
 use crate::MemFlags;
 
+use rustc_hir::lang_items;
 use rustc_index::vec::Idx;
-use rustc_middle::middle::lang_items;
 use rustc_middle::mir;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};

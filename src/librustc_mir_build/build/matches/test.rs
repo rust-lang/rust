@@ -362,7 +362,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
-        use rustc_middle::middle::lang_items::EqTraitLangItem;
+        use rustc_hir::lang_items::EqTraitLangItem;
 
         let mut expect = self.literal_operand(source_info.span, value);
         let mut val = Operand::Copy(place);

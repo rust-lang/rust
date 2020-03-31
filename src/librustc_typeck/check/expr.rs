@@ -24,10 +24,10 @@ use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder,
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::lang_items;
 use rustc_hir::{ExprKind, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_middle::middle::lang_items;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,

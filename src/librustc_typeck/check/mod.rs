@@ -88,7 +88,6 @@ mod wfcheck;
 pub mod writeback;
 
 use crate::astconv::{AstConv, GenericArgCountMismatch, PathSeg};
-use crate::middle::lang_items;
 use rustc_ast::ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_attr as attr;
@@ -101,6 +100,7 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::lang_items;
 use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, QPath};
 use rustc_index::vec::Idx;
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};

@@ -17,7 +17,6 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
-use rustc_middle::middle::lang_items;
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::fold::TypeFolder;
