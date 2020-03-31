@@ -36,6 +36,9 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(box_syntax)]
 macro_rules! vec {
+    () => (
+        $crate::vec::Vec::new()
+    );
     ($elem:expr; $n:expr) => (
         $crate::vec::from_elem($elem, $n)
     );
@@ -51,6 +54,9 @@ macro_rules! vec {
 // NB see the slice::hack module in slice.rs for more information
 #[cfg(test)]
 macro_rules! vec {
+    () => (
+        $crate::vec::Vec::new()
+    );
     ($elem:expr; $n:expr) => (
         $crate::vec::from_elem($elem, $n)
     );
