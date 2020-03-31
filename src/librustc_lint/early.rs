@@ -104,6 +104,11 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         run_early_pass!(self, check_pat_post, p);
     }
 
+    fn visit_anon_const(&mut self, c: &'a ast::AnonConst) {
+        run_early_pass!(self, check_anon_const, c);
+        ast_visit::walk_anon_const(self, c);
+    }
+
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         self.with_lint_attrs(e.id, &e.attrs, |cx| {
             run_early_pass!(cx, check_expr, e);

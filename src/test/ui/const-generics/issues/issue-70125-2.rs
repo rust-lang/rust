@@ -13,4 +13,4 @@ trait Foo<const X: usize> {
     }
 }
 
-impl Foo<{3}> for () {}
+impl Foo<3> for () {}
