@@ -3,7 +3,7 @@ use super::{LinkerFlavor, PanicStrategy, Target, TargetOptions};
 pub fn target() -> Result<Target, String> {
     let opts = TargetOptions {
         linker: Some("aarch64-none-elf-gcc".to_owned()),
-        features: "+a53,+strict-align,+crc32".to_string(),
+        features: "+a53,+strict-align,+crc".to_string(),
         executables: true,
         relocation_model: "pic".to_string(),
         disable_redzone: true,
