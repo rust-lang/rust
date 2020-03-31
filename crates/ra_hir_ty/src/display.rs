@@ -190,8 +190,6 @@ impl HirDisplay for ApplicationTy {
                 };
                 write!(f, "{}", name)?;
                 if self.parameters.len() > 0 {
-                    write!(f, "<")?;
-
                     let mut non_default_parameters = Vec::with_capacity(self.parameters.len());
                     let parameters_to_write = if f.omit_verbose_types() {
                         match self
@@ -200,8 +198,8 @@ impl HirDisplay for ApplicationTy {
                             .map(|generic_def_id| f.db.generic_defaults(generic_def_id))
                             .filter(|defaults| !defaults.is_empty())
                         {
-                            Option::None => self.parameters.0.as_ref(),
-                            Option::Some(default_parameters) => {
+                            None => self.parameters.0.as_ref(),
+                            Some(default_parameters) => {
                                 for (i, parameter) in self.parameters.iter().enumerate() {
                                     match (parameter, default_parameters.get(i)) {
                                         (&Ty::Unknown, _) | (_, None) => {
@@ -221,7 +219,7 @@ impl HirDisplay for ApplicationTy {
                     } else {
                         self.parameters.0.as_ref()
                     };
-
+                    write!(f, "<")?;
                     f.write_joined(parameters_to_write, ", ")?;
                     write!(f, ">")?;
                 }
@@ -231,9 +229,9 @@ impl HirDisplay for ApplicationTy {
                     AssocContainerId::TraitId(it) => it,
                     _ => panic!("not an associated type"),
                 };
-                let trait_name = f.db.trait_data(trait_).name.clone();
-                let name = f.db.type_alias_data(type_alias).name.clone();
-                write!(f, "{}::{}", trait_name, name)?;
+                let trait_ = f.db.trait_data(trait_);
+                let type_alias = f.db.type_alias_data(type_alias);
+                write!(f, "{}::{}", trait_.name, type_alias.name)?;
                 if self.parameters.len() > 0 {
                     write!(f, "<")?;
                     f.write_joined(&*self.parameters.0, ", ")?;
@@ -266,8 +264,8 @@ impl HirDisplay for ProjectionTy {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
 
-        let trait_name = f.db.trait_data(self.trait_(f.db)).name.clone();
-        write!(f, "<{} as {}", self.parameters[0].display(f.db), trait_name,)?;
+        let trait_ = f.db.trait_data(self.trait_(f.db));
+        write!(f, "<{} as {}", self.parameters[0].display(f.db), trait_.name)?;
         if self.parameters.len() > 1 {
             write!(f, "<")?;
             f.write_joined(&self.parameters[1..], ", ")?;
@@ -312,7 +310,7 @@ impl HirDisplay for Ty {
                     Ty::Opaque(_) => write!(f, "impl ")?,
                     _ => unreachable!(),
                 };
-                write_bounds_like_dyn_trait(&predicates, f)?;
+                write_bounds_like_dyn_trait(predicates, f)?;
             }
             Ty::Unknown => write!(f, "{{unknown}}")?,
             Ty::Infer(..) => write!(f, "_")?,
@@ -345,7 +343,7 @@ fn write_bounds_like_dyn_trait(
                 // We assume that the self type is $0 (i.e. the
                 // existential) here, which is the only thing that's
                 // possible in actual Rust, and hence don't print it
-                write!(f, "{}", f.db.trait_data(trait_ref.trait_).name.clone())?;
+                write!(f, "{}", f.db.trait_data(trait_ref.trait_).name)?;
                 if trait_ref.substs.len() > 1 {
                     write!(f, "<")?;
                     f.write_joined(&trait_ref.substs[1..], ", ")?;
@@ -362,9 +360,8 @@ fn write_bounds_like_dyn_trait(
                     write!(f, "<")?;
                     angle_open = true;
                 }
-                let name =
-                    f.db.type_alias_data(projection_pred.projection_ty.associated_ty).name.clone();
-                write!(f, "{} = ", name)?;
+                let type_alias = f.db.type_alias_data(projection_pred.projection_ty.associated_ty);
+                write!(f, "{} = ", type_alias.name)?;
                 projection_pred.ty.hir_fmt(f)?;
             }
             GenericPredicate::Error => {
@@ -398,7 +395,7 @@ impl TraitRef {
         } else {
             write!(f, ": ")?;
         }
-        write!(f, "{}", f.db.trait_data(self.trait_).name.clone())?;
+        write!(f, "{}", f.db.trait_data(self.trait_).name)?;
         if self.substs.len() > 1 {
             write!(f, "<")?;
             f.write_joined(&self.substs[1..], ", ")?;
