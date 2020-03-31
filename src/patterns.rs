@@ -55,6 +55,17 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
     }
 }
 
+struct RangeOperand<'a>(&'a Option<ptr::P<ast::Expr>>);
+
+impl<'a> Rewrite for RangeOperand<'a> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        match &self.0 {
+            None => Some("".to_owned()),
+            Some(ref exp) => exp.rewrite(context, shape),
+        }
+    }
+}
+
 impl Rewrite for Pat {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self.kind {
@@ -179,29 +190,34 @@ impl Rewrite for Pat {
                     None
                 }
             }
-            PatKind::Range(ref lhs, ref rhs, ref end_kind) => match (lhs, rhs) {
-                (Some(lhs), Some(rhs)) => {
-                    let infix = match end_kind.node {
-                        RangeEnd::Included(RangeSyntax::DotDotDot) => "...",
-                        RangeEnd::Included(RangeSyntax::DotDotEq) => "..=",
-                        RangeEnd::Excluded => "..",
+            PatKind::Range(ref lhs, ref rhs, ref end_kind) => {
+                let infix = match end_kind.node {
+                    RangeEnd::Included(RangeSyntax::DotDotDot) => "...",
+                    RangeEnd::Included(RangeSyntax::DotDotEq) => "..=",
+                    RangeEnd::Excluded => "..",
+                };
+                let infix = if context.config.spaces_around_ranges() {
+                    let lhs_spacing = match lhs {
+                        None => "",
+                        Some(_) => " ",
                     };
-                    let infix = if context.config.spaces_around_ranges() {
-                        format!(" {} ", infix)
-                    } else {
-                        infix.to_owned()
+                    let rhs_spacing = match rhs {
+                        None => "",
+                        Some(_) => " ",
                     };
-                    rewrite_pair(
-                        &**lhs,
-                        &**rhs,
-                        PairParts::infix(&infix),
-                        context,
-                        shape,
-                        SeparatorPlace::Front,
-                    )
-                }
-                (_, _) => unimplemented!(),
-            },
+                    format!("{}{}{}", lhs_spacing, infix, rhs_spacing)
+                } else {
+                    infix.to_owned()
+                };
+                rewrite_pair(
+                    &RangeOperand(lhs),
+                    &RangeOperand(rhs),
+                    PairParts::infix(&infix),
+                    context,
+                    shape,
+                    SeparatorPlace::Front,
+                )
+            }
             PatKind::Ref(ref pat, mutability) => {
                 let prefix = format!("&{}", format_mutability(mutability));
                 rewrite_unary_prefix(context, &prefix, &**pat, shape)

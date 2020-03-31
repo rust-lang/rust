@@ -253,6 +253,10 @@ fn addrof() {
         + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
     &(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
+
+    // raw reference operator
+    &raw const a;
+    &raw mut b;
 }
 
 fn casts() {

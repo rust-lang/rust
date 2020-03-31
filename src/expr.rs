@@ -1988,14 +1988,16 @@ pub(crate) fn prefer_next_line(
 
 fn rewrite_expr_addrof(
     context: &RewriteContext<'_>,
-    _borrow_kind: ast::BorrowKind,
+    borrow_kind: ast::BorrowKind,
     mutability: ast::Mutability,
     expr: &ast::Expr,
     shape: Shape,
 ) -> Option<String> {
-    let operator_str = match mutability {
-        ast::Mutability::Not => "&",
-        ast::Mutability::Mut => "&mut ",
+    let operator_str = match (mutability, borrow_kind) {
+        (ast::Mutability::Not, ast::BorrowKind::Ref) => "&",
+        (ast::Mutability::Not, ast::BorrowKind::Raw) => "&raw const ",
+        (ast::Mutability::Mut, ast::BorrowKind::Ref) => "&mut ",
+        (ast::Mutability::Mut, ast::BorrowKind::Raw) => "&raw mut ",
     };
     rewrite_unary_prefix(context, operator_str, expr, shape)
 }

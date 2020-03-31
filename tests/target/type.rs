@@ -144,3 +144,36 @@ type MyFn = fn(
     a: SomeLongComplexType,
     b: SomeOtherLongComplexType,
 ) -> Box<Future<Item = AnotherLongType, Error = ALongErrorType>>;
+
+// Const opt-out
+
+trait T: ?const Super {}
+
+const fn maybe_const<S: ?const T>() -> i32 {
+    <S as T>::CONST
+}
+
+struct S<T: ?const ?Sized>(std::marker::PhantomData<T>);
+
+impl ?const T {}
+
+fn trait_object() -> &'static dyn ?const T {
+    &S
+}
+
+fn i(_: impl IntoIterator<Item = Box<dyn ?const T>>) {}
+
+fn apit(_: impl ?const T) {}
+
+fn rpit() -> impl ?const T {
+    S
+}
+
+pub struct Foo<T: Trait>(T);
+impl<T: ?const Trait> Foo<T> {
+    fn new(t: T) -> Self {
+        // not calling methods on `t`, so we opt out of requiring
+        // `<T as Trait>` to have const methods via `?const`
+        Self(t)
+    }
+}
