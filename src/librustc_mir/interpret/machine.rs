@@ -6,7 +6,7 @@ use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 
 use rustc_middle::mir;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, query::TyCtxtAt, Ty};
 use rustc_span::def_id::DefId;
 
 use super::{
@@ -229,10 +229,22 @@ pub trait Machine<'mir, 'tcx>: Sized {
         Ok(())
     }
 
-    /// Called for *every* memory access to determine the real ID of the given allocation.
-    /// This provides a way for the machine to "redirect" certain allocations as it sees fit.
+    /// Called for *every* memory access to determine the real ID of the given
+    /// allocation. This provides a way for the machine to "redirect" certain
+    /// allocations as it sees fit.
     ///
-    /// This is used by Miri to redirect extern statics to real allocations.
+    /// This is used by Miri for two purposes:
+    /// 1.  Redirecting extern statics to real allocations.
+    /// 2.  Creating unique allocation ids for thread locals.
+    ///
+    ///     In Rust, one way for creating a thread local is by marking a static
+    ///     with `#[thread_local]`. On supported platforms this gets translated
+    ///     to a LLVM thread local. The problem with supporting these thread
+    ///     locals in Miri is that in the internals of the compiler they look as
+    ///     normal statics, except that they have the `thread_local` attribute.
+    ///     However, in Miri we want to have a property that each allocation has
+    ///     a unique id and, therefore, for these thread locals we generate a
+    ///     fresh allocation id for each thread.
     ///
     /// This function must be idempotent.
     #[inline]
@@ -240,18 +252,18 @@ pub trait Machine<'mir, 'tcx>: Sized {
         id
     }
 
-    /// In Rust, thread locals are just special statics. Therefore, the compiler
-    /// uses the same code for allocating both. However, in Miri we want to have
-    /// a property that each allocation has a unique id and, therefore, we
-    /// generate a fresh allocation id for each thread. This function takes a
-    /// potentially thread local allocation id and resolves the original static
-    /// allocation id that can be used to compute the value of the static.
-    #[inline]
-    fn resolve_thread_local_allocation_id(
+    /// Called to obtain the `GlobalAlloc` associated with the allocation id.
+    ///
+    /// Miri uses this callback to resolve the information about the original
+    /// thread local static for which `canonical_alloc_id` generated a fresh
+    /// allocation id.
+    #[inline(always)]
+    fn resolve_maybe_global_alloc(
+        tcx: TyCtxtAt<'tcx>,
         _memory_extra: &Self::MemoryExtra,
         id: AllocId,
-    ) -> AllocId {
-        id
+    ) -> Option<mir::interpret::GlobalAlloc<'tcx>> {
+        tcx.alloc_map.lock().get(id)
     }
 
     /// Called to initialize the "extra" state of an allocation and make the pointers
