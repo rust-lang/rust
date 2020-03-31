@@ -954,7 +954,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.4.12"
+version = "1.4.13"
 dependencies = [
  "annotate-snippets 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytecount 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -978,7 +978,6 @@ dependencies = [
  "rustc-ap-rustc_parse 651.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-ap-rustc_session 651.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-ap-rustc_span 651.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-ap-rustc_target 651.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-workspace-hack 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustfmt-config_proc_macro 0.2.0",
  "serde 1.0.101 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -1,7 +1,7 @@
 [package]
 
 name = "rustfmt-nightly"
-version = "1.4.12"
+version = "1.4.13"
 authors = ["Nicholas Cameron <ncameron@mozilla.com>", "The Rustfmt developers"]
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang/rustfmt"
@@ -93,8 +93,4 @@ version = "651.0.0"
 
 [dependencies.rustc_span]
 package = "rustc-ap-rustc_span"
-version = "651.0.0"
-
-[dependencies.rustc_target]
-package = "rustc-ap-rustc_target"
 version = "651.0.0"
