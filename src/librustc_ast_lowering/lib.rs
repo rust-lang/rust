@@ -920,7 +920,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let catch_scopes = mem::take(&mut self.catch_scopes);
         let loop_scopes = mem::take(&mut self.loop_scopes);
+        let task_context = mem::take(&mut self.task_context);
         let ret = f(self);
+        self.task_context = task_context;
         self.catch_scopes = catch_scopes;
         self.loop_scopes = loop_scopes;
 
