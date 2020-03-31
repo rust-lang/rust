@@ -192,7 +192,6 @@ impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N] {
 
 /// Return Error of the FromIterator impl for array
 #[unstable(feature = "array_from_iter_impl", issue = "none")]
-#[derive(Debug)]
 pub struct FillError<T, const N: usize>
 where
     [MaybeUninit<T>; N]: LengthAtMost32,
@@ -215,6 +214,19 @@ where
             ),
             f,
         )
+    }
+}
+
+#[unstable(feature = "array_from_iter_impl", issue = "none")]
+impl<T: fmt::Debug, const N: usize> fmt::Debug for FillError<T, N>
+where
+    [MaybeUninit<T>; N]: LengthAtMost32,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FillError")
+            .field("array", &self.as_slice())
+            .field("len", &self.len())
+            .finish()
     }
 }
 
