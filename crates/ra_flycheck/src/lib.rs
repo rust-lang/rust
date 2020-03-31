@@ -243,7 +243,7 @@ impl fmt::Display for CargoError {
 }
 impl error::Error for CargoError {}
 
-pub fn run_cargo(
+fn run_cargo(
     args: &[String],
     current_dir: Option<&Path>,
     on_message: &mut dyn FnMut(cargo_metadata::Message) -> bool,
