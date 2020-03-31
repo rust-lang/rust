@@ -1,10 +1,15 @@
-use clippy_dev::clippy_project_root;
+use crate::clippy_project_root;
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::io::prelude::*;
 use std::io::ErrorKind;
 use std::path::Path;
 
+/// Creates files required to implement and test a new lint and runs `update_lints`.
+///
+/// # Errors
+///
+/// This function errors, if the files couldn't be created
 pub fn create(pass: Option<&str>, lint_name: Option<&str>, category: Option<&str>) -> Result<(), io::Error> {
     let pass = pass.expect("`pass` argument is validated by clap");
     let lint_name = lint_name.expect("`name` argument is validated by clap");
