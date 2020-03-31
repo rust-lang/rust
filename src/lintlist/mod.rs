@@ -1,12 +1,15 @@
 //! This file is managed by `cargo dev update_lints`. Do not edit.
 
+use lazy_static::lazy_static;
+
 pub mod lint;
 pub use lint::Level;
 pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
+lazy_static! {
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 363] = [
+pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -2550,3 +2553,4 @@ pub const ALL_LINTS: [Lint; 363] = [
     },
 ];
 // end lint list, do not remove this comment, it’s used in `update_lints`
+}

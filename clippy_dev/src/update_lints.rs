@@ -17,7 +17,7 @@ pub fn run(update_mode: UpdateMode) {
     let internal_lints = Lint::internal_lints(lint_list.clone().into_iter());
 
     let usable_lints: Vec<Lint> = Lint::usable_lints(lint_list.clone().into_iter()).collect();
-    let usable_lint_count = usable_lints.len();
+    let usable_lint_count = round_to_fifty(usable_lints.len());
 
     let mut sorted_usable_lints = usable_lints.clone();
     sorted_usable_lints.sort_by_key(|lint| lint.name.clone());
@@ -29,27 +29,26 @@ pub fn run(update_mode: UpdateMode) {
         false,
         update_mode == UpdateMode::Change,
         || {
-            format!(
-                "pub const ALL_LINTS: [Lint; {}] = {:#?};",
-                sorted_usable_lints.len(),
-                sorted_usable_lints
-            )
-            .lines()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
+            format!("pub static ref ALL_LINTS: Vec<Lint> = vec!{:#?};", sorted_usable_lints)
+                .lines()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
         },
     )
     .changed;
 
     file_change |= replace_region_in_file(
         Path::new("README.md"),
-        &format!(r#"\[There are \d+ lints included in this crate!\]\({}\)"#, DOCS_LINK),
+        &format!(
+            r#"\[There are over \d+ lints included in this crate!\]\({}\)"#,
+            DOCS_LINK
+        ),
         "",
         true,
         update_mode == UpdateMode::Change,
         || {
             vec![format!(
-                "[There are {} lints included in this crate!]({})",
+                "[There are over {} lints included in this crate!]({})",
                 usable_lint_count, DOCS_LINK
             )]
         },
@@ -160,4 +159,8 @@ pub fn print_lints() {
     }
 
     println!("there are {} lints", usable_lint_count);
+}
+
+fn round_to_fifty(count: usize) -> usize {
+    count / 50 * 50
 }
