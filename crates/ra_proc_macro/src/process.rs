@@ -48,6 +48,7 @@ impl Process {
         let child = Command::new(process_path.clone())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
+            .stderr(Stdio::null())
             .spawn()?;
 
         Ok(Process { path: process_path.into(), child })
