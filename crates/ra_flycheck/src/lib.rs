@@ -1,12 +1,8 @@
 //! cargo_check provides the functionality needed to run `cargo check` or
 //! another compatible command (f.x. clippy) in a background thread and provide
 //! LSP diagnostics based on the output of the command.
-use cargo_metadata::Message;
-use crossbeam_channel::{never, select, unbounded, Receiver, RecvError, Sender};
-use lsp_types::{
-    CodeAction, CodeActionOrCommand, Diagnostic, Url, WorkDoneProgress, WorkDoneProgressBegin,
-    WorkDoneProgressEnd, WorkDoneProgressReport,
-};
+mod conv;
+
 use std::{
     error, fmt,
     io::{BufRead, BufReader},
@@ -15,7 +11,12 @@ use std::{
     time::Instant,
 };
 
-mod conv;
+use cargo_metadata::Message;
+use crossbeam_channel::{never, select, unbounded, Receiver, RecvError, Sender};
+use lsp_types::{
+    CodeAction, CodeActionOrCommand, Diagnostic, Url, WorkDoneProgress, WorkDoneProgressBegin,
+    WorkDoneProgressEnd, WorkDoneProgressReport,
+};
 
 use crate::conv::{map_rust_diagnostic_to_lsp, MappedRustDiagnostic};
 
