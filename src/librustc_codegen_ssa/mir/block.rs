@@ -619,7 +619,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let mut llargs = Vec::with_capacity(arg_count);
 
         // Prepare the return value destination
-        let ret_dest = if let Some((ref dest, _)) = *destination {
+        let ret_dest = if let Some((dest, _)) = *destination {
             let is_intrinsic = intrinsic.is_some();
             self.make_return_dest(&mut bx, dest, &fn_abi.ret, &mut llargs, is_intrinsic)
         } else {
@@ -1123,7 +1123,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn make_return_dest(
         &mut self,
         bx: &mut Bx,
-        dest: &mir::Place<'tcx>,
+        dest: mir::Place<'tcx>,
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>,
         is_intrinsic: bool,
