@@ -7,7 +7,9 @@ mod tests {
         expected: UnvalidatedRawStr,
         validated: Result<ValidatedRawStr, LexRawStrError>,
     ) {
+        let s = &format!("r{}", s);
         let mut cursor = Cursor::new(s);
+        cursor.bump();
         let tok = cursor.raw_double_quoted_string(0);
         assert_eq!(tok, expected);
         assert_eq!(tok.validate(), validated);
