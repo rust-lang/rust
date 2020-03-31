@@ -1,5 +1,7 @@
+use crate::Lint;
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast::ast;
+use rustc_ast::ast::{ExprKind, StmtKind};
 use rustc_ast::attr;
 use rustc_ast::util::parser;
 use rustc_ast_pretty::pprust;
@@ -315,16 +317,58 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
     }
 }
 
-declare_lint! {
-    pub(super) UNUSED_PARENS,
-    Warn,
-    "`if`, `match`, `while` and `return` do not need parentheses"
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum UnusedDelimsCtx {
+    FunctionArg,
+    MethodArg,
+    AssignedValue,
+    IfCond,
+    WhileCond,
+    ForIterExpr,
+    MatchScrutineeExpr,
+    ReturnValue,
+    BlockRetValue,
+    LetScrutineeExpr,
+    ArrayLenExpr,
+    AnonConst,
 }
 
-declare_lint_pass!(UnusedParens => [UNUSED_PARENS]);
+impl From<UnusedDelimsCtx> for &'static str {
+    fn from(ctx: UnusedDelimsCtx) -> &'static str {
+        match ctx {
+            UnusedDelimsCtx::FunctionArg => "function argument",
+            UnusedDelimsCtx::MethodArg => "method argument",
+            UnusedDelimsCtx::AssignedValue => "assigned value",
+            UnusedDelimsCtx::IfCond => "`if` condition",
+            UnusedDelimsCtx::WhileCond => "`while` condition",
+            UnusedDelimsCtx::ForIterExpr => "`for` iterator expression",
+            UnusedDelimsCtx::MatchScrutineeExpr => "`match` scrutinee expression",
+            UnusedDelimsCtx::ReturnValue => "`return` value",
+            UnusedDelimsCtx::BlockRetValue => "block return value",
+            UnusedDelimsCtx::LetScrutineeExpr => "`let` scrutinee expression",
+            UnusedDelimsCtx::ArrayLenExpr | UnusedDelimsCtx::AnonConst => "const expression",
+        }
+    }
+}
 
-impl UnusedParens {
-    fn is_expr_parens_necessary(inner: &ast::Expr, followed_by_block: bool) -> bool {
+/// Used by both `UnusedParens` and `UnusedBraces` to prevent code duplication.
+trait UnusedDelimLint {
+    const DELIM_STR: &'static str;
+
+    // this cannot be a constant is it refers to a static.
+    fn lint(&self) -> &'static Lint;
+
+    fn check_unused_delims_expr(
+        &self,
+        cx: &EarlyContext<'_>,
+        value: &ast::Expr,
+        ctx: UnusedDelimsCtx,
+        followed_by_block: bool,
+        left_pos: Option<BytePos>,
+        right_pos: Option<BytePos>,
+    );
+
+    fn is_expr_delims_necessary(inner: &ast::Expr, followed_by_block: bool) -> bool {
         followed_by_block
             && match inner.kind {
                 ast::ExprKind::Ret(_) | ast::ExprKind::Break(..) => true,
@@ -332,42 +376,160 @@ impl UnusedParens {
             }
     }
 
-    fn check_unused_parens_expr(
+    fn emit_unused_delims_expr(
         &self,
         cx: &EarlyContext<'_>,
         value: &ast::Expr,
-        msg: &str,
-        followed_by_block: bool,
+        ctx: UnusedDelimsCtx,
         left_pos: Option<BytePos>,
         right_pos: Option<BytePos>,
     ) {
-        match value.kind {
-            ast::ExprKind::Paren(ref inner) => {
-                if !Self::is_expr_parens_necessary(inner, followed_by_block)
-                    && value.attrs.is_empty()
-                    && !value.span.from_expansion()
-                {
-                    let expr_text =
-                        if let Ok(snippet) = cx.sess().source_map().span_to_snippet(value.span) {
-                            snippet
-                        } else {
-                            pprust::expr_to_string(value)
-                        };
-                    let keep_space = (
-                        left_pos.map(|s| s >= value.span.lo()).unwrap_or(false),
-                        right_pos.map(|s| s <= value.span.hi()).unwrap_or(false),
+        let expr_text = if let Ok(snippet) = cx.sess().source_map().span_to_snippet(value.span) {
+            snippet
+        } else {
+            pprust::expr_to_string(value)
+        };
+        let keep_space = (
+            left_pos.map(|s| s >= value.span.lo()).unwrap_or(false),
+            right_pos.map(|s| s <= value.span.hi()).unwrap_or(false),
+        );
+        self.emit_unused_delims(cx, value.span, &expr_text, ctx.into(), keep_space);
+    }
+
+    fn emit_unused_delims(
+        &self,
+        cx: &EarlyContext<'_>,
+        span: Span,
+        pattern: &str,
+        msg: &str,
+        keep_space: (bool, bool),
+    ) {
+        cx.struct_span_lint(self.lint(), span, |lint| {
+            let span_msg = format!("unnecessary {} around {}", Self::DELIM_STR, msg);
+            let mut err = lint.build(&span_msg);
+            let mut ate_left_paren = false;
+            let mut ate_right_paren = false;
+            let parens_removed = pattern.trim_matches(|c| match c {
+                '(' | '{' => {
+                    if ate_left_paren {
+                        false
+                    } else {
+                        ate_left_paren = true;
+                        true
+                    }
+                }
+                ')' | '}' => {
+                    if ate_right_paren {
+                        false
+                    } else {
+                        ate_right_paren = true;
+                        true
+                    }
+                }
+                _ => false,
+            });
+
+            let replace = {
+                let mut replace = if keep_space.0 {
+                    let mut s = String::from(" ");
+                    s.push_str(parens_removed);
+                    s
+                } else {
+                    String::from(parens_removed)
+                };
+
+                if keep_space.1 {
+                    replace.push(' ');
+                }
+                replace
+            };
+
+            let suggestion = format!("remove these {}", Self::DELIM_STR);
+
+            err.span_suggestion_short(span, &suggestion, replace, Applicability::MachineApplicable);
+            err.emit();
+        });
+    }
+
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
+        use rustc_ast::ast::ExprKind::*;
+        let (value, ctx, followed_by_block, left_pos, right_pos) = match e.kind {
+            If(ref cond, ref block, ..) => {
+                let left = e.span.lo() + rustc_span::BytePos(2);
+                let right = block.span.lo();
+                (cond, UnusedDelimsCtx::IfCond, true, Some(left), Some(right))
+            }
+
+            While(ref cond, ref block, ..) => {
+                let left = e.span.lo() + rustc_span::BytePos(5);
+                let right = block.span.lo();
+                (cond, UnusedDelimsCtx::WhileCond, true, Some(left), Some(right))
+            }
+
+            ForLoop(_, ref cond, ref block, ..) => {
+                (cond, UnusedDelimsCtx::ForIterExpr, true, None, Some(block.span.lo()))
+            }
+
+            Match(ref head, _) => {
+                let left = e.span.lo() + rustc_span::BytePos(5);
+                (head, UnusedDelimsCtx::MatchScrutineeExpr, true, Some(left), None)
+            }
+
+            Ret(Some(ref value)) => {
+                let left = e.span.lo() + rustc_span::BytePos(3);
+                (value, UnusedDelimsCtx::ReturnValue, false, Some(left), None)
+            }
+
+            Assign(_, ref value, _) | AssignOp(.., ref value) => {
+                (value, UnusedDelimsCtx::AssignedValue, false, None, None)
+            }
+            // either function/method call, or something this lint doesn't care about
+            ref call_or_other => {
+                let (args_to_check, ctx) = match *call_or_other {
+                    Call(_, ref args) => (&args[..], UnusedDelimsCtx::FunctionArg),
+                    // first "argument" is self (which sometimes needs delims)
+                    MethodCall(_, ref args) => (&args[1..], UnusedDelimsCtx::MethodArg),
+                    // actual catch-all arm
+                    _ => {
+                        return;
+                    }
+                };
+                // Don't lint if this is a nested macro expansion: otherwise, the lint could
+                // trigger in situations that macro authors shouldn't have to care about, e.g.,
+                // when a parenthesized token tree matched in one macro expansion is matched as
+                // an expression in another and used as a fn/method argument (Issue #47775)
+                if e.span.ctxt().outer_expn_data().call_site.from_expansion() {
+                    return;
+                }
+                for arg in args_to_check {
+                    self.check_unused_delims_expr(cx, arg, ctx, false, None, None);
+                }
+                return;
+            }
+        };
+        self.check_unused_delims_expr(cx, &value, ctx, followed_by_block, left_pos, right_pos);
+    }
+
+    fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
+        match s.kind {
+            StmtKind::Local(ref local) => {
+                if let Some(ref value) = local.init {
+                    self.check_unused_delims_expr(
+                        cx,
+                        &value,
+                        UnusedDelimsCtx::AssignedValue,
+                        false,
+                        None,
+                        None,
                     );
-                    Self::remove_outer_parens(cx, value.span, &expr_text, msg, keep_space);
                 }
             }
-            ast::ExprKind::Let(_, ref expr) => {
-                // FIXME(#60336): Properly handle `let true = (false && true)`
-                // actually needing the parenthesis.
-                self.check_unused_parens_expr(
+            StmtKind::Expr(ref expr) => {
+                self.check_unused_delims_expr(
                     cx,
-                    expr,
-                    "`let` head expression",
-                    followed_by_block,
+                    &expr,
+                    UnusedDelimsCtx::BlockRetValue,
+                    false,
                     None,
                     None,
                 );
@@ -376,6 +538,73 @@ impl UnusedParens {
         }
     }
 
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+        use ast::ItemKind::*;
+
+        if let Const(.., Some(expr)) | Static(.., Some(expr)) = &item.kind {
+            self.check_unused_delims_expr(
+                cx,
+                expr,
+                UnusedDelimsCtx::AssignedValue,
+                false,
+                None,
+                None,
+            );
+        }
+    }
+}
+
+declare_lint! {
+    pub(super) UNUSED_PARENS,
+    Warn,
+    "`if`, `match`, `while` and `return` do not need parentheses"
+}
+
+declare_lint_pass!(UnusedParens => [UNUSED_PARENS]);
+
+impl UnusedDelimLint for UnusedParens {
+    const DELIM_STR: &'static str = "parentheses";
+
+    fn lint(&self) -> &'static Lint {
+        UNUSED_PARENS
+    }
+
+    fn check_unused_delims_expr(
+        &self,
+        cx: &EarlyContext<'_>,
+        value: &ast::Expr,
+        ctx: UnusedDelimsCtx,
+        followed_by_block: bool,
+        left_pos: Option<BytePos>,
+        right_pos: Option<BytePos>,
+    ) {
+        match value.kind {
+            ast::ExprKind::Paren(ref inner) => {
+                if !Self::is_expr_delims_necessary(inner, followed_by_block)
+                    && value.attrs.is_empty()
+                    && !value.span.from_expansion()
+                {
+                    self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos)
+                }
+            }
+            ast::ExprKind::Let(_, ref expr) => {
+                // FIXME(#60336): Properly handle `let true = (false && true)`
+                // actually needing the parenthesis.
+                self.check_unused_delims_expr(
+                    cx,
+                    expr,
+                    UnusedDelimsCtx::LetScrutineeExpr,
+                    followed_by_block,
+                    None,
+                    None,
+                );
+            }
+            _ => {}
+        }
+    }
+}
+
+impl UnusedParens {
     fn check_unused_parens_pat(
         &self,
         cx: &EarlyContext<'_>,
@@ -406,132 +635,18 @@ impl UnusedParens {
                 } else {
                     pprust::pat_to_string(value)
                 };
-            Self::remove_outer_parens(cx, value.span, &pattern_text, "pattern", (false, false));
+            self.emit_unused_delims(cx, value.span, &pattern_text, "pattern", (false, false));
         }
-    }
-
-    fn remove_outer_parens(
-        cx: &EarlyContext<'_>,
-        span: Span,
-        pattern: &str,
-        msg: &str,
-        keep_space: (bool, bool),
-    ) {
-        cx.struct_span_lint(UNUSED_PARENS, span, |lint| {
-            let span_msg = format!("unnecessary parentheses around {}", msg);
-            let mut err = lint.build(&span_msg);
-            let mut ate_left_paren = false;
-            let mut ate_right_paren = false;
-            let parens_removed = pattern.trim_matches(|c| match c {
-                '(' => {
-                    if ate_left_paren {
-                        false
-                    } else {
-                        ate_left_paren = true;
-                        true
-                    }
-                }
-                ')' => {
-                    if ate_right_paren {
-                        false
-                    } else {
-                        ate_right_paren = true;
-                        true
-                    }
-                }
-                _ => false,
-            });
-
-            let replace = {
-                let mut replace = if keep_space.0 {
-                    let mut s = String::from(" ");
-                    s.push_str(parens_removed);
-                    s
-                } else {
-                    String::from(parens_removed)
-                };
-
-                if keep_space.1 {
-                    replace.push(' ');
-                }
-                replace
-            };
-
-            err.span_suggestion_short(
-                span,
-                "remove these parentheses",
-                replace,
-                Applicability::MachineApplicable,
-            );
-            err.emit();
-        });
     }
 }
 
 impl EarlyLintPass for UnusedParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        use rustc_ast::ast::ExprKind::*;
-        let (value, msg, followed_by_block, left_pos, right_pos) = match e.kind {
-            Let(ref pat, ..) => {
-                self.check_unused_parens_pat(cx, pat, false, false);
-                return;
-            }
+        if let ExprKind::Let(ref pat, ..) | ExprKind::ForLoop(ref pat, ..) = e.kind {
+            self.check_unused_parens_pat(cx, pat, false, false);
+        }
 
-            If(ref cond, ref block, ..) => {
-                let left = e.span.lo() + rustc_span::BytePos(2);
-                let right = block.span.lo();
-                (cond, "`if` condition", true, Some(left), Some(right))
-            }
-
-            While(ref cond, ref block, ..) => {
-                let left = e.span.lo() + rustc_span::BytePos(5);
-                let right = block.span.lo();
-                (cond, "`while` condition", true, Some(left), Some(right))
-            }
-
-            ForLoop(ref pat, ref cond, ref block, ..) => {
-                self.check_unused_parens_pat(cx, pat, false, false);
-                (cond, "`for` head expression", true, None, Some(block.span.lo()))
-            }
-
-            Match(ref head, _) => {
-                let left = e.span.lo() + rustc_span::BytePos(5);
-                (head, "`match` head expression", true, Some(left), None)
-            }
-
-            Ret(Some(ref value)) => {
-                let left = e.span.lo() + rustc_span::BytePos(3);
-                (value, "`return` value", false, Some(left), None)
-            }
-
-            Assign(_, ref value, _) => (value, "assigned value", false, None, None),
-            AssignOp(.., ref value) => (value, "assigned value", false, None, None),
-            // either function/method call, or something this lint doesn't care about
-            ref call_or_other => {
-                let (args_to_check, call_kind) = match *call_or_other {
-                    Call(_, ref args) => (&args[..], "function"),
-                    // first "argument" is self (which sometimes needs parens)
-                    MethodCall(_, ref args) => (&args[1..], "method"),
-                    // actual catch-all arm
-                    _ => {
-                        return;
-                    }
-                };
-                // Don't lint if this is a nested macro expansion: otherwise, the lint could
-                // trigger in situations that macro authors shouldn't have to care about, e.g.,
-                // when a parenthesized token tree matched in one macro expansion is matched as
-                // an expression in another and used as a fn/method argument (Issue #47775)
-                if e.span.ctxt().outer_expn_data().call_site.from_expansion() {
-                    return;
-                }
-                let msg = format!("{} argument", call_kind);
-                for arg in args_to_check {
-                    self.check_unused_parens_expr(cx, arg, &msg, false, None, None);
-                }
-                return;
-            }
-        };
-        self.check_unused_parens_expr(cx, &value, msg, followed_by_block, left_pos, right_pos);
+        <Self as UnusedDelimLint>::check_expr(self, cx, e)
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat) {
@@ -556,22 +671,16 @@ impl EarlyLintPass for UnusedParens {
         }
     }
 
+    fn check_anon_const(&mut self, cx: &EarlyContext<'_>, c: &ast::AnonConst) {
+        self.check_unused_delims_expr(cx, &c.value, UnusedDelimsCtx::AnonConst, false, None, None);
+    }
+
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
-        use ast::StmtKind::*;
-
-        match s.kind {
-            Local(ref local) => {
-                self.check_unused_parens_pat(cx, &local.pat, false, false);
-
-                if let Some(ref value) = local.init {
-                    self.check_unused_parens_expr(cx, &value, "assigned value", false, None, None);
-                }
-            }
-            Expr(ref expr) => {
-                self.check_unused_parens_expr(cx, &expr, "block return value", false, None, None);
-            }
-            _ => {}
+        if let StmtKind::Local(ref local) = s.kind {
+            self.check_unused_parens_pat(cx, &local.pat, false, false);
         }
+
+        <Self as UnusedDelimLint>::check_stmt(self, cx, s)
     }
 
     fn check_param(&mut self, cx: &EarlyContext<'_>, param: &ast::Param) {
@@ -587,6 +696,16 @@ impl EarlyLintPass for UnusedParens {
             match &r.kind {
                 &ast::TyKind::TraitObject(..) => {}
                 &ast::TyKind::ImplTrait(_, ref bounds) if bounds.len() > 1 => {}
+                &ast::TyKind::Array(_, ref len) => {
+                    self.check_unused_delims_expr(
+                        cx,
+                        &len.value,
+                        UnusedDelimsCtx::ArrayLenExpr,
+                        false,
+                        None,
+                        None,
+                    );
+                }
                 _ => {
                     let pattern_text =
                         if let Ok(snippet) = cx.sess().source_map().span_to_snippet(ty.span) {
@@ -595,18 +714,133 @@ impl EarlyLintPass for UnusedParens {
                             pprust::ty_to_string(ty)
                         };
 
-                    Self::remove_outer_parens(cx, ty.span, &pattern_text, "type", (false, false));
+                    self.emit_unused_delims(cx, ty.span, &pattern_text, "type", (false, false));
                 }
             }
         }
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        use ast::ItemKind::*;
+        <Self as UnusedDelimLint>::check_item(self, cx, item)
+    }
+}
 
-        if let Const(.., Some(expr)) | Static(.., Some(expr)) = &item.kind {
-            self.check_unused_parens_expr(cx, expr, "assigned value", false, None, None);
+declare_lint! {
+    pub(super) UNUSED_BRACES,
+    Warn,
+    "unnecessary braces around an expression"
+}
+
+declare_lint_pass!(UnusedBraces => [UNUSED_BRACES]);
+
+impl UnusedDelimLint for UnusedBraces {
+    const DELIM_STR: &'static str = "braces";
+
+    fn lint(&self) -> &'static Lint {
+        UNUSED_BRACES
+    }
+
+    fn check_unused_delims_expr(
+        &self,
+        cx: &EarlyContext<'_>,
+        value: &ast::Expr,
+        ctx: UnusedDelimsCtx,
+        followed_by_block: bool,
+        left_pos: Option<BytePos>,
+        right_pos: Option<BytePos>,
+    ) {
+        match value.kind {
+            ast::ExprKind::Block(ref inner, None)
+                if inner.rules == ast::BlockCheckMode::Default =>
+            {
+                // emit a warning under the following conditions:
+                //
+                // - the block does not have a label
+                // - the block is not `unsafe`
+                // - the block contains exactly one expression (do not lint `{ expr; }`)
+                // - `followed_by_block` is true and the internal expr may contain a `{`
+                // - the block is not multiline (do not lint multiline match arms)
+                //      ```
+                //      match expr {
+                //          Pattern => {
+                //              somewhat_long_expression
+                //          }
+                //          // ...
+                //      }
+                //      ```
+                // - the block has no attribute and was not created inside a macro
+                // - if the block is an `anon_const`, the inner expr must be a literal
+                //      (do not lint `struct A<const N: usize>; let _: A<{ 2 + 3 }>;`)
+                //
+                // FIXME(const_generics): handle paths when #67075 is fixed.
+                if let [stmt] = inner.stmts.as_slice() {
+                    if let ast::StmtKind::Expr(ref expr) = stmt.kind {
+                        if !Self::is_expr_delims_necessary(expr, followed_by_block)
+                            && (ctx != UnusedDelimsCtx::AnonConst
+                                || matches!(expr.kind, ast::ExprKind::Lit(_)))
+                            // array length expressions are checked during `check_anon_const` and `check_ty`,
+                            // once as `ArrayLenExpr` and once as `AnonConst`.
+                            //
+                            // As we do not want to lint this twice, we do not emit an error for
+                            // `ArrayLenExpr` if `AnonConst` would do the same.
+                            && (ctx != UnusedDelimsCtx::ArrayLenExpr
+                                || !matches!(expr.kind, ast::ExprKind::Lit(_)))
+                            && !cx.sess().source_map().is_multiline(value.span)
+                            && value.attrs.is_empty()
+                            && !value.span.from_expansion()
+                        {
+                            self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos)
+                        }
+                    }
+                }
+            }
+            ast::ExprKind::Let(_, ref expr) => {
+                // FIXME(#60336): Properly handle `let true = (false && true)`
+                // actually needing the parenthesis.
+                self.check_unused_delims_expr(
+                    cx,
+                    expr,
+                    UnusedDelimsCtx::LetScrutineeExpr,
+                    followed_by_block,
+                    None,
+                    None,
+                );
+            }
+            _ => {}
         }
+    }
+}
+
+impl EarlyLintPass for UnusedBraces {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
+        <Self as UnusedDelimLint>::check_expr(self, cx, e)
+    }
+
+    fn check_anon_const(&mut self, cx: &EarlyContext<'_>, c: &ast::AnonConst) {
+        self.check_unused_delims_expr(cx, &c.value, UnusedDelimsCtx::AnonConst, false, None, None);
+    }
+
+    fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
+        <Self as UnusedDelimLint>::check_stmt(self, cx, s)
+    }
+
+    fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
+        if let &ast::TyKind::Paren(ref r) = &ty.kind {
+            if let ast::TyKind::Array(_, ref len) = r.kind {
+                self.check_unused_delims_expr(
+                    cx,
+                    &len.value,
+                    UnusedDelimsCtx::ArrayLenExpr,
+                    false,
+                    None,
+                    None,
+                );
+            }
+        }
+    }
+
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+        <Self as UnusedDelimLint>::check_item(self, cx, item)
     }
 }
 

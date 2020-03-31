@@ -356,9 +356,11 @@ fn add_query_description_impl(
                 quote! { #t }
             })
             .unwrap_or(quote! { _ });
+        // expr is a `Block`, meaning that `{ #expr }` gets expanded
+        // to `{ { stmts... } }`, which triggers the `unused_braces` lint.
         quote! {
             #[inline]
-            #[allow(unused_variables)]
+            #[allow(unused_variables, unused_braces)]
             fn cache_on_disk(
                 #tcx: TyCtxt<'tcx>,
                 #key: Self::Key,

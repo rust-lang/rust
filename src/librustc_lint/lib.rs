@@ -104,6 +104,7 @@ macro_rules! early_lint_passes {
             $args,
             [
                 UnusedParens: UnusedParens,
+                UnusedBraces: UnusedBraces,
                 UnusedImportBraces: UnusedImportBraces,
                 UnsafeCode: UnsafeCode,
                 AnonymousParameters: AnonymousParameters,
@@ -275,6 +276,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         UNUSED_FEATURES,
         UNUSED_LABELS,
         UNUSED_PARENS,
+        UNUSED_BRACES,
         REDUNDANT_SEMICOLONS
     );
 
