@@ -53,7 +53,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // registers its `onDidChangeDocument` handler before us.
     //
     // This a horribly, horribly wrong way to deal with this problem.
-    ctx = await Ctx.create(config, context, serverPath, workspaceFolder);
+    ctx = await Ctx.create(config, context, serverPath, workspaceFolder.uri.fsPath);
 
     // Commands which invokes manually via command palette, shortcut, etc.
 

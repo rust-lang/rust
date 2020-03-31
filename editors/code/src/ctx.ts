@@ -19,9 +19,9 @@ export class Ctx {
         config: Config,
         extCtx: vscode.ExtensionContext,
         serverPath: string,
-        workspaceFolder: vscode.WorkspaceFolder,
+        cwd: string,
     ): Promise<Ctx> {
-        const client = await createClient(config, serverPath, workspaceFolder);
+        const client = await createClient(config, serverPath, cwd);
         const res = new Ctx(config, extCtx, client, serverPath);
         res.pushCleanup(client.start());
         await client.onReady();
