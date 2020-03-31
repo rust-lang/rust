@@ -19,7 +19,7 @@ use lsp_types::{
     TextEdit, WorkspaceEdit,
 };
 use ra_ide::{
-    Assist, AssistId, CompletionOptions, FileId, FilePosition, FileRange, Query, RangeInfo,
+    Assist, AssistId, CompletionConfig, FileId, FilePosition, FileRange, Query, RangeInfo,
     Runnable, RunnableKind, SearchScope,
 };
 use ra_prof::profile;
@@ -425,7 +425,7 @@ pub fn handle_completion(
         return Ok(None);
     }
 
-    let options = CompletionOptions {
+    let config = CompletionConfig {
         enable_postfix_completions: world.feature_flags.get("completion.enable-postfix"),
         add_call_parenthesis: world.feature_flags.get("completion.insertion.add-call-parenthesis"),
         add_call_argument_snippets: world
@@ -433,7 +433,7 @@ pub fn handle_completion(
             .get("completion.insertion.add-argument-snippets"),
     };
 
-    let items = match world.analysis().completions(position, &options)? {
+    let items = match world.analysis().completions(position, &config)? {
         None => return Ok(None),
         Some(items) => items,
     };
@@ -457,7 +457,7 @@ pub fn handle_folding_range(
     let ctx = FoldConvCtx {
         text: &text,
         line_index: &line_index,
-        line_folding_only: world.options.line_folding_only,
+        line_folding_only: world.config.line_folding_only,
     };
     let res = Some(folds.into_iter().map_conv_with(&ctx).collect());
     Ok(res)
@@ -611,7 +611,7 @@ pub fn handle_formatting(
     let end_position = TextUnit::of_str(&file).conv_with(&file_line_index);
 
     let mut rustfmt = process::Command::new("rustfmt");
-    rustfmt.args(&world.options.rustfmt_args);
+    rustfmt.args(&world.config.rustfmt_args);
     if let Some(&crate_id) = crate_ids.first() {
         // Assume all crates are in the same edition
         let edition = world.analysis().crate_edition(crate_id)?;
@@ -815,7 +815,7 @@ pub fn handle_code_lens(
         };
         lenses.push(lens);
 
-        if world.options.vscode_lldb {
+        if world.config.vscode_lldb {
             if r.args[0] == "run" {
                 r.args[0] = "build".into();
             } else {
@@ -1028,7 +1028,7 @@ pub fn handle_inlay_hints(
     let analysis = world.analysis();
     let line_index = analysis.file_line_index(file_id)?;
     Ok(analysis
-        .inlay_hints(file_id, &world.options.inlay_hints)?
+        .inlay_hints(file_id, &world.config.inlay_hints)?
         .into_iter()
         .map_conv_with(&line_index)
         .collect())

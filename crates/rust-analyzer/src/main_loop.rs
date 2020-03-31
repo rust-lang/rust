@@ -21,8 +21,8 @@ use lsp_types::{
     WorkDoneProgressBegin, WorkDoneProgressCreateParams, WorkDoneProgressEnd,
     WorkDoneProgressReport,
 };
-use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckTask};
-use ra_ide::{Canceled, FileId, InlayHintsOptions, LibraryData, SourceRootId};
+use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckConfig, CheckTask};
+use ra_ide::{Canceled, FileId, InlayHintsConfig, LibraryData, SourceRootId};
 use ra_prof::profile;
 use ra_vfs::{VfsFile, VfsTask, Watch};
 use relative_path::RelativePathBuf;
@@ -38,7 +38,7 @@ use crate::{
         subscriptions::Subscriptions,
     },
     req,
-    world::{Options, WorldSnapshot, WorldState},
+    world::{Config, WorldSnapshot, WorldState},
     Result, ServerConfig,
 };
 use req::ConfigurationParams;
@@ -81,11 +81,11 @@ fn get_feature_flags(config: &ServerConfig, connection: &Connection) -> FeatureF
     ff
 }
 
-fn get_options(
+fn get_config(
     config: &ServerConfig,
     text_document_caps: Option<&TextDocumentClientCapabilities>,
-) -> Options {
-    Options {
+) -> Config {
+    Config {
         publish_decorations: config.publish_decorations,
         supports_location_link: text_document_caps
             .and_then(|it| it.definition)
@@ -95,13 +95,13 @@ fn get_options(
             .and_then(|it| it.folding_range.as_ref())
             .and_then(|it| it.line_folding_only)
             .unwrap_or(false),
-        inlay_hints: InlayHintsOptions {
+        inlay_hints: InlayHintsConfig {
             type_hints: config.inlay_hints_type,
             parameter_hints: config.inlay_hints_parameter,
             chaining_hints: config.inlay_hints_chaining,
             max_length: config.inlay_hints_max_length,
         },
-        cargo_watch: CheckOptions {
+        check: CheckConfig {
             enable: config.cargo_watch_enable,
             args: config.cargo_watch_args.clone(),
             command: config.cargo_watch_command.clone(),
@@ -210,7 +210,7 @@ pub fn main_loop(
             config.lru_capacity,
             &globs,
             Watch(!config.use_client_watching),
-            get_options(&config, text_document_caps),
+            get_config(&config, text_document_caps),
             feature_flags,
         )
     };
@@ -435,7 +435,7 @@ fn loop_turn(
                                 .to_owned();
                             world_state.update_configuration(
                                 new_config.lru_capacity,
-                                get_options(&new_config, text_document_caps),
+                                get_config(&new_config, text_document_caps),
                                 get_feature_flags(&new_config, connection),
                             );
                         }
@@ -498,7 +498,7 @@ fn loop_turn(
         update_file_notifications_on_threadpool(
             pool,
             world_state.snapshot(),
-            world_state.options.publish_decorations,
+            world_state.config.publish_decorations,
             task_sender.clone(),
             loop_state.subscriptions.subscriptions(),
         )

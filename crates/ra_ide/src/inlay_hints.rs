@@ -11,14 +11,14 @@ use ra_syntax::{
 use crate::{FileId, FunctionSignature};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InlayHintsOptions {
+pub struct InlayHintsConfig {
     pub type_hints: bool,
     pub parameter_hints: bool,
     pub chaining_hints: bool,
     pub max_length: Option<usize>,
 }
 
-impl Default for InlayHintsOptions {
+impl Default for InlayHintsConfig {
     fn default() -> Self {
         Self { type_hints: true, parameter_hints: true, chaining_hints: true, max_length: None }
     }
@@ -41,7 +41,7 @@ pub struct InlayHint {
 pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
-    options: &InlayHintsOptions,
+    config: &InlayHintsConfig,
 ) -> Vec<InlayHint> {
     let _p = profile("inlay_hints");
     let sema = Semantics::new(db);
@@ -50,14 +50,14 @@ pub(crate) fn inlay_hints(
     let mut res = Vec::new();
     for node in file.syntax().descendants() {
         if let Some(expr) = ast::Expr::cast(node.clone()) {
-            get_chaining_hints(&mut res, &sema, options, expr);
+            get_chaining_hints(&mut res, &sema, config, expr);
         }
 
         match_ast! {
             match node {
-                ast::CallExpr(it) => { get_param_name_hints(&mut res, &sema, options, ast::Expr::from(it)); },
-                ast::MethodCallExpr(it) => { get_param_name_hints(&mut res, &sema, options, ast::Expr::from(it)); },
-                ast::BindPat(it) => { get_bind_pat_hints(&mut res, &sema, options, it); },
+                ast::CallExpr(it) => { get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it)); },
+                ast::MethodCallExpr(it) => { get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it)); },
+                ast::BindPat(it) => { get_bind_pat_hints(&mut res, &sema, config, it); },
                 _ => (),
             }
         }
@@ -68,10 +68,10 @@ pub(crate) fn inlay_hints(
 fn get_chaining_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
-    options: &InlayHintsOptions,
+    config: &InlayHintsConfig,
     expr: ast::Expr,
 ) -> Option<()> {
-    if !options.chaining_hints {
+    if !config.chaining_hints {
         return None;
     }
 
@@ -95,7 +95,7 @@ fn get_chaining_hints(
     let next = tokens.next()?.kind();
     let next_next = tokens.next()?.kind();
     if next == SyntaxKind::WHITESPACE && next_next == SyntaxKind::DOT {
-        let label = ty.display_truncated(sema.db, options.max_length).to_string();
+        let label = ty.display_truncated(sema.db, config.max_length).to_string();
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
             kind: InlayKind::ChainingHint,
@@ -108,10 +108,10 @@ fn get_chaining_hints(
 fn get_param_name_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
-    options: &InlayHintsOptions,
+    config: &InlayHintsConfig,
     expr: ast::Expr,
 ) -> Option<()> {
-    if !options.parameter_hints {
+    if !config.parameter_hints {
         return None;
     }
 
@@ -148,10 +148,10 @@ fn get_param_name_hints(
 fn get_bind_pat_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
-    options: &InlayHintsOptions,
+    config: &InlayHintsConfig,
     pat: ast::BindPat,
 ) -> Option<()> {
-    if !options.type_hints {
+    if !config.type_hints {
         return None;
     }
 
@@ -164,7 +164,7 @@ fn get_bind_pat_hints(
     acc.push(InlayHint {
         range: pat.syntax().text_range(),
         kind: InlayKind::TypeHint,
-        label: ty.display_truncated(sema.db, options.max_length).to_string().into(),
+        label: ty.display_truncated(sema.db, config.max_length).to_string().into(),
     });
     Some(())
 }
@@ -270,7 +270,7 @@ fn get_fn_signature(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<
 
 #[cfg(test)]
 mod tests {
-    use crate::inlay_hints::InlayHintsOptions;
+    use crate::inlay_hints::InlayHintsConfig;
     use insta::assert_debug_snapshot;
 
     use crate::mock_analysis::single_file;
@@ -284,7 +284,7 @@ mod tests {
                 let _x = foo(4, 4);
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ parameter_hints: true, type_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: true, type_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
                 range: [106; 107),
@@ -308,7 +308,7 @@ mod tests {
                 let _x = foo(4, 4);
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ type_hints: false, parameter_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"[]"###);
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ type_hints: false, parameter_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"[]"###);
     }
 
     #[test]
@@ -320,7 +320,7 @@ mod tests {
                 let _x = foo(4, 4);
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ type_hints: true, parameter_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ type_hints: true, parameter_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
                 range: [97; 99),
@@ -344,7 +344,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions::default()).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [69; 71),
@@ -401,7 +401,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions::default()).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [193; 197),
@@ -481,7 +481,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions::default()).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [21; 30),
@@ -545,7 +545,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions::default()).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [21; 30),
@@ -595,7 +595,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions::default()).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [188; 192),
@@ -690,7 +690,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions::default()).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [188; 192),
@@ -785,7 +785,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions::default()).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [252; 256),
@@ -857,7 +857,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions { max_length: Some(8), ..Default::default() }).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig { max_length: Some(8), ..Default::default() }).unwrap(), @r###"
         [
             InlayHint {
                 range: [74; 75),
@@ -945,7 +945,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions::default()).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
                 range: [798; 809),
@@ -1067,7 +1067,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions { max_length: Some(8), ..Default::default() }).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig { max_length: Some(8), ..Default::default() }).unwrap(), @r###"
         []
         "###
         );
@@ -1093,7 +1093,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions { max_length: Some(8), ..Default::default() }).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig { max_length: Some(8), ..Default::default() }).unwrap(), @r###"
         []
         "###
         );
@@ -1115,7 +1115,7 @@ fn main() {
                     .into_c();
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
                 range: [232; 269),
@@ -1144,7 +1144,7 @@ fn main() {
                 let c = A(B(C)).into_b().into_c();
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"[]"###);
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"[]"###);
     }
 
     #[test]
@@ -1162,7 +1162,7 @@ fn main() {
                     .0;
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
                 range: [150; 221),
@@ -1204,7 +1204,7 @@ fn main() {
                     .into_c();
             }"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsOptions{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
                 range: [403; 452),

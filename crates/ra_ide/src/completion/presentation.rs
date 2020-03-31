@@ -106,7 +106,7 @@ impl Completions {
         };
 
         // Add `<>` for generic types
-        if ctx.is_path_type && !ctx.has_type_args && ctx.options.add_call_parenthesis {
+        if ctx.is_path_type && !ctx.has_type_args && ctx.config.add_call_parenthesis {
             let has_non_default_type_params = match resolution {
                 ScopeDef::ModuleDef(Adt(it)) => it.has_non_default_type_params(ctx.db),
                 ScopeDef::ModuleDef(TypeAlias(it)) => it.has_non_default_type_params(ctx.db),
@@ -211,14 +211,14 @@ impl Completions {
                 .detail(function_signature.to_string());
 
         // If not an import, add parenthesis automatically.
-        if ctx.use_item_syntax.is_none() && !ctx.is_call && ctx.options.add_call_parenthesis {
+        if ctx.use_item_syntax.is_none() && !ctx.is_call && ctx.config.add_call_parenthesis {
             tested_by!(inserts_parens_for_function_calls);
 
             let (snippet, label) = if params.is_empty() || has_self_param && params.len() == 1 {
                 (format!("{}()$0", name), format!("{}()", name))
             } else {
                 builder = builder.trigger_call_info();
-                let snippet = if ctx.options.add_call_argument_snippets {
+                let snippet = if ctx.config.add_call_argument_snippets {
                     let to_skip = if has_self_param { 1 } else { 0 };
                     let function_params_snippet = function_signature
                         .parameter_names
@@ -311,7 +311,7 @@ mod tests {
 
     use crate::completion::{
         test_utils::{do_completion, do_completion_with_options},
-        CompletionItem, CompletionKind, CompletionOptions,
+        CompletionConfig, CompletionItem, CompletionKind,
     };
 
     fn do_reference_completion(ra_fixture: &str) -> Vec<CompletionItem> {
@@ -320,7 +320,7 @@ mod tests {
 
     fn do_reference_completion_with_options(
         ra_fixture: &str,
-        options: CompletionOptions,
+        options: CompletionConfig,
     ) -> Vec<CompletionItem> {
         do_completion_with_options(ra_fixture, CompletionKind::Reference, &options)
     }
@@ -589,7 +589,7 @@ mod tests {
                     s.f<|>
                 }
                 ",
-                CompletionOptions {
+                CompletionConfig {
                     add_call_argument_snippets: false,
                     .. Default::default()
                 }

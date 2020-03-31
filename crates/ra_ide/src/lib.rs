@@ -62,13 +62,13 @@ use crate::display::ToNav;
 pub use crate::{
     assists::{Assist, AssistId},
     call_hierarchy::CallItem,
-    completion::{CompletionItem, CompletionItemKind, CompletionOptions, InsertTextFormat},
+    completion::{CompletionConfig, CompletionItem, CompletionItemKind, InsertTextFormat},
     diagnostics::Severity,
     display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
     expand_macro::ExpandedMacro,
     folding_ranges::{Fold, FoldKind},
     hover::HoverResult,
-    inlay_hints::{InlayHint, InlayHintsOptions, InlayKind},
+    inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     references::{Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
     source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
@@ -325,9 +325,9 @@ impl Analysis {
     pub fn inlay_hints(
         &self,
         file_id: FileId,
-        inlay_hint_opts: &InlayHintsOptions,
+        config: &InlayHintsConfig,
     ) -> Cancelable<Vec<InlayHint>> {
-        self.with_db(|db| inlay_hints::inlay_hints(db, file_id, inlay_hint_opts))
+        self.with_db(|db| inlay_hints::inlay_hints(db, file_id, config))
     }
 
     /// Returns the set of folding ranges.
@@ -450,9 +450,9 @@ impl Analysis {
     pub fn completions(
         &self,
         position: FilePosition,
-        options: &CompletionOptions,
+        config: &CompletionConfig,
     ) -> Cancelable<Option<Vec<CompletionItem>>> {
-        self.with_db(|db| completion::completions(db, position, options).map(Into::into))
+        self.with_db(|db| completion::completions(db, position, config).map(Into::into))
     }
 
     /// Computes assists (aka code actions aka intentions) for the given

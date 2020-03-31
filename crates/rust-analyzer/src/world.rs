@@ -11,9 +11,9 @@ use std::{
 use crossbeam_channel::{unbounded, Receiver};
 use lsp_types::Url;
 use parking_lot::RwLock;
-use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckOptions, CheckWatcher};
+use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckConfig, CheckWatcher};
 use ra_ide::{
-    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, InlayHintsOptions, LibraryData,
+    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, InlayHintsConfig, LibraryData,
     SourceRootId,
 };
 use ra_project_model::{get_rustc_cfg_options, ProcMacroClient, ProjectWorkspace};
@@ -31,7 +31,7 @@ use crate::{
 use ra_db::ExternSourceId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-fn create_watcher(workspaces: &[ProjectWorkspace], options: &Options) -> Option<CheckWatcher> {
+fn create_watcher(workspaces: &[ProjectWorkspace], config: &Config) -> Option<CheckWatcher> {
     // FIXME: Figure out the multi-workspace situation
     workspaces
         .iter()
@@ -41,7 +41,7 @@ fn create_watcher(workspaces: &[ProjectWorkspace], options: &Options) -> Option<
         })
         .map(|cargo| {
             let cargo_project_root = cargo.workspace_root().to_path_buf();
-            Some(CheckWatcher::new(&options.cargo_watch, cargo_project_root))
+            Some(CheckWatcher::new(config.check.clone(), cargo_project_root))
         })
         .unwrap_or_else(|| {
             log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
@@ -50,13 +50,13 @@ fn create_watcher(workspaces: &[ProjectWorkspace], options: &Options) -> Option<
 }
 
 #[derive(Debug, Clone)]
-pub struct Options {
+pub struct Config {
     pub publish_decorations: bool,
     pub supports_location_link: bool,
     pub line_folding_only: bool,
-    pub inlay_hints: InlayHintsOptions,
+    pub inlay_hints: InlayHintsConfig,
     pub rustfmt_args: Vec<String>,
-    pub cargo_watch: CheckOptions,
+    pub check: CheckConfig,
     pub vscode_lldb: bool,
 }
 
@@ -67,7 +67,7 @@ pub struct Options {
 /// incremental salsa database.
 #[derive(Debug)]
 pub struct WorldState {
-    pub options: Options,
+    pub config: Config,
     pub feature_flags: Arc<FeatureFlags>,
     pub roots: Vec<PathBuf>,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
@@ -81,7 +81,7 @@ pub struct WorldState {
 
 /// An immutable snapshot of the world's state at a point in time.
 pub struct WorldSnapshot {
-    pub options: Options,
+    pub config: Config,
     pub feature_flags: Arc<FeatureFlags>,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
@@ -97,7 +97,7 @@ impl WorldState {
         lru_capacity: Option<usize>,
         exclude_globs: &[Glob],
         watch: Watch,
-        options: Options,
+        config: Config,
         feature_flags: FeatureFlags,
     ) -> WorldState {
         let mut change = AnalysisChange::new();
@@ -185,12 +185,12 @@ impl WorldState {
             });
         change.set_crate_graph(crate_graph);
 
-        let check_watcher = create_watcher(&workspaces, &options);
+        let check_watcher = create_watcher(&workspaces, &config);
 
         let mut analysis_host = AnalysisHost::new(lru_capacity);
         analysis_host.apply_change(change);
         WorldState {
-            options,
+            config: config,
             feature_flags: Arc::new(feature_flags),
             roots: folder_roots,
             workspaces: Arc::new(workspaces),
@@ -206,13 +206,13 @@ impl WorldState {
     pub fn update_configuration(
         &mut self,
         lru_capacity: Option<usize>,
-        options: Options,
+        config: Config,
         feature_flags: FeatureFlags,
     ) {
         self.feature_flags = Arc::new(feature_flags);
         self.analysis_host.update_lru_capacity(lru_capacity);
-        self.check_watcher = create_watcher(&self.workspaces, &options);
-        self.options = options;
+        self.check_watcher = create_watcher(&self.workspaces, &config);
+        self.config = config;
     }
 
     /// Returns a vec of libraries
@@ -268,7 +268,7 @@ impl WorldState {
 
     pub fn snapshot(&self) -> WorldSnapshot {
         WorldSnapshot {
-            options: self.options.clone(),
+            config: self.config.clone(),
             feature_flags: Arc::clone(&self.feature_flags),
             workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(),

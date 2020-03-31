@@ -22,7 +22,7 @@ use crate::conv::{map_rust_diagnostic_to_lsp, MappedRustDiagnostic};
 pub use crate::conv::url_from_path_with_drive_lowercasing;
 
 #[derive(Clone, Debug)]
-pub struct CheckOptions {
+pub struct CheckConfig {
     pub enable: bool,
     pub args: Vec<String>,
     pub command: String,
@@ -42,13 +42,11 @@ pub struct CheckWatcher {
 }
 
 impl CheckWatcher {
-    pub fn new(options: &CheckOptions, workspace_root: PathBuf) -> CheckWatcher {
-        let options = options.clone();
-
+    pub fn new(config: CheckConfig, workspace_root: PathBuf) -> CheckWatcher {
         let (task_send, task_recv) = unbounded::<CheckTask>();
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
         let handle = jod_thread::spawn(move || {
-            let mut check = CheckWatcherThread::new(options, workspace_root);
+            let mut check = CheckWatcherThread::new(config, workspace_root);
             check.run(&task_send, &cmd_recv);
         });
         CheckWatcher { task_recv, cmd_send, handle: Some(handle) }
@@ -78,14 +76,14 @@ pub enum CheckCommand {
 }
 
 struct CheckWatcherThread {
-    options: CheckOptions,
+    options: CheckConfig,
     workspace_root: PathBuf,
     watcher: WatchThread,
     last_update_req: Option<Instant>,
 }
 
 impl CheckWatcherThread {
-    fn new(options: CheckOptions, workspace_root: PathBuf) -> CheckWatcherThread {
+    fn new(options: CheckConfig, workspace_root: PathBuf) -> CheckWatcherThread {
         CheckWatcherThread {
             options,
             workspace_root,
@@ -324,7 +322,7 @@ impl WatchThread {
         WatchThread { message_recv: never(), _handle: None }
     }
 
-    fn new(options: &CheckOptions, workspace_root: &Path) -> WatchThread {
+    fn new(options: &CheckConfig, workspace_root: &Path) -> WatchThread {
         let mut args: Vec<String> = vec![
             options.command.clone(),
             "--workspace".to_string(),

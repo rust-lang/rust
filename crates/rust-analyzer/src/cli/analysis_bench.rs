@@ -12,7 +12,7 @@ use ra_db::{
     salsa::{Database, Durability},
     FileId, SourceDatabaseExt,
 };
-use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CompletionOptions, FilePosition, LineCol};
+use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CompletionConfig, FilePosition, LineCol};
 
 use crate::cli::{load_cargo::load_cargo, Verbosity};
 
@@ -102,7 +102,7 @@ pub fn analysis_bench(
             let file_position = FilePosition { file_id, offset };
 
             if is_completion {
-                let options = CompletionOptions::default();
+                let options = CompletionConfig::default();
                 let res = do_work(&mut host, file_id, |analysis| {
                     analysis.completions(file_position, &options)
                 });
