@@ -5,9 +5,10 @@
 #![feature(rustc_private)]
 
 extern crate rustc_middle;
+extern crate rustc_target;
 
 use rustc_middle::mir::interpret::UndefMask;
-use rustc_middle::ty::layout::Size;
+use rustc_target::abi::Size;
 
 fn main() {
     let mut mask = UndefMask::new(Size::from_bytes(500), false);
