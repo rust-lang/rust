@@ -2,8 +2,8 @@
 
 #![stable(feature = "windows_profileapi", since = "1.43.0")]
 
-use crate::sys::cvt;
 use crate::sys::c;
+use crate::sys::cvt;
 
 /// Stores the current value of the performance counter to the memory pointed by the argument pointer,
 /// Counter value is a high resolution (<1us) time stamp that can be used for time-interval measurements.
