@@ -369,19 +369,30 @@ impl ast::MatchArmList {
 
     #[must_use]
     pub fn remove_placeholder(&self) -> ast::MatchArmList {
-        let placeholder = self.arms().find(|arm| {
-            if let Some(ast::Pat::PlaceholderPat(_)) = arm.pat() {
-                return true;
-            }
-            false
-        });
+        let placeholder =
+            self.arms().find(|arm| matches!(arm.pat(), Some(ast::Pat::PlaceholderPat(_))));
         if let Some(placeholder) = placeholder {
-            let s: SyntaxElement = placeholder.syntax().clone().into();
-            let e = s.clone();
-            self.replace_children(s..=e, &mut iter::empty())
+            self.remove_arm(&placeholder)
         } else {
             self.clone()
         }
+    }
+
+    #[must_use]
+    fn remove_arm(&self, arm: &ast::MatchArm) -> ast::MatchArmList {
+        let start = arm.syntax().clone();
+        let end = if let Some(comma) = start
+            .siblings_with_tokens(Direction::Next)
+            .skip(1)
+            .skip_while(|it| it.kind().is_trivia())
+            .next()
+            .filter(|it| it.kind() == T![,])
+        {
+            comma
+        } else {
+            start.clone().into()
+        };
+        self.replace_children(start.into()..=end, None)
     }
 
     #[must_use]

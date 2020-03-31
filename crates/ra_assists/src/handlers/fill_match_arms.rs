@@ -1,15 +1,11 @@
-//! FIXME: write short doc here
-
 use std::iter;
 
 use hir::{Adt, HasSource, ModuleDef, Semantics};
 use itertools::Itertools;
 use ra_ide_db::RootDatabase;
+use ra_syntax::ast::{self, make, AstNode, MatchArm, NameOwner, Pat};
 
 use crate::{Assist, AssistCtx, AssistId};
-use ra_syntax::ast::{self, make, AstNode, NameOwner};
-
-use ast::{MatchArm, Pat};
 
 // Assist: fill_match_arms
 //
@@ -710,6 +706,30 @@ mod tests {
             fn foo(a: A) {
                 match <|>a {
                     // foo bar baz
+                    A::One => {}
+                    A::Two => {}
+                }
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn fill_match_arms_placeholder() {
+        check_assist(
+            fill_match_arms,
+            r#"
+            enum A { One, Two, }
+            fn foo(a: A) {
+                match a<|> {
+                    _ => (),
+                }
+            }
+            "#,
+            r#"
+            enum A { One, Two, }
+            fn foo(a: A) {
+                match <|>a {
                     A::One => {}
                     A::Two => {}
                 }
