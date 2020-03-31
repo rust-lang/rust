@@ -447,6 +447,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
 #[rustfmt::skip]
 fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
+        if in_macro(expr.span) {
+            // Don't lint match expressions present in
+            // macro_rules! block
+            return;
+        }
         if let PatKind::Or(..) = arms[0].pat.kind {
             // don't lint for or patterns for now, this makes
             // the lint noisy in unnecessary situations
