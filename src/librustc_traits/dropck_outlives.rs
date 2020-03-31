@@ -1,11 +1,11 @@
-use rustc::ty::query::Providers;
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::TraitEngineExt as _;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::query::dropck_outlives::trivial_dropck_outlives;
 use rustc_trait_selection::traits::query::dropck_outlives::{
@@ -207,13 +207,13 @@ fn dtorck_constraint_for_ty<'tcx>(
             }
         }
 
-        ty::Closure(def_id, substs) => {
-            for ty in substs.as_closure().upvar_tys(def_id, tcx) {
+        ty::Closure(_, substs) => {
+            for ty in substs.as_closure().upvar_tys() {
                 dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
             }
         }
 
-        ty::Generator(def_id, substs, _movability) => {
+        ty::Generator(_, substs, _movability) => {
             // rust-lang/rust#49918: types can be constructed, stored
             // in the interior, and sit idle when generator yields
             // (and is subsequently dropped).
@@ -240,10 +240,10 @@ fn dtorck_constraint_for_ty<'tcx>(
             constraints.outlives.extend(
                 substs
                     .as_generator()
-                    .upvar_tys(def_id, tcx)
+                    .upvar_tys()
                     .map(|t| -> ty::subst::GenericArg<'tcx> { t.into() }),
             );
-            constraints.outlives.push(substs.as_generator().resume_ty(def_id, tcx).into());
+            constraints.outlives.push(substs.as_generator().resume_ty().into());
         }
 
         ty::Adt(def, substs) => {

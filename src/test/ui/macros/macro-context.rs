@@ -4,6 +4,8 @@ macro_rules! m {
                             //~| ERROR macro expansion ignores token `typeof`
                             //~| ERROR macro expansion ignores token `;`
                             //~| ERROR macro expansion ignores token `;`
+                            //~| ERROR cannot find type `i` in this scope
+                            //~| ERROR cannot find value `i` in this scope
 }
 
 fn main() {

@@ -1,6 +1,6 @@
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Instance, TyCtxt, TypeFoldable};
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, Instance, TyCtxt, TypeFoldable};
 use rustc_span::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
@@ -90,7 +90,7 @@ fn resolve_associated_item<'tcx>(
             // Since this is a trait item, we need to see if the item is either a trait default item
             // or a specialization because we can't resolve those unless we can `Reveal::All`.
             // NOTE: This should be kept in sync with the similar code in
-            // `rustc::traits::project::assemble_candidates_from_impls()`.
+            // `rustc_middle::traits::project::assemble_candidates_from_impls()`.
             let eligible = if !resolved_item.defaultness.is_default() {
                 true
             } else if param_env.reveal == traits::Reveal::All {

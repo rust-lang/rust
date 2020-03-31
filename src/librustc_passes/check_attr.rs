@@ -4,9 +4,9 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use rustc::hir::map::Map;
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 
 use rustc_ast::ast::{Attribute, NestedMetaItem};
 use rustc_ast::attr;

@@ -2,11 +2,11 @@
 // for a pre-z13 machine or using -mno-vx.
 
 use crate::abi::call::{ArgAbi, FnAbi, Reg};
-use crate::abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use crate::abi::{self, HasDataLayout, LayoutOf, TyAndLayout, TyAndLayoutMethods};
 
 fn classify_ret<'a, Ty, C>(ret: &mut ArgAbi<'_, Ty>)
 where
-    Ty: TyLayoutMethods<'a, C>,
+    Ty: TyAndLayoutMethods<'a, C>,
     C: LayoutOf<Ty = Ty> + HasDataLayout,
 {
     if !ret.layout.is_aggregate() && ret.layout.size.bits() <= 64 {
@@ -16,10 +16,10 @@ where
     }
 }
 
-fn is_single_fp_element<'a, Ty, C>(cx: &C, layout: TyLayout<'a, Ty>) -> bool
+fn is_single_fp_element<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> bool
 where
-    Ty: TyLayoutMethods<'a, C>,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
+    Ty: TyAndLayoutMethods<'a, C>,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     match layout.abi {
         abi::Abi::Scalar(ref scalar) => scalar.value.is_float(),
@@ -36,8 +36,8 @@ where
 
 fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     if !arg.layout.is_aggregate() && arg.layout.size.bits() <= 64 {
         arg.extend_integer_width_to(64);
@@ -63,8 +63,8 @@ where
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);

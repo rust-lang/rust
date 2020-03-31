@@ -1,11 +1,19 @@
 error[E0599]: no method named `clone` found for struct `C` in the current scope
-  --> $DIR/issue-2823.rs:13:16
+  --> $DIR/issue-2823.rs:18:16
    |
 LL | struct C {
    | -------- method `clone` not found for this
 ...
 LL |     let _d = c.clone();
    |                ^^^^^ method not found in `C`
+   | 
+  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+   |
+LL |     fn clone(&self) -> Self;
+   |        -----
+   |        |
+   |        the method is available for `std::sync::Arc<C>` here
+   |        the method is available for `std::rc::Rc<C>` here
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:

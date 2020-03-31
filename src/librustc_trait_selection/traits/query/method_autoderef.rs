@@ -1,1 +1,3 @@
-pub use rustc::traits::query::{CandidateStep, MethodAutoderefBadTy, MethodAutoderefStepsResult};
+pub use rustc_middle::traits::query::{
+    CandidateStep, MethodAutoderefBadTy, MethodAutoderefStepsResult,
+};

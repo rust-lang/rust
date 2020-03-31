@@ -1,8 +1,8 @@
 error[E0668]: malformed inline assembly
   --> $DIR/issue-62046.rs:8:9
    |
-LL |         asm!("nop" : "+r"("r15"));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         llvm_asm!("nop" : "+r"("r15"));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

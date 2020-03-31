@@ -214,11 +214,18 @@ impl GenericArg {
 pub struct AngleBracketedArgs {
     /// The overall span.
     pub span: Span,
-    /// The arguments for this path segment.
-    pub args: Vec<GenericArg>,
-    /// Constraints on associated types, if any.
-    /// E.g., `Foo<A = Bar, B: Baz>`.
-    pub constraints: Vec<AssocTyConstraint>,
+    /// The comma separated parts in the `<...>`.
+    pub args: Vec<AngleBracketedArg>,
+}
+
+/// Either an argument for a parameter e.g., `'a`, `Vec<u8>`, `0`,
+/// or a constraint on an associated item, e.g., `Item = String` or `Item: Bound`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum AngleBracketedArg {
+    /// Argument for a generic parameter.
+    Arg(GenericArg),
+    /// Constraint for an associated item.
+    Constraint(AssocTyConstraint),
 }
 
 impl Into<Option<P<GenericArgs>>> for AngleBracketedArgs {
@@ -248,11 +255,13 @@ pub struct ParenthesizedArgs {
 
 impl ParenthesizedArgs {
     pub fn as_angle_bracketed_args(&self) -> AngleBracketedArgs {
-        AngleBracketedArgs {
-            span: self.span,
-            args: self.inputs.iter().cloned().map(GenericArg::Type).collect(),
-            constraints: vec![],
-        }
+        let args = self
+            .inputs
+            .iter()
+            .cloned()
+            .map(|input| AngleBracketedArg::Arg(GenericArg::Type(input)))
+            .collect();
+        AngleBracketedArgs { span: self.span, args }
     }
 }
 
@@ -684,19 +693,8 @@ pub enum PatKind {
     MacCall(MacCall),
 }
 
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    Copy,
-    HashStable_Generic
-)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(HashStable_Generic)]
 pub enum Mutability {
     Mut,
     Not,
@@ -1125,7 +1123,7 @@ impl Expr {
             ExprKind::Break(..) => ExprPrecedence::Break,
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
-            ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
+            ExprKind::LlvmInlineAsm(..) => ExprPrecedence::InlineAsm,
             ExprKind::MacCall(..) => ExprPrecedence::Mac,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
@@ -1254,8 +1252,8 @@ pub enum ExprKind {
     /// A `return`, with an optional value to be returned.
     Ret(Option<P<Expr>>),
 
-    /// Output of the `asm!()` macro.
-    InlineAsm(P<InlineAsm>),
+    /// Output of the `llvm_asm!()` macro.
+    LlvmInlineAsm(P<LlvmInlineAsm>),
 
     /// A macro invocation; pre-expansion.
     MacCall(MacCall),
@@ -1321,19 +1319,8 @@ pub enum CaptureBy {
 
 /// The movability of a generator / closure literal:
 /// whether a generator contains self-references, causing it to be `!Unpin`.
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    Copy,
-    HashStable_Generic
-)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(HashStable_Generic)]
 pub enum Movability {
     /// May contain self-references, `!Unpin`.
     Static,
@@ -1614,19 +1601,8 @@ pub struct FnSig {
     pub decl: P<FnDecl>,
 }
 
-#[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    HashStable_Generic,
-    RustcEncodable,
-    RustcDecodable,
-    Debug
-)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable_Generic)]
 pub enum FloatTy {
     F32,
     F64,
@@ -1647,7 +1623,7 @@ impl FloatTy {
         }
     }
 
-    pub fn bit_width(self) -> usize {
+    pub fn bit_width(self) -> u64 {
         match self {
             FloatTy::F32 => 32,
             FloatTy::F64 => 64,
@@ -1655,19 +1631,8 @@ impl FloatTy {
     }
 }
 
-#[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    HashStable_Generic,
-    RustcEncodable,
-    RustcDecodable,
-    Debug
-)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable_Generic)]
 pub enum IntTy {
     Isize,
     I8,
@@ -1707,7 +1672,7 @@ impl IntTy {
         format!("{}{}", val as u128, self.name_str())
     }
 
-    pub fn bit_width(&self) -> Option<usize> {
+    pub fn bit_width(&self) -> Option<u64> {
         Some(match *self {
             IntTy::Isize => return None,
             IntTy::I8 => 8,
@@ -1731,19 +1696,8 @@ impl IntTy {
     }
 }
 
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    HashStable_Generic,
-    RustcEncodable,
-    RustcDecodable,
-    Copy,
-    Debug
-)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Copy, Debug)]
+#[derive(HashStable_Generic)]
 pub enum UintTy {
     Usize,
     U8,
@@ -1780,7 +1734,7 @@ impl UintTy {
         format!("{}{}", val, self.name_str())
     }
 
-    pub fn bit_width(&self) -> Option<usize> {
+    pub fn bit_width(&self) -> Option<u64> {
         Some(match *self {
             UintTy::Usize => return None,
             UintTy::U8 => 8,
@@ -1915,37 +1869,37 @@ pub enum TraitObjectSyntax {
 
 /// Inline assembly dialect.
 ///
-/// E.g., `"intel"` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
+/// E.g., `"intel"` as in `llvm_asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
-pub enum AsmDialect {
+pub enum LlvmAsmDialect {
     Att,
     Intel,
 }
 
-/// Inline assembly.
+/// LLVM-style inline assembly.
 ///
-/// E.g., `"={eax}"(result)` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
+/// E.g., `"={eax}"(result)` as in `llvm_asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct InlineAsmOutput {
+pub struct LlvmInlineAsmOutput {
     pub constraint: Symbol,
     pub expr: P<Expr>,
     pub is_rw: bool,
     pub is_indirect: bool,
 }
 
-/// Inline assembly.
+/// LLVM-style inline assembly.
 ///
-/// E.g., `asm!("NOP");`.
+/// E.g., `llvm_asm!("NOP");`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct InlineAsm {
+pub struct LlvmInlineAsm {
     pub asm: Symbol,
     pub asm_str_style: StrStyle,
-    pub outputs: Vec<InlineAsmOutput>,
+    pub outputs: Vec<LlvmInlineAsmOutput>,
     pub inputs: Vec<(Symbol, P<Expr>)>,
     pub clobbers: Vec<Symbol>,
     pub volatile: bool,
     pub alignstack: bool,
-    pub dialect: AsmDialect,
+    pub dialect: LlvmAsmDialect,
 }
 
 /// A parameter in a function header.

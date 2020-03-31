@@ -4,11 +4,11 @@ struct X;
 fn main() {
     false == false == false;
     //~^ ERROR comparison operators cannot be chained
+    //~| HELP split the comparison into two
 
     false == 0 < 2;
     //~^ ERROR comparison operators cannot be chained
-    //~| ERROR mismatched types
-    //~| ERROR mismatched types
+    //~| HELP parenthesize the comparison
 
     f<X>();
     //~^ ERROR comparison operators cannot be chained
@@ -16,8 +16,6 @@ fn main() {
 
     f<Result<Option<X>, Option<Option<X>>>(1, 2);
     //~^ ERROR comparison operators cannot be chained
-    //~| HELP split the comparison into two...
-    //~| ...or parenthesize one of the comparisons
     //~| HELP use `::<...>` instead of `<...>` to specify type arguments
 
     use std::convert::identity;

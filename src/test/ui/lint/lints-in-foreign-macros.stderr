@@ -26,7 +26,7 @@ warning: unused import: `std::string::ToString`
 LL | mod d { baz2!(use std::string::ToString;); }
    |                   ^^^^^^^^^^^^^^^^^^^^^
 
-warning: missing documentation for crate
+warning: missing documentation for the crate
   --> $DIR/lints-in-foreign-macros.rs:4:1
    |
 LL | / #![warn(unused_imports)]

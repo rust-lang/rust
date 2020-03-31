@@ -2,7 +2,7 @@ error[E0603]: tuple variant `Tuple` is private
   --> $DIR/variant.rs:11:48
    |
 LL |     let variant_tuple = NonExhaustiveVariants::Tuple(640);
-   |                                                ^^^^^ this tuple variant is private
+   |                                                ^^^^^ private tuple variant
    |
 note: the tuple variant `Tuple` is defined here
   --> $DIR/auxiliary/variants.rs:5:23
@@ -14,7 +14,7 @@ error[E0603]: unit variant `Unit` is private
   --> $DIR/variant.rs:14:47
    |
 LL |     let variant_unit = NonExhaustiveVariants::Unit;
-   |                                               ^^^^ this unit variant is private
+   |                                               ^^^^ private unit variant
    |
 note: the unit variant `Unit` is defined here
   --> $DIR/auxiliary/variants.rs:4:23
@@ -26,7 +26,7 @@ error[E0603]: unit variant `Unit` is private
   --> $DIR/variant.rs:18:32
    |
 LL |         NonExhaustiveVariants::Unit => "",
-   |                                ^^^^ this unit variant is private
+   |                                ^^^^ private unit variant
    |
 note: the unit variant `Unit` is defined here
   --> $DIR/auxiliary/variants.rs:4:23
@@ -38,7 +38,7 @@ error[E0603]: tuple variant `Tuple` is private
   --> $DIR/variant.rs:20:32
    |
 LL |         NonExhaustiveVariants::Tuple(fe_tpl) => "",
-   |                                ^^^^^ this tuple variant is private
+   |                                ^^^^^ private tuple variant
    |
 note: the tuple variant `Tuple` is defined here
   --> $DIR/auxiliary/variants.rs:5:23
@@ -50,7 +50,7 @@ error[E0603]: tuple variant `Tuple` is private
   --> $DIR/variant.rs:26:35
    |
 LL |     if let NonExhaustiveVariants::Tuple(fe_tpl) = variant_struct {
-   |                                   ^^^^^ this tuple variant is private
+   |                                   ^^^^^ private tuple variant
    |
 note: the tuple variant `Tuple` is defined here
   --> $DIR/auxiliary/variants.rs:5:23
@@ -69,12 +69,22 @@ error[E0638]: `..` required with variant marked as non-exhaustive
    |
 LL |         NonExhaustiveVariants::Struct { field } => ""
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `..` at the end of the field list to ignore all other fields
+   |
+LL |         NonExhaustiveVariants::Struct { field , .. } => ""
+   |                                               ^^^^^^
 
 error[E0638]: `..` required with variant marked as non-exhaustive
   --> $DIR/variant.rs:30:12
    |
 LL |     if let NonExhaustiveVariants::Struct { field } = variant_struct {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `..` at the end of the field list to ignore all other fields
+   |
+LL |     if let NonExhaustiveVariants::Struct { field , .. } = variant_struct {
+   |                                                  ^^^^^^
 
 error: aborting due to 8 previous errors
 

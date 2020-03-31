@@ -1,11 +1,11 @@
 //! Def-use analysis.
 
-use rustc::mir::visit::{MutVisitor, PlaceContext, Visitor};
-use rustc::mir::{
+use rustc_index::vec::IndexVec;
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::{
     Body, BodyAndCache, Local, Location, PlaceElem, ReadOnlyBodyAndCache, VarDebugInfo,
 };
-use rustc::ty::TyCtxt;
-use rustc_index::vec::IndexVec;
+use rustc_middle::ty::TyCtxt;
 use std::mem;
 
 pub struct DefUseAnalysis {
@@ -38,7 +38,7 @@ impl DefUseAnalysis {
             var_debug_info_index: 0,
             in_var_debug_info: false,
         };
-        finder.visit_body(body);
+        finder.visit_body(&body);
         self.info = finder.info
     }
 

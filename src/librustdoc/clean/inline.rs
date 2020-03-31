@@ -2,7 +2,6 @@
 
 use std::iter::once;
 
-use rustc::ty;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -10,6 +9,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::Mutability;
 use rustc_metadata::creader::LoadedMacro;
+use rustc_middle::ty;
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::Span;
@@ -20,7 +20,7 @@ use crate::doctree;
 
 use super::Clean;
 
-type Attrs<'hir> = rustc::ty::Attributes<'hir>;
+type Attrs<'hir> = rustc_middle::ty::Attributes<'hir>;
 
 /// Attempt to inline a definition into this AST.
 ///
@@ -482,8 +482,8 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
 }
 
 pub fn print_inlined_const(cx: &DocContext<'_>, did: DefId) -> String {
-    if let Some(node_id) = cx.tcx.hir().as_local_hir_id(did) {
-        cx.tcx.hir().hir_to_pretty_string(node_id)
+    if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(did) {
+        rustc_hir_pretty::id_to_string(&cx.tcx.hir(), hir_id)
     } else {
         cx.tcx.rendered_const(did)
     }

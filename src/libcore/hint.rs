@@ -113,7 +113,7 @@ pub fn black_box<T>(dummy: T) -> T {
     // box. This isn't the greatest implementation since it probably deoptimizes
     // more than we want, but it's so far good enough.
     unsafe {
-        asm!("" : : "r"(&dummy));
+        llvm_asm!("" : : "r"(&dummy));
         dummy
     }
 }

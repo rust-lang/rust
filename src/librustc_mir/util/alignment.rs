@@ -1,5 +1,5 @@
-use rustc::mir::*;
-use rustc::ty::{self, TyCtxt};
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, TyCtxt};
 
 /// Returns `true` if this place is allowed to be less aligned
 /// than its containing struct (because it is within a packed

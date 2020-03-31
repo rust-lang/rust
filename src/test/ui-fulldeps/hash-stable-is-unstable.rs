@@ -2,7 +2,7 @@
 
 extern crate rustc_data_structures;
 //~^ use of unstable library feature 'rustc_private'
-extern crate rustc;
+extern crate rustc_middle;
 //~^ use of unstable library feature 'rustc_private'
 extern crate rustc_macros;
 //~^ use of unstable library feature 'rustc_private'

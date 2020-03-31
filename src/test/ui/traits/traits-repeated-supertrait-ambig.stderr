@@ -10,11 +10,10 @@ error[E0277]: the trait bound `C: CompareTo<i32>` is not satisfied
 LL |     c.same_as(22)
    |       ^^^^^^^ the trait `CompareTo<i32>` is not implemented for `C`
    |
-help: consider further restricting this bound with `+ CompareTo<i32>`
-  --> $DIR/traits-repeated-supertrait-ambig.rs:29:17
+help: consider further restricting this bound
    |
-LL | fn with_trait<C:CompareToInts>(c: &C) -> bool {
-   |                 ^^^^^^^^^^^^^
+LL | fn with_trait<C:CompareToInts + CompareTo<i32>>(c: &C) -> bool {
+   |                               ^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `dyn CompareToInts: CompareTo<i32>` is not satisfied
   --> $DIR/traits-repeated-supertrait-ambig.rs:34:5
@@ -34,11 +33,10 @@ LL |     fn same_as(&self, t: T) -> bool;
 LL |     CompareTo::same_as(c, 22)
    |     ^^^^^^^^^^^^^^^^^^ the trait `CompareTo<i32>` is not implemented for `C`
    |
-help: consider further restricting this bound with `+ CompareTo<i32>`
-  --> $DIR/traits-repeated-supertrait-ambig.rs:37:17
+help: consider further restricting this bound
    |
-LL | fn with_ufcs2<C:CompareToInts>(c: &C) -> bool {
-   |                 ^^^^^^^^^^^^^
+LL | fn with_ufcs2<C:CompareToInts + CompareTo<i32>>(c: &C) -> bool {
+   |                               ^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `i64: CompareTo<i32>` is not satisfied
   --> $DIR/traits-repeated-supertrait-ambig.rs:42:23

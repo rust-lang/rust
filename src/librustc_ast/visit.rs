@@ -464,8 +464,12 @@ where
 {
     match *generic_args {
         GenericArgs::AngleBracketed(ref data) => {
-            walk_list!(visitor, visit_generic_arg, &data.args);
-            walk_list!(visitor, visit_assoc_ty_constraint, &data.constraints);
+            for arg in &data.args {
+                match arg {
+                    AngleBracketedArg::Arg(a) => visitor.visit_generic_arg(a),
+                    AngleBracketedArg::Constraint(c) => visitor.visit_assoc_ty_constraint(c),
+                }
+            }
         }
         GenericArgs::Parenthesized(ref data) => {
             walk_list!(visitor, visit_ty, &data.inputs);
@@ -813,7 +817,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         }
         ExprKind::MacCall(ref mac) => visitor.visit_mac(mac),
         ExprKind::Paren(ref subexpression) => visitor.visit_expr(subexpression),
-        ExprKind::InlineAsm(ref ia) => {
+        ExprKind::LlvmInlineAsm(ref ia) => {
             for &(_, ref input) in &ia.inputs {
                 visitor.visit_expr(input)
             }

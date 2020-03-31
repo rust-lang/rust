@@ -1,14 +1,14 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc::middle::lang_items;
-use rustc::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::*;
-use rustc::ty::cast::CastTy;
-use rustc::ty::{self, Instance, InstanceDef, TyCtxt};
 use rustc_errors::struct_span_err;
 use rustc_hir::{def_id::DefId, HirId};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::middle::lang_items;
+use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
+use rustc_middle::ty::cast::CastTy;
+use rustc_middle::ty::{self, Instance, InstanceDef, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -22,8 +22,8 @@ use super::qualifs::{self, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstKind, Item, Qualif};
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
-use crate::dataflow::generic::{self as dataflow, Analysis};
 use crate::dataflow::MaybeMutBorrowedLocals;
+use crate::dataflow::{self, Analysis};
 
 // We are using `MaybeMutBorrowedLocals` as a proxy for whether an item may have been mutated
 // through a pointer prior to the given point. This is okay even though `MaybeMutBorrowedLocals`
@@ -183,7 +183,7 @@ impl Validator<'a, 'mir, 'tcx> {
             self.check_op_spanned(ops::Loop, body.span);
         }
 
-        self.visit_body(body);
+        self.visit_body(&body);
 
         // Ensure that the end result is `Sync` in a non-thread local `static`.
         let should_check_for_sync =
@@ -488,7 +488,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::InlineAsm { .. }
+            | StatementKind::LlvmInlineAsm { .. }
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Nop => {}

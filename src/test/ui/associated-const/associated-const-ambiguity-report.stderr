@@ -1,8 +1,8 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/associated-const-ambiguity-report.rs:17:16
+  --> $DIR/associated-const-ambiguity-report.rs:17:23
    |
 LL | const X: i32 = <i32>::ID;
-   |                ^^^^^^^^^ multiple `ID` found
+   |                       ^^ multiple `ID` found
    |
 note: candidate #1 is defined in an impl of the trait `Foo` for the type `i32`
   --> $DIR/associated-const-ambiguity-report.rs:10:5

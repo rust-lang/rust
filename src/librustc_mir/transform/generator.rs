@@ -49,24 +49,24 @@
 //! For generators with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
-use crate::dataflow::generic::{self as dataflow, Analysis};
+use crate::dataflow::{self, Analysis};
 use crate::dataflow::{MaybeBorrowedLocals, MaybeRequiresStorage, MaybeStorageLive};
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::transform::simplify;
 use crate::transform::{MirPass, MirSource};
 use crate::util::dump_mir;
 use crate::util::liveness;
-use rustc::mir::visit::{MutVisitor, PlaceContext, Visitor};
-use rustc::mir::*;
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::GeneratorSubsts;
-use rustc::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitMatrix, BitSet};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::*;
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GeneratorSubsts;
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use std::borrow::Cow;
 use std::iter;
 
@@ -469,7 +469,7 @@ fn locals_live_across_suspend_points(
     // Find the MIR locals which do not use StorageLive/StorageDead statements.
     // The storage of these locals are always live.
     let mut ignored = StorageIgnored(BitSet::new_filled(body.local_decls.len()));
-    ignored.visit_body(body);
+    ignored.visit_body(&body);
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
@@ -675,10 +675,9 @@ impl dataflow::ResultsVisitor<'mir, 'tcx> for StorageConflictVisitor<'mir, 'tcx,
 impl<'body, 'tcx, 's> StorageConflictVisitor<'body, 'tcx, 's> {
     fn apply_state(&mut self, flow_state: &BitSet<Local>, loc: Location) {
         // Ignore unreachable blocks.
-        match self.body.basic_blocks()[loc.block].terminator().kind {
-            TerminatorKind::Unreachable => return,
-            _ => (),
-        };
+        if self.body.basic_blocks()[loc.block].terminator().kind == TerminatorKind::Unreachable {
+            return;
+        }
 
         let mut eligible_storage_live = flow_state.clone();
         eligible_storage_live.intersect(&self.stored_locals);
@@ -1079,7 +1078,7 @@ fn create_generator_resume_function<'tcx>(
 
     let mut cases = create_cases(body, &transform, Operation::Resume);
 
-    use rustc::mir::AssertKind::{ResumedAfterPanic, ResumedAfterReturn};
+    use rustc_middle::mir::AssertKind::{ResumedAfterPanic, ResumedAfterReturn};
 
     // Jump to the entry point on the unresumed
     cases.insert(0, (UNRESUMED, BasicBlock::new(0)));
@@ -1236,8 +1235,8 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             ty::Generator(_, substs, movability) => {
                 let substs = substs.as_generator();
                 (
-                    substs.upvar_tys(def_id, tcx).collect(),
-                    substs.witness(def_id, tcx),
+                    substs.upvar_tys().collect(),
+                    substs.witness(),
                     substs.discr_ty(tcx),
                     movability == hir::Movability::Movable,
                 )

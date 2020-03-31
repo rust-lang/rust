@@ -506,10 +506,10 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
 
         match (res, source) {
             (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
-                err.span_suggestion(
-                    span,
+                err.span_suggestion_verbose(
+                    span.shrink_to_hi(),
                     "use `!` to invoke the macro",
-                    format!("{}!", path_str),
+                    "!".to_string(),
                     Applicability::MaybeIncorrect,
                 );
                 if path_str == "try" && span.rust_2015() {

@@ -1,7 +1,7 @@
 use super::BackendTypes;
-use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty::{Instance, Ty};
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir::mono::{Linkage, Visibility};
+use rustc_middle::ty::{Instance, Ty};
 use rustc_target::abi::call::FnAbi;
 
 pub trait DeclareMethods<'tcx>: BackendTypes {

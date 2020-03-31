@@ -99,6 +99,7 @@
 #![feature(internal_uninit_const)]
 #![feature(lang_items)]
 #![feature(libc)]
+#![cfg_attr(not(bootstrap), feature(negative_impls))]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
@@ -161,6 +162,8 @@ pub mod str;
 pub mod string;
 #[cfg(target_has_atomic = "ptr")]
 pub mod sync;
+#[cfg(target_has_atomic = "ptr")]
+pub mod task;
 #[cfg(test)]
 mod tests;
 pub mod vec;

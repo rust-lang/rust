@@ -1794,6 +1794,7 @@ mod traits {
 
     #[inline(never)]
     #[cold]
+    #[track_caller]
     fn str_index_overflow_fail() -> ! {
         panic!("attempted to index str up to maximum usize");
     }
@@ -2185,6 +2186,7 @@ fn truncate_to_char_boundary(s: &str, mut max: usize) -> (bool, &str) {
 
 #[inline(never)]
 #[cold]
+#[track_caller]
 fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     const MAX_DISPLAY_LENGTH: usize = 256;
     let (truncated, s_trunc) = truncate_to_char_boundary(s, MAX_DISPLAY_LENGTH);

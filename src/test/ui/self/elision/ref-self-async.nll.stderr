@@ -1,13 +1,72 @@
-error[E0658]: `Wrap<&Struct, Struct>` cannot be used as the type of `self` without the `arbitrary_self_types` feature
-  --> $DIR/ref-self-async.rs:47:39
+error: lifetime may not live long enough
+  --> $DIR/ref-self-async.rs:23:9
+   |
+LL |     async fn ref_self(&self, f: &u32) -> &u32 {
+   |                       -         - let's call the lifetime of this reference `'1`
+   |                       |
+   |                       let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/ref-self-async.rs:29:9
+   |
+LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
+   |                             -         - let's call the lifetime of this reference `'1`
+   |                             |
+   |                             let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/ref-self-async.rs:33:9
+   |
+LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
+   |                                     -          - let's call the lifetime of this reference `'1`
+   |                                     |
+   |                                     let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/ref-self-async.rs:37:9
+   |
+LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
+   |                                     -          - let's call the lifetime of this reference `'1`
+   |                                     |
+   |                                     let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/ref-self-async.rs:41:9
+   |
+LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
+   |                                             -           - let's call the lifetime of this reference `'1`
+   |                                             |
+   |                                             let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/ref-self-async.rs:45:9
+   |
+LL |     async fn box_pin_ref_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
+   |                                             -           - let's call the lifetime of this reference `'1`
+   |                                             |
+   |                                             let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/ref-self-async.rs:49:9
    |
 LL |     async fn wrap_ref_Self_Self(self: Wrap<&Self, Self>, f: &u8) -> &u8 {
-   |                                       ^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #44874 <https://github.com/rust-lang/rust/issues/44874> for more information
-   = help: add `#![feature(arbitrary_self_types)]` to the crate attributes to enable
-   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+   |                                            -                - let's call the lifetime of this reference `'1`
+   |                                            |
+   |                                            let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
-error: aborting due to previous error
+error: aborting due to 7 previous errors
 
-For more information about this error, try `rustc --explain E0658`.

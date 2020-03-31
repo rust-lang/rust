@@ -21,12 +21,12 @@
 
 use crate::transform::{MirPass, MirSource};
 use crate::util::def_use::DefUseAnalysis;
-use rustc::mir::visit::MutVisitor;
-use rustc::mir::{
+use rustc_middle::mir::visit::MutVisitor;
+use rustc_middle::mir::{
     read_only, Body, BodyAndCache, Constant, Local, LocalKind, Location, Operand, Place, Rvalue,
     StatementKind,
 };
-use rustc::ty::TyCtxt;
+use rustc_middle::ty::TyCtxt;
 
 pub struct CopyPropagation;
 

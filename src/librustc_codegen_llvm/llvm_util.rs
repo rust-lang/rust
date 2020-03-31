@@ -1,9 +1,9 @@
 use crate::back::write::create_informational_target_machine;
 use crate::llvm;
 use libc::c_int;
-use rustc::bug;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::UnstableFeatures;
+use rustc_middle::bug;
 use rustc_session::config::PrintRequest;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
@@ -80,8 +80,7 @@ unsafe fn configure_llvm(sess: &Session) {
         if sess.print_llvm_passes() {
             add("-debug-pass=Structure", false);
         }
-
-        if sess.opts.debugging_opts.generate_arange_section {
+        if !sess.opts.debugging_opts.no_generate_arange_section {
             add("-generate-arange-section", false);
         }
         if get_major_version() >= 8 {

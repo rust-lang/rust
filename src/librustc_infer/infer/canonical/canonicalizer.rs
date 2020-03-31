@@ -10,10 +10,10 @@ use crate::infer::canonical::{
     OriginalQueryValues,
 };
 use crate::infer::InferCtxt;
-use rustc::ty::flags::FlagComputation;
-use rustc::ty::fold::{TypeFoldable, TypeFolder};
-use rustc::ty::subst::GenericArg;
-use rustc::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags};
+use rustc_middle::ty::flags::FlagComputation;
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::subst::GenericArg;
+use rustc_middle::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags};
 use std::sync::atomic::Ordering;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -336,10 +336,6 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::ReEmpty(_)
             | ty::RePlaceholder(..)
             | ty::ReErased => self.canonicalize_region_mode.canonicalize_free_region(self, r),
-
-            ty::ReClosureBound(..) => {
-                bug!("closure bound region encountered during canonicalization");
-            }
         }
     }
 

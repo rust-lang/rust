@@ -4,13 +4,6 @@ use crate::link_args;
 use crate::native_libs;
 use crate::rmeta::{self, encoder};
 
-use rustc::hir::exports::Export;
-use rustc::middle::cstore::{CrateSource, CrateStore, EncodedMetadata, NativeLibraryKind};
-use rustc::middle::exported_symbols::ExportedSymbol;
-use rustc::middle::stability::DeprecationEntry;
-use rustc::ty::query::Providers;
-use rustc::ty::query::QueryConfig;
-use rustc::ty::{self, TyCtxt};
 use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -19,6 +12,13 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathTable;
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
+use rustc_middle::hir::exports::Export;
+use rustc_middle::middle::cstore::{CrateSource, CrateStore, EncodedMetadata, NativeLibraryKind};
+use rustc_middle::middle::exported_symbols::ExportedSymbol;
+use rustc_middle::middle::stability::DeprecationEntry;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::query::QueryConfig;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::Symbol;
@@ -37,7 +37,7 @@ macro_rules! provide {
             $(fn $name<$lt: $lt, T: IntoArgs>(
                 $tcx: TyCtxt<$lt>,
                 def_id_arg: T,
-            ) -> <ty::queries::$name<$lt> as QueryConfig<$lt>>::Value {
+            ) -> <ty::queries::$name<$lt> as QueryConfig<TyCtxt<$lt>>>::Value {
                 let _prof_timer =
                     $tcx.prof.generic_activity("metadata_decode_entry");
 
@@ -110,7 +110,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
           |child| result.push(child.res.def_id()), tcx.sess);
         tcx.arena.alloc_slice(&result)
     }
-    associated_item => { cdata.get_associated_item(def_id.index) }
+    associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
     impl_polarity => { cdata.get_impl_polarity(def_id.index) }
     coerce_unsized_info => {
@@ -442,8 +442,8 @@ impl CStore {
         )
     }
 
-    pub fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssocItem {
-        self.get_crate_data(def.krate).get_associated_item(def.index)
+    pub fn associated_item_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::AssocItem {
+        self.get_crate_data(def.krate).get_associated_item(def.index, sess)
     }
 
     pub fn crate_source_untracked(&self, cnum: CrateNum) -> CrateSource {

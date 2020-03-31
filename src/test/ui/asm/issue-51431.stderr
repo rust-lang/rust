@@ -1,8 +1,8 @@
 error[E0669]: invalid value for constraint in inline assembly
-  --> $DIR/issue-51431.rs:8:32
+  --> $DIR/issue-51431.rs:8:37
    |
-LL |         asm! {"mov $0,$1"::"0"("bx"),"1"(0x00)}
-   |                                ^^^^
+LL |         llvm_asm! {"mov $0,$1"::"0"("bx"),"1"(0x00)}
+   |                                     ^^^^
 
 error: aborting due to previous error
 

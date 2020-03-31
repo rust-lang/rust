@@ -1,12 +1,12 @@
 warning: unrecognized option
-  --> $DIR/asm-misplaced-option.rs:24:64
+  --> $DIR/asm-misplaced-option.rs:24:69
    |
-LL |         asm!("mov $1, $0" : "=r"(x) : "r"(5_usize), "0"(x) : : "cc");
-   |                                                                ^^^^
+LL |         llvm_asm!("mov $1, $0" : "=r"(x) : "r"(5_usize), "0"(x) : : "cc");
+   |                                                                     ^^^^
 
 warning: expected a clobber, found an option
-  --> $DIR/asm-misplaced-option.rs:31:80
+  --> $DIR/asm-misplaced-option.rs:31:85
    |
-LL |         asm!("add $2, $1; mov $1, $0" : "=r"(x) : "r"(x), "r"(8_usize) : "cc", "volatile");
-   |                                                                                ^^^^^^^^^^
+LL |         llvm_asm!("add $2, $1; mov $1, $0" : "=r"(x) : "r"(x), "r"(8_usize) : "cc", "volatile");
+   |                                                                                     ^^^^^^^^^^
 

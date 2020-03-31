@@ -1,9 +1,9 @@
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError::*;
 use crate::infer::InferCtxt;
-use rustc::ty::{self, TyCtxt};
-use rustc::util::common::ErrorReported;
 use rustc_errors::DiagnosticBuilder;
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::util::common::ErrorReported;
 use rustc_span::source_map::Span;
 
 mod different_lifetimes;

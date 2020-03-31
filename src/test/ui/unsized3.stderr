@@ -7,12 +7,14 @@ LL |     f2::<X>(x);
    |             ^ doesn't have a size known at compile-time
 ...
 LL | fn f2<X>(x: &X) {
-   |    -- -- help: consider relaxing the implicit `Sized` restriction: `: ?Sized`
-   |       |
-   |       required by this bound in `f2`
+   |    -- - required by this bound in `f2`
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn f2<X: ?Sized>(x: &X) {
+   |        ^^^^^^^^
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized3.rs:18:13
@@ -23,12 +25,14 @@ LL |     f4::<X>(x);
    |             ^ doesn't have a size known at compile-time
 ...
 LL | fn f4<X: T>(x: &X) {
-   |    -- -   - help: consider relaxing the implicit `Sized` restriction: `+  ?Sized`
-   |       |
-   |       required by this bound in `f4`
+   |    -- - required by this bound in `f4`
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn f4<X: T +  ?Sized>(x: &X) {
+   |            ^^^^^^^^^
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized3.rs:33:8

@@ -1,7 +1,7 @@
 use crate::traits;
 use crate::traits::project::Normalized;
-use rustc::ty;
-use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use rustc_middle::ty;
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use std::fmt;
 

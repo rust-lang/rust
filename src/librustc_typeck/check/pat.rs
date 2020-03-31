@@ -1,6 +1,4 @@
 use crate::check::FnCtxt;
-use rustc::ty::subst::GenericArg;
-use rustc::ty::{self, BindingMode, Ty, TypeFoldable};
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
@@ -11,6 +9,8 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_middle::ty::subst::GenericArg;
+use rustc_middle::ty::{self, BindingMode, Ty, TypeFoldable};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
@@ -171,9 +171,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
                 self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, def_bm, ti)
             }
-            PatKind::Path(ref qpath) => {
-                self.check_pat_path(pat, path_res.unwrap(), qpath, expected, ti)
-            }
+            PatKind::Path(_) => self.check_pat_path(pat, path_res.unwrap(), expected, ti),
             PatKind::Struct(ref qpath, fields, etc) => {
                 self.check_pat_struct(pat, qpath, fields, etc, expected, def_bm, ti)
             }
@@ -694,7 +692,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'_>,
         path_resolution: (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment<'b>]),
-        qpath: &hir::QPath<'_>,
         expected: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
@@ -707,17 +704,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.set_tainted_by_errors();
                 return tcx.types.err;
             }
-            Res::Def(DefKind::AssocFn, _)
-            | Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _)
-            | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
-                report_unexpected_variant_res(tcx, res, pat.span, qpath);
+            Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fictive | CtorKind::Fn), _) => {
+                report_unexpected_variant_res(tcx, res, pat.span);
                 return tcx.types.err;
             }
-            Res::Def(DefKind::Ctor(_, CtorKind::Const), _)
-            | Res::SelfCtor(..)
-            | Res::Def(DefKind::Const, _)
-            | Res::Def(DefKind::AssocConst, _)
-            | Res::Def(DefKind::ConstParam, _) => {} // OK
+            Res::SelfCtor(..)
+            | Res::Def(
+                DefKind::Ctor(_, CtorKind::Const)
+                | DefKind::Const
+                | DefKind::AssocConst
+                | DefKind::ConstParam,
+                _,
+            ) => {} // OK
             _ => bug!("unexpected pattern resolution: {:?}", res),
         }
 
@@ -753,17 +751,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         res.descr(),
                     ),
                 );
-                let (msg, sugg) = match parent_pat {
-                    Some(Pat { kind: hir::PatKind::Struct(..), .. }) => (
-                        "bind the struct field to a different name instead",
-                        format!("{}: other_{}", ident, ident.as_str().to_lowercase()),
-                    ),
-                    _ => (
-                        "introduce a new binding instead",
-                        format!("other_{}", ident.as_str().to_lowercase()),
-                    ),
+                match parent_pat {
+                    Some(Pat { kind: hir::PatKind::Struct(..), .. }) => {
+                        e.span_suggestion_verbose(
+                            ident.span.shrink_to_hi(),
+                            "bind the struct field to a different name instead",
+                            format!(": other_{}", ident.as_str().to_lowercase()),
+                            Applicability::HasPlaceholders,
+                        );
+                    }
+                    _ => {
+                        let msg = "introduce a new binding instead";
+                        let sugg = format!("other_{}", ident.as_str().to_lowercase());
+                        e.span_suggestion(ident.span, msg, sugg, Applicability::HasPlaceholders);
+                    }
                 };
-                e.span_suggestion(ident.span, msg, sugg, Applicability::HasPlaceholders);
             }
         }
         e.emit();
@@ -787,14 +789,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         let report_unexpected_res = |res: Res| {
+            let sm = tcx.sess.source_map();
+            let path_str = sm
+                .span_to_snippet(sm.span_until_char(pat.span, '('))
+                .map_or(String::new(), |s| format!(" `{}`", s.trim_end()));
             let msg = format!(
-                "expected tuple struct or tuple variant, found {} `{}`",
+                "expected tuple struct or tuple variant, found {}{}",
                 res.descr(),
-                hir::print::to_string(&tcx.hir(), |s| s.print_qpath(qpath, false)),
+                path_str
             );
+
             let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg);
-            match (res, &pat.kind) {
-                (Res::Def(DefKind::Fn, _), _) | (Res::Def(DefKind::AssocFn, _), _) => {
+            match res {
+                Res::Def(DefKind::Fn | DefKind::AssocFn, _) => {
                     err.span_label(pat.span, "`fn` calls are not allowed in patterns");
                     err.help(
                         "for more information, visit \
@@ -831,7 +838,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 on_error();
                 return tcx.types.err;
             }
-            Res::Def(DefKind::AssocConst, _) | Res::Def(DefKind::AssocFn, _) => {
+            Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
                 report_unexpected_res(res);
                 return tcx.types.err;
             }
@@ -1016,7 +1023,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Adt(adt, substs) => (substs, adt),
             _ => span_bug!(pat.span, "struct pattern is not an ADT"),
         };
-        let kind_name = adt.variant_descr();
 
         // Index the struct fields' types.
         let field_map = variant
@@ -1070,7 +1076,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !inexistent_fields.is_empty() && !variant.recovered {
             self.error_inexistent_fields(
-                kind_name,
+                adt.variant_descr(),
                 &inexistent_fields,
                 &mut unmentioned_fields,
                 variant,
@@ -1079,18 +1085,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Require `..` if struct has non_exhaustive attribute.
         if variant.is_field_list_non_exhaustive() && !adt.did.is_local() && !etc {
-            struct_span_err!(
-                tcx.sess,
-                pat.span,
-                E0638,
-                "`..` required with {} marked as non-exhaustive",
-                kind_name
-            )
-            .emit();
+            self.error_foreign_non_exhaustive_spat(pat, adt.variant_descr(), fields.is_empty());
         }
 
         // Report an error if incorrect number of the fields were specified.
-        if kind_name == "union" {
+        if adt.is_union() {
             if fields.len() != 1 {
                 tcx.sess
                     .struct_span_err(pat.span, "union patterns should have exactly one field")
@@ -1103,6 +1102,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.error_unmentioned_fields(pat.span, &unmentioned_fields, variant);
         }
         no_field_errors
+    }
+
+    fn error_foreign_non_exhaustive_spat(&self, pat: &Pat<'_>, descr: &str, no_fields: bool) {
+        let sess = self.tcx.sess;
+        let sm = sess.source_map();
+        let sp_brace = sm.end_point(pat.span);
+        let sp_comma = sm.end_point(pat.span.with_hi(sp_brace.hi()));
+        let sugg = if no_fields || sp_brace != sp_comma { ".. }" } else { ", .. }" };
+
+        let mut err = struct_span_err!(
+            sess,
+            pat.span,
+            E0638,
+            "`..` required with {} marked as non-exhaustive",
+            descr
+        );
+        err.span_suggestion_verbose(
+            sp_comma,
+            "add `..` at the end of the field list to ignore all other fields",
+            sugg.to_string(),
+            Applicability::MachineApplicable,
+        );
+        err.emit();
     }
 
     fn error_field_already_bound(&self, span: Span, ident: ast::Ident, other_field: Span) {

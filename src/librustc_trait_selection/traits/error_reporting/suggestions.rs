@@ -5,14 +5,16 @@ use super::{
 use crate::infer::InferCtxt;
 use crate::traits::error_reporting::suggest_constraining_type_param;
 
-use rustc::ty::TypeckTables;
-use rustc::ty::{self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
+use rustc_middle::ty::TypeckTables;
+use rustc_middle::ty::{
+    self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
@@ -195,8 +197,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
-                | hir::Node::TraitItem(hir::TraitItem {
+                hir::Node::TraitItem(hir::TraitItem {
                     generics,
                     kind: hir::TraitItemKind::Fn(..),
                     ..
@@ -206,63 +207,31 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     kind: hir::ImplItemKind::Fn(..),
                     ..
                 })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(_, _, generics, _, _),
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Impl { generics, .. }, ..
-                }) if projection.is_some() => {
+                | hir::Node::Item(
+                    hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. }
+                    | hir::Item { kind: hir::ItemKind::Trait(_, _, generics, _, _), .. }
+                    | hir::Item { kind: hir::ItemKind::Impl { generics, .. }, .. },
+                ) if projection.is_some() => {
                     // Missing associated type bound.
                     suggest_restriction(&generics, "the associated type", err);
                     return;
                 }
 
-                hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Struct(_, generics),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Enum(_, generics), span, ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Union(_, generics),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(_, _, generics, ..),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Impl { generics, .. },
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Fn(_, generics, _),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::TyAlias(_, generics),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::TraitAlias(generics, _),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
-                    span,
-                    ..
-                })
-                | hir::Node::TraitItem(hir::TraitItem { generics, span, .. })
-                | hir::Node::ImplItem(hir::ImplItem { generics, span, .. })
+                hir::Node::Item(
+                    hir::Item { kind: hir::ItemKind::Struct(_, generics), .. }
+                    | hir::Item { kind: hir::ItemKind::Enum(_, generics), .. }
+                    | hir::Item { kind: hir::ItemKind::Union(_, generics), .. }
+                    | hir::Item { kind: hir::ItemKind::Trait(_, _, generics, ..), .. }
+                    | hir::Item { kind: hir::ItemKind::Impl { generics, .. }, .. }
+                    | hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. }
+                    | hir::Item { kind: hir::ItemKind::TyAlias(_, generics), .. }
+                    | hir::Item { kind: hir::ItemKind::TraitAlias(generics, _), .. }
+                    | hir::Item {
+                        kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }), ..
+                    },
+                )
+                | hir::Node::TraitItem(hir::TraitItem { generics, .. })
+                | hir::Node::ImplItem(hir::ImplItem { generics, .. })
                     if param_ty =>
                 {
                     // Missing generic type parameter bound.
@@ -274,8 +243,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         &mut err,
                         &param_name,
                         &constraint,
-                        self.tcx.sess.source_map(),
-                        *span,
                         Some(trait_ref.def_id()),
                     ) {
                         return;
@@ -367,9 +334,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         let self_ty = trait_ref.self_ty();
         let (def_id, output_ty, callable) = match self_ty.kind {
-            ty::Closure(def_id, substs) => {
-                (def_id, substs.as_closure().sig(def_id, self.tcx).output(), "closure")
-            }
+            ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig().output(), "closure"),
             ty::FnDef(def_id, _) => (def_id, self_ty.fn_sig(self.tcx).output(), "function"),
             _ => return,
         };
@@ -390,7 +355,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
         let hir = self.tcx.hir();
         // Get the name of the callable and the arguments to be used in the suggestion.
-        let snippet = match hir.get_if_local(def_id) {
+        let (snippet, sugg) = match hir.get_if_local(def_id) {
             Some(hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(_, decl, _, span, ..),
                 ..
@@ -401,7 +366,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     None => return,
                 };
                 let args = decl.inputs.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
-                format!("{}({})", name, args)
+                let sugg = format!("({})", args);
+                (format!("{}{}", name, sugg), sugg)
             }
             Some(hir::Node::Item(hir::Item {
                 ident,
@@ -422,7 +388,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     })
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("{}({})", ident, args)
+                let sugg = format!("({})", args);
+                (format!("{}{}", ident, sugg), sugg)
             }
             _ => return,
         };
@@ -431,10 +398,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // an argument, the `obligation.cause.span` points at the expression
             // of the argument, so we can provide a suggestion. This is signaled
             // by `points_at_arg`. Otherwise, we give a more general note.
-            err.span_suggestion(
-                obligation.cause.span,
+            err.span_suggestion_verbose(
+                obligation.cause.span.shrink_to_hi(),
                 &msg,
-                snippet,
+                sugg,
                 Applicability::HasPlaceholders,
             );
         } else {
@@ -619,7 +586,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         .source_map()
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
                     if points_at_arg && mutability == hir::Mutability::Not && refs_number > 0 {
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             sp,
                             "consider changing this borrow's mutability",
                             "&mut ".to_string(),
@@ -1381,7 +1348,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let msg = format!("required by `{}`", item_name);
 
                 if let Some(sp) = tcx.hir().span_if_local(item_def_id) {
-                    let sp = tcx.sess.source_map().def_span(sp);
+                    let sp = tcx.sess.source_map().guess_head_span(sp);
                     err.span_label(sp, &msg);
                 } else {
                     err.note(&msg);

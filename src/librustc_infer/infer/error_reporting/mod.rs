@@ -55,20 +55,19 @@ use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
 
-use rustc::hir::map;
-use rustc::middle::region;
-use rustc::ty::error::TypeError;
-use rustc::ty::{
-    self,
-    subst::{Subst, SubstsRef},
-    Region, Ty, TyCtxt, TypeFoldable,
-};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
+use rustc_middle::middle::region;
+use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::{
+    self,
+    subst::{Subst, SubstsRef},
+    Region, Ty, TyCtxt, TypeFoldable,
+};
 use rustc_span::{DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::{cmp, fmt};
@@ -152,11 +151,6 @@ pub(super) fn note_and_explain_region(
         ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
             (format!("lifetime {:?}", region), None)
         }
-
-        // We shouldn't encounter an error message with ReClosureBound.
-        ty::ReClosureBound(..) => {
-            bug!("encountered unexpected ReClosureBound: {:?}", region,);
-        }
     };
 
     emit_msg_span(err, prefix, description, span, suffix);
@@ -206,7 +200,7 @@ fn msg_span_from_early_bound_and_free_regions(
     };
     let (prefix, span) = match *region {
         ty::ReEarlyBound(ref br) => {
-            let mut sp = sm.def_span(tcx.hir().span(node));
+            let mut sp = sm.guess_head_span(tcx.hir().span(node));
             if let Some(param) =
                 tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
             {
@@ -215,7 +209,7 @@ fn msg_span_from_early_bound_and_free_regions(
             (format!("the lifetime `{}` as defined on", br.name), sp)
         }
         ty::ReFree(ty::FreeRegion { bound_region: ty::BoundRegion::BrNamed(_, name), .. }) => {
-            let mut sp = sm.def_span(tcx.hir().span(node));
+            let mut sp = sm.guess_head_span(tcx.hir().span(node));
             if let Some(param) =
                 tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
             {
@@ -229,7 +223,7 @@ fn msg_span_from_early_bound_and_free_regions(
             }
             _ => (
                 format!("the lifetime `{}` as defined on", region),
-                sm.def_span(tcx.hir().span(node)),
+                sm.guess_head_span(tcx.hir().span(node)),
             ),
         },
         _ => bug!(),
@@ -554,7 +548,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         terr: &TypeError<'tcx>,
     ) {
         use hir::def_id::CrateNum;
-        use map::DisambiguatedDefPathData;
+        use rustc_hir::definitions::DisambiguatedDefPathData;
         use ty::print::Printer;
         use ty::subst::GenericArg;
 
@@ -1392,13 +1386,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
-        match terr {
-            TypeError::CyclicTy(_) => {
-                values = None;
-            }
-            _ => {}
+        if let TypeError::CyclicTy(_) = terr {
+            values = None;
         }
-
         struct OpaqueTypesVisitor<'tcx> {
             types: FxHashMap<TyCategory, FxHashSet<Span>>,
             expected: FxHashMap<TyCategory, FxHashSet<Span>>,
@@ -1619,60 +1609,57 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
         diag: &mut DiagnosticBuilder<'tcx>,
     ) {
-        match (&exp_found.expected.kind, &exp_found.found.kind) {
-            (ty::Adt(exp_def, exp_substs), ty::Ref(_, found_ty, _)) => {
-                if let ty::Adt(found_def, found_substs) = found_ty.kind {
-                    let path_str = format!("{:?}", exp_def);
-                    if exp_def == &found_def {
-                        let opt_msg = "you can convert from `&Option<T>` to `Option<&T>` using \
+        if let (ty::Adt(exp_def, exp_substs), ty::Ref(_, found_ty, _)) =
+            (&exp_found.expected.kind, &exp_found.found.kind)
+        {
+            if let ty::Adt(found_def, found_substs) = found_ty.kind {
+                let path_str = format!("{:?}", exp_def);
+                if exp_def == &found_def {
+                    let opt_msg = "you can convert from `&Option<T>` to `Option<&T>` using \
                                        `.as_ref()`";
-                        let result_msg = "you can convert from `&Result<T, E>` to \
+                    let result_msg = "you can convert from `&Result<T, E>` to \
                                           `Result<&T, &E>` using `.as_ref()`";
-                        let have_as_ref = &[
-                            ("std::option::Option", opt_msg),
-                            ("core::option::Option", opt_msg),
-                            ("std::result::Result", result_msg),
-                            ("core::result::Result", result_msg),
-                        ];
-                        if let Some(msg) = have_as_ref
-                            .iter()
-                            .filter_map(
-                                |(path, msg)| if &path_str == path { Some(msg) } else { None },
-                            )
-                            .next()
-                        {
-                            let mut show_suggestion = true;
-                            for (exp_ty, found_ty) in exp_substs.types().zip(found_substs.types()) {
-                                match exp_ty.kind {
-                                    ty::Ref(_, exp_ty, _) => {
-                                        match (&exp_ty.kind, &found_ty.kind) {
-                                            (_, ty::Param(_))
-                                            | (_, ty::Infer(_))
-                                            | (ty::Param(_), _)
-                                            | (ty::Infer(_), _) => {}
-                                            _ if ty::TyS::same_type(exp_ty, found_ty) => {}
-                                            _ => show_suggestion = false,
-                                        };
-                                    }
-                                    ty::Param(_) | ty::Infer(_) => {}
-                                    _ => show_suggestion = false,
+                    let have_as_ref = &[
+                        ("std::option::Option", opt_msg),
+                        ("core::option::Option", opt_msg),
+                        ("std::result::Result", result_msg),
+                        ("core::result::Result", result_msg),
+                    ];
+                    if let Some(msg) = have_as_ref
+                        .iter()
+                        .filter_map(|(path, msg)| if &path_str == path { Some(msg) } else { None })
+                        .next()
+                    {
+                        let mut show_suggestion = true;
+                        for (exp_ty, found_ty) in exp_substs.types().zip(found_substs.types()) {
+                            match exp_ty.kind {
+                                ty::Ref(_, exp_ty, _) => {
+                                    match (&exp_ty.kind, &found_ty.kind) {
+                                        (_, ty::Param(_))
+                                        | (_, ty::Infer(_))
+                                        | (ty::Param(_), _)
+                                        | (ty::Infer(_), _) => {}
+                                        _ if ty::TyS::same_type(exp_ty, found_ty) => {}
+                                        _ => show_suggestion = false,
+                                    };
                                 }
+                                ty::Param(_) | ty::Infer(_) => {}
+                                _ => show_suggestion = false,
                             }
-                            if let (Ok(snippet), true) =
-                                (self.tcx.sess.source_map().span_to_snippet(span), show_suggestion)
-                            {
-                                diag.span_suggestion(
-                                    span,
-                                    msg,
-                                    format!("{}.as_ref()", snippet),
-                                    Applicability::MachineApplicable,
-                                );
-                            }
+                        }
+                        if let (Ok(snippet), true) =
+                            (self.tcx.sess.source_map().span_to_snippet(span), show_suggestion)
+                        {
+                            diag.span_suggestion(
+                                span,
+                                msg,
+                                format!("{}.as_ref()", snippet),
+                                Applicability::MachineApplicable,
+                            );
                         }
                     }
                 }
             }
-            _ => {}
         }
     }
 
@@ -1961,42 +1948,41 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             "...",
         );
 
-        match (&sup_origin, &sub_origin) {
-            (&infer::Subtype(ref sup_trace), &infer::Subtype(ref sub_trace)) => {
-                debug!("report_sub_sup_conflict: var_origin={:?}", var_origin);
-                debug!("report_sub_sup_conflict: sub_region={:?}", sub_region);
-                debug!("report_sub_sup_conflict: sub_origin={:?}", sub_origin);
-                debug!("report_sub_sup_conflict: sup_region={:?}", sup_region);
-                debug!("report_sub_sup_conflict: sup_origin={:?}", sup_origin);
-                debug!("report_sub_sup_conflict: sup_trace={:?}", sup_trace);
-                debug!("report_sub_sup_conflict: sub_trace={:?}", sub_trace);
-                debug!("report_sub_sup_conflict: sup_trace.values={:?}", sup_trace.values);
-                debug!("report_sub_sup_conflict: sub_trace.values={:?}", sub_trace.values);
+        if let (&infer::Subtype(ref sup_trace), &infer::Subtype(ref sub_trace)) =
+            (&sup_origin, &sub_origin)
+        {
+            debug!("report_sub_sup_conflict: var_origin={:?}", var_origin);
+            debug!("report_sub_sup_conflict: sub_region={:?}", sub_region);
+            debug!("report_sub_sup_conflict: sub_origin={:?}", sub_origin);
+            debug!("report_sub_sup_conflict: sup_region={:?}", sup_region);
+            debug!("report_sub_sup_conflict: sup_origin={:?}", sup_origin);
+            debug!("report_sub_sup_conflict: sup_trace={:?}", sup_trace);
+            debug!("report_sub_sup_conflict: sub_trace={:?}", sub_trace);
+            debug!("report_sub_sup_conflict: sup_trace.values={:?}", sup_trace.values);
+            debug!("report_sub_sup_conflict: sub_trace.values={:?}", sub_trace.values);
 
-                if let (Some((sup_expected, sup_found)), Some((sub_expected, sub_found))) =
-                    (self.values_str(&sup_trace.values), self.values_str(&sub_trace.values))
-                {
-                    if sub_expected == sup_expected && sub_found == sup_found {
-                        note_and_explain_region(
-                            self.tcx,
-                            region_scope_tree,
-                            &mut err,
-                            "...but the lifetime must also be valid for ",
-                            sub_region,
-                            "...",
-                        );
-                        err.span_note(
-                            sup_trace.cause.span,
-                            &format!("...so that the {}", sup_trace.cause.as_requirement_str()),
-                        );
+            if let (Some((sup_expected, sup_found)), Some((sub_expected, sub_found))) =
+                (self.values_str(&sup_trace.values), self.values_str(&sub_trace.values))
+            {
+                if sub_expected == sup_expected && sub_found == sup_found {
+                    note_and_explain_region(
+                        self.tcx,
+                        region_scope_tree,
+                        &mut err,
+                        "...but the lifetime must also be valid for ",
+                        sub_region,
+                        "...",
+                    );
+                    err.span_note(
+                        sup_trace.cause.span,
+                        &format!("...so that the {}", sup_trace.cause.as_requirement_str()),
+                    );
 
-                        err.note_expected_found(&"", sup_expected, &"", sup_found);
-                        err.emit();
-                        return;
-                    }
+                    err.note_expected_found(&"", sup_expected, &"", sup_found);
+                    err.emit();
+                    return;
                 }
             }
-            _ => {}
         }
 
         self.note_region_origin(&mut err, &sup_origin);

@@ -40,7 +40,7 @@ error[E0624]: associated function `a` is private
   --> $DIR/trait-item-privacy.rs:72:7
    |
 LL |     c.a();
-   |       ^
+   |       ^ private associated function
 
 error[E0599]: no function or associated item named `a` found for struct `S` in the current scope
   --> $DIR/trait-item-privacy.rs:78:8
@@ -74,10 +74,10 @@ LL | use method::B;
    |
 
 error[E0624]: associated function `a` is private
-  --> $DIR/trait-item-privacy.rs:84:5
+  --> $DIR/trait-item-privacy.rs:84:8
    |
 LL |     C::a(&S);
-   |     ^^^^
+   |        ^ private associated function
 
 error[E0599]: no associated item named `A` found for struct `S` in the current scope
   --> $DIR/trait-item-privacy.rs:97:8
@@ -111,10 +111,10 @@ LL | use assoc_const::B;
    |
 
 error[E0624]: associated constant `A` is private
-  --> $DIR/trait-item-privacy.rs:101:5
+  --> $DIR/trait-item-privacy.rs:101:8
    |
 LL |     C::A;
-   |     ^^^^
+   |        ^ private associated constant
 
 error[E0038]: the trait `assoc_const::C` cannot be made into an object
   --> $DIR/trait-item-privacy.rs:101:5
@@ -159,13 +159,13 @@ error: associated type `A` is private
   --> $DIR/trait-item-privacy.rs:119:12
    |
 LL |     let _: T::A;
-   |            ^^^^
+   |            ^^^^ private associated type
 
 error: associated type `A` is private
   --> $DIR/trait-item-privacy.rs:128:9
    |
 LL |         A = u8,
-   |         ^^^^^^
+   |         ^^^^^^ private associated type
 
 error: aborting due to 15 previous errors
 

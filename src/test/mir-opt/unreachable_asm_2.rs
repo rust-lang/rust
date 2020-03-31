@@ -1,5 +1,5 @@
 // ignore-tidy-linelength
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 enum Empty {}
 
@@ -13,11 +13,11 @@ fn main() {
 
         if true {
             // asm instruction stops unreachable propagation to block bb3.
-            unsafe { asm!("NOP"); }
+            unsafe { llvm_asm!("NOP"); }
             _y = 21;
         } else {
             // asm instruction stops unreachable propagation to block bb3.
-            unsafe { asm!("NOP"); }
+            unsafe { llvm_asm!("NOP"); }
             _y = 42;
         }
 
@@ -33,7 +33,7 @@ fn main() {
 //      }
 //      bb4: {
 //          StorageLive(_8);
-//          asm!(InlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []);
+//          llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []);
 //          _8 = ();
 //          StorageDead(_8);
 //          _4 = const 42i32;
@@ -42,7 +42,7 @@ fn main() {
 //      }
 //          bb5: {
 //          StorageLive(_7);
-//          asm!(InlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []);
+//          llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []);
 //          _7 = ();
 //          StorageDead(_7);
 //          _4 = const 21i32;
@@ -64,7 +64,7 @@ fn main() {
 //      }
 //      bb4: {
 //          StorageLive(_8);
-//          asm!(InlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []);
+//          llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []);
 //          _8 = ();
 //          StorageDead(_8);
 //          _4 = const 42i32;
@@ -73,7 +73,7 @@ fn main() {
 //      }
 //          bb5: {
 //          StorageLive(_7);
-//          asm!(InlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []);
+//          llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []);
 //          _7 = ();
 //          StorageDead(_7);
 //          _4 = const 21i32;

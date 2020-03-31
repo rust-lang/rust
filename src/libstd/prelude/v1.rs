@@ -39,8 +39,8 @@ pub use crate::result::Result::{self, Err, Ok};
 #[doc(no_inline)]
 pub use core::prelude::v1::{
     asm, assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
-    format_args_nl, global_asm, include, include_bytes, include_str, line, log_syntax, module_path,
-    option_env, stringify, trace_macros,
+    format_args_nl, global_asm, include, include_bytes, include_str, line, llvm_asm, log_syntax,
+    module_path, option_env, stringify, trace_macros,
 };
 
 // FIXME: Attribute and derive macros are not documented because for them rustdoc generates

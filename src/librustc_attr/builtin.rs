@@ -120,17 +120,8 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
 }
 
 /// Represents the #[stable], #[unstable], #[rustc_deprecated] attributes.
-#[derive(
-    RustcEncodable,
-    RustcDecodable,
-    Copy,
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    Hash,
-    HashStable_Generic
-)]
+#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: Symbol,
@@ -138,17 +129,8 @@ pub struct Stability {
 }
 
 /// Represents the #[rustc_const_unstable] and #[rustc_const_stable] attributes.
-#[derive(
-    RustcEncodable,
-    RustcDecodable,
-    Copy,
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    Hash,
-    HashStable_Generic
-)]
+#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic)]
 pub struct ConstStability {
     pub level: StabilityLevel,
     pub feature: Symbol,
@@ -159,18 +141,8 @@ pub struct ConstStability {
 }
 
 /// The available stability levels.
-#[derive(
-    RustcEncodable,
-    RustcDecodable,
-    PartialEq,
-    PartialOrd,
-    Copy,
-    Clone,
-    Debug,
-    Eq,
-    Hash,
-    HashStable_Generic
-)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
+#[derive(HashStable_Generic)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
     Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
@@ -186,18 +158,8 @@ impl StabilityLevel {
     }
 }
 
-#[derive(
-    RustcEncodable,
-    RustcDecodable,
-    PartialEq,
-    PartialOrd,
-    Copy,
-    Clone,
-    Debug,
-    Eq,
-    Hash,
-    HashStable_Generic
-)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
+#[derive(HashStable_Generic)]
 pub struct RustcDeprecation {
     pub since: Symbol,
     pub reason: Symbol,
@@ -908,7 +870,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                     let parse_alignment = |node: &ast::LitKind| -> Result<u32, &'static str> {
                         if let ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed) = node {
                             if literal.is_power_of_two() {
-                                // rustc::ty::layout::Align restricts align to <= 2^29
+                                // rustc_middle::ty::layout::Align restricts align to <= 2^29
                                 if *literal <= 1 << 29 {
                                     Ok(*literal as u32)
                                 } else {

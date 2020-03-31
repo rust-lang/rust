@@ -18,14 +18,14 @@ use crate::infer::{InferCtxt, InferOk, InferResult, NLLRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
 use crate::traits::{DomainGoal, TraitEngine};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
-use rustc::arena::ArenaAllocatable;
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::relate::TypeRelation;
-use rustc::ty::subst::{GenericArg, GenericArgKind};
-use rustc::ty::{self, BoundVar, Ty, TyCtxt};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
+use rustc_middle::arena::ArenaAllocatable;
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::relate::TypeRelation;
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
+use rustc_middle::ty::{self, BoundVar, Ty, TyCtxt};
 use std::fmt::Debug;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {

@@ -1,10 +1,10 @@
-use rustc::mir::*;
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::query::Providers;
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir::*;
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use rustc_index::vec::{Idx, IndexVec};
 
@@ -341,8 +341,8 @@ fn build_clone_shim<'tcx>(
             let len = len.eval_usize(tcx, param_env);
             builder.array_shim(dest, src, ty, len)
         }
-        ty::Closure(def_id, substs) => {
-            builder.tuple_like_shim(dest, src, substs.as_closure().upvar_tys(def_id, tcx))
+        ty::Closure(_, substs) => {
+            builder.tuple_like_shim(dest, src, substs.as_closure().upvar_tys())
         }
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),
         _ => bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty),

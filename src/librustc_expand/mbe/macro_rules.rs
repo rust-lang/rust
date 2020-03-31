@@ -4,7 +4,7 @@ use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstF
 use crate::mbe;
 use crate::mbe::macro_check;
 use crate::mbe::macro_parser::parse_tt;
-use crate::mbe::macro_parser::{Error, Failure, Success};
+use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success};
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq};
 use crate::mbe::transcribe::transcribe;
 
@@ -15,7 +15,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, DiagnosticBuilder, FatalError};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::Features;
 use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
@@ -83,41 +83,73 @@ fn suggest_slice_pat(e: &mut DiagnosticBuilder<'_>, site_span: Span, parser: &Pa
     );
 }
 
+fn emit_frag_parse_err(
+    mut e: DiagnosticBuilder<'_>,
+    parser: &Parser<'_>,
+    orig_parser: &mut Parser<'_>,
+    site_span: Span,
+    macro_ident: ast::Ident,
+    arm_span: Span,
+    kind: AstFragmentKind,
+) {
+    if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
+        if !e.span.is_dummy() {
+            // early end of macro arm (#52866)
+            e.replace_span_with(parser.sess.source_map().next_point(parser.token.span));
+        }
+        let msg = &e.message[0];
+        e.message[0] = (
+            format!(
+                "macro expansion ends with an incomplete expression: {}",
+                msg.0.replace(", found `<eof>`", ""),
+            ),
+            msg.1,
+        );
+    }
+    if e.span.is_dummy() {
+        // Get around lack of span in error (#30128)
+        e.replace_span_with(site_span);
+        if !parser.sess.source_map().is_imported(arm_span) {
+            e.span_label(arm_span, "in this macro arm");
+        }
+    } else if parser.sess.source_map().is_imported(parser.token.span) {
+        e.span_label(site_span, "in this macro invocation");
+    }
+    match kind {
+        AstFragmentKind::Pat if macro_ident.name == sym::vec => {
+            suggest_slice_pat(&mut e, site_span, parser);
+        }
+        // Try a statement if an expression is wanted but failed and suggest adding `;` to call.
+        AstFragmentKind::Expr => match parse_ast_fragment(orig_parser, AstFragmentKind::Stmts) {
+            Err(mut err) => err.cancel(),
+            Ok(_) => {
+                e.note(
+                    "the macro call doesn't expand to an expression, but it can expand to a statement",
+                );
+                e.span_suggestion_verbose(
+                    site_span.shrink_to_hi(),
+                    "add `;` to interpret the expansion as a statement",
+                    ";".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        },
+        _ => annotate_err_with_kind(&mut e, kind, site_span),
+    };
+    e.emit();
+}
+
 impl<'a> ParserAnyMacro<'a> {
     crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
-        let fragment = panictry!(parse_ast_fragment(parser, kind).map_err(|mut e| {
-            if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
-                if !e.span.is_dummy() {
-                    // early end of macro arm (#52866)
-                    e.replace_span_with(parser.sess.source_map().next_point(parser.token.span));
-                }
-                let msg = &e.message[0];
-                e.message[0] = (
-                    format!(
-                        "macro expansion ends with an incomplete expression: {}",
-                        msg.0.replace(", found `<eof>`", ""),
-                    ),
-                    msg.1,
-                );
+        let snapshot = &mut parser.clone();
+        let fragment = match parse_ast_fragment(parser, kind) {
+            Ok(f) => f,
+            Err(err) => {
+                emit_frag_parse_err(err, parser, snapshot, site_span, macro_ident, arm_span, kind);
+                return kind.dummy(site_span);
             }
-            if e.span.is_dummy() {
-                // Get around lack of span in error (#30128)
-                e.replace_span_with(site_span);
-                if !parser.sess.source_map().is_imported(arm_span) {
-                    e.span_label(arm_span, "in this macro arm");
-                }
-            } else if parser.sess.source_map().is_imported(parser.token.span) {
-                e.span_label(site_span, "in this macro invocation");
-            }
-            match kind {
-                AstFragmentKind::Pat if macro_ident.name == sym::vec => {
-                    suggest_slice_pat(&mut e, site_span, parser);
-                }
-                _ => annotate_err_with_kind(&mut e, kind, site_span),
-            };
-            e
-        }));
+        };
 
         // We allow semicolons at the end of expressions -- e.g., the semicolon in
         // `macro_rules! m { () => { panic!(); } }` isn't parsed by `.parse_expr()`,
@@ -163,6 +195,14 @@ impl TTMacroExpander for MacroRulesMacroExpander {
             &self.rhses,
         )
     }
+}
+
+fn macro_rules_dummy_expander<'cx>(
+    _: &'cx mut ExtCtxt<'_>,
+    span: Span,
+    _: TokenStream,
+) -> Box<dyn MacResult + 'cx> {
+    DummyResult::any(span)
 }
 
 fn trace_macros_note(cx_expansions: &mut FxHashMap<Span, Vec<String>>, sp: Span, message: String) {
@@ -240,7 +280,13 @@ fn generic_extension<'cx>(
 
                 let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
                 // rhs has holes ( `$id` and `$(...)` that need filled)
-                let mut tts = transcribe(cx, &named_matches, rhs, transparency);
+                let mut tts = match transcribe(cx, &named_matches, rhs, transparency) {
+                    Ok(tts) => tts,
+                    Err(mut err) => {
+                        err.emit();
+                        return DummyResult::any(arm_span);
+                    }
+                };
 
                 // Replace all the tokens for the corresponding positions in the macro, to maintain
                 // proper positions in error reporting, while maintaining the macro_backtrace.
@@ -278,7 +324,12 @@ fn generic_extension<'cx>(
                 Some((ref best_token, _)) if best_token.span.lo() >= token.span.lo() => {}
                 _ => best_failure = Some((token, msg)),
             },
-            Error(err_sp, ref msg) => cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..]),
+            Error(err_sp, ref msg) => {
+                let span = err_sp.substitute_dummy(sp);
+                cx.struct_span_err(span, &msg).emit();
+                return DummyResult::any(span);
+            }
+            ErrorReported => return DummyResult::any(sp),
         }
 
         // The matcher was not `Success(..)`ful.
@@ -292,7 +343,7 @@ fn generic_extension<'cx>(
     let mut err = cx.struct_span_err(span, &parse_failure_msg(&token));
     err.span_label(span, label);
     if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
-        err.span_label(cx.source_map().def_span(def_span), "when calling this macro");
+        err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
     }
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
@@ -303,20 +354,19 @@ fn generic_extension<'cx>(
                 mbe::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
                 _ => continue,
             };
-            match parse_tt(&mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())), lhs_tt) {
-                Success(_) => {
-                    if comma_span.is_dummy() {
-                        err.note("you might be missing a comma");
-                    } else {
-                        err.span_suggestion_short(
-                            comma_span,
-                            "missing comma here",
-                            ", ".to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                    }
+            if let Success(_) =
+                parse_tt(&mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())), lhs_tt)
+            {
+                if comma_span.is_dummy() {
+                    err.note("you might be missing a comma");
+                } else {
+                    err.span_suggestion_short(
+                        comma_span,
+                        "missing comma here",
+                        ", ".to_string(),
+                        Applicability::MachineApplicable,
+                    );
                 }
-                _ => {}
             }
         }
     }
@@ -337,6 +387,18 @@ pub fn compile_declarative_macro(
     def: &ast::Item,
     edition: Edition,
 ) -> SyntaxExtension {
+    let mk_syn_ext = |expander| {
+        SyntaxExtension::new(
+            sess,
+            SyntaxExtensionKind::LegacyBang(expander),
+            def.span,
+            Vec::new(),
+            edition,
+            def.ident.name,
+            &def.attrs,
+        )
+    };
+
     let diag = &sess.span_diagnostic;
     let lhs_nm = ast::Ident::new(sym::lhs, def.span);
     let rhs_nm = ast::Ident::new(sym::rhs, def.span);
@@ -391,13 +453,15 @@ pub fn compile_declarative_macro(
         Failure(token, msg) => {
             let s = parse_failure_msg(&token);
             let sp = token.span.substitute_dummy(def.span);
-            let mut err = sess.span_diagnostic.struct_span_fatal(sp, &s);
-            err.span_label(sp, msg);
-            err.emit();
-            FatalError.raise();
+            sess.span_diagnostic.struct_span_err(sp, &s).span_label(sp, msg).emit();
+            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
         }
-        Error(sp, s) => {
-            sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s).raise();
+        Error(sp, msg) => {
+            sess.span_diagnostic.struct_span_err(sp.substitute_dummy(def.span), &msg).emit();
+            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
+        }
+        ErrorReported => {
+            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
         }
     };
 
@@ -460,24 +524,14 @@ pub fn compile_declarative_macro(
         None => {}
     }
 
-    let expander: Box<_> = Box::new(MacroRulesMacroExpander {
+    mk_syn_ext(Box::new(MacroRulesMacroExpander {
         name: def.ident,
         span: def.span,
         transparency,
         lhses,
         rhses,
         valid,
-    });
-
-    SyntaxExtension::new(
-        sess,
-        SyntaxExtensionKind::LegacyBang(expander),
-        def.span,
-        Vec::new(),
-        edition,
-        def.ident.name,
-        &def.attrs,
-    )
+    }))
 }
 
 fn check_lhs_nt_follows(

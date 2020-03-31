@@ -1,4 +1,5 @@
 #![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 pub trait PubPrincipal {}
 auto trait PrivNonPrincipal {}
@@ -10,7 +11,7 @@ pub fn leak_dyn_nonprincipal() -> Box<dyn PubPrincipal + PrivNonPrincipal> { loo
 #[deny(missing_docs)]
 fn container() {
     impl dyn PubPrincipal {
-        pub fn check_doc_lint() {} //~ ERROR missing documentation for a method
+        pub fn check_doc_lint() {} //~ ERROR missing documentation for an associated function
     }
     impl dyn PubPrincipal + PrivNonPrincipal {
         pub fn check_doc_lint() {} // OK, no missing doc lint

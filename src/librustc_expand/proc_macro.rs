@@ -5,7 +5,7 @@ use rustc_ast::ast::{self, ItemKind, MetaItemKind, NestedMetaItem};
 use rustc_ast::token;
 use rustc_ast::tokenstream::{self, TokenStream};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, FatalError};
+use rustc_errors::{Applicability, ErrorReported};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -21,21 +21,16 @@ impl base::ProcMacro for BangProcMacro {
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
         input: TokenStream,
-    ) -> TokenStream {
+    ) -> Result<TokenStream, ErrorReported> {
         let server = proc_macro_server::Rustc::new(ecx);
-        match self.client.run(&EXEC_STRATEGY, server, input) {
-            Ok(stream) => stream,
-            Err(e) => {
-                let msg = "proc macro panicked";
-                let mut err = ecx.struct_span_fatal(span, msg);
-                if let Some(s) = e.as_str() {
-                    err.help(&format!("message: {}", s));
-                }
-
-                err.emit();
-                FatalError.raise();
+        self.client.run(&EXEC_STRATEGY, server, input).map_err(|e| {
+            let mut err = ecx.struct_span_err(span, "proc macro panicked");
+            if let Some(s) = e.as_str() {
+                err.help(&format!("message: {}", s));
             }
-        }
+            err.emit();
+            ErrorReported
+        })
     }
 }
 
@@ -50,21 +45,16 @@ impl base::AttrProcMacro for AttrProcMacro {
         span: Span,
         annotation: TokenStream,
         annotated: TokenStream,
-    ) -> TokenStream {
+    ) -> Result<TokenStream, ErrorReported> {
         let server = proc_macro_server::Rustc::new(ecx);
-        match self.client.run(&EXEC_STRATEGY, server, annotation, annotated) {
-            Ok(stream) => stream,
-            Err(e) => {
-                let msg = "custom attribute panicked";
-                let mut err = ecx.struct_span_fatal(span, msg);
-                if let Some(s) = e.as_str() {
-                    err.help(&format!("message: {}", s));
-                }
-
-                err.emit();
-                FatalError.raise();
+        self.client.run(&EXEC_STRATEGY, server, annotation, annotated).map_err(|e| {
+            let mut err = ecx.struct_span_err(span, "custom attribute panicked");
+            if let Some(s) = e.as_str() {
+                err.help(&format!("message: {}", s));
             }
-        }
+            err.emit();
+            ErrorReported
+        })
     }
 }
 
@@ -96,8 +86,7 @@ impl MultiItemModifier for ProcMacroDerive {
             | Annotatable::Expr(_) => {
                 ecx.span_err(
                     span,
-                    "proc-macro derives may only be \
-                                    applied to a struct, enum, or union",
+                    "proc-macro derives may only be applied to a struct, enum, or union",
                 );
                 return ExpandResult::Ready(Vec::new());
             }
@@ -107,8 +96,7 @@ impl MultiItemModifier for ProcMacroDerive {
             _ => {
                 ecx.span_err(
                     span,
-                    "proc-macro derives may only be \
-                                    applied to a struct, enum, or union",
+                    "proc-macro derives may only be applied to a struct, enum, or union",
                 );
                 return ExpandResult::Ready(Vec::new());
             }
@@ -121,20 +109,16 @@ impl MultiItemModifier for ProcMacroDerive {
         let stream = match self.client.run(&EXEC_STRATEGY, server, input) {
             Ok(stream) => stream,
             Err(e) => {
-                let msg = "proc-macro derive panicked";
-                let mut err = ecx.struct_span_fatal(span, msg);
+                let mut err = ecx.struct_span_err(span, "proc-macro derive panicked");
                 if let Some(s) = e.as_str() {
                     err.help(&format!("message: {}", s));
                 }
-
                 err.emit();
-                FatalError.raise();
+                return ExpandResult::Ready(vec![]);
             }
         };
 
         let error_count_before = ecx.parse_sess.span_diagnostic.err_count();
-        let msg = "proc-macro derive produced unparseable tokens";
-
         let mut parser =
             rustc_parse::stream_to_parser(ecx.parse_sess, stream, Some("proc-macro derive"));
         let mut items = vec![];
@@ -144,18 +128,15 @@ impl MultiItemModifier for ProcMacroDerive {
                 Ok(None) => break,
                 Ok(Some(item)) => items.push(Annotatable::Item(item)),
                 Err(mut err) => {
-                    // FIXME: handle this better
-                    err.cancel();
-                    ecx.struct_span_fatal(span, msg).emit();
-                    FatalError.raise();
+                    err.emit();
+                    break;
                 }
             }
         }
 
         // fail if there have been errors emitted
         if ecx.parse_sess.span_diagnostic.err_count() > error_count_before {
-            ecx.struct_span_fatal(span, msg).emit();
-            FatalError.raise();
+            ecx.struct_span_err(span, "proc-macro derive produced unparseable tokens").emit();
         }
 
         ExpandResult::Ready(items)

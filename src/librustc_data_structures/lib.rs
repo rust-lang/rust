@@ -114,6 +114,6 @@ impl<F: Fn()> Drop for OnDrop<F> {
     }
 }
 
-// See comments in src/librustc/lib.rs
+// See comments in src/librustc_middle/lib.rs
 #[doc(hidden)]
 pub fn __noop_fix_for_27438() {}

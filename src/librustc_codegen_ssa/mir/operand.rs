@@ -6,10 +6,10 @@ use crate::glue;
 use crate::traits::*;
 use crate::MemFlags;
 
-use rustc::mir;
-use rustc::mir::interpret::{ConstValue, ErrorHandled, Pointer, Scalar};
-use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
-use rustc::ty::Ty;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{ConstValue, ErrorHandled, Pointer, Scalar};
+use rustc_middle::ty::layout::{self, Align, LayoutOf, Size, TyAndLayout};
+use rustc_middle::ty::Ty;
 
 use std::fmt;
 
@@ -43,7 +43,7 @@ pub struct OperandRef<'tcx, V> {
     pub val: OperandValue<V>,
 
     // The layout of value, based on its Rust type.
-    pub layout: TyLayout<'tcx>,
+    pub layout: TyAndLayout<'tcx>,
 }
 
 impl<V: CodegenObject> fmt::Debug for OperandRef<'tcx, V> {
@@ -55,7 +55,7 @@ impl<V: CodegenObject> fmt::Debug for OperandRef<'tcx, V> {
 impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     pub fn new_zst<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
     ) -> OperandRef<'tcx, V> {
         assert!(layout.is_zst());
         OperandRef {
@@ -91,7 +91,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 };
                 let a = Scalar::from(Pointer::new(
                     bx.tcx().alloc_map.lock().create_memory_alloc(data),
-                    Size::from_bytes(start as u64),
+                    Size::from_bytes(start),
                 ));
                 let a_llval = bx.scalar_to_backend(
                     a,
@@ -159,7 +159,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     pub fn from_immediate_or_packed_pair<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
         llval: V,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
     ) -> Self {
         let val = if let layout::Abi::ScalarPair(ref a, ref b) = layout.abi {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}", llval, layout);

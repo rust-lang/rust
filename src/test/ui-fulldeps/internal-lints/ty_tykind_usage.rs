@@ -2,9 +2,9 @@
 
 #![feature(rustc_private)]
 
-extern crate rustc;
+extern crate rustc_middle;
 
-use rustc::ty::{self, Ty, TyKind};
+use rustc_middle::ty::{self, Ty, TyKind};
 
 #[deny(rustc::usage_of_ty_tykind)]
 fn main() {

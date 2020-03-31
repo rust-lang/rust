@@ -2,7 +2,7 @@ error[E0603]: trait `Bar` is private
   --> $DIR/privacy-ufcs.rs:12:20
    |
 LL |     <i32 as ::foo::Bar>::baz();
-   |                    ^^^ this trait is private
+   |                    ^^^ private trait
    |
 note: the trait `Bar` is defined here
   --> $DIR/privacy-ufcs.rs:4:5

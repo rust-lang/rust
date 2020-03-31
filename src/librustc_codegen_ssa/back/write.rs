@@ -1,5 +1,4 @@
-use super::command::Command;
-use super::link::{self, get_linker, remove};
+use super::link::{self, remove};
 use super::linker::LinkerInfo;
 use super::lto::{self, SerializedModule};
 use super::symbol_export::symbol_name_for_instance_in_crate;
@@ -11,10 +10,6 @@ use crate::{
 
 use crate::traits::*;
 use jobserver::{Acquired, Client};
-use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
-use rustc::middle::cstore::EncodedMetadata;
-use rustc::middle::exported_symbols::SymbolExportLevel;
-use rustc::ty::TyCtxt;
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -29,6 +24,10 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
     copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
+use rustc_middle::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
+use rustc_middle::middle::cstore::EncodedMetadata;
+use rustc_middle::middle::exported_symbols::SymbolExportLevel;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_session::config::{
     self, Lto, OutputFilenames, OutputType, Passes, Sanitizer, SwitchWithOptPath,
@@ -50,6 +49,34 @@ use std::sync::Arc;
 use std::thread;
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
+
+/// What kind of object file to emit.
+#[derive(Clone, Copy, PartialEq)]
+pub enum EmitObj {
+    // No object file.
+    None,
+
+    // Just uncompressed llvm bitcode. Provides easy compatibility with
+    // emscripten's ecc compiler, when used as the linker.
+    Bitcode,
+
+    // Object code, possibly augmented with a bitcode section.
+    ObjectCode(BitcodeSection),
+}
+
+/// What kind of llvm bitcode section to embed in an object file.
+#[derive(Clone, Copy, PartialEq)]
+pub enum BitcodeSection {
+    // No bitcode section.
+    None,
+
+    // An empty bitcode section (to placate tools such as the iOS linker that
+    // require this section even if they don't use it).
+    Marker,
+
+    // A full, uncompressed bitcode section.
+    Full,
+}
 
 /// Module-specific configuration for `optimize_and_codegen`.
 pub struct ModuleConfig {
@@ -74,10 +101,9 @@ pub struct ModuleConfig {
     pub emit_no_opt_bc: bool,
     pub emit_bc: bool,
     pub emit_bc_compressed: bool,
-    pub emit_lto_bc: bool,
     pub emit_ir: bool,
     pub emit_asm: bool,
-    pub emit_obj: bool,
+    pub emit_obj: EmitObj,
     // Miscellaneous flags.  These are mostly copied from command-line
     // options.
     pub verify_llvm_ir: bool,
@@ -89,13 +115,6 @@ pub struct ModuleConfig {
     pub merge_functions: bool,
     pub inline_threshold: Option<usize>,
     pub new_llvm_pass_manager: Option<bool>,
-    // Instead of creating an object file by doing LLVM codegen, just
-    // make the object file bitcode. Provides easy compatibility with
-    // emscripten's ecc compiler, when used as the linker.
-    pub obj_is_bitcode: bool,
-    pub no_integrated_as: bool,
-    pub embed_bitcode: bool,
-    pub embed_bitcode_marker: bool,
 }
 
 impl ModuleConfig {
@@ -116,14 +135,9 @@ impl ModuleConfig {
             emit_pre_lto_bc: false,
             emit_bc: false,
             emit_bc_compressed: false,
-            emit_lto_bc: false,
             emit_ir: false,
             emit_asm: false,
-            emit_obj: false,
-            obj_is_bitcode: false,
-            embed_bitcode: false,
-            embed_bitcode_marker: false,
-            no_integrated_as: false,
+            emit_obj: EmitObj::None,
 
             verify_llvm_ir: false,
             no_prepopulate_passes: false,
@@ -143,18 +157,6 @@ impl ModuleConfig {
         self.no_builtins = no_builtins || sess.target.target.options.no_builtins;
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.new_llvm_pass_manager = sess.opts.debugging_opts.new_llvm_pass_manager;
-        self.obj_is_bitcode =
-            sess.target.target.options.obj_is_bitcode || sess.opts.cg.linker_plugin_lto.enabled();
-        let embed_bitcode =
-            sess.target.target.options.embed_bitcode || sess.opts.debugging_opts.embed_bitcode;
-        if embed_bitcode {
-            match sess.opts.optimize {
-                config::OptLevel::No | config::OptLevel::Less => {
-                    self.embed_bitcode_marker = embed_bitcode;
-                }
-                _ => self.embed_bitcode = embed_bitcode,
-            }
-        }
 
         // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3. Otherwise configure other optimization aspects
@@ -190,14 +192,11 @@ impl ModuleConfig {
     }
 
     pub fn bitcode_needed(&self) -> bool {
-        self.emit_bc || self.obj_is_bitcode || self.emit_bc_compressed || self.embed_bitcode
+        self.emit_bc
+            || self.emit_bc_compressed
+            || self.emit_obj == EmitObj::Bitcode
+            || self.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full)
     }
-}
-
-/// Assembler name and command used by codegen when no_integrated_as is enabled
-pub struct AssemblerCommand {
-    name: PathBuf,
-    cmd: Command,
 }
 
 // HACK(eddyb) work around `#[derive]` producing wrong bounds for `Clone`.
@@ -252,8 +251,6 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub cgu_reuse_tracker: CguReuseTracker,
     // Channel back to the main control thread to send messages to
     pub coordinator_send: Sender<Box<dyn Any + Send>>,
-    // The assembler command if no_integrated_as option is enabled, None otherwise
-    pub assembler_cmd: Option<Arc<AssemblerCommand>>,
 }
 
 impl<B: WriteBackendMethods> CodegenContext<B> {
@@ -379,7 +376,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         modules_config.emit_no_opt_bc = true;
         modules_config.emit_pre_lto_bc = true;
         modules_config.emit_bc = true;
-        modules_config.emit_lto_bc = true;
         metadata_config.emit_bc = true;
         allocator_config.emit_bc = true;
     }
@@ -392,10 +388,21 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         allocator_config.emit_bc_compressed = true;
     }
 
-    modules_config.emit_pre_lto_bc = need_pre_lto_bitcode_for_incr_comp(sess);
+    let emit_obj =
+        if sess.target.target.options.obj_is_bitcode || sess.opts.cg.linker_plugin_lto.enabled() {
+            EmitObj::Bitcode
+        } else if sess.opts.debugging_opts.embed_bitcode {
+            match sess.opts.optimize {
+                config::OptLevel::No | config::OptLevel::Less => {
+                    EmitObj::ObjectCode(BitcodeSection::Marker)
+                }
+                _ => EmitObj::ObjectCode(BitcodeSection::Full),
+            }
+        } else {
+            EmitObj::ObjectCode(BitcodeSection::None)
+        };
 
-    modules_config.no_integrated_as =
-        tcx.sess.opts.cg.no_integrated_as || tcx.sess.target.target.options.no_integrated_as;
+    modules_config.emit_pre_lto_bc = need_pre_lto_bitcode_for_incr_comp(sess);
 
     for output_type in sess.opts.output_types.keys() {
         match *output_type {
@@ -411,20 +418,20 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
                 // could be invoked specially with output_type_assembly, so
                 // in this case we still want the metadata object file.
                 if !sess.opts.output_types.contains_key(&OutputType::Assembly) {
-                    metadata_config.emit_obj = true;
-                    allocator_config.emit_obj = true;
+                    metadata_config.emit_obj = emit_obj;
+                    allocator_config.emit_obj = emit_obj;
                 }
             }
             OutputType::Object => {
-                modules_config.emit_obj = true;
+                modules_config.emit_obj = emit_obj;
             }
             OutputType::Metadata => {
-                metadata_config.emit_obj = true;
+                metadata_config.emit_obj = emit_obj;
             }
             OutputType::Exe => {
-                modules_config.emit_obj = true;
-                metadata_config.emit_obj = true;
-                allocator_config.emit_obj = true;
+                modules_config.emit_obj = emit_obj;
+                metadata_config.emit_obj = emit_obj;
+                allocator_config.emit_obj = emit_obj;
             }
             OutputType::Mir => {}
             OutputType::DepInfo => {}
@@ -875,7 +882,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
         }
     }
 
-    assert_eq!(object.is_some(), module_config.emit_obj);
+    assert_eq!(object.is_some(), module_config.emit_obj != EmitObj::None);
     assert_eq!(bytecode.is_some(), module_config.emit_bc);
     assert_eq!(bytecode_compressed.is_some(), module_config.emit_bc_compressed);
 
@@ -1009,17 +1016,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
     }));
 
-    let assembler_cmd = if modules_config.no_integrated_as {
-        // HACK: currently we use linker (gcc) as our assembler
-        let (linker, flavor) = link::linker_and_flavor(sess);
-
-        let (name, mut cmd) = get_linker(sess, &linker, flavor);
-        cmd.args(&sess.target.target.options.asm_args);
-        Some(Arc::new(AssemblerCommand { name, cmd }))
-    } else {
-        None
-    };
-
     let ol = if tcx.sess.opts.debugging_opts.no_codegen
         || !tcx.sess.opts.output_types.should_codegen()
     {
@@ -1055,7 +1051,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),
         target_arch: tcx.sess.target.target.arch.clone(),
         debuginfo: tcx.sess.opts.debuginfo,
-        assembler_cmd,
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -1587,44 +1582,6 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
             Some(execute_work_item(&cgcx, work))
         };
     });
-}
-
-pub fn run_assembler<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
-    handler: &Handler,
-    assembly: &Path,
-    object: &Path,
-) {
-    let assembler = cgcx.assembler_cmd.as_ref().expect("cgcx.assembler_cmd is missing?");
-
-    let pname = &assembler.name;
-    let mut cmd = assembler.cmd.clone();
-    cmd.arg("-c").arg("-o").arg(object).arg(assembly);
-    debug!("{:?}", cmd);
-
-    match cmd.output() {
-        Ok(prog) => {
-            if !prog.status.success() {
-                let mut note = prog.stderr.clone();
-                note.extend_from_slice(&prog.stdout);
-
-                handler
-                    .struct_err(&format!(
-                        "linking with `{}` failed: {}",
-                        pname.display(),
-                        prog.status
-                    ))
-                    .note(&format!("{:?}", &cmd))
-                    .note(str::from_utf8(&note[..]).unwrap())
-                    .emit();
-                handler.abort_if_errors();
-            }
-        }
-        Err(e) => {
-            handler.err(&format!("could not exec the linker `{}`: {}", pname.display(), e));
-            handler.abort_if_errors();
-        }
-    }
 }
 
 enum SharedEmitterMessage {

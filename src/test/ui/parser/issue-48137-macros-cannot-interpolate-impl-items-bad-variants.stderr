@@ -3,6 +3,8 @@ error: struct is not supported in `trait`s or `impl`s
    |
 LL |     struct BadS;
    |     ^^^^^^^^^^^^
+   |
+   = help: consider moving the struct out to a nearby module scope
 
 error: enum is not supported in `trait`s or `impl`s
   --> $DIR/issue-48137-macros-cannot-interpolate-impl-items-bad-variants.rs:5:9
@@ -13,6 +15,7 @@ LL |         enum BadE {}
 LL |     expand_to_enum!();
    |     ------------------ in this macro invocation
    |
+   = help: consider moving the enum out to a nearby module scope
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: struct is not supported in `trait`s or `impl`s
@@ -20,6 +23,8 @@ error: struct is not supported in `trait`s or `impl`s
    |
 LL |     struct BadS;
    |     ^^^^^^^^^^^^
+   |
+   = help: consider moving the struct out to a nearby module scope
 
 error: enum is not supported in `trait`s or `impl`s
   --> $DIR/issue-48137-macros-cannot-interpolate-impl-items-bad-variants.rs:5:9
@@ -30,6 +35,7 @@ LL |         enum BadE {}
 LL |     expand_to_enum!();
    |     ------------------ in this macro invocation
    |
+   = help: consider moving the enum out to a nearby module scope
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: struct is not supported in `extern` blocks
@@ -37,6 +43,8 @@ error: struct is not supported in `extern` blocks
    |
 LL |     struct BadS;
    |     ^^^^^^^^^^^^
+   |
+   = help: consider moving the struct out to a nearby module scope
 
 error: enum is not supported in `extern` blocks
   --> $DIR/issue-48137-macros-cannot-interpolate-impl-items-bad-variants.rs:5:9
@@ -47,6 +55,7 @@ LL |         enum BadE {}
 LL |     expand_to_enum!();
    |     ------------------ in this macro invocation
    |
+   = help: consider moving the enum out to a nearby module scope
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 6 previous errors

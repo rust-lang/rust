@@ -380,7 +380,7 @@ fn add_query_description_impl(
         quote! {
             #[allow(unused_variables)]
             fn describe(
-                #tcx: TyCtxt<'_>,
+                #tcx: TyCtxt<'tcx>,
                 #key: #arg,
             ) -> Cow<'static, str> {
                 format!(#desc).into()
@@ -393,7 +393,7 @@ fn add_query_description_impl(
         let desc = desc.unwrap_or(quote! {});
 
         impls.extend(quote! {
-            impl<'tcx> QueryDescription<'tcx> for queries::#name<'tcx> {
+            impl<'tcx> QueryDescription<TyCtxt<'tcx>> for queries::#name<'tcx> {
                 #desc
                 #cache
             }
@@ -429,14 +429,14 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 });
 
                 try_load_from_on_disk_cache_stream.extend(quote! {
-                    DepKind::#name => {
-                        if <#arg as DepNodeParams>::CAN_RECONSTRUCT_QUERY_KEY {
+                    ::rustc_middle::dep_graph::DepKind::#name => {
+                        if <#arg as DepNodeParams<TyCtxt<'_>>>::CAN_RECONSTRUCT_QUERY_KEY {
                             debug_assert!($tcx.dep_graph
                                             .node_color($dep_node)
                                             .map(|c| c.is_green())
                                             .unwrap_or(false));
 
-                            let key = <#arg as DepNodeParams>::recover($tcx, $dep_node).unwrap();
+                            let key = <#arg as DepNodeParams<TyCtxt<'_>>>::recover($tcx, $dep_node).unwrap();
                             if queries::#name::cache_on_disk($tcx, key, None) {
                                 let _ = $tcx.#name(key);
                             }
@@ -486,10 +486,11 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
             // Add a match arm to force the query given the dep node
             dep_node_force_stream.extend(quote! {
-                DepKind::#name => {
-                    if <#arg as DepNodeParams>::CAN_RECONSTRUCT_QUERY_KEY {
-                        if let Some(key) = <#arg as DepNodeParams>::recover($tcx, $dep_node) {
-                            $tcx.force_query::<crate::ty::query::queries::#name<'_>>(
+                ::rustc_middle::dep_graph::DepKind::#name => {
+                    if <#arg as DepNodeParams<TyCtxt<'_>>>::CAN_RECONSTRUCT_QUERY_KEY {
+                        if let Some(key) = <#arg as DepNodeParams<TyCtxt<'_>>>::recover($tcx, $dep_node) {
+                            force_query::<crate::ty::query::queries::#name<'_>, _>(
+                                $tcx,
                                 key,
                                 DUMMY_SP,
                                 *$dep_node
@@ -509,7 +510,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     }
 
     dep_node_force_stream.extend(quote! {
-        DepKind::Null => {
+        ::rustc_middle::dep_graph::DepKind::Null => {
             bug!("Cannot force dep node: {:?}", $dep_node)
         }
     });

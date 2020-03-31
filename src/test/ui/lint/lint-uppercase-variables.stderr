@@ -22,7 +22,7 @@ warning: unused variable: `Foo`
   --> $DIR/lint-uppercase-variables.rs:22:9
    |
 LL |         Foo => {}
-   |         ^^^ help: consider prefixing with an underscore: `_Foo`
+   |         ^^^ help: if this is intentional, prefix it with an underscore: `_Foo`
    |
 note: the lint level is defined here
   --> $DIR/lint-uppercase-variables.rs:1:9
@@ -35,13 +35,13 @@ warning: unused variable: `Foo`
   --> $DIR/lint-uppercase-variables.rs:28:9
    |
 LL |     let Foo = foo::Foo::Foo;
-   |         ^^^ help: consider prefixing with an underscore: `_Foo`
+   |         ^^^ help: if this is intentional, prefix it with an underscore: `_Foo`
 
 warning: unused variable: `Foo`
   --> $DIR/lint-uppercase-variables.rs:33:17
    |
 LL |     fn in_param(Foo: foo::Foo) {}
-   |                 ^^^ help: consider prefixing with an underscore: `_Foo`
+   |                 ^^^ help: if this is intentional, prefix it with an underscore: `_Foo`
 
 error: structure field `X` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:10:5

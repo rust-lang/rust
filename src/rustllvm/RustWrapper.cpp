@@ -1333,8 +1333,13 @@ extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B,
                                             LLVMValueRef Dst, unsigned DstAlign,
                                             LLVMValueRef Val,
                                             LLVMValueRef Size, bool IsVolatile) {
+#if LLVM_VERSION_GE(10, 0)
+  return wrap(unwrap(B)->CreateMemSet(
+      unwrap(Dst), unwrap(Val), unwrap(Size), MaybeAlign(DstAlign), IsVolatile));
+#else
   return wrap(unwrap(B)->CreateMemSet(
       unwrap(Dst), unwrap(Val), unwrap(Size), DstAlign, IsVolatile));
+#endif
 }
 
 extern "C" LLVMValueRef

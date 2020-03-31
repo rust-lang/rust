@@ -168,7 +168,7 @@ Diagnostics have the following format:
             "rendered": null
         },
         {
-            "message": "consider prefixing with an underscore",
+            "message": "if this is intentional, prefix it with an underscore",
             "code": null,
             "level": "help",
             "spans": [
@@ -201,7 +201,7 @@ Diagnostics have the following format:
     /* Optional string of the rendered version of the diagnostic as displayed
        by rustc. Note that this may be influenced by the `--json` flag.
     */
-    "rendered": "warning: unused variable: `x`\n --> lib.rs:2:9\n  |\n2 |     let x = 123;\n  |         ^ help: consider prefixing with an underscore: `_x`\n  |\n  = note: `#[warn(unused_variables)]` on by default\n\n"
+    "rendered": "warning: unused variable: `x`\n --> lib.rs:2:9\n  |\n2 |     let x = 123;\n  |         ^ help: if this is intentional, prefix it with an underscore: `_x`\n  |\n  = note: `#[warn(unused_variables)]` on by default\n\n"
 }
 ```
 

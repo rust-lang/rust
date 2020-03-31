@@ -1,14 +1,14 @@
-use rustc::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::*;
-use rustc::ty::cast::CastTy;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit;
 use rustc_hir::Node;
+use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
+use rustc_middle::ty::cast::CastTy;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
 use rustc_span::symbol::{sym, Symbol};
 
@@ -106,7 +106,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 // safe (at least as emitted during MIR construction)
             }
 
-            StatementKind::InlineAsm { .. } => self.require_unsafe(
+            StatementKind::LlvmInlineAsm { .. } => self.require_unsafe(
                 "use of inline assembly",
                 "inline assembly is entirely unchecked and can cause undefined behavior",
                 UnsafetyViolationKind::General,
@@ -396,42 +396,40 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 ProjectionElem::Field(..) => {
                     let ty =
                         Place::ty_from(place.local, proj_base, &self.body.local_decls, self.tcx).ty;
-                    match ty.kind {
-                        ty::Adt(def, _) => match self.tcx.layout_scalar_valid_range(def.did) {
-                            (Bound::Unbounded, Bound::Unbounded) => {}
-                            _ => {
-                                let (description, details) = if is_mut_use {
-                                    (
-                                        "mutation of layout constrained field",
-                                        "mutating layout constrained fields cannot statically be \
+                    if let ty::Adt(def, _) = ty.kind {
+                        if self.tcx.layout_scalar_valid_range(def.did)
+                            != (Bound::Unbounded, Bound::Unbounded)
+                        {
+                            let (description, details) = if is_mut_use {
+                                (
+                                    "mutation of layout constrained field",
+                                    "mutating layout constrained fields cannot statically be \
                                         checked for valid values",
-                                    )
+                                )
 
-                                // Check `is_freeze` as late as possible to avoid cycle errors
-                                // with opaque types.
-                                } else if !place.ty(self.body, self.tcx).ty.is_freeze(
-                                    self.tcx,
-                                    self.param_env,
-                                    self.source_info.span,
-                                ) {
-                                    (
-                                        "borrow of layout constrained field with interior \
+                            // Check `is_freeze` as late as possible to avoid cycle errors
+                            // with opaque types.
+                            } else if !place.ty(self.body, self.tcx).ty.is_freeze(
+                                self.tcx,
+                                self.param_env,
+                                self.source_info.span,
+                            ) {
+                                (
+                                    "borrow of layout constrained field with interior \
                                         mutability",
-                                        "references to fields of layout constrained fields \
+                                    "references to fields of layout constrained fields \
                                         lose the constraints. Coupled with interior mutability, \
                                         the field can be changed to invalid values",
-                                    )
-                                } else {
-                                    continue;
-                                };
-                                self.require_unsafe(
-                                    description,
-                                    details,
-                                    UnsafetyViolationKind::GeneralAndConstFn,
-                                );
-                            }
-                        },
-                        _ => {}
+                                )
+                            } else {
+                                continue;
+                            };
+                            self.require_unsafe(
+                                description,
+                                details,
+                                UnsafetyViolationKind::GeneralAndConstFn,
+                            );
+                        }
                     }
                 }
                 _ => {}
@@ -507,7 +505,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
     // mir_built ensures that body has a computed cache, so we don't (and can't) attempt to
     // recompute it here.
     let body = body.unwrap_read_only();
-    checker.visit_body(body);
+    checker.visit_body(&body);
 
     check_unused_unsafe(tcx, def_id, &checker.used_unsafe, &mut checker.inherited_blocks);
     UnsafetyCheckResult {
@@ -565,14 +563,14 @@ fn is_enclosed(
 }
 
 fn report_unused_unsafe(tcx: TyCtxt<'_>, used_unsafe: &FxHashSet<hir::HirId>, id: hir::HirId) {
-    let span = tcx.sess.source_map().def_span(tcx.hir().span(id));
+    let span = tcx.sess.source_map().guess_head_span(tcx.hir().span(id));
     tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, |lint| {
         let msg = "unnecessary `unsafe` block";
         let mut db = lint.build(msg);
         db.span_label(span, msg);
         if let Some((kind, id)) = is_enclosed(tcx, used_unsafe, id) {
             db.span_label(
-                tcx.sess.source_map().def_span(tcx.hir().span(id)),
+                tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
                 format!("because it's nested under this `unsafe` {}", kind),
             );
         }
@@ -644,7 +642,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
     }
 
     let mut unsafe_blocks: Vec<_> = unsafe_blocks.iter().collect();
-    unsafe_blocks.sort_by_cached_key(|(hir_id, _)| tcx.hir().hir_to_node_id(*hir_id));
+    unsafe_blocks.sort_by_cached_key(|(hir_id, _)| tcx.hir().hir_id_to_node_id(*hir_id));
     let used_unsafe: FxHashSet<_> =
         unsafe_blocks.iter().flat_map(|&&(id, used)| used.then_some(id)).collect();
     for &(block_id, is_used) in unsafe_blocks {

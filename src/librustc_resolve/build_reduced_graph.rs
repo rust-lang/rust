@@ -15,10 +15,6 @@ use crate::{
 };
 use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
 
-use rustc::bug;
-use rustc::hir::exports::Export;
-use rustc::middle::cstore::CrateStore;
-use rustc::ty;
 use rustc_ast::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use rustc_ast::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use rustc_ast::ast::{Ident, Name};
@@ -32,6 +28,10 @@ use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_metadata::creader::LoadedMacro;
+use rustc_middle::bug;
+use rustc_middle::hir::exports::Export;
+use rustc_middle::middle::cstore::CrateStore;
+use rustc_middle::ty;
 use rustc_span::hygiene::{ExpnId, MacroKind};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym};
@@ -904,7 +904,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.insert_field_names(def_id, field_names);
             }
             Res::Def(DefKind::AssocFn, def_id) => {
-                if cstore.associated_item_cloned_untracked(def_id).method_has_self_argument {
+                if cstore
+                    .associated_item_cloned_untracked(def_id, self.r.session)
+                    .method_has_self_argument
+                {
                     self.r.has_self.insert(def_id);
                 }
             }
@@ -1149,7 +1152,14 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }))
         } else {
             let module = parent_scope.module;
-            let vis = self.resolve_visibility(&item.vis);
+            let vis = match item.kind {
+                // Visibilities must not be resolved non-speculatively twice
+                // and we already resolved this one as a `fn` item visibility.
+                ItemKind::Fn(..) => self
+                    .resolve_visibility_speculative(&item.vis, true)
+                    .unwrap_or(ty::Visibility::Public),
+                _ => self.resolve_visibility(&item.vis),
+            };
             if vis != ty::Visibility::Public {
                 self.insert_unused_macro(ident, item.id, span);
             }

@@ -1,4 +1,4 @@
-error: layout debugging: LayoutDetails {
+error: layout debugging: Layout {
     fields: Arbitrary {
         offsets: [
             Size {
@@ -20,7 +20,7 @@ error: layout debugging: LayoutDetails {
         discr_kind: Tag,
         discr_index: 0,
         variants: [
-            LayoutDetails {
+            Layout {
                 fields: Arbitrary {
                     offsets: [],
                     memory_index: [],
@@ -42,7 +42,7 @@ error: layout debugging: LayoutDetails {
                     raw: 4,
                 },
             },
-            LayoutDetails {
+            Layout {
                 fields: Arbitrary {
                     offsets: [
                         Size {
@@ -110,7 +110,7 @@ error: layout debugging: LayoutDetails {
 LL | enum E { Foo, Bar(!, i32, i32) }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: layout debugging: LayoutDetails {
+error: layout debugging: Layout {
     fields: Arbitrary {
         offsets: [
             Size {
@@ -164,7 +164,7 @@ error: layout debugging: LayoutDetails {
 LL | struct S { f1: i32, f2: (), f3: i32 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: layout debugging: LayoutDetails {
+error: layout debugging: Layout {
     fields: Union(
         2,
     ),
@@ -190,7 +190,7 @@ error: layout debugging: LayoutDetails {
 LL | union U { f1: (i32, i32), f3: i32 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: layout debugging: LayoutDetails {
+error: layout debugging: Layout {
     fields: Arbitrary {
         offsets: [
             Size {
@@ -212,7 +212,7 @@ error: layout debugging: LayoutDetails {
         discr_kind: Tag,
         discr_index: 0,
         variants: [
-            LayoutDetails {
+            Layout {
                 fields: Arbitrary {
                     offsets: [
                         Size {
@@ -240,7 +240,7 @@ error: layout debugging: LayoutDetails {
                     raw: 8,
                 },
             },
-            LayoutDetails {
+            Layout {
                 fields: Arbitrary {
                     offsets: [
                         Size {

@@ -3,9 +3,6 @@ use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
 use crate::type_error_struct;
 
-use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_ast::ast::Ident;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -13,6 +10,11 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::{infer, traits};
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
+};
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 
@@ -104,8 +106,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check whether this is a call to a closure where we
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
-                if self.closure_kind(def_id, substs).is_none() {
-                    let closure_sig = substs.as_closure().sig(def_id, self.tcx);
+                if self.closure_kind(substs).is_none() {
+                    let closure_sig = substs.as_closure().sig();
                     let closure_sig = self
                         .replace_bound_vars_with_fresh_vars(
                             call_expr.span,
@@ -122,7 +124,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             adjusted_ty,
                             adjustments,
                             fn_sig: closure_sig,
-                            closure_def_id: def_id,
                             closure_substs: substs,
                         },
                     );
@@ -266,7 +267,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let &ty::Adt(adt_def, ..) = t {
                     if adt_def.is_enum() {
                         if let hir::ExprKind::Call(ref expr, _) = call_expr.kind {
-                            unit_variant = Some(self.tcx.hir().hir_to_pretty_string(expr.hir_id))
+                            unit_variant =
+                                self.tcx.sess.source_map().span_to_snippet(expr.span).ok();
                         }
                     }
                 }
@@ -336,16 +338,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_label(call_expr.span, "call expression requires function");
 
                     if let Some(span) = self.tcx.hir().res_span(def) {
+                        let callee_ty = callee_ty.to_string();
                         let label = match (unit_variant, inner_callee_path) {
-                            (Some(path), _) => format!("`{}` defined here", path),
-                            (_, Some(hir::QPath::Resolved(_, path))) => format!(
-                                "`{}` defined here returns `{}`",
-                                path,
-                                callee_ty.to_string()
-                            ),
-                            _ => format!("`{}` defined here", callee_ty.to_string()),
+                            (Some(path), _) => Some(format!("`{}` defined here", path)),
+                            (_, Some(hir::QPath::Resolved(_, path))) => {
+                                self.tcx.sess.source_map().span_to_snippet(path.span).ok().map(
+                                    |p| format!("`{}` defined here returns `{}`", p, callee_ty),
+                                )
+                            }
+                            _ => Some(format!("`{}` defined here", callee_ty)),
                         };
-                        err.span_label(span, label);
+                        if let Some(label) = label {
+                            err.span_label(span, label);
+                        }
                     }
                     err.emit();
                 } else {
@@ -459,7 +464,6 @@ pub struct DeferredCallResolution<'tcx> {
     adjusted_ty: Ty<'tcx>,
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
-    closure_def_id: DefId,
     closure_substs: SubstsRef<'tcx>,
 }
 
@@ -469,7 +473,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
 
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
-        assert!(fcx.closure_kind(self.closure_def_id, self.closure_substs).is_some());
+        assert!(fcx.closure_kind(self.closure_substs).is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.
         match fcx.try_overloaded_call_traits(self.call_expr, self.adjusted_ty, None) {

@@ -26,15 +26,15 @@
 
 use crate::transform::MirSource;
 use crate::util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
-use rustc::mir::visit::{
-    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
-};
-use rustc::mir::Local;
-use rustc::mir::*;
-use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::visit::{
+    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
+};
+use rustc_middle::mir::Local;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, TyCtxt};
 use std::fs;
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};

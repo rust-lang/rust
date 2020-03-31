@@ -3,14 +3,16 @@ use crate::hair::cx::to_ref::ToRef;
 use crate::hair::cx::Cx;
 use crate::hair::util::UserAnnotatedTyHelpers;
 use crate::hair::*;
-use rustc::mir::interpret::{ErrorHandled, Scalar};
-use rustc::mir::BorrowKind;
-use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast};
-use rustc::ty::subst::{InternalSubsts, SubstsRef};
-use rustc::ty::{self, AdtKind, Ty};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_index::vec::Idx;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::BorrowKind;
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast,
+};
+use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
+use rustc_middle::ty::{self, AdtKind, Ty};
 use rustc_span::Span;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr<'tcx> {
@@ -387,7 +389,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 .upvars(def_id)
                 .iter()
                 .flat_map(|upvars| upvars.iter())
-                .zip(substs.upvar_tys(def_id, cx.tcx))
+                .zip(substs.upvar_tys())
                 .map(|((&var_hir_id, _), ty)| capture_upvar(cx, expr, var_hir_id, ty))
                 .collect();
             ExprKind::Closure { closure_id: def_id, substs, upvars, movability }
@@ -398,7 +400,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             convert_path_expr(cx, expr, res)
         }
 
-        hir::ExprKind::InlineAsm(ref asm) => ExprKind::InlineAsm {
+        hir::ExprKind::LlvmInlineAsm(ref asm) => ExprKind::LlvmInlineAsm {
             asm: &asm.inner,
             outputs: asm.outputs_exprs.to_ref(),
             inputs: asm.inputs_exprs.to_ref(),
@@ -406,34 +408,8 @@ fn make_mirror_unadjusted<'a, 'tcx>(
 
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
-            let def_id = cx.tcx.hir().local_def_id(count.hir_id);
-            let substs = InternalSubsts::identity_for_item(cx.tcx, def_id);
-            let span = cx.tcx.def_span(def_id);
-            let count = match cx.tcx.const_eval_resolve(
-                ty::ParamEnv::reveal_all(),
-                def_id,
-                substs,
-                None,
-                Some(span),
-            ) {
-                Ok(cv) => {
-                    if let Some(count) = cv.try_to_bits_for_ty(
-                        cx.tcx,
-                        ty::ParamEnv::reveal_all(),
-                        cx.tcx.types.usize,
-                    ) {
-                        count as u64
-                    } else {
-                        bug!("repeat count constant value can't be converted to usize");
-                    }
-                }
-                Err(ErrorHandled::Reported) => 0,
-                Err(ErrorHandled::TooGeneric) => {
-                    let span = cx.tcx.def_span(def_id);
-                    cx.tcx.sess.span_err(span, "array lengths can't depend on generic parameters");
-                    0
-                }
-            };
+            let count_def_id = cx.tcx.hir().local_def_id(count.hir_id).expect_local();
+            let count = ty::Const::from_anon_const(cx.tcx, count_def_id);
 
             ExprKind::Repeat { value: v.to_ref(), count }
         }
@@ -504,7 +480,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                             ) => {
                                 let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
                                 let (d, o) = adt_def.discriminant_def_for_variant(idx);
-                                use rustc::ty::util::IntTypeExt;
+                                use rustc_middle::ty::util::IntTypeExt;
                                 let ty = adt_def.repr.discr_type();
                                 let ty = ty.to_ty(cx.tcx());
                                 Some((d, o, ty))
@@ -657,7 +633,7 @@ trait ToBorrowKind {
 
 impl ToBorrowKind for AutoBorrowMutability {
     fn to_borrow_kind(&self) -> BorrowKind {
-        use rustc::ty::adjustment::AllowTwoPhase;
+        use rustc_middle::ty::adjustment::AllowTwoPhase;
         match *self {
             AutoBorrowMutability::Mut { allow_two_phase_borrow } => BorrowKind::Mut {
                 allow_two_phase_borrow: match allow_two_phase_borrow {
@@ -830,7 +806,7 @@ fn convert_var<'tcx>(
             let region = cx.tcx.mk_region(region);
 
             let self_expr = if let ty::Closure(_, closure_substs) = closure_ty.kind {
-                match cx.infcx.closure_kind(closure_def_id, closure_substs).unwrap() {
+                match cx.infcx.closure_kind(closure_substs).unwrap() {
                     ty::ClosureKind::Fn => {
                         let ref_closure_ty = cx.tcx.mk_ref(
                             region,

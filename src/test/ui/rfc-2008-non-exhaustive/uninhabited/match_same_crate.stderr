@@ -10,6 +10,7 @@ LL |       match x {}
    |             ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `UninhabitedStruct`
 
 error[E0004]: non-exhaustive patterns: type `UninhabitedTupleStruct` is non-empty
   --> $DIR/match_same_crate.rs:34:11
@@ -21,6 +22,7 @@ LL |     match x {}
    |           ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `UninhabitedTupleStruct`
 
 error[E0004]: non-exhaustive patterns: `Tuple(_)` and `Struct { .. }` not covered
   --> $DIR/match_same_crate.rs:38:11
@@ -37,6 +39,7 @@ LL |       match x {}
    |             ^ patterns `Tuple(_)` and `Struct { .. }` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `UninhabitedVariants`
 
 error: aborting due to 3 previous errors
 

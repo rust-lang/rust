@@ -2,7 +2,7 @@ error[E0603]: static `private` is private
   --> $DIR/static-priv-by-default2.rs:15:30
    |
 LL |     use child::childs_child::private;
-   |                              ^^^^^^^ this static is private
+   |                              ^^^^^^^ private static
    |
 note: the static `private` is defined here
   --> $DIR/static-priv-by-default2.rs:7:9
@@ -14,7 +14,7 @@ error[E0603]: static `private` is private
   --> $DIR/static-priv-by-default2.rs:23:33
    |
 LL |     use static_priv_by_default::private;
-   |                                 ^^^^^^^ this static is private
+   |                                 ^^^^^^^ private static
    |
 note: the static `private` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:3:1

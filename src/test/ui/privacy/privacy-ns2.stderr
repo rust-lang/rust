@@ -58,7 +58,7 @@ error[E0603]: trait `Bar` is private
   --> $DIR/privacy-ns2.rs:63:15
    |
 LL |     use foo3::Bar;
-   |               ^^^ this trait is private
+   |               ^^^ private trait
    |
 note: the trait `Bar` is defined here
   --> $DIR/privacy-ns2.rs:55:5
@@ -70,7 +70,7 @@ error[E0603]: trait `Bar` is private
   --> $DIR/privacy-ns2.rs:67:15
    |
 LL |     use foo3::Bar;
-   |               ^^^ this trait is private
+   |               ^^^ private trait
    |
 note: the trait `Bar` is defined here
   --> $DIR/privacy-ns2.rs:55:5
@@ -82,7 +82,7 @@ error[E0603]: trait `Bar` is private
   --> $DIR/privacy-ns2.rs:74:16
    |
 LL |     use foo3::{Bar,Baz};
-   |                ^^^ this trait is private
+   |                ^^^ private trait
    |
 note: the trait `Bar` is defined here
   --> $DIR/privacy-ns2.rs:55:5

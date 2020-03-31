@@ -1,5 +1,5 @@
 error[E0658]: `while` is not allowed in a `const`
-  --> $DIR/infinite_loop.rs:7:9
+  --> $DIR/infinite_loop.rs:6:9
    |
 LL | /         while n != 0 {
 LL | |
@@ -14,7 +14,7 @@ LL | |         }
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const`
-  --> $DIR/infinite_loop.rs:9:17
+  --> $DIR/infinite_loop.rs:8:17
    |
 LL |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -22,24 +22,11 @@ LL |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
    = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
-warning: Constant evaluating a complex constant, this might take some time
-  --> $DIR/infinite_loop.rs:4:18
-   |
-LL |       let _ = [(); {
-   |  __________________^
-LL | |
-LL | |         let mut n = 113383; // #20 in https://oeis.org/A006884
-LL | |         while n != 0 {
-...  |
-LL | |         n
-LL | |     }];
-   | |_____^
-
 error[E0080]: evaluation of constant value failed
-  --> $DIR/infinite_loop.rs:9:20
+  --> $DIR/infinite_loop.rs:8:20
    |
 LL |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
-   |                    ^^^^^^^^^^ duplicate interpreter state observed here, const evaluation will never terminate
+   |                    ^^^^^^^^^^ exceeded interpreter step limit (see `#[const_eval_limit]`)
 
 error: aborting due to 3 previous errors
 

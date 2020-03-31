@@ -15,7 +15,7 @@ bitflags = "1.2.1"
 log = "0.4"
 rustc_ast = { path = "../librustc_ast" }
 arena = { path = "../libarena" }
-rustc = { path = "../librustc" }
+rustc_middle = { path = "../librustc_middle" }
 rustc_ast_lowering = { path = "../librustc_ast_lowering" }
 rustc_ast_pretty = { path = "../librustc_ast_pretty" }
 rustc_attr = { path = "../librustc_attr" }

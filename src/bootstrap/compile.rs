@@ -451,44 +451,6 @@ impl Step for Rustc {
             false,
         );
 
-        // We used to build librustc_codegen_llvm as a separate step,
-        // which produced a dylib that the compiler would dlopen() at runtime.
-        // This meant that we only needed to make sure that libLLVM.so was
-        // installed by the time we went to run a tool using it - since
-        // librustc_codegen_llvm was effectively a standalone artifact,
-        // other crates were completely oblivious to its dependency
-        // on `libLLVM.so` during build time.
-        //
-        // However, librustc_codegen_llvm is now built as an ordinary
-        // crate during the same step as the rest of the compiler crates.
-        // This means that any crates depending on it will see the fact
-        // that it uses `libLLVM.so` as a native library, and will
-        // cause us to pass `-llibLLVM.so` to the linker when we link
-        // a binary.
-        //
-        // For `rustc` itself, this works out fine.
-        // During the `Assemble` step, we call `dist::maybe_install_llvm_dylib`
-        // to copy libLLVM.so into the `stage` directory. We then link
-        // the compiler binary, which will find `libLLVM.so` in the correct place.
-        //
-        // However, this is insufficient for tools that are build against stage0
-        // (e.g. stage1 rustdoc). Since `Assemble` for stage0 doesn't actually do anything,
-        // we won't have `libLLVM.so` in the stage0 sysroot. In the past, this wasn't
-        // a problem - we would copy the tool binary into its correct stage directory
-        // (e.g. stage1 for a stage1 rustdoc built against a stage0 compiler).
-        // Since libLLVM.so wasn't resolved until runtime, it was fine for it to
-        // not exist while we were building it.
-        //
-        // To ensure that we can still build stage1 tools against a stage0 compiler,
-        // we explicitly copy libLLVM.so into the stage0 sysroot when building
-        // the stage0 compiler. This ensures that tools built against stage0
-        // will see libLLVM.so at build time, making the linker happy.
-        if compiler.stage == 0 {
-            builder.info(&format!("Installing libLLVM.so to stage 0 ({})", compiler.host));
-            let sysroot = builder.sysroot(compiler);
-            dist::maybe_install_llvm_dylib(builder, compiler.host, &sysroot);
-        }
-
         builder.ensure(RustcLink {
             compiler: builder.compiler(compiler.stage, builder.config.build),
             target_compiler: compiler,

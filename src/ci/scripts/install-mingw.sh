@@ -50,8 +50,8 @@ if isWindows; then
     esac
 
     if [[ "${CUSTOM_MINGW-0}" -ne 1 ]]; then
-        pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake \
-            mingw-w64-$arch-gcc mingw-w64-$arch-python2
+        pacman -S --noconfirm --needed mingw-w64-$arch-toolchain \
+            mingw-w64-$arch-cmake mingw-w64-$arch-gcc mingw-w64-$arch-python2
         ciCommandAddPath "$(ciCheckoutPath)/msys2/mingw${bits}/bin"
     else
         mingw_dir="mingw${bits}"

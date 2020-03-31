@@ -7,11 +7,10 @@ LL | pub struct Foo<T: Bound>(T);
 LL | impl<T> Trait2 for Foo<T> {}
    |         ^^^^^^ the trait `Bound` is not implemented for `T`
    |
-help: consider restricting this type parameter with `T: Bound`
-  --> $DIR/issue-21837.rs:8:6
+help: consider restricting type parameter `T`
    |
-LL | impl<T> Trait2 for Foo<T> {}
-   |      ^
+LL | impl<T: Bound> Trait2 for Foo<T> {}
+   |       ^^^^^^^
 
 error: aborting due to previous error
 

@@ -2,7 +2,7 @@ error[E0603]: unit struct `C` is private
   --> $DIR/issue-13407.rs:6:8
    |
 LL |     A::C = 1;
-   |        ^ this unit struct is private
+   |        ^ private unit struct
    |
 note: the unit struct `C` is defined here
   --> $DIR/issue-13407.rs:2:5

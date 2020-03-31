@@ -1,6 +1,6 @@
-use rustc::traits;
-use rustc::ty::adjustment::CustomCoerceUnsized;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc_middle::traits;
+use rustc_middle::ty::adjustment::CustomCoerceUnsized;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 pub mod collector;
 pub mod partitioning;

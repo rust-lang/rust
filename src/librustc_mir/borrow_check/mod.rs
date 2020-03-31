@@ -1,14 +1,5 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
-use rustc::mir::{
-    read_only, traversal, Body, BodyAndCache, ClearCrossCrate, Local, Location, Mutability,
-    Operand, Place, PlaceElem, PlaceRef, ReadOnlyBodyAndCache,
-};
-use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
-use rustc::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
-use rustc::mir::{Terminator, TerminatorKind};
-use rustc::ty::query::Providers;
-use rustc::ty::{self, RegionVid, TyCtxt};
 use rustc_ast::ast::Name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
@@ -18,6 +9,15 @@ use rustc_hir::{def_id::DefId, HirId, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_middle::mir::{
+    read_only, traversal, Body, BodyAndCache, ClearCrossCrate, Local, Location, Mutability,
+    Operand, Place, PlaceElem, PlaceRef, ReadOnlyBodyAndCache,
+};
+use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
+use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
+use rustc_middle::mir::{Terminator, TerminatorKind};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT, UNUSED_MUT};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -29,12 +29,12 @@ use std::mem;
 use std::rc::Rc;
 
 use crate::dataflow;
-use crate::dataflow::generic::{Analysis, BorrowckFlowState as Flows, BorrowckResults};
 use crate::dataflow::indexes::{BorrowIndex, InitIndex, MoveOutIndex, MovePathIndex};
 use crate::dataflow::move_paths::{InitLocation, LookupResult, MoveData, MoveError};
 use crate::dataflow::Borrows;
 use crate::dataflow::EverInitializedPlaces;
 use crate::dataflow::MoveDataParamEnv;
+use crate::dataflow::{Analysis, BorrowckFlowState as Flows, BorrowckResults};
 use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use crate::transform::MirSource;
 
@@ -298,9 +298,9 @@ fn do_mir_borrowck<'a, 'tcx>(
         mbcx.report_move_errors(errors);
     }
 
-    dataflow::generic::visit_results(
-        &*body,
-        traversal::reverse_postorder(&*body).map(|(bb, _)| bb),
+    dataflow::visit_results(
+        &body,
+        traversal::reverse_postorder(&body).map(|(bb, _)| bb),
         &results,
         &mut mbcx,
     );
@@ -509,7 +509,7 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
 // 2. loans made in overlapping scopes do not conflict
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
-impl<'cx, 'tcx> dataflow::generic::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx> {
+impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx> {
     type FlowState = Flows<'cx, 'tcx>;
 
     fn visit_statement(
@@ -550,7 +550,7 @@ impl<'cx, 'tcx> dataflow::generic::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt
             StatementKind::SetDiscriminant { ref place, variant_index: _ } => {
                 self.mutate_place(location, (place, span), Shallow(None), JustWrite, flow_state);
             }
-            StatementKind::InlineAsm(ref asm) => {
+            StatementKind::LlvmInlineAsm(ref asm) => {
                 for (o, output) in asm.asm.outputs.iter().zip(asm.outputs.iter()) {
                     if o.is_indirect {
                         // FIXME(eddyb) indirect inline asm outputs should
@@ -670,7 +670,7 @@ impl<'cx, 'tcx> dataflow::generic::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt
             }
             TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
                 self.consume_operand(loc, (cond, span), flow_state);
-                use rustc::mir::AssertKind;
+                use rustc_middle::mir::AssertKind;
                 if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
                     self.consume_operand(loc, (len, span), flow_state);
                     self.consume_operand(loc, (index, span), flow_state);

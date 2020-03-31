@@ -7,9 +7,6 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 use crate::value::Value;
-use rustc::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf, Primitive};
-use rustc::ty::{self, Ty};
-use rustc::{bug, span_bug};
 use rustc_ast::ast;
 use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -18,6 +15,9 @@ use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::MemFlags;
 use rustc_hir as hir;
+use rustc_middle::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf, Primitive};
+use rustc_middle::ty::{self, Ty};
+use rustc_middle::{bug, span_bug};
 use rustc_target::abi::HasDataLayout;
 
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
@@ -1172,8 +1172,8 @@ fn generic_simd_intrinsic(
         let m_len = match in_ty.kind {
             // Note that this `.unwrap()` crashes for isize/usize, that's sort
             // of intentional as there's not currently a use case for that.
-            ty::Int(i) => i.bit_width().unwrap() as u64,
-            ty::Uint(i) => i.bit_width().unwrap() as u64,
+            ty::Int(i) => i.bit_width().unwrap(),
+            ty::Uint(i) => i.bit_width().unwrap(),
             _ => return_error!("`{}` is not an integral type", in_ty),
         };
         require_simd!(arg_tys[1], "argument");
@@ -1354,20 +1354,18 @@ fn generic_simd_intrinsic(
         // trailing bits.
         let expected_int_bits = in_len.max(8);
         match ret_ty.kind {
-            ty::Uint(i) if i.bit_width() == Some(expected_int_bits as usize) => (),
+            ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => (),
             _ => return_error!("bitmask `{}`, expected `u{}`", ret_ty, expected_int_bits),
         }
 
         // Integer vector <i{in_bitwidth} x in_len>:
         let (i_xn, in_elem_bitwidth) = match in_elem.kind {
-            ty::Int(i) => (
-                args[0].immediate(),
-                i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits() as _),
-            ),
-            ty::Uint(i) => (
-                args[0].immediate(),
-                i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits() as _),
-            ),
+            ty::Int(i) => {
+                (args[0].immediate(), i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits()))
+            }
+            ty::Uint(i) => {
+                (args[0].immediate(), i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits()))
+            }
             _ => return_error!(
                 "vector argument `{}`'s element type `{}`, expected integer element type",
                 in_ty,
@@ -1378,22 +1376,22 @@ fn generic_simd_intrinsic(
         // Shift the MSB to the right by "in_elem_bitwidth - 1" into the first bit position.
         let shift_indices =
             vec![
-                bx.cx.const_int(bx.type_ix(in_elem_bitwidth as _), (in_elem_bitwidth - 1) as _);
+                bx.cx.const_int(bx.type_ix(in_elem_bitwidth), (in_elem_bitwidth - 1) as _);
                 in_len as _
             ];
         let i_xn_msb = bx.lshr(i_xn, bx.const_vector(shift_indices.as_slice()));
         // Truncate vector to an <i1 x N>
-        let i1xn = bx.trunc(i_xn_msb, bx.type_vector(bx.type_i1(), in_len as _));
+        let i1xn = bx.trunc(i_xn_msb, bx.type_vector(bx.type_i1(), in_len));
         // Bitcast <i1 x N> to iN:
-        let i_ = bx.bitcast(i1xn, bx.type_ix(in_len as _));
+        let i_ = bx.bitcast(i1xn, bx.type_ix(in_len));
         // Zero-extend iN to the bitmask type:
-        return Ok(bx.zext(i_, bx.type_ix(expected_int_bits as _)));
+        return Ok(bx.zext(i_, bx.type_ix(expected_int_bits)));
     }
 
     fn simd_simple_float_intrinsic(
         name: &str,
-        in_elem: &::rustc::ty::TyS<'_>,
-        in_ty: &::rustc::ty::TyS<'_>,
+        in_elem: &::rustc_middle::ty::TyS<'_>,
+        in_ty: &::rustc_middle::ty::TyS<'_>,
         in_len: u64,
         bx: &mut Builder<'a, 'll, 'tcx>,
         span: Span,
@@ -1662,7 +1660,7 @@ fn generic_simd_intrinsic(
                 llvm_elem_vec_ty,
             ),
         );
-        llvm::SetUnnamedAddr(f, false);
+        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         let v = bx.call(f, &[args[1].immediate(), alignment, mask, args[0].immediate()], None);
         return Ok(v);
     }
@@ -1784,7 +1782,7 @@ fn generic_simd_intrinsic(
             &llvm_intrinsic,
             bx.type_func(&[llvm_elem_vec_ty, llvm_pointer_vec_ty, alignment_ty, mask_ty], ret_t),
         );
-        llvm::SetUnnamedAddr(f, false);
+        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         let v = bx.call(f, &[args[0].immediate(), args[1].immediate(), alignment, mask], None);
         return Ok(v);
     }
@@ -2083,7 +2081,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
         let f = bx.declare_cfn(&llvm_intrinsic, bx.type_func(&[vec_ty, vec_ty], vec_ty));
-        llvm::SetUnnamedAddr(f, false);
+        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         let v = bx.call(f, &[lhs, rhs], None);
         return Ok(v);
     }
@@ -2099,7 +2097,7 @@ fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, boo
     match ty.kind {
         ty::Int(t) => Some((
             match t {
-                ast::IntTy::Isize => cx.tcx.sess.target.ptr_width as u64,
+                ast::IntTy::Isize => u64::from(cx.tcx.sess.target.ptr_width),
                 ast::IntTy::I8 => 8,
                 ast::IntTy::I16 => 16,
                 ast::IntTy::I32 => 32,
@@ -2110,7 +2108,7 @@ fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, boo
         )),
         ty::Uint(t) => Some((
             match t {
-                ast::UintTy::Usize => cx.tcx.sess.target.ptr_width as u64,
+                ast::UintTy::Usize => u64::from(cx.tcx.sess.target.ptr_width),
                 ast::UintTy::U8 => 8,
                 ast::UintTy::U16 => 16,
                 ast::UintTy::U32 => 32,
@@ -2127,7 +2125,7 @@ fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, boo
 // Returns None if the type is not a float
 fn float_type_width(ty: Ty<'_>) -> Option<u64> {
     match ty.kind {
-        ty::Float(t) => Some(t.bit_width() as u64),
+        ty::Float(t) => Some(t.bit_width()),
         _ => None,
     }
 }

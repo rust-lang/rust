@@ -2,9 +2,9 @@ extern crate getopts;
 
 use crate::interface::parse_cfgspecs;
 
-use rustc::middle::cstore;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
+use rustc_middle::middle::cstore;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
 use rustc_session::config::{ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
@@ -452,10 +452,6 @@ fn test_codegen_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.cg.no_integrated_as = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
     opts.cg.no_redzone = Some(true);
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
@@ -546,8 +542,6 @@ fn test_debugging_options_tracking_hash() {
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.parse_only = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.incremental = Some(String::from("abc"));
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.dump_dep_graph = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.query_dep_graph = true;
@@ -559,8 +553,6 @@ fn test_debugging_options_tracking_hash() {
     opts.debugging_opts.trace_macros = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.keep_hygiene_data = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.keep_ast = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.print_mono_items = Some(String::from("abc"));
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());

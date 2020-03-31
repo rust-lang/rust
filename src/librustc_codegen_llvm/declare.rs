@@ -19,8 +19,8 @@ use crate::llvm::AttributePlace::Function;
 use crate::type_::Type;
 use crate::value::Value;
 use log::debug;
-use rustc::ty::Ty;
 use rustc_codegen_ssa::traits::*;
+use rustc_middle::ty::Ty;
 
 /// Declare a function.
 ///
@@ -40,7 +40,7 @@ fn declare_raw_fn(
     llvm::SetFunctionCallConv(llfn, callconv);
     // Function addresses in Rust are never significant, allowing functions to
     // be merged.
-    llvm::SetUnnamedAddr(llfn, true);
+    llvm::SetUnnamedAddress(llfn, llvm::UnnamedAddr::Global);
 
     if cx.tcx.sess.opts.cg.no_redzone.unwrap_or(cx.tcx.sess.target.target.options.disable_redzone) {
         llvm::Attribute::NoRedZone.apply_llfn(Function, llfn);

@@ -74,16 +74,16 @@ pub fn expand_test_or_bench(
         return vec![];
     }
 
-    let item = if let Annotatable::Item(i) = item {
-        i
-    } else {
-        cx.parse_sess
-            .span_diagnostic
-            .span_fatal(
-                item.span(),
+    let item = match item {
+        Annotatable::Item(i) => i,
+        other => {
+            cx.struct_span_err(
+                other.span(),
                 "`#[test]` attribute is only allowed on non associated functions",
             )
-            .raise();
+            .emit();
+            return vec![other];
+        }
     };
 
     if let ast::ItemKind::MacCall(_) = item.kind {

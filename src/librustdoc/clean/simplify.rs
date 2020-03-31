@@ -1,7 +1,7 @@
 //! Simplification of where-clauses and parameter bounds into a prettier and
 //! more canonical form.
 //!
-//! Currently all cross-crate-inlined function use `rustc::ty` to reconstruct
+//! Currently all cross-crate-inlined function use `rustc_middle::ty` to reconstruct
 //! the AST (e.g., see all of `clean::inline`), but this is not always a
 //! non-lossy transformation. The current format of storage for where-clauses
 //! for functions and such is simply a list of predicates. One example of this
@@ -14,8 +14,8 @@
 use std::collections::BTreeMap;
 use std::mem;
 
-use rustc::ty;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty;
 
 use crate::clean;
 use crate::clean::GenericArgs as PP;

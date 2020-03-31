@@ -87,7 +87,7 @@ impl<T: ?Sized> !Send for *mut T {}
     message = "the size for values of type `{Self}` cannot be known at compilation time",
     label = "doesn't have a size known at compile-time",
     note = "to learn more, visit <https://doc.rust-lang.org/book/\
-          ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>"
+            ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>"
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 #[cfg_attr(not(bootstrap), rustc_specialization_trait)]
@@ -660,7 +660,6 @@ macro_rules! impls {
 ///
 /// [drop check]: ../../nomicon/dropck.html
 #[lang = "phantom_data"]
-#[structural_match]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PhantomData<T: ?Sized>;
 
@@ -760,7 +759,7 @@ impl<T: ?Sized> Unpin for *mut T {}
 /// Implementations of `Copy` for primitive types.
 ///
 /// Implementations that cannot be described in Rust
-/// are implemented in `SelectionContext::copy_clone_conditions()` in librustc.
+/// are implemented in `SelectionContext::copy_clone_conditions()` in librustc_middle.
 mod copy_impls {
 
     use super::Copy;
@@ -790,7 +789,7 @@ mod copy_impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Copy for *mut T {}
 
-    // Shared references can be copied, but mutable references *cannot*!
+    /// Shared references can be copied, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Copy for &T {}
 }

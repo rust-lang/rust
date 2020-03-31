@@ -3,12 +3,12 @@ use rustc_span::Span;
 use smallvec::smallvec;
 use smallvec::SmallVec;
 
-use rustc::ty::outlives::Component;
-use rustc::ty::subst::{GenericArg, Subst, SubstsRef};
-use rustc::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::outlives::Component;
+use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
+use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
 
 use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
 

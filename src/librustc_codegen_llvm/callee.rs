@@ -12,8 +12,8 @@ use crate::value::Value;
 use log::debug;
 use rustc_codegen_ssa::traits::*;
 
-use rustc::ty::layout::{FnAbiExt, HasTyCtxt};
-use rustc::ty::{Instance, TypeFoldable};
+use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
+use rustc_middle::ty::{Instance, TypeFoldable};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.

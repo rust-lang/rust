@@ -2,8 +2,8 @@
 // pretty-expanded FIXME #23616
 // ignore-emscripten no asm
 
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 pub fn main() {
-    unsafe { asm!(concat!("", "")) };
+    unsafe { llvm_asm!(concat!("", "")) };
 }

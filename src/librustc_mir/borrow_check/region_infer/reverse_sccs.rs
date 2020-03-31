@@ -1,10 +1,10 @@
 use crate::borrow_check::constraints::ConstraintSccIndex;
 use crate::borrow_check::RegionInferenceContext;
 use itertools::Itertools;
-use rustc::ty::RegionVid;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_data_structures::graph::WithSuccessors;
+use rustc_middle::ty::RegionVid;
 use std::ops::Range;
 use std::rc::Rc;
 

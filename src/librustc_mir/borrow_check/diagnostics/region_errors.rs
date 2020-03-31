@@ -1,12 +1,12 @@
 //! Error reporting machinery for lifetime errors.
 
-use rustc::mir::ConstraintCategory;
-use rustc::ty::{self, RegionVid, Ty};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_infer::infer::{
     error_reporting::nice_region_error::NiceRegionError,
     error_reporting::unexpected_hidden_region_diagnostic, NLLRegionVariableOrigin,
 };
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 
@@ -135,11 +135,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn is_closure_fn_mut(&self, fr: RegionVid) -> bool {
         if let Some(ty::ReFree(free_region)) = self.to_error_region(fr) {
             if let ty::BoundRegion::BrEnv = free_region.bound_region {
-                if let DefiningTy::Closure(def_id, substs) =
+                if let DefiningTy::Closure(_, substs) =
                     self.regioncx.universal_regions().defining_ty
                 {
-                    return substs.as_closure().kind(def_id, self.infcx.tcx)
-                        == ty::ClosureKind::FnMut;
+                    return substs.as_closure().kind() == ty::ClosureKind::FnMut;
                 }
             }
         }

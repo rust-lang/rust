@@ -1,5 +1,5 @@
 error: expected identifier, found keyword `async`
-  --> $DIR/edition-keywords-2018-2018-parsing.rs:8:13
+  --> $DIR/edition-keywords-2018-2018-parsing.rs:16:13
    |
 LL |     let mut async = 1;
    |             ^^^^^ expected identifier, found keyword
@@ -10,7 +10,7 @@ LL |     let mut r#async = 1;
    |             ^^^^^^^
 
 error: expected identifier, found keyword `async`
-  --> $DIR/edition-keywords-2018-2018-parsing.rs:18:13
+  --> $DIR/edition-keywords-2018-2018-parsing.rs:26:13
    |
 LL |     module::async();
    |             ^^^^^ expected identifier, found keyword
@@ -21,13 +21,13 @@ LL |     module::r#async();
    |             ^^^^^^^
 
 error: no rules expected the token `r#async`
-  --> $DIR/edition-keywords-2018-2018-parsing.rs:12:31
+  --> $DIR/edition-keywords-2018-2018-parsing.rs:20:31
    |
 LL |     r#async = consumes_async!(r#async);
    |                               ^^^^^^^ no rules expected this token in macro call
 
 error: no rules expected the token `async`
-  --> $DIR/edition-keywords-2018-2018-parsing.rs:13:35
+  --> $DIR/edition-keywords-2018-2018-parsing.rs:21:35
    |
 LL |     r#async = consumes_async_raw!(async);
    |                                   ^^^^^ no rules expected this token in macro call
@@ -38,10 +38,19 @@ error: macro expansion ends with an incomplete expression: expected one of `move
 LL |     ($i: ident) => ($i)
    |                       ^ expected one of `move`, `|`, or `||`
    | 
-  ::: $DIR/edition-keywords-2018-2018-parsing.rs:16:8
+  ::: $DIR/edition-keywords-2018-2018-parsing.rs:24:8
    |
 LL |     if passes_ident!(async) == 1 {}
    |        -------------------- in this macro invocation
 
-error: aborting due to 5 previous errors
+error[E0308]: mismatched types
+  --> $DIR/edition-keywords-2018-2018-parsing.rs:29:33
+   |
+LL |     let _recovery_witness: () = 0;
+   |                            --   ^ expected `()`, found integer
+   |                            |
+   |                            expected due to this
 
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

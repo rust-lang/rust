@@ -1,9 +1,9 @@
-use rustc::hir::map as hir_map;
-use rustc::ty::subst::Subst;
-use rustc::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_middle::hir::map as hir_map;
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_session::CrateDisambiguator;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;

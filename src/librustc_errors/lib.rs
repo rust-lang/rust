@@ -194,7 +194,7 @@ impl CodeSuggestion {
                 let bounding_span = Span::with_root_ctxt(lo, hi);
                 // The different spans might belong to different contexts, if so ignore suggestion.
                 let lines = sm.span_to_lines(bounding_span).ok()?;
-                assert!(!lines.lines.is_empty());
+                assert!(!lines.lines.is_empty() || bounding_span.is_dummy());
 
                 // We can't splice anything if the source is unavailable.
                 if !sm.ensure_source_file_source_present(lines.file.clone()) {
@@ -213,8 +213,8 @@ impl CodeSuggestion {
                 let sf = &lines.file;
                 let mut prev_hi = sm.lookup_char_pos(bounding_span.lo());
                 prev_hi.col = CharPos::from_usize(0);
-
-                let mut prev_line = sf.get_line(lines.lines[0].line_index);
+                let mut prev_line =
+                    lines.lines.get(0).and_then(|line0| sf.get_line(line0.line_index));
                 let mut buf = String::new();
 
                 for part in &substitution.parts {
@@ -425,7 +425,7 @@ impl Handler {
     }
 
     // This is here to not allow mutation of flags;
-    // as of this writing it's only used in tests in librustc.
+    // as of this writing it's only used in tests in librustc_middle.
     pub fn can_emit_warnings(&self) -> bool {
         self.flags.can_emit_warnings
     }
@@ -802,13 +802,13 @@ impl HandlerInner {
                     ));
                     self.failure(&format!(
                         "For more information about an error, try \
-                                           `rustc --explain {}`.",
+                         `rustc --explain {}`.",
                         &error_codes[0]
                     ));
                 } else {
                     self.failure(&format!(
                         "For more information about this error, try \
-                                           `rustc --explain {}`.",
+                         `rustc --explain {}`.",
                         &error_codes[0]
                     ));
                 }

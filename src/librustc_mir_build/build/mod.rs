@@ -2,11 +2,11 @@ use crate::build;
 use crate::build::scope::DropKind;
 use crate::hair::cx::Cx;
 use crate::hair::{BindingMode, LintLevel, PatKind};
-use rustc::middle::lang_items;
-use rustc::middle::region;
-use rustc::mir::*;
-use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::middle::lang_items;
+use rustc_middle::middle::region;
+use rustc_middle::mir::*;
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_attr::{self as attr, UnwindAttr};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -139,10 +139,9 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
 
             let (yield_ty, return_ty) = if body.generator_kind.is_some() {
-                let gen_sig = match ty.kind {
-                    ty::Generator(gen_def_id, gen_substs, ..) => {
-                        gen_substs.as_generator().sig(gen_def_id, tcx)
-                    }
+                let gen_ty = tcx.body_tables(body_id).node_type(id);
+                let gen_sig = match gen_ty.kind {
+                    ty::Generator(_, gen_substs, ..) => gen_substs.as_generator().sig(),
                     _ => span_bug!(tcx.hir().span(id), "generator w/o generator type: {:?}", ty),
                 };
                 (Some(gen_sig.yield_ty), gen_sig.return_ty)
@@ -849,12 +848,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 closure_env_projs.push(ProjectionElem::Deref);
                 closure_ty = ty;
             }
-            let (def_id, upvar_substs) = match closure_ty.kind {
-                ty::Closure(def_id, substs) => (def_id, ty::UpvarSubsts::Closure(substs)),
-                ty::Generator(def_id, substs, _) => (def_id, ty::UpvarSubsts::Generator(substs)),
+            let upvar_substs = match closure_ty.kind {
+                ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
+                ty::Generator(_, substs, _) => ty::UpvarSubsts::Generator(substs),
                 _ => span_bug!(self.fn_span, "upvars with non-closure env ty {:?}", closure_ty),
             };
-            let upvar_tys = upvar_substs.upvar_tys(def_id, tcx);
+            let upvar_tys = upvar_substs.upvar_tys();
             let upvars_with_tys = upvars.iter().zip(upvar_tys);
             self.upvar_mutbls = upvars_with_tys
                 .enumerate()
