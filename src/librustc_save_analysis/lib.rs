@@ -591,7 +591,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 Some(Data::RefData(Ref {
                     kind: RefKind::Function,
                     span,
-                    ref_id: def_id.or(decl_id).map(id_from_def_id).unwrap_or_else(|| null_id()),
+                    ref_id: def_id.or(decl_id).map(id_from_def_id).unwrap_or_else(null_id),
                 }))
             }
             ast::ExprKind::Path(_, ref path) => {

@@ -711,7 +711,7 @@ impl<'tcx> QueryContext<'tcx> {
     }
 
     pub fn print_stats(&mut self) {
-        self.enter(|tcx| ty::query::print_stats(tcx))
+        self.enter(ty::query::print_stats)
     }
 }
 
