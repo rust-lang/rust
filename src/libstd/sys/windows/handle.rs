@@ -115,8 +115,7 @@ impl RawHandle {
     ) -> io::Result<Option<usize>> {
         let len = cmp::min(buf.len(), <c::DWORD>::max_value() as usize) as c::DWORD;
         let mut amt = 0;
-        let res =
-            cvt({ c::ReadFile(self.0, buf.as_ptr() as c::LPVOID, len, &mut amt, overlapped) });
+        let res = cvt(c::ReadFile(self.0, buf.as_ptr() as c::LPVOID, len, &mut amt, overlapped));
         match res {
             Ok(_) => Ok(Some(amt as usize)),
             Err(e) => {
@@ -139,7 +138,7 @@ impl RawHandle {
         unsafe {
             let mut bytes = 0;
             let wait = if wait { c::TRUE } else { c::FALSE };
-            let res = cvt({ c::GetOverlappedResult(self.raw(), overlapped, &mut bytes, wait) });
+            let res = cvt(c::GetOverlappedResult(self.raw(), overlapped, &mut bytes, wait));
             match res {
                 Ok(_) => Ok(bytes as usize),
                 Err(e) => {
