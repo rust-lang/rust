@@ -34,15 +34,15 @@ pub use crate::completion::completion_item::{
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CompletionOptions {
+pub struct CompletionConfig {
     pub enable_postfix_completions: bool,
     pub add_call_parenthesis: bool,
     pub add_call_argument_snippets: bool,
 }
 
-impl Default for CompletionOptions {
+impl Default for CompletionConfig {
     fn default() -> Self {
-        CompletionOptions {
+        CompletionConfig {
             enable_postfix_completions: true,
             add_call_parenthesis: true,
             add_call_argument_snippets: true,
@@ -75,9 +75,9 @@ impl Default for CompletionOptions {
 pub(crate) fn completions(
     db: &RootDatabase,
     position: FilePosition,
-    options: &CompletionOptions,
+    config: &CompletionConfig,
 ) -> Option<Completions> {
-    let ctx = CompletionContext::new(db, position, options)?;
+    let ctx = CompletionContext::new(db, position, config)?;
 
     let mut acc = Completions::default();
 

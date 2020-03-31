@@ -15,7 +15,7 @@ use crate::{
 };
 
 pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.options.enable_postfix_completions {
+    if !ctx.config.enable_postfix_completions {
         return;
     }
 
