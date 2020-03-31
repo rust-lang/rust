@@ -45,6 +45,12 @@ struct Process {
     child: Child,
 }
 
+impl Drop for Process {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+    }
+}
+
 impl Process {
     fn run(process_path: &Path) -> Result<Process, io::Error> {
         let child = Command::new(process_path.clone())
@@ -186,8 +192,6 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
             result_tx.send(res).unwrap();
         }
     }
-
-    let _ = process.child.kill();
 }
 
 fn send_request(
