@@ -1,35 +1,18 @@
 //! FIXME: write short doc here
 
+use super::get_missing_fields;
 use crate::completion::{CompletionContext, Completions};
-use ra_syntax::{ast::NameOwner, SmolStr};
+use either::Either;
 
-pub(super) fn complete_record_pattern(acc: &mut Completions, ctx: &CompletionContext) {
-    let (ty, variant) = match ctx.record_lit_pat.as_ref().and_then(|it| {
-        Some((ctx.sema.type_of_pat(&it.clone().into())?, ctx.sema.resolve_record_pattern(it)?))
-    }) {
-        Some(it) => it,
-        _ => return,
-    };
-
-    let already_present_names: Vec<SmolStr> = ctx
-        .record_lit_pat
-        .as_ref()
-        .and_then(|record_pat| record_pat.record_field_pat_list())
-        .map(|pat_list| pat_list.bind_pats())
-        .map(|bind_pats| {
-            bind_pats
-                .into_iter()
-                .filter_map(|pat| pat.name())
-                .map(|name| name.text().clone())
-                .collect()
-        })
-        .unwrap_or_default();
-
-    for (field, field_ty) in ty.variant_fields(ctx.db, variant) {
-        if !already_present_names.contains(&SmolStr::from(field.name(ctx.db).to_string())) {
-            acc.add_field(ctx, field, &field_ty);
-        }
+pub(super) fn complete_record_pattern(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+) -> Option<()> {
+    let record_pat = ctx.record_lit_pat.as_ref()?;
+    for (field, field_ty) in get_missing_fields(ctx, Either::Right(record_pat))? {
+        acc.add_field(ctx, field, &field_ty);
     }
+    Some(())
 }
 
 #[cfg(test)]
@@ -151,7 +134,7 @@ mod tests {
                     bar: 3,
                     baz: 4,
                 };
-                if let S { foo1, foo2, <|> } = s {}
+                if let S { foo1, foo2: a, <|> } = s {}
             }
             ",
         );
@@ -159,16 +142,16 @@ mod tests {
         [
             CompletionItem {
                 label: "bar",
-                source_range: [369; 369),
-                delete: [369; 369),
+                source_range: [372; 372),
+                delete: [372; 372),
                 insert: "bar",
                 kind: Field,
                 detail: "u32",
             },
             CompletionItem {
                 label: "baz",
-                source_range: [369; 369),
-                delete: [369; 369),
+                source_range: [372; 372),
+                delete: [372; 372),
                 insert: "baz",
                 kind: Field,
                 detail: "u32",

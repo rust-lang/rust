@@ -32,6 +32,12 @@ use crate::{
 pub use crate::completion::completion_item::{
     CompletionItem, CompletionItemKind, InsertTextFormat,
 };
+use either::Either;
+use hir::{StructField, Type};
+use ra_syntax::{
+    ast::{self, NameOwner},
+    SmolStr,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompletionConfig {
@@ -97,4 +103,58 @@ pub(crate) fn completions(
     complete_trait_impl::complete_trait_impl(&mut acc, &ctx);
 
     Some(acc)
+}
+
+pub(crate) fn get_missing_fields(
+    ctx: &CompletionContext,
+    record: Either<&ast::RecordLit, &ast::RecordPat>,
+) -> Option<Vec<(StructField, Type)>> {
+    let (ty, variant) = match record {
+        Either::Left(record_lit) => (
+            ctx.sema.type_of_expr(&record_lit.clone().into())?,
+            ctx.sema.resolve_record_literal(record_lit)?,
+        ),
+        Either::Right(record_pat) => (
+            ctx.sema.type_of_pat(&record_pat.clone().into())?,
+            ctx.sema.resolve_record_pattern(record_pat)?,
+        ),
+    };
+
+    let already_present_names = get_already_present_names(record);
+    Some(
+        ty.variant_fields(ctx.db, variant)
+            .into_iter()
+            .filter(|(field, _)| {
+                !already_present_names.contains(&SmolStr::from(field.name(ctx.db).to_string()))
+            })
+            .collect(),
+    )
+}
+
+fn get_already_present_names(record: Either<&ast::RecordLit, &ast::RecordPat>) -> Vec<SmolStr> {
+    // TODO kb have a single match
+    match record {
+        Either::Left(record_lit) => record_lit
+            .record_field_list()
+            .map(|field_list| field_list.fields())
+            .map(|fields| {
+                fields
+                    .into_iter()
+                    .filter_map(|field| field.name_ref())
+                    .map(|name_ref| name_ref.text().clone())
+                    .collect()
+            })
+            .unwrap_or_default(),
+        Either::Right(record_pat) => record_pat
+            .record_field_pat_list()
+            .map(|pat_list| pat_list.bind_pats())
+            .map(|bind_pats| {
+                bind_pats
+                    .into_iter()
+                    .filter_map(|pat| pat.name())
+                    .map(|name| name.text().clone())
+                    .collect()
+            })
+            .unwrap_or_default(),
+    }
 }

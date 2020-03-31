@@ -1,36 +1,19 @@
 //! FIXME: write short doc here
 
+use super::get_missing_fields;
 use crate::completion::{CompletionContext, Completions};
-use ra_syntax::SmolStr;
+use either::Either;
 
 /// Complete fields in fields literals.
-pub(super) fn complete_record_literal(acc: &mut Completions, ctx: &CompletionContext) {
-    let (ty, variant) = match ctx.record_lit_syntax.as_ref().and_then(|it| {
-        Some((ctx.sema.type_of_expr(&it.clone().into())?, ctx.sema.resolve_record_literal(it)?))
-    }) {
-        Some(it) => it,
-        _ => return,
-    };
-
-    let already_present_names: Vec<SmolStr> = ctx
-        .record_lit_syntax
-        .as_ref()
-        .and_then(|record_literal| record_literal.record_field_list())
-        .map(|field_list| field_list.fields())
-        .map(|fields| {
-            fields
-                .into_iter()
-                .filter_map(|field| field.name_ref())
-                .map(|name_ref| name_ref.text().clone())
-                .collect()
-        })
-        .unwrap_or_default();
-
-    for (field, field_ty) in ty.variant_fields(ctx.db, variant) {
-        if !already_present_names.contains(&SmolStr::from(field.name(ctx.db).to_string())) {
-            acc.add_field(ctx, field, &field_ty);
-        }
+pub(super) fn complete_record_literal(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+) -> Option<()> {
+    let record_lit = ctx.record_lit_syntax.as_ref()?;
+    for (field, field_ty) in get_missing_fields(ctx, Either::Left(record_lit))? {
+        acc.add_field(ctx, field, &field_ty);
     }
+    Some(())
 }
 
 #[cfg(test)]
