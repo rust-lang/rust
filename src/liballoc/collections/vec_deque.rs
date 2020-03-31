@@ -959,8 +959,8 @@ impl<T> VecDeque<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
     ///
-    /// In case [`make_contiguous`](#method.make_contiguous) was previously called,
-    /// all elements of the deque are in the first slice and the second slice is empty.
+    /// If [`make_contiguous`](#method.make_contiguous) was previously called, all elements
+    /// of the `VecDeque` will be in the first slice and the second slice will be empty.
     ///
     /// # Examples
     ///
@@ -992,8 +992,8 @@ impl<T> VecDeque<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
     ///
-    /// In case [`make_contiguous`](#method.make_contiguous) was previously called,
-    /// all elements of the deque are in the first slice and the second slice is empty.
+    /// If [`make_contiguous`](#method.make_contiguous) was previously called, all elements
+    /// of the `VecDeque` will be in the first slice and the second slice will be empty.
     ///
     /// # Examples
     ///
