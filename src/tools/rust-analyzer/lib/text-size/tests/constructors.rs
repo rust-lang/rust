@@ -1,31 +1,34 @@
 use {
-    std::{borrow::Cow, ops::Deref},
+    std::{borrow::Cow, sync::Arc},
     text_size::*,
 };
 
-struct StringLike<'a>(&'a str);
+#[derive(Copy, Clone)]
+struct BadRope<'a>(&'a [&'a str]);
 
-impl Deref for StringLike<'_> {
-    type Target = str;
-    fn deref(&self) -> &Self::Target {
-        &self.0
+impl LenTextSize for BadRope<'_> {
+    fn len_text_size(self) -> TextSize {
+        self.0.iter().map(TextSize::of).sum()
     }
 }
 
 #[test]
 fn main() {
-    let s = "";
-    let _ = TextSize::of(&s);
+    macro_rules! test {
+        ($($expr:expr),+ $(,)?) => {
+            $(let _ = TextSize::of($expr);)+
+        };
+    }
 
-    let s = String::new();
-    let _ = TextSize::of(&s);
-
-    let s = Cow::Borrowed("");
-    let _ = TextSize::of(&s);
-
-    let s = Cow::Owned(String::new());
-    let _ = TextSize::of(&s);
-
-    let s = StringLike("");
-    let _ = TextSize::of(&s);
+    test! {
+        "",
+        &"",
+        'a',
+        &'a',
+        &String::new(),
+        &String::new().into_boxed_str(),
+        &Arc::new(String::new()),
+        &Cow::Borrowed(""),
+        BadRope(&[""]),
+    }
 }
