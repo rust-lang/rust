@@ -3,7 +3,9 @@ use std::convert::TryFrom;
 
 use crate::stacked_borrows::Tag;
 use crate::*;
-use helpers::immty_from_int_checked;
+use helpers::{immty_from_int_checked, immty_from_uint_checked};
+
+use rustc_middle::ty::layout::LayoutOf;
 
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
 pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Duration> {
@@ -83,6 +85,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.write_packed_immediates(tv, &imms)?;
 
         Ok(0)
+    }
+
+    #[allow(non_snake_case)]
+    fn GetSystemTimeAsFileTime(&mut self, LPFILETIME_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        this.assert_target_os("windows", "GetSystemTimeAsFileTime");
+        this.check_no_isolation("GetSystemTimeAsFileTime")?;
+
+        let NANOS_PER_SEC = this.eval_windows_u64("time", "NANOS_PER_SEC")?;
+        let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC")?;
+        let INTERVALS_TO_UNIX_EPOCH = this.eval_windows_u64("time", "INTERVALS_TO_UNIX_EPOCH")?;
+        let NANOS_PER_INTERVAL = NANOS_PER_SEC / INTERVALS_PER_SEC;
+        let SECONDS_TO_UNIX_EPOCH = INTERVALS_TO_UNIX_EPOCH / INTERVALS_PER_SEC;
+
+        let duration = system_time_to_duration(&SystemTime::now())?
+            .checked_add(Duration::from_secs(SECONDS_TO_UNIX_EPOCH))
+            .unwrap();        
+        let duration_ticks = u64::try_from(duration.as_nanos() / u128::from(NANOS_PER_INTERVAL))
+            .map_err(|_| err_unsup_format!("programs running longer than 2^64 ticks are not supported"))?;
+
+        let dwLowDateTime = u32::try_from(duration_ticks & 0x00000000FFFFFFFF).unwrap();
+        let dwHighDateTime = u32::try_from((duration_ticks & 0xFFFFFFFF00000000) >> 32).unwrap();
+        let DWORD_tylayout = this.layout_of(this.tcx.types.u32)?;
+        let imms = [
+            immty_from_uint_checked(dwLowDateTime, DWORD_tylayout)?,
+            immty_from_uint_checked(dwHighDateTime, DWORD_tylayout)?,
+        ];
+        this.write_packed_immediates(this.deref_operand(LPFILETIME_op)?, &imms)?;
+        Ok(())
     }
 
     fn mach_absolute_time(&self) -> InterpResult<'tcx, u64> {

@@ -1,4 +1,3 @@
-// ignore-windows: TODO clock shims are not implemented on Windows
 // compile-flags: -Zmiri-disable-isolation
 
 use std::time::{SystemTime, Instant};
@@ -14,17 +13,20 @@ fn main() {
     assert_eq!(now1 + diff, now2);
     assert_eq!(now2 - diff, now1);
 
-    let now1 = Instant::now();
-    // Do some work to make time pass.
-    for _ in 0..10 { drop(vec![42]); }
-    let now2 = Instant::now();
-    assert!(now2 > now1);
-
-    #[cfg(target_os = "linux")] // TODO: macOS does not support Instant subtraction
+    #[cfg(not(windows))] // `Instant` shims not yet implemented on Windows
     {
-        let diff = now2.duration_since(now1);
-        assert!(diff.as_micros() > 0);
-        assert_eq!(now1 + diff, now2);
-        assert_eq!(now2 - diff, now1);
+        let now1 = Instant::now();
+        // Do some work to make time pass.
+        for _ in 0..10 { drop(vec![42]); }
+        let now2 = Instant::now();
+        assert!(now2 > now1);
+
+        #[cfg(target_os = "linux")] // TODO: macOS does not support Instant subtraction
+        {
+            let diff = now2.duration_since(now1);
+            assert!(diff.as_micros() > 0);
+            assert_eq!(now1 + diff, now2);
+            assert_eq!(now2 - diff, now1);
+        }
     }
 }

@@ -73,23 +73,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .not_undef()
     }
 
-    /// Helper function to get a `windows` constant as a `Scalar`.
-    fn eval_windows(&mut self, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
-        self.eval_context_mut()
-            .eval_path_scalar(&["std", "sys", "windows", "c", name])?
-            .not_undef()
-    }
-
     /// Helper function to get a `libc` constant as an `i32`.
     fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
         // TODO: Cache the result.
         self.eval_libc(name)?.to_i32()
     }
 
+    /// Helper function to get a `windows` constant as a `Scalar`.
+    fn eval_windows(&mut self, module: &str, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
+        self.eval_context_mut()
+            .eval_path_scalar(&["std", "sys", "windows", module, name])?
+            .not_undef()
+    }
+
+    /// Helper function to get a `windows` constant as an `u64`.
+    fn eval_windows_u64(&mut self, module: &str, name: &str) -> InterpResult<'tcx, u64> {
+        // TODO: Cache the result.
+        self.eval_windows(module, name)?.to_u64()
+    }
+
     /// Helper function to get the `TyAndLayout` of a `libc` type
     fn libc_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         let this = self.eval_context_mut();
         let ty = this.resolve_path(&["libc", name]).monomorphic_ty(*this.tcx);
+        this.layout_of(ty)
+    }
+
+    /// Helper function to get the `TyAndLayout` of a `windows` type
+    fn windows_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
+        let this = self.eval_context_mut();
+        let ty = this.resolve_path(&["std", "sys", "windows", "c", name]).monomorphic_ty(*this.tcx);
         this.layout_of(ty)
     }
 
@@ -350,7 +363,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    // Writes several `ImmTy`s contiguosly into memory. This is useful when you have to pack
+    // Writes several `ImmTy`s contiguously into memory. This is useful when you have to pack
     // different values into a struct.
     fn write_packed_immediates(
         &mut self,
@@ -439,7 +452,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             })?
         } else if target_os == "windows" {
             // FIXME: we have to finish implementing the Windows equivalent of this.
-            this.eval_windows(match e.kind() {
+            this.eval_windows("c", match e.kind() {
                 NotFound => "ERROR_FILE_NOT_FOUND",
                 _ => throw_unsup_format!("io error {} cannot be transformed into a raw os error", e)
             })?
