@@ -34,6 +34,7 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-x86_64=/usr/local/x86_64-linux-musl \
       --enable-extended \
       --disable-docs \
+      --enable-lld \
       --set target.x86_64-unknown-linux-musl.crt-static=false \
       --build $HOSTS
 
