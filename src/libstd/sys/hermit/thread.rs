@@ -49,21 +49,23 @@ impl Thread {
         p: Box<dyn FnOnce()>,
         core_id: isize,
     ) -> io::Result<Thread> {
-        let p = box p;
+        let mut p = mem::ManuallyDrop::new(box p);
         let mut tid: Tid = u32::MAX;
         let ret = abi::spawn(
             &mut tid as *mut Tid,
             thread_start,
-            &*p as *const _ as *const u8 as usize,
+            &mut *p as &mut Box<dyn FnOnce()> as *mut _ as *mut u8 as usize,
             Priority::into(NORMAL_PRIO),
             core_id,
         );
 
-        return if ret == 0 {
-            mem::forget(p); // ownership passed to pthread_create
-            Ok(Thread { tid: tid })
-        } else {
+        return if ret != 0 {
+            // The thread failed to start and as a result p was not consumed. Therefore, it is
+            // safe to manually drop it.
+            mem::ManuallyDrop::drop(&mut p);
             Err(io::Error::new(io::ErrorKind::Other, "Unable to create thread!"))
+        } else {
+            Ok(Thread { tid: tid })
         };
 
         extern "C" fn thread_start(main: usize) {
