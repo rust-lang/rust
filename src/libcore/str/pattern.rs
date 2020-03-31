@@ -47,6 +47,22 @@ pub trait Pattern<'a>: Sized {
         matches!(self.into_searcher(haystack).next(), SearchStep::Match(0, _))
     }
 
+    /// Removes the pattern from the front of haystack, if it matches.
+    #[inline]
+    fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
+        if let SearchStep::Match(start, len) = self.into_searcher(haystack).next() {
+            debug_assert_eq!(
+                start, 0,
+                "The first search step from Searcher \
+                 must include the first character"
+            );
+            // SAFETY: `Searcher` is known to return valid indices.
+            unsafe { Some(haystack.get_unchecked(len..)) }
+        } else {
+            None
+        }
+    }
+
     /// Checks whether the pattern matches at the back of the haystack
     #[inline]
     fn is_suffix_of(self, haystack: &'a str) -> bool
@@ -54,6 +70,26 @@ pub trait Pattern<'a>: Sized {
         Self::Searcher: ReverseSearcher<'a>,
     {
         matches!(self.into_searcher(haystack).next_back(), SearchStep::Match(_, j) if haystack.len() == j)
+    }
+
+    /// Removes the pattern from the back of haystack, if it matches.
+    #[inline]
+    fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str>
+    where
+        Self::Searcher: ReverseSearcher<'a>,
+    {
+        if let SearchStep::Match(start, end) = self.into_searcher(haystack).next_back() {
+            debug_assert_eq!(
+                end,
+                haystack.len(),
+                "The first search step from ReverseSearcher \
+                 must include the last character"
+            );
+            // SAFETY: `Searcher` is known to return valid indices.
+            unsafe { Some(haystack.get_unchecked(..start)) }
+        } else {
+            None
+        }
     }
 }
 
@@ -449,11 +485,24 @@ impl<'a> Pattern<'a> for char {
     }
 
     #[inline]
+    fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
+        self.encode_utf8(&mut [0u8; 4]).strip_prefix_of(haystack)
+    }
+
+    #[inline]
     fn is_suffix_of(self, haystack: &'a str) -> bool
     where
         Self::Searcher: ReverseSearcher<'a>,
     {
         self.encode_utf8(&mut [0u8; 4]).is_suffix_of(haystack)
+    }
+
+    #[inline]
+    fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str>
+    where
+        Self::Searcher: ReverseSearcher<'a>,
+    {
+        self.encode_utf8(&mut [0u8; 4]).strip_suffix_of(haystack)
     }
 }
 
@@ -570,11 +619,24 @@ macro_rules! pattern_methods {
         }
 
         #[inline]
+        fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
+            ($pmap)(self).strip_prefix_of(haystack)
+        }
+
+        #[inline]
         fn is_suffix_of(self, haystack: &'a str) -> bool
         where
             $t: ReverseSearcher<'a>,
         {
             ($pmap)(self).is_suffix_of(haystack)
+        }
+
+        #[inline]
+        fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str>
+        where
+            $t: ReverseSearcher<'a>,
+        {
+            ($pmap)(self).strip_suffix_of(haystack)
         }
     };
 }
@@ -715,10 +777,33 @@ impl<'a, 'b> Pattern<'a> for &'b str {
         haystack.as_bytes().starts_with(self.as_bytes())
     }
 
+    /// Removes the pattern from the front of haystack, if it matches.
+    #[inline]
+    fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
+        if self.is_prefix_of(haystack) {
+            // SAFETY: prefix was just verified to exist.
+            unsafe { Some(haystack.get_unchecked(self.as_bytes().len()..)) }
+        } else {
+            None
+        }
+    }
+
     /// Checks whether the pattern matches at the back of the haystack
     #[inline]
     fn is_suffix_of(self, haystack: &'a str) -> bool {
         haystack.as_bytes().ends_with(self.as_bytes())
+    }
+
+    /// Removes the pattern from the back of haystack, if it matches.
+    #[inline]
+    fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str> {
+        if self.is_suffix_of(haystack) {
+            let i = haystack.len() - self.as_bytes().len();
+            // SAFETY: suffix was just verified to exist.
+            unsafe { Some(haystack.get_unchecked(..i)) }
+        } else {
+            None
+        }
     }
 }
 
