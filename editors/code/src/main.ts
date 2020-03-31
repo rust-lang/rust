@@ -42,7 +42,12 @@ export async function activate(context: vscode.ExtensionContext) {
     const state = new PersistentState(context.globalState);
     const serverPath = await bootstrap(config, state);
 
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0] ?? null;
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder === undefined) {
+        const err = "Cannot activate rust-analyzer when no folder is opened";
+        void vscode.window.showErrorMessage(err);
+        throw new Error(err);
+    }
 
     // Note: we try to start the server before we activate type hints so that it
     // registers its `onDidChangeDocument` handler before us.
