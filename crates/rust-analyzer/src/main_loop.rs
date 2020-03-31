@@ -808,14 +808,14 @@ fn send_startup_progress(sender: &Sender<Message>, loop_state: &mut LoopState) {
         ),
         _ => {}
     }
-}
 
-fn send_startup_progress_notif(sender: &Sender<Message>, work_done_progress: WorkDoneProgress) {
-    let notif = notification_new::<req::Progress>(req::ProgressParams {
-        token: req::ProgressToken::String("rustAnalyzer/startup".into()),
-        value: req::ProgressParamsValue::WorkDone(work_done_progress),
-    });
-    sender.send(notif.into()).unwrap();
+    fn send_startup_progress_notif(sender: &Sender<Message>, work_done_progress: WorkDoneProgress) {
+        let notif = notification_new::<req::Progress>(req::ProgressParams {
+            token: req::ProgressToken::String("rustAnalyzer/startup".into()),
+            value: req::ProgressParamsValue::WorkDone(work_done_progress),
+        });
+        sender.send(notif.into()).unwrap();
+    }
 }
 
 struct PoolDispatcher<'a> {

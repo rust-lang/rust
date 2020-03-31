@@ -188,6 +188,7 @@ impl Server {
         self.client.sender.send(r.into()).unwrap();
         while let Some(msg) = self.recv() {
             match msg {
+                Message::Request(req) if req.method == "window/workDoneProgress/create" => (),
                 Message::Request(req) => panic!("unexpected request: {:?}", req),
                 Message::Notification(_) => (),
                 Message::Response(res) => {
