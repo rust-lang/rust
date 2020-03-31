@@ -17,6 +17,6 @@ impl Subscriptions {
         self.subs.remove(&file_id);
     }
     pub(crate) fn subscriptions(&self) -> Vec<FileId> {
-        self.subs.iter().cloned().collect()
+        self.subs.iter().copied().collect()
     }
 }
