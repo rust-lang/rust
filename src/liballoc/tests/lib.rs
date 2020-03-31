@@ -1,5 +1,6 @@
 #![feature(allocator_api)]
 #![feature(box_syntax)]
+#![feature(btree_drain_filter)]
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
 #![feature(map_first_last)]
