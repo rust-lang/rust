@@ -3,12 +3,12 @@ use super::CodegenObject;
 use crate::ModuleCodegen;
 
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_errors::ErrorReported;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
 use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_middle::util::common::ErrorReported;
 use rustc_session::{
     config::{self, OutputFilenames, PrintRequest},
     Session,

@@ -94,6 +94,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -151,7 +152,7 @@ use std::ops::{self, Deref};
 use std::slice;
 
 use crate::require_c_abi_if_c_variadic;
-use crate::util::common::{indenter, ErrorReported};
+use crate::util::common::indenter;
 use crate::TypeAndSubsts;
 
 use self::autoderef::Autoderef;
