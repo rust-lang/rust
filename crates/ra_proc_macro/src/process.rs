@@ -55,8 +55,11 @@ impl Process {
 
     fn restart(&mut self) -> Result<(), io::Error> {
         let _ = self.child.kill();
-        self.child =
-            Command::new(self.path.clone()).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()?;
+        self.child = Command::new(self.path.clone())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()?;
         Ok(())
     }
 
