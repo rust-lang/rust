@@ -90,4 +90,6 @@ macro_rules! single_match {
     };
 }
 
-fn main() {single_match!(5);}
+fn main() {
+    single_match!(5);
+}
