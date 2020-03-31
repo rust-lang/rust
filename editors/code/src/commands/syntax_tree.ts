@@ -127,6 +127,7 @@ class AstInspector implements vscode.HoverProvider, Disposable {
         if (!rustTextRange) return;
 
         this.rustEditor.setDecorations(AstInspector.astDecorationType, [rustTextRange]);
+        this.rustEditor.revealRange(rustTextRange);
 
         const rustSourceCode = this.rustEditor.document.getText(rustTextRange);
         const astTextRange = this.findAstRange(astTextLine);
@@ -145,7 +146,7 @@ class AstInspector implements vscode.HoverProvider, Disposable {
         const parsedRange = /\[(\d+); (\d+)\)/.exec(astLine);
         if (!parsedRange) return;
 
-        const [, begin, end] = parsedRange.map(off => doc.positionAt(+off));
+        const [begin, end] = parsedRange.slice(1).map(off => doc.positionAt(+off));
 
         return new vscode.Range(begin, end);
     }
