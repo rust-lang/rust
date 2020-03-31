@@ -191,7 +191,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             let proj_base = &place.projection[..i];
 
             if context.is_borrow() {
-                if util::is_disaligned(self.tcx, self.body, self.param_env, place) {
+                if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
                     let source_info = self.source_info;
                     let lint_root = self.body.source_scopes[source_info.scope]
                         .local_data

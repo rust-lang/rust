@@ -94,7 +94,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     /// problematic for borrowck.
     ///
     /// Maybe we should have separate "borrowck" and "moveck" modes.
-    fn move_path_for(&mut self, place: &Place<'tcx>) -> Result<MovePathIndex, MoveError<'tcx>> {
+    fn move_path_for(&mut self, place: Place<'tcx>) -> Result<MovePathIndex, MoveError<'tcx>> {
         debug!("lookup({:?})", place);
         let mut base = self.builder.data.rev_lookup.locals[place.local];
 
@@ -195,7 +195,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         })
     }
 
-    fn create_move_path(&mut self, place: &Place<'tcx>) {
+    fn create_move_path(&mut self, place: Place<'tcx>) {
         // This is an non-moving access (such as an overwrite or
         // drop), so this not being a valid move path is OK.
         let _ = self.move_path_for(place);
@@ -279,22 +279,22 @@ struct Gatherer<'b, 'a, 'tcx> {
 
 impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
-        match stmt.kind {
-            StatementKind::Assign(box (ref place, ref rval)) => {
-                self.create_move_path(place);
+        match &stmt.kind {
+            StatementKind::Assign(box (place, rval)) => {
+                self.create_move_path(*place);
                 if let RvalueInitializationState::Shallow = rval.initialization_state() {
                     // Box starts out uninitialized - need to create a separate
                     // move-path for the interior so it will be separate from
                     // the exterior.
-                    self.create_move_path(&self.builder.tcx.mk_place_deref(place.clone()));
+                    self.create_move_path(self.builder.tcx.mk_place_deref(place.clone()));
                     self.gather_init(place.as_ref(), InitKind::Shallow);
                 } else {
                     self.gather_init(place.as_ref(), InitKind::Deep);
                 }
                 self.gather_rvalue(rval);
             }
-            StatementKind::FakeRead(_, ref place) => {
-                self.create_move_path(place);
+            StatementKind::FakeRead(_, place) => {
+                self.create_move_path(**place);
             }
             StatementKind::LlvmInlineAsm(ref asm) => {
                 for (output, kind) in asm.outputs.iter().zip(&asm.asm.outputs) {
@@ -308,7 +308,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
             StatementKind::StorageLive(_) => {}
             StatementKind::StorageDead(local) => {
-                self.gather_move(&Place::from(local));
+                self.gather_move(Place::from(*local));
             }
             StatementKind::SetDiscriminant { .. } => {
                 span_bug!(
@@ -369,7 +369,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             | TerminatorKind::Unreachable => {}
 
             TerminatorKind::Return => {
-                self.gather_move(&Place::return_place());
+                self.gather_move(Place::return_place());
             }
 
             TerminatorKind::Assert { ref cond, .. } => {
@@ -380,16 +380,16 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 self.gather_operand(discr);
             }
 
-            TerminatorKind::Yield { ref value, resume_arg: ref place, .. } => {
+            TerminatorKind::Yield { ref value, resume_arg: place, .. } => {
                 self.gather_operand(value);
                 self.create_move_path(place);
                 self.gather_init(place.as_ref(), InitKind::Deep);
             }
 
-            TerminatorKind::Drop { ref location, target: _, unwind: _ } => {
+            TerminatorKind::Drop { location, target: _, unwind: _ } => {
                 self.gather_move(location);
             }
-            TerminatorKind::DropAndReplace { ref location, ref value, .. } => {
+            TerminatorKind::DropAndReplace { location, ref value, .. } => {
                 self.create_move_path(location);
                 self.gather_operand(value);
                 self.gather_init(location.as_ref(), InitKind::Deep);
@@ -405,7 +405,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 for arg in args {
                     self.gather_operand(arg);
                 }
-                if let Some((ref destination, _bb)) = *destination {
+                if let Some((destination, _bb)) = *destination {
                     self.create_move_path(destination);
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
                 }
@@ -416,14 +416,14 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_operand(&mut self, operand: &Operand<'tcx>) {
         match *operand {
             Operand::Constant(..) | Operand::Copy(..) => {} // not-a-move
-            Operand::Move(ref place) => {
+            Operand::Move(place) => {
                 // a move
                 self.gather_move(place);
             }
         }
     }
 
-    fn gather_move(&mut self, place: &Place<'tcx>) {
+    fn gather_move(&mut self, place: Place<'tcx>) {
         debug!("gather_move({:?}, {:?})", self.loc, place);
 
         if let [ref base @ .., ProjectionElem::Subslice { from, to, from_end: false }] =
@@ -434,7 +434,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             // are disjoint, which is expected by drop elaboration.
             let base_place =
                 Place { local: place.local, projection: self.builder.tcx.intern_place_elems(base) };
-            let base_path = match self.move_path_for(&base_place) {
+            let base_path = match self.move_path_for(base_place) {
                 Ok(path) => path,
                 Err(MoveError::UnionMove { path }) => {
                     self.record_move(place, path);
@@ -467,13 +467,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             match self.move_path_for(place) {
                 Ok(path) | Err(MoveError::UnionMove { path }) => self.record_move(place, path),
                 Err(error @ MoveError::IllegalMove { .. }) => {
-                    self.builder.errors.push((*place, error));
+                    self.builder.errors.push((place, error));
                 }
             };
         }
     }
 
-    fn record_move(&mut self, place: &Place<'tcx>, path: MovePathIndex) {
+    fn record_move(&mut self, place: Place<'tcx>, path: MovePathIndex) {
         let move_out = self.builder.data.moves.push(MoveOut { path, source: self.loc });
         debug!(
             "gather_move({:?}, {:?}): adding move {:?} of {:?}",

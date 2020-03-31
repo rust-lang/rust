@@ -396,8 +396,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
                 self.suggest_split_at_mut_if_applicable(
                     &mut err,
-                    &place,
-                    &issued_borrow.borrowed_place,
+                    place,
+                    issued_borrow.borrowed_place,
                 );
                 err
             }
@@ -410,7 +410,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             (BorrowKind::Mut { .. }, BorrowKind::Shallow)
             | (BorrowKind::Unique, BorrowKind::Shallow) => {
                 if let Some(immutable_section_description) =
-                    self.classify_immutable_section(&issued_borrow.assigned_place)
+                    self.classify_immutable_section(issued_borrow.assigned_place)
                 {
                     let mut err = self.cannot_mutate_in_immutable_section(
                         span,
@@ -546,8 +546,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn suggest_split_at_mut_if_applicable(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        place: &Place<'tcx>,
-        borrowed_place: &Place<'tcx>,
+        place: Place<'tcx>,
+        borrowed_place: Place<'tcx>,
     ) {
         if let ([ProjectionElem::Index(_)], [ProjectionElem::Index(_)]) =
             (&place.projection[..], &borrowed_place.projection[..])
@@ -1382,7 +1382,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let descr_place = self.describe_any_place(place.as_ref());
         if loan.kind == BorrowKind::Shallow {
-            if let Some(section) = self.classify_immutable_section(&loan.assigned_place) {
+            if let Some(section) = self.classify_immutable_section(loan.assigned_place) {
                 let mut err = self.cannot_mutate_in_immutable_section(
                     span,
                     loan_span,
@@ -1534,17 +1534,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// Describe the reason for the fake borrow that was assigned to `place`.
-    fn classify_immutable_section(&self, place: &Place<'tcx>) -> Option<&'static str> {
+    fn classify_immutable_section(&self, place: Place<'tcx>) -> Option<&'static str> {
         use rustc_middle::mir::visit::Visitor;
-        struct FakeReadCauseFinder<'a, 'tcx> {
-            place: &'a Place<'tcx>,
+        struct FakeReadCauseFinder<'tcx> {
+            place: Place<'tcx>,
             cause: Option<FakeReadCause>,
         }
-        impl<'tcx> Visitor<'tcx> for FakeReadCauseFinder<'_, 'tcx> {
+        impl<'tcx> Visitor<'tcx> for FakeReadCauseFinder<'tcx> {
             fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
                 match statement {
-                    Statement { kind: StatementKind::FakeRead(cause, box ref place), .. }
-                        if *place == *self.place =>
+                    Statement { kind: StatementKind::FakeRead(cause, box place), .. }
+                        if *place == self.place =>
                     {
                         self.cause = Some(*cause);
                     }
