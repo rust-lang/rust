@@ -9,10 +9,22 @@ fn main() {
     for _ in 0..10 { drop(vec![42]); }
     let now2 = SystemTime::now();
     assert!(now2 > now1);
+    let diff = now2.duration_since(now1).unwrap();
+    assert!(diff.as_micros() > 0);
+    assert_eq!(now1 + diff, now2);
+    assert_eq!(now2 - diff, now1);
 
     let now1 = Instant::now();
     // Do some work to make time pass.
     for _ in 0..10 { drop(vec![42]); }
     let now2 = Instant::now();
     assert!(now2 > now1);
+
+    #[cfg(target_os = "linux")] // TODO: macOS does not support Instant subtraction
+    {
+        let diff = now2.duration_since(now1);
+        assert!(diff.as_micros() > 0);
+        assert_eq!(now1 + diff, now2);
+        assert_eq!(now2 - diff, now1);
+    }
 }
