@@ -2055,7 +2055,7 @@ impl<T> VecDeque<T> {
     /// As it returns a mutable slice, this can be used to sort or binary search a deque.
     ///
     /// Once the internal storage is contiguous, the [`as_slices`](#method.as_slices) and
-    /// [`as_slices_mut`](#method.as_slices_mut) methods will return the entire contents of the
+    /// [`as_mut_slices`](#method.as_mut_slices) methods will return the entire contents of the
     /// `VecDeque` in a single slice.
     ///
     /// # Examples
