@@ -7,9 +7,7 @@ use clippy_dev::{
 };
 use std::path::Path;
 
-mod fmt;
-mod new_lint;
-mod stderr_length_check;
+use clippy_dev::{fmt, new_lint, stderr_length_check};
 
 #[derive(Clone, Copy, PartialEq)]
 enum UpdateMode {

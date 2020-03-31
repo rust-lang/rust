@@ -1,4 +1,4 @@
-use clippy_dev::clippy_project_root;
+use crate::clippy_project_root;
 use shell_escape::escape;
 use std::ffi::OsStr;
 use std::io;

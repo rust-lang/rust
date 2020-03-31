@@ -9,6 +9,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+pub mod fmt;
+pub mod new_lint;
+pub mod stderr_length_check;
+pub mod update_lints;
+
 lazy_static! {
     static ref DEC_CLIPPY_LINT_RE: Regex = Regex::new(
         r#"(?x)
