@@ -1,10 +1,10 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::middle::lang_items::DropInPlaceFnLangItem;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::AtomicRef;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::lang_items::DropInPlaceFnLangItem;
 use rustc_macros::HashStable;
 
 use std::fmt;

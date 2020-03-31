@@ -11,7 +11,7 @@
 macro_rules! arena_types {
     ($macro:path, $args:tt, $tcx:lifetime) => (
         $macro!($args, [
-            [] layouts: rustc_middle::ty::layout::Layout,
+            [] layouts: rustc_target::abi::Layout,
             [] generics: rustc_middle::ty::Generics,
             [] trait_def: rustc_middle::ty::TraitDef,
             [] adt_def: rustc_middle::ty::AdtDef,
@@ -106,7 +106,7 @@ macro_rules! arena_types {
                 String
             >,
             [few] get_lib_features: rustc_middle::middle::lib_features::LibFeatures,
-            [few] defined_lib_features: rustc_middle::middle::lang_items::LanguageItems,
+            [few] defined_lib_features: rustc_hir::lang_items::LanguageItems,
             [few] visible_parent_map: rustc_hir::def_id::DefIdMap<rustc_hir::def_id::DefId>,
             [few] foreign_module: rustc_middle::middle::cstore::ForeignModule,
             [few] foreign_modules: Vec<rustc_middle::middle::cstore::ForeignModule>,

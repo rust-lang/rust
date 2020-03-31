@@ -3,10 +3,10 @@ use crate::mir::debuginfo::{FunctionDebugContext, VariableKind};
 use rustc_ast::ast::Name;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::mir;
-use rustc_middle::ty::layout::Size;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_span::{SourceFile, Span};
 use rustc_target::abi::call::FnAbi;
+use rustc_target::abi::Size;
 
 pub trait DebugInfoMethods<'tcx>: BackendTypes {
     fn create_vtable_metadata(&self, ty: Ty<'tcx>, vtable: Self::Value);

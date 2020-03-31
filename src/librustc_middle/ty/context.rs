@@ -11,8 +11,6 @@ use crate::lint::{struct_lint_level, LintSource};
 use crate::middle;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::cstore::EncodedMetadata;
-use crate::middle::lang_items;
-use crate::middle::lang_items::PanicLocationLangItem;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::interpret::{Allocation, ConstValue, Scalar};
@@ -21,7 +19,6 @@ use crate::mir::{
 };
 use crate::traits;
 use crate::traits::{Clause, Clauses, Goal, GoalKind, Goals};
-use crate::ty::layout::{Layout, TargetDataLayout, VariantIdx};
 use crate::ty::query;
 use crate::ty::steal::Steal;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
@@ -38,7 +35,6 @@ use crate::ty::{ConstVid, FloatVar, FloatVid, IntVar, IntVid, TyVar, TyVid};
 use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, ProjectionTy};
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
-use crate::util::common::ErrorReported;
 use rustc_ast::ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::node_id::NodeMap;
@@ -50,10 +46,13 @@ use rustc_data_structures::stable_hasher::{
     hash_stable_hashmap, HashStable, StableHasher, StableVec,
 };
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DefPathHash, Definitions};
+use rustc_hir::lang_items;
+use rustc_hir::lang_items::PanicLocationLangItem;
 use rustc_hir::{HirId, Node, TraitCandidate};
 use rustc_hir::{ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet};
 use rustc_index::vec::{Idx, IndexVec};
@@ -65,6 +64,7 @@ use rustc_session::Session;
 use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
+use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 
 use smallvec::SmallVec;
@@ -1203,7 +1203,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Obtain all lang items of this crate and all dependencies (recursively)
-    pub fn lang_items(self) -> &'tcx middle::lang_items::LanguageItems {
+    pub fn lang_items(self) -> &'tcx rustc_hir::lang_items::LanguageItems {
         self.get_lang_items(LOCAL_CRATE)
     }
 

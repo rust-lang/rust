@@ -8,8 +8,9 @@ use crate::MemFlags;
 
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ConstValue, ErrorHandled, Pointer, Scalar};
-use rustc_middle::ty::layout::{self, Align, LayoutOf, Size, TyAndLayout};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::Ty;
+use rustc_target::abi::{Abi, Align, LayoutOf, Size};
 
 use std::fmt;
 
@@ -78,7 +79,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         let val = match val {
             ConstValue::Scalar(x) => {
                 let scalar = match layout.abi {
-                    layout::Abi::Scalar(ref x) => x,
+                    Abi::Scalar(ref x) => x,
                     _ => bug!("from_const: invalid ByVal layout: {:#?}", layout),
                 };
                 let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
@@ -86,7 +87,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
             ConstValue::Slice { data, start, end } => {
                 let a_scalar = match layout.abi {
-                    layout::Abi::ScalarPair(ref a, _) => a,
+                    Abi::ScalarPair(ref a, _) => a,
                     _ => bug!("from_const: invalid ScalarPair layout: {:#?}", layout),
                 };
                 let a = Scalar::from(Pointer::new(
@@ -161,7 +162,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         llval: V,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        let val = if let layout::Abi::ScalarPair(ref a, ref b) = layout.abi {
+        let val = if let Abi::ScalarPair(ref a, ref b) = layout.abi {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}", llval, layout);
 
             // Deconstruct the immediate aggregate.
@@ -199,7 +200,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
 
             // Extract a scalar component from a pair.
-            (OperandValue::Pair(a_llval, b_llval), &layout::Abi::ScalarPair(ref a, ref b)) => {
+            (OperandValue::Pair(a_llval, b_llval), &Abi::ScalarPair(ref a, ref b)) => {
                 if offset.bytes() == 0 {
                     assert_eq!(field.size, a.value.size(bx.cx()));
                     OperandValue::Immediate(a_llval)
@@ -211,7 +212,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
 
             // `#[repr(simd)]` types are also immediate.
-            (OperandValue::Immediate(llval), &layout::Abi::Vector { .. }) => {
+            (OperandValue::Immediate(llval), &Abi::Vector { .. }) => {
                 OperandValue::Immediate(bx.extract_element(llval, bx.cx().const_usize(i as u64)))
             }
 
@@ -305,7 +306,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             }
             OperandValue::Pair(a, b) => {
                 let (a_scalar, b_scalar) = match dest.layout.abi {
-                    layout::Abi::ScalarPair(ref a, ref b) => (a, b),
+                    Abi::ScalarPair(ref a, ref b) => (a, b),
                     _ => bug!("store_with_flags: invalid ScalarPair layout: {:#?}", dest.layout),
                 };
                 let b_offset = a_scalar.value.size(bx).align_to(b_scalar.value.align(bx).abi);

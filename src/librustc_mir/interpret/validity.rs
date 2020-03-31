@@ -11,8 +11,9 @@ use std::ops::RangeInclusive;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::ty;
-use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout, VariantIdx};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_target::abi::{Abi, LayoutOf, Scalar, VariantIdx, Variants};
 
 use std::hash::Hash;
 
@@ -180,7 +181,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
     fn aggregate_field_path_elem(&mut self, layout: TyAndLayout<'tcx>, field: usize) -> PathElem {
         // First, check if we are projecting to a variant.
         match layout.variants {
-            layout::Variants::Multiple { discr_index, .. } => {
+            Variants::Multiple { discr_index, .. } => {
                 if discr_index == field {
                     return match layout.ty.kind {
                         ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
@@ -189,7 +190,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                     };
                 }
             }
-            layout::Variants::Single { .. } => {}
+            Variants::Single { .. } => {}
         }
 
         // Now we know we are projecting to a field, so figure out which one.
@@ -226,11 +227,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             ty::Adt(def, ..) if def.is_enum() => {
                 // we might be projecting *to* a variant, or to a field *in* a variant.
                 match layout.variants {
-                    layout::Variants::Single { index } => {
+                    Variants::Single { index } => {
                         // Inside a variant
                         PathElem::Field(def.variants[index].fields[field].ident.name)
                     }
-                    layout::Variants::Multiple { .. } => bug!("we handled variants above"),
+                    Variants::Multiple { .. } => bug!("we handled variants above"),
                 }
             }
 
@@ -539,7 +540,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
     fn visit_scalar(
         &mut self,
         op: OpTy<'tcx, M::PointerTag>,
-        scalar_layout: &layout::Scalar,
+        scalar_layout: &Scalar,
     ) -> InterpResult<'tcx> {
         let value = self.ecx.read_scalar(op)?;
         let valid_range = &scalar_layout.valid_range;
@@ -685,22 +686,22 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // scalars, we do the same check on every "level" (e.g., first we check
         // MyNewtype and then the scalar in there).
         match op.layout.abi {
-            layout::Abi::Uninhabited => {
+            Abi::Uninhabited => {
                 throw_validation_failure!(
                     format_args!("a value of uninhabited type {:?}", op.layout.ty),
                     self.path
                 );
             }
-            layout::Abi::Scalar(ref scalar_layout) => {
+            Abi::Scalar(ref scalar_layout) => {
                 self.visit_scalar(op, scalar_layout)?;
             }
-            layout::Abi::ScalarPair { .. } | layout::Abi::Vector { .. } => {
+            Abi::ScalarPair { .. } | Abi::Vector { .. } => {
                 // These have fields that we already visited above, so we already checked
                 // all their scalar-level restrictions.
                 // There is also no equivalent to `rustc_layout_scalar_valid_range_start`
                 // that would make skipping them here an issue.
             }
-            layout::Abi::Aggregate { .. } => {
+            Abi::Aggregate { .. } => {
                 // Nothing to do.
             }
         }

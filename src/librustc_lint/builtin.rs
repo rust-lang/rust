@@ -36,12 +36,13 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{GenericParamKind, PatKind};
 use rustc_hir::{HirIdSet, Node};
 use rustc_middle::lint::LintDiagnosticBuilder;
-use rustc_middle::ty::{self, layout::VariantIdx, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
+use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::misc::can_type_implement_copy;
 
 use crate::nonstandard_style::{method_context, MethodLateContext};

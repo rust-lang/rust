@@ -9,7 +9,8 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, layout::Size, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_target::abi::Size;
 use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::fmt::Write as _;

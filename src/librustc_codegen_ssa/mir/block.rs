@@ -9,14 +9,15 @@ use crate::meth;
 use crate::traits::*;
 use crate::MemFlags;
 
+use rustc_hir::lang_items;
 use rustc_index::vec::Idx;
-use rustc_middle::middle::lang_items;
 use rustc_middle::mir;
 use rustc_middle::mir::AssertKind;
-use rustc_middle::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_span::{source_map::Span, symbol::Symbol};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use rustc_target::abi::{self, LayoutOf};
 use rustc_target::spec::abi::Abi;
 
 use std::borrow::Cow;
@@ -591,7 +592,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // we can do what we like. Here, we declare that transmuting
                 // into an uninhabited type is impossible, so anything following
                 // it must be unreachable.
-                assert_eq!(fn_abi.ret.layout.abi, layout::Abi::Uninhabited);
+                assert_eq!(fn_abi.ret.layout.abi, abi::Abi::Uninhabited);
                 bx.unreachable();
             }
             return;
@@ -994,7 +995,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // the load would just produce `OperandValue::Ref` instead
                 // of the `OperandValue::Immediate` we need for the call.
                 llval = bx.load(llval, align);
-                if let layout::Abi::Scalar(ref scalar) = arg.layout.abi {
+                if let abi::Abi::Scalar(ref scalar) = arg.layout.abi {
                     if scalar.is_bool() {
                         bx.range_metadata(llval, 0..2);
                     }

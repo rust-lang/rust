@@ -10,16 +10,16 @@ use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use crate::hair::{self, *};
-use rustc_middle::middle::region;
-use rustc_middle::mir::*;
-use rustc_middle::ty::layout::VariantIdx;
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
+use rustc_ast::ast::Name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::middle::region;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::Span;
+use rustc_target::abi::VariantIdx;
 use smallvec::{smallvec, SmallVec};
-use rustc_ast::ast::Name;
 
 // helper functions, broken out by category:
 mod simplify;

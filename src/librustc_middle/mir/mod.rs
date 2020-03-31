@@ -6,7 +6,6 @@ use crate::mir::interpret::{GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use crate::ty::layout::VariantIdx;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{
@@ -16,6 +15,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self, GeneratorKind};
+use rustc_target::abi::VariantIdx;
 
 use polonius_engine::Atom;
 pub use rustc_ast::ast::Mutability;
