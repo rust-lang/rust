@@ -37,7 +37,6 @@ use crate::ty::{ConstVid, FloatVar, FloatVid, IntVar, IntVid, TyVar, TyVid};
 use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, ProjectionTy};
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
-use crate::util::common::ErrorReported;
 use rustc_ast::ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::node_id::NodeMap;
@@ -49,6 +48,7 @@ use rustc_data_structures::stable_hasher::{
     hash_stable_hashmap, HashStable, StableHasher, StableVec,
 };
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};

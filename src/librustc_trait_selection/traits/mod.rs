@@ -24,13 +24,13 @@ use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, RegionckMode, TyCtxtInferExt};
 use crate::traits::error_reporting::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::region;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, WithConstness};
-use rustc_middle::util::common::ErrorReported;
 use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt::Debug;
