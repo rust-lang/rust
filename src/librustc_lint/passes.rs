@@ -170,6 +170,7 @@ macro_rules! early_lint_methods {
             fn check_stmt(a: &ast::Stmt);
             fn check_arm(a: &ast::Arm);
             fn check_pat(a: &ast::Pat);
+            fn check_anon_const(a: &ast::AnonConst);
             fn check_pat_post(a: &ast::Pat);
             fn check_expr(a: &ast::Expr);
             fn check_expr_post(a: &ast::Expr);

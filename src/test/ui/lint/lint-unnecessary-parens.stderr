@@ -72,19 +72,19 @@ LL |     while (true) {}
    |
    = note: `#[warn(while_true)]` on by default
 
-error: unnecessary parentheses around `match` head expression
+error: unnecessary parentheses around `match` scrutinee expression
   --> $DIR/lint-unnecessary-parens.rs:51:11
    |
 LL |     match (true) {
    |           ^^^^^^ help: remove these parentheses
 
-error: unnecessary parentheses around `let` head expression
+error: unnecessary parentheses around `let` scrutinee expression
   --> $DIR/lint-unnecessary-parens.rs:54:16
    |
 LL |     if let 1 = (1) {}
    |                ^^^ help: remove these parentheses
 
-error: unnecessary parentheses around `let` head expression
+error: unnecessary parentheses around `let` scrutinee expression
   --> $DIR/lint-unnecessary-parens.rs:55:19
    |
 LL |     while let 1 = (2) {}
