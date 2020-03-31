@@ -299,7 +299,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
         mut bx: Bx,
-        location: &mir::Place<'tcx>,
+        location: mir::Place<'tcx>,
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
     ) {
@@ -873,7 +873,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.unreachable();
             }
 
-            mir::TerminatorKind::Drop { ref location, target, unwind } => {
+            mir::TerminatorKind::Drop { location, target, unwind } => {
                 self.codegen_drop_terminator(helper, bx, location, target, unwind);
             }
 
