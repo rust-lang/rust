@@ -87,44 +87,35 @@ impl WorldState {
     ) -> WorldState {
         let mut change = AnalysisChange::new();
 
-        let mut roots = Vec::new();
-        roots.extend(folder_roots.iter().map(|path| {
-            let mut filter = RustPackageFilterBuilder::default().set_member(true);
-            for glob in exclude_globs.iter() {
-                filter = filter.exclude(glob.clone());
-            }
-            RootEntry::new(path.clone(), filter.into_vfs_filter())
-        }));
-        for ws in workspaces.iter() {
-            roots.extend(ws.to_roots().into_iter().map(|pkg_root| {
-                let mut filter =
-                    RustPackageFilterBuilder::default().set_member(pkg_root.is_member());
-                for glob in exclude_globs.iter() {
-                    filter = filter.exclude(glob.clone());
-                }
-                RootEntry::new(pkg_root.path().clone(), filter.into_vfs_filter())
-            }));
-        }
+        let extern_dirs: FxHashSet<_> =
+            workspaces.iter().flat_map(ProjectWorkspace::out_dirs).collect();
 
-        let mut extern_dirs = FxHashSet::default();
-        for ws in workspaces.iter() {
-            extern_dirs.extend(ws.out_dirs());
-        }
-
-        let mut extern_source_roots = FxHashMap::default();
-
-        roots.extend(extern_dirs.iter().map(|path| {
-            let mut filter = RustPackageFilterBuilder::default().set_member(false);
-            for glob in exclude_globs.iter() {
-                filter = filter.exclude(glob.clone());
-            }
-            RootEntry::new(PathBuf::from(&path), filter.into_vfs_filter())
-        }));
+        let roots: Vec<_> = {
+            let create_filter = |is_member| {
+                RustPackageFilterBuilder::default()
+                    .set_member(is_member)
+                    .exclude(exclude_globs.iter().cloned())
+                    .into_vfs_filter()
+            };
+            folder_roots
+                .iter()
+                .map(|path| RootEntry::new(path.clone(), create_filter(true)))
+                .chain(workspaces.iter().flat_map(ProjectWorkspace::to_roots).map(|pkg_root| {
+                    RootEntry::new(pkg_root.path, create_filter(pkg_root.is_member))
+                }))
+                .chain(
+                    extern_dirs
+                        .iter()
+                        .map(|path| RootEntry::new(path.to_owned(), create_filter(false))),
+                )
+                .collect()
+        };
 
         let (task_sender, task_receiver) = unbounded();
         let task_sender = Box::new(move |t| task_sender.send(t).unwrap());
         let (mut vfs, vfs_roots) = Vfs::new(roots, task_sender, watch);
 
+        let mut extern_source_roots = FxHashMap::default();
         for r in vfs_roots {
             let vfs_root_path = vfs.root2path(r);
             let is_local = folder_roots.iter().any(|it| vfs_root_path.starts_with(it));
@@ -132,6 +123,7 @@ impl WorldState {
             change.set_debug_root_path(SourceRootId(r.0), vfs_root_path.display().to_string());
 
             // FIXME: add path2root in vfs to simpily this logic
+
             if extern_dirs.contains(&vfs_root_path) {
                 extern_source_roots.insert(vfs_root_path, ExternSourceId(r.0));
             }

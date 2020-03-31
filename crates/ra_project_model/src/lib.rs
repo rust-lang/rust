@@ -58,22 +58,16 @@ pub enum ProjectWorkspace {
 #[derive(Clone)]
 pub struct PackageRoot {
     /// Path to the root folder
-    path: PathBuf,
+    pub path: PathBuf,
     /// Is a member of the current workspace
-    is_member: bool,
+    pub is_member: bool,
 }
-
 impl PackageRoot {
-    pub fn new(path: PathBuf, is_member: bool) -> PackageRoot {
-        PackageRoot { path, is_member }
+    pub fn new_member(path: PathBuf) -> PackageRoot {
+        Self { path, is_member: true }
     }
-
-    pub fn path(&self) -> &PathBuf {
-        &self.path
-    }
-
-    pub fn is_member(&self) -> bool {
-        self.is_member
+    pub fn new_non_member(path: PathBuf) -> PackageRoot {
+        Self { path, is_member: false }
     }
 }
 
@@ -130,24 +124,18 @@ impl ProjectWorkspace {
     pub fn to_roots(&self) -> Vec<PackageRoot> {
         match self {
             ProjectWorkspace::Json { project } => {
-                let mut roots = Vec::with_capacity(project.roots.len());
-                for root in &project.roots {
-                    roots.push(PackageRoot::new(root.path.clone(), true));
-                }
-                roots
+                project.roots.iter().map(|r| PackageRoot::new_member(r.path.clone())).collect()
             }
-            ProjectWorkspace::Cargo { cargo, sysroot } => {
-                let mut roots = Vec::with_capacity(cargo.packages().len() + sysroot.crates().len());
-                for pkg in cargo.packages() {
-                    let root = cargo[pkg].root().to_path_buf();
-                    let member = cargo[pkg].is_member;
-                    roots.push(PackageRoot::new(root, member));
-                }
-                for krate in sysroot.crates() {
-                    roots.push(PackageRoot::new(sysroot[krate].root_dir().to_path_buf(), false))
-                }
-                roots
-            }
+            ProjectWorkspace::Cargo { cargo, sysroot } => cargo
+                .packages()
+                .map(|pkg| PackageRoot {
+                    path: cargo[pkg].root().to_path_buf(),
+                    is_member: cargo[pkg].is_member,
+                })
+                .chain(sysroot.crates().map(|krate| {
+                    PackageRoot::new_non_member(sysroot[krate].root_dir().to_path_buf())
+                }))
+                .collect(),
         }
     }
 

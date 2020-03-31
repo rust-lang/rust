@@ -132,8 +132,8 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
                 watchers: workspaces
                     .iter()
                     .flat_map(|ws| ws.to_roots())
-                    .filter(|root| root.is_member())
-                    .map(|root| format!("{}/**/*.rs", root.path().display()))
+                    .filter(|root| root.is_member)
+                    .map(|root| format!("{}/**/*.rs", root.path.display()))
                     .map(|glob_pattern| req::FileSystemWatcher { glob_pattern, kind: None })
                     .collect(),
             };

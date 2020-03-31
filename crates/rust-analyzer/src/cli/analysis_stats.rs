@@ -39,7 +39,7 @@ pub fn analysis_stats(
         roots
             .into_iter()
             .filter_map(|(source_root_id, project_root)| {
-                if with_deps || project_root.is_member() {
+                if with_deps || project_root.is_member {
                     Some(source_root_id)
                 } else {
                     None

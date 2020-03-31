@@ -36,8 +36,7 @@ pub(crate) fn load_cargo(
     extern_dirs.extend(ws.out_dirs());
 
     let mut project_roots = ws.to_roots();
-    project_roots
-        .extend(extern_dirs.iter().map(|path| PackageRoot::new(path.to_path_buf(), false)));
+    project_roots.extend(extern_dirs.iter().cloned().map(PackageRoot::new_non_member));
 
     let (sender, receiver) = unbounded();
     let sender = Box::new(move |t| sender.send(t).unwrap());
@@ -46,9 +45,9 @@ pub(crate) fn load_cargo(
             .iter()
             .map(|pkg_root| {
                 RootEntry::new(
-                    pkg_root.path().clone(),
+                    pkg_root.path.clone(),
                     RustPackageFilterBuilder::default()
-                        .set_member(pkg_root.is_member())
+                        .set_member(pkg_root.is_member)
                         .into_vfs_filter(),
                 )
             })
@@ -58,14 +57,11 @@ pub(crate) fn load_cargo(
     );
 
     let source_roots = roots
-        .iter()
-        .map(|&vfs_root| {
+        .into_iter()
+        .map(|vfs_root| {
             let source_root_id = vfs_root_to_id(vfs_root);
-            let project_root = project_roots
-                .iter()
-                .find(|it| it.path() == &vfs.root2path(vfs_root))
-                .unwrap()
-                .clone();
+            let project_root =
+                project_roots.iter().find(|it| it.path == vfs.root2path(vfs_root)).unwrap().clone();
             (source_root_id, project_root)
         })
         .collect::<FxHashMap<_, _>>();
@@ -97,7 +93,7 @@ pub(crate) fn load(
             match change {
                 VfsChange::AddRoot { root, files } => {
                     let source_root_id = vfs_root_to_id(root);
-                    let is_local = source_roots[&source_root_id].is_member();
+                    let is_local = source_roots[&source_root_id].is_member;
                     log::debug!(
                         "loaded source root {:?} with path {:?}",
                         source_root_id,
@@ -106,7 +102,7 @@ pub(crate) fn load(
                     analysis_change.add_root(source_root_id, is_local);
                     analysis_change.set_debug_root_path(
                         source_root_id,
-                        source_roots[&source_root_id].path().display().to_string(),
+                        source_roots[&source_root_id].path.display().to_string(),
                     );
 
                     let vfs_root_path = vfs.root2path(root);
