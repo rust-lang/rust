@@ -15,8 +15,7 @@ impl<T, V> ArenaMap<Idx<T>, V> {
     pub fn insert(&mut self, id: Idx<T>, t: V) {
         let idx = Self::to_idx(id);
 
-        let fill = (idx + 1).saturating_sub(self.v.len());
-        self.v.extend(std::iter::repeat_with(|| None).take(fill));
+        self.v.resize_with((idx + 1).max(self.v.len()), || None);
         self.v[idx] = Some(t);
     }
 
