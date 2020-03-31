@@ -190,7 +190,7 @@ impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N] {
     }
 }
 
-/// Return Value of the FromIterator impl for array
+/// Return Error of the FromIterator impl for array
 #[unstable(feature = "array_from_iter_impl", issue = "none")]
 #[derive(Debug)]
 pub struct FillError<T, const N: usize>
@@ -202,16 +202,31 @@ where
 }
 
 #[unstable(feature = "array_from_iter_impl", issue = "none")]
+impl<T, const N: usize> fmt::Display for FillError<T, N>
+where
+    [MaybeUninit<T>; N]: LengthAtMost32,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(
+            &format_args!(
+                "The iterator only returned {} items, but {} where needed",
+                self.len(),
+                N
+            ),
+            f,
+        )
+    }
+}
+
+#[unstable(feature = "array_from_iter_impl", issue = "none")]
 impl<T, const N: usize> Drop for FillError<T, N>
 where
     [MaybeUninit<T>; N]: LengthAtMost32,
 {
     fn drop(&mut self) {
-        for elem in &mut self.array[0..self.len] {
-            unsafe {
-                crate::ptr::drop_in_place(elem.as_mut_ptr());
-            }
-        }
+        // SAFETY: This is safe: `as_mut_slice` returns exactly the sub-slice
+        // of elements that have been initialized and need to be droped
+        unsafe { crate::ptr::drop_in_place(self.as_mut_slice()) }
     }
 }
 
@@ -231,11 +246,13 @@ where
 
     /// Returns an immutable slice of all initialized elements.
     pub fn as_slice(&self) -> &[T] {
+        // SAFETY: We know that all elements from 0 to len are properly initialized.
         unsafe { MaybeUninit::slice_get_ref(&self.array[0..self.len]) }
     }
 
     /// Returns a mutable slice of all initialized elements.
     pub fn as_mut_slice(&mut self) -> &mut [T] {
+        // SAFETY: We know that all elements from 0 to len are properly initialized.
         unsafe { MaybeUninit::slice_get_mut(&mut self.array[0..self.len]) }
     }
 
@@ -252,9 +269,19 @@ where
             }
         }
 
+        // SAFETY: The transmute here is actually safe. The docs of `MaybeUninit`
+        // promise:
+        //
+        // > `MaybeUninit<T>` is guaranteed to have the same size and alignment
+        // > as `T`.
+        //
+        // The docs even show a transmute from an array of `MaybeUninit<T>` to
+        // an array of `T`.
+        //
+        // With that, this initialization satisfies the invariants.
         // FIXME: actually use `mem::transmute` here, once it
         // works with const generics:
-        //     `mem::transmute::<[T; N], [MaybeUninit<T>; N]>(array)`
+        //     `mem::transmute::<[MaybeUninit<T>; N], [T; N]>(array)`
         Ok(unsafe { crate::ptr::read(&self.array as *const [MaybeUninit<T>; N] as *const [T; N]) })
     }
 }
