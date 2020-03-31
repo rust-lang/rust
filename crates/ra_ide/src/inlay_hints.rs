@@ -75,8 +75,7 @@ fn get_chaining_hints(
         return None;
     }
 
-    let ty = sema.type_of_expr(&expr)?;
-    if ty.is_unknown() {
+    if matches!(expr, ast::Expr::RecordLit(_)) {
         return None;
     }
 
@@ -95,6 +94,17 @@ fn get_chaining_hints(
     let next = tokens.next()?.kind();
     let next_next = tokens.next()?.kind();
     if next == SyntaxKind::WHITESPACE && next_next == SyntaxKind::DOT {
+        let ty = sema.type_of_expr(&expr)?;
+        if ty.is_unknown() {
+            return None;
+        }
+        if matches!(expr, ast::Expr::PathExpr(_)) {
+            if let Some(Adt::Struct(st)) = ty.as_adt() {
+                if st.fields(sema.db).is_empty() {
+                    return None;
+                }
+            }
+        }
         let label = ty.display_truncated(sema.db, config.max_length).to_string();
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
@@ -1154,32 +1164,35 @@ fn main() {
             struct A { pub b: B }
             struct B { pub c: C }
             struct C(pub bool);
+            struct D;
+
+            impl D {
+                fn foo(&self) -> i32 { 42 }
+            }
 
             fn main() {
                 let x = A { b: B { c: C(true) } }
                     .b
                     .c
                     .0;
+                let x = D
+                    .foo();
             }"#,
         );
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
-                range: [150; 221),
+                range: [252; 323),
                 kind: ChainingHint,
                 label: "C",
             },
             InlayHint {
-                range: [150; 198),
+                range: [252; 300),
                 kind: ChainingHint,
                 label: "B",
             },
-            InlayHint {
-                range: [150; 175),
-                kind: ChainingHint,
-                label: "A",
-            },
-        ]"###);
+        ]
+        "###);
     }
 
     #[test]
