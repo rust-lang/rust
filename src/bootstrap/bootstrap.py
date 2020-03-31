@@ -470,8 +470,6 @@ class RustBuild(object):
 
         if not os.path.exists("/etc/NIXOS"):
             return
-        if os.path.exists("/lib"):
-            return
 
         # At this point we're pretty sure the user is running NixOS
         nix_os_msg = "info: you seem to be running NixOS. Attempting to patch"
