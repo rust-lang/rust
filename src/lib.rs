@@ -287,11 +287,11 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
     use rustc_session::config::OptLevel;
     match sess.opts.optimize {
         OptLevel::No => {
-            flags_builder.set("opt_level", "fastest").unwrap();
+            flags_builder.set("opt_level", "none").unwrap();
         }
         OptLevel::Less | OptLevel::Default => {}
         OptLevel::Aggressive => {
-            flags_builder.set("opt_level", "best").unwrap();
+            flags_builder.set("opt_level", "speed_and_size").unwrap();
         }
         OptLevel::Size | OptLevel::SizeMin => {
             sess.warn("Optimizing for size is not supported. Just ignoring the request");
