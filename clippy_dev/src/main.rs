@@ -95,16 +95,11 @@ fn main() {
                         .takes_value(true),
                 ),
         )
-        .arg(
-            Arg::with_name("limit-stderr-length")
-                .long("limit-stderr-length")
-                .help("Ensures that stderr files do not grow longer than a certain amount of lines."),
+        .subcommand(
+            SubCommand::with_name("limit_stderr_length")
+                .about("Ensures that stderr files do not grow longer than a certain amount of lines."),
         )
         .get_matches();
-
-    if matches.is_present("limit-stderr-length") {
-        stderr_length_check::check();
-    }
 
     match matches.subcommand() {
         ("fmt", Some(matches)) => {
@@ -128,6 +123,9 @@ fn main() {
                 Ok(_) => update_lints(UpdateMode::Change),
                 Err(e) => eprintln!("Unable to create lint: {}", e),
             }
+        },
+        ("limit_stderr_length", _) => {
+            stderr_length_check::check();
         },
         _ => {},
     }
