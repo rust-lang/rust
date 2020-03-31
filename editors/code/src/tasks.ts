@@ -1,19 +1,11 @@
-import {
-    Disposable,
-    ShellExecution,
-    Task,
-    TaskGroup,
-    TaskProvider,
-    tasks,
-    WorkspaceFolder,
-} from 'vscode';
+import * as vscode from 'vscode';
 
 // This ends up as the `type` key in tasks.json. RLS also uses `cargo` and
 // our configuration should be compatible with it so use the same key.
 const TASK_TYPE = 'cargo';
 
-export function activateTaskProvider(target: WorkspaceFolder): Disposable {
-    const provider: TaskProvider = {
+export function activateTaskProvider(target: vscode.WorkspaceFolder): vscode.Disposable {
+    const provider: vscode.TaskProvider = {
         // Detect Rust tasks. Currently we do not do any actual detection
         // of tasks (e.g. aliases in .cargo/config) and just return a fixed
         // set of tasks that always exist. These tasks cannot be removed in
@@ -24,19 +16,19 @@ export function activateTaskProvider(target: WorkspaceFolder): Disposable {
         resolveTask: () => undefined,
     };
 
-    return tasks.registerTaskProvider(TASK_TYPE, provider);
+    return vscode.tasks.registerTaskProvider(TASK_TYPE, provider);
 }
 
-function getStandardCargoTasks(target: WorkspaceFolder): Task[] {
+function getStandardCargoTasks(target: vscode.WorkspaceFolder): vscode.Task[] {
     return [
-        { command: 'build', group: TaskGroup.Build },
-        { command: 'check', group: TaskGroup.Build },
-        { command: 'test', group: TaskGroup.Test },
-        { command: 'clean', group: TaskGroup.Clean },
+        { command: 'build', group: vscode.TaskGroup.Build },
+        { command: 'check', group: vscode.TaskGroup.Build },
+        { command: 'test', group: vscode.TaskGroup.Test },
+        { command: 'clean', group: vscode.TaskGroup.Clean },
         { command: 'run', group: undefined },
     ]
         .map(({ command, group }) => {
-            const vscodeTask = new Task(
+            const vscodeTask = new vscode.Task(
                 // The contents of this object end up in the tasks.json entries.
                 {
                     type: TASK_TYPE,
@@ -50,7 +42,7 @@ function getStandardCargoTasks(target: WorkspaceFolder): Task[] {
                 `cargo ${command}`,
                 'rust',
                 // What to do when this command is executed.
-                new ShellExecution('cargo', [command]),
+                new vscode.ShellExecution('cargo', [command]),
                 // Problem matchers.
                 ['$rustc'],
             );
