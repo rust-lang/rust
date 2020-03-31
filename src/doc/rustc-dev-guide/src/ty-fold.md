@@ -93,13 +93,13 @@ defined
 [here](https://github.com/rust-lang/rust/blob/master/src/librustc_macros/src/type_foldable.rs).
 
 **`subst`** In the case of substitutions the [actual
-folder](https://github.com/rust-lang/rust/blob/04e69e4f4234beb4f12cc76dcc53e2cc4247a9be/src/librustc_middle/ty/subst.rs#L467-L482)
+folder](https://github.com/rust-lang/rust/blob/75ff3110ac6d8a0259023b83fd20d7ab295f8dd6/src/librustc_middle/ty/subst.rs#L440-L451)
 is going to be doing the indexing we’ve already mentioned. There we define a `Folder` and call
 `fold_with` on the `TypeFoldable` to process yourself.  Then
-[fold_ty](https://github.com/rust-lang/rust/blob/04e69e4f4234beb4f12cc76dcc53e2cc4247a9be/src/librustc_middle/ty/subst.rs#L545-L573)
+[fold_ty](https://github.com/rust-lang/rust/blob/75ff3110ac6d8a0259023b83fd20d7ab295f8dd6/src/librustc_middle/ty/subst.rs#L512-L536)
 the method that process each type it looks for a `ty::Param` and for those it replaces it for
 something from the list of substitutions, otherwise recursively process the type.  To replace it,
 calls
-[ty_for_param](https://github.com/rust-lang/rust/blob/04e69e4f4234beb4f12cc76dcc53e2cc4247a9be/src/librustc_middle/ty/subst.rs#L589-L624)
+[ty_for_param](https://github.com/rust-lang/rust/blob/75ff3110ac6d8a0259023b83fd20d7ab295f8dd6/src/librustc_middle/ty/subst.rs#L552-L587)
 and all that does is index into the list of substitutions with the index of the `Param`.
 

@@ -16,7 +16,7 @@ types for equality: for each interned type `X`, we implemented [`PartialEq for
 X`][peqimpl], so we can just compare pointers. The [`CtxtInterners`] type
 contains a bunch of maps of interned types and the arena itself.
 
-[peqimpl]: https://github.com/rust-lang/rust/blob/3ee936378662bd2e74be951d6a7011a95a6bd84d/src/librustc_middle/ty/mod.rs#L528-L534
+[peqimpl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html#implementations
 [`CtxtInterners`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.CtxtInterners.html#structfield.arena
 
 ### Example: `ty::TyS`

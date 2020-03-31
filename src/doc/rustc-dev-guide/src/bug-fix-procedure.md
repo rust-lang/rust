@@ -120,7 +120,7 @@ future-compatibility warnings. These are a special category of lint warning.
 Adding a new future-compatibility warning can be done as follows.
 
 ```rust
-// 1. Define the lint in `src/librustc_middle/lint/builtin.rs`:
+// 1. Define the lint in `src/librustc/lint/builtin.rs`:
 declare_lint! {
     pub YOUR_ERROR_HERE,
     Warn,
@@ -230,12 +230,14 @@ lint name is mentioned (in the compiler, we use the upper-case name, and a macro
 automatically generates the lower-case string; so searching for
 `overlapping_inherent_impls` would not find much).
 
+> NOTE: these exact files don't exist anymore, but the procedure is still the same.
+
 #### Remove the lint.
 
 The first reference you will likely find is the lint definition [in
-`librustc_middle/lint/builtin.rs` that resembles this][defsource]:
+`librustc/lint/builtin.rs` that resembles this][defsource]:
 
-[defsource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc_middle/lint/builtin.rs#L171-L175
+[defsource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc/lint/builtin.rs#L171-L175
 
 ```rust
 declare_lint! {
@@ -249,7 +251,7 @@ This `declare_lint!` macro creates the relevant data structures. Remove it. You
 will also find that there is a mention of `OVERLAPPING_INHERENT_IMPLS` later in
 the file as [part of a `lint_array!`][lintarraysource]; remove it too,
 
-[lintarraysource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc_middle/lint/builtin.rs#L252-L290
+[lintarraysource]: https://github.com/rust-lang/rust/blob/085d71c3efe453863739c1fb68fd9bd1beff214f/src/librustc/lint/builtin.rs#L252-L290
 
 Next, you see see [a reference to `OVERLAPPING_INHERENT_IMPLS` in
 `librustc_lint/lib.rs`][futuresource]. This defining the lint as a "future
