@@ -61,7 +61,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             cnum,
             // Do not hash the source as it is not encoded
             src: _,
-            src_hash,
+            ref src_hash,
             external_src: _,
             start_pos,
             end_pos: _,

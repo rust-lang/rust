@@ -18,9 +18,10 @@ use rustc_feature::UnstableFeatures;
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST};
 use rustc_span::source_map::{FileName, FilePathMapping};
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::SourceFileHashAlgorithm;
 
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, FatalError, Handler, HandlerFlags};
+use rustc_errors::{ColorConfig, HandlerFlags};
 
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
@@ -748,25 +749,30 @@ pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateCo
     user_cfg
 }
 
-pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
+pub fn build_target_config(opts: &Options, error_format: ErrorOutputType) -> Config {
     let target = Target::search(&opts.target_triple).unwrap_or_else(|e| {
-        sp.struct_fatal(&format!("Error loading target specification: {}", e))
-            .help("Use `--print target-list` for a list of built-in targets")
-            .emit();
-        FatalError.raise();
+        early_error(
+            error_format,
+            &format!(
+                "Error loading target specification: {}. \
+            Use `--print target-list` for a list of built-in targets",
+                e
+            ),
+        )
     });
 
     let ptr_width = match &target.target_pointer_width[..] {
         "16" => 16,
         "32" => 32,
         "64" => 64,
-        w => sp
-            .fatal(&format!(
+        w => early_error(
+            error_format,
+            &format!(
                 "target specification was invalid: \
              unrecognized target-pointer-width {}",
                 w
-            ))
-            .raise(),
+            ),
+        ),
     };
 
     Config { target, ptr_width }
@@ -1971,7 +1977,8 @@ impl PpMode {
 crate mod dep_tracking {
     use super::{
         CFGuard, CrateType, DebugInfo, ErrorOutputType, LinkerPluginLto, LtoCli, OptLevel,
-        OutputTypes, Passes, Sanitizer, SwitchWithOptPath, SymbolManglingVersion,
+        OutputTypes, Passes, Sanitizer, SourceFileHashAlgorithm, SwitchWithOptPath,
+        SymbolManglingVersion,
     };
     use crate::lint;
     use crate::utils::NativeLibraryKind;
@@ -2049,6 +2056,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(LinkerPluginLto);
     impl_dep_tracking_hash_via_hash!(SwitchWithOptPath);
     impl_dep_tracking_hash_via_hash!(SymbolManglingVersion);
+    impl_dep_tracking_hash_via_hash!(Option<SourceFileHashAlgorithm>);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);

@@ -141,27 +141,31 @@ pub struct SourceMap {
     // This is used to apply the file path remapping as specified via
     // `--remap-path-prefix` to all `SourceFile`s allocated within this `SourceMap`.
     path_mapping: FilePathMapping,
+
+    /// The algorithm used for hashing the contents of each source file.
+    hash_kind: SourceFileHashAlgorithm,
 }
 
 impl SourceMap {
     pub fn new(path_mapping: FilePathMapping) -> SourceMap {
-        SourceMap {
-            used_address_space: AtomicU32::new(0),
-            files: Default::default(),
-            file_loader: Box::new(RealFileLoader),
+        Self::with_file_loader_and_hash_kind(
+            Box::new(RealFileLoader),
             path_mapping,
-        }
+            SourceFileHashAlgorithm::Md5,
+        )
     }
 
-    pub fn with_file_loader(
+    pub fn with_file_loader_and_hash_kind(
         file_loader: Box<dyn FileLoader + Sync + Send>,
         path_mapping: FilePathMapping,
+        hash_kind: SourceFileHashAlgorithm,
     ) -> SourceMap {
         SourceMap {
             used_address_space: AtomicU32::new(0),
             files: Default::default(),
             file_loader,
             path_mapping,
+            hash_kind,
         }
     }
 
@@ -275,6 +279,7 @@ impl SourceMap {
                     unmapped_path,
                     src,
                     Pos::from_usize(start_pos),
+                    self.hash_kind,
                 ));
 
                 let mut files = self.files.borrow_mut();
@@ -296,7 +301,7 @@ impl SourceMap {
         &self,
         filename: FileName,
         name_was_remapped: bool,
-        src_hash: u128,
+        src_hash: SourceFileHash,
         name_hash: u128,
         source_len: usize,
         cnum: CrateNum,

@@ -26,7 +26,6 @@ const LICENSES: &[&str] = &[
 const EXCEPTIONS: &[(&str, &str)] = &[
     ("mdbook", "MPL-2.0"),                  // mdbook
     ("openssl", "Apache-2.0"),              // cargo, mdbook
-    ("arrayref", "BSD-2-Clause"),           // mdbook via handlebars via pest
     ("toml-query", "MPL-2.0"),              // mdbook
     ("toml-query_derive", "MPL-2.0"),       // mdbook
     ("is-match", "MPL-2.0"),                // mdbook
@@ -74,6 +73,9 @@ const WHITELIST: &[&str] = &[
     "backtrace",
     "backtrace-sys",
     "bitflags",
+    "block-buffer",
+    "block-padding",
+    "byte-tools",
     "byteorder",
     "c2-chacha",
     "cc",
@@ -87,15 +89,18 @@ const WHITELIST: &[&str] = &[
     "crossbeam-queue",
     "crossbeam-utils",
     "datafrog",
+    "digest",
     "dlmalloc",
     "either",
     "ena",
     "env_logger",
+    "fake-simd",
     "filetime",
     "flate2",
     "fortanix-sgx-abi",
     "fuchsia-zircon",
     "fuchsia-zircon-sys",
+    "generic-array",
     "getopts",
     "getrandom",
     "hashbrown",
@@ -111,6 +116,7 @@ const WHITELIST: &[&str] = &[
     "lock_api",
     "log",
     "log_settings",
+    "md-5",
     "measureme",
     "memchr",
     "memmap",
@@ -118,6 +124,7 @@ const WHITELIST: &[&str] = &[
     "miniz_oxide",
     "nodrop",
     "num_cpus",
+    "opaque-debug",
     "parking_lot",
     "parking_lot_core",
     "pkg-config",
@@ -150,6 +157,7 @@ const WHITELIST: &[&str] = &[
     "semver-parser",
     "serde",
     "serde_derive",
+    "sha-1",
     "smallvec",
     "stable_deref_trait",
     "syn",
@@ -159,6 +167,7 @@ const WHITELIST: &[&str] = &[
     "termion",
     "termize",
     "thread_local",
+    "typenum",
     "ucd-util",
     "unicode-normalization",
     "unicode-script",

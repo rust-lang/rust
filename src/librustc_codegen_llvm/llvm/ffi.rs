@@ -546,6 +546,15 @@ pub enum ThreadLocalMode {
     LocalExec,
 }
 
+/// LLVMRustChecksumKind
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub enum ChecksumKind {
+    None,
+    MD5,
+    SHA1,
+}
+
 extern "C" {
     type Opaque;
 }
@@ -1640,6 +1649,9 @@ extern "C" {
         FilenameLen: size_t,
         Directory: *const c_char,
         DirectoryLen: size_t,
+        CSKind: ChecksumKind,
+        Checksum: *const c_char,
+        ChecksumLen: size_t,
     ) -> &'a DIFile;
 
     pub fn LLVMRustDIBuilderCreateSubroutineType(

@@ -41,7 +41,7 @@ use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::{Interner, Symbol};
-use rustc_span::{self, FileName, Span};
+use rustc_span::{self, FileName, SourceFileHash, Span};
 use rustc_target::abi::{Abi, Align, DiscriminantKind, HasDataLayout, Integer, LayoutOf};
 use rustc_target::abi::{Int, Pointer, F32, F64};
 use rustc_target::abi::{Primitive, Size, VariantIdx, Variants};
@@ -751,6 +751,14 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
     metadata
 }
 
+fn hex_encode(data: &[u8]) -> String {
+    let mut hex_string = String::with_capacity(data.len() * 2);
+    for byte in data.iter() {
+        write!(&mut hex_string, "{:02x}", byte).unwrap();
+    }
+    hex_string
+}
+
 pub fn file_metadata(
     cx: &CodegenCx<'ll, '_>,
     file_name: &FileName,
@@ -758,6 +766,8 @@ pub fn file_metadata(
 ) -> &'ll DIFile {
     debug!("file_metadata: file_name: {}, defining_crate: {}", file_name, defining_crate);
 
+    let source_file = cx.sess().source_map().get_source_file(file_name);
+    let hash = source_file.as_ref().map(|f| &f.src_hash);
     let file_name = Some(file_name.to_string());
     let directory = if defining_crate == LOCAL_CRATE {
         Some(cx.sess().working_dir.0.to_string_lossy().to_string())
@@ -766,17 +776,18 @@ pub fn file_metadata(
         // independent of the compiler's working directory one way or another.
         None
     };
-    file_metadata_raw(cx, file_name, directory)
+    file_metadata_raw(cx, file_name, directory, hash)
 }
 
 pub fn unknown_file_metadata(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
-    file_metadata_raw(cx, None, None)
+    file_metadata_raw(cx, None, None, None)
 }
 
 fn file_metadata_raw(
     cx: &CodegenCx<'ll, '_>,
     file_name: Option<String>,
     directory: Option<String>,
+    hash: Option<&SourceFileHash>,
 ) -> &'ll DIFile {
     let key = (file_name, directory);
 
@@ -789,6 +800,17 @@ fn file_metadata_raw(
             let file_name = file_name.as_deref().unwrap_or("<unknown>");
             let directory = directory.as_deref().unwrap_or("");
 
+            let (hash_kind, hash_value) = match hash {
+                Some(hash) => {
+                    let kind = match hash.kind {
+                        rustc_span::SourceFileHashAlgorithm::Md5 => llvm::ChecksumKind::MD5,
+                        rustc_span::SourceFileHashAlgorithm::Sha1 => llvm::ChecksumKind::SHA1,
+                    };
+                    (kind, hex_encode(hash.hash_bytes()))
+                }
+                None => (llvm::ChecksumKind::None, String::new()),
+            };
+
             let file_metadata = unsafe {
                 llvm::LLVMRustDIBuilderCreateFile(
                     DIB(cx),
@@ -796,6 +818,9 @@ fn file_metadata_raw(
                     file_name.len(),
                     directory.as_ptr().cast(),
                     directory.len(),
+                    hash_kind,
+                    hash_value.as_ptr().cast(),
+                    hash_value.len(),
                 )
             };
 
@@ -920,6 +945,9 @@ pub fn compile_unit_metadata(
             name_in_debuginfo.len(),
             work_dir.as_ptr().cast(),
             work_dir.len(),
+            llvm::ChecksumKind::None,
+            ptr::null(),
+            0,
         );
 
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(

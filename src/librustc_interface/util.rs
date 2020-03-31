@@ -22,7 +22,7 @@ use rustc_session::parse::CrateConfig;
 use rustc_session::CrateDisambiguator;
 use rustc_session::{config, early_error, filesearch, output, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMap};
+use rustc_span::source_map::{FileLoader, SourceMap};
 use rustc_span::symbol::{sym, Symbol};
 use smallvec::SmallVec;
 use std::env;
@@ -62,15 +62,13 @@ pub fn create_session(
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
     descriptions: Registry,
 ) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>, Lrc<SourceMap>) {
-    let loader = file_loader.unwrap_or(box RealFileLoader);
-    let source_map = Lrc::new(SourceMap::with_file_loader(loader, sopts.file_path_mapping()));
-    let mut sess = session::build_session_with_source_map(
+    let (mut sess, source_map) = session::build_session_with_source_map(
         sopts,
         input_path,
         descriptions,
-        source_map.clone(),
         diagnostic_output,
         lint_caps,
+        file_loader,
     );
 
     let codegen_backend = get_codegen_backend(&sess);
