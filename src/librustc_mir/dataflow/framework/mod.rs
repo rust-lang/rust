@@ -225,7 +225,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         block: BasicBlock,
         func: &mir::Operand<'tcx>,
         args: &[mir::Operand<'tcx>],
-        return_place: &mir::Place<'tcx>,
+        return_place: mir::Place<'tcx>,
     );
 
     /// Updates the current dataflow state with the effect of resuming from a `Yield` terminator.
@@ -238,7 +238,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         &self,
         _state: &mut BitSet<Self::Idx>,
         _resume_block: BasicBlock,
-        _resume_place: &mir::Place<'tcx>,
+        _resume_place: mir::Place<'tcx>,
     ) {
     }
 
@@ -251,7 +251,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         &self,
         _state: &mut BitSet<Self::Idx>,
         _block: BasicBlock,
-        _enum_place: &mir::Place<'tcx>,
+        _enum_place: mir::Place<'tcx>,
         _adt: &ty::AdtDef,
         _variant: VariantIdx,
     ) {
@@ -332,7 +332,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
         block: BasicBlock,
         func: &mir::Operand<'tcx>,
         args: &[mir::Operand<'tcx>],
-        return_place: &mir::Place<'tcx>,
+        return_place: mir::Place<'tcx>,
     );
 
     /// See `Analysis::apply_yield_resume_effect`.
@@ -340,7 +340,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
         &self,
         _trans: &mut BitSet<Self::Idx>,
         _resume_block: BasicBlock,
-        _resume_place: &mir::Place<'tcx>,
+        _resume_place: mir::Place<'tcx>,
     ) {
     }
 
@@ -349,7 +349,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
         &self,
         _state: &mut impl GenKill<Self::Idx>,
         _block: BasicBlock,
-        _enum_place: &mir::Place<'tcx>,
+        _enum_place: mir::Place<'tcx>,
         _adt: &ty::AdtDef,
         _variant: VariantIdx,
     ) {
@@ -402,7 +402,7 @@ where
         block: BasicBlock,
         func: &mir::Operand<'tcx>,
         args: &[mir::Operand<'tcx>],
-        return_place: &mir::Place<'tcx>,
+        return_place: mir::Place<'tcx>,
     ) {
         self.call_return_effect(state, block, func, args, return_place);
     }
@@ -411,7 +411,7 @@ where
         &self,
         state: &mut BitSet<Self::Idx>,
         resume_block: BasicBlock,
-        resume_place: &mir::Place<'tcx>,
+        resume_place: mir::Place<'tcx>,
     ) {
         self.yield_resume_effect(state, resume_block, resume_place);
     }
@@ -420,7 +420,7 @@ where
         &self,
         state: &mut BitSet<Self::Idx>,
         block: BasicBlock,
-        enum_place: &mir::Place<'tcx>,
+        enum_place: mir::Place<'tcx>,
         adt: &ty::AdtDef,
         variant: VariantIdx,
     ) {

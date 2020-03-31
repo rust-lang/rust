@@ -123,7 +123,7 @@ where
         _block: mir::BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        _dest_place: &mir::Place<'tcx>,
+        _dest_place: mir::Place<'tcx>,
     ) {
     }
 }

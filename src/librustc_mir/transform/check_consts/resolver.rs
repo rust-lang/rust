@@ -68,7 +68,7 @@ where
         _block: BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        return_place: &mir::Place<'tcx>,
+        return_place: mir::Place<'tcx>,
     ) {
         // We cannot reason about another function's internals, so use conservative type-based
         // qualification for the result of a function call.
@@ -76,7 +76,7 @@ where
         let qualif = Q::in_any_value_of_ty(self.item, return_ty);
 
         if !return_place.is_indirect() {
-            self.assign_qualif_direct(return_place, qualif);
+            self.assign_qualif_direct(&return_place, qualif);
         }
     }
 }
@@ -214,7 +214,7 @@ where
         block: BasicBlock,
         func: &mir::Operand<'tcx>,
         args: &[mir::Operand<'tcx>],
-        return_place: &mir::Place<'tcx>,
+        return_place: mir::Place<'tcx>,
     ) {
         self.transfer_function(state).apply_call_return_effect(block, func, args, return_place)
     }
