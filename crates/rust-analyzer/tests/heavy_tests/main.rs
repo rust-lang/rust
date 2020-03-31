@@ -9,7 +9,7 @@ use lsp_types::{
 };
 use rust_analyzer::req::{
     CodeActionParams, CodeActionRequest, Completion, CompletionParams, DidOpenTextDocument,
-    Formatting, OnEnter, Runnables, RunnablesParams,
+    Formatting, GotoDefinition, OnEnter, Runnables, RunnablesParams,
 };
 use serde_json::json;
 use tempfile::TempDir;
@@ -580,4 +580,48 @@ version = \"0.0.0\"
           }
         }),
     );
+}
+
+#[test]
+fn resolve_include_concat_env() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r###"
+//- Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- build.rs
+use std::{env, fs, path::Path};
+
+fn main() {
+    let out_dir = env::var_os("OUT_DIR").unwrap();
+    let dest_path = Path::new(&out_dir).join("hello.rs");
+    fs::write(
+        &dest_path,
+        r#"pub fn message() -> &'static str { "Hello, World!" }"#,
+    )
+    .unwrap();
+    println!("cargo:rerun-if-changed=build.rs");
+}
+//- src/main.rs
+include!(concat!(env!("OUT_DIR"), "/hello.rs"));
+
+fn main() { message(); }
+"###,
+    )
+    .with_config(|config| {
+        config.cargo_features.load_out_dirs_from_check = true;
+    })
+    .server();
+    server.wait_until_workspace_is_loaded();
+    let res = server.send_request::<GotoDefinition>(TextDocumentPositionParams::new(
+        server.doc_id("src/main.rs"),
+        Position::new(2, 15),
+    ));
+    assert!(format!("{}", res).contains("hello.rs"));
 }

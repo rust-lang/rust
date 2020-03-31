@@ -27,11 +27,12 @@ pub struct Project<'a> {
     with_sysroot: bool,
     tmp_dir: Option<TempDir>,
     roots: Vec<PathBuf>,
+    config: Option<Box<dyn Fn(&mut ServerConfig)>>,
 }
 
 impl<'a> Project<'a> {
     pub fn with_fixture(fixture: &str) -> Project {
-        Project { fixture, tmp_dir: None, roots: vec![], with_sysroot: false }
+        Project { fixture, tmp_dir: None, roots: vec![], with_sysroot: false, config: None }
     }
 
     pub fn tmp_dir(mut self, tmp_dir: TempDir) -> Project<'a> {
@@ -46,6 +47,11 @@ impl<'a> Project<'a> {
 
     pub fn with_sysroot(mut self, sysroot: bool) -> Project<'a> {
         self.with_sysroot = sysroot;
+        self
+    }
+
+    pub fn with_config(mut self, config: impl Fn(&mut ServerConfig) + 'static) -> Project<'a> {
+        self.config = Some(Box::new(config));
         self
     }
 
@@ -72,7 +78,14 @@ impl<'a> Project<'a> {
 
         let roots = self.roots.into_iter().map(|root| tmp_dir.path().join(root)).collect();
 
-        Server::new(tmp_dir, self.with_sysroot, roots, paths)
+        let mut config =
+            ServerConfig { with_sysroot: self.with_sysroot, ..ServerConfig::default() };
+
+        if let Some(f) = &self.config {
+            f(&mut config)
+        }
+
+        Server::new(tmp_dir, config, roots, paths)
     }
 }
 
@@ -92,7 +105,7 @@ pub struct Server {
 impl Server {
     fn new(
         dir: TempDir,
-        with_sysroot: bool,
+        config: ServerConfig,
         roots: Vec<PathBuf>,
         files: Vec<(PathBuf, String)>,
     ) -> Server {
@@ -118,7 +131,7 @@ impl Server {
                         window: None,
                         experimental: None,
                     },
-                    ServerConfig { with_sysroot, ..ServerConfig::default() },
+                    config,
                     connection,
                 )
                 .unwrap()
