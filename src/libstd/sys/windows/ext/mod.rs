@@ -16,6 +16,7 @@ pub mod io;
 pub mod process;
 pub mod raw;
 pub mod thread;
+pub mod time;
 
 /// A prelude for conveniently writing platform-specific code.
 ///
