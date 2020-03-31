@@ -383,7 +383,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (bx, OperandRef { val, layout: cast })
             }
 
-            mir::Rvalue::Ref(_, bk, ref place) => {
+            mir::Rvalue::Ref(_, bk, place) => {
                 let mk_ref = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
                     tcx.mk_ref(
                         tcx.lifetimes.re_erased,
@@ -393,7 +393,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_place_to_pointer(bx, place, mk_ref)
             }
 
-            mir::Rvalue::AddressOf(mutability, ref place) => {
+            mir::Rvalue::AddressOf(mutability, place) => {
                 let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
                     tcx.mk_ptr(ty::TypeAndMut { ty, mutbl: mutability })
                 };
@@ -557,7 +557,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn codegen_place_to_pointer(
         &mut self,
         mut bx: Bx,
-        place: &mir::Place<'tcx>,
+        place: mir::Place<'tcx>,
         mk_ptr_ty: impl FnOnce(TyCtxt<'tcx>, Ty<'tcx>) -> Ty<'tcx>,
     ) -> (Bx, OperandRef<'tcx, Bx::Value>) {
         let cg_place = self.codegen_place(&mut bx, place.as_ref());
