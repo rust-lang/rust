@@ -3,7 +3,7 @@
 
 use crate::ty::{self, Ty};
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_macros::HashStable;
 
 /// Types that are represented as ints.

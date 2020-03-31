@@ -1,4 +1,4 @@
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_middle::mir::interpret::{
     truncate, Allocation, ConstValue, LitToConstError, LitToConstInput, Scalar,
 };

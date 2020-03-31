@@ -1,7 +1,7 @@
 use crate::mbe::macro_parser;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, SequenceRepetition, TokenTree};
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream;
 use rustc_ast_pretty::pprust;

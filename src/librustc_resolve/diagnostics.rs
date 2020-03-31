@@ -2,8 +2,8 @@ use std::cmp::Reverse;
 use std::ptr;
 
 use log::debug;
-use rustc_ast::ast::{self, Ident, Path};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
+use rustc_ast::{self as ast, Ident, Path};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};

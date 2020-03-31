@@ -11,7 +11,7 @@ use crate::mir::interpret::ErrorHandled;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, List, Ty, TyCtxt};
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::{Span, DUMMY_SP};

@@ -2,11 +2,11 @@ use super::{AnonymousLifetimeMode, LoweringContext, ParamMode};
 use super::{ImplTraitContext, ImplTraitPosition, ImplTraitTypeIdVisitor};
 use crate::Arena;
 
-use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
+use rustc_ast::*;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};

@@ -18,7 +18,7 @@ use rustc_middle::ty::layout::{self, HasDataLayout, LayoutOf, Size, TyAndLayout}
 
 use libc::{c_char, c_uint};
 
-use rustc_ast::ast::Mutability;
+use rustc_ast::Mutability;
 use rustc_span::symbol::Symbol;
 
 pub use crate::context::CodegenCx;

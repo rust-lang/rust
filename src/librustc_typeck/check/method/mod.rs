@@ -11,7 +11,7 @@ pub use self::CandidateSource::*;
 pub use self::MethodError::*;
 
 use crate::check::FnCtxt;
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;

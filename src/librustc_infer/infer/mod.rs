@@ -8,7 +8,7 @@ pub use self::ValuePairs::*;
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;

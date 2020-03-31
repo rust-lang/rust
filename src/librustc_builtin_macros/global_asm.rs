@@ -8,7 +8,7 @@
 //! LLVM's `module asm "some assembly here"`. All of LLVM's caveats
 //! therefore apply.
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;

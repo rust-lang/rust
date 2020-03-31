@@ -13,15 +13,13 @@ use diagnostics::Error;
 use crate::lexer::UnmatchedBrace;
 
 use log::debug;
-use rustc_ast::ast::DUMMY_NODE_ID;
-use rustc_ast::ast::{self, AttrStyle, AttrVec, Const, CrateSugar, Extern, Ident, Unsafe};
-use rustc_ast::ast::{
-    Async, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind,
-};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use rustc_ast::util::comments::{doc_comment_style, strip_doc_comment_decoration};
+use rustc_ast::DUMMY_NODE_ID;
+use rustc_ast::{self as ast, AttrStyle, AttrVec, Const, CrateSugar, Extern, Ident, Unsafe};
+use rustc_ast::{Async, MacArgs, MacDelimiter, Mutability, StrLit, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_session::parse::ParseSess;

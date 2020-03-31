@@ -6,7 +6,7 @@
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
 use crate::late::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

@@ -3,7 +3,7 @@ use self::collector::NodeCollector;
 use crate::hir::{Owner, OwnerNodes};
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
-use rustc_ast::ast::{self, Name, NodeId};
+use rustc_ast::{self as ast, Name, NodeId};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};

@@ -1,11 +1,11 @@
 use crate::tests::{matches_codepattern, string_to_stream, with_error_checking_parse};
 
-use rustc_ast::ast::{self, Name, PatKind};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::visit;
 use rustc_ast::with_default_globals;
+use rustc_ast::{self as ast, Name, PatKind};
 use rustc_ast_pretty::pprust::item_to_string;
 use rustc_errors::PResult;
 use rustc_parse::new_parser_from_source_str;

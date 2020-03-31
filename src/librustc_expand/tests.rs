@@ -1,4 +1,4 @@
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::with_default_globals;
 use rustc_parse::{new_parser_from_source_str, parser::Parser, source_file_to_stream};

@@ -4,7 +4,7 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 
-use rustc_ast::ast::Mutability;
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;

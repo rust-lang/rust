@@ -3,7 +3,7 @@ use fmt_macros::{Parser, Piece, Position};
 use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc_middle::util::common::ErrorReported;
 
-use rustc_ast::ast::{MetaItem, NestedMetaItem};
+use rustc_ast::{MetaItem, NestedMetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::struct_span_err;

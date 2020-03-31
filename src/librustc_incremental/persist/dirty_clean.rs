@@ -13,7 +13,7 @@
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 
-use rustc_ast::ast::{self, Attribute, NestedMetaItem};
+use rustc_ast::{self as ast, Attribute, NestedMetaItem};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;

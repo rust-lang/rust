@@ -35,7 +35,7 @@ use super::FnCtxt;
 use crate::expr_use_visitor as euv;
 use crate::mem_categorization as mc;
 use crate::mem_categorization::PlaceBase;
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;

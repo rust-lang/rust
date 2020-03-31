@@ -37,7 +37,7 @@ pub mod util {
     pub mod parser;
 }
 
-pub mod ast;
+mod ast;
 pub mod attr;
 pub use attr::{with_default_globals, with_globals, GLOBALS};
 pub mod crate_disambiguator;
@@ -50,6 +50,7 @@ pub mod token;
 pub mod tokenstream;
 pub mod visit;
 
+pub use crate::ast::*;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.

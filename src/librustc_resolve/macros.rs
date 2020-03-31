@@ -6,7 +6,7 @@ use crate::Namespace::*;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy};
 use crate::{CrateLint, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
-use rustc_ast::ast::{self, Ident, NodeId};
+use rustc_ast::{self as ast, Ident, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, StabilityLevel};
 use rustc_data_structures::fx::FxHashSet;

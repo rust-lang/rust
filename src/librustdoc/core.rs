@@ -1,4 +1,4 @@
-use rustc_ast::ast::CRATE_NODE_ID;
+use rustc_ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_driver::abort_on_err;

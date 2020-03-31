@@ -2,7 +2,7 @@
 
 use std::iter::once;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};

@@ -1,5 +1,5 @@
 use crate::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_ast::ast;
+use rustc_ast as ast;
 
 declare_lint! {
     pub NON_ASCII_IDENTS,

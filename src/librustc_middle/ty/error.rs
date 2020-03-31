@@ -1,5 +1,5 @@
 use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;

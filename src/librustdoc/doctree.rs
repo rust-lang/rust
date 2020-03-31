@@ -2,8 +2,8 @@
 //! manner (and with prettier names) before cleaning.
 pub use self::StructType::*;
 
-use rustc_ast::ast;
-use rustc_ast::ast::Name;
+use rustc_ast as ast;
+use rustc_ast::Name;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{self, Span};
 

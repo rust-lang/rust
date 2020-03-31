@@ -1,5 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::{ast, attr};
+use rustc_ast::{self as ast, attr};
 use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::ExpansionConfig;
 use rustc_session::parse::ParseSess;

@@ -7,7 +7,7 @@ use std::fmt::{self, Write};
 use std::mem;
 use std::ops;
 
-use rustc_ast::ast::{LitKind, MetaItem, MetaItemKind, NestedMetaItem};
+use rustc_ast::{LitKind, MetaItem, MetaItemKind, NestedMetaItem};
 use rustc_feature::Features;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};

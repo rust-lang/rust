@@ -13,7 +13,7 @@ extern crate proc_macro;
 
 use crate::deriving::*;
 
-use rustc_ast::ast::Ident;
+use rustc_ast::Ident;
 use rustc_expand::base::{MacroExpanderFn, Resolver, SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
 use rustc_span::edition::Edition;

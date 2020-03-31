@@ -1,11 +1,11 @@
 // Code that generates a test runner to run all the tests in a crate
 
 use log::debug;
-use rustc_ast::ast::{self, Ident};
 use rustc_ast::attr;
 use rustc_ast::entry::{self, EntryPointType};
 use rustc_ast::mut_visit::{ExpectOne, *};
 use rustc_ast::ptr::P;
+use rustc_ast::{self as ast, Ident};
 use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;

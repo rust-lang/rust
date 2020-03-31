@@ -1,7 +1,7 @@
 //! The compiler code necessary to implement the `#[derive]` extensions.
 
-use rustc_ast::ast::{self, ItemKind, MetaItem};
 use rustc_ast::ptr::P;
+use rustc_ast::{self as ast, ItemKind, MetaItem};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;

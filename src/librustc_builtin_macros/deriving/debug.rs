@@ -2,9 +2,9 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-use rustc_ast::ast::{self, Ident};
-use rustc_ast::ast::{Expr, MetaItem};
 use rustc_ast::ptr::P;
+use rustc_ast::{self as ast, Ident};
+use rustc_ast::{Expr, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};

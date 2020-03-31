@@ -19,7 +19,7 @@ use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
-use rustc_ast::ast::Name;
+use rustc_ast::Name;
 
 // helper functions, broken out by category:
 mod simplify;

@@ -1,4 +1,4 @@
-use rustc_ast::ast::{self, Attribute, Ident, Mod};
+use rustc_ast::{self as ast, Attribute, Ident, Mod};
 use rustc_ast::{attr, token};
 use rustc_errors::{struct_span_err, PResult};
 use rustc_parse::new_parser_from_file;

@@ -6,12 +6,12 @@
 // This pass is supposed to perform only simple checks not requiring name resolution
 // or type checking or some other kind of complex analysis.
 
-use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::expand::is_proc_macro_attr;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::walk_list;
+use rustc_ast::*;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{error_code, struct_span_err, Applicability};

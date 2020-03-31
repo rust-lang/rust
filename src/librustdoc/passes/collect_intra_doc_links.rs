@@ -1,4 +1,4 @@
-use rustc_ast::ast::{self, Ident};
+use rustc_ast::{self as ast, Ident};
 use rustc_errors::Applicability;
 use rustc_expand::base::SyntaxExtensionKind;
 use rustc_feature::UnstableFeatures;
@@ -60,7 +60,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         &self,
         path_str: &str,
         current_item: &Option<String>,
-        module_id: rustc_ast::ast::NodeId,
+        module_id: rustc_ast::NodeId,
     ) -> Result<(Res, Option<String>), ErrorKind> {
         let cx = self.cx;
 
@@ -896,20 +896,20 @@ fn handle_variant(
 }
 
 const PRIMITIVES: &[(&str, Res)] = &[
-    ("u8", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::ast::UintTy::U8))),
-    ("u16", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::ast::UintTy::U16))),
-    ("u32", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::ast::UintTy::U32))),
-    ("u64", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::ast::UintTy::U64))),
-    ("u128", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::ast::UintTy::U128))),
-    ("usize", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::ast::UintTy::Usize))),
-    ("i8", Res::PrimTy(hir::PrimTy::Int(rustc_ast::ast::IntTy::I8))),
-    ("i16", Res::PrimTy(hir::PrimTy::Int(rustc_ast::ast::IntTy::I16))),
-    ("i32", Res::PrimTy(hir::PrimTy::Int(rustc_ast::ast::IntTy::I32))),
-    ("i64", Res::PrimTy(hir::PrimTy::Int(rustc_ast::ast::IntTy::I64))),
-    ("i128", Res::PrimTy(hir::PrimTy::Int(rustc_ast::ast::IntTy::I128))),
-    ("isize", Res::PrimTy(hir::PrimTy::Int(rustc_ast::ast::IntTy::Isize))),
-    ("f32", Res::PrimTy(hir::PrimTy::Float(rustc_ast::ast::FloatTy::F32))),
-    ("f64", Res::PrimTy(hir::PrimTy::Float(rustc_ast::ast::FloatTy::F64))),
+    ("u8", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U8))),
+    ("u16", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U16))),
+    ("u32", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U32))),
+    ("u64", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U64))),
+    ("u128", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U128))),
+    ("usize", Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::Usize))),
+    ("i8", Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I8))),
+    ("i16", Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I16))),
+    ("i32", Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I32))),
+    ("i64", Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I64))),
+    ("i128", Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I128))),
+    ("isize", Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::Isize))),
+    ("f32", Res::PrimTy(hir::PrimTy::Float(rustc_ast::FloatTy::F32))),
+    ("f64", Res::PrimTy(hir::PrimTy::Float(rustc_ast::FloatTy::F64))),
     ("str", Res::PrimTy(hir::PrimTy::Str)),
     ("bool", Res::PrimTy(hir::PrimTy::Bool)),
     ("char", Res::PrimTy(hir::PrimTy::Char)),

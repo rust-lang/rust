@@ -4,7 +4,7 @@ use crate::mir::{self, interpret};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
-use rustc_ast::ast::Ident;
+use rustc_ast::Ident;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, Once};

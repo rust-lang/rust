@@ -76,9 +76,9 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::mbe::{self, TokenTree};
 
-use rustc_ast::ast::Name;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DocComment, Nonterminal, Token};
+use rustc_ast::Name;
 use rustc_ast_pretty::pprust;
 use rustc_parse::parser::{FollowedByType, Parser, PathStyle};
 use rustc_session::parse::ParseSess;

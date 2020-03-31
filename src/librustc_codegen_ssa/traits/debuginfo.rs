@@ -1,6 +1,6 @@
 use super::BackendTypes;
 use crate::mir::debuginfo::{FunctionDebugContext, VariableKind};
-use rustc_ast::ast::Name;
+use rustc_ast::Name;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::Size;

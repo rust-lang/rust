@@ -31,7 +31,7 @@ use libc::c_uint;
 use log::debug;
 use std::cell::RefCell;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::ty::layout::{self, HasTyCtxt, LayoutOf, Size};
 use rustc_span::symbol::Symbol;

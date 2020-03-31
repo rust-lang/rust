@@ -3,7 +3,7 @@ use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::subst::Subst;
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 
-use rustc_ast::ast::{self, Ident, IntTy, UintTy};
+use rustc_ast::{self as ast, Ident, IntTy, UintTy};
 use rustc_attr as attr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;

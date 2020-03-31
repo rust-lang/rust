@@ -89,7 +89,7 @@ pub mod writeback;
 
 use crate::astconv::{AstConv, GenericArgCountMismatch, PathSeg};
 use crate::middle::lang_items;
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;

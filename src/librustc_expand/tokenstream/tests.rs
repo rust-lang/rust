@@ -1,9 +1,9 @@
 use crate::tests::string_to_stream;
 
-use rustc_ast::ast::Name;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{TokenStream, TokenStreamBuilder, TokenTree};
 use rustc_ast::with_default_globals;
+use rustc_ast::Name;
 use rustc_span::{BytePos, Span};
 use smallvec::smallvec;
 

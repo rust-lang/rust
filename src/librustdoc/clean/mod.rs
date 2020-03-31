@@ -9,7 +9,7 @@ mod simplify;
 pub mod types;
 pub mod utils;
 
-use rustc_ast::ast::{self, Ident};
+use rustc_ast::{self as ast, Ident};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;

@@ -1,7 +1,7 @@
 use super::{AnonymousLifetimeMode, ImplTraitContext, LoweringContext, ParamMode};
 use super::{GenericArgsCtor, ParenthesizedGenericArgs};
 
-use rustc_ast::ast::{self, *};
+use rustc_ast::{self as ast, *};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};

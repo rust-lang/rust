@@ -96,7 +96,7 @@
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

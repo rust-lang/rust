@@ -13,11 +13,11 @@
 //! DumpVisitor walks the AST and processes it, and Dumper is used for
 //! recording the output.
 
-use rustc_ast::ast::{self, Attribute, NodeId, PatKind};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::walk_list;
+use rustc_ast::{self as ast, Attribute, NodeId, PatKind};
 use rustc_ast_pretty::pprust::{bounds_to_string, generic_params_to_string, ty_to_string};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind as HirDefKind, Res};
@@ -1222,7 +1222,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 }
 
 impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
-    fn visit_mod(&mut self, m: &'l ast::Mod, span: Span, attrs: &[ast::Attribute], id: NodeId) {
+    fn visit_mod(&mut self, m: &'l ast::Mod, span: Span, attrs: &[Attribute], id: NodeId) {
         // Since we handle explicit modules ourselves in visit_item, this should
         // only get called for the root module of a crate.
         assert_eq!(id, ast::CRATE_NODE_ID);
@@ -1257,7 +1257,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &'l ast::Item) {
-        use rustc_ast::ast::ItemKind::*;
+        use rustc_ast::ItemKind::*;
         self.process_macro_use(item.span);
         match item.kind {
             Use(ref use_tree) => {

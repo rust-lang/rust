@@ -7,14 +7,14 @@ use crate::module::{parse_external_mod, push_directory, Directory, DirectoryOwne
 use crate::placeholders::{placeholder, PlaceholderExpander};
 use crate::proc_macro::collect_derives;
 
-use rustc_ast::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
-use rustc_ast::ast::{ItemKind, MacArgs, MacStmtStyle, StmtKind};
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::map_in_place::MapInPlace;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
+use rustc_ast::{self as ast, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
+use rustc_ast::{ItemKind, MacArgs, MacStmtStyle, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
 use rustc_errors::{Applicability, PResult};

@@ -1,13 +1,13 @@
 use super::ty::AllowPlus;
 use super::{BlockMode, Parser, PathStyle, SemiColonMode, SeqSep, TokenExpectType, TokenType};
 
-use rustc_ast::ast::{
-    self, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, Param,
-};
-use rustc_ast::ast::{AttrVec, ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
 use rustc_ast::util::parser::AssocOp;
+use rustc_ast::{
+    self as ast, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, Param,
+};
+use rustc_ast::{AttrVec, ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err};

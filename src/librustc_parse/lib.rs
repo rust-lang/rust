@@ -5,7 +5,7 @@
 #![feature(bindings_after_at)]
 #![feature(try_blocks)]
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
