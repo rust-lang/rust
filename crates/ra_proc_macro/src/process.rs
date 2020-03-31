@@ -29,7 +29,7 @@ pub(crate) struct ProcMacroProcessThread {
 
 struct Task {
     req: Request,
-    result_tx: Sender<Response>,
+    result_tx: Sender<Option<Response>>,
 }
 
 struct Process {
@@ -131,18 +131,21 @@ impl ProcMacroProcessSrv {
             Some(it) => it,
         };
         sender.send(Task { req: req.into(), result_tx }).unwrap();
+        let res = result_rx
+            .recv()
+            .map_err(|_| ra_tt::ExpansionError::Unknown("Proc macro thread is closed.".into()))?;
 
-        let res = result_rx.recv().unwrap();
         match res {
-            Response::Error(err) => {
+            Some(Response::Error(err)) => {
                 return Err(ra_tt::ExpansionError::ExpansionError(err.message));
             }
-            _ => Ok(res.try_into().map_err(|err| {
+            Some(res) => Ok(res.try_into().map_err(|err| {
                 ra_tt::ExpansionError::Unknown(format!(
                     "Fail to get response, reason : {:#?} ",
                     err
                 ))
             })?),
+            None => Err(ra_tt::ExpansionError::Unknown("Empty result".into())),
         }
     }
 }
@@ -156,8 +159,8 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
     for task in task_rx {
         let Task { req, result_tx } = task;
 
-        let res = match send_request(&mut stdin, &mut stdout, req) {
-            Ok(res) => res,
+        match send_request(&mut stdin, &mut stdout, req) {
+            Ok(res) => result_tx.send(res).unwrap(),
             Err(_err) => {
                 let res = Response::Error(ResponseError {
                     code: ErrorCode::ServerErrorEnd,
@@ -174,12 +177,7 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
                 };
                 stdin = stdio.0;
                 stdout = stdio.1;
-                continue;
             }
-        };
-
-        if let Some(res) = res {
-            result_tx.send(res).unwrap();
         }
     }
 }
