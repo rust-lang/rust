@@ -75,6 +75,7 @@ pub type Target = Idx<TargetData>;
 
 #[derive(Debug, Clone)]
 pub struct PackageData {
+    pub id: String,
     pub name: String,
     pub manifest: PathBuf,
     pub targets: Vec<Target>,
@@ -180,6 +181,7 @@ impl CargoWorkspace {
                 .with_context(|| format!("Failed to parse edition {}", edition))?;
             let pkg = packages.alloc(PackageData {
                 name,
+                id: id.to_string(),
                 manifest: manifest_path,
                 targets: Vec::new(),
                 is_member,
@@ -248,6 +250,18 @@ impl CargoWorkspace {
 
     pub fn workspace_root(&self) -> &Path {
         &self.workspace_root
+    }
+
+    pub fn package_flag(&self, package: &PackageData) -> String {
+        if self.is_unique(&*package.name) {
+            package.name.clone()
+        } else {
+            package.id.clone()
+        }
+    }
+
+    fn is_unique(&self, name: &str) -> bool {
+        self.packages.iter().filter(|(_, v)| v.name == name).count() == 1
     }
 }
 
