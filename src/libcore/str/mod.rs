@@ -2642,7 +2642,7 @@ impl str {
     /// # Panics
     ///
     /// Panics if `mid` is not on a UTF-8 code point boundary, or if it is
-    /// beyond the last code point of the string slice.
+    /// past the end of the last code point of the string slice.
     ///
     /// # Examples
     ///
@@ -2683,7 +2683,7 @@ impl str {
     /// # Panics
     ///
     /// Panics if `mid` is not on a UTF-8 code point boundary, or if it is
-    /// beyond the last code point of the string slice.
+    /// past the end of the last code point of the string slice.
     ///
     /// # Examples
     ///
