@@ -149,10 +149,21 @@ fn n_attached_trivias<'a>(
         MACRO_CALL | CONST_DEF | TYPE_ALIAS_DEF | STRUCT_DEF | ENUM_DEF | ENUM_VARIANT | FN_DEF
         | TRAIT_DEF | MODULE | RECORD_FIELD_DEF | STATIC_DEF => {
             let mut res = 0;
-            for (i, (kind, text)) in trivias.enumerate() {
+            let mut trivias = trivias.enumerate().peekable();
+
+            while let Some((i, (kind, text))) = trivias.next() {
                 match kind {
                     WHITESPACE => {
                         if text.contains("\n\n") {
+                            // we check whether the next token is a doc-comment
+                            // and skip the whitespace in this case
+                            if let Some((peek_kind, peek_text)) =
+                                trivias.peek().map(|(_, pair)| pair)
+                            {
+                                if *peek_kind == COMMENT && peek_text.starts_with("///") {
+                                    continue;
+                                }
+                            }
                             break;
                         }
                     }
