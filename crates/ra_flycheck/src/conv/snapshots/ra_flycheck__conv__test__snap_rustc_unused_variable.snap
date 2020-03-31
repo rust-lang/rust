@@ -1,5 +1,5 @@
 ---
-source: crates/ra_cargo_watch/src/conv/test.rs
+source: crates/ra_flycheck/src/conv/test.rs
 expression: diag
 ---
 [

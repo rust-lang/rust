@@ -21,7 +21,7 @@ use lsp_types::{
     WorkDoneProgressBegin, WorkDoneProgressCreateParams, WorkDoneProgressEnd,
     WorkDoneProgressReport,
 };
-use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckConfig, CheckTask};
+use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckConfig, CheckTask};
 use ra_ide::{Canceled, FileId, InlayHintsConfig, LibraryData, SourceRootId};
 use ra_prof::profile;
 use ra_vfs::{VfsFile, VfsTask, Watch};

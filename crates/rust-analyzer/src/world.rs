@@ -11,7 +11,7 @@ use std::{
 use crossbeam_channel::{unbounded, Receiver};
 use lsp_types::Url;
 use parking_lot::RwLock;
-use ra_cargo_watch::{url_from_path_with_drive_lowercasing, CheckConfig, CheckWatcher};
+use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckConfig, CheckWatcher};
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, InlayHintsConfig, LibraryData,
     SourceRootId,
