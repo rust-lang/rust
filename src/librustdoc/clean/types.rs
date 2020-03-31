@@ -19,11 +19,11 @@ use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::lang_items;
 use rustc_middle::middle::stability;
-use rustc_middle::ty::layout::VariantIdx;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, FileName};
+use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::cfg::Cfg;

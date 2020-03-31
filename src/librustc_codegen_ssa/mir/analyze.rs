@@ -12,7 +12,8 @@ use rustc_middle::mir::visit::{
 };
 use rustc_middle::mir::{self, Location, TerminatorKind};
 use rustc_middle::ty;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_target::abi::LayoutOf;
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,

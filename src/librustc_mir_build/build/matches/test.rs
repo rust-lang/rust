@@ -9,14 +9,14 @@ use crate::build::matches::{Candidate, MatchPair, Test, TestKind};
 use crate::build::Builder;
 use crate::hair::pattern::compare_const_vals;
 use crate::hair::*;
-use rustc_middle::mir::*;
-use rustc_middle::ty::layout::VariantIdx;
-use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, adjustment::PointerCast, Ty};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::RangeEnd;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::*;
+use rustc_middle::ty::util::IntTypeExt;
+use rustc_middle::ty::{self, adjustment::PointerCast, Ty};
 use rustc_span::symbol::sym;
+use rustc_target::abi::VariantIdx;
 
 use std::cmp::Ordering;
 

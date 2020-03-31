@@ -11,7 +11,7 @@
 macro_rules! arena_types {
     ($macro:path, $args:tt, $tcx:lifetime) => (
         $macro!($args, [
-            [] layouts: rustc_middle::ty::layout::Layout,
+            [] layouts: rustc_target::abi::Layout,
             [] generics: rustc_middle::ty::Generics,
             [] trait_def: rustc_middle::ty::TraitDef,
             [] adt_def: rustc_middle::ty::AdtDef,

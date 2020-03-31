@@ -8,10 +8,10 @@ use std::hash::Hash;
 use rustc_macros::HashStable;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::truncate;
-use rustc_middle::ty::layout::{
-    self, Align, HasDataLayout, LayoutOf, PrimitiveExt, Size, TyAndLayout, VariantIdx,
-};
+use rustc_middle::ty::layout::{PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
+use rustc_target::abi::{Abi, Align, DiscriminantKind, FieldsShape};
+use rustc_target::abi::{HasDataLayout, LayoutOf, Size, VariantIdx, Variants};
 
 use super::{
     AllocId, AllocMap, Allocation, AllocationExtra, ImmTy, Immediate, InterpCx, InterpResult,
@@ -219,7 +219,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
             // Go through the layout.  There are lots of types that support a length,
             // e.g., SIMD types.
             match self.layout.fields {
-                layout::FieldsShape::Array { count, .. } => Ok(count),
+                FieldsShape::Array { count, .. } => Ok(count),
                 _ => bug!("len not supported on sized type {:?}", self.layout.ty),
             }
         }
@@ -437,7 +437,7 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         // Not using the layout method because we want to compute on u64
         match base.layout.fields {
-            layout::FieldsShape::Array { stride, .. } => {
+            FieldsShape::Array { stride, .. } => {
                 let len = base.len(self)?;
                 if index >= len {
                     // This can only be reached in ConstProp and non-rustc-MIR.
@@ -463,7 +463,7 @@ where
     {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
         let stride = match base.layout.fields {
-            layout::FieldsShape::Array { stride, .. } => stride,
+            FieldsShape::Array { stride, .. } => stride,
             _ => bug!("mplace_array_fields: expected an array layout"),
         };
         let layout = base.layout.field(self, 0)?;
@@ -493,7 +493,7 @@ where
         // Not using layout method because that works with usize, and does not work with slices
         // (that have count 0 in their layout).
         let from_offset = match base.layout.fields {
-            layout::FieldsShape::Array { stride, .. } => stride * from, // `Size` multiplication is checked
+            FieldsShape::Array { stride, .. } => stride * from, // `Size` multiplication is checked
             _ => bug!("Unexpected layout of index access: {:#?}", base.layout),
         };
 
@@ -802,7 +802,7 @@ where
         match value {
             Immediate::Scalar(scalar) => {
                 match dest.layout.abi {
-                    layout::Abi::Scalar(_) => {} // fine
+                    Abi::Scalar(_) => {} // fine
                     _ => {
                         bug!("write_immediate_to_mplace: invalid Scalar layout: {:#?}", dest.layout)
                     }
@@ -819,7 +819,7 @@ where
                 // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
                 let (a, b) = match dest.layout.abi {
-                    layout::Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
+                    Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
                     _ => bug!(
                         "write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
                         dest.layout
@@ -1067,11 +1067,11 @@ where
         }
 
         match dest.layout.variants {
-            layout::Variants::Single { index } => {
+            Variants::Single { index } => {
                 assert_eq!(index, variant_index);
             }
-            layout::Variants::Multiple {
-                discr_kind: layout::DiscriminantKind::Tag,
+            Variants::Multiple {
+                discr_kind: DiscriminantKind::Tag,
                 discr: ref discr_layout,
                 discr_index,
                 ..
@@ -1091,9 +1091,9 @@ where
                 let discr_dest = self.place_field(dest, discr_index)?;
                 self.write_scalar(Scalar::from_uint(discr_val, size), discr_dest)?;
             }
-            layout::Variants::Multiple {
+            Variants::Multiple {
                 discr_kind:
-                    layout::DiscriminantKind::Niche { dataful_variant, ref niche_variants, niche_start },
+                    DiscriminantKind::Niche { dataful_variant, ref niche_variants, niche_start },
                 discr: ref discr_layout,
                 discr_index,
                 ..

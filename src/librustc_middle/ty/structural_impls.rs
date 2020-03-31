@@ -254,7 +254,7 @@ CloneTypeFoldableAndLiftImpls! {
     (),
     bool,
     usize,
-    crate::ty::layout::VariantIdx,
+    ::rustc_target::abi::VariantIdx,
     u64,
     String,
     crate::middle::region::Scope,

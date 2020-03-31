@@ -5,7 +5,7 @@ use crate::ModuleCodegen;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::util::common::ErrorReported;
@@ -14,6 +14,7 @@ use rustc_session::{
     Session,
 };
 use rustc_span::symbol::Symbol;
+use rustc_target::abi::LayoutOf;
 
 pub use rustc_data_structures::sync::MetadataRef;
 

@@ -2,7 +2,7 @@
 
 use crate::ich::NodeIdHashingMode;
 use crate::mir::interpret::{sign_extend, truncate};
-use crate::ty::layout::{Integer, IntegerExt, Size};
+use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use crate::ty::TyKind::*;
@@ -19,7 +19,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathData;
 use rustc_macros::HashStable;
 use rustc_span::Span;
-use rustc_target::abi::TargetDataLayout;
+use rustc_target::abi::{Integer, Size, TargetDataLayout};
 use smallvec::SmallVec;
 use std::{cmp, fmt};
 

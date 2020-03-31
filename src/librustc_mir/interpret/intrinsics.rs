@@ -11,10 +11,10 @@ use rustc_middle::mir::{
     BinOp,
 };
 use rustc_middle::ty;
-use rustc_middle::ty::layout::{LayoutOf, Primitive, Size};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_target::abi::{Abi, LayoutOf as _, Primitive, Size};
 
 use super::{ImmTy, InterpCx, Machine, OpTy, PlaceTy};
 
@@ -134,7 +134,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = self.read_scalar(args[0])?.not_undef()?;
                 let bits = self.force_bits(val, layout_of.size)?;
                 let kind = match layout_of.abi {
-                    ty::layout::Abi::Scalar(ref scalar) => scalar.value,
+                    Abi::Scalar(ref scalar) => scalar.value,
                     _ => bug!("{} called on invalid type {:?}", intrinsic_name, ty),
                 };
                 let (nonzero, intrinsic_name) = match intrinsic_name {

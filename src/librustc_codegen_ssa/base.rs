@@ -38,7 +38,7 @@ use rustc_middle::middle::cstore::{self, LinkagePreference};
 use rustc_middle::middle::lang_items;
 use rustc_middle::middle::lang_items::StartFnLangItem;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
-use rustc_middle::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyAndLayout, VariantIdx};
+use rustc_middle::ty::layout::{self, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
@@ -47,6 +47,7 @@ use rustc_session::config::{self, EntryFnType, Lto};
 use rustc_session::Session;
 use rustc_span::Span;
 use rustc_symbol_mangling::test as symbol_names_test;
+use rustc_target::abi::{Abi, Align, LayoutOf, Scalar, VariantIdx};
 
 use std::cmp;
 use std::ops::{Deref, DerefMut};
@@ -343,7 +344,7 @@ pub fn to_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     val: Bx::Value,
     layout: layout::TyAndLayout<'_>,
 ) -> Bx::Value {
-    if let layout::Abi::Scalar(ref scalar) = layout.abi {
+    if let Abi::Scalar(ref scalar) = layout.abi {
         return to_immediate_scalar(bx, val, scalar);
     }
     val
@@ -352,7 +353,7 @@ pub fn to_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn to_immediate_scalar<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     val: Bx::Value,
-    scalar: &layout::Scalar,
+    scalar: &Scalar,
 ) -> Bx::Value {
     if scalar.is_bool() {
         return bx.trunc(val, bx.cx().type_i1());
