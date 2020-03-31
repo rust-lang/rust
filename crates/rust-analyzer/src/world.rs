@@ -168,7 +168,7 @@ impl WorldState {
             vfs_file.map(|f| FileId(f.0))
         };
 
-        let proc_macro_client = match &options.proc_macro_srv {
+        let proc_macro_client = match &config.proc_macro_srv {
             None => ProcMacroClient::dummy(),
             Some(srv) => {
                 let path = Path::new(&srv);
