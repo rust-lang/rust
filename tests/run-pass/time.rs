@@ -20,7 +20,7 @@ fn main() {
     let now2 = Instant::now();
     assert!(now2 > now1);
 
-    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "linux")] // TODO: macOS does not support Instant subtraction
     {
         let diff = now2.duration_since(now1);
         assert!(diff.as_micros() > 0);
