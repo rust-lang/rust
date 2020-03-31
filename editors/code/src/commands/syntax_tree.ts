@@ -12,8 +12,8 @@ const AST_FILE_SCHEME = "rust-analyzer";
 export function syntaxTree(ctx: Ctx): Cmd {
     const tdcp = new TextDocumentContentProvider(ctx);
 
-    ctx.pushCleanup(new AstInspector);
-    ctx.pushCleanup(tdcp);
+    void new AstInspector(ctx);
+
     ctx.pushCleanup(vscode.workspace.registerTextDocumentContentProvider(AST_FILE_SCHEME, tdcp));
 
     return async () => {
@@ -35,17 +35,14 @@ export function syntaxTree(ctx: Ctx): Cmd {
     };
 }
 
-class TextDocumentContentProvider implements vscode.TextDocumentContentProvider, Disposable {
+class TextDocumentContentProvider implements vscode.TextDocumentContentProvider {
     readonly uri = vscode.Uri.parse('rust-analyzer://syntaxtree');
     readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
-    private readonly disposables: Disposable[] = [];
+
 
     constructor(private readonly ctx: Ctx) {
-        vscode.workspace.onDidChangeTextDocument(this.onDidChangeTextDocument, this, this.disposables);
-        vscode.window.onDidChangeActiveTextEditor(this.onDidChangeActiveTextEditor, this, this.disposables);
-    }
-    dispose() {
-        this.disposables.forEach(d => d.dispose());
+        vscode.workspace.onDidChangeTextDocument(this.onDidChangeTextDocument, this, ctx.subscriptions);
+        vscode.window.onDidChangeActiveTextEditor(this.onDidChangeActiveTextEditor, this, ctx.subscriptions);
     }
 
     private onDidChangeTextDocument(event: vscode.TextDocumentChangeEvent) {
@@ -88,16 +85,16 @@ class AstInspector implements vscode.HoverProvider, Disposable {
         border: "#ffffff 1px solid",
     });
     private rustEditor: undefined | RustEditor;
-    private readonly disposables: Disposable[] = [];
 
-    constructor() {
-        this.disposables.push(vscode.languages.registerHoverProvider({ scheme: AST_FILE_SCHEME }, this));
-        vscode.workspace.onDidCloseTextDocument(this.onDidCloseTextDocument, this, this.disposables);
-        vscode.window.onDidChangeVisibleTextEditors(this.onDidChangeVisibleTextEditors, this, this.disposables);
+    constructor(ctx: Ctx) {
+        ctx.pushCleanup(vscode.languages.registerHoverProvider({ scheme: AST_FILE_SCHEME }, this));
+        vscode.workspace.onDidCloseTextDocument(this.onDidCloseTextDocument, this, ctx.subscriptions);
+        vscode.window.onDidChangeVisibleTextEditors(this.onDidChangeVisibleTextEditors, this, ctx.subscriptions);
+
+        ctx.pushCleanup(this);
     }
     dispose() {
         this.setRustEditor(undefined);
-        this.disposables.forEach(d => d.dispose());
     }
 
     private onDidCloseTextDocument(doc: vscode.TextDocument) {
