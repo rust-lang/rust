@@ -1355,16 +1355,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let err = self.tcx.types.err;
         let expected = self.structurally_resolved_type(span, expected);
-        let (inner_ty, slice_ty, expected) = match expected.kind {
+        let (element_ty, slice_ty, inferred) = match expected.kind {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
-            ty::Array(inner_ty, len) => {
+            ty::Array(element_ty, len) => {
                 let min = before.len() as u64 + after.len() as u64;
-                let slice_ty = self
-                    .check_array_pat_len(span, slice, len, min)
-                    .map_or(err, |len| self.tcx.mk_array(inner_ty, len));
-                (inner_ty, slice_ty, expected)
+                let (slice_ty, expected) =
+                    self.check_array_pat_len(span, element_ty, expected, slice, len, min);
+                (element_ty, slice_ty, expected)
             }
-            ty::Slice(inner_ty) => (inner_ty, expected, expected),
+            ty::Slice(element_ty) => (element_ty, expected, expected),
             // The expected type must be an array or slice, but was neither, so error.
             _ => {
                 if !expected.references_error() {
@@ -1376,7 +1375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type check all the patterns before `slice`.
         for elt in before {
-            self.check_pat(&elt, inner_ty, def_bm, ti);
+            self.check_pat(&elt, element_ty, def_bm, ti);
         }
         // Type check the `slice`, if present, against its expected type.
         if let Some(slice) = slice {
@@ -1384,22 +1383,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         // Type check the elements after `slice`, if present.
         for elt in after {
-            self.check_pat(&elt, inner_ty, def_bm, ti);
+            self.check_pat(&elt, element_ty, def_bm, ti);
         }
-        expected
+        inferred
     }
 
     /// Type check the length of an array pattern.
     ///
-    /// Return the length of the variable length pattern,
-    /// if it exists and there are no errors.
+    /// Returns both the type of the variable length pattern
+    /// (or `tcx.err` in case there is none),
+    /// and the potentially inferred array type.
     fn check_array_pat_len(
         &self,
         span: Span,
+        element_ty: Ty<'tcx>,
+        arr_ty: Ty<'tcx>,
         slice: Option<&'tcx Pat<'tcx>>,
         len: &ty::Const<'tcx>,
         min_len: u64,
-    ) -> Option<u64> {
+    ) -> (Ty<'tcx>, Ty<'tcx>) {
         if let Some(len) = len.try_eval_usize(self.tcx, self.param_env) {
             // Now we know the length...
             if slice.is_none() {
@@ -1409,21 +1411,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if min_len != len {
                     self.error_scrutinee_inconsistent_length(span, min_len, len);
                 }
-            } else if let r @ Some(_) = len.checked_sub(min_len) {
+            } else if let Some(pat_len) = len.checked_sub(min_len) {
                 // The variable-length pattern was there,
                 // so it has an array type with the remaining elements left as its size...
-                return r;
+                return (self.tcx.mk_array(element_ty, pat_len), arr_ty);
             } else {
                 // ...however, in this case, there were no remaining elements.
                 // That is, the slice pattern requires more than the array type offers.
                 self.error_scrutinee_with_rest_inconsistent_length(span, min_len, len);
             }
+        } else if slice.is_none() {
+            // We have a pattern with a fixed length,
+            // which we can use to infer the length of the array.
+            let updated_arr_ty = self.tcx.mk_array(element_ty, min_len);
+            self.demand_eqtype(span, updated_arr_ty, arr_ty);
+            return (self.tcx.types.err, updated_arr_ty);
         } else {
-            // No idea what the length is, which happens if we have e.g.,
-            // `let [a, b] = arr` where `arr: [T; N]` where `const N: usize`.
+            // We have a variable-length pattern and don't know the array length.
+            // This happens if we have e.g.,
+            // `let [a, b, ..] = arr` where `arr: [T; N]` where `const N: usize`.
             self.error_scrutinee_unfixed_length(span);
         }
-        None
+        (self.tcx.types.err, arr_ty)
     }
 
     fn error_scrutinee_inconsistent_length(&self, span: Span, min_len: u64, size: u64) {
