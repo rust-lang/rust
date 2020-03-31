@@ -3,6 +3,7 @@ use crate::util::patch::MirPatch;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_target::spec::PanicStrategy;
 
 /// A pass that removes noop landing pads and replaces jumps to them with
 /// `None`. This is important because otherwise LLVM generates terrible
@@ -10,7 +11,7 @@ use rustc_middle::ty::TyCtxt;
 pub struct RemoveNoopLandingPads;
 
 pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    if tcx.sess.no_landing_pads() {
+    if tcx.sess.panic_strategy() == PanicStrategy::Abort {
         return;
     }
     debug!("remove_noop_landing_pads({:?})", body);

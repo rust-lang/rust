@@ -22,6 +22,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use rustc_target::abi::{self, HasDataLayout, LayoutOf, Primitive};
+use rustc_target::spec::PanicStrategy;
 
 use std::cmp::Ordering;
 use std::iter;
@@ -804,7 +805,7 @@ fn try_intrinsic(
     catch_func: &'ll Value,
     dest: &'ll Value,
 ) {
-    if bx.sess().no_landing_pads() {
+    if bx.sess().panic_strategy() == PanicStrategy::Abort {
         bx.call(try_func, &[data], None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.

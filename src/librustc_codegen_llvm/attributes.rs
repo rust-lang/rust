@@ -13,6 +13,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{OptLevel, Sanitizer};
 use rustc_session::Session;
+use rustc_target::spec::PanicStrategy;
 
 use crate::attributes;
 use crate::llvm::AttributePlace::Function;
@@ -270,7 +271,9 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     //
     // You can also find more info on why Windows is whitelisted here in:
     //      https://bugzilla.mozilla.org/show_bug.cgi?id=1302078
-    if !cx.sess().no_landing_pads() || cx.sess().target.target.options.requires_uwtable {
+    if cx.sess().panic_strategy() == PanicStrategy::Unwind
+        || cx.sess().target.target.options.requires_uwtable
+    {
         attributes::emit_uwtable(llfn, true);
     }
 
