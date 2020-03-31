@@ -1,12 +1,11 @@
 use ra_syntax::{
     ast::{self, AstNode},
-    SmolStr, SyntaxKind, SyntaxNode, TextUnit,
+    SyntaxKind, SyntaxNode, TextUnit,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
-use ast::{ArgListOwner, CallExpr, Expr};
+use ast::{edit::IndentLevel, ArgListOwner, CallExpr, Expr};
 use hir::HirDisplay;
-use ra_fmt::leading_indent;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 // Assist: add_function
@@ -53,73 +52,62 @@ pub(crate) fn add_function(ctx: AssistCtx) -> Option<Assist> {
     ctx.add_assist(AssistId("add_function"), "Add function", |edit| {
         edit.target(call.syntax().text_range());
 
-        let function_template = function_builder.render();
-        edit.set_cursor(function_template.cursor_offset);
-        edit.insert(function_template.insert_offset, function_template.fn_text);
+        if let Some(function_template) = function_builder.render() {
+            edit.set_cursor(function_template.cursor_offset);
+            edit.insert(function_template.insert_offset, function_template.fn_def.to_string());
+        }
     })
 }
 
 struct FunctionTemplate {
     insert_offset: TextUnit,
     cursor_offset: TextUnit,
-    fn_text: String,
+    fn_def: ast::SourceFile,
 }
 
 struct FunctionBuilder {
-    start_offset: TextUnit,
-    fn_name: String,
-    fn_generics: String,
-    fn_args: String,
-    indent: String,
+    append_fn_at: SyntaxNode,
+    fn_name: ast::Name,
+    type_params: Option<ast::TypeParamList>,
+    params: ast::ParamList,
 }
 
 impl FunctionBuilder {
     fn from_call(ctx: &AssistCtx, call: &ast::CallExpr) -> Option<Self> {
-        let (start, indent) = next_space_for_fn(&call)?;
+        let append_fn_at = next_space_for_fn(&call)?;
         let fn_name = fn_name(&call)?;
-        let fn_generics = fn_generics(&call)?;
-        let fn_args = fn_args(ctx, &call)?;
-        let indent = if let Some(i) = &indent { i.to_string() } else { String::new() };
-        Some(Self { start_offset: start, fn_name, fn_generics, fn_args, indent })
+        let (type_params, params) = fn_args(ctx, &call)?;
+        Some(Self { append_fn_at, fn_name, type_params, params })
     }
-    fn render(&self) -> FunctionTemplate {
-        let mut fn_buf = String::with_capacity(128);
-        fn_buf.push_str("\n\n");
-        fn_buf.push_str(&self.indent);
-        fn_buf.push_str("fn ");
-        fn_buf.push_str(&self.fn_name);
-        fn_buf.push_str(&self.fn_generics);
-        fn_buf.push_str(&self.fn_args);
-        fn_buf.push_str(" {\n");
-        fn_buf.push_str(&self.indent);
-        fn_buf.push_str("    ");
-
-        // We take the offset here to put the cursor in front of the `unimplemented!()` body
-        let offset = TextUnit::of_str(&fn_buf);
-
-        fn_buf.push_str("unimplemented!()\n");
-        fn_buf.push_str(&self.indent);
-        fn_buf.push_str("}");
-
-        let cursor_pos = self.start_offset + offset;
-        FunctionTemplate {
-            fn_text: fn_buf,
-            cursor_offset: cursor_pos,
-            insert_offset: self.start_offset,
-        }
+    fn render(self) -> Option<FunctionTemplate> {
+        let placeholder_expr = ast::make::expr_unimplemented();
+        let fn_body = ast::make::block_expr(vec![], Some(placeholder_expr));
+        let fn_def = ast::make::fn_def(self.fn_name, self.type_params, self.params, fn_body);
+        let fn_def = ast::make::add_newlines(2, fn_def);
+        let fn_def = IndentLevel::from_node(&self.append_fn_at).increase_indent(fn_def);
+        let insert_offset = self.append_fn_at.text_range().end();
+        let cursor_offset_from_fn_start = fn_def
+            .syntax()
+            .descendants()
+            .find_map(ast::MacroCall::cast)?
+            .syntax()
+            .text_range()
+            .start();
+        let cursor_offset = insert_offset + cursor_offset_from_fn_start;
+        Some(FunctionTemplate { insert_offset, cursor_offset, fn_def })
     }
 }
 
-fn fn_name(call: &CallExpr) -> Option<String> {
-    Some(call.expr()?.syntax().to_string())
+fn fn_name(call: &CallExpr) -> Option<ast::Name> {
+    let name = call.expr()?.syntax().to_string();
+    Some(ast::make::name(&name))
 }
 
-fn fn_generics(_call: &CallExpr) -> Option<String> {
-    // TODO
-    Some("".into())
-}
-
-fn fn_args(ctx: &AssistCtx, call: &CallExpr) -> Option<String> {
+/// Computes the type variables and arguments required for the generated function
+fn fn_args(
+    ctx: &AssistCtx,
+    call: &CallExpr,
+) -> Option<(Option<ast::TypeParamList>, ast::ParamList)> {
     let mut arg_names = Vec::new();
     let mut arg_types = Vec::new();
     for arg in call.arg_list()?.args() {
@@ -134,15 +122,8 @@ fn fn_args(ctx: &AssistCtx, call: &CallExpr) -> Option<String> {
         });
     }
     deduplicate_arg_names(&mut arg_names);
-    Some(format!(
-        "({})",
-        arg_names
-            .into_iter()
-            .zip(arg_types)
-            .map(|(name, ty)| format!("{}: {}", name, ty))
-            .collect::<Vec<_>>()
-            .join(", ")
-    ))
+    let params = arg_names.into_iter().zip(arg_types).map(|(name, ty)| ast::make::param(name, ty));
+    Some((None, ast::make::param_list(params)))
 }
 
 /// Makes duplicate argument names unique by appending incrementing numbers.
@@ -203,7 +184,7 @@ fn fn_arg_type(ctx: &AssistCtx, fn_arg: &Expr) -> Option<String> {
 /// directly after the current block
 /// We want to write the generated function directly after
 /// fns, impls or macro calls, but inside mods
-fn next_space_for_fn(expr: &CallExpr) -> Option<(TextUnit, Option<SmolStr>)> {
+fn next_space_for_fn(expr: &CallExpr) -> Option<SyntaxNode> {
     let mut ancestors = expr.syntax().ancestors().peekable();
     let mut last_ancestor: Option<SyntaxNode> = None;
     while let Some(next_ancestor) = ancestors.next() {
@@ -220,7 +201,7 @@ fn next_space_for_fn(expr: &CallExpr) -> Option<(TextUnit, Option<SmolStr>)> {
         }
         last_ancestor = Some(next_ancestor);
     }
-    last_ancestor.map(|a| (a.text_range().end(), leading_indent(&a)))
+    last_ancestor
 }
 
 #[cfg(test)]

@@ -269,6 +269,31 @@ pub fn unreachable_macro_call() -> ast::MacroCall {
     ast_from_text(&format!("unreachable!()"))
 }
 
+pub fn param(name: String, ty: String) -> ast::Param {
+    ast_from_text(&format!("fn f({}: {}) {{ }}", name, ty))
+}
+
+pub fn param_list(pats: impl IntoIterator<Item = ast::Param>) -> ast::ParamList {
+    let args = pats.into_iter().join(", ");
+    ast_from_text(&format!("fn f({}) {{ }}", args))
+}
+
+pub fn fn_def(
+    fn_name: ast::Name,
+    type_params: Option<ast::TypeParamList>,
+    params: ast::ParamList,
+    body: ast::BlockExpr,
+) -> ast::FnDef {
+    let type_params =
+        if let Some(type_params) = type_params { format!("<{}>", type_params) } else { "".into() };
+    ast_from_text(&format!("fn {}{}{} {}", fn_name, type_params, params, body))
+}
+
+pub fn add_newlines(amount_of_newlines: usize, t: impl AstNode) -> ast::SourceFile {
+    let newlines = "\n".repeat(amount_of_newlines);
+    ast_from_text(&format!("{}{}", newlines, t.syntax()))
+}
+
 fn ast_from_text<N: AstNode>(text: &str) -> N {
     let parse = SourceFile::parse(text);
     let node = parse.tree().syntax().descendants().find_map(N::cast).unwrap();
