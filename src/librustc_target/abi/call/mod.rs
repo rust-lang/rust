@@ -308,13 +308,16 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             }
 
             Abi::ScalarPair(..) | Abi::Aggregate { .. } => {
-                // Helper for computing `homogenous_aggregate`, allowing a custom
+                // Helper for computing `homogeneous_aggregate`, allowing a custom
                 // starting offset (used below for handling variants).
                 let from_fields_at =
                     |layout: Self,
                      start: Size|
                      -> Result<(HomogeneousAggregate, Size), Heterogeneous> {
                         let is_union = match layout.fields {
+                            FieldsShape::Primitive => {
+                                unreachable!("aggregates can't have `FieldsShape::Primitive`")
+                            }
                             FieldsShape::Array { count, .. } => {
                                 assert_eq!(start, Size::ZERO);
 

@@ -77,17 +77,15 @@ where
     Ty: TyAndLayoutMethods<'a, C> + Copy,
     C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
-    if !arg.layout.is_aggregate() {
-        extend_integer_width_mips(arg, 64);
-        return;
-    }
-
-    let dl = cx.data_layout();
     let size = arg.layout.size;
     let mut prefix = [None; 8];
     let mut prefix_index = 0;
 
     match arg.layout.fields {
+        abi::FieldsShape::Primitive => {
+            extend_integer_width_mips(arg, 64);
+            return;
+        }
         abi::FieldsShape::Array { .. } => {
             // Arrays are passed indirectly
             arg.make_indirect();
@@ -100,6 +98,7 @@ where
             // Structures are split up into a series of 64-bit integer chunks, but any aligned
             // doubles not part of another aggregate are passed as floats.
             let mut last_offset = Size::ZERO;
+            let dl = cx.data_layout();
 
             for i in 0..arg.layout.fields.count() {
                 let field = arg.layout.field(cx, i);

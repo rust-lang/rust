@@ -6,6 +6,8 @@ use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_target::abi::{FieldsShape, VariantIdx, Variants};
 
+use std::num::NonZeroUsize;
+
 use super::{InterpCx, MPlaceTy, Machine, OpTy};
 
 // A thing that we can project into, and that has a layout.
@@ -130,7 +132,7 @@ macro_rules! make_value_visitor {
             }
             /// Visits the given value as a union. No automatic recursion can happen here.
             #[inline(always)]
-            fn visit_union(&mut self, _v: Self::V, _fields: usize) -> InterpResult<'tcx>
+            fn visit_union(&mut self, _v: Self::V, _fields: NonZeroUsize) -> InterpResult<'tcx>
             {
                 Ok(())
             }
@@ -208,6 +210,7 @@ macro_rules! make_value_visitor {
 
                 // Visit the fields of this value.
                 match v.layout().fields {
+                    FieldsShape::Primitive => {},
                     FieldsShape::Union(fields) => {
                         self.visit_union(v, fields)?;
                     },

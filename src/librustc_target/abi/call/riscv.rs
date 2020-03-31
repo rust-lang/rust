@@ -87,6 +87,9 @@ where
         },
         Abi::Vector { .. } | Abi::Uninhabited => return Err(CannotUseFpConv),
         Abi::ScalarPair(..) | Abi::Aggregate { .. } => match arg_layout.fields {
+            FieldsShape::Primitive => {
+                unreachable!("aggregates can't have `FieldsShape::Primitive`")
+            }
             FieldsShape::Union(_) => {
                 if !arg_layout.is_zst() {
                     return Err(CannotUseFpConv);
