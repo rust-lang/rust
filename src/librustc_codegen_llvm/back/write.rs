@@ -14,7 +14,7 @@ use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
 use log::debug;
-use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
+use rustc_codegen_ssa::back::write::{CodegenContext, EmitObj, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, RLIB_BYTECODE_EXTENSION};
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -662,12 +662,12 @@ pub(crate) unsafe fn codegen(
                 }
             }
 
-            if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
+            if config.emit_obj == (EmitObj::ObjectCode { bitcode_section: true }) {
                 let _timer = cgcx.prof.generic_activity_with_arg(
                     "LLVM_module_codegen_embed_bitcode",
                     &module.name[..],
                 );
-                embed_bitcode(cgcx, llcx, llmod, Some(data));
+                embed_bitcode(cgcx, llcx, llmod, data);
             }
 
             if config.emit_bc_compressed {
@@ -682,8 +682,6 @@ pub(crate) unsafe fn codegen(
                     diag_handler.err(&msg);
                 }
             }
-        } else if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Marker) {
-            embed_bitcode(cgcx, llcx, llmod, None);
         }
 
         if config.emit_ir {
@@ -742,7 +740,7 @@ pub(crate) unsafe fn codegen(
             // because that triggers various errors like invalid IR or broken
             // binaries. So we must clone the module to produce the asm output
             // if we are also producing object code.
-            let llmod = if let EmitObj::ObjectCode(_) = config.emit_obj {
+            let llmod = if let EmitObj::ObjectCode { .. } = config.emit_obj {
                 llvm::LLVMCloneModule(llmod)
             } else {
                 llmod
@@ -753,7 +751,7 @@ pub(crate) unsafe fn codegen(
         }
 
         match config.emit_obj {
-            EmitObj::ObjectCode(_) => {
+            EmitObj::ObjectCode { .. } => {
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
@@ -799,29 +797,25 @@ pub(crate) unsafe fn codegen(
 
 /// Embed the bitcode of an LLVM module in the LLVM module itself.
 ///
-/// This is done primarily for iOS where it appears to be standard to compile C
-/// code at least with `-fembed-bitcode` which creates two sections in the
-/// executable:
+/// This is much like compiling C code with `-fembed-bitcode` which creates two
+/// sections in the executable:
 ///
 /// * __LLVM,__bitcode
 /// * __LLVM,__cmdline
 ///
-/// It appears *both* of these sections are necessary to get the linker to
-/// recognize what's going on. For us though we just always throw in an empty
-/// cmdline section.
+/// On iOS it appears *both* of these sections are necessary to get the linker
+/// to recognize what's going on. For us though we just always throw in an
+/// empty cmdline section.
 ///
-/// Furthermore debug/O1 builds don't actually embed bitcode but rather just
-/// embed an empty section.
-///
-/// Basically all of this is us attempting to follow in the footsteps of clang
-/// on iOS. See #35968 for lots more info.
+/// This started with us attempting to follow in the footsteps of clang on iOS
+/// (see #35968 for lots more info) but it is now used for all targets.
 unsafe fn embed_bitcode(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     llcx: &llvm::Context,
     llmod: &llvm::Module,
-    bitcode: Option<&[u8]>,
+    bitcode: &[u8],
 ) {
-    let llconst = common::bytes_in_context(llcx, bitcode.unwrap_or(&[]));
+    let llconst = common::bytes_in_context(llcx, bitcode);
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
         common::val_ty(llconst),

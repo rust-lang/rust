@@ -61,21 +61,7 @@ pub enum EmitObj {
     Bitcode,
 
     // Object code, possibly augmented with a bitcode section.
-    ObjectCode(BitcodeSection),
-}
-
-/// What kind of llvm bitcode section to embed in an object file.
-#[derive(Clone, Copy, PartialEq)]
-pub enum BitcodeSection {
-    // No bitcode section.
-    None,
-
-    // An empty bitcode section (to placate tools such as the iOS linker that
-    // require this section even if they don't use it).
-    Marker,
-
-    // A full, uncompressed bitcode section.
-    Full,
+    ObjectCode { bitcode_section: bool },
 }
 
 /// Module-specific configuration for `optimize_and_codegen`.
@@ -146,14 +132,9 @@ impl ModuleConfig {
         {
             EmitObj::Bitcode
         } else if sess.opts.debugging_opts.embed_bitcode {
-            match sess.opts.optimize {
-                config::OptLevel::No | config::OptLevel::Less => {
-                    EmitObj::ObjectCode(BitcodeSection::Marker)
-                }
-                _ => EmitObj::ObjectCode(BitcodeSection::Full),
-            }
+            EmitObj::ObjectCode { bitcode_section: true }
         } else {
-            EmitObj::ObjectCode(BitcodeSection::None)
+            EmitObj::ObjectCode { bitcode_section: false }
         };
 
         ModuleConfig {
@@ -263,7 +244,7 @@ impl ModuleConfig {
         self.emit_bc
             || self.emit_bc_compressed
             || self.emit_obj == EmitObj::Bitcode
-            || self.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full)
+            || self.emit_obj == EmitObj::ObjectCode { bitcode_section: true }
     }
 }
 
