@@ -10,6 +10,7 @@
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 pub use rustc_hir::def::{Namespace, PerNS};

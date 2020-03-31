@@ -1536,20 +1536,18 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
 
         match res {
-            Res::Def(DefKind::Ctor(_, CtorKind::Const), _)
-            | Res::Def(DefKind::Const, _)
-            | Res::Def(DefKind::ConstParam, _)
-                if is_syntactic_ambiguity =>
-            {
+            Res::SelfCtor(_) // See #70549.
+            | Res::Def(
+                DefKind::Ctor(_, CtorKind::Const) | DefKind::Const | DefKind::ConstParam,
+                _,
+            ) if is_syntactic_ambiguity => {
                 // Disambiguate in favor of a unit struct/variant or constant pattern.
                 if let Some(binding) = binding {
                     self.r.record_use(ident, ValueNS, binding, false);
                 }
                 Some(res)
             }
-            Res::Def(DefKind::Ctor(..), _)
-            | Res::Def(DefKind::Const, _)
-            | Res::Def(DefKind::Static, _) => {
+            Res::Def(DefKind::Ctor(..) | DefKind::Const | DefKind::Static, _) => {
                 // This is unambiguously a fresh binding, either syntactically
                 // (e.g., `IDENT @ PAT` or `ref IDENT`) or because `IDENT` resolves
                 // to something unusable as a pattern (e.g., constructor function),
@@ -1572,7 +1570,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             _ => span_bug!(
                 ident.span,
                 "unexpected resolution for an identifier in pattern: {:?}",
-                res
+                res,
             ),
         }
     }
