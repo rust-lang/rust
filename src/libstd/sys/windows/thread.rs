@@ -4,7 +4,7 @@ use crate::mem;
 use crate::ptr;
 use crate::sys::c;
 use crate::sys::handle::Handle;
-use crate::sys_common::thread::*;
+use crate::sys::stack_overflow;
 use crate::time::Duration;
 
 use libc::c_void;
@@ -50,7 +50,11 @@ impl Thread {
 
         extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {
             unsafe {
-                start_thread(main as *mut u8);
+                // Next, set up our stack overflow handler which may get triggered if we run
+                // out of stack.
+                let _handler = stack_overflow::Handler::new();
+                // Finally, let's run some code.
+                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
             }
             0
         }

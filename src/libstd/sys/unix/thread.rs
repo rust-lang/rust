@@ -3,10 +3,8 @@ use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
 use crate::ptr;
-use crate::sys::os;
+use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
-
-use crate::sys_common::thread::*;
 
 #[cfg(not(target_os = "l4re"))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
@@ -84,7 +82,11 @@ impl Thread {
 
         extern "C" fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
             unsafe {
-                start_thread(main as *mut u8);
+                // Next, set up our stack overflow handler which may get triggered if we run
+                // out of stack.
+                let _handler = stack_overflow::Handler::new();
+                // Finally, let's run some code.
+                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
             }
             ptr::null_mut()
         }
