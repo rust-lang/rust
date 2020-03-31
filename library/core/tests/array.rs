@@ -378,7 +378,11 @@ fn cell_allows_array_cycle() {
 #[test]
 fn array_collects() {
     let v = vec![1, 2, 3, 4, 5];
-    let a: [i32; 5] = v.clone().into_iter().collect().unwrap();
+    let a: [i32; 5] = v
+        .clone()
+        .into_iter()
+        .collect::<Result<[i32; 5], core::array::FillError<i32, 5>>>()
+        .unwrap();
 
     assert_eq!(v[..], a[..]);
 }
