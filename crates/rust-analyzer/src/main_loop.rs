@@ -109,6 +109,7 @@ fn get_config(
         },
         rustfmt_args: config.rustfmt_args.clone(),
         vscode_lldb: config.vscode_lldb,
+        proc_macro_srv: None, // FIXME: get this from config
     }
 }
 

@@ -58,6 +58,7 @@ pub struct Config {
     pub rustfmt_args: Vec<String>,
     pub check: CheckConfig,
     pub vscode_lldb: bool,
+    pub proc_macro_srv: Option<String>,
 }
 
 /// `WorldState` is the primary mutable state of the language server
@@ -167,8 +168,23 @@ impl WorldState {
             vfs_file.map(|f| FileId(f.0))
         };
 
-        let proc_macro_client =
-            ProcMacroClient::extern_process(std::path::Path::new("ra_proc_macro_srv"));
+        let proc_macro_client = match &config.proc_macro_srv {
+            None => ProcMacroClient::dummy(),
+            Some(srv) => {
+                let path = Path::new(&srv);
+                match ProcMacroClient::extern_process(path) {
+                    Ok(it) => it,
+                    Err(err) => {
+                        log::error!(
+                            "Fail to run ra_proc_macro_srv from path {}, error : {}",
+                            path.to_string_lossy(),
+                            err
+                        );
+                        ProcMacroClient::dummy()
+                    }
+                }
+            }
+        };
 
         workspaces
             .iter()
