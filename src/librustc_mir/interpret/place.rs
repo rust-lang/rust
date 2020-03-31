@@ -219,7 +219,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
             // Go through the layout.  There are lots of types that support a length,
             // e.g., SIMD types.
             match self.layout.fields {
-                layout::FieldPlacement::Array { count, .. } => Ok(count),
+                layout::FieldsShape::Array { count, .. } => Ok(count),
                 _ => bug!("len not supported on sized type {:?}", self.layout.ty),
             }
         }
@@ -437,7 +437,7 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         // Not using the layout method because we want to compute on u64
         match base.layout.fields {
-            layout::FieldPlacement::Array { stride, .. } => {
+            layout::FieldsShape::Array { stride, .. } => {
                 let len = base.len(self)?;
                 if index >= len {
                     // This can only be reached in ConstProp and non-rustc-MIR.
@@ -463,7 +463,7 @@ where
     {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
         let stride = match base.layout.fields {
-            layout::FieldPlacement::Array { stride, .. } => stride,
+            layout::FieldsShape::Array { stride, .. } => stride,
             _ => bug!("mplace_array_fields: expected an array layout"),
         };
         let layout = base.layout.field(self, 0)?;
@@ -493,7 +493,7 @@ where
         // Not using layout method because that works with usize, and does not work with slices
         // (that have count 0 in their layout).
         let from_offset = match base.layout.fields {
-            layout::FieldPlacement::Array { stride, .. } => stride * from, // `Size` multiplication is checked
+            layout::FieldsShape::Array { stride, .. } => stride * from, // `Size` multiplication is checked
             _ => bug!("Unexpected layout of index access: {:#?}", base.layout),
         };
 

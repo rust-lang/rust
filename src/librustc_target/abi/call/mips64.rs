@@ -49,7 +49,7 @@ where
         // use of float registers to structures (not unions) containing exactly one or two
         // float fields.
 
-        if let abi::FieldPlacement::Arbitrary { .. } = ret.layout.fields {
+        if let abi::FieldsShape::Arbitrary { .. } = ret.layout.fields {
             if ret.layout.fields.count() == 1 {
                 if let Some(reg) = float_reg(cx, ret, 0) {
                     ret.cast_to(reg);
@@ -88,15 +88,15 @@ where
     let mut prefix_index = 0;
 
     match arg.layout.fields {
-        abi::FieldPlacement::Array { .. } => {
+        abi::FieldsShape::Array { .. } => {
             // Arrays are passed indirectly
             arg.make_indirect();
             return;
         }
-        abi::FieldPlacement::Union(_) => {
+        abi::FieldsShape::Union(_) => {
             // Unions and are always treated as a series of 64-bit integer chunks
         }
-        abi::FieldPlacement::Arbitrary { .. } => {
+        abi::FieldsShape::Arbitrary { .. } => {
             // Structures are split up into a series of 64-bit integer chunks, but any aligned
             // doubles not part of another aggregate are passed as floats.
             let mut last_offset = Size::ZERO;

@@ -207,10 +207,10 @@ macro_rules! make_value_visitor {
 
                 // Visit the fields of this value.
                 match v.layout().fields {
-                    layout::FieldPlacement::Union(fields) => {
+                    layout::FieldsShape::Union(fields) => {
                         self.visit_union(v, fields)?;
                     },
-                    layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
+                    layout::FieldsShape::Arbitrary { ref offsets, .. } => {
                         // FIXME: We collect in a vec because otherwise there are lifetime
                         // errors: Projecting to a field needs access to `ecx`.
                         let fields: Vec<InterpResult<'tcx, Self::V>> =
@@ -220,7 +220,7 @@ macro_rules! make_value_visitor {
                             .collect();
                         self.visit_aggregate(v, fields.into_iter())?;
                     },
-                    layout::FieldPlacement::Array { .. } => {
+                    layout::FieldsShape::Array { .. } => {
                         // Let's get an mplace first.
                         let mplace = v.to_op(self.ecx())?.assert_mem_place(self.ecx());
                         // Now we can go over all the fields.

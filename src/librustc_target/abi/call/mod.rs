@@ -1,4 +1,4 @@
-use crate::abi::{self, Abi, Align, FieldPlacement, Size};
+use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, LayoutOf, TyAndLayout, TyAndLayoutMethods};
 use crate::spec::{self, HasTargetSpec};
 
@@ -315,7 +315,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                      start: Size|
                      -> Result<(HomogeneousAggregate, Size), Heterogeneous> {
                         let is_union = match layout.fields {
-                            FieldPlacement::Array { count, .. } => {
+                            FieldsShape::Array { count, .. } => {
                                 assert_eq!(start, Size::ZERO);
 
                                 let result = if count > 0 {
@@ -325,8 +325,8 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                                 };
                                 return Ok((result, layout.size));
                             }
-                            FieldPlacement::Union(_) => true,
-                            FieldPlacement::Arbitrary { .. } => false,
+                            FieldsShape::Union(_) => true,
+                            FieldsShape::Arbitrary { .. } => false,
                         };
 
                         let mut result = HomogeneousAggregate::NoData;
