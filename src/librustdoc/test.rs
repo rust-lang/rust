@@ -13,6 +13,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 use rustc_target::spec::TargetTriple;
+use std::collections::HashMap;
 use std::env;
 use std::io::{self, Write};
 use std::panic;
@@ -190,10 +191,23 @@ enum TestFailure {
     UnexpectedRunPass,
 }
 
+enum DirState {
+    Temp(tempfile::TempDir),
+    Perm(PathBuf),
+}
+
+impl DirState {
+    fn path(&self) -> &std::path::Path {
+        match self {
+            DirState::Temp(t) => t.path(),
+            DirState::Perm(p) => p.as_path(),
+        }
+    }
+}
+
 fn run_test(
     test: &str,
     cratename: &str,
-    filename: &FileName,
     line: usize,
     options: Options,
     should_panic: bool,
@@ -206,47 +220,11 @@ fn run_test(
     mut error_codes: Vec<String>,
     opts: &TestOptions,
     edition: Edition,
+    outdir: DirState,
+    path: PathBuf,
 ) -> Result<(), TestFailure> {
     let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts, edition);
 
-    // FIXME(#44940): if doctests ever support path remapping, then this filename
-    // needs to be the result of `SourceMap::span_to_unmapped_path`.
-    let path = match filename {
-        FileName::Real(path) => path.clone(),
-        _ => PathBuf::from(r"doctest.rs"),
-    };
-
-    enum DirState {
-        Temp(tempfile::TempDir),
-        Perm(PathBuf),
-    }
-
-    impl DirState {
-        fn path(&self) -> &std::path::Path {
-            match self {
-                DirState::Temp(t) => t.path(),
-                DirState::Perm(p) => p.as_path(),
-            }
-        }
-    }
-
-    let outdir = if let Some(mut path) = options.persist_doctests {
-        path.push(format!(
-            "{}_{}",
-            filename.to_string().rsplit('/').next().unwrap().replace(".", "_"),
-            line
-        ));
-        std::fs::create_dir_all(&path).expect("Couldn't create directory for doctest executables");
-
-        DirState::Perm(path)
-    } else {
-        DirState::Temp(
-            TempFileBuilder::new()
-                .prefix("rustdoctest")
-                .tempdir()
-                .expect("rustdoc needs a tempdir"),
-        )
-    };
     let output_file = outdir.path().join("rust_out");
 
     let rustc_binary = options
@@ -639,6 +617,7 @@ pub struct Collector {
     position: Span,
     source_map: Option<Lrc<SourceMap>>,
     filename: Option<PathBuf>,
+    visited_tests: HashMap<(String, usize), usize>,
 }
 
 impl Collector {
@@ -662,6 +641,7 @@ impl Collector {
             position: DUMMY_SP,
             source_map,
             filename,
+            visited_tests: HashMap::new(),
         }
     }
 
@@ -705,6 +685,48 @@ impl Tester for Collector {
         let target = self.options.target.clone();
         let target_str = target.to_string();
 
+        // FIXME(#44940): if doctests ever support path remapping, then this filename
+        // needs to be the result of `SourceMap::span_to_unmapped_path`.
+        let path = match &filename {
+            FileName::Real(path) => path.clone(),
+            _ => PathBuf::from(r"doctest.rs"),
+        };
+
+        let outdir = if let Some(mut path) = options.persist_doctests.clone() {
+            // For example `module/file.rs` would become `module_file_rs`
+            let folder_name = filename
+                .to_string()
+                .chars()
+                .map(|c| if c == '/' || c == '.' { '_' } else { c })
+                .collect::<String>();
+
+            path.push(format!(
+                "{name}_{line}_{number}",
+                name = folder_name,
+                number = {
+                    // Increases the current test number, if this file already
+                    // exists or it creates a new entry with a test number of 0.
+                    self.visited_tests
+                        .entry((folder_name.clone(), line))
+                        .and_modify(|v| *v += 1)
+                        .or_insert(0)
+                },
+                line = line,
+            ));
+
+            std::fs::create_dir_all(&path)
+                .expect("Couldn't create directory for doctest executables");
+
+            DirState::Perm(path)
+        } else {
+            DirState::Temp(
+                TempFileBuilder::new()
+                    .prefix("rustdoctest")
+                    .tempdir()
+                    .expect("rustdoc needs a tempdir"),
+            )
+        };
+
         debug!("creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -723,7 +745,6 @@ impl Tester for Collector {
                 let res = run_test(
                     &test,
                     &cratename,
-                    &filename,
                     line,
                     options,
                     config.should_panic,
@@ -736,6 +757,8 @@ impl Tester for Collector {
                     config.error_codes,
                     &opts,
                     edition,
+                    outdir,
+                    path,
                 );
 
                 if let Err(err) = res {

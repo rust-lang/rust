@@ -274,19 +274,16 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _memory_extra: &(),
         _alloc_id: AllocId,
         allocation: &Allocation<Self::PointerTag, Self::AllocExtra>,
-        static_def_id: Option<DefId>,
+        _static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
         if is_write {
             throw_machine_stop_str!("can't write to global");
         }
-        // If the static allocation is mutable or if it has relocations (it may be legal to mutate
-        // the memory behind that in the future), then we can't const prop it.
+        // If the static allocation is mutable, then we can't const prop it as its content
+        // might be different at runtime.
         if allocation.mutability == Mutability::Mut {
-            throw_machine_stop_str!("can't eval mutable globals in ConstProp");
-        }
-        if static_def_id.is_some() && allocation.relocations().len() > 0 {
-            throw_machine_stop_str!("can't eval statics with pointers in ConstProp");
+            throw_machine_stop_str!("can't access mutable globals in ConstProp");
         }
 
         Ok(())

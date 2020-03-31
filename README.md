@@ -256,7 +256,7 @@ Also, you may find the [rustdocs for the compiler itself][rustdocs] useful.
 
 [rust-discord]: https://discord.gg/rust-lang
 [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/about-this-guide.html
-[rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
+[rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
 
 ## License
 
