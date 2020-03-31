@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use rustc_middle::middle::lang_items::PanicLocationLangItem;
+use rustc_hir::lang_items::PanicLocationLangItem;
 use rustc_middle::ty::subst::Subst;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::LayoutOf;

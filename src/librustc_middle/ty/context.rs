@@ -11,8 +11,6 @@ use crate::lint::{struct_lint_level, LintSource};
 use crate::middle;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::cstore::EncodedMetadata;
-use crate::middle::lang_items;
-use crate::middle::lang_items::PanicLocationLangItem;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::interpret::{Allocation, ConstValue, Scalar};
@@ -53,6 +51,8 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DefPathHash, Definitions};
+use rustc_hir::lang_items;
+use rustc_hir::lang_items::PanicLocationLangItem;
 use rustc_hir::{HirId, Node, TraitCandidate};
 use rustc_hir::{ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet};
 use rustc_index::vec::{Idx, IndexVec};
@@ -1203,7 +1203,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Obtain all lang items of this crate and all dependencies (recursively)
-    pub fn lang_items(self) -> &'tcx middle::lang_items::LanguageItems {
+    pub fn lang_items(self) -> &'tcx rustc_hir::lang_items::LanguageItems {
         self.get_lang_items(LOCAL_CRATE)
     }
 

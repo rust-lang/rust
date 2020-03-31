@@ -106,7 +106,7 @@ macro_rules! arena_types {
                 String
             >,
             [few] get_lib_features: rustc_middle::middle::lib_features::LibFeatures,
-            [few] defined_lib_features: rustc_middle::middle::lang_items::LanguageItems,
+            [few] defined_lib_features: rustc_hir::lang_items::LanguageItems,
             [few] visible_parent_map: rustc_hir::def_id::DefIdMap<rustc_hir::def_id::DefId>,
             [few] foreign_module: rustc_middle::middle::cstore::ForeignModule,
             [few] foreign_modules: Vec<rustc_middle::middle::cstore::ForeignModule>,
