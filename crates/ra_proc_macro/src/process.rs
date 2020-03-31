@@ -31,7 +31,7 @@ struct SenderGuard(pub Sender<Task>);
 
 impl std::ops::Drop for SenderGuard {
     fn drop(&mut self) {
-        let _ = self.0.send(Task::Close);
+        self.0.send(Task::Close).unwrap();
     }
 }
 
@@ -126,12 +126,7 @@ impl ProcMacroProcessSrv {
 
         let (result_tx, result_rx) = bounded(0);
 
-        sender.send(Task::Request { req: req.into(), result_tx }).map_err(|err| {
-            ra_tt::ExpansionError::Unknown(format!(
-                "Fail to send task in channel, reason : {:#?} ",
-                err
-            ))
-        })?;
+        sender.send(Task::Request { req: req.into(), result_tx }).unwrap();
 
         let res = result_rx.recv().unwrap();
         match res {
@@ -172,9 +167,7 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
                     code: ErrorCode::ServerErrorEnd,
                     message: "Server closed".into(),
                 });
-                if result_tx.send(res.into()).is_err() {
-                    break;
-                }
+                result_tx.send(res.into()).unwrap();
                 // Restart the process
                 if process.restart().is_err() {
                     break;
@@ -190,9 +183,7 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
         };
 
         if let Some(res) = res {
-            if result_tx.send(res).is_err() {
-                break;
-            }
+            result_tx.send(res).unwrap();
         }
     }
 
