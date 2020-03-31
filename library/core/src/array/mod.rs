@@ -11,7 +11,7 @@ use crate::cmp::Ordering;
 use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
-use crate::iter::{FromIterator};
+use crate::iter::FromIterator;
 use crate::marker::Unsize;
 use crate::mem::MaybeUninit;
 use crate::slice::{Iter, IterMut};
@@ -190,34 +190,84 @@ impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N] {
     }
 }
 
-#[stable(feature = "array_from_iter_impl", since = "1.44.0")]
-impl<T, const N: usize> FromIterator<T> for [T; N] 
+/// Return Value of the FromIterator impl for array
+#[unstable(feature = "array_from_iter_impl", issue = "none")]
+#[derive(Debug)]
+pub struct FillError<T, const N: usize>
 where
-     [T; N]: LengthAtMost32,
+    [MaybeUninit<T>; N]: LengthAtMost32,
 {
-    #[inline]
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        let mut iter = iter.into_iter();
-        let mut array: [MaybeUninit<T>; N] = MaybeUninit::uninit_array();
-        
-        for i in 0..N {
-            if let Some(value) = iter.next() {
-                array[i].write(value);
-            } else {
-                // Drop already writen elements
-                for elem in &mut array[0..i] {
-                    unsafe { crate::ptr::drop_in_place(elem.as_mut_ptr()); }
-                }
-                panic!("Iterator is to short");
-            } 
+    array: [MaybeUninit<T>; N],
+    len: usize,
+}
+
+#[unstable(feature = "array_from_iter_impl", issue = "none")]
+impl<T, const N: usize> Drop for FillError<T, N>
+where
+    [MaybeUninit<T>; N]: LengthAtMost32,
+{
+    fn drop(&mut self) {
+        for elem in &mut self.array[0..self.len] {
+            unsafe {
+                crate::ptr::drop_in_place(elem.as_mut_ptr());
+            }
         }
-        
+    }
+}
+
+#[unstable(feature = "array_from_iter_impl", issue = "none")]
+impl<T, const N: usize> FillError<T, N>
+where
+    [MaybeUninit<T>; N]: LengthAtMost32,
+{
+    fn new() -> Self {
+        Self { array: MaybeUninit::uninit_array(), len: 0 }
+    }
+
+    /// Returns the how many elements were read from the given iterator.
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    /// Returns an immutable slice of all initialized elements.
+    pub fn as_slice(&self) -> &[T] {
+        unsafe { MaybeUninit::slice_get_ref(&self.array[0..self.len]) }
+    }
+
+    /// Returns a mutable slice of all initialized elements.
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        unsafe { MaybeUninit::slice_get_mut(&mut self.array[0..self.len]) }
+    }
+
+    /// Tries to initialize the left-over elements using `iter`.
+    pub fn fill<I: IntoIterator<Item = T>>(mut self, iter: I) -> Result<[T; N], FillError<T, N>> {
+        let mut iter = iter.into_iter();
+
+        for i in self.len..N {
+            if let Some(value) = iter.next() {
+                self.array[i].write(value);
+            } else {
+                self.len = i;
+                return Err(self);
+            }
+        }
+
         // FIXME: actually use `mem::transmute` here, once it
         // works with const generics:
         //     `mem::transmute::<[T; N], [MaybeUninit<T>; N]>(array)`
-        unsafe {
-            crate::ptr::read(&array as *const [MaybeUninit<T>; N] as *const [T; N])
-        }
+        Ok(unsafe { crate::ptr::read(&self.array as *const [MaybeUninit<T>; N] as *const [T; N]) })
+    }
+}
+
+#[unstable(feature = "array_from_iter_impl", issue = "none")]
+impl<T, const N: usize> FromIterator<T> for Result<[T; N], FillError<T, N>>
+where
+    [T; N]: LengthAtMost32,
+    [MaybeUninit<T>; N]: LengthAtMost32,
+{
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        FillError::<T, N>::new().fill(iter)
     }
 }
 
