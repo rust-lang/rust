@@ -261,41 +261,57 @@
                     "default": [],
                     "description": "Paths to exclude from analysis"
                 },
-                "rust-analyzer.rustfmtArgs": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "default": [],
-                    "description": "Additional arguments to rustfmt"
-                },
                 "rust-analyzer.useClientWatching": {
                     "type": "boolean",
                     "default": true,
                     "description": "client provided file watching instead of notify watching."
                 },
-                "rust-analyzer.cargo-watch.enable": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "Run specified `cargo-watch` command for diagnostics on save"
-                },
-                "rust-analyzer.cargo-watch.arguments": {
+                "rust-analyzer.rustfmt.extraArgs": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "markdownDescription": "`cargo-watch` arguments. (e.g: `--features=\"shumway,pdf\"` will run as `cargo watch -x \"check --features=\"shumway,pdf\"\"` )",
+                    "default": [],
+                    "markdownDescription": "Additional `cargo fmt` arguments"
+                },
+                "rust-analyzer.rustfmt.overrideCommand": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [],
+                    "markdownDescription": "Advanced option, fully override `cargo fmt` command line"
+                },
+                "rust-analyzer.checkOnSave.enable": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Run `cargo check` command for diagnostics on save"
+                },
+                "rust-analyzer.checkOnSave.cargoCommand": {
+                    "type": "string",
+                    "default": "check",
+                    "markdownDescription": "Cargo command to run on save"
+                },
+                "rust-analyzer.checkOnSave.allTargets": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Check all targets and tests (will be passed as `--all-targets`)"
+                },
+                "rust-analyzer.checkOnSave.extraArgs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "markdownDescription": "Additional `cargo check` arguments",
                     "default": []
                 },
-                "rust-analyzer.cargo-watch.command": {
-                    "type": "string",
-                    "markdownDescription": "`cargo-watch` command. (e.g: `clippy` will run as `cargo watch -x clippy` )",
-                    "default": "check"
-                },
-                "rust-analyzer.cargo-watch.allTargets": {
-                    "type": "boolean",
-                    "markdownDescription": "Check all targets and tests (will be passed as `--all-targets`)",
-                    "default": true
+                "rust-analyzer.checkOnSave.overrideCommand": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [],
+                    "markdownDescription": "Advanced option, fully override `cargo check` command line (this must include at least `--message-format=json`)"
                 },
                 "rust-analyzer.trace.server": {
                     "type": "string",
