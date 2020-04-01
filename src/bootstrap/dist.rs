@@ -1330,7 +1330,7 @@ pub struct Clippy {
 }
 
 impl Step for Clippy {
-    type Output = Option<PathBuf>;
+    type Output = PathBuf;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1348,7 +1348,7 @@ impl Step for Clippy {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
@@ -1368,16 +1368,10 @@ impl Step for Clippy {
         // state for clippy isn't testing.
         let clippy = builder
             .ensure(tool::Clippy { compiler, target, extra_features: Vec::new() })
-            .or_else(|| {
-                missing_tool("clippy", builder.build.config.missing_tools);
-                None
-            })?;
+            .expect("clippy expected to build - essential tool");
         let cargoclippy = builder
             .ensure(tool::CargoClippy { compiler, target, extra_features: Vec::new() })
-            .or_else(|| {
-                missing_tool("cargo clippy", builder.build.config.missing_tools);
-                None
-            })?;
+            .expect("clippy expected to build - essential tool");
 
         builder.install(&clippy, &image.join("bin"), 0o755);
         builder.install(&cargoclippy, &image.join("bin"), 0o755);
@@ -1416,7 +1410,7 @@ impl Step for Clippy {
         builder.info(&format!("Dist clippy stage{} ({})", compiler.stage, target));
         let _time = timeit(builder);
         builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))
+        distdir(builder).join(format!("{}-{}.tar.gz", name, target))
     }
 }
 
@@ -1683,7 +1677,7 @@ impl Step for Extended {
         tarballs.push(rustc_installer);
         tarballs.push(cargo_installer);
         tarballs.extend(rls_installer.clone());
-        tarballs.extend(clippy_installer.clone());
+        tarballs.push(clippy_installer);
         tarballs.extend(miri_installer.clone());
         tarballs.extend(rustfmt_installer.clone());
         tarballs.extend(llvm_tools_installer);
@@ -1761,9 +1755,6 @@ impl Step for Extended {
             if rls_installer.is_none() {
                 contents = filter(&contents, "rls");
             }
-            if clippy_installer.is_none() {
-                contents = filter(&contents, "clippy");
-            }
             if miri_installer.is_none() {
                 contents = filter(&contents, "miri");
             }
@@ -1805,12 +1796,10 @@ impl Step for Extended {
             prepare("rust-docs");
             prepare("rust-std");
             prepare("rust-analysis");
+            prepare("clippy");
 
             if rls_installer.is_some() {
                 prepare("rls");
-            }
-            if clippy_installer.is_some() {
-                prepare("clippy");
             }
             if miri_installer.is_some() {
                 prepare("miri");
@@ -1863,11 +1852,9 @@ impl Step for Extended {
             prepare("rust-analysis");
             prepare("rust-docs");
             prepare("rust-std");
+            prepare("clippy");
             if rls_installer.is_some() {
                 prepare("rls");
-            }
-            if clippy_installer.is_some() {
-                prepare("clippy");
             }
             if miri_installer.is_some() {
                 prepare("miri");
@@ -1989,25 +1976,23 @@ impl Step for Extended {
                         .arg(etc.join("msi/remove-duplicates.xsl")),
                 );
             }
-            if clippy_installer.is_some() {
-                builder.run(
-                    Command::new(&heat)
-                        .current_dir(&exe)
-                        .arg("dir")
-                        .arg("clippy")
-                        .args(&heat_flags)
-                        .arg("-cg")
-                        .arg("ClippyGroup")
-                        .arg("-dr")
-                        .arg("Clippy")
-                        .arg("-var")
-                        .arg("var.ClippyDir")
-                        .arg("-out")
-                        .arg(exe.join("ClippyGroup.wxs"))
-                        .arg("-t")
-                        .arg(etc.join("msi/remove-duplicates.xsl")),
-                );
-            }
+            builder.run(
+                Command::new(&heat)
+                    .current_dir(&exe)
+                    .arg("dir")
+                    .arg("clippy")
+                    .args(&heat_flags)
+                    .arg("-cg")
+                    .arg("ClippyGroup")
+                    .arg("-dr")
+                    .arg("Clippy")
+                    .arg("-var")
+                    .arg("var.ClippyDir")
+                    .arg("-out")
+                    .arg(exe.join("ClippyGroup.wxs"))
+                    .arg("-t")
+                    .arg(etc.join("msi/remove-duplicates.xsl")),
+            );
             if miri_installer.is_some() {
                 builder.run(
                     Command::new(&heat)
@@ -2073,6 +2058,7 @@ impl Step for Extended {
                     .arg("-dCargoDir=cargo")
                     .arg("-dStdDir=rust-std")
                     .arg("-dAnalysisDir=rust-analysis")
+                    .arg("-dClippyDir=clippy")
                     .arg("-arch")
                     .arg(&arch)
                     .arg("-out")
@@ -2082,9 +2068,6 @@ impl Step for Extended {
 
                 if rls_installer.is_some() {
                     cmd.arg("-dRlsDir=rls");
-                }
-                if clippy_installer.is_some() {
-                    cmd.arg("-dClippyDir=clippy");
                 }
                 if miri_installer.is_some() {
                     cmd.arg("-dMiriDir=miri");
@@ -2101,11 +2084,9 @@ impl Step for Extended {
             candle("DocsGroup.wxs".as_ref());
             candle("CargoGroup.wxs".as_ref());
             candle("StdGroup.wxs".as_ref());
+            candle("ClippyGroup.wxs".as_ref());
             if rls_installer.is_some() {
                 candle("RlsGroup.wxs".as_ref());
-            }
-            if clippy_installer.is_some() {
-                candle("ClippyGroup.wxs".as_ref());
             }
             if miri_installer.is_some() {
                 candle("MiriGroup.wxs".as_ref());
@@ -2138,13 +2119,11 @@ impl Step for Extended {
                 .arg("CargoGroup.wixobj")
                 .arg("StdGroup.wixobj")
                 .arg("AnalysisGroup.wixobj")
+                .arg("ClippyGroup.wixobj")
                 .current_dir(&exe);
 
             if rls_installer.is_some() {
                 cmd.arg("RlsGroup.wixobj");
-            }
-            if clippy_installer.is_some() {
-                cmd.arg("ClippyGroup.wixobj");
             }
             if miri_installer.is_some() {
                 cmd.arg("MiriGroup.wixobj");

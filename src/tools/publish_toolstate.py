@@ -25,10 +25,6 @@ except ImportError:
 # read privileges on it). CI will fail otherwise.
 MAINTAINERS = {
     'miri': {'oli-obk', 'RalfJung', 'eddyb'},
-    'clippy-driver': {
-        'Manishearth', 'llogiq', 'mcarton', 'oli-obk', 'phansch', 'flip1995',
-        'yaahc',
-    },
     'rls': {'Xanewok'},
     'rustfmt': {'topecongiro'},
     'book': {'carols10cents', 'steveklabnik'},
@@ -45,7 +41,6 @@ MAINTAINERS = {
 
 REPOS = {
     'miri': 'https://github.com/rust-lang/miri',
-    'clippy-driver': 'https://github.com/rust-lang/rust-clippy',
     'rls': 'https://github.com/rust-lang/rls',
     'rustfmt': 'https://github.com/rust-lang/rustfmt',
     'book': 'https://github.com/rust-lang/book',
