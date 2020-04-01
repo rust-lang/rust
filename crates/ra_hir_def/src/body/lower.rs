@@ -417,26 +417,7 @@ impl ExprCollector<'_> {
                 }
             }
 
-            ast::Expr::Literal(e) => {
-                let lit = match e.kind() {
-                    LiteralKind::IntNumber { suffix } => {
-                        let known_name = suffix.and_then(|it| BuiltinInt::from_suffix(&it));
-
-                        Literal::Int(Default::default(), known_name)
-                    }
-                    LiteralKind::FloatNumber { suffix } => {
-                        let known_name = suffix.and_then(|it| BuiltinFloat::from_suffix(&it));
-
-                        Literal::Float(Default::default(), known_name)
-                    }
-                    LiteralKind::ByteString => Literal::ByteString(Default::default()),
-                    LiteralKind::String => Literal::String(Default::default()),
-                    LiteralKind::Byte => Literal::Int(Default::default(), Some(BuiltinInt::U8)),
-                    LiteralKind::Bool => Literal::Bool(Default::default()),
-                    LiteralKind::Char => Literal::Char(Default::default()),
-                };
-                self.alloc_expr(Expr::Literal(lit), syntax_ptr)
-            }
+            ast::Expr::Literal(e) => self.alloc_expr(Expr::Literal(e.kind().into()), syntax_ptr),
             ast::Expr::IndexExpr(e) => {
                 let base = self.collect_expr_opt(e.base());
                 let index = self.collect_expr_opt(e.index());
@@ -679,10 +660,19 @@ impl ExprCollector<'_> {
                     suffix: suffix.into_iter().map(|p| self.collect_pat(p)).collect(),
                 }
             }
+            ast::Pat::LiteralPat(lit) => {
+                if let Some(ast_lit) = lit.literal() {
+                    let expr = Expr::Literal(ast_lit.kind().into());
+                    let expr_ptr = AstPtr::new(&ast::Expr::Literal(ast_lit));
+                    let expr_id = self.alloc_expr(expr, expr_ptr);
+                    Pat::Lit(expr_id)
+                } else {
+                    Pat::Missing
+                }
+            }
 
             // FIXME: implement
             ast::Pat::BoxPat(_) => Pat::Missing,
-            ast::Pat::LiteralPat(_) => Pat::Missing,
             ast::Pat::RangePat(_) => Pat::Missing,
         };
         let ptr = AstPtr::new(&pat);
@@ -738,6 +728,28 @@ impl From<ast::BinOp> for BinaryOp {
             ast::BinOp::BitOrAssign => BinaryOp::Assignment { op: Some(ArithOp::BitOr) },
             ast::BinOp::BitAndAssign => BinaryOp::Assignment { op: Some(ArithOp::BitAnd) },
             ast::BinOp::BitXorAssign => BinaryOp::Assignment { op: Some(ArithOp::BitXor) },
+        }
+    }
+}
+
+impl From<ast::LiteralKind> for Literal {
+    fn from(ast_lit_kind: ast::LiteralKind) -> Self {
+        match ast_lit_kind {
+            LiteralKind::IntNumber { suffix } => {
+                let known_name = suffix.and_then(|it| BuiltinInt::from_suffix(&it));
+
+                Literal::Int(Default::default(), known_name)
+            }
+            LiteralKind::FloatNumber { suffix } => {
+                let known_name = suffix.and_then(|it| BuiltinFloat::from_suffix(&it));
+
+                Literal::Float(Default::default(), known_name)
+            }
+            LiteralKind::ByteString => Literal::ByteString(Default::default()),
+            LiteralKind::String => Literal::String(Default::default()),
+            LiteralKind::Byte => Literal::Int(Default::default(), Some(BuiltinInt::U8)),
+            LiteralKind::Bool => Literal::Bool(Default::default()),
+            LiteralKind::Char => Literal::Char(Default::default()),
         }
     }
 }
