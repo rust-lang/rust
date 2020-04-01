@@ -5,7 +5,7 @@ use ra_db::{SourceDatabase, SourceDatabaseExt};
 use ra_ide_db::symbol_index::SymbolsDatabase;
 use ra_ide_db::RootDatabase;
 use ra_syntax::ast::make::try_expr_from_text;
-use ra_syntax::ast::{AstToken, Comment};
+use ra_syntax::ast::{AstToken, Comment, RecordField, RecordLit};
 use ra_syntax::{AstNode, SyntaxElement, SyntaxNode};
 use ra_text_edit::{TextEdit, TextEditBuilder};
 use rustc_hash::FxHashMap;
@@ -186,47 +186,102 @@ fn create_name<'a>(name: &str, vars: &'a mut Vec<Var>) -> Result<&'a str, SsrErr
 }
 
 fn find(pattern: &SsrPattern, code: &SyntaxNode) -> SsrMatches {
+    fn check_record_lit(
+        pattern: RecordLit,
+        code: RecordLit,
+        placeholders: &[Var],
+        match_: Match,
+    ) -> Option<Match> {
+        let match_ = check_opt_nodes(pattern.path(), code.path(), placeholders, match_)?;
+
+        let mut pattern_fields =
+            pattern.record_field_list().map(|x| x.fields().collect()).unwrap_or(vec![]);
+        let mut code_fields =
+            code.record_field_list().map(|x| x.fields().collect()).unwrap_or(vec![]);
+
+        if pattern_fields.len() != code_fields.len() {
+            return None;
+        }
+
+        let by_name = |a: &RecordField, b: &RecordField| {
+            a.name_ref()
+                .map(|x| x.syntax().text().to_string())
+                .cmp(&b.name_ref().map(|x| x.syntax().text().to_string()))
+        };
+        pattern_fields.sort_by(by_name);
+        code_fields.sort_by(by_name);
+
+        pattern_fields.into_iter().zip(code_fields.into_iter()).fold(
+            Some(match_),
+            |accum, (a, b)| {
+                accum.and_then(|match_| check_opt_nodes(Some(a), Some(b), placeholders, match_))
+            },
+        )
+    }
+
+    fn check_opt_nodes(
+        pattern: Option<impl AstNode>,
+        code: Option<impl AstNode>,
+        placeholders: &[Var],
+        match_: Match,
+    ) -> Option<Match> {
+        match (pattern, code) {
+            (Some(pattern), Some(code)) => check(
+                &SyntaxElement::from(pattern.syntax().clone()),
+                &SyntaxElement::from(code.syntax().clone()),
+                placeholders,
+                match_,
+            ),
+            (None, None) => Some(match_),
+            _ => None,
+        }
+    }
+
     fn check(
         pattern: &SyntaxElement,
         code: &SyntaxElement,
         placeholders: &[Var],
         mut match_: Match,
     ) -> Option<Match> {
-        match (pattern, code) {
-            (SyntaxElement::Token(ref pattern), SyntaxElement::Token(ref code)) => {
+        match (&pattern, &code) {
+            (SyntaxElement::Token(pattern), SyntaxElement::Token(code)) => {
                 if pattern.text() == code.text() {
                     Some(match_)
                 } else {
                     None
                 }
             }
-            (SyntaxElement::Node(ref pattern), SyntaxElement::Node(ref code)) => {
+            (SyntaxElement::Node(pattern), SyntaxElement::Node(code)) => {
                 if placeholders.iter().any(|n| n.0.as_str() == pattern.text()) {
                     match_.binding.insert(Var(pattern.text().to_string()), code.clone());
                     Some(match_)
                 } else {
-                    let mut pattern_children = pattern
-                        .children_with_tokens()
-                        .filter(|element| !element.kind().is_trivia());
-                    let mut code_children =
-                        code.children_with_tokens().filter(|element| !element.kind().is_trivia());
-                    let new_ignored_comments = code.children_with_tokens().filter_map(|element| {
-                        element.as_token().and_then(|token| Comment::cast(token.clone()))
-                    });
-                    match_.ignored_comments.extend(new_ignored_comments);
-                    let match_from_children = pattern_children
-                        .by_ref()
-                        .zip(code_children.by_ref())
-                        .fold(Some(match_), |accum, (a, b)| {
-                            accum.and_then(|match_| check(&a, &b, placeholders, match_))
-                        });
-                    match_from_children.and_then(|match_| {
-                        if pattern_children.count() == 0 && code_children.count() == 0 {
-                            Some(match_)
-                        } else {
-                            None
-                        }
-                    })
+                    if let (Some(pattern), Some(code)) =
+                        (RecordLit::cast(pattern.clone()), RecordLit::cast(code.clone()))
+                    {
+                        check_record_lit(pattern, code, placeholders, match_)
+                    } else {
+                        let mut pattern_children = pattern
+                            .children_with_tokens()
+                            .filter(|element| !element.kind().is_trivia());
+                        let mut code_children = code
+                            .children_with_tokens()
+                            .filter(|element| !element.kind().is_trivia());
+                        let new_ignored_comments =
+                            code.children_with_tokens().filter_map(|element| {
+                                element.as_token().and_then(|token| Comment::cast(token.clone()))
+                            });
+                        match_.ignored_comments.extend(new_ignored_comments);
+                        pattern_children
+                            .by_ref()
+                            .zip(code_children.by_ref())
+                            .fold(Some(match_), |accum, (a, b)| {
+                                accum.and_then(|match_| check(&a, &b, placeholders, match_))
+                            })
+                            .filter(|_| {
+                                pattern_children.next().is_none() && code_children.next().is_none()
+                            })
+                    }
                 }
             }
             _ => None,
@@ -432,6 +487,15 @@ mod tests {
             "foo($x:expr) ==>> bar($x)",
             "fn main() { foo(5 /* using 5 */) }",
             "fn main() { bar(5)/* using 5 */ }",
+        )
+    }
+
+    #[test]
+    fn ssr_struct_lit() {
+        assert_ssr_transform(
+            "foo{a: $a:expr, b: $b:expr} ==>> foo::new($a, $b)",
+            "fn main() { foo{b:2, a:1} }",
+            "fn main() { foo::new(1, 2) }",
         )
     }
 }
