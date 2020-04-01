@@ -381,6 +381,31 @@ the linker.
 
 The default is `yes` if not specified.
 
+## embed-bitcode
+
+This flag controls whether or not the compiler embeds LLVM bitcode into
+generated object files. It takes one of the following values:
+
+* `y`, `yes`, `on`, or no value: enable bitcode embedding (the default).
+* `n`, `no`, or `off`: disable bitcode embedding.
+
+LLVM bitcode embedding is only needed when link-time optimization (LTO) is
+being performed, but it is enabled by default for backwards compatibility
+reasons.
+
+The use of `-C embed-bitcode=no` can significantly improve compile times and
+reduce generated file sizes. For these reasons, Cargo uses `-C
+embed-bitcode=no` whenever appropriate to reduce compilation costs. Likewise,
+if you are building directly with `rustc` we recommend using `-C
+embed-bitcode=no` whenever you are not using LTO.
+
+If combined with `-C lto`, `-C embed-bitcode=no` will cause `rustc` to abort at
+start-up, because the combination is invalid.
+
+If combined with `-C linker-plugin-lto`, `-C embed-bitcode` (with any value)
+will be ignored, because in that case generated object files contain only LLVM
+bitcode, and no object code.
+
 [option-emit]: ../command-line-arguments.md#option-emit
 [option-o-optimize]: ../command-line-arguments.md#option-o-optimize
 [profile-guided optimization]: ../profile-guided-optimization.md
