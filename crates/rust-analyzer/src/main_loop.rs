@@ -102,7 +102,7 @@ fn get_config(
             max_length: config.inlay_hints_max_length,
         },
         check: if config.cargo_watch_enable {
-            Some(FlycheckConfig {
+            Some(FlycheckConfig::CargoCommand {
                 command: config.cargo_watch_command.clone(),
                 all_targets: config.cargo_watch_all_targets,
                 extra_args: config.cargo_watch_args.clone(),

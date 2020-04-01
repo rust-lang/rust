@@ -23,10 +23,9 @@ use crate::conv::{map_rust_diagnostic_to_lsp, MappedRustDiagnostic};
 pub use crate::conv::url_from_path_with_drive_lowercasing;
 
 #[derive(Clone, Debug)]
-pub struct FlycheckConfig {
-    pub command: String,
-    pub all_targets: bool,
-    pub extra_args: Vec<String>,
+pub enum FlycheckConfig {
+    CargoCommand { command: String, all_targets: bool, extra_args: Vec<String> },
+    CustomCommand { command: String, args: Vec<String> },
 }
 
 /// Flycheck wraps the shared state and communication machinery used for
@@ -215,18 +214,25 @@ impl FlycheckThread {
         self.message_recv = never();
         self.check_process = None;
 
-        let cmd = {
-            let mut cmd = Command::new(cargo_binary());
-            cmd.arg(&self.config.command);
-            cmd.args(&["--workspace", "--message-format=json", "--manifest-path"]);
-            cmd.arg(self.workspace_root.join("Cargo.toml"));
-            if self.config.all_targets {
-                cmd.arg("--all-targets");
+        let mut cmd = match &self.config {
+            FlycheckConfig::CargoCommand { command, all_targets, extra_args } => {
+                let mut cmd = Command::new(cargo_binary());
+                cmd.arg(command);
+                cmd.args(&["--workspace", "--message-format=json", "--manifest-path"]);
+                cmd.arg(self.workspace_root.join("Cargo.toml"));
+                if *all_targets {
+                    cmd.arg("--all-targets");
+                }
+                cmd.args(extra_args);
+                cmd
             }
-            cmd.args(self.config.extra_args.iter());
-            cmd.current_dir(&self.workspace_root);
-            cmd
+            FlycheckConfig::CustomCommand { command, args } => {
+                let mut cmd = Command::new(command);
+                cmd.args(args);
+                cmd
+            }
         };
+        cmd.current_dir(&self.workspace_root);
 
         let (message_send, message_recv) = unbounded();
         self.message_recv = message_recv;
