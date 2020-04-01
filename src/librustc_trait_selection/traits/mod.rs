@@ -54,7 +54,6 @@ pub use self::project::{
 };
 pub use self::select::{EvaluationCache, SelectionCache, SelectionContext};
 pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
-pub use self::specialize::find_associated_item;
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{specialization_graph, translate_substs, OverlapError};
@@ -64,8 +63,7 @@ pub use self::structural_match::NonStructuralMatchTy;
 pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 pub use self::util::{
-    get_vtable_index_of_object_method, impl_is_default, impl_item_is_final,
-    predicate_for_trait_def, upcast_choices,
+    get_vtable_index_of_object_method, impl_item_is_final, predicate_for_trait_def, upcast_choices,
 };
 pub use self::util::{
     supertrait_def_ids, supertraits, transitive_bounds, SupertraitDefIds, Supertraits,

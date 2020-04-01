@@ -20,7 +20,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir::def_id::DefId;
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::DUMMY_SP;
@@ -110,48 +110,6 @@ pub fn translate_substs<'a, 'tcx>(
 
     // directly inherent the method generics, since those do not vary across impls
     source_substs.rebase_onto(infcx.tcx, source_impl, target_substs)
-}
-
-/// Given a selected impl described by `impl_data`, returns the
-/// definition and substitutions for the method with the name `name`
-/// the kind `kind`, and trait method substitutions `substs`, in
-/// that impl, a less specialized impl, or the trait default,
-/// whichever applies.
-pub fn find_associated_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    item: &ty::AssocItem,
-    substs: SubstsRef<'tcx>,
-    impl_data: &super::VtableImplData<'tcx, ()>,
-) -> (DefId, SubstsRef<'tcx>) {
-    debug!("find_associated_item({:?}, {:?}, {:?}, {:?})", param_env, item, substs, impl_data);
-    assert!(!substs.needs_infer());
-
-    let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
-    let trait_def = tcx.trait_def(trait_def_id);
-
-    if let Ok(ancestors) = trait_def.ancestors(tcx, impl_data.impl_def_id) {
-        match ancestors.leaf_def(tcx, item.ident, item.kind) {
-            Some(node_item) => {
-                let substs = tcx.infer_ctxt().enter(|infcx| {
-                    let param_env = param_env.with_reveal_all();
-                    let substs = substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
-                    let substs = translate_substs(
-                        &infcx,
-                        param_env,
-                        impl_data.impl_def_id,
-                        substs,
-                        node_item.node,
-                    );
-                    infcx.tcx.erase_regions(&substs)
-                });
-                (node_item.item.def_id, substs)
-            }
-            None => bug!("{:?} not found in {:?}", item, impl_data.impl_def_id),
-        }
-    } else {
-        (item.def_id, substs)
-    }
 }
 
 /// Is `impl1` a specialization of `impl2`?
