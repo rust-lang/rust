@@ -464,8 +464,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         }
     }
 
-    fn resolve_thread_local_allocation_id(extra: &Self::MemoryExtra, id: AllocId) -> AllocId {
-        extra.tls.resolve_allocation(id)
+    #[inline(always)]
+    fn resolve_maybe_global_alloc(
+        tcx: ty::query::TyCtxtAt<'tcx>,
+        extra: &Self::MemoryExtra,
+        id: AllocId,
+    ) -> Option<mir::interpret::GlobalAlloc<'tcx>> {
+        extra.tls.resolve_allocation(*tcx, id)
     }
 
     fn init_allocation_extra<'b>(

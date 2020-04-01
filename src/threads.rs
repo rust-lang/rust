@@ -5,9 +5,10 @@ use std::collections::hash_map::Entry;
 
 use log::trace;
 
-use rustc_middle::ty;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir;
+use rustc_middle::ty;
 
 use crate::*;
 
@@ -234,13 +235,17 @@ impl ThreadLocalStorage {
     }
     /// For thread local allocation identifier `alloc_id`, retrieve the original
     /// static allocation identifier from which it was created.
-    pub fn resolve_allocation(&self, alloc_id: AllocId) -> AllocId {
+    pub fn resolve_allocation<'tcx>(
+        &self,
+        tcx: ty::TyCtxt<'tcx>,
+        alloc_id: AllocId,
+    ) -> Option<mir::interpret::GlobalAlloc<'tcx>> {
         trace!("resolve_allocation(alloc_id: {:?})", alloc_id);
         if let Some(original_id) = self.thread_local_origin.borrow().get(&alloc_id) {
             trace!("resolve_allocation(alloc_id: {:?}) -> {:?}", alloc_id, original_id);
-            *original_id
+            tcx.alloc_map.lock().get(*original_id)
         } else {
-            alloc_id
+            tcx.alloc_map.lock().get(alloc_id)
         }
     }
     /// Set which thread is currently active.
