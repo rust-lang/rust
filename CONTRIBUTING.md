@@ -202,13 +202,19 @@ They are just regular files and directories. This is in contrast to `submodule` 
 
 There are two synchronization directions: `subtree push` and `subtree pull`.
 
-`git subtree push -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git`
+```
+git subtree push -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git
+```
 
 takes all the changes that
 happened to the copy in this repo and creates commits on the remote repo that match the local
 changes (so every local commit that touched the subtree causes a commit on the remote repo).
 
-`git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git`
+```
+git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git
+```
+
+
 takes all changes since the last `subtree pull` from the clippy
 repo and adds these commits to the rustc repo + a merge commit with the existing changes.
 It is recommended that you always do a push before a pull, so that the merge works without conflicts.
