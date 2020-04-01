@@ -548,9 +548,7 @@ impl Step for Clippy {
 
             builder.add_rustc_lib_path(compiler, &mut cargo);
 
-            if try_run(builder, &mut cargo.into()) {
-                builder.save_toolstate("clippy-driver", ToolState::TestPass);
-            }
+            try_run(builder, &mut cargo.into());
         } else {
             eprintln!("failed to test clippy: could not build");
         }
