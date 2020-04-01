@@ -45,7 +45,6 @@ pub const MIN_LEN: usize = B - 1;
 pub const CAPACITY: usize = 2 * B - 1;
 
 /// The underlying representation of leaf nodes.
-#[repr(C)]
 struct LeafNode<K, V> {
     /// We use `*const` as opposed to `*mut` so as to be covariant in `K` and `V`.
     /// This either points to an actual node or is null.
@@ -57,9 +56,6 @@ struct LeafNode<K, V> {
     parent_idx: MaybeUninit<u16>,
 
     /// The number of keys and values this node stores.
-    ///
-    /// This next to `parent_idx` to encourage the compiler to join `len` and
-    /// `parent_idx` into the same 32-bit word, reducing space overhead.
     len: u16,
 
     /// The arrays storing the actual data of the node. Only the first `len` elements of each
