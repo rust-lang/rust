@@ -51,12 +51,6 @@ pub enum RustfmtConfig {
     },
 }
 
-impl Default for RustfmtConfig {
-    fn default() -> Self {
-        RustfmtConfig::Rustfmt { extra_args: Vec::new() }
-    }
-}
-
 #[derive(Debug, Clone, Default)]
 pub struct ClientCapsConfig {
     pub location_link: bool,
@@ -85,8 +79,12 @@ impl Default for Config {
                 add_call_argument_snippets: true,
             },
             call_info_full: true,
-            rustfmt: RustfmtConfig::default(),
-            check: Some(FlycheckConfig::default()),
+            rustfmt: RustfmtConfig::Rustfmt { extra_args: Vec::new() },
+            check: Some(FlycheckConfig::CargoCommand {
+                command: "check".to_string(),
+                all_targets: true,
+                extra_args: Vec::new(),
+            }),
             vscode_lldb: false,
             proc_macro_srv: None,
             lru_capacity: None,

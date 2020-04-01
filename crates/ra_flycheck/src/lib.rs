@@ -28,16 +28,6 @@ pub enum FlycheckConfig {
     CustomCommand { command: String, args: Vec<String> },
 }
 
-impl Default for FlycheckConfig {
-    fn default() -> Self {
-        FlycheckConfig::CargoCommand {
-            command: "check".to_string(),
-            all_targets: true,
-            extra_args: Vec::new(),
-        }
-    }
-}
-
 /// Flycheck wraps the shared state and communication machinery used for
 /// running `cargo check` (or other compatible command) and providing
 /// diagnostics based on the output.
