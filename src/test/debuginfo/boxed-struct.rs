@@ -22,12 +22,12 @@
 // lldb-command:run
 
 // lldb-command:print *boxed_with_padding
-// lldbg-check:[...]$0 = StructWithSomePadding { x: 99, y: 999, z: 9999, w: 99999 }
-// lldbr-check:(boxed_struct::StructWithSomePadding) *boxed_with_padding = StructWithSomePadding { x: 99, y: 999, z: 9999, w: 99999 }
+// lldbg-check:[...]$0 = { x = 99 y = 999 z = 9999 w = 99999 }
+// lldbr-check:(boxed_struct::StructWithSomePadding) *boxed_with_padding = { x = 99 y = 999 z = 9999 w = 99999 }
 
 // lldb-command:print *boxed_with_dtor
-// lldbg-check:[...]$1 = StructWithDestructor { x: 77, y: 777, z: 7777, w: 77777 }
-// lldbr-check:(boxed_struct::StructWithDestructor) *boxed_with_dtor = StructWithDestructor { x: 77, y: 777, z: 7777, w: 77777 }
+// lldbg-check:[...]$1 = { x = 77 y = 777 z = 7777 w = 77777 }
+// lldbr-check:(boxed_struct::StructWithDestructor) *boxed_with_dtor = { x = 77 y = 777 z = 7777 w = 77777 }
 
 #![allow(unused_variables)]
 #![feature(box_syntax)]

@@ -1,0 +1,18 @@
+command script import \"$RUSTC_SYSROOT/lib/rustlib/etc/lldb_lookup.py\"
+type synthetic add -l lldb_lookup.synthetic_lookup -x \".*\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::(\\w+::)+)String$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^&str$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(std::ffi::(\\w+::)+)OsString$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::(\\w+::)+)Vec<.+>$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::(\\w+::)+)VecDeque<.+>$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::(\\w+::)+)BTreeSet<.+>$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::(\\w+::)+)BTreeMap<.+>$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(std::collections::(\\w+::)+)HashMap<.+>$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(std::collections::(\\w+::)+)HashSet<.+>$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::(\\w+::)+)Rc<.+>$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::(\\w+::)+)Arc<.+>$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(core::(\\w+::)+)Cell<.+>$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(core::(\\w+::)+)Ref<.+>$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(core::(\\w+::)+)RefMut<.+>$\" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(core::(\\w+::)+)RefCell<.+>$\" --category Rust
+type category enable Rust

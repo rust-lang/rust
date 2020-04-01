@@ -44,8 +44,8 @@ extern crate cross_crate_spans;
 // lldb-command:run
 
 // lldb-command:print result
-// lldbg-check:[...]$0 = (17, 17)
-// lldbr-check:((u32, u32)) result = { = 17 = 17 }
+// lldbg-check:[...]$0 = { 0 = 17 1 = 17 }
+// lldbr-check:((u32, u32)) result = { 0 = 17 1 = 17 }
 // lldb-command:print a_variable
 // lldbg-check:[...]$1 = 123456789
 // lldbr-check:(u32) a_variable = 123456789
@@ -55,8 +55,8 @@ extern crate cross_crate_spans;
 // lldb-command:continue
 
 // lldb-command:print result
-// lldbg-check:[...]$3 = (1212, 1212)
-// lldbr-check:((i16, i16)) result = { = 1212 = 1212 }
+// lldbg-check:[...]$3 = { 0 = 1212 1 = 1212 }
+// lldbr-check:((i16, i16)) result = { 0 = 1212 1 = 1212 }
 // lldb-command:print a_variable
 // lldbg-check:[...]$4 = 123456789
 // lldbr-check:(u32) a_variable = 123456789

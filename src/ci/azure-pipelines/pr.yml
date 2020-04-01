@@ -21,15 +21,25 @@ variables:
 - group: public-credentials
 
 jobs:
-- job: Linux
+- job: macOS
   timeoutInMinutes: 600
   pool:
-    vmImage: ubuntu-16.04
+    vmImage: macos-10.15
   steps:
     - template: steps/run.yml
   strategy:
     matrix:
-      x86_64-gnu-llvm-7: {}
-      mingw-check: {}
-      x86_64-gnu-tools:
-        CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
+      # OSX builders running tests, these run the full test suite.
+      # NO_DEBUG_ASSERTIONS=1 to make them go faster, but also do have some
+      # runners that run `//ignore-debug` tests.
+      #
+      # Note that the compiler is compiled to target 10.8 here because the Xcode
+      # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
+      x86_64-apple:
+        SCRIPT: ./x.py test
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1

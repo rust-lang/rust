@@ -31,13 +31,13 @@
 // lldb-command:continue
 
 // lldb-command:print self
-// lldbg-check:[...]$1 = Struct { x: 2222, y: 3333 }
-// lldbr-check:(by_value_self_argument_in_trait_impl::Struct) self = Struct { x: 2222, y: 3333 }
+// lldbg-check:[...]$1 = { x = 2222 y = 3333 }
+// lldbr-check:(by_value_self_argument_in_trait_impl::Struct) self = { x = 2222 y = 3333 }
 // lldb-command:continue
 
 // lldb-command:print self
-// lldbg-check:[...]$2 = (4444.5, 5555, 6666, 7777.5)
-// lldbr-check:((f64, isize, isize, f64)) self = { = 4444.5 = 5555 = 6666 = 7777.5 }
+// lldbg-check:[...] $2 = { 0 = 4444.5 1 = 5555 2 = 6666 3 = 7777.5 }
+// lldbr-check:((f64, isize, isize, f64)) self = { 0 = 4444.5 1 = 5555 2 = 6666 3 = 7777.5 }
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

@@ -1082,12 +1082,33 @@ impl<'test> TestCx<'test> {
         let rust_pp_module_abs_path =
             rust_src_root.join(rust_pp_module_rel_path).to_str().unwrap().to_owned();
 
+        let rust_type_regexes = vec![
+            "^(alloc::(\\w+::)+)String$",
+            "^&str$",
+            "^(std::ffi::(\\w+::)+)OsString$",
+            "^(alloc::(\\w+::)+)Vec<.+>$",
+            "^(alloc::(\\w+::)+)VecDeque<.+>$",
+            "^(alloc::(\\w+::)+)BTreeSet<.+>$",
+            "^(alloc::(\\w+::)+)BTreeMap<.+>$",
+            "^(std::collections::(\\w+::)+)HashMap<.+>$",
+            "^(std::collections::(\\w+::)+)HashSet<.+>$",
+            "^(alloc::(\\w+::)+)Rc<.+>$",
+            "^(alloc::(\\w+::)+)Arc<.+>$",
+            "^(core::(\\w+::)+)Cell<.+>$",
+            "^(core::(\\w+::)+)Ref<.+>$",
+            "^(core::(\\w+::)+)RefMut<.+>$",
+            "^(core::(\\w+::)+)RefCell<.+>$",
+        ];
+
         script_str
             .push_str(&format!("command script import {}\n", &rust_pp_module_abs_path[..])[..]);
         script_str.push_str("type synthetic add -l lldb_lookup.synthetic_lookup -x '.*' ");
         script_str.push_str("--category Rust\n");
-        script_str.push_str("type summary add -l lldb_lookup.summary_lookup -x '.*' ");
-        script_str.push_str("--category Rust\n");
+        for type_regex in rust_type_regexes {
+            script_str.push_str("type summary add -F lldb_lookup.summary_lookup  -e -x -h ");
+            script_str.push_str(&format!("'{}' ", type_regex));
+            script_str.push_str("--category Rust\n");
+        }
         script_str.push_str("type category enable Rust\n");
 
         // Set breakpoints on every line that contains the string "#break"

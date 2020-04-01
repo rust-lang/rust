@@ -48,7 +48,7 @@
 // lldbg-check:[...]$1 = 2.5
 // lldbr-check:(f64) *t1 = 2.5
 // lldb-command:print ret
-// lldbg-check:[...]$2 = ((1, 2.5), (2.5, 1))
+// lldbg-check:[...]$2 = { 0 = { 0 = 1 1 = 2.5 } 1 = { 0 = 2.5 1 = 1 } }
 // lldbr-check:(((i32, f64), (f64, i32))) ret = { = { = 1 = 2.5 } = { = 2.5 = 1 } }
 // lldb-command:continue
 
@@ -59,7 +59,7 @@
 // lldbg-check:[...]$4 = 4
 // lldbr-check:(u16) *t1 = 4
 // lldb-command:print ret
-// lldbg-check:[...]$5 = ((3.5, 4), (4, 3.5))
+// lldbg-check:[...]$5 = { = { = 3.5 = 4 } = { = 4 = 3.5 } }
 // lldbr-check:(((f64, u16), (u16, f64))) ret = { = { = 3.5 = 4 } = { = 4 = 3.5 } }
 // lldb-command:continue
 
@@ -67,11 +67,11 @@
 // lldbg-check:[...]$6 = 5
 // lldbr-check:(i32) *t0 = 5
 // lldb-command:print *t1
-// lldbg-check:[...]$7 = Struct { a: 6, b: 7.5 }
-// lldbr-check:(generic_function::Struct) *t1 = Struct { a: 6, b: 7.5 }
+// lldbg-check:[...]$7 = { a = 6 b = 7.5 }
+// lldbr-check:(generic_function::Struct) *t1 = { a = 6 b = 7.5 }
 // lldb-command:print ret
-// lldbg-check:[...]$8 = ((5, Struct { a: 6, b: 7.5 }), (Struct { a: 6, b: 7.5 }, 5))
-// lldbr-check:(((i32, generic_function::Struct), (generic_function::Struct, i32))) ret = { = { = 5 = Struct { a: 6, b: 7.5 } } = { = Struct { a: 6, b: 7.5 } = 5 } }
+// lldbg-check:[...]$8 = { 0 = { 0 = 5 1 = { a = 6 b = 7.5 } } 1 = { 0 = { a = 6 b = 7.5 } 1 = 5 } }
+// lldbr-check:(((i32, generic_function::Struct), (generic_function::Struct, i32))) ret = { 0 = { 0 = 5 1 = { a = 6 b = 7.5 } } 1 = { 0 = { a = 6 b = 7.5 } 1 = 5 } }
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

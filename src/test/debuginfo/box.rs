@@ -20,8 +20,8 @@
 // lldbg-check:[...]$0 = 1
 // lldbr-check:(i32) *a = 1
 // lldb-command:print *b
-// lldbg-check:[...]$1 = (2, 3.5)
-// lldbr-check:((i32, f64)) *b = { = 2 = 3.5 }
+// lldbg-check:[...]$1 = { 0 = 2 1 = 3.5 }
+// lldbr-check:((i32, f64)) *b = { 0 = 2 1 = 3.5 }
 
 #![allow(unused_variables)]
 #![feature(box_syntax)]
