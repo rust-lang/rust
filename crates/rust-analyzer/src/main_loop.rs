@@ -21,8 +21,8 @@ use lsp_types::{
     WorkDoneProgressBegin, WorkDoneProgressCreateParams, WorkDoneProgressEnd,
     WorkDoneProgressReport,
 };
-use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckTask, FlycheckConfig};
-use ra_ide::{Canceled, FileId, InlayHintsConfig, LibraryData, SourceRootId};
+use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckTask};
+use ra_ide::{Canceled, FileId, LibraryData, SourceRootId};
 use ra_prof::profile;
 use ra_vfs::{VfsFile, VfsTask, Watch};
 use relative_path::RelativePathBuf;
@@ -31,6 +31,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
 
 use crate::{
+    config::get_config,
     diagnostics::DiagnosticTask,
     feature_flags::FeatureFlags,
     main_loop::{
@@ -38,7 +39,7 @@ use crate::{
         subscriptions::Subscriptions,
     },
     req,
-    world::{Config, RustfmtConfig, WorldSnapshot, WorldState},
+    world::{WorldSnapshot, WorldState},
     Result, ServerConfig,
 };
 use req::ConfigurationParams;
@@ -79,41 +80,6 @@ fn get_feature_flags(config: &ServerConfig, connection: &Connection) -> FeatureF
     }
     log::info!("feature_flags: {:#?}", ff);
     ff
-}
-
-fn get_config(
-    config: &ServerConfig,
-    text_document_caps: Option<&TextDocumentClientCapabilities>,
-) -> Config {
-    Config {
-        publish_decorations: config.publish_decorations,
-        supports_location_link: text_document_caps
-            .and_then(|it| it.definition)
-            .and_then(|it| it.link_support)
-            .unwrap_or(false),
-        line_folding_only: text_document_caps
-            .and_then(|it| it.folding_range.as_ref())
-            .and_then(|it| it.line_folding_only)
-            .unwrap_or(false),
-        inlay_hints: InlayHintsConfig {
-            type_hints: config.inlay_hints_type,
-            parameter_hints: config.inlay_hints_parameter,
-            chaining_hints: config.inlay_hints_chaining,
-            max_length: config.inlay_hints_max_length,
-        },
-        check: if config.cargo_watch_enable {
-            Some(FlycheckConfig::CargoCommand {
-                command: config.cargo_watch_command.clone(),
-                all_targets: config.cargo_watch_all_targets,
-                extra_args: config.cargo_watch_args.clone(),
-            })
-        } else {
-            None
-        },
-        rustfmt: RustfmtConfig::Rustfmt { extra_args: config.rustfmt_args.clone() },
-        vscode_lldb: config.vscode_lldb,
-        proc_macro_srv: None, // FIXME: get this from config
-    }
 }
 
 pub fn main_loop(

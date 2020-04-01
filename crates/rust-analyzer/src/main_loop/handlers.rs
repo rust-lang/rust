@@ -31,6 +31,7 @@ use stdx::format_to;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
+    config::RustfmtConfig,
     conv::{
         to_call_hierarchy_item, to_location, Conv, ConvWith, FoldConvCtx, MapConvWith, TryConvWith,
         TryConvWithToVec,
@@ -39,7 +40,7 @@ use crate::{
     from_json,
     req::{self, Decoration, InlayHint, InlayHintsParams},
     semantic_tokens::SemanticTokensBuilder,
-    world::{RustfmtConfig, WorldSnapshot},
+    world::WorldSnapshot,
     LspError, Result,
 };
 

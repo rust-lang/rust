@@ -11,10 +11,9 @@ use std::{
 use crossbeam_channel::{unbounded, Receiver};
 use lsp_types::Url;
 use parking_lot::RwLock;
-use ra_flycheck::{url_from_path_with_drive_lowercasing, Flycheck, FlycheckConfig};
+use ra_flycheck::{url_from_path_with_drive_lowercasing, Flycheck};
 use ra_ide::{
-    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, InlayHintsConfig, LibraryData,
-    SourceRootId,
+    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
 };
 use ra_project_model::{get_rustc_cfg_options, ProcMacroClient, ProjectWorkspace};
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask, Watch};
@@ -22,6 +21,7 @@ use relative_path::RelativePathBuf;
 use stdx::format_to;
 
 use crate::{
+    config::Config,
     diagnostics::{CheckFixes, DiagnosticCollection},
     feature_flags::FeatureFlags,
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
@@ -49,36 +49,6 @@ fn create_flycheck(workspaces: &[ProjectWorkspace], config: &Config) -> Option<F
             log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
             None
         })
-}
-
-#[derive(Debug, Clone)]
-pub struct Config {
-    pub publish_decorations: bool,
-    pub supports_location_link: bool,
-    pub line_folding_only: bool,
-    pub inlay_hints: InlayHintsConfig,
-    pub rustfmt: RustfmtConfig,
-    pub check: Option<FlycheckConfig>,
-    pub vscode_lldb: bool,
-    pub proc_macro_srv: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-pub enum RustfmtConfig {
-    Rustfmt {
-        extra_args: Vec<String>,
-    },
-    #[allow(unused)]
-    CustomCommand {
-        command: String,
-        args: Vec<String>,
-    },
-}
-
-impl Default for RustfmtConfig {
-    fn default() -> Self {
-        RustfmtConfig::Rustfmt { extra_args: Vec::new() }
-    }
 }
 
 /// `WorldState` is the primary mutable state of the language server
