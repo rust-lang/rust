@@ -143,7 +143,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 windows_check_buffer_size(this.write_os_str_to_wide_str(&var, buf_ptr, buf_size)?)
             }
             None => {
-                let envvar_not_found = this.eval_windows("ERROR_ENVVAR_NOT_FOUND")?;
+                let envvar_not_found = this.eval_windows("c", "ERROR_ENVVAR_NOT_FOUND")?;
                 this.set_last_error(envvar_not_found)?;
                 0 // return zero upon failure
             }

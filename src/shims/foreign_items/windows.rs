@@ -167,6 +167,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 )?;
             }
 
+            // Time related shims
+            "GetSystemTimeAsFileTime" => {
+                this.GetSystemTimeAsFileTime(args[0])?;
+            }
+
             // Miscellaneous
             "SystemFunction036" => {
                 // The actual name of 'RtlGenRandom'
