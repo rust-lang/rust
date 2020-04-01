@@ -38,7 +38,7 @@ use crate::{
         subscriptions::Subscriptions,
     },
     req,
-    world::{Config, WorldSnapshot, WorldState},
+    world::{Config, RustfmtConfig, WorldSnapshot, WorldState},
     Result, ServerConfig,
 };
 use req::ConfigurationParams;
@@ -110,7 +110,7 @@ fn get_config(
         } else {
             None
         },
-        rustfmt_args: config.rustfmt_args.clone(),
+        rustfmt: RustfmtConfig::Rustfmt { extra_args: config.rustfmt_args.clone() },
         vscode_lldb: config.vscode_lldb,
         proc_macro_srv: None, // FIXME: get this from config
     }

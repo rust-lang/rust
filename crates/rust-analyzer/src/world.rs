@@ -57,10 +57,28 @@ pub struct Config {
     pub supports_location_link: bool,
     pub line_folding_only: bool,
     pub inlay_hints: InlayHintsConfig,
-    pub rustfmt_args: Vec<String>,
+    pub rustfmt: RustfmtConfig,
     pub check: Option<FlycheckConfig>,
     pub vscode_lldb: bool,
     pub proc_macro_srv: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum RustfmtConfig {
+    Rustfmt {
+        extra_args: Vec<String>,
+    },
+    #[allow(unused)]
+    CustomCommand {
+        command: String,
+        args: Vec<String>,
+    },
+}
+
+impl Default for RustfmtConfig {
+    fn default() -> Self {
+        RustfmtConfig::Rustfmt { extra_args: Vec::new() }
+    }
 }
 
 /// `WorldState` is the primary mutable state of the language server
