@@ -23,7 +23,7 @@ use hir_expand::{
 };
 use hir_ty::{
     autoderef, display::HirFormatter, expr::ExprValidator, method_resolution, ApplicationTy,
-    Canonical, InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
+    Canonical, InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk,
 };
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
@@ -958,6 +958,38 @@ impl ImplDef {
 
     pub fn target_trait(&self, db: &dyn HirDatabase) -> Option<TypeRef> {
         db.impl_data(self.id).target_trait.clone()
+    }
+
+    pub fn target_trait_substs_matches(&self, db: &dyn HirDatabase, typs: &[Type]) -> bool {
+        let type_ref = match self.target_trait(db) {
+            Some(typ_ref) => typ_ref,
+            None => return false,
+        };
+        let resolver = self.id.resolver(db.upcast());
+        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
+        let ty = Ty::from_hir(&ctx, &type_ref);
+        let d = match ty.dyn_trait_ref() {
+            Some(d) => d,
+            None => return false,
+        };
+        let mut matches = true;
+        let mut i = 0;
+        d.substs.walk(&mut |t| {
+            if matches {
+                if i >= typs.len() {
+                    matches = false;
+                    return;
+                }
+                match t {
+                    Ty::Bound(_) => matches = i == 0,
+                    _ => {
+                        matches = *t == typs[i].ty.value;
+                        i += 1;
+                    }
+                }
+            }
+        });
+        matches
     }
 
     pub fn target_type(&self, db: &dyn HirDatabase) -> TypeRef {

@@ -122,6 +122,7 @@ mod handlers {
     mod replace_qualified_name_with_use;
     mod replace_unwrap_with_match;
     mod split_import;
+    mod add_from_impl_for_enum;
 
     pub(crate) fn all() -> &'static [AssistHandler] {
         &[
@@ -159,6 +160,7 @@ mod handlers {
             replace_qualified_name_with_use::replace_qualified_name_with_use,
             replace_unwrap_with_match::replace_unwrap_with_match,
             split_import::split_import,
+            add_from_impl_for_enum::add_from_impl_for_enum,
         ]
     }
 }
