@@ -1015,49 +1015,21 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     assoc_ty_def(selcx, impl_data.impl_def_id, obligation.predicate.item_def_id)
                         .map_err(|ErrorReported| ())?;
 
-                let is_default = if node_item.node.is_from_trait() {
-                    // If true, the impl inherited a `type Foo = Bar`
-                    // given in the trait, which is implicitly default.
-                    // Otherwise, the impl did not specify `type` and
-                    // neither did the trait:
-                    //
-                    // ```rust
-                    // trait Foo { type T; }
-                    // impl Foo for Bar { }
-                    // ```
-                    //
-                    // This is an error, but it will be
-                    // reported in `check_impl_items_against_trait`.
-                    // We accept it here but will flag it as
-                    // an error when we confirm the candidate
-                    // (which will ultimately lead to `normalize_to_error`
-                    // being invoked).
-                    false
+                if node_item.is_final() {
+                    // Non-specializable items are always projectable.
+                    true
                 } else {
-                    // If we're looking at a trait *impl*, the item is
-                    // specializable if the impl or the item are marked
-                    // `default`.
-                    node_item.item.defaultness.is_default()
-                        || super::util::impl_is_default(selcx.tcx(), node_item.node.def_id())
-                };
-
-                match is_default {
-                    // Non-specializable items are always projectable
-                    false => true,
-
                     // Only reveal a specializable default if we're past type-checking
                     // and the obligation is monomorphic, otherwise passes such as
                     // transmute checking and polymorphic MIR optimizations could
                     // get a result which isn't correct for all monomorphizations.
-                    true if obligation.param_env.reveal == Reveal::All => {
+                    if obligation.param_env.reveal == Reveal::All {
                         // NOTE(eddyb) inference variables can resolve to parameters, so
                         // assume `poly_trait_ref` isn't monomorphic, if it contains any.
                         let poly_trait_ref =
                             selcx.infcx().resolve_vars_if_possible(&poly_trait_ref);
                         !poly_trait_ref.needs_infer() && !poly_trait_ref.needs_subst()
-                    }
-
-                    true => {
+                    } else {
                         debug!(
                             "assemble_candidates_from_impls: not eligible due to default: \
                              assoc_ty={} predicate={}",
@@ -1422,7 +1394,8 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         return Progress { ty: tcx.types.err, obligations: nested };
     }
     let substs = obligation.predicate.substs.rebase_onto(tcx, trait_def_id, substs);
-    let substs = translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.node);
+    let substs =
+        translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.defining_node);
     let ty = if let ty::AssocKind::OpaqueTy = assoc_ty.item.kind {
         let item_substs = InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
         tcx.mk_opaque(assoc_ty.item.def_id, item_substs)
@@ -1447,7 +1420,7 @@ fn assoc_ty_def(
     selcx: &SelectionContext<'_, '_>,
     impl_def_id: DefId,
     assoc_ty_def_id: DefId,
-) -> Result<specialization_graph::NodeItem<ty::AssocItem>, ErrorReported> {
+) -> Result<specialization_graph::LeafDef, ErrorReported> {
     let tcx = selcx.tcx();
     let assoc_ty_name = tcx.associated_item(assoc_ty_def_id).ident;
     let trait_def_id = tcx.impl_trait_ref(impl_def_id).unwrap().def_id;
@@ -1464,9 +1437,10 @@ fn assoc_ty_def(
         if matches!(item.kind, ty::AssocKind::Type | ty::AssocKind::OpaqueTy)
             && tcx.hygienic_eq(item.ident, assoc_ty_name, trait_def_id)
         {
-            return Ok(specialization_graph::NodeItem {
-                node: specialization_graph::Node::Impl(impl_def_id),
+            return Ok(specialization_graph::LeafDef {
                 item: *item,
+                defining_node: impl_node,
+                finalizing_node: if item.defaultness.is_default() { None } else { Some(impl_node) },
             });
         }
     }

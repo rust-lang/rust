@@ -17,7 +17,7 @@ use rustc_middle::ty::layout::{self, Align, HasDataLayout, LayoutOf, Size, TyAnd
 use rustc_middle::ty::query::TyCtxtAt;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc_span::source_map::{self, Span, DUMMY_SP};
+use rustc_span::source_map::DUMMY_SP;
 
 use super::{
     Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
@@ -56,9 +56,6 @@ pub struct Frame<'mir, 'tcx, Tag = (), Extra = ()> {
 
     /// The def_id and substs of the current function.
     pub instance: ty::Instance<'tcx>,
-
-    /// The span of the call site.
-    pub span: source_map::Span,
 
     /// Extra data for the machine.
     pub extra: Extra,
@@ -502,7 +499,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn push_stack_frame(
         &mut self,
         instance: ty::Instance<'tcx>,
-        span: Span,
         body: &'mir mir::Body<'tcx>,
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
@@ -522,7 +518,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // empty local array, we fill it in below, after we are inside the stack frame and
             // all methods actually know about the frame
             locals: IndexVec::new(),
-            span,
             instance,
             stmt: 0,
             extra,
@@ -541,7 +536,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // statics and constants don't have `Storage*` statements, no need to look for them
                 Some(DefKind::Static) | Some(DefKind::Const) | Some(DefKind::AssocConst) => {}
                 _ => {
-                    trace!("push_stack_frame: {:?}: num_bbs: {}", span, body.basic_blocks().len());
                     for block in body.basic_blocks() {
                         for stmt in block.statements.iter() {
                             use rustc_middle::mir::StatementKind::{StorageDead, StorageLive};
@@ -859,33 +853,21 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> Vec<FrameInfo<'tcx>> {
-        let mut last_span = None;
+    pub fn generate_stacktrace(&self) -> Vec<FrameInfo<'tcx>> {
         let mut frames = Vec::new();
         for frame in self.stack().iter().rev() {
-            // make sure we don't emit frames that are duplicates of the previous
-            if explicit_span == Some(frame.span) {
-                last_span = Some(frame.span);
-                continue;
-            }
-            if let Some(last) = last_span {
-                if last == frame.span {
-                    continue;
-                }
-            } else {
-                last_span = Some(frame.span);
-            }
-
-            let lint_root = frame.current_source_info().and_then(|source_info| {
+            let source_info = frame.current_source_info();
+            let lint_root = source_info.and_then(|source_info| {
                 match &frame.body.source_scopes[source_info.scope].local_data {
                     mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
                     mir::ClearCrossCrate::Clear => None,
                 }
             });
+            let span = source_info.map_or(DUMMY_SP, |source_info| source_info.span);
 
-            frames.push(FrameInfo { call_site: frame.span, instance: frame.instance, lint_root });
+            frames.push(FrameInfo { span, instance: frame.instance, lint_root });
         }
-        trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
+        trace!("generate stacktrace: {:#?}", frames);
         frames
     }
 }
@@ -899,7 +881,6 @@ where
     fn hash_stable(&self, hcx: &mut StableHashingContext<'ctx>, hasher: &mut StableHasher) {
         self.body.hash_stable(hcx, hasher);
         self.instance.hash_stable(hcx, hasher);
-        self.span.hash_stable(hcx, hasher);
         self.return_to_block.hash_stable(hcx, hasher);
         self.return_place.as_ref().map(|r| &**r).hash_stable(hcx, hasher);
         self.locals.hash_stable(hcx, hasher);

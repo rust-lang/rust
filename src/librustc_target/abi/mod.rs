@@ -618,7 +618,7 @@ impl Scalar {
 
 /// Describes how the fields of a type are located in memory.
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub enum FieldPlacement {
+pub enum FieldsShape {
     /// All fields start at no offset. The `usize` is the field count.
     ///
     /// In the case of primitives the number of fields is `0`.
@@ -657,38 +657,38 @@ pub enum FieldPlacement {
     },
 }
 
-impl FieldPlacement {
+impl FieldsShape {
     pub fn count(&self) -> usize {
         match *self {
-            FieldPlacement::Union(count) => count,
-            FieldPlacement::Array { count, .. } => {
+            FieldsShape::Union(count) => count,
+            FieldsShape::Array { count, .. } => {
                 let usize_count = count as usize;
                 assert_eq!(usize_count as u64, count);
                 usize_count
             }
-            FieldPlacement::Arbitrary { ref offsets, .. } => offsets.len(),
+            FieldsShape::Arbitrary { ref offsets, .. } => offsets.len(),
         }
     }
 
     pub fn offset(&self, i: usize) -> Size {
         match *self {
-            FieldPlacement::Union(count) => {
+            FieldsShape::Union(count) => {
                 assert!(i < count, "tried to access field {} of union with {} fields", i, count);
                 Size::ZERO
             }
-            FieldPlacement::Array { stride, count } => {
+            FieldsShape::Array { stride, count } => {
                 let i = u64::try_from(i).unwrap();
                 assert!(i < count);
                 stride * i
             }
-            FieldPlacement::Arbitrary { ref offsets, .. } => offsets[i],
+            FieldsShape::Arbitrary { ref offsets, .. } => offsets[i],
         }
     }
 
     pub fn memory_index(&self, i: usize) -> usize {
         match *self {
-            FieldPlacement::Union(_) | FieldPlacement::Array { .. } => i,
-            FieldPlacement::Arbitrary { ref memory_index, .. } => {
+            FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
+            FieldsShape::Arbitrary { ref memory_index, .. } => {
                 let r = memory_index[i];
                 assert_eq!(r as usize as u32, r);
                 r as usize
@@ -704,7 +704,7 @@ impl FieldPlacement {
         let use_small = self.count() <= inverse_small.len();
 
         // We have to write this logic twice in order to keep the array small.
-        if let FieldPlacement::Arbitrary { ref memory_index, .. } = *self {
+        if let FieldsShape::Arbitrary { ref memory_index, .. } = *self {
             if use_small {
                 for i in 0..self.count() {
                     inverse_small[memory_index[i] as usize] = i as u8;
@@ -718,8 +718,8 @@ impl FieldPlacement {
         }
 
         (0..self.count()).map(move |i| match *self {
-            FieldPlacement::Union(_) | FieldPlacement::Array { .. } => i,
-            FieldPlacement::Arbitrary { .. } => {
+            FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
+            FieldsShape::Arbitrary { .. } => {
                 if use_small {
                     inverse_small[i] as usize
                 } else {
@@ -888,7 +888,7 @@ impl Niche {
 pub struct Layout {
     /// Says where the fields are located within the layout.
     /// Primitives and uninhabited enums appear as unions without fields.
-    pub fields: FieldPlacement,
+    pub fields: FieldsShape,
 
     /// Encodes information about multi-variant layouts.
     /// Even with `Multiple` variants, a layout still has its own fields! Those are then
@@ -923,7 +923,7 @@ impl Layout {
         let align = scalar.value.align(cx);
         Layout {
             variants: Variants::Single { index: VariantIdx::new(0) },
-            fields: FieldPlacement::Union(0),
+            fields: FieldsShape::Union(0),
             abi: Abi::Scalar(scalar),
             largest_niche,
             size,

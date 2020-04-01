@@ -66,7 +66,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 
     pub fn len<Cx: ConstMethods<'tcx, Value = V>>(&self, cx: &Cx) -> V {
-        if let layout::FieldPlacement::Array { count, .. } = self.layout.fields {
+        if let layout::FieldsShape::Array { count, .. } = self.layout.fields {
             if self.layout.is_unsized() {
                 assert_eq!(count, 0);
                 self.llextra.unwrap()

@@ -165,6 +165,16 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
     )
 }
 
+fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let item = tcx.hir().expect_item(hir_id);
+    if let hir::ItemKind::Impl { defaultness, .. } = item.kind {
+        defaultness
+    } else {
+        bug!("`impl_defaultness` called on {:?}", item);
+    }
+}
+
 /// Calculates the `Sized` constraint.
 ///
 /// In fact, there are only a few options for the types in the constraint:
@@ -371,6 +381,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         crate_hash,
         instance_def_size_estimate,
         issue33140_self_ty,
+        impl_defaultness,
         ..*providers
     };
 }

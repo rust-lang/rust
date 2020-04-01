@@ -8,9 +8,9 @@ use std::hash::Hash;
 use rustc_data_structures::fx::FxHashMap;
 
 use rustc_ast::ast::Mutability;
+use rustc_hir::def_id::DefId;
 use rustc_middle::mir::AssertMessage;
 use rustc_span::symbol::Symbol;
-use rustc_span::{def_id::DefId, Span};
 
 use crate::interpret::{
     self, AllocId, Allocation, GlobalId, ImmTy, InterpCx, InterpResult, Memory, MemoryKind, OpTy,
@@ -64,7 +64,6 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter> {
     /// If this returns successfully (`Ok`), the function should just be evaluated normally.
     fn hook_panic_fn(
         &mut self,
-        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
     ) -> InterpResult<'tcx> {
@@ -77,7 +76,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter> {
 
             let msg_place = self.deref_operand(args[0])?;
             let msg = Symbol::intern(self.read_str(msg_place)?);
-            let span = self.find_closest_untracked_caller_location().unwrap_or(span);
+            let span = self.find_closest_untracked_caller_location();
             let (file, line, col) = self.location_triple_for_span(span);
             Err(ConstEvalErrKind::Panic { msg, file, line, col }.into())
         } else {
@@ -191,7 +190,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
 
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
@@ -213,7 +211,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
             } else {
                 // Some functions we support even if they are non-const -- but avoid testing
                 // that for const fn!
-                ecx.hook_panic_fn(span, instance, args)?;
+                ecx.hook_panic_fn(instance, args)?;
                 // We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
                 throw_unsup_format!("calling non-const function `{}`", instance)
@@ -248,13 +246,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
 
     fn call_intrinsic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
         _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        if ecx.emulate_intrinsic(span, instance, args, ret)? {
+        if ecx.emulate_intrinsic(instance, args, ret)? {
             return Ok(());
         }
         // An intrinsic that we do not support

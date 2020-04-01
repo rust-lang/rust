@@ -1,9 +1,11 @@
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt, TypeFoldable};
 use rustc_span::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
+use traits::{translate_substs, Reveal};
 
 use log::debug;
 
@@ -82,21 +84,50 @@ fn resolve_associated_item<'tcx>(
     // the actual function:
     match vtbl {
         traits::VtableImpl(impl_data) => {
-            let (def_id, substs) =
-                traits::find_associated_item(tcx, param_env, trait_item, rcvr_substs, &impl_data);
+            debug!(
+                "resolving VtableImpl: {:?}, {:?}, {:?}, {:?}",
+                param_env, trait_item, rcvr_substs, impl_data
+            );
+            assert!(!rcvr_substs.needs_infer());
+            assert!(!trait_ref.needs_infer());
 
-            let resolved_item = tcx.associated_item(def_id);
+            let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
+            let trait_def = tcx.trait_def(trait_def_id);
+            let leaf_def = trait_def
+                .ancestors(tcx, impl_data.impl_def_id)
+                .ok()?
+                .leaf_def(tcx, trait_item.ident, trait_item.kind)
+                .unwrap_or_else(|| {
+                    bug!("{:?} not found in {:?}", trait_item, impl_data.impl_def_id);
+                });
+            let def_id = leaf_def.item.def_id;
+
+            let substs = tcx.infer_ctxt().enter(|infcx| {
+                let param_env = param_env.with_reveal_all();
+                let substs = rcvr_substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
+                let substs = translate_substs(
+                    &infcx,
+                    param_env,
+                    impl_data.impl_def_id,
+                    substs,
+                    leaf_def.defining_node,
+                );
+                infcx.tcx.erase_regions(&substs)
+            });
 
             // Since this is a trait item, we need to see if the item is either a trait default item
             // or a specialization because we can't resolve those unless we can `Reveal::All`.
             // NOTE: This should be kept in sync with the similar code in
             // `rustc_middle::traits::project::assemble_candidates_from_impls()`.
-            let eligible = if !resolved_item.defaultness.is_default() {
+            let eligible = if leaf_def.is_final() {
+                // Non-specializable items are always projectable.
                 true
-            } else if param_env.reveal == traits::Reveal::All {
-                !trait_ref.needs_subst()
             } else {
-                false
+                // Only reveal a specializable default if we're past type-checking
+                // and the obligation is monomorphic, otherwise passes such as
+                // transmute checking and polymorphic MIR optimizations could
+                // get a result which isn't correct for all monomorphizations.
+                if param_env.reveal == Reveal::All { !trait_ref.needs_subst() } else { false }
             };
 
             if !eligible {

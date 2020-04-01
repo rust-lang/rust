@@ -154,14 +154,44 @@ impl Iterator for Ancestors<'_> {
     }
 }
 
-pub struct NodeItem<T> {
-    pub node: Node,
-    pub item: T,
+/// Information about the most specialized definition of an associated item.
+pub struct LeafDef {
+    /// The associated item described by this `LeafDef`.
+    pub item: ty::AssocItem,
+
+    /// The node in the specialization graph containing the definition of `item`.
+    pub defining_node: Node,
+
+    /// The "top-most" (ie. least specialized) specialization graph node that finalized the
+    /// definition of `item`.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// trait Tr {
+    ///     fn assoc(&self);
+    /// }
+    ///
+    /// impl<T> Tr for T {
+    ///     default fn assoc(&self) {}
+    /// }
+    ///
+    /// impl Tr for u8 {}
+    /// ```
+    ///
+    /// If we start the leaf definition search at `impl Tr for u8`, that impl will be the
+    /// `finalizing_node`, while `defining_node` will be the generic impl.
+    ///
+    /// If the leaf definition search is started at the generic impl, `finalizing_node` will be
+    /// `None`, since the most specialized impl we found still allows overriding the method
+    /// (doesn't finalize it).
+    pub finalizing_node: Option<Node>,
 }
 
-impl<T> NodeItem<T> {
-    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> NodeItem<U> {
-        NodeItem { node: self.node, item: f(self.item) }
+impl LeafDef {
+    /// Returns whether this definition is known to not be further specializable.
+    pub fn is_final(&self) -> bool {
+        self.finalizing_node.is_some()
     }
 }
 
@@ -173,18 +203,36 @@ impl<'tcx> Ancestors<'tcx> {
         tcx: TyCtxt<'tcx>,
         trait_item_name: Ident,
         trait_item_kind: ty::AssocKind,
-    ) -> Option<NodeItem<ty::AssocItem>> {
+    ) -> Option<LeafDef> {
         let trait_def_id = self.trait_def_id;
+        let mut finalizing_node = None;
+
         self.find_map(|node| {
-            node.item(tcx, trait_item_name, trait_item_kind, trait_def_id)
-                .map(|item| NodeItem { node, item })
+            if let Some(item) = node.item(tcx, trait_item_name, trait_item_kind, trait_def_id) {
+                if finalizing_node.is_none() {
+                    let is_specializable = item.defaultness.is_default()
+                        || tcx.impl_defaultness(node.def_id()).is_default();
+
+                    if !is_specializable {
+                        finalizing_node = Some(node);
+                    }
+                }
+
+                Some(LeafDef { item, defining_node: node, finalizing_node })
+            } else {
+                // Item not mentioned. This "finalizes" any defaulted item provided by an ancestor.
+                finalizing_node = Some(node);
+                None
+            }
         })
     }
 }
 
 /// Walk up the specialization ancestors of a given impl, starting with that
-/// impl itself. Returns `None` if an error was reported while building the
-/// specialization graph.
+/// impl itself.
+///
+/// Returns `Err` if an error was reported while building the specialization
+/// graph.
 pub fn ancestors(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,

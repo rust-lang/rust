@@ -53,9 +53,8 @@ pub struct ConstEvalErr<'tcx> {
 
 #[derive(Debug)]
 pub struct FrameInfo<'tcx> {
-    /// This span is in the caller.
-    pub call_site: Span,
     pub instance: ty::Instance<'tcx>,
+    pub span: Span,
     pub lint_root: Option<hir::HirId>,
 }
 
@@ -65,12 +64,12 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             if tcx.def_key(self.instance.def_id()).disambiguated_data.data
                 == DefPathData::ClosureExpr
             {
-                write!(f, "inside call to closure")?;
+                write!(f, "inside closure")?;
             } else {
-                write!(f, "inside call to `{}`", self.instance)?;
+                write!(f, "inside `{}`", self.instance)?;
             }
-            if !self.call_site.is_dummy() {
-                let lo = tcx.sess.source_map().lookup_char_pos(self.call_site.lo());
+            if !self.span.is_dummy() {
+                let lo = tcx.sess.source_map().lookup_char_pos(self.span.lo());
                 write!(f, " at {}:{}:{}", lo.file.name, lo.line, lo.col.to_usize() + 1)?;
             }
             Ok(())
@@ -168,13 +167,10 @@ impl<'tcx> ConstEvalErr<'tcx> {
             if let Some(span_msg) = span_msg {
                 err.span_label(self.span, span_msg);
             }
-            // Add spans for the stacktrace.
-            // Skip the last, which is just the environment of the constant.  The stacktrace
-            // is sometimes empty because we create "fake" eval contexts in CTFE to do work
-            // on constant values.
-            if !self.stacktrace.is_empty() {
-                for frame_info in &self.stacktrace[..self.stacktrace.len() - 1] {
-                    err.span_label(frame_info.call_site, frame_info.to_string());
+            // Add spans for the stacktrace. Don't print a single-line backtrace though.
+            if self.stacktrace.len() > 1 {
+                for frame_info in &self.stacktrace {
+                    err.span_label(frame_info.span, frame_info.to_string());
                 }
             }
             // Let the caller finish the job.
