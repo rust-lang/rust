@@ -198,9 +198,6 @@ differently from other crates that are directly in this repo:
 They are just regular files and directories. This is in contrast to `submodule` dependencies
 (see below for those).
 
-If you want to synchronize or otherwise work with subtrees, install the `git subtree` command via
-instructions found at https://github.com/ingydotnet/git-subtree
-
 #### Synchronizing a subtree
 
 There are two synchronization directions: `subtree push` and `subtree pull`.
@@ -230,8 +227,7 @@ This will create a new commit, which you may not rebase under any circumstances!
 and redo the operation if you need to rebase.
 
 Now you're done, the `src/tools/clippy` directory behaves as if clippy were part of the rustc
-monorepo, so no one but you (or others that synchronize subtrees) needs to have `git subtree`
-installed.
+monorepo, so no one but you (or others that synchronize subtrees) needs actually use `git subtree`.
 
 
 ### External Dependencies (submodules)
