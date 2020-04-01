@@ -316,6 +316,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Threading
             "pthread_create" => {
+                println!("WARNING: The thread support is experimental. \
+                          For example, Miri does not detect data races yet.");
                 assert_eq!(args.len(), 4);
                 let func = args[2];
                 let fn_ptr = this.read_scalar(func)?.not_undef()?;

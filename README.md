@@ -47,7 +47,9 @@ in your program, and cannot run all programs:
 * Miri runs the program as a platform-independent interpreter, so the program
   has no access to most platform-specific APIs or FFI. A few APIs have been
   implemented (such as printing to stdout) but most have not: for example, Miri
-  currently does not support concurrency, or SIMD, or networking.
+  currently does not support SIMD or networking.
+* Miri currently does not check for data-races and other concurrency related
+  issues.
 
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
