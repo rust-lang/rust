@@ -1,4 +1,5 @@
 use crate::ich::StableHashingContext;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::subst::Subst;
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
@@ -15,7 +16,7 @@ use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, Conv, FnAbi, PassMode, Reg, RegKind,
 };
 pub use rustc_target::abi::*;
-use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec};
+use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy};
 
 use std::cmp;
 use std::fmt;
@@ -2368,9 +2369,53 @@ where
         sig: ty::PolyFnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
         caller_location: Option<Ty<'tcx>>,
+        codegen_fn_attr_flags: CodegenFnAttrFlags,
         mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgAbi<'tcx, Ty<'tcx>>,
     ) -> Self;
     fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
+}
+
+fn fn_can_unwind(
+    panic_strategy: PanicStrategy,
+    codegen_fn_attr_flags: CodegenFnAttrFlags,
+    call_conv: Conv,
+) -> bool {
+    if panic_strategy != PanicStrategy::Unwind {
+        // In panic=abort mode we assume nothing can unwind anywhere, so
+        // optimize based on this!
+        false
+    } else if codegen_fn_attr_flags.contains(CodegenFnAttrFlags::UNWIND) {
+        // If a specific #[unwind] attribute is present, use that.
+        true
+    } else if codegen_fn_attr_flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
+        // Special attribute for allocator functions, which can't unwind.
+        false
+    } else {
+        if call_conv == Conv::Rust {
+            // Any Rust method (or `extern "Rust" fn` or `extern
+            // "rust-call" fn`) is explicitly allowed to unwind
+            // (unless it has no-unwind attribute, handled above).
+            true
+        } else {
+            // Anything else is either:
+            //
+            //  1. A foreign item using a non-Rust ABI (like `extern "C" { fn foo(); }`), or
+            //
+            //  2. A Rust item using a non-Rust ABI (like `extern "C" fn foo() { ... }`).
+            //
+            // Foreign items (case 1) are assumed to not unwind; it is
+            // UB otherwise. (At least for now; see also
+            // rust-lang/rust#63909 and Rust RFC 2753.)
+            //
+            // Items defined in Rust with non-Rust ABIs (case 2) are also
+            // not supposed to unwind. Whether this should be enforced
+            // (versus stating it is UB) and *how* it would be enforced
+            // is currently under discussion; see rust-lang/rust#58794.
+            //
+            // In either case, we mark item as explicitly nounwind.
+            false
+        }
+    }
 }
 
 impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
@@ -2382,7 +2427,12 @@ where
         + HasParamEnv<'tcx>,
 {
     fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
-        call::FnAbi::new_internal(cx, sig, extra_args, None, |ty, _| ArgAbi::new(cx.layout_of(ty)))
+        // Assume that fn pointers may always unwind
+        let codegen_fn_attr_flags = CodegenFnAttrFlags::UNWIND;
+
+        call::FnAbi::new_internal(cx, sig, extra_args, None, codegen_fn_attr_flags, |ty, _| {
+            ArgAbi::new(cx.layout_of(ty))
+        })
     }
 
     fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
@@ -2394,7 +2444,9 @@ where
             None
         };
 
-        call::FnAbi::new_internal(cx, sig, extra_args, caller_location, |ty, arg_idx| {
+        let attrs = cx.tcx().codegen_fn_attrs(instance.def_id()).flags;
+
+        call::FnAbi::new_internal(cx, sig, extra_args, caller_location, attrs, |ty, arg_idx| {
             let mut layout = cx.layout_of(ty);
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
@@ -2450,6 +2502,7 @@ where
         sig: ty::PolyFnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
         caller_location: Option<Ty<'tcx>>,
+        codegen_fn_attr_flags: CodegenFnAttrFlags,
         mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgAbi<'tcx, Ty<'tcx>>,
     ) -> Self {
         debug!("FnAbi::new_internal({:?}, {:?})", sig, extra_args);
@@ -2639,6 +2692,7 @@ where
             c_variadic: sig.c_variadic,
             fixed_count: inputs.len(),
             conv,
+            can_unwind: fn_can_unwind(cx.tcx().sess.panic_strategy(), codegen_fn_attr_flags, conv),
         };
         fn_abi.adjust_for_abi(cx, sig.abi);
         fn_abi
