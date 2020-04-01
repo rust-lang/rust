@@ -58,9 +58,9 @@ pub enum ProjectWorkspace {
 #[derive(Clone)]
 pub struct PackageRoot {
     /// Path to the root folder
-    pub path: PathBuf,
+    path: PathBuf,
     /// Is a member of the current workspace
-    pub is_member: bool,
+    is_member: bool,
 }
 impl PackageRoot {
     pub fn new_member(path: PathBuf) -> PackageRoot {
@@ -68,6 +68,12 @@ impl PackageRoot {
     }
     pub fn new_non_member(path: PathBuf) -> PackageRoot {
         Self { path, is_member: false }
+    }
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+    pub fn is_member(&self) -> bool {
+        self.is_member
     }
 }
 

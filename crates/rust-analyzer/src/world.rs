@@ -101,7 +101,7 @@ impl WorldState {
                 .iter()
                 .map(|path| RootEntry::new(path.clone(), create_filter(true)))
                 .chain(workspaces.iter().flat_map(ProjectWorkspace::to_roots).map(|pkg_root| {
-                    RootEntry::new(pkg_root.path, create_filter(pkg_root.is_member))
+                    RootEntry::new(pkg_root.path().to_owned(), create_filter(pkg_root.is_member()))
                 }))
                 .chain(
                     extern_dirs
