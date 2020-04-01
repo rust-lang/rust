@@ -217,8 +217,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_immediate(*val, place.into())?;
             }
 
-            "breakpoint" => unimplemented!(), // halt miri
-
             #[rustfmt::skip]
             | "copy"
             | "copy_nonoverlapping"
