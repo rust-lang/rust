@@ -4,14 +4,14 @@ mod line_info;
 use crate::prelude::*;
 
 use cranelift_codegen::ir::{StackSlots, ValueLabel, ValueLoc};
-use cranelift_codegen::isa::{RegUnit, TargetIsa};
+use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::ValueLocRange;
 
 use gimli::write::{
     self, Address, AttributeValue, DwarfUnit, Expression, LineProgram, LineString, Location,
     LocationList, Range, RangeList, UnitEntryId, Writer,
 };
-use gimli::{Encoding, Format, LineEncoding, Register, RunTimeEndian, X86_64};
+use gimli::{Encoding, Format, LineEncoding, RunTimeEndian, X86_64};
 
 pub(crate) use emit::{DebugReloc, DebugRelocName};
 
@@ -351,71 +351,11 @@ fn place_location<'a, 'tcx>(
     }
 }
 
-
-
-
-
-// Adapted from https://github.com/bytecodealliance/wasmtime/blob/50496efb6bac32aaf469c6d9186b322de83549bf/crates/debug/src/transform/map_reg.rs
-pub(crate) fn map_reg(isa: &dyn TargetIsa, reg: RegUnit) -> Register {
-    // TODO avoid duplication with fde.rs
-    assert!(isa.name() == "x86" && isa.pointer_bits() == 64);
-    // Mapping from https://github.com/bytecodealliance/cranelift/pull/902 by @iximeow
-    const X86_GP_REG_MAP: [Register; 16] = [
-        X86_64::RAX,
-        X86_64::RCX,
-        X86_64::RDX,
-        X86_64::RBX,
-        X86_64::RSP,
-        X86_64::RBP,
-        X86_64::RSI,
-        X86_64::RDI,
-        X86_64::R8,
-        X86_64::R9,
-        X86_64::R10,
-        X86_64::R11,
-        X86_64::R12,
-        X86_64::R13,
-        X86_64::R14,
-        X86_64::R15,
-    ];
-    const X86_XMM_REG_MAP: [Register; 16] = [
-        X86_64::XMM0,
-        X86_64::XMM1,
-        X86_64::XMM2,
-        X86_64::XMM3,
-        X86_64::XMM4,
-        X86_64::XMM5,
-        X86_64::XMM6,
-        X86_64::XMM7,
-        X86_64::XMM8,
-        X86_64::XMM9,
-        X86_64::XMM10,
-        X86_64::XMM11,
-        X86_64::XMM12,
-        X86_64::XMM13,
-        X86_64::XMM14,
-        X86_64::XMM15,
-    ];
-    let reg_info = isa.register_info();
-    let bank = reg_info.bank_containing_regunit(reg).unwrap();
-    match bank.name {
-        "IntRegs" => {
-            // x86 GP registers have a weird mapping to DWARF registers, so we use a
-            // lookup table.
-            X86_GP_REG_MAP[(reg - bank.first_unit) as usize]
-        }
-        "FloatRegs" => X86_XMM_REG_MAP[(reg - bank.first_unit) as usize],
-        bank_name => {
-            panic!("unsupported register bank: {}", bank_name);
-        }
-    }
-}
-
 // Adapted from https://github.com/CraneStation/wasmtime/blob/5a1845b4caf7a5dba8eda1fef05213a532ed4259/crates/debug/src/transform/expression.rs#L59-L137
 fn translate_loc(isa: &dyn TargetIsa, loc: ValueLoc, stack_slots: &StackSlots) -> Option<Vec<u8>> {
     match loc {
         ValueLoc::Reg(reg) => {
-            let machine_reg = map_reg(isa, reg).0 as u8;
+            let machine_reg = cranelift_codegen::isa::fde::map_reg(isa, reg).unwrap().0 as u8;
             assert!(machine_reg <= 32); // FIXME
             Some(vec![gimli::constants::DW_OP_reg0.0 + machine_reg])
         }
