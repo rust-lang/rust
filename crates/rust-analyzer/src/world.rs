@@ -123,7 +123,6 @@ impl WorldState {
             change.set_debug_root_path(SourceRootId(r.0), vfs_root_path.display().to_string());
 
             // FIXME: add path2root in vfs to simpily this logic
-
             if extern_dirs.contains(&vfs_root_path) {
                 extern_source_roots.insert(vfs_root_path, ExternSourceId(r.0));
             }
