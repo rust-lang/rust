@@ -143,16 +143,13 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<K, V> for ArenaCacheSelector<'tc
 }
 
 pub struct ArenaCache<'tcx, K, V> {
-    arena: WorkerLocal<&'tcx TypedArena<(V, DepNodeIndex)>>,
-    phantom: PhantomData<K>,
+    arena: WorkerLocal<TypedArena<(V, DepNodeIndex)>>,
+    phantom: PhantomData<(K, &'tcx V)>,
 }
 
 impl<'tcx, K, V> Default for ArenaCache<'tcx, K, V> {
     fn default() -> Self {
-        ArenaCache {
-            arena: WorkerLocal::new(|_| &*Box::leak(Box::new(TypedArena::default()))),
-            phantom: PhantomData,
-        }
+        ArenaCache { arena: WorkerLocal::new(|_| TypedArena::default()), phantom: PhantomData }
     }
 }
 
@@ -162,7 +159,8 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
 
     fn store_nocache(&self, value: Self::Value) -> Self::Stored {
         let value = self.arena.alloc((value, DepNodeIndex::INVALID));
-        &value.0
+        let value = unsafe { &*(&value.0 as *const _) };
+        &value
     }
 }
 
@@ -204,6 +202,7 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V> {
         index: DepNodeIndex,
     ) -> Self::Stored {
         let value = self.arena.alloc((value, index));
+        let value = unsafe { &*(value as *const _) };
         lock_sharded_storage.insert(key, value);
         &value.0
     }
