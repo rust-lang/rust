@@ -4,9 +4,9 @@
 mod conv;
 
 use std::{
-    error, fmt,
+    env, error, fmt,
     io::{BufRead, BufReader},
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::{Command, Stdio},
     time::Instant,
 };
@@ -23,10 +23,10 @@ use crate::conv::{map_rust_diagnostic_to_lsp, MappedRustDiagnostic};
 pub use crate::conv::url_from_path_with_drive_lowercasing;
 
 #[derive(Clone, Debug)]
-pub struct CheckConfig {
-    pub args: Vec<String>,
+pub struct FlycheckConfig {
     pub command: String,
     pub all_targets: bool,
+    pub extra_args: Vec<String>,
 }
 
 /// Flycheck wraps the shared state and communication machinery used for
@@ -42,12 +42,11 @@ pub struct Flycheck {
 }
 
 impl Flycheck {
-    pub fn new(config: CheckConfig, workspace_root: PathBuf) -> Flycheck {
+    pub fn new(config: FlycheckConfig, workspace_root: PathBuf) -> Flycheck {
         let (task_send, task_recv) = unbounded::<CheckTask>();
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
         let handle = jod_thread::spawn(move || {
-            let mut check = FlycheckThread::new(config, workspace_root);
-            check.run(&task_send, &cmd_recv);
+            FlycheckThread::new(config, workspace_root).run(&task_send, &cmd_recv);
         });
         Flycheck { task_recv, cmd_send, handle }
     }
@@ -76,7 +75,7 @@ pub enum CheckCommand {
 }
 
 struct FlycheckThread {
-    options: CheckConfig,
+    config: FlycheckConfig,
     workspace_root: PathBuf,
     last_update_req: Option<Instant>,
     // XXX: drop order is significant
@@ -90,9 +89,9 @@ struct FlycheckThread {
 }
 
 impl FlycheckThread {
-    fn new(options: CheckConfig, workspace_root: PathBuf) -> FlycheckThread {
+    fn new(config: FlycheckConfig, workspace_root: PathBuf) -> FlycheckThread {
         FlycheckThread {
-            options,
+            config,
             workspace_root,
             last_update_req: None,
             message_recv: never(),
@@ -216,27 +215,27 @@ impl FlycheckThread {
         self.message_recv = never();
         self.check_process = None;
 
-        let mut args: Vec<String> = vec![
-            self.options.command.clone(),
-            "--workspace".to_string(),
-            "--message-format=json".to_string(),
-            "--manifest-path".to_string(),
-            format!("{}/Cargo.toml", self.workspace_root.display()),
-        ];
-        if self.options.all_targets {
-            args.push("--all-targets".to_string());
-        }
-        args.extend(self.options.args.iter().cloned());
+        let cmd = {
+            let mut cmd = Command::new(cargo_binary());
+            cmd.arg(&self.config.command);
+            cmd.args(&["--workspace", "--message-format=json", "--manifest-path"]);
+            cmd.arg(self.workspace_root.join("Cargo.toml"));
+            if self.config.all_targets {
+                cmd.arg("--all-targets");
+            }
+            cmd.args(self.config.extra_args.iter());
+            cmd.current_dir(&self.workspace_root);
+            cmd
+        };
 
         let (message_send, message_recv) = unbounded();
-        let workspace_root = self.workspace_root.to_owned();
         self.message_recv = message_recv;
         self.check_process = Some(jod_thread::spawn(move || {
             // If we trigger an error here, we will do so in the loop instead,
             // which will break out of the loop, and continue the shutdown
             let _ = message_send.send(CheckEvent::Begin);
 
-            let res = run_cargo(&args, Some(&workspace_root), &mut |message| {
+            let res = run_cargo(cmd, &mut |message| {
                 // Skip certain kinds of messages to only spend time on what's useful
                 match &message {
                     Message::CompilerArtifact(artifact) if artifact.fresh => return true,
@@ -285,17 +284,11 @@ impl fmt::Display for CargoError {
 impl error::Error for CargoError {}
 
 fn run_cargo(
-    args: &[String],
-    current_dir: Option<&Path>,
+    mut command: Command,
     on_message: &mut dyn FnMut(cargo_metadata::Message) -> bool,
 ) -> Result<(), CargoError> {
-    let mut command = Command::new("cargo");
-    if let Some(current_dir) = current_dir {
-        command.current_dir(current_dir);
-    }
-
+    dbg!(&command);
     let mut child = command
-        .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .stdin(Stdio::null())
@@ -346,9 +339,8 @@ fn run_cargo(
             // FIXME: Read the stderr to display the reason, see `read2()` reference in PR comment:
             // https://github.com/rust-analyzer/rust-analyzer/pull/3632#discussion_r395605298
             format!(
-                "the command produced no valid metadata (exit code: {:?}): cargo {}",
-                exit_code,
-                args.join(" ")
+                "the command produced no valid metadata (exit code: {:?}): {:?}",
+                exit_code, command
             )
         }
         Err(err) => format!("io error: {:?}", err),
@@ -356,4 +348,8 @@ fn run_cargo(
     };
 
     Err(CargoError(err_msg))
+}
+
+fn cargo_binary() -> String {
+    env::var("CARGO").unwrap_or_else(|_| "cargo".to_string())
 }

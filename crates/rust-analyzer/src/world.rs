@@ -11,7 +11,7 @@ use std::{
 use crossbeam_channel::{unbounded, Receiver};
 use lsp_types::Url;
 use parking_lot::RwLock;
-use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckConfig, Flycheck};
+use ra_flycheck::{url_from_path_with_drive_lowercasing, Flycheck, FlycheckConfig};
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, InlayHintsConfig, LibraryData,
     SourceRootId,
@@ -58,7 +58,7 @@ pub struct Config {
     pub line_folding_only: bool,
     pub inlay_hints: InlayHintsConfig,
     pub rustfmt_args: Vec<String>,
-    pub check: Option<CheckConfig>,
+    pub check: Option<FlycheckConfig>,
     pub vscode_lldb: bool,
     pub proc_macro_srv: Option<String>,
 }

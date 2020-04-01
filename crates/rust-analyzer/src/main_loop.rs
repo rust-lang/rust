@@ -21,7 +21,7 @@ use lsp_types::{
     WorkDoneProgressBegin, WorkDoneProgressCreateParams, WorkDoneProgressEnd,
     WorkDoneProgressReport,
 };
-use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckConfig, CheckTask};
+use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckTask, FlycheckConfig};
 use ra_ide::{Canceled, FileId, InlayHintsConfig, LibraryData, SourceRootId};
 use ra_prof::profile;
 use ra_vfs::{VfsFile, VfsTask, Watch};
@@ -102,10 +102,10 @@ fn get_config(
             max_length: config.inlay_hints_max_length,
         },
         check: if config.cargo_watch_enable {
-            Some(CheckConfig {
-                args: config.cargo_watch_args.clone(),
+            Some(FlycheckConfig {
                 command: config.cargo_watch_command.clone(),
                 all_targets: config.cargo_watch_all_targets,
+                extra_args: config.cargo_watch_args.clone(),
             })
         } else {
             None
