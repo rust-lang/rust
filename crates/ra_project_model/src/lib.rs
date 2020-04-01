@@ -185,10 +185,12 @@ impl ProjectWorkspace {
         let mut crate_graph = CrateGraph::default();
         match self {
             ProjectWorkspace::Json { project } => {
-                let mut crates = FxHashMap::default();
-                for (id, krate) in project.crates.iter().enumerate() {
-                    let crate_id = json_project::CrateId(id);
-                    if let Some(file_id) = load(&krate.root_module) {
+                let crates: FxHashMap<_, _> = project
+                    .crates
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(seq_index, krate)| {
+                        let file_id = load(&krate.root_module)?;
                         let edition = match krate.edition {
                             json_project::Edition::Edition2015 => Edition::Edition2015,
                             json_project::Edition::Edition2018 => Edition::Edition2018,
@@ -218,8 +220,8 @@ impl ProjectWorkspace {
                             .clone()
                             .map(|it| proc_macro_client.by_dylib_path(&it));
                         // FIXME: No crate name in json definition such that we cannot add OUT_DIR to env
-                        crates.insert(
-                            crate_id,
+                        Some((
+                            json_project::CrateId(seq_index),
                             crate_graph.add_crate_root(
                                 file_id,
                                 edition,
@@ -230,9 +232,9 @@ impl ProjectWorkspace {
                                 extern_source,
                                 proc_macro.unwrap_or_default(),
                             ),
-                        );
-                    }
-                }
+                        ))
+                    })
+                    .collect();
 
                 for (id, krate) in project.crates.iter().enumerate() {
                     for dep in &krate.deps {
@@ -256,9 +258,11 @@ impl ProjectWorkspace {
                 }
             }
             ProjectWorkspace::Cargo { cargo, sysroot } => {
-                let mut sysroot_crates = FxHashMap::default();
-                for krate in sysroot.crates() {
-                    if let Some(file_id) = load(&sysroot[krate].root) {
+                let sysroot_crates: FxHashMap<_, _> = sysroot
+                    .crates()
+                    .filter_map(|krate| {
+                        let file_id = load(&sysroot[krate].root)?;
+
                         // Crates from sysroot have `cfg(test)` disabled
                         let cfg_options = {
                             let mut opts = default_cfg_options.clone();
@@ -269,22 +273,22 @@ impl ProjectWorkspace {
                         let env = Env::default();
                         let extern_source = ExternSource::default();
                         let proc_macro = vec![];
+                        let crate_name = CrateName::new(&sysroot[krate].name)
+                            .expect("Sysroot crate names should not contain dashes");
 
                         let crate_id = crate_graph.add_crate_root(
                             file_id,
                             Edition::Edition2018,
-                            Some(
-                                CrateName::new(&sysroot[krate].name)
-                                    .expect("Sysroot crate names should not contain dashes"),
-                            ),
+                            Some(crate_name),
                             cfg_options,
                             env,
                             extern_source,
                             proc_macro,
                         );
-                        sysroot_crates.insert(krate, crate_id);
-                    }
-                }
+                        Some((krate, crate_id))
+                    })
+                    .collect();
+
                 for from in sysroot.crates() {
                     for &to in sysroot[from].deps.iter() {
                         let name = &sysroot[to].name;
