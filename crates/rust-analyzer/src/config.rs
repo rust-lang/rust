@@ -99,56 +99,60 @@ impl Default for Config {
 impl Config {
     #[rustfmt::skip]
     pub fn update(&mut self, value: &serde_json::Value) {
+        log::info!("Config::update({:#})", value);
+
         let client_caps = self.client_caps.clone();
         *self = Default::default();
         self.client_caps = client_caps;
 
-        set(value, "publishDecorations", &mut self.publish_decorations);
-        set(value, "excludeGlobs", &mut self.exclude_globs);
-        set(value, "useClientWatching", &mut self.use_client_watching);
-        set(value, "lruCapacity", &mut self.lru_capacity);
+        set(value, "/publishDecorations", &mut self.publish_decorations);
+        set(value, "/excludeGlobs", &mut self.exclude_globs);
+        set(value, "/useClientWatching", &mut self.use_client_watching);
+        set(value, "/lruCapacity", &mut self.lru_capacity);
 
-        set(value, "inlayHintsType", &mut self.inlay_hints.type_hints);
-        set(value, "inlayHintsParameter", &mut self.inlay_hints.parameter_hints);
-        set(value, "inlayHintsChaining", &mut self.inlay_hints.chaining_hints);
-        set(value, "inlayHintsMaxLength", &mut self.inlay_hints.max_length);
+        set(value, "/inlayHintsType", &mut self.inlay_hints.type_hints);
+        set(value, "/inlayHintsParameter", &mut self.inlay_hints.parameter_hints);
+        set(value, "/inlayHintsChaining", &mut self.inlay_hints.chaining_hints);
+        set(value, "/inlayHintsMaxLength", &mut self.inlay_hints.max_length);
 
         if let Some(false) = get(value, "cargo_watch_enable") {
             self.check = None
         } else {
             if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets }) = &mut self.check
             {
-                set(value, "cargoWatchArgs", extra_args);
-                set(value, "cargoWatchCommand", command);
-                set(value, "cargoWatchAllTargets", all_targets);
+                set(value, "/cargoWatchArgs", extra_args);
+                set(value, "/cargoWatchCommand", command);
+                set(value, "/cargoWatchAllTargets", all_targets);
             }
         };
 
-        set(value, "withSysroot", &mut self.with_sysroot);
+        set(value, "/withSysroot", &mut self.with_sysroot);
         if let RustfmtConfig::Rustfmt { extra_args } = &mut self.rustfmt {
-            set(value, "rustfmtArgs", extra_args);
+            set(value, "/rustfmtArgs", extra_args);
         }
 
-        set(value, "cargoFeatures/noDefaultFeatures", &mut self.cargo.no_default_features);
-        set(value, "cargoFeatures/allFeatures", &mut self.cargo.all_features);
-        set(value, "cargoFeatures/features", &mut self.cargo.features);
-        set(value, "cargoFeatures/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
+        set(value, "/cargoFeatures/noDefaultFeatures", &mut self.cargo.no_default_features);
+        set(value, "/cargoFeatures/allFeatures", &mut self.cargo.all_features);
+        set(value, "/cargoFeatures/features", &mut self.cargo.features);
+        set(value, "/cargoFeatures/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
 
-        set(value, "vscodeLldb", &mut self.vscode_lldb);
+        set(value, "/vscodeLldb", &mut self.vscode_lldb);
 
-        set(value, "featureFlags/lsp.diagnostics", &mut self.publish_diagnostics);
-        set(value, "featureFlags/notifications.workspace-loaded", &mut self.notifications.workspace_loaded);
-        set(value, "featureFlags/notifications.cargo-toml-not-found", &mut self.notifications.cargo_toml_not_found);
-        set(value, "featureFlags/completion.enable-postfix", &mut self.completion.enable_postfix_completions);
-        set(value, "featureFlags/completion.insertion.add-call-parenthesis", &mut self.completion.add_call_parenthesis);
-        set(value, "featureFlags/completion.insertion.add-argument-snippets", &mut self.completion.add_call_argument_snippets);
-        set(value, "featureFlags/call-info.full", &mut self.call_info_full);
+        set(value, "/featureFlags/lsp.diagnostics", &mut self.publish_diagnostics);
+        set(value, "/featureFlags/notifications.workspace-loaded", &mut self.notifications.workspace_loaded);
+        set(value, "/featureFlags/notifications.cargo-toml-not-found", &mut self.notifications.cargo_toml_not_found);
+        set(value, "/featureFlags/completion.enable-postfix", &mut self.completion.enable_postfix_completions);
+        set(value, "/featureFlags/completion.insertion.add-call-parenthesis", &mut self.completion.add_call_parenthesis);
+        set(value, "/featureFlags/completion.insertion.add-argument-snippets", &mut self.completion.add_call_argument_snippets);
+        set(value, "/featureFlags/call-info.full", &mut self.call_info_full);
+
+        log::info!("Config::update() = {:#?}", self);
 
         fn get<'a, T: Deserialize<'a>>(value: &'a serde_json::Value, pointer: &str) -> Option<T> {
             value.pointer(pointer).and_then(|it| T::deserialize(it).ok())
         }
 
-        fn set<'a, T: Deserialize<'a>>(value: &'a serde_json::Value, pointer: &str, slot: &mut T) {
+        fn set<'a, T: Deserialize<'a> + std::fmt::Debug>(value: &'a serde_json::Value, pointer: &str, slot: &mut T) {
             if let Some(new_value) = get(value, pointer) {
                 *slot = new_value
             }

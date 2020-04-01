@@ -364,10 +364,12 @@ fn loop_turn(
                         (Some(err), _) => {
                             log::error!("failed to fetch the server settings: {:?}", err)
                         }
-                        (None, Some(new_config)) => {
-                            let mut config = world_state.config.clone();
-                            config.update(&new_config);
-                            world_state.update_configuration(config);
+                        (None, Some(configs)) => {
+                            if let Some(new_config) = configs.get(0) {
+                                let mut config = world_state.config.clone();
+                                config.update(&new_config);
+                                world_state.update_configuration(config);
+                            }
                         }
                         (None, None) => {
                             log::error!("received empty server settings response from the client")
