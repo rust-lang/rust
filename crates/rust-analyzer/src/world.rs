@@ -32,6 +32,8 @@ use ra_db::ExternSourceId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 fn create_watcher(workspaces: &[ProjectWorkspace], config: &Config) -> Option<CheckWatcher> {
+    let check_config = config.check.as_ref()?;
+
     // FIXME: Figure out the multi-workspace situation
     workspaces
         .iter()
@@ -41,7 +43,7 @@ fn create_watcher(workspaces: &[ProjectWorkspace], config: &Config) -> Option<Ch
         })
         .map(|cargo| {
             let cargo_project_root = cargo.workspace_root().to_path_buf();
-            Some(CheckWatcher::new(config.check.clone(), cargo_project_root))
+            Some(CheckWatcher::new(check_config.clone(), cargo_project_root))
         })
         .unwrap_or_else(|| {
             log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
@@ -56,7 +58,7 @@ pub struct Config {
     pub line_folding_only: bool,
     pub inlay_hints: InlayHintsConfig,
     pub rustfmt_args: Vec<String>,
-    pub check: CheckConfig,
+    pub check: Option<CheckConfig>,
     pub vscode_lldb: bool,
     pub proc_macro_srv: Option<String>,
 }

@@ -24,7 +24,6 @@ pub use crate::conv::url_from_path_with_drive_lowercasing;
 
 #[derive(Clone, Debug)]
 pub struct CheckConfig {
-    pub enable: bool,
     pub args: Vec<String>,
     pub command: String,
     pub all_targets: bool,
@@ -216,9 +215,6 @@ impl CheckWatcherThread {
         // First, clear and cancel the old thread
         self.message_recv = never();
         self.check_process = None;
-        if !self.options.enable {
-            return;
-        }
 
         let mut args: Vec<String> = vec![
             self.options.command.clone(),

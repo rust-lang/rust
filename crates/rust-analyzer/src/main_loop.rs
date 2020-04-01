@@ -101,11 +101,14 @@ fn get_config(
             chaining_hints: config.inlay_hints_chaining,
             max_length: config.inlay_hints_max_length,
         },
-        check: CheckConfig {
-            enable: config.cargo_watch_enable,
-            args: config.cargo_watch_args.clone(),
-            command: config.cargo_watch_command.clone(),
-            all_targets: config.cargo_watch_all_targets,
+        check: if config.cargo_watch_enable {
+            Some(CheckConfig {
+                args: config.cargo_watch_args.clone(),
+                command: config.cargo_watch_command.clone(),
+                all_targets: config.cargo_watch_all_targets,
+            })
+        } else {
+            None
         },
         rustfmt_args: config.rustfmt_args.clone(),
         vscode_lldb: config.vscode_lldb,
