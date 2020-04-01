@@ -46,7 +46,7 @@ pub fn on_mir_pass<'tcx>(
     body: &Body<'tcx>,
     is_after: bool,
 ) {
-    if mir_util::dump_enabled(tcx, pass_name, source) {
+    if mir_util::dump_enabled(tcx, pass_name, source.def_id()) {
         mir_util::dump_mir(
             tcx,
             Some(pass_num),

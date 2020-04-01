@@ -562,6 +562,8 @@ fn test_debugging_options_tracking_hash() {
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.dump_mir_graphviz = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+    opts.debugging_opts.dump_mir_dataflow = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     // Make sure changing a [TRACKED] option changes the hash
     opts = reference.clone();
