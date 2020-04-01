@@ -4,6 +4,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(bindings_after_at)]
 #![feature(try_blocks)]
+#![feature(or_patterns)]
 
 use rustc_ast::ast;
 use rustc_ast::token::{self, Nonterminal};

@@ -1,8 +1,10 @@
 error[E0748]: unterminated raw string
-  --> $DIR/raw_string.rs:2:13
+  --> $DIR/raw-byte-string-eof.rs:2:5
    |
-LL |     let x = r##"lol"#;
-   |             ^ unterminated raw string
+LL |     br##"a"#;
+   |     ^      - help: consider terminating the string here: `##`
+   |     |
+   |     unterminated raw string
    |
    = note: this raw string should be terminated with `"##`
 
