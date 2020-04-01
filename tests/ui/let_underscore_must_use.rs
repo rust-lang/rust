@@ -88,4 +88,7 @@ fn main() {
     let _ = a.map(|_| ());
 
     let _ = a;
+
+    #[allow(clippy::let_underscore_must_use)]
+    let _ = a;
 }
