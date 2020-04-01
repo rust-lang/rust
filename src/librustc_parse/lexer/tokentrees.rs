@@ -77,7 +77,6 @@ impl<'a> TokenTreesReader<'a> {
 
     fn parse_token_tree(&mut self) -> PResult<'a, TreeAndJoint> {
         let sm = self.string_reader.sess.source_map();
-
         match self.token.kind {
             token::Eof => {
                 let msg = "this file contains an unclosed delimiter";
@@ -217,7 +216,7 @@ impl<'a> TokenTreesReader<'a> {
 
                 Ok(TokenTree::Delimited(delim_span, delim, tts).into())
             }
-            token::CloseDelim(_delim) => {
+            token::CloseDelim(delim) => {
                 // An unexpected closing delimiter (i.e., there is no
                 // matching opening delimiter).
                 let token_str = token_to_string(&self.token);
@@ -225,8 +224,13 @@ impl<'a> TokenTreesReader<'a> {
                 let mut err =
                     self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, &msg);
 
+                if let Some(span) = self.last_delim_empty_block_spans.remove(&delim) {
+                    err.span_label(
+                        span,
+                        "this block is empty, you might have not meant to close it",
+                    );
+                }
                 err.span_label(self.token.span, "unexpected closing delimiter");
-
                 Err(err)
             }
             _ => {
