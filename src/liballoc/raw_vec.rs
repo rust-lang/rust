@@ -520,6 +520,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
                 Layout::array::<T>(cap).map_err(|_| CapacityOverflow)?
             }
         };
+        alloc_guard(new_layout.size())?;
 
         let memory = if let Some((ptr, old_layout)) = self.current_memory() {
             debug_assert_eq!(old_layout.align(), new_layout.align());
