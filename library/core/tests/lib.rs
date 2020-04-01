@@ -60,6 +60,7 @@
 #![feature(unsafe_block_in_unsafe_fn)]
 #![feature(int_bits_const)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![feature(array_from_iter_impl)]
 
 extern crate test;
 
