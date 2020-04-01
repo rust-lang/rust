@@ -11,7 +11,7 @@ use std::{
 use crossbeam_channel::{unbounded, Receiver};
 use lsp_types::Url;
 use parking_lot::RwLock;
-use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckConfig, CheckWatcher};
+use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckConfig, Flycheck};
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, InlayHintsConfig, LibraryData,
     SourceRootId,
@@ -31,7 +31,7 @@ use crate::{
 use ra_db::ExternSourceId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-fn create_watcher(workspaces: &[ProjectWorkspace], config: &Config) -> Option<CheckWatcher> {
+fn create_flycheck(workspaces: &[ProjectWorkspace], config: &Config) -> Option<Flycheck> {
     let check_config = config.check.as_ref()?;
 
     // FIXME: Figure out the multi-workspace situation
@@ -43,7 +43,7 @@ fn create_watcher(workspaces: &[ProjectWorkspace], config: &Config) -> Option<Ch
         })
         .map(|cargo| {
             let cargo_project_root = cargo.workspace_root().to_path_buf();
-            Some(CheckWatcher::new(check_config.clone(), cargo_project_root))
+            Some(Flycheck::new(check_config.clone(), cargo_project_root))
         })
         .unwrap_or_else(|| {
             log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
@@ -78,7 +78,7 @@ pub struct WorldState {
     pub vfs: Arc<RwLock<Vfs>>,
     pub task_receiver: Receiver<VfsTask>,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
-    pub check_watcher: Option<CheckWatcher>,
+    pub flycheck: Option<Flycheck>,
     pub diagnostics: DiagnosticCollection,
 }
 
@@ -203,7 +203,7 @@ impl WorldState {
             });
         change.set_crate_graph(crate_graph);
 
-        let check_watcher = create_watcher(&workspaces, &config);
+        let flycheck = create_flycheck(&workspaces, &config);
 
         let mut analysis_host = AnalysisHost::new(lru_capacity);
         analysis_host.apply_change(change);
@@ -216,7 +216,7 @@ impl WorldState {
             vfs: Arc::new(RwLock::new(vfs)),
             task_receiver,
             latest_requests: Default::default(),
-            check_watcher,
+            flycheck,
             diagnostics: Default::default(),
         }
     }
@@ -229,7 +229,7 @@ impl WorldState {
     ) {
         self.feature_flags = Arc::new(feature_flags);
         self.analysis_host.update_lru_capacity(lru_capacity);
-        self.check_watcher = create_watcher(&self.workspaces, &config);
+        self.flycheck = create_flycheck(&self.workspaces, &config);
         self.config = config;
     }
 

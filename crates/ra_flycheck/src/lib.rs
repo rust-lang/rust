@@ -29,27 +29,27 @@ pub struct CheckConfig {
     pub all_targets: bool,
 }
 
-/// CheckWatcher wraps the shared state and communication machinery used for
+/// Flycheck wraps the shared state and communication machinery used for
 /// running `cargo check` (or other compatible command) and providing
 /// diagnostics based on the output.
 /// The spawned thread is shut down when this struct is dropped.
 #[derive(Debug)]
-pub struct CheckWatcher {
+pub struct Flycheck {
     // XXX: drop order is significant
     cmd_send: Sender<CheckCommand>,
     handle: Option<jod_thread::JoinHandle<()>>,
     pub task_recv: Receiver<CheckTask>,
 }
 
-impl CheckWatcher {
-    pub fn new(config: CheckConfig, workspace_root: PathBuf) -> CheckWatcher {
+impl Flycheck {
+    pub fn new(config: CheckConfig, workspace_root: PathBuf) -> Flycheck {
         let (task_send, task_recv) = unbounded::<CheckTask>();
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
         let handle = jod_thread::spawn(move || {
-            let mut check = CheckWatcherThread::new(config, workspace_root);
+            let mut check = FlycheckThread::new(config, workspace_root);
             check.run(&task_send, &cmd_recv);
         });
-        CheckWatcher { task_recv, cmd_send, handle: Some(handle) }
+        Flycheck { task_recv, cmd_send, handle: Some(handle) }
     }
 
     /// Schedule a re-start of the cargo check worker.
@@ -75,7 +75,7 @@ pub enum CheckCommand {
     Update,
 }
 
-struct CheckWatcherThread {
+struct FlycheckThread {
     options: CheckConfig,
     workspace_root: PathBuf,
     last_update_req: Option<Instant>,
@@ -89,9 +89,9 @@ struct CheckWatcherThread {
     check_process: Option<jod_thread::JoinHandle<()>>,
 }
 
-impl CheckWatcherThread {
-    fn new(options: CheckConfig, workspace_root: PathBuf) -> CheckWatcherThread {
-        CheckWatcherThread {
+impl FlycheckThread {
+    fn new(options: CheckConfig, workspace_root: PathBuf) -> FlycheckThread {
+        FlycheckThread {
             options,
             workspace_root,
             last_update_req: None,
