@@ -1,4 +1,4 @@
-# Interacting with the AST
+# Example: Type checking through `rustc_interface`
 
 `rustc_interface` allows you to interact with Rust code at various stages of compilation.
 
