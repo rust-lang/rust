@@ -4,8 +4,8 @@
 mod conv;
 
 use std::{
-    env, error, fmt,
-    io::{BufRead, BufReader},
+    env,
+    io::{self, BufRead, BufReader},
     path::PathBuf,
     process::{Command, Stdio},
     time::Instant,
@@ -279,27 +279,12 @@ enum CheckEvent {
     End,
 }
 
-#[derive(Debug)]
-pub struct CargoError(String);
-
-impl fmt::Display for CargoError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Cargo failed: {}", self.0)
-    }
-}
-impl error::Error for CargoError {}
-
 fn run_cargo(
     mut command: Command,
     on_message: &mut dyn FnMut(cargo_metadata::Message) -> bool,
-) -> Result<(), CargoError> {
-    dbg!(&command);
-    let mut child = command
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .stdin(Stdio::null())
-        .spawn()
-        .expect("couldn't launch cargo");
+) -> io::Result<()> {
+    let mut child =
+        command.stdout(Stdio::piped()).stderr(Stdio::null()).stdin(Stdio::null()).spawn()?;
 
     // We manually read a line at a time, instead of using serde's
     // stream deserializers, because the deserializer cannot recover
@@ -313,13 +298,7 @@ fn run_cargo(
     let mut read_at_least_one_message = false;
 
     for line in stdout.lines() {
-        let line = match line {
-            Ok(line) => line,
-            Err(err) => {
-                log::error!("Couldn't read line from cargo: {}", err);
-                continue;
-            }
-        };
+        let line = line?;
 
         let message = serde_json::from_str::<cargo_metadata::Message>(&line);
         let message = match message {
@@ -340,20 +319,20 @@ fn run_cargo(
     // It is okay to ignore the result, as it only errors if the process is already dead
     let _ = child.kill();
 
-    let err_msg = match child.wait() {
-        Ok(exit_code) if !exit_code.success() && !read_at_least_one_message => {
-            // FIXME: Read the stderr to display the reason, see `read2()` reference in PR comment:
-            // https://github.com/rust-analyzer/rust-analyzer/pull/3632#discussion_r395605298
+    let exit_status = child.wait()?;
+    if !exit_status.success() && !read_at_least_one_message {
+        // FIXME: Read the stderr to display the reason, see `read2()` reference in PR comment:
+        // https://github.com/rust-analyzer/rust-analyzer/pull/3632#discussion_r395605298
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
             format!(
                 "the command produced no valid metadata (exit code: {:?}): {:?}",
-                exit_code, command
-            )
-        }
-        Err(err) => format!("io error: {:?}", err),
-        Ok(_) => return Ok(()),
-    };
+                exit_status, command
+            ),
+        ));
+    }
 
-    Err(CargoError(err_msg))
+    Ok(())
 }
 
 fn cargo_binary() -> String {
