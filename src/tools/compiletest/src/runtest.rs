@@ -180,29 +180,25 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
 }
 
 fn print_diff(expected: &str, actual: &str, context_size: usize) {
-    write_diff(expected, actual, context_size, std::io::stdout());
-}
-
-fn write_diff(expected: &str, actual: &str, context_size: usize, mut dest: impl io::Write) {
     let diff_results = make_diff(expected, actual, context_size);
     for result in diff_results {
         let mut line_number = result.line_number;
         for line in result.lines {
             match line {
                 DiffLine::Expected(e) => {
-                    writeln!(dest, "-\t{}", e).unwrap();
+                    println!("-\t{}", e);
                     line_number += 1;
                 }
                 DiffLine::Context(c) => {
-                    writeln!(dest, "{}\t{}", line_number, c).unwrap();
+                    println!("{}\t{}", line_number, c);
                     line_number += 1;
                 }
                 DiffLine::Resulting(r) => {
-                    writeln!(dest, "+\t{}", r).unwrap();
+                    println!("+\t{}", r);
                 }
             }
         }
-        writeln!(dest).unwrap();
+        println!();
     }
 }
 
