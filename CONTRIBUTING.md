@@ -208,8 +208,8 @@ There are two synchronization directions: `subrepo push` and `subrepo pull`.
 A `git subrepo push src/tools/clippy`
 takes all the changes that
 happened to the copy in this repo and creates commits on the remote repo that match the local
-changes (so ever local commit that touched the subrepo causes a commit on the remote repo). Again,
-Even this `subrepo push` operation creates a commit in this repo that you need to get merged without
+changes (so every local commit that touched the subrepo causes a commit on the remote repo). Again,
+This `subrepo push` operation also creates a commit in this (rustc) repo that you need to get merged without
 rebasing. This is very important in order to make future synchronizations work.
 
 A `git subrepo pull src/tools/clippy` takes all changes since the last `subrepo pull` from the clippy
