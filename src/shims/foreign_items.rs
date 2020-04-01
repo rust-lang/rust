@@ -12,7 +12,7 @@ use rustc_ast::attr;
 
 use crate::*;
 
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Returns the minimum alignment for the target architecture for allocations of the given size.
     fn min_align(&self, size: u64, kind: MiriMemoryKind) -> Align {

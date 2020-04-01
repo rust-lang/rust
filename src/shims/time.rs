@@ -11,8 +11,7 @@ pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Du
         .map_err(|_| err_unsup_format!("times before the Unix epoch are not supported").into())
 }
 
-
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn clock_gettime(
         &mut self,

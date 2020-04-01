@@ -31,7 +31,7 @@ pub struct CatchUnwindData<'tcx> {
     ret: mir::BasicBlock,
 }
 
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Check if panicking is supported on this target, and give a good error otherwise.
     fn check_panic_supported(&self) -> InterpResult<'tcx> {

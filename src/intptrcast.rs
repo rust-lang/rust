@@ -41,7 +41,7 @@ impl Default for GlobalState {
 impl<'mir, 'tcx> GlobalState {
     pub fn int_to_ptr(
         int: u64,
-        memory: &Memory<'mir, 'tcx, Evaluator<'tcx>>,
+        memory: &Memory<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
     ) -> InterpResult<'tcx, Pointer<Tag>> {
         let global_state = memory.extra.intptrcast.borrow();
         let pos = global_state.int_to_ptr_map.binary_search_by_key(&int, |(addr, _)| *addr);
@@ -73,7 +73,7 @@ impl<'mir, 'tcx> GlobalState {
 
     pub fn ptr_to_int(
         ptr: Pointer<Tag>,
-        memory: &Memory<'mir, 'tcx, Evaluator<'tcx>>,
+        memory: &Memory<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
     ) -> InterpResult<'tcx, u64> {
         let mut global_state = memory.extra.intptrcast.borrow_mut();
         let global_state = &mut *global_state;
