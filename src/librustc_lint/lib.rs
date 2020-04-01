@@ -48,6 +48,7 @@ mod late;
 mod levels;
 mod non_ascii_idents;
 mod nonstandard_style;
+mod nonstandard_taste;
 mod passes;
 mod redundant_semicolon;
 mod types;
@@ -69,6 +70,7 @@ use builtin::*;
 use internal::*;
 use non_ascii_idents::*;
 use nonstandard_style::*;
+use nonstandard_taste::*;
 use redundant_semicolon::*;
 use types::*;
 use unused::*;
@@ -183,6 +185,7 @@ macro_rules! late_lint_mod_passes {
                 UnreachablePub: UnreachablePub,
                 ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
                 InvalidValue: InvalidValue,
+                PineappleOnPizza: PineappleOnPizza,
             ]
         );
     };
@@ -246,6 +249,8 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
         store.register_lints(&BuiltinCombinedLateLintPass::get_lints());
     }
+
+    add_lint_group!("nonstandard_taste", PINEAPPLE_ON_PIZZA);
 
     add_lint_group!(
         "nonstandard_style",

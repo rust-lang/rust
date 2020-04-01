@@ -1,0 +1,13 @@
+error: pineapple doesn't go on pizza
+  --> $DIR/pineapple-on-pizza.rs:5:18
+   |
+LL |     let _: Pizza<Pineapple>;
+   |            ----- ^^^^^^^^^
+   |            |
+   |            this is the pizza you ruined
+   |
+   = note: `#[forbid(pineapple_on_pizza)]` on by default
+   = note: you're a monster
+
+error: aborting due to previous error
+
