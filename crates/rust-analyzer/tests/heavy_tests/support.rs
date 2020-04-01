@@ -11,8 +11,7 @@ use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{
     notification::{DidOpenTextDocument, Exit},
     request::Shutdown,
-    ClientCapabilities, DidOpenTextDocumentParams, GotoCapability, TextDocumentClientCapabilities,
-    TextDocumentIdentifier, TextDocumentItem, Url, WorkDoneProgress,
+    DidOpenTextDocumentParams, TextDocumentIdentifier, TextDocumentItem, Url, WorkDoneProgress,
 };
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
@@ -20,14 +19,14 @@ use tempfile::TempDir;
 use test_utils::{find_mismatch, parse_fixture};
 
 use req::{ProgressParams, ProgressParamsValue};
-use rust_analyzer::{main_loop, req, ServerConfig};
+use rust_analyzer::{main_loop, req, Config};
 
 pub struct Project<'a> {
     fixture: &'a str,
     with_sysroot: bool,
     tmp_dir: Option<TempDir>,
     roots: Vec<PathBuf>,
-    config: Option<Box<dyn Fn(&mut ServerConfig)>>,
+    config: Option<Box<dyn Fn(&mut Config)>>,
 }
 
 impl<'a> Project<'a> {
@@ -50,7 +49,7 @@ impl<'a> Project<'a> {
         self
     }
 
-    pub fn with_config(mut self, config: impl Fn(&mut ServerConfig) + 'static) -> Project<'a> {
+    pub fn with_config(mut self, config: impl Fn(&mut Config) + 'static) -> Project<'a> {
         self.config = Some(Box::new(config));
         self
     }
@@ -78,8 +77,11 @@ impl<'a> Project<'a> {
 
         let roots = self.roots.into_iter().map(|root| tmp_dir.path().join(root)).collect();
 
-        let mut config =
-            ServerConfig { with_sysroot: self.with_sysroot, ..ServerConfig::default() };
+        let mut config = Config {
+            supports_location_link: true,
+            with_sysroot: self.with_sysroot,
+            ..Config::default()
+        };
 
         if let Some(f) = &self.config {
             f(&mut config)
@@ -105,7 +107,7 @@ pub struct Server {
 impl Server {
     fn new(
         dir: TempDir,
-        config: ServerConfig,
+        config: Config,
         roots: Vec<PathBuf>,
         files: Vec<(PathBuf, String)>,
     ) -> Server {
@@ -116,26 +118,7 @@ impl Server {
 
         let _thread = jod_thread::Builder::new()
             .name("test server".to_string())
-            .spawn(move || {
-                main_loop(
-                    roots,
-                    ClientCapabilities {
-                        workspace: None,
-                        text_document: Some(TextDocumentClientCapabilities {
-                            definition: Some(GotoCapability {
-                                dynamic_registration: None,
-                                link_support: Some(true),
-                            }),
-                            ..Default::default()
-                        }),
-                        window: None,
-                        experimental: None,
-                    },
-                    config,
-                    connection,
-                )
-                .unwrap()
-            })
+            .spawn(move || main_loop(roots, config, connection).unwrap())
             .expect("failed to spawn a thread");
 
         let res =

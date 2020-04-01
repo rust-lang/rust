@@ -11,7 +11,7 @@ use std::{
 use crossbeam_channel::{unbounded, Receiver};
 use lsp_types::Url;
 use parking_lot::RwLock;
-use ra_flycheck::{url_from_path_with_drive_lowercasing, Flycheck};
+use ra_flycheck::{url_from_path_with_drive_lowercasing, Flycheck, FlycheckConfig};
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
 };
@@ -30,9 +30,7 @@ use crate::{
 use ra_db::ExternSourceId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-fn create_flycheck(workspaces: &[ProjectWorkspace], config: &Config) -> Option<Flycheck> {
-    let check_config = config.check.as_ref()?;
-
+fn create_flycheck(workspaces: &[ProjectWorkspace], config: &FlycheckConfig) -> Option<Flycheck> {
     // FIXME: Figure out the multi-workspace situation
     workspaces
         .iter()
@@ -42,7 +40,7 @@ fn create_flycheck(workspaces: &[ProjectWorkspace], config: &Config) -> Option<F
         })
         .map(|cargo| {
             let cargo_project_root = cargo.workspace_root().to_path_buf();
-            Some(Flycheck::new(check_config.clone(), cargo_project_root))
+            Some(Flycheck::new(config.clone(), cargo_project_root))
         })
         .unwrap_or_else(|| {
             log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
@@ -187,7 +185,7 @@ impl WorldState {
             });
         change.set_crate_graph(crate_graph);
 
-        let flycheck = create_flycheck(&workspaces, &config);
+        let flycheck = config.check.as_ref().and_then(|c| create_flycheck(&workspaces, c));
 
         let mut analysis_host = AnalysisHost::new(lru_capacity);
         analysis_host.apply_change(change);
@@ -204,9 +202,13 @@ impl WorldState {
         }
     }
 
-    pub fn update_configuration(&mut self, lru_capacity: Option<usize>, config: Config) {
-        self.analysis_host.update_lru_capacity(lru_capacity);
-        self.flycheck = create_flycheck(&self.workspaces, &config);
+    pub fn update_configuration(&mut self, config: Config) {
+        self.analysis_host.update_lru_capacity(config.lru_capacity);
+        if config.check != self.config.check {
+            self.flycheck =
+                config.check.as_ref().and_then(|it| create_flycheck(&self.workspaces, it));
+        }
+
         self.config = config;
     }
 

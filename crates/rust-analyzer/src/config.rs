@@ -7,14 +7,11 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use rustc_hash::FxHashMap;
-
-use crate::feature_flags::FeatureFlags;
 use lsp_types::TextDocumentClientCapabilities;
 use ra_flycheck::FlycheckConfig;
 use ra_ide::{CompletionConfig, InlayHintsConfig};
 use ra_project_model::CargoFeatures;
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -61,171 +58,109 @@ impl Default for RustfmtConfig {
     }
 }
 
-pub(crate) fn get_config(
-    config: &ServerConfig,
-    text_document_caps: Option<&TextDocumentClientCapabilities>,
-) -> Config {
-    let feature_flags = get_feature_flags(config);
-    Config {
-        publish_decorations: config.publish_decorations,
-        publish_diagnostics: feature_flags.get("lsp.diagnostics"),
-        notifications: NotificationsConfig {
-            workspace_loaded: feature_flags.get("notifications.workspace-loaded"),
-            cargo_toml_not_found: feature_flags.get("notifications.cargo-toml-not-found"),
-        },
-        supports_location_link: text_document_caps
-            .and_then(|it| it.definition)
-            .and_then(|it| it.link_support)
-            .unwrap_or(false),
-        line_folding_only: text_document_caps
-            .and_then(|it| it.folding_range.as_ref())
-            .and_then(|it| it.line_folding_only)
-            .unwrap_or(false),
-        inlay_hints: InlayHintsConfig {
-            type_hints: config.inlay_hints_type,
-            parameter_hints: config.inlay_hints_parameter,
-            chaining_hints: config.inlay_hints_chaining,
-            max_length: config.inlay_hints_max_length,
-        },
-        completion: CompletionConfig {
-            enable_postfix_completions: feature_flags.get("completion.enable-postfix"),
-            add_call_parenthesis: feature_flags.get("completion.insertion.add-call-parenthesis"),
-            add_call_argument_snippets: feature_flags
-                .get("completion.insertion.add-argument-snippets"),
-        },
-        call_info_full: feature_flags.get("call-info.full"),
-        check: if config.cargo_watch_enable {
-            Some(FlycheckConfig::CargoCommand {
-                command: config.cargo_watch_command.clone(),
-                all_targets: config.cargo_watch_all_targets,
-                extra_args: config.cargo_watch_args.clone(),
-            })
-        } else {
-            None
-        },
-        rustfmt: RustfmtConfig::Rustfmt { extra_args: config.rustfmt_args.clone() },
-        vscode_lldb: config.vscode_lldb,
-        proc_macro_srv: None, // FIXME: get this from config
-        lru_capacity: config.lru_capacity,
-        use_client_watching: config.use_client_watching,
-        exclude_globs: config.exclude_globs.clone(),
-        cargo: config.cargo_features.clone(),
-        with_sysroot: config.with_sysroot,
-    }
-}
-
-fn get_feature_flags(config: &ServerConfig) -> FeatureFlags {
-    let mut ff = FeatureFlags::default();
-    for (flag, &value) in &config.feature_flags {
-        if ff.set(flag.as_str(), value).is_err() {
-            log::error!("unknown feature flag: {:?}", flag);
-        }
-    }
-    log::info!("feature_flags: {:#?}", ff);
-    ff
-}
-
-/// Client provided initialization options
-#[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", default)]
-pub struct ServerConfig {
-    /// Whether the client supports our custom highlighting publishing decorations.
-    /// This is different to the highlightingOn setting, which is whether the user
-    /// wants our custom highlighting to be used.
-    ///
-    /// Defaults to `false`
-    #[serde(deserialize_with = "nullable_bool_false")]
-    pub publish_decorations: bool,
-
-    pub exclude_globs: Vec<String>,
-    #[serde(deserialize_with = "nullable_bool_false")]
-    pub use_client_watching: bool,
-
-    pub lru_capacity: Option<usize>,
-
-    #[serde(deserialize_with = "nullable_bool_true")]
-    pub inlay_hints_type: bool,
-    #[serde(deserialize_with = "nullable_bool_true")]
-    pub inlay_hints_parameter: bool,
-    #[serde(deserialize_with = "nullable_bool_true")]
-    pub inlay_hints_chaining: bool,
-    pub inlay_hints_max_length: Option<usize>,
-
-    pub cargo_watch_enable: bool,
-    pub cargo_watch_args: Vec<String>,
-    pub cargo_watch_command: String,
-    pub cargo_watch_all_targets: bool,
-
-    /// For internal usage to make integrated tests faster.
-    #[serde(deserialize_with = "nullable_bool_true")]
-    pub with_sysroot: bool,
-
-    /// Fine grained feature flags to disable specific features.
-    pub feature_flags: FxHashMap<String, bool>,
-
-    pub rustfmt_args: Vec<String>,
-
-    /// Cargo feature configurations.
-    pub cargo_features: CargoFeatures,
-
-    /// Enabled if the vscode_lldb extension is available.
-    pub vscode_lldb: bool,
-}
-
-impl Default for ServerConfig {
-    fn default() -> ServerConfig {
-        ServerConfig {
+impl Default for Config {
+    fn default() -> Self {
+        Config {
             publish_decorations: false,
-            exclude_globs: Vec::new(),
-            use_client_watching: false,
-            lru_capacity: None,
-            inlay_hints_type: true,
-            inlay_hints_parameter: true,
-            inlay_hints_chaining: true,
-            inlay_hints_max_length: None,
-            cargo_watch_enable: true,
-            cargo_watch_args: Vec::new(),
-            cargo_watch_command: "check".to_string(),
-            cargo_watch_all_targets: true,
-            with_sysroot: true,
-            feature_flags: FxHashMap::default(),
-            cargo_features: Default::default(),
-            rustfmt_args: Vec::new(),
+            publish_diagnostics: true,
+            notifications: NotificationsConfig {
+                workspace_loaded: true,
+                cargo_toml_not_found: true,
+            },
+            supports_location_link: false,
+            line_folding_only: false,
+            inlay_hints: InlayHintsConfig {
+                type_hints: true,
+                parameter_hints: true,
+                chaining_hints: true,
+                max_length: None,
+            },
+            completion: CompletionConfig {
+                enable_postfix_completions: true,
+                add_call_parenthesis: true,
+                add_call_argument_snippets: true,
+            },
+            call_info_full: true,
+            rustfmt: RustfmtConfig::default(),
+            check: Some(FlycheckConfig::default()),
             vscode_lldb: false,
+            proc_macro_srv: None,
+            lru_capacity: None,
+            use_client_watching: false,
+            exclude_globs: Vec::new(),
+            cargo: CargoFeatures::default(),
+            with_sysroot: true,
         }
     }
 }
 
-/// Deserializes a null value to a bool false by default
-fn nullable_bool_false<'de, D>(deserializer: D) -> Result<bool, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let opt = Option::deserialize(deserializer)?;
-    Ok(opt.unwrap_or(false))
-}
+impl Config {
+    #[rustfmt::skip]
+    pub fn update(&mut self, value: &serde_json::Value) {
+        let line_folding_only = self.line_folding_only;
+        let supports_location_link = self.supports_location_link;
+        *self = Default::default();
+        self.line_folding_only = line_folding_only;
+        self.supports_location_link = supports_location_link;
 
-/// Deserializes a null value to a bool true by default
-fn nullable_bool_true<'de, D>(deserializer: D) -> Result<bool, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let opt = Option::deserialize(deserializer)?;
-    Ok(opt.unwrap_or(true))
-}
+        set(value, "publishDecorations", &mut self.publish_decorations);
+        set(value, "excludeGlobs", &mut self.exclude_globs);
+        set(value, "useClientWatching", &mut self.use_client_watching);
+        set(value, "lruCapacity", &mut self.lru_capacity);
 
-#[cfg(test)]
-mod test {
-    use super::*;
+        set(value, "inlayHintsType", &mut self.inlay_hints.type_hints);
+        set(value, "inlayHintsParameter", &mut self.inlay_hints.parameter_hints);
+        set(value, "inlayHintsChaining", &mut self.inlay_hints.chaining_hints);
+        set(value, "inlayHintsMaxLength", &mut self.inlay_hints.max_length);
 
-    #[test]
-    fn deserialize_init_options_defaults() {
-        // check that null == default for both fields
-        let default = ServerConfig::default();
-        assert_eq!(default, serde_json::from_str(r#"{}"#).unwrap());
-        assert_eq!(
-            default,
-            serde_json::from_str(r#"{"publishDecorations":null, "lruCapacity":null}"#).unwrap()
-        );
+        if let Some(false) = get(value, "cargo_watch_enable") {
+            self.check = None
+        } else {
+            if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets }) = &mut self.check
+            {
+                set(value, "cargoWatchArgs", extra_args);
+                set(value, "cargoWatchCommand", command);
+                set(value, "cargoWatchAllTargets", all_targets);
+            }
+        };
+
+        set(value, "withSysroot", &mut self.with_sysroot);
+        if let RustfmtConfig::Rustfmt { extra_args } = &mut self.rustfmt {
+            set(value, "rustfmtArgs", extra_args);
+        }
+
+        set(value, "cargoFeatures/noDefaultFeatures", &mut self.cargo.no_default_features);
+        set(value, "cargoFeatures/allFeatures", &mut self.cargo.all_features);
+        set(value, "cargoFeatures/features", &mut self.cargo.features);
+        set(value, "cargoFeatures/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
+
+        set(value, "vscodeLldb", &mut self.vscode_lldb);
+
+        set(value, "featureFlags/lsp.diagnostics", &mut self.publish_diagnostics);
+        set(value, "featureFlags/notifications.workspace-loaded", &mut self.notifications.workspace_loaded);
+        set(value, "featureFlags/notifications.cargo-toml-not-found", &mut self.notifications.cargo_toml_not_found);
+        set(value, "featureFlags/completion.enable-postfix", &mut self.completion.enable_postfix_completions);
+        set(value, "featureFlags/completion.insertion.add-call-parenthesis", &mut self.completion.add_call_parenthesis);
+        set(value, "featureFlags/completion.insertion.add-argument-snippets", &mut self.completion.add_call_argument_snippets);
+        set(value, "featureFlags/call-info.full", &mut self.call_info_full);
+
+        fn get<'a, T: Deserialize<'a>>(value: &'a serde_json::Value, pointer: &str) -> Option<T> {
+            value.pointer(pointer).and_then(|it| T::deserialize(it).ok())
+        }
+
+        fn set<'a, T: Deserialize<'a>>(value: &'a serde_json::Value, pointer: &str, slot: &mut T) {
+            if let Some(new_value) = get(value, pointer) {
+                *slot = new_value
+            }
+        }
+    }
+
+    pub fn update_caps(&mut self, caps: &TextDocumentClientCapabilities) {
+        if let Some(value) = caps.definition.as_ref().and_then(|it| it.link_support) {
+            self.supports_location_link = value;
+        }
+        if let Some(value) = caps.folding_range.as_ref().and_then(|it| it.line_folding_only) {
+            self.line_folding_only = value
+        }
     }
 }

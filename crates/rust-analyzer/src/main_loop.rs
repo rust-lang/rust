@@ -17,9 +17,8 @@ use std::{
 use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{
-    ClientCapabilities, NumberOrString, TextDocumentClientCapabilities, WorkDoneProgress,
-    WorkDoneProgressBegin, WorkDoneProgressCreateParams, WorkDoneProgressEnd,
-    WorkDoneProgressReport,
+    NumberOrString, WorkDoneProgress, WorkDoneProgressBegin, WorkDoneProgressCreateParams,
+    WorkDoneProgressEnd, WorkDoneProgressReport,
 };
 use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckTask};
 use ra_ide::{Canceled, FileId, LibraryData, SourceRootId};
@@ -31,7 +30,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
 
 use crate::{
-    config::get_config,
+    config::Config,
     diagnostics::DiagnosticTask,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
@@ -39,7 +38,7 @@ use crate::{
     },
     req,
     world::{WorldSnapshot, WorldState},
-    Result, ServerConfig,
+    Result,
 };
 use req::ConfigurationParams;
 
@@ -65,14 +64,7 @@ impl fmt::Display for LspError {
 
 impl Error for LspError {}
 
-pub fn main_loop(
-    ws_roots: Vec<PathBuf>,
-    client_caps: ClientCapabilities,
-    config: ServerConfig,
-    connection: Connection,
-) -> Result<()> {
-    let text_document_caps = client_caps.text_document.as_ref();
-    let config = get_config(&config, text_document_caps);
+pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection) -> Result<()> {
     log::info!("initial config: {:#?}", config);
 
     // Windows scheduler implements priority boosts: if thread waits for an
@@ -205,7 +197,6 @@ pub fn main_loop(
                 &task_sender,
                 &libdata_sender,
                 &connection,
-                text_document_caps,
                 &mut world_state,
                 &mut loop_state,
                 event,
@@ -316,7 +307,6 @@ fn loop_turn(
     task_sender: &Sender<Task>,
     libdata_sender: &Sender<LibraryData>,
     connection: &Connection,
-    text_document_caps: Option<&TextDocumentClientCapabilities>,
     world_state: &mut WorldState,
     loop_state: &mut LoopState,
     event: Event,
@@ -370,27 +360,14 @@ fn loop_turn(
                     log::debug!("config update response: '{:?}", resp);
                     let Response { error, result, .. } = resp;
 
-                    match (
-                        error,
-                        result.map(|result| serde_json::from_value::<Vec<ServerConfig>>(result)),
-                    ) {
+                    match (error, result) {
                         (Some(err), _) => {
                             log::error!("failed to fetch the server settings: {:?}", err)
                         }
-                        (None, Some(Ok(new_config))) => {
-                            let new_config = new_config
-                                .first()
-                                .expect(
-                                    "the client is expected to always send a non-empty config data",
-                                )
-                                .to_owned();
-                            world_state.update_configuration(
-                                new_config.lru_capacity,
-                                get_config(&new_config, text_document_caps),
-                            );
-                        }
-                        (None, Some(Err(e))) => {
-                            log::error!("failed to parse client config response: {}", e)
+                        (None, Some(new_config)) => {
+                            let mut config = world_state.config.clone();
+                            config.update(&new_config);
+                            world_state.update_configuration(config);
                         }
                         (None, None) => {
                             log::error!("received empty server settings response from the client")

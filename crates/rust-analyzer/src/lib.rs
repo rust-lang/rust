@@ -37,14 +37,13 @@ mod config;
 mod world;
 mod diagnostics;
 mod semantic_tokens;
-mod feature_flags;
 
 use serde::de::DeserializeOwned;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 pub use crate::{
+    config::Config,
     caps::server_capabilities,
-    config::ServerConfig,
     main_loop::LspError,
     main_loop::{main_loop, show_message},
 };
