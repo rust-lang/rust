@@ -577,16 +577,16 @@ pub struct TargetOptions {
     pub pre_link_objects_exe: Vec<String>, // ... when linking an executable, unconditionally
     pub pre_link_objects_exe_crt: Vec<String>, // ... when linking an executable with a bundled crt
     pub pre_link_objects_dll: Vec<String>, // ... when linking a dylib
-    /// Linker arguments that are unconditionally passed after any
-    /// user-defined but before post_link_objects. Standard platform
+    /// Linker arguments that are unconditionally passed immediately after any
+    /// user-defined linker arguments (`-C link-args` and friends). Standard platform
     /// libraries that should be always be linked to, usually go here.
-    pub late_link_args: LinkArgs,
-    /// Linker arguments used in addition to `late_link_args` if at least one
+    pub link_args: LinkArgs,
+    /// Linker arguments used in addition to `link_args` if at least one
     /// Rust dependency is dynamically linked.
-    pub late_link_args_dynamic: LinkArgs,
-    /// Linker arguments used in addition to `late_link_args` if aall Rust
+    pub link_args_dynamic: LinkArgs,
+    /// Linker arguments used in addition to `link_args` if aall Rust
     /// dependencies are statically linked.
-    pub late_link_args_static: LinkArgs,
+    pub link_args_static: LinkArgs,
     /// Objects to link after all others, always found within the
     /// sysroot folder.
     pub post_link_objects: Vec<String>, // ... unconditionally
@@ -857,9 +857,9 @@ impl Default for TargetOptions {
             pre_link_objects_dll: Vec::new(),
             post_link_objects: Vec::new(),
             post_link_objects_crt: Vec::new(),
-            late_link_args: LinkArgs::new(),
-            late_link_args_dynamic: LinkArgs::new(),
-            late_link_args_static: LinkArgs::new(),
+            link_args: LinkArgs::new(),
+            link_args_dynamic: LinkArgs::new(),
+            link_args_static: LinkArgs::new(),
             link_env: Vec::new(),
             link_env_remove: Vec::new(),
             archive_format: "gnu".to_string(),
@@ -1135,9 +1135,9 @@ impl Target {
         key!(pre_link_objects_exe, list);
         key!(pre_link_objects_exe_crt, list);
         key!(pre_link_objects_dll, list);
-        key!(late_link_args, link_args);
-        key!(late_link_args_dynamic, link_args);
-        key!(late_link_args_static, link_args);
+        key!(link_args, link_args);
+        key!(link_args_dynamic, link_args);
+        key!(link_args_static, link_args);
         key!(post_link_objects, list);
         key!(post_link_objects_crt, list);
         key!(post_link_args, link_args);
@@ -1362,9 +1362,9 @@ impl ToJson for Target {
         target_option_val!(pre_link_objects_exe);
         target_option_val!(pre_link_objects_exe_crt);
         target_option_val!(pre_link_objects_dll);
-        target_option_val!(link_args - late_link_args);
-        target_option_val!(link_args - late_link_args_dynamic);
-        target_option_val!(link_args - late_link_args_static);
+        target_option_val!(link_args - link_args);
+        target_option_val!(link_args - link_args_dynamic);
+        target_option_val!(link_args - link_args_static);
         target_option_val!(post_link_objects);
         target_option_val!(post_link_objects_crt);
         target_option_val!(link_args - post_link_args);

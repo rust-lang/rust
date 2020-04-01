@@ -489,11 +489,6 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker, flavor) = linker_and_flavor(sess);
 
-    let any_dynamic_crate = crate_type == config::CrateType::Dylib
-        || codegen_results.crate_info.dependency_formats.iter().any(|(ty, list)| {
-            *ty == crate_type && list.iter().any(|&linkage| linkage == Linkage::Dynamic)
-        });
-
     // The invocations of cc share some flags across platforms
     let (pname, mut cmd) = get_linker(sess, &linker, flavor);
 
@@ -556,18 +551,31 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         );
         cmd = linker.finalize();
     }
-    if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
+
+    // Linker arguments provided on the command line along with any #[link_args] attributes
+    // found inside the crate and linker arguments provided by the target specification.
+    if let Some(ref args) = sess.opts.cg.link_args {
         cmd.args(args);
     }
-    if any_dynamic_crate {
-        if let Some(args) = sess.target.target.options.late_link_args_dynamic.get(&flavor) {
+    cmd.args(&sess.opts.cg.link_arg);
+    cmd.args(codegen_results.crate_info.link_args.iter());
+    if let Some(args) = sess.target.target.options.link_args.get(&flavor) {
+        cmd.args(args);
+    }
+    if crate_type == config::CrateType::Dylib
+        || codegen_results.crate_info.dependency_formats.iter().any(|(ty, list)| {
+            *ty == crate_type && list.iter().any(|&linkage| linkage == Linkage::Dynamic)
+        })
+    {
+        if let Some(args) = sess.target.target.options.link_args_dynamic.get(&flavor) {
             cmd.args(args);
         }
     } else {
-        if let Some(args) = sess.target.target.options.late_link_args_static.get(&flavor) {
+        if let Some(args) = sess.target.target.options.link_args_static.get(&flavor) {
             cmd.args(args);
         }
     }
+
     for obj in &sess.target.target.options.post_link_objects {
         cmd.arg(get_file_path(sess, obj));
     }
@@ -1302,8 +1310,6 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
         cmd.gc_sections(keep_metadata);
     }
 
-    let used_link_args = &codegen_results.crate_info.link_args;
-
     if crate_type == config::CrateType::Executable {
         let mut position_independent_executable = false;
 
@@ -1311,6 +1317,7 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
             let empty_vec = Vec::new();
             let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
             let more_args = &sess.opts.cg.link_arg;
+            let used_link_args = &codegen_results.crate_info.link_args;
             let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
 
             if is_pic(sess) && !sess.crt_static(Some(crate_type)) && !args.any(|x| *x == "-static")
@@ -1441,14 +1448,6 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
         };
         cmd.args(&rpath::get_rpath_flags(&mut rpath_config));
     }
-
-    // Finally add all the linker arguments provided on the command line along
-    // with any #[link_args] attributes found inside the crate
-    if let Some(ref args) = sess.opts.cg.link_args {
-        cmd.args(args);
-    }
-    cmd.args(&sess.opts.cg.link_arg);
-    cmd.args(&used_link_args);
 }
 
 // # Native library linking

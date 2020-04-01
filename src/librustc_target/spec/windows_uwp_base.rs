@@ -14,8 +14,8 @@ pub fn opts() -> TargetOptions {
         ],
     );
 
-    let mut late_link_args = LinkArgs::new();
-    late_link_args.insert(
+    let mut link_args = LinkArgs::new();
+    link_args.insert(
         LinkerFlavor::Gcc,
         vec![
             //"-lwinstorecompat".to_string(),
@@ -52,7 +52,7 @@ pub fn opts() -> TargetOptions {
             "rsbegin.o".to_string(), // Rust compiler runtime initialization, see rsbegin.rs
         ],
         pre_link_objects_dll: vec!["rsbegin.o".to_string()],
-        late_link_args,
+        link_args,
         post_link_objects: vec!["rsend.o".to_string()],
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,

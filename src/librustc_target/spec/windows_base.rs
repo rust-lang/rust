@@ -16,10 +16,10 @@ pub fn opts() -> TargetOptions {
         ],
     );
 
-    let mut late_link_args = LinkArgs::new();
-    let mut late_link_args_dynamic = LinkArgs::new();
-    let mut late_link_args_static = LinkArgs::new();
-    late_link_args.insert(
+    let mut link_args = LinkArgs::new();
+    let mut link_args_dynamic = LinkArgs::new();
+    let mut link_args_static = LinkArgs::new();
+    link_args.insert(
         LinkerFlavor::Gcc,
         vec![
             "-lmingwex".to_string(),
@@ -38,7 +38,7 @@ pub fn opts() -> TargetOptions {
             "-lkernel32".to_string(),
         ],
     );
-    late_link_args_dynamic.insert(
+    link_args_dynamic.insert(
         LinkerFlavor::Gcc,
         vec![
             // If any of our crates are dynamically linked then we need to use
@@ -49,7 +49,7 @@ pub fn opts() -> TargetOptions {
             "-lkernel32".to_string(),
         ],
     );
-    late_link_args_static.insert(
+    link_args_static.insert(
         LinkerFlavor::Gcc,
         vec![
             // If all of our crates are statically linked then we can get away
@@ -90,9 +90,9 @@ pub fn opts() -> TargetOptions {
             "dllcrt2.o".to_string(), // mingw C runtime initialization for dlls
             "rsbegin.o".to_string(),
         ],
-        late_link_args,
-        late_link_args_dynamic,
-        late_link_args_static,
+        link_args,
+        link_args_dynamic,
+        link_args_static,
         post_link_objects: vec!["rsend.o".to_string()],
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
