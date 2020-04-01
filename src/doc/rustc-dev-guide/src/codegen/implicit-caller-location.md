@@ -265,14 +265,14 @@ to the author and reviewers.
 [non-viable alternatives]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md#non-viable-alternatives
 [rationale]: https://github.com/rust-lang/rfcs/blob/master/text/2091-inline-semantic.md#rationale
 [revised design]: https://github.com/rust-lang/rust/issues/47809#issuecomment-443538059
-[attrs-flags]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/middle/codegen_fn_attrs/struct.CodegenFnAttrFlags.html#associatedconstant.TRACK_CALLER
-[`ReifyShim`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.InstanceDef.html#variant.ReifyShim
+[attrs-flags]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/middle/codegen_fn_attrs/struct.CodegenFnAttrFlags.html#associatedconstant.TRACK_CALLER
+[`ReifyShim`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.InstanceDef.html#variant.ReifyShim
 [`Location`]: https://doc.rust-lang.org/core/panic/struct.Location.html
 [const-find-closest]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/struct.InterpCx.html#method.find_closest_untracked_caller_location
-[requires-location]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/enum.InstanceDef.html#method.requires_caller_location
+[requires-location]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.InstanceDef.html#method.requires_caller_location
 [alloc-location]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/struct.InterpCx.html#method.alloc_caller_location
 [fcx-location]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/struct.FunctionCx.html#structfield.caller_location
-[const-location-query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyCtxt.html#method.const_caller_location
+[const-location-query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.const_caller_location
 [location-memory-kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/enum.MemoryKind.html#variant.CallerLocation
 [const-frame]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/struct.Frame.html
 [const-stack]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/struct.InterpCx.html#structfield.stack
