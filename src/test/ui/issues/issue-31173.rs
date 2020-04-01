@@ -1,7 +1,3 @@
-// FIXME: missing sysroot spans (#53081)
-// ignore-i586-unknown-linux-gnu
-// ignore-i586-unknown-linux-musl
-// ignore-i686-unknown-linux-musl
 use std::vec::IntoIter;
 
 pub fn get_tok(it: &mut IntoIter<u8>) {

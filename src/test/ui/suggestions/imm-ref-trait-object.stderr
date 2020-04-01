@@ -1,5 +1,5 @@
 error: the `min` method cannot be invoked on a trait object
-  --> $DIR/imm-ref-trait-object.rs:7:8
+  --> $DIR/imm-ref-trait-object.rs:2:8
    |
 LL |      t.min().unwrap()
    |        ^^^

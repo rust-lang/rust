@@ -1,5 +1,5 @@
 error[E0603]: module `thread_info` is private
-  --> $DIR/stability-in-private-module.rs:7:26
+  --> $DIR/stability-in-private-module.rs:2:26
    |
 LL |     let _ = std::thread::thread_info::current_thread();
    |                          ^^^^^^^^^^^ private module

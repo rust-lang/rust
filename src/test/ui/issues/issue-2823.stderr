@@ -1,5 +1,5 @@
 error[E0599]: no method named `clone` found for struct `C` in the current scope
-  --> $DIR/issue-2823.rs:18:16
+  --> $DIR/issue-2823.rs:13:16
    |
 LL | struct C {
    | -------- method `clone` not found for this

@@ -1,5 +1,5 @@
 warning: skipping const checks
-  --> $DIR/drop.rs:21:9
+  --> $DIR/drop.rs:17:9
    |
 LL |     let _v: Vec<i32> = Vec::new();
    |         ^^
@@ -17,10 +17,10 @@ LL | | }
    | |_calling non-const function `<std::vec::Vec<i32> as std::ops::Drop>::drop`
    |   inside `std::intrinsics::drop_in_place::<std::vec::Vec<i32>> - shim(Some(std::vec::Vec<i32>))` at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
    | 
-  ::: $DIR/drop.rs:23:1
+  ::: $DIR/drop.rs:19:1
    |
 LL |   };
-   |   - inside `TEST_BAD` at $DIR/drop.rs:23:1
+   |   - inside `TEST_BAD` at $DIR/drop.rs:19:1
 
 error: aborting due to previous error
 
