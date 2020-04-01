@@ -43,6 +43,7 @@ impl ops::Index<Target> for CargoWorkspace {
     }
 }
 
+// TODO: rename to CargoConfig, kill `rename_all`, kill serde dep?
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct CargoFeatures {

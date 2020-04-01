@@ -71,7 +71,9 @@ pub fn main_loop(
     config: ServerConfig,
     connection: Connection,
 ) -> Result<()> {
-    log::info!("server_config: {:#?}", config);
+    let text_document_caps = client_caps.text_document.as_ref();
+    let config = get_config(&config, text_document_caps);
+    log::info!("initial config: {:#?}", config);
 
     // Windows scheduler implements priority boosts: if thread waits for an
     // event (like a condvar), and event fires, priority of the thread is
@@ -92,11 +94,8 @@ pub fn main_loop(
         SetThreadPriority(thread, thread_priority_above_normal);
     }
 
-    let text_document_caps = client_caps.text_document.as_ref();
     let mut loop_state = LoopState::default();
     let mut world_state = {
-        // TODO: refactor
-        let new_config = get_config(&config, text_document_caps);
         // FIXME: support dynamic workspace loading.
         let workspaces = {
             let mut loaded_workspaces = Vec::new();
@@ -104,7 +103,7 @@ pub fn main_loop(
                 let workspace = ra_project_model::ProjectWorkspace::discover_with_sysroot(
                     ws_root.as_path(),
                     config.with_sysroot,
-                    &config.cargo_features,
+                    &config.cargo,
                 );
                 match workspace {
                     Ok(workspace) => loaded_workspaces.push(workspace),
@@ -114,7 +113,7 @@ pub fn main_loop(
                         if let Some(ra_project_model::CargoTomlNotFoundError { .. }) =
                             e.downcast_ref()
                         {
-                            if !new_config.notifications.cargo_toml_not_found {
+                            if !config.notifications.cargo_toml_not_found {
                                 continue;
                             }
                         }
@@ -163,7 +162,7 @@ pub fn main_loop(
             config.lru_capacity,
             &globs,
             Watch(!config.use_client_watching),
-            new_config,
+            config,
         )
     };
 

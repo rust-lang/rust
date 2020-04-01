@@ -30,6 +30,11 @@ pub struct Config {
     pub check: Option<FlycheckConfig>,
     pub vscode_lldb: bool,
     pub proc_macro_srv: Option<String>,
+    pub lru_capacity: Option<usize>,
+    pub use_client_watching: bool,
+    pub exclude_globs: Vec<String>,
+    pub cargo: CargoFeatures,
+    pub with_sysroot: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -101,6 +106,11 @@ pub(crate) fn get_config(
         rustfmt: RustfmtConfig::Rustfmt { extra_args: config.rustfmt_args.clone() },
         vscode_lldb: config.vscode_lldb,
         proc_macro_srv: None, // FIXME: get this from config
+        lru_capacity: config.lru_capacity,
+        use_client_watching: config.use_client_watching,
+        exclude_globs: config.exclude_globs.clone(),
+        cargo: config.cargo_features.clone(),
+        with_sysroot: config.with_sysroot,
     }
 }
 
