@@ -396,6 +396,11 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, llfn);
         }
 
+        // FIXME(eddyb, wesleywiser): apply this to callsites as well?
+        if !self.can_unwind {
+            llvm::Attribute::NoUnwind.apply_llfn(llvm::AttributePlace::Function, llfn);
+        }
+
         let mut i = 0;
         let mut apply = |attrs: &ArgAttributes, ty: Option<&Type>| {
             attrs.apply_llfn(llvm::AttributePlace::Argument(i), llfn, ty);
@@ -431,6 +436,8 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     }
 
     fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value) {
+        // FIXME(wesleywiser, eddyb): We should apply `nounwind` and `noreturn` as appropriate to this callsite.
+
         let mut i = 0;
         let mut apply = |attrs: &ArgAttributes, ty: Option<&Type>| {
             attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite, ty);

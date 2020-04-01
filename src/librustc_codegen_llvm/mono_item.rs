@@ -77,7 +77,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         debug!("predefine_fn: instance = {:?}", instance);
 
-        attributes::from_fn_attrs(self, lldecl, instance, &fn_abi);
+        attributes::from_fn_attrs(self, lldecl, instance);
 
         self.instances.borrow_mut().insert(instance, lldecl);
     }

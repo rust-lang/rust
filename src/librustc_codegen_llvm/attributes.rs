@@ -10,13 +10,10 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{OptLevel, Sanitizer};
 use rustc_session::Session;
-use rustc_target::abi::call::Conv;
-use rustc_target::spec::PanicStrategy;
 
-use crate::abi::FnAbi;
 use crate::attributes;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, Attribute};
@@ -75,12 +72,6 @@ pub fn sanitize(cx: &CodegenCx<'ll, '_>, codegen_fn_flags: CodegenFnAttrFlags, l
 #[inline]
 pub fn emit_uwtable(val: &'ll Value, emit: bool) {
     Attribute::UWTable.toggle_llfn(Function, val, emit);
-}
-
-/// Tell LLVM whether the function can or cannot unwind.
-#[inline]
-fn unwind(val: &'ll Value, can_unwind: bool) {
-    Attribute::NoUnwind.toggle_llfn(Function, val, !can_unwind);
 }
 
 /// Tell LLVM if this function should be 'naked', i.e., skip the epilogue and prologue.
@@ -246,12 +237,7 @@ pub(crate) fn default_optimisation_attrs(sess: &Session, llfn: &'ll Value) {
 
 /// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
 /// attributes.
-pub fn from_fn_attrs(
-    cx: &CodegenCx<'ll, 'tcx>,
-    llfn: &'ll Value,
-    instance: ty::Instance<'tcx>,
-    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-) {
+pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::Instance<'tcx>) {
     let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
 
     match codegen_fn_attrs.optimize {
@@ -314,46 +300,6 @@ pub fn from_fn_attrs(
         Attribute::NoAlias.apply_llfn(llvm::AttributePlace::ReturnValue, llfn);
     }
     sanitize(cx, codegen_fn_attrs.flags, llfn);
-
-    unwind(
-        llfn,
-        if cx.tcx.sess.panic_strategy() != PanicStrategy::Unwind {
-            // In panic=abort mode we assume nothing can unwind anywhere, so
-            // optimize based on this!
-            false
-        } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
-            // If a specific #[unwind] attribute is present, use that.
-            true
-        } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
-            // Special attribute for allocator functions, which can't unwind.
-            false
-        } else {
-            if fn_abi.conv == Conv::Rust {
-                // Any Rust method (or `extern "Rust" fn` or `extern
-                // "rust-call" fn`) is explicitly allowed to unwind
-                // (unless it has no-unwind attribute, handled above).
-                true
-            } else {
-                // Anything else is either:
-                //
-                //  1. A foreign item using a non-Rust ABI (like `extern "C" { fn foo(); }`), or
-                //
-                //  2. A Rust item using a non-Rust ABI (like `extern "C" fn foo() { ... }`).
-                //
-                // Foreign items (case 1) are assumed to not unwind; it is
-                // UB otherwise. (At least for now; see also
-                // rust-lang/rust#63909 and Rust RFC 2753.)
-                //
-                // Items defined in Rust with non-Rust ABIs (case 2) are also
-                // not supposed to unwind. Whether this should be enforced
-                // (versus stating it is UB) and *how* it would be enforced
-                // is currently under discussion; see rust-lang/rust#58794.
-                //
-                // In either case, we mark item as explicitly nounwind.
-                false
-            }
-        },
-    );
 
     // Always annotate functions with the target-cpu they are compiled for.
     // Without this, ThinLTO won't inline Rust functions into Clang generated
