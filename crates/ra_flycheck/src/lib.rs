@@ -22,7 +22,7 @@ use crate::conv::{map_rust_diagnostic_to_lsp, MappedRustDiagnostic};
 
 pub use crate::conv::url_from_path_with_drive_lowercasing;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FlycheckConfig {
     CargoCommand { command: String, all_targets: bool, extra_args: Vec<String> },
     CustomCommand { command: String, args: Vec<String> },

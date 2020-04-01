@@ -4,8 +4,7 @@
 mod args;
 
 use lsp_server::Connection;
-
-use rust_analyzer::{cli, from_json, show_message, Result, ServerConfig};
+use rust_analyzer::{cli, config::Config, from_json, Result};
 
 use crate::args::HelpPrinted;
 
@@ -78,24 +77,18 @@ fn run_server() -> Result<()> {
         .filter(|workspaces| !workspaces.is_empty())
         .unwrap_or_else(|| vec![root]);
 
-    let server_config = initialize_params
-        .initialization_options
-        .and_then(|v| {
-            from_json::<ServerConfig>("config", v)
-                .map_err(|e| {
-                    log::error!("{}", e);
-                    show_message(lsp_types::MessageType::Error, e.to_string(), &connection.sender);
-                })
-                .ok()
-        })
-        .unwrap_or_default();
+    let config = {
+        let mut config = Config::default();
+        if let Some(value) = &initialize_params.initialization_options {
+            config.update(value);
+        }
+        if let Some(caps) = &initialize_params.capabilities.text_document {
+            config.update_caps(caps);
+        }
+        config
+    };
 
-    rust_analyzer::main_loop(
-        workspace_roots,
-        initialize_params.capabilities,
-        server_config,
-        connection,
-    )?;
+    rust_analyzer::main_loop(workspace_roots, config, connection)?;
 
     log::info!("shutting down IO...");
     io_threads.join()?;

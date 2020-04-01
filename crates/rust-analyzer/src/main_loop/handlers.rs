@@ -19,8 +19,8 @@ use lsp_types::{
     TextEdit, WorkspaceEdit,
 };
 use ra_ide::{
-    Assist, AssistId, CompletionConfig, FileId, FilePosition, FileRange, Query, RangeInfo,
-    Runnable, RunnableKind, SearchScope,
+    Assist, AssistId, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind,
+    SearchScope,
 };
 use ra_prof::profile;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
@@ -426,15 +426,7 @@ pub fn handle_completion(
         return Ok(None);
     }
 
-    let config = CompletionConfig {
-        enable_postfix_completions: world.feature_flags.get("completion.enable-postfix"),
-        add_call_parenthesis: world.feature_flags.get("completion.insertion.add-call-parenthesis"),
-        add_call_argument_snippets: world
-            .feature_flags
-            .get("completion.insertion.add-argument-snippets"),
-    };
-
-    let items = match world.analysis().completions(position, &config)? {
+    let items = match world.analysis().completions(position, &world.config.completion)? {
         None => return Ok(None),
         Some(items) => items,
     };
@@ -458,7 +450,7 @@ pub fn handle_folding_range(
     let ctx = FoldConvCtx {
         text: &text,
         line_index: &line_index,
-        line_folding_only: world.config.line_folding_only,
+        line_folding_only: world.config.client_caps.line_folding_only,
     };
     let res = Some(folds.into_iter().map_conv_with(&ctx).collect());
     Ok(res)
@@ -471,7 +463,7 @@ pub fn handle_signature_help(
     let _p = profile("handle_signature_help");
     let position = params.try_conv_with(&world)?;
     if let Some(call_info) = world.analysis().call_info(position)? {
-        let concise = !world.feature_flags.get("call-info.full");
+        let concise = !world.config.call_info_full;
         let mut active_parameter = call_info.active_parameter.map(|it| it as i64);
         if concise && call_info.signature.has_self_param {
             active_parameter = active_parameter.map(|it| it.saturating_sub(1));

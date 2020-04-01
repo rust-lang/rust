@@ -615,7 +615,7 @@ fn main() { message(); }
 "###,
     )
     .with_config(|config| {
-        config.cargo_features.load_out_dirs_from_check = true;
+        config.cargo.load_out_dirs_from_check = true;
     })
     .server();
     server.wait_until_workspace_is_loaded();

@@ -579,7 +579,7 @@ impl TryConvWith<&WorldSnapshot> for (FileId, RangeInfo<Vec<NavigationTarget>>) 
             .into_iter()
             .map(|nav| (file_id, RangeInfo::new(range, nav)))
             .try_conv_with_to_vec(world)?;
-        if world.config.supports_location_link {
+        if world.config.client_caps.location_link {
             Ok(links.into())
         } else {
             let locations: Vec<Location> = links

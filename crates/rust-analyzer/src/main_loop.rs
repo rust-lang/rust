@@ -17,9 +17,8 @@ use std::{
 use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{
-    ClientCapabilities, NumberOrString, TextDocumentClientCapabilities, WorkDoneProgress,
-    WorkDoneProgressBegin, WorkDoneProgressCreateParams, WorkDoneProgressEnd,
-    WorkDoneProgressReport,
+    NumberOrString, WorkDoneProgress, WorkDoneProgressBegin, WorkDoneProgressCreateParams,
+    WorkDoneProgressEnd, WorkDoneProgressReport,
 };
 use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckTask};
 use ra_ide::{Canceled, FileId, LibraryData, SourceRootId};
@@ -31,16 +30,15 @@ use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
 
 use crate::{
-    config::get_config,
+    config::Config,
     diagnostics::DiagnosticTask,
-    feature_flags::FeatureFlags,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
         subscriptions::Subscriptions,
     },
     req,
     world::{WorldSnapshot, WorldState},
-    Result, ServerConfig,
+    Result,
 };
 use req::ConfigurationParams;
 
@@ -66,29 +64,8 @@ impl fmt::Display for LspError {
 
 impl Error for LspError {}
 
-fn get_feature_flags(config: &ServerConfig, connection: &Connection) -> FeatureFlags {
-    let mut ff = FeatureFlags::default();
-    for (flag, &value) in &config.feature_flags {
-        if ff.set(flag.as_str(), value).is_err() {
-            log::error!("unknown feature flag: {:?}", flag);
-            show_message(
-                req::MessageType::Error,
-                format!("unknown feature flag: {:?}", flag),
-                &connection.sender,
-            );
-        }
-    }
-    log::info!("feature_flags: {:#?}", ff);
-    ff
-}
-
-pub fn main_loop(
-    ws_roots: Vec<PathBuf>,
-    client_caps: ClientCapabilities,
-    config: ServerConfig,
-    connection: Connection,
-) -> Result<()> {
-    log::info!("server_config: {:#?}", config);
+pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection) -> Result<()> {
+    log::info!("initial config: {:#?}", config);
 
     // Windows scheduler implements priority boosts: if thread waits for an
     // event (like a condvar), and event fires, priority of the thread is
@@ -109,11 +86,8 @@ pub fn main_loop(
         SetThreadPriority(thread, thread_priority_above_normal);
     }
 
-    let text_document_caps = client_caps.text_document.as_ref();
     let mut loop_state = LoopState::default();
     let mut world_state = {
-        let feature_flags = get_feature_flags(&config, &connection);
-
         // FIXME: support dynamic workspace loading.
         let workspaces = {
             let mut loaded_workspaces = Vec::new();
@@ -121,7 +95,7 @@ pub fn main_loop(
                 let workspace = ra_project_model::ProjectWorkspace::discover_with_sysroot(
                     ws_root.as_path(),
                     config.with_sysroot,
-                    &config.cargo_features,
+                    &config.cargo,
                 );
                 match workspace {
                     Ok(workspace) => loaded_workspaces.push(workspace),
@@ -131,7 +105,7 @@ pub fn main_loop(
                         if let Some(ra_project_model::CargoTomlNotFoundError { .. }) =
                             e.downcast_ref()
                         {
-                            if !feature_flags.get("notifications.cargo-toml-not-found") {
+                            if !config.notifications.cargo_toml_not_found {
                                 continue;
                             }
                         }
@@ -180,8 +154,7 @@ pub fn main_loop(
             config.lru_capacity,
             &globs,
             Watch(!config.use_client_watching),
-            get_config(&config, text_document_caps),
-            feature_flags,
+            config,
         )
     };
 
@@ -224,7 +197,6 @@ pub fn main_loop(
                 &task_sender,
                 &libdata_sender,
                 &connection,
-                text_document_caps,
                 &mut world_state,
                 &mut loop_state,
                 event,
@@ -335,7 +307,6 @@ fn loop_turn(
     task_sender: &Sender<Task>,
     libdata_sender: &Sender<LibraryData>,
     connection: &Connection,
-    text_document_caps: Option<&TextDocumentClientCapabilities>,
     world_state: &mut WorldState,
     loop_state: &mut LoopState,
     event: Event,
@@ -389,28 +360,16 @@ fn loop_turn(
                     log::debug!("config update response: '{:?}", resp);
                     let Response { error, result, .. } = resp;
 
-                    match (
-                        error,
-                        result.map(|result| serde_json::from_value::<Vec<ServerConfig>>(result)),
-                    ) {
+                    match (error, result) {
                         (Some(err), _) => {
                             log::error!("failed to fetch the server settings: {:?}", err)
                         }
-                        (None, Some(Ok(new_config))) => {
-                            let new_config = new_config
-                                .first()
-                                .expect(
-                                    "the client is expected to always send a non-empty config data",
-                                )
-                                .to_owned();
-                            world_state.update_configuration(
-                                new_config.lru_capacity,
-                                get_config(&new_config, text_document_caps),
-                                get_feature_flags(&new_config, connection),
-                            );
-                        }
-                        (None, Some(Err(e))) => {
-                            log::error!("failed to parse client config response: {}", e)
+                        (None, Some(configs)) => {
+                            if let Some(new_config) = configs.get(0) {
+                                let mut config = world_state.config.clone();
+                                config.update(&new_config);
+                                world_state.update_configuration(config);
+                            }
                         }
                         (None, None) => {
                             log::error!("received empty server settings response from the client")
@@ -441,8 +400,8 @@ fn loop_turn(
         });
     }
 
-    let show_progress = !loop_state.workspace_loaded
-        && world_state.feature_flags.get("notifications.workspace-loaded");
+    let show_progress =
+        !loop_state.workspace_loaded && world_state.config.notifications.workspace_loaded;
 
     if !loop_state.workspace_loaded
         && loop_state.roots_scanned == loop_state.roots_total
@@ -930,7 +889,7 @@ fn update_file_notifications_on_threadpool(
     subscriptions: Vec<FileId>,
 ) {
     log::trace!("updating notifications for {:?}", subscriptions);
-    let publish_diagnostics = world.feature_flags.get("lsp.diagnostics");
+    let publish_diagnostics = world.config.publish_diagnostics;
     pool.execute(move || {
         for file_id in subscriptions {
             if publish_diagnostics {
