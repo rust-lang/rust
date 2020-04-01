@@ -41,7 +41,7 @@ impl Thread {
         return if ret as usize == 0 {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
-            let _ = Box::from_raw(p);
+            drop(Box::from_raw(p));
             Err(io::Error::last_os_error())
         } else {
             Ok(Thread { handle: Handle::new(ret) })

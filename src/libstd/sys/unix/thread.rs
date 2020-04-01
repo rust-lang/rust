@@ -64,12 +64,15 @@ impl Thread {
         };
 
         let ret = libc::pthread_create(&mut native, &attr, thread_start, p as *mut _);
+        // Note: if the thread creation fails and this assert fails, then p will
+        // be leaked. However, an alternative design could cause double-free
+        // which is clearly worse.
         assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
 
         return if ret != 0 {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
-            let _ = Box::from_raw(p);
+            drop(Box::from_raw(p));
             Err(io::Error::from_raw_os_error(ret))
         } else {
             Ok(Thread { id: native })
