@@ -308,7 +308,7 @@ pub enum LiteralKind {
     Byte,
     IntNumber { suffix: Option<SmolStr> },
     FloatNumber { suffix: Option<SmolStr> },
-    Bool,
+    Bool(bool),
 }
 
 impl ast::Literal {
@@ -355,7 +355,8 @@ impl ast::Literal {
                 LiteralKind::FloatNumber { suffix: Self::find_suffix(&text, &FLOAT_SUFFIXES) }
             }
             STRING | RAW_STRING => LiteralKind::String,
-            T![true] | T![false] => LiteralKind::Bool,
+            T![true] => LiteralKind::Bool(true),
+            T![false] => LiteralKind::Bool(false),
             BYTE_STRING | RAW_BYTE_STRING => LiteralKind::ByteString,
             CHAR => LiteralKind::Char,
             BYTE => LiteralKind::Byte,
