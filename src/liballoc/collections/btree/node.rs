@@ -45,6 +45,9 @@ pub const MIN_LEN: usize = B - 1;
 pub const CAPACITY: usize = 2 * B - 1;
 
 /// The underlying representation of leaf nodes.
+// The layout is fixed so that we have tighter control over field ordering.
+// We're okay with wasting some memory in trade-off for better cache locality.
+#[repr(C)]
 struct LeafNode<K, V> {
     /// We use `*const` as opposed to `*mut` so as to be covariant in `K` and `V`.
     /// This either points to an actual node or is null.
@@ -55,13 +58,19 @@ struct LeafNode<K, V> {
     /// This is only guaranteed to be initialized when `parent` is non-null.
     parent_idx: MaybeUninit<u16>,
 
+    /// The arrays storing the values of the node. Only the first `len` elements of each
+    /// array are initialized and valid.
+    vals: [MaybeUninit<V>; CAPACITY],
+
     /// The number of keys and values this node stores.
+    // This is right before the keys because we frequently access both.
     len: u16,
 
     /// The arrays storing the actual data of the node. Only the first `len` elements of each
     /// array are initialized and valid.
+    // This is intentionally last so as to both be a) close to `len` and b)
+    // close to the edges in the internal node case.
     keys: [MaybeUninit<K>; CAPACITY],
-    vals: [MaybeUninit<V>; CAPACITY],
 }
 
 impl<K, V> LeafNode<K, V> {
