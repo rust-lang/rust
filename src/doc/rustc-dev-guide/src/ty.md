@@ -1,7 +1,3 @@
----
-tags: rustc, ty
----
-
 # The `ty` module: representing types
 
 The `ty` module defines how the Rust compiler represents types internally. It also defines the
