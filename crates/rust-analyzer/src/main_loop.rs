@@ -101,11 +101,14 @@ fn get_config(
             chaining_hints: config.inlay_hints_chaining,
             max_length: config.inlay_hints_max_length,
         },
-        check: CheckConfig {
-            enable: config.cargo_watch_enable,
-            args: config.cargo_watch_args.clone(),
-            command: config.cargo_watch_command.clone(),
-            all_targets: config.cargo_watch_all_targets,
+        check: if config.cargo_watch_enable {
+            Some(CheckConfig {
+                args: config.cargo_watch_args.clone(),
+                command: config.cargo_watch_command.clone(),
+                all_targets: config.cargo_watch_all_targets,
+            })
+        } else {
+            None
         },
         rustfmt_args: config.rustfmt_args.clone(),
         vscode_lldb: config.vscode_lldb,
@@ -240,7 +243,7 @@ pub fn main_loop(
                     Err(RecvError) => return Err("vfs died".into()),
                 },
                 recv(libdata_receiver) -> data => Event::Lib(data.unwrap()),
-                recv(world_state.check_watcher.as_ref().map_or(&never(), |it| &it.task_recv)) -> task => match task {
+                recv(world_state.flycheck.as_ref().map_or(&never(), |it| &it.task_recv)) -> task => match task {
                     Ok(task) => Event::CheckWatcher(task),
                     Err(RecvError) => return Err("check watcher died".into()),
                 }
@@ -481,8 +484,8 @@ fn loop_turn(
         && loop_state.in_flight_libraries == 0
     {
         loop_state.workspace_loaded = true;
-        if let Some(check_watcher) = &world_state.check_watcher {
-            check_watcher.update();
+        if let Some(flycheck) = &world_state.flycheck {
+            flycheck.update();
         }
         pool.execute({
             let subs = loop_state.subscriptions.subscriptions();
@@ -654,8 +657,8 @@ fn on_notification(
     };
     let not = match notification_cast::<req::DidSaveTextDocument>(not) {
         Ok(_params) => {
-            if let Some(check_watcher) = &state.check_watcher {
-                check_watcher.update();
+            if let Some(flycheck) = &state.flycheck {
+                flycheck.update();
             }
             return Ok(());
         }
