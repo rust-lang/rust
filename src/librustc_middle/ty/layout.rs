@@ -230,7 +230,7 @@ enum StructKind {
 // Invert a bijective mapping, i.e. `invert(map)[y] = x` if `map[x] = y`.
 // This is used to go between `memory_index` (source field order to memory order)
 // and `inverse_memory_index` (memory order to source field order).
-// See also `FieldPlacement::Arbitrary::memory_index` for more details.
+// See also `FieldsShape::Arbitrary::memory_index` for more details.
 // FIXME(eddyb) build a better abstraction for permutations, if possible.
 fn invert_mapping(map: &[u32]) -> Vec<u32> {
     let mut inverse = vec![0; map.len()];
@@ -257,7 +257,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         Layout {
             variants: Variants::Single { index: VariantIdx::new(0) },
-            fields: FieldPlacement::Arbitrary {
+            fields: FieldsShape::Arbitrary {
                 offsets: vec![Size::ZERO, b_offset],
                 memory_index: vec![0, 1],
             },
@@ -443,7 +443,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         };
                         let pair = self.scalar_pair(a.clone(), b.clone());
                         let pair_offsets = match pair.fields {
-                            FieldPlacement::Arbitrary { ref offsets, ref memory_index } => {
+                            FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                                 assert_eq!(memory_index, &[0, 1]);
                                 offsets
                             }
@@ -471,7 +471,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         Ok(Layout {
             variants: Variants::Single { index: VariantIdx::new(0) },
-            fields: FieldPlacement::Arbitrary { offsets, memory_index },
+            fields: FieldsShape::Arbitrary { offsets, memory_index },
             abi,
             largest_niche,
             align,
@@ -520,7 +520,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             // The never type.
             ty::Never => tcx.intern_layout(Layout {
                 variants: Variants::Single { index: VariantIdx::new(0) },
-                fields: FieldPlacement::Union(0),
+                fields: FieldsShape::Union(0),
                 abi: Abi::Uninhabited,
                 largest_niche: None,
                 align: dl.i8_align,
@@ -581,7 +581,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 tcx.intern_layout(Layout {
                     variants: Variants::Single { index: VariantIdx::new(0) },
-                    fields: FieldPlacement::Array { stride: element.size, count },
+                    fields: FieldsShape::Array { stride: element.size, count },
                     abi,
                     largest_niche,
                     align: element.align,
@@ -592,7 +592,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let element = self.layout_of(element)?;
                 tcx.intern_layout(Layout {
                     variants: Variants::Single { index: VariantIdx::new(0) },
-                    fields: FieldPlacement::Array { stride: element.size, count: 0 },
+                    fields: FieldsShape::Array { stride: element.size, count: 0 },
                     abi: Abi::Aggregate { sized: false },
                     largest_niche: None,
                     align: element.align,
@@ -601,7 +601,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
             ty::Str => tcx.intern_layout(Layout {
                 variants: Variants::Single { index: VariantIdx::new(0) },
-                fields: FieldPlacement::Array { stride: Size::from_bytes(1), count: 0 },
+                fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
                 abi: Abi::Aggregate { sized: false },
                 largest_niche: None,
                 align: dl.i8_align,
@@ -670,7 +670,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 tcx.intern_layout(Layout {
                     variants: Variants::Single { index: VariantIdx::new(0) },
-                    fields: FieldPlacement::Array { stride: element.size, count },
+                    fields: FieldsShape::Array { stride: element.size, count },
                     abi: Abi::Vector { element: scalar, count },
                     largest_niche: element.largest_niche.clone(),
                     size,
@@ -746,7 +746,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                     return Ok(tcx.intern_layout(Layout {
                         variants: Variants::Single { index },
-                        fields: FieldPlacement::Union(variants[index].len()),
+                        fields: FieldsShape::Union(variants[index].len()),
                         abi,
                         largest_niche: None,
                         align,
@@ -980,7 +980,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                     discr_index: 0,
                                     variants: st,
                                 },
-                                fields: FieldPlacement::Arbitrary {
+                                fields: FieldsShape::Arbitrary {
                                     offsets: vec![offset],
                                     memory_index: vec![0],
                                 },
@@ -1121,7 +1121,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     let new_ity_size = ity.size();
                     for variant in &mut layout_variants {
                         match variant.fields {
-                            FieldPlacement::Arbitrary { ref mut offsets, .. } => {
+                            FieldsShape::Arbitrary { ref mut offsets, .. } => {
                                 for i in offsets {
                                     if *i <= old_ity_size {
                                         assert_eq!(*i, old_ity_size);
@@ -1151,7 +1151,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     let mut common_prim = None;
                     for (field_layouts, layout_variant) in variants.iter().zip(&layout_variants) {
                         let offsets = match layout_variant.fields {
-                            FieldPlacement::Arbitrary { ref offsets, .. } => offsets,
+                            FieldsShape::Arbitrary { ref offsets, .. } => offsets,
                             _ => bug!(),
                         };
                         let mut fields =
@@ -1187,7 +1187,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     if let Some((prim, offset)) = common_prim {
                         let pair = self.scalar_pair(tag.clone(), scalar_unit(prim));
                         let pair_offsets = match pair.fields {
-                            FieldPlacement::Arbitrary { ref offsets, ref memory_index } => {
+                            FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                                 assert_eq!(memory_index, &[0, 1]);
                                 offsets
                             }
@@ -1218,7 +1218,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         discr_index: 0,
                         variants: layout_variants,
                     },
-                    fields: FieldPlacement::Arbitrary {
+                    fields: FieldsShape::Arbitrary {
                         offsets: vec![Size::ZERO],
                         memory_index: vec![0],
                     },
@@ -1435,7 +1435,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // GeneratorLayout.
         debug!("prefix = {:#?}", prefix);
         let (outer_fields, promoted_offsets, promoted_memory_index) = match prefix.fields {
-            FieldPlacement::Arbitrary { mut offsets, memory_index } => {
+            FieldsShape::Arbitrary { mut offsets, memory_index } => {
                 let mut inverse_memory_index = invert_mapping(&memory_index);
 
                 // "a" (`0..b_start`) and "b" (`b_start..`) correspond to
@@ -1458,7 +1458,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let memory_index_b = invert_mapping(&inverse_memory_index_b);
 
                 let outer_fields =
-                    FieldPlacement::Arbitrary { offsets: offsets_a, memory_index: memory_index_a };
+                    FieldsShape::Arbitrary { offsets: offsets_a, memory_index: memory_index_a };
                 (outer_fields, offsets_b, memory_index_b)
             }
             _ => bug!(),
@@ -1492,7 +1492,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 variant.variants = Variants::Single { index };
 
                 let (offsets, memory_index) = match variant.fields {
-                    FieldPlacement::Arbitrary { offsets, memory_index } => (offsets, memory_index),
+                    FieldsShape::Arbitrary { offsets, memory_index } => (offsets, memory_index),
                     _ => bug!(),
                 };
 
@@ -1535,7 +1535,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 combined_inverse_memory_index.retain(|&i| i != INVALID_FIELD_IDX);
                 let combined_memory_index = invert_mapping(&combined_inverse_memory_index);
 
-                variant.fields = FieldPlacement::Arbitrary {
+                variant.fields = FieldsShape::Arbitrary {
                     offsets: combined_offsets,
                     memory_index: combined_memory_index,
                 };
@@ -1990,7 +1990,7 @@ where
                 if index == variant_index &&
                 // Don't confuse variants of uninhabited enums with the enum itself.
                 // For more details see https://github.com/rust-lang/rust/issues/69763.
-                this.fields != FieldPlacement::Union(0) =>
+                this.fields != FieldsShape::Union(0) =>
             {
                 this.layout
             }
@@ -2008,7 +2008,7 @@ where
                 let tcx = cx.tcx();
                 tcx.intern_layout(Layout {
                     variants: Variants::Single { index: variant_index },
-                    fields: FieldPlacement::Union(fields),
+                    fields: FieldsShape::Union(fields),
                     abi: Abi::Uninhabited,
                     largest_niche: None,
                     align: tcx.data_layout.i8_align,
@@ -2054,7 +2054,7 @@ where
                 // Reuse the fat `*T` type as its own thin pointer data field.
                 // This provides information about, e.g., DST struct pointees
                 // (which may have no non-DST form), and will work as long
-                // as the `Abi` or `FieldPlacement` is checked by users.
+                // as the `Abi` or `FieldsShape` is checked by users.
                 if i == 0 {
                     let nil = tcx.mk_unit();
                     let ptr_ty = if this.ty.is_unsafe_ptr() {
@@ -2219,7 +2219,7 @@ where
 
                 if let Some(variant) = data_variant {
                     // We're not interested in any unions.
-                    if let FieldPlacement::Union(_) = variant.fields {
+                    if let FieldsShape::Union(_) = variant.fields {
                         data_variant = None;
                     }
                 }
