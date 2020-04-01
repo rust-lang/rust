@@ -32,7 +32,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::common::record_time;
 use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
 use rustc_session::Session;
-use rustc_span::source_map::{self, respan, Spanned};
+use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
 
@@ -41,6 +41,7 @@ use proc_macro::bridge::client::ProcMacro;
 use std::io;
 use std::mem;
 use std::num::NonZeroUsize;
+use std::path::Path;
 use std::u32;
 
 pub use cstore_impl::{provide, provide_extern};
@@ -427,7 +428,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         // we can call `imported_source_files` for the proper crate, and binary search
         // through the returned slice using our span.
         let imported_source_files = if tag == TAG_VALID_SPAN_LOCAL {
-            self.cdata().imported_source_files(sess.source_map())
+            self.cdata().imported_source_files(sess)
         } else {
             // FIXME: We don't decode dependencies of proc-macros.
             // Remove this once #69976 is merged
@@ -457,7 +458,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             self.last_source_file_index = 0;
 
             let foreign_data = self.cdata().cstore.get_crate_data(cnum);
-            foreign_data.imported_source_files(sess.source_map())
+            foreign_data.imported_source_files(sess)
         };
 
         let source_file = {
@@ -1460,10 +1461,45 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     ///
     /// Proc macro crates don't currently export spans, so this function does not have
     /// to work for them.
-    fn imported_source_files(
-        &self,
-        local_source_map: &source_map::SourceMap,
-    ) -> &'a [ImportedSourceFile] {
+    fn imported_source_files(&self, sess: &Session) -> &'a [ImportedSourceFile] {
+        // Translate the virtual `/rustc/$hash` prefix back to a real directory
+        // that should hold actual sources, where possible.
+        let virtual_rust_source_base_dir = option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR")
+            .map(Path::new)
+            .filter(|_| {
+                // Only spend time on further checks if we have what to translate *to*.
+                sess.real_rust_source_base_dir.is_some()
+            })
+            .filter(|virtual_dir| {
+                // Don't translate away `/rustc/$hash` if we're still remapping to it,
+                // since that means we're still building `std`/`rustc` that need it,
+                // and we don't want the real path to leak into codegen/debuginfo.
+                !sess.opts.remap_path_prefix.iter().any(|(_from, to)| to == virtual_dir)
+            });
+        let try_to_translate_virtual_to_real = |name: &mut rustc_span::FileName| {
+            debug!(
+                "try_to_translate_virtual_to_real(name={:?}): \
+                 virtual_rust_source_base_dir={:?}, real_rust_source_base_dir={:?}",
+                name, virtual_rust_source_base_dir, sess.real_rust_source_base_dir,
+            );
+
+            if let Some(virtual_dir) = virtual_rust_source_base_dir {
+                if let Some(real_dir) = &sess.real_rust_source_base_dir {
+                    if let rustc_span::FileName::Real(path) = name {
+                        if let Ok(rest) = path.strip_prefix(virtual_dir) {
+                            let new_path = real_dir.join(rest);
+                            debug!(
+                                "try_to_translate_virtual_to_real: `{}` -> `{}`",
+                                path.display(),
+                                new_path.display(),
+                            );
+                            *path = new_path;
+                        }
+                    }
+                }
+            }
+        };
+
         self.cdata.source_map_import_info.init_locking(|| {
             let external_source_map = self.root.source_map.decode(self);
 
@@ -1472,7 +1508,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     // We can't reuse an existing SourceFile, so allocate a new one
                     // containing the information we need.
                     let rustc_span::SourceFile {
-                        name,
+                        mut name,
                         name_was_remapped,
                         src_hash,
                         start_pos,
@@ -1484,6 +1520,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         name_hash,
                         ..
                     } = source_file_to_import;
+
+                    // If this file's path has been remapped to `/rustc/$hash`,
+                    // we might be able to reverse that (also see comments above,
+                    // on `try_to_translate_virtual_to_real`).
+                    // FIXME(eddyb) we could check `name_was_remapped` here,
+                    // but in practice it seems to be always `false`.
+                    try_to_translate_virtual_to_real(&mut name);
 
                     let source_length = (end_pos - start_pos).to_usize();
 
@@ -1505,7 +1548,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         np.pos = np.pos - start_pos;
                     }
 
-                    let local_version = local_source_map.new_imported_source_file(
+                    let local_version = sess.source_map().new_imported_source_file(
                         name,
                         name_was_remapped,
                         src_hash,

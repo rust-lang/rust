@@ -1022,8 +1022,13 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_HOST_CRT_STATIC", x.to_string());
         }
 
-        if let Some(map) = self.build.debuginfo_map(GitRepo::Rustc) {
+        if let Some(map_to) = self.build.debuginfo_map_to(GitRepo::Rustc) {
+            let map = format!("{}={}", self.build.src.display(), map_to);
             cargo.env("RUSTC_DEBUGINFO_MAP", map);
+
+            // `rustc` needs to know the virtual `/rustc/$hash` we're mapping to,
+            // in order to opportunistically reverse it later.
+            cargo.env("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR", map_to);
         }
 
         // Enable usage of unstable features
