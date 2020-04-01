@@ -11,13 +11,12 @@ pub mod msg;
 
 use process::{ProcMacroProcessSrv, ProcMacroProcessThread};
 use ra_tt::{SmolStr, Subtree};
-use rpc::ProcMacroKind;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
 
-pub use rpc::{ExpansionResult, ExpansionTask};
+pub use rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask, ProcMacroKind};
 
 #[derive(Debug, Clone)]
 pub struct ProcMacroProcessExpander {
