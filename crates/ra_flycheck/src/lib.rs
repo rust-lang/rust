@@ -37,7 +37,7 @@ pub struct CheckConfig {
 pub struct Flycheck {
     // XXX: drop order is significant
     cmd_send: Sender<CheckCommand>,
-    handle: Option<jod_thread::JoinHandle<()>>,
+    handle: jod_thread::JoinHandle<()>,
     pub task_recv: Receiver<CheckTask>,
 }
 
@@ -49,7 +49,7 @@ impl Flycheck {
             let mut check = FlycheckThread::new(config, workspace_root);
             check.run(&task_send, &cmd_recv);
         });
-        Flycheck { task_recv, cmd_send, handle: Some(handle) }
+        Flycheck { task_recv, cmd_send, handle }
     }
 
     /// Schedule a re-start of the cargo check worker.
