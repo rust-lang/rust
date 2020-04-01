@@ -9,22 +9,33 @@
 
 use rustc_hash::FxHashMap;
 
+use crate::feature_flags::FeatureFlags;
 use lsp_types::TextDocumentClientCapabilities;
 use ra_flycheck::FlycheckConfig;
-use ra_ide::InlayHintsConfig;
+use ra_ide::{CompletionConfig, InlayHintsConfig};
 use ra_project_model::CargoFeatures;
 use serde::{Deserialize, Deserializer};
 
 #[derive(Debug, Clone)]
 pub struct Config {
     pub publish_decorations: bool,
+    pub publish_diagnostics: bool,
+    pub notifications: NotificationsConfig,
     pub supports_location_link: bool,
     pub line_folding_only: bool,
     pub inlay_hints: InlayHintsConfig,
+    pub completion: CompletionConfig,
+    pub call_info_full: bool,
     pub rustfmt: RustfmtConfig,
     pub check: Option<FlycheckConfig>,
     pub vscode_lldb: bool,
     pub proc_macro_srv: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NotificationsConfig {
+    pub workspace_loaded: bool,
+    pub cargo_toml_not_found: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -49,8 +60,14 @@ pub(crate) fn get_config(
     config: &ServerConfig,
     text_document_caps: Option<&TextDocumentClientCapabilities>,
 ) -> Config {
+    let feature_flags = get_feature_flags(config);
     Config {
         publish_decorations: config.publish_decorations,
+        publish_diagnostics: feature_flags.get("lsp.diagnostics"),
+        notifications: NotificationsConfig {
+            workspace_loaded: feature_flags.get("notifications.workspace-loaded"),
+            cargo_toml_not_found: feature_flags.get("notifications.cargo-toml-not-found"),
+        },
         supports_location_link: text_document_caps
             .and_then(|it| it.definition)
             .and_then(|it| it.link_support)
@@ -65,6 +82,13 @@ pub(crate) fn get_config(
             chaining_hints: config.inlay_hints_chaining,
             max_length: config.inlay_hints_max_length,
         },
+        completion: CompletionConfig {
+            enable_postfix_completions: feature_flags.get("completion.enable-postfix"),
+            add_call_parenthesis: feature_flags.get("completion.insertion.add-call-parenthesis"),
+            add_call_argument_snippets: feature_flags
+                .get("completion.insertion.add-argument-snippets"),
+        },
+        call_info_full: feature_flags.get("call-info.full"),
         check: if config.cargo_watch_enable {
             Some(FlycheckConfig::CargoCommand {
                 command: config.cargo_watch_command.clone(),
@@ -78,6 +102,17 @@ pub(crate) fn get_config(
         vscode_lldb: config.vscode_lldb,
         proc_macro_srv: None, // FIXME: get this from config
     }
+}
+
+fn get_feature_flags(config: &ServerConfig) -> FeatureFlags {
+    let mut ff = FeatureFlags::default();
+    for (flag, &value) in &config.feature_flags {
+        if ff.set(flag.as_str(), value).is_err() {
+            log::error!("unknown feature flag: {:?}", flag);
+        }
+    }
+    log::info!("feature_flags: {:#?}", ff);
+    ff
 }
 
 /// Client provided initialization options

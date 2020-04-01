@@ -23,7 +23,6 @@ use stdx::format_to;
 use crate::{
     config::Config,
     diagnostics::{CheckFixes, DiagnosticCollection},
-    feature_flags::FeatureFlags,
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
     vfs_glob::{Glob, RustPackageFilterBuilder},
     LspError, Result,
@@ -59,7 +58,6 @@ fn create_flycheck(workspaces: &[ProjectWorkspace], config: &Config) -> Option<F
 #[derive(Debug)]
 pub struct WorldState {
     pub config: Config,
-    pub feature_flags: Arc<FeatureFlags>,
     pub roots: Vec<PathBuf>,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis_host: AnalysisHost,
@@ -73,7 +71,6 @@ pub struct WorldState {
 /// An immutable snapshot of the world's state at a point in time.
 pub struct WorldSnapshot {
     pub config: Config,
-    pub feature_flags: Arc<FeatureFlags>,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
@@ -89,7 +86,6 @@ impl WorldState {
         exclude_globs: &[Glob],
         watch: Watch,
         config: Config,
-        feature_flags: FeatureFlags,
     ) -> WorldState {
         let mut change = AnalysisChange::new();
 
@@ -197,7 +193,6 @@ impl WorldState {
         analysis_host.apply_change(change);
         WorldState {
             config: config,
-            feature_flags: Arc::new(feature_flags),
             roots: folder_roots,
             workspaces: Arc::new(workspaces),
             analysis_host,
@@ -209,13 +204,7 @@ impl WorldState {
         }
     }
 
-    pub fn update_configuration(
-        &mut self,
-        lru_capacity: Option<usize>,
-        config: Config,
-        feature_flags: FeatureFlags,
-    ) {
-        self.feature_flags = Arc::new(feature_flags);
+    pub fn update_configuration(&mut self, lru_capacity: Option<usize>, config: Config) {
         self.analysis_host.update_lru_capacity(lru_capacity);
         self.flycheck = create_flycheck(&self.workspaces, &config);
         self.config = config;
@@ -275,7 +264,6 @@ impl WorldState {
     pub fn snapshot(&self) -> WorldSnapshot {
         WorldSnapshot {
             config: self.config.clone(),
-            feature_flags: Arc::clone(&self.feature_flags),
             workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),

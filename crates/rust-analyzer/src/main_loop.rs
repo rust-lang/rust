@@ -33,7 +33,6 @@ use threadpool::ThreadPool;
 use crate::{
     config::get_config,
     diagnostics::DiagnosticTask,
-    feature_flags::FeatureFlags,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
         subscriptions::Subscriptions,
@@ -66,22 +65,6 @@ impl fmt::Display for LspError {
 
 impl Error for LspError {}
 
-fn get_feature_flags(config: &ServerConfig, connection: &Connection) -> FeatureFlags {
-    let mut ff = FeatureFlags::default();
-    for (flag, &value) in &config.feature_flags {
-        if ff.set(flag.as_str(), value).is_err() {
-            log::error!("unknown feature flag: {:?}", flag);
-            show_message(
-                req::MessageType::Error,
-                format!("unknown feature flag: {:?}", flag),
-                &connection.sender,
-            );
-        }
-    }
-    log::info!("feature_flags: {:#?}", ff);
-    ff
-}
-
 pub fn main_loop(
     ws_roots: Vec<PathBuf>,
     client_caps: ClientCapabilities,
@@ -112,8 +95,8 @@ pub fn main_loop(
     let text_document_caps = client_caps.text_document.as_ref();
     let mut loop_state = LoopState::default();
     let mut world_state = {
-        let feature_flags = get_feature_flags(&config, &connection);
-
+        // TODO: refactor
+        let new_config = get_config(&config, text_document_caps);
         // FIXME: support dynamic workspace loading.
         let workspaces = {
             let mut loaded_workspaces = Vec::new();
@@ -131,7 +114,7 @@ pub fn main_loop(
                         if let Some(ra_project_model::CargoTomlNotFoundError { .. }) =
                             e.downcast_ref()
                         {
-                            if !feature_flags.get("notifications.cargo-toml-not-found") {
+                            if !new_config.notifications.cargo_toml_not_found {
                                 continue;
                             }
                         }
@@ -180,8 +163,7 @@ pub fn main_loop(
             config.lru_capacity,
             &globs,
             Watch(!config.use_client_watching),
-            get_config(&config, text_document_caps),
-            feature_flags,
+            new_config,
         )
     };
 
@@ -406,7 +388,6 @@ fn loop_turn(
                             world_state.update_configuration(
                                 new_config.lru_capacity,
                                 get_config(&new_config, text_document_caps),
-                                get_feature_flags(&new_config, connection),
                             );
                         }
                         (None, Some(Err(e))) => {
@@ -441,8 +422,8 @@ fn loop_turn(
         });
     }
 
-    let show_progress = !loop_state.workspace_loaded
-        && world_state.feature_flags.get("notifications.workspace-loaded");
+    let show_progress =
+        !loop_state.workspace_loaded && world_state.config.notifications.workspace_loaded;
 
     if !loop_state.workspace_loaded
         && loop_state.roots_scanned == loop_state.roots_total
@@ -930,7 +911,7 @@ fn update_file_notifications_on_threadpool(
     subscriptions: Vec<FileId>,
 ) {
     log::trace!("updating notifications for {:?}", subscriptions);
-    let publish_diagnostics = world.feature_flags.get("lsp.diagnostics");
+    let publish_diagnostics = world.config.publish_diagnostics;
     pool.execute(move || {
         for file_id in subscriptions {
             if publish_diagnostics {
