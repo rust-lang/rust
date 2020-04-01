@@ -8,7 +8,7 @@ use crossbeam_channel::{unbounded, Receiver};
 use ra_db::{ExternSourceId, FileId, SourceRootId};
 use ra_ide::{AnalysisChange, AnalysisHost};
 use ra_project_model::{
-    get_rustc_cfg_options, CargoFeatures, PackageRoot, ProcMacroClient, ProjectWorkspace,
+    get_rustc_cfg_options, CargoConfig, PackageRoot, ProcMacroClient, ProjectWorkspace,
 };
 use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask, Watch};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -29,7 +29,7 @@ pub(crate) fn load_cargo(
     let root = std::env::current_dir()?.join(root);
     let ws = ProjectWorkspace::discover(
         root.as_ref(),
-        &CargoFeatures { load_out_dirs_from_check, ..Default::default() },
+        &CargoConfig { load_out_dirs_from_check, ..Default::default() },
     )?;
 
     let mut extern_dirs = FxHashSet::default();

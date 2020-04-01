@@ -13,7 +13,6 @@ use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId}
 use ra_arena::{Arena, Idx};
 use ra_db::Edition;
 use rustc_hash::FxHashMap;
-use serde::Deserialize;
 
 /// `CargoWorkspace` represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -43,10 +42,8 @@ impl ops::Index<Target> for CargoWorkspace {
     }
 }
 
-// TODO: rename to CargoConfig, kill `rename_all`, kill serde dep?
-#[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", default)]
-pub struct CargoFeatures {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CargoConfig {
     /// Do not activate the `default` feature.
     pub no_default_features: bool,
 
@@ -61,9 +58,9 @@ pub struct CargoFeatures {
     pub load_out_dirs_from_check: bool,
 }
 
-impl Default for CargoFeatures {
+impl Default for CargoConfig {
     fn default() -> Self {
-        CargoFeatures {
+        CargoConfig {
             no_default_features: false,
             all_features: true,
             features: Vec::new(),
@@ -142,7 +139,7 @@ impl PackageData {
 impl CargoWorkspace {
     pub fn from_cargo_metadata(
         cargo_toml: &Path,
-        cargo_features: &CargoFeatures,
+        cargo_features: &CargoConfig,
     ) -> Result<CargoWorkspace> {
         let mut meta = MetadataCommand::new();
         meta.manifest_path(cargo_toml);
@@ -276,7 +273,7 @@ pub struct ExternResources {
 
 pub fn load_extern_resources(
     cargo_toml: &Path,
-    cargo_features: &CargoFeatures,
+    cargo_features: &CargoConfig,
 ) -> Result<ExternResources> {
     let mut cmd = Command::new(cargo_binary());
     cmd.args(&["check", "--message-format=json", "--manifest-path"]).arg(cargo_toml);
@@ -294,9 +291,8 @@ pub fn load_extern_resources(
 
     let mut res = ExternResources::default();
 
-    let stdout = String::from_utf8(output.stdout)?;
-    for line in stdout.lines() {
-        if let Ok(message) = serde_json::from_str::<cargo_metadata::Message>(&line) {
+    for message in cargo_metadata::parse_messages(output.stdout.as_slice()) {
+        if let Ok(message) = message {
             match message {
                 Message::BuildScriptExecuted(BuildScript { package_id, out_dir, .. }) => {
                     res.out_dirs.insert(package_id, out_dir);

@@ -10,7 +10,7 @@
 use lsp_types::TextDocumentClientCapabilities;
 use ra_flycheck::FlycheckConfig;
 use ra_ide::{CompletionConfig, InlayHintsConfig};
-use ra_project_model::CargoFeatures;
+use ra_project_model::CargoConfig;
 use serde::Deserialize;
 
 #[derive(Debug, Clone)]
@@ -29,7 +29,7 @@ pub struct Config {
     pub lru_capacity: Option<usize>,
     pub use_client_watching: bool,
     pub exclude_globs: Vec<String>,
-    pub cargo: CargoFeatures,
+    pub cargo: CargoConfig,
     pub with_sysroot: bool,
 }
 
@@ -92,7 +92,7 @@ impl Default for Config {
             lru_capacity: None,
             use_client_watching: false,
             exclude_globs: Vec::new(),
-            cargo: CargoFeatures::default(),
+            cargo: CargoConfig::default(),
             with_sysroot: true,
         }
     }
