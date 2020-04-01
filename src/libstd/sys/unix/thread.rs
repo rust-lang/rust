@@ -41,7 +41,7 @@ unsafe fn pthread_attr_setstacksize(
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-        let mut p = mem::ManuallyDrop::new(box p);
+        let p = Box::into_raw(box p);
         let mut native: libc::pthread_t = mem::zeroed();
         let mut attr: libc::pthread_attr_t = mem::zeroed();
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
@@ -63,18 +63,13 @@ impl Thread {
             }
         };
 
-        let ret = libc::pthread_create(
-            &mut native,
-            &attr,
-            thread_start,
-            &mut *p as &mut Box<dyn FnOnce()> as *mut _ as *mut _,
-        );
+        let ret = libc::pthread_create(&mut native, &attr, thread_start, p as *mut _);
         assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
 
         return if ret != 0 {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
-            // safe to manually drop it.
-            mem::ManuallyDrop::drop(&mut p);
+            // safe to reconstruct the box so that it gets deallocated.
+            let _ = Box::from_raw(p);
             Err(io::Error::from_raw_os_error(ret))
         } else {
             Ok(Thread { id: native })

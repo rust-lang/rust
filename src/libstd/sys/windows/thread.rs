@@ -1,6 +1,5 @@
 use crate::ffi::CStr;
 use crate::io;
-use crate::mem;
 use crate::ptr;
 use crate::sys::c;
 use crate::sys::handle::Handle;
@@ -20,7 +19,7 @@ pub struct Thread {
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-        let mut p = mem::ManuallyDrop::new(box p);
+        let p = Box::into_raw(box p);
 
         // FIXME On UNIX, we guard against stack sizes that are too small but
         // that's because pthreads enforces that stacks are at least
@@ -34,15 +33,15 @@ impl Thread {
             ptr::null_mut(),
             stack_size,
             thread_start,
-            &mut *p as &mut Box<dyn FnOnce()> as *mut _ as *mut _,
+            p as *mut _,
             c::STACK_SIZE_PARAM_IS_A_RESERVATION,
             ptr::null_mut(),
         );
 
         return if ret as usize == 0 {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
-            // safe to manually drop it.
-            mem::ManuallyDrop::drop(&mut p);
+            // safe to reconstruct the box so that it gets deallocated.
+            let _ = Box::from_raw(p);
             Err(io::Error::last_os_error())
         } else {
             Ok(Thread { handle: Handle::new(ret) })
