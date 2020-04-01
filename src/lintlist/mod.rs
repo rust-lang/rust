@@ -1566,7 +1566,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "option_option",
-        group: "complexity",
+        group: "pedantic",
         desc: "usage of `Option<Option<T>>`",
         deprecation: None,
         module: "types",
