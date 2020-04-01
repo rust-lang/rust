@@ -55,7 +55,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.push_assign_constant(
             block,
             source_info,
-            &temp,
+            temp,
             Constant {
                 span: source_info.span,
                 user_ty: None,

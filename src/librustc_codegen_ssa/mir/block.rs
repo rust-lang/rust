@@ -299,7 +299,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
         mut bx: Bx,
-        location: &mir::Place<'tcx>,
+        location: mir::Place<'tcx>,
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
     ) {
@@ -580,7 +580,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if intrinsic == Some("transmute") {
             if let Some(destination_ref) = destination.as_ref() {
-                let &(ref dest, target) = destination_ref;
+                let &(dest, target) = destination_ref;
                 self.codegen_transmute(&mut bx, &args[0], dest);
                 helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
                 helper.funclet_br(self, &mut bx, target);
@@ -619,7 +619,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let mut llargs = Vec::with_capacity(arg_count);
 
         // Prepare the return value destination
-        let ret_dest = if let Some((ref dest, _)) = *destination {
+        let ret_dest = if let Some((dest, _)) = *destination {
             let is_intrinsic = intrinsic.is_some();
             self.make_return_dest(&mut bx, dest, &fn_abi.ret, &mut llargs, is_intrinsic)
         } else {
@@ -873,7 +873,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.unreachable();
             }
 
-            mir::TerminatorKind::Drop { ref location, target, unwind } => {
+            mir::TerminatorKind::Drop { location, target, unwind } => {
                 self.codegen_drop_terminator(helper, bx, location, target, unwind);
             }
 
@@ -1123,7 +1123,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn make_return_dest(
         &mut self,
         bx: &mut Bx,
-        dest: &mir::Place<'tcx>,
+        dest: mir::Place<'tcx>,
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>,
         is_intrinsic: bool,
@@ -1184,7 +1184,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    fn codegen_transmute(&mut self, bx: &mut Bx, src: &mir::Operand<'tcx>, dst: &mir::Place<'tcx>) {
+    fn codegen_transmute(&mut self, bx: &mut Bx, src: &mir::Operand<'tcx>, dst: mir::Place<'tcx>) {
         if let Some(index) = dst.as_local() {
             match self.locals[index] {
                 LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),

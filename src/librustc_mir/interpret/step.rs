@@ -87,23 +87,23 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.tcx.span = stmt.source_info.span;
         self.memory.tcx.span = stmt.source_info.span;
 
-        match stmt.kind {
-            Assign(box (ref place, ref rvalue)) => self.eval_rvalue_into_place(rvalue, place)?,
+        match &stmt.kind {
+            Assign(box (place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
 
-            SetDiscriminant { ref place, variant_index } => {
-                let dest = self.eval_place(place)?;
-                self.write_discriminant_index(variant_index, dest)?;
+            SetDiscriminant { place, variant_index } => {
+                let dest = self.eval_place(**place)?;
+                self.write_discriminant_index(*variant_index, dest)?;
             }
 
             // Mark locals as alive
             StorageLive(local) => {
-                let old_val = self.storage_live(local)?;
+                let old_val = self.storage_live(*local)?;
                 self.deallocate_local(old_val)?;
             }
 
             // Mark locals as dead
             StorageDead(local) => {
-                let old_val = self.storage_dead(local);
+                let old_val = self.storage_dead(*local);
                 self.deallocate_local(old_val)?;
             }
 
@@ -112,9 +112,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             FakeRead(..) => {}
 
             // Stacked Borrows.
-            Retag(kind, ref place) => {
-                let dest = self.eval_place(place)?;
-                M::retag(self, kind, dest)?;
+            Retag(kind, place) => {
+                let dest = self.eval_place(**place)?;
+                M::retag(self, *kind, dest)?;
             }
 
             // Statements we do not track.
@@ -138,7 +138,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn eval_rvalue_into_place(
         &mut self,
         rvalue: &mir::Rvalue<'tcx>,
-        place: &mir::Place<'tcx>,
+        place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx> {
         let dest = self.eval_place(place)?;
 
@@ -224,7 +224,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Len(ref place) => {
+            Len(place) => {
                 // FIXME(CTFE): don't allow computing the length of arrays in const eval
                 let src = self.eval_place(place)?;
                 let mplace = self.force_allocation(src)?;
@@ -232,7 +232,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(Scalar::from_machine_usize(len, self), dest)?;
             }
 
-            AddressOf(_, ref place) | Ref(_, _, ref place) => {
+            AddressOf(_, place) | Ref(_, _, place) => {
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(src)?;
                 if place.layout.size.bytes() > 0 {
@@ -261,7 +261,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.cast(src, kind, dest)?;
             }
 
-            Discriminant(ref place) => {
+            Discriminant(place) => {
                 let op = self.eval_place_to_op(place, None)?;
                 let discr_val = self.read_discriminant(op)?.0;
                 let size = dest.layout.size;

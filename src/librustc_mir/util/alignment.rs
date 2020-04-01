@@ -8,7 +8,7 @@ pub fn is_disaligned<'tcx, L>(
     tcx: TyCtxt<'tcx>,
     local_decls: &L,
     param_env: ty::ParamEnv<'tcx>,
-    place: &Place<'tcx>,
+    place: Place<'tcx>,
 ) -> bool
 where
     L: HasLocalDecls<'tcx>,
@@ -34,7 +34,7 @@ where
     }
 }
 
-fn is_within_packed<'tcx, L>(tcx: TyCtxt<'tcx>, local_decls: &L, place: &Place<'tcx>) -> bool
+fn is_within_packed<'tcx, L>(tcx: TyCtxt<'tcx>, local_decls: &L, place: Place<'tcx>) -> bool
 where
     L: HasLocalDecls<'tcx>,
 {

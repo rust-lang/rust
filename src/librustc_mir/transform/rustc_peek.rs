@@ -127,7 +127,7 @@ pub fn sanity_check_via_rustc_peek<'tcx, A>(
                 let loc = Location { block: bb, statement_index };
                 cursor.seek_before(loc);
                 let state = cursor.get();
-                results.analysis.peek_at(tcx, place, state, call);
+                results.analysis.peek_at(tcx, *place, state, call);
             }
 
             _ => {
@@ -231,7 +231,7 @@ pub trait RustcPeekAt<'tcx>: Analysis<'tcx> {
     fn peek_at(
         &self,
         tcx: TyCtxt<'tcx>,
-        place: &mir::Place<'tcx>,
+        place: mir::Place<'tcx>,
         flow_state: &BitSet<Self::Idx>,
         call: PeekCall,
     );
@@ -244,7 +244,7 @@ where
     fn peek_at(
         &self,
         tcx: TyCtxt<'tcx>,
-        place: &mir::Place<'tcx>,
+        place: mir::Place<'tcx>,
         flow_state: &BitSet<Self::Idx>,
         call: PeekCall,
     ) {
@@ -268,7 +268,7 @@ impl<'tcx> RustcPeekAt<'tcx> for MaybeMutBorrowedLocals<'_, 'tcx> {
     fn peek_at(
         &self,
         tcx: TyCtxt<'tcx>,
-        place: &mir::Place<'tcx>,
+        place: mir::Place<'tcx>,
         flow_state: &BitSet<Local>,
         call: PeekCall,
     ) {

@@ -230,7 +230,7 @@ fn build_drop_shim<'tcx>(
             elaborate_drops::elaborate_drop(
                 &mut elaborator,
                 source_info,
-                &dropee,
+                dropee,
                 (),
                 return_block,
                 elaborate_drops::Unwind::To(resume_block),

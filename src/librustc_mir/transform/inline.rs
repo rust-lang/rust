@@ -450,7 +450,7 @@ impl Inliner<'tcx> {
                 // Place could result in two different locations if `f`
                 // writes to `i`. To prevent this we need to create a temporary
                 // borrow of the place and pass the destination as `*temp` instead.
-                fn dest_needs_borrow(place: &Place<'_>) -> bool {
+                fn dest_needs_borrow(place: Place<'_>) -> bool {
                     for elem in place.projection.iter() {
                         match elem {
                             ProjectionElem::Deref | ProjectionElem::Index(_) => return true,
@@ -461,7 +461,7 @@ impl Inliner<'tcx> {
                     false
                 }
 
-                let dest = if dest_needs_borrow(&destination.0) {
+                let dest = if dest_needs_borrow(destination.0) {
                     debug!("creating temp for return destination");
                     let dest = Rvalue::Ref(
                         self.tcx.lifetimes.re_erased,

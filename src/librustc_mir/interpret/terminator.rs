@@ -51,7 +51,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.go_to_block(target_block);
             }
 
-            Call { ref func, ref args, ref destination, ref cleanup, .. } => {
+            Call { ref func, ref args, destination, ref cleanup, .. } => {
                 let func = self.eval_operand(func, None)?;
                 let (fn_val, abi) = match func.layout.ty.kind {
                     ty::FnPtr(sig) => {
@@ -68,7 +68,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 let args = self.eval_operands(args)?;
                 let ret = match destination {
-                    Some((dest, ret)) => Some((self.eval_place(dest)?, *ret)),
+                    Some((dest, ret)) => Some((self.eval_place(dest)?, ret)),
                     None => None,
                 };
                 self.eval_fn_call(
@@ -81,7 +81,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )?;
             }
 
-            Drop { ref location, target, unwind } => {
+            Drop { location, target, unwind } => {
                 // FIXME(CTFE): forbid drop in const eval
                 let place = self.eval_place(location)?;
                 let ty = place.layout.ty;
@@ -328,7 +328,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // `pass_argument` would be the loop body. It takes care to
                     // not advance `caller_iter` for ZSTs.
                     for local in body.args_iter() {
-                        let dest = self.eval_place(&mir::Place::from(local))?;
+                        let dest = self.eval_place(mir::Place::from(local))?;
                         if Some(local) == body.spread_arg {
                             // Must be a tuple
                             for i in 0..dest.layout.fields.count() {
@@ -346,7 +346,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     // Don't forget to check the return type!
                     if let Some((caller_ret, _)) = ret {
-                        let callee_ret = self.eval_place(&mir::Place::return_place())?;
+                        let callee_ret = self.eval_place(mir::Place::return_place())?;
                         if !Self::check_argument_compat(
                             rust_abi,
                             caller_ret.layout,

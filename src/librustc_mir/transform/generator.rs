@@ -853,7 +853,7 @@ fn elaborate_generator_drops<'tcx>(
         elaborate_drop(
             &mut elaborator,
             *source_info,
-            &Place::from(SELF_ARG),
+            Place::from(SELF_ARG),
             (),
             *target,
             unwind,

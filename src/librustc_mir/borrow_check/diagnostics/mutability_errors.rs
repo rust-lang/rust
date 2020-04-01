@@ -22,7 +22,7 @@ pub(crate) enum AccessKind {
 impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     pub(crate) fn report_mutability_error(
         &mut self,
-        access_place: &Place<'tcx>,
+        access_place: Place<'tcx>,
         span: Span,
         the_place_err: PlaceRef<'tcx>,
         error_access: AccessKind,

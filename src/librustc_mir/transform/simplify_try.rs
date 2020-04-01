@@ -89,7 +89,7 @@ fn match_get_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local
         StatementKind::Assign(box (place_into, rvalue_from)) => match rvalue_from {
             Rvalue::Use(Operand::Copy(pf)) | Rvalue::Use(Operand::Move(pf)) => {
                 let local_into = place_into.as_local()?;
-                let (local_from, vf) = match_variant_field_place(&pf)?;
+                let (local_from, vf) = match_variant_field_place(*pf)?;
                 Some((local_into, local_from, vf))
             }
             _ => None,
@@ -107,7 +107,7 @@ fn match_set_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local
         StatementKind::Assign(box (place_from, rvalue_into)) => match rvalue_into {
             Rvalue::Use(Operand::Move(place_into)) => {
                 let local_into = place_into.as_local()?;
-                let (local_from, vf) = match_variant_field_place(&place_from)?;
+                let (local_from, vf) = match_variant_field_place(*place_from)?;
                 Some((local_into, local_from, vf))
             }
             _ => None,
@@ -137,7 +137,7 @@ struct VarField<'tcx> {
 }
 
 /// Match on `((_LOCAL as Variant).FIELD: TY)`.
-fn match_variant_field_place<'tcx>(place: &Place<'tcx>) -> Option<(Local, VarField<'tcx>)> {
+fn match_variant_field_place<'tcx>(place: Place<'tcx>) -> Option<(Local, VarField<'tcx>)> {
     match place.as_ref() {
         PlaceRef {
             local,
