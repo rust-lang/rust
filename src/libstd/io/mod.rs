@@ -1388,19 +1388,21 @@ pub trait Write {
     ///
     /// If the buffer contains no data, this will never call [`write_vectored`].
     ///
+    /// [`write_vectored`]: #tymethod.write_vectored
+    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
+    ///
     /// # Notes
     ///
     /// Different to `io::Write::write_vectored` this takes a *mutable*
     /// reference to a slice of `IoSlice`s, not a non-mutable reference, because
     /// we need to modify the slice to keep track of the bytes already written.
     ///
-    /// Once this function returns the contents of `bufs` is undefined, not
-    /// undefined as in memory unsafe but we don't know what the contents of
-    /// `bufs` will be as that depends on how many writes we needed to do. We
-    /// advice to see this function as taking ownership of `bufs` and don't use
-    /// the variable after the future returns. The underlying buffers, to which
-    /// `IoSlice` points (not the `IoSlice` itself), are unchanged and can be
-    /// reused.
+    /// Once this function returns the contents of `bufs` is unspecified, as we
+    /// don't know what the contents of `bufs` will be as that depends on how
+    /// many writes we needed to do. We advice to see this function as taking
+    /// ownership of `bufs` and don't use the variable after the future returns.
+    /// The underlying buffers, to which `IoSlice` points (not the `IoSlice`
+    /// itself), are unchanged and can be reused.
     ///
     /// # Examples
     ///
