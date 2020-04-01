@@ -748,7 +748,7 @@ impl From<ast::LiteralKind> for Literal {
             LiteralKind::ByteString => Literal::ByteString(Default::default()),
             LiteralKind::String => Literal::String(Default::default()),
             LiteralKind::Byte => Literal::Int(Default::default(), Some(BuiltinInt::U8)),
-            LiteralKind::Bool => Literal::Bool(Default::default()),
+            LiteralKind::Bool(val) => Literal::Bool(val),
             LiteralKind::Char => Literal::Char(Default::default()),
         }
     }
