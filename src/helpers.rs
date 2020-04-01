@@ -115,7 +115,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn local_place(&mut self, local: mir::Local) -> InterpResult<'tcx, PlaceTy<'tcx, Tag>> {
         let this = self.eval_context_mut();
         let place = mir::Place { local: local, projection: List::empty() };
-        this.eval_place(&place)
+        this.eval_place(place)
     }
 
     /// Generate some random bytes, and write them to `dest`.
