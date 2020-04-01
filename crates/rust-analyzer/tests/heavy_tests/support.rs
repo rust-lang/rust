@@ -19,7 +19,10 @@ use tempfile::TempDir;
 use test_utils::{find_mismatch, parse_fixture};
 
 use req::{ProgressParams, ProgressParamsValue};
-use rust_analyzer::{main_loop, req, Config};
+use rust_analyzer::{
+    config::{ClientCapsConfig, Config},
+    main_loop, req,
+};
 
 pub struct Project<'a> {
     fixture: &'a str,
@@ -78,7 +81,7 @@ impl<'a> Project<'a> {
         let roots = self.roots.into_iter().map(|root| tmp_dir.path().join(root)).collect();
 
         let mut config = Config {
-            supports_location_link: true,
+            client_caps: ClientCapsConfig { location_link: true, ..Default::default() },
             with_sysroot: self.with_sysroot,
             ..Config::default()
         };

@@ -33,7 +33,7 @@ mod conv;
 mod main_loop;
 mod markdown;
 pub mod req;
-mod config;
+pub mod config;
 mod world;
 mod diagnostics;
 mod semantic_tokens;
@@ -42,7 +42,6 @@ use serde::de::DeserializeOwned;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 pub use crate::{
-    config::Config,
     caps::server_capabilities,
     main_loop::LspError,
     main_loop::{main_loop, show_message},

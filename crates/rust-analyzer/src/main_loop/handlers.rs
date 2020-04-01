@@ -450,7 +450,7 @@ pub fn handle_folding_range(
     let ctx = FoldConvCtx {
         text: &text,
         line_index: &line_index,
-        line_folding_only: world.config.line_folding_only,
+        line_folding_only: world.config.client_caps.line_folding_only,
     };
     let res = Some(folds.into_iter().map_conv_with(&ctx).collect());
     Ok(res)

@@ -15,11 +15,10 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone)]
 pub struct Config {
+    pub client_caps: ClientCapsConfig,
     pub publish_decorations: bool,
     pub publish_diagnostics: bool,
     pub notifications: NotificationsConfig,
-    pub supports_location_link: bool,
-    pub line_folding_only: bool,
     pub inlay_hints: InlayHintsConfig,
     pub completion: CompletionConfig,
     pub call_info_full: bool,
@@ -58,6 +57,12 @@ impl Default for RustfmtConfig {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct ClientCapsConfig {
+    pub location_link: bool,
+    pub line_folding_only: bool,
+}
+
 impl Default for Config {
     fn default() -> Self {
         Config {
@@ -67,8 +72,7 @@ impl Default for Config {
                 workspace_loaded: true,
                 cargo_toml_not_found: true,
             },
-            supports_location_link: false,
-            line_folding_only: false,
+            client_caps: ClientCapsConfig::default(),
             inlay_hints: InlayHintsConfig {
                 type_hints: true,
                 parameter_hints: true,
@@ -97,11 +101,9 @@ impl Default for Config {
 impl Config {
     #[rustfmt::skip]
     pub fn update(&mut self, value: &serde_json::Value) {
-        let line_folding_only = self.line_folding_only;
-        let supports_location_link = self.supports_location_link;
+        let client_caps = self.client_caps.clone();
         *self = Default::default();
-        self.line_folding_only = line_folding_only;
-        self.supports_location_link = supports_location_link;
+        self.client_caps = client_caps;
 
         set(value, "publishDecorations", &mut self.publish_decorations);
         set(value, "excludeGlobs", &mut self.exclude_globs);
@@ -157,10 +159,10 @@ impl Config {
 
     pub fn update_caps(&mut self, caps: &TextDocumentClientCapabilities) {
         if let Some(value) = caps.definition.as_ref().and_then(|it| it.link_support) {
-            self.supports_location_link = value;
+            self.client_caps.location_link = value;
         }
         if let Some(value) = caps.folding_range.as_ref().and_then(|it| it.line_folding_only) {
-            self.line_folding_only = value
+            self.client_caps.line_folding_only = value
         }
     }
 }
