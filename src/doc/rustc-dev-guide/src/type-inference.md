@@ -149,7 +149,7 @@ To allow for this, the inference context supports a `snapshot` method.
 When you call it, it will start recording changes that occur from the
 operations you perform. When you are done, you can either invoke
 `rollback_to`, which will undo those changes, or else `confirm`, which
-will make the permanent. Snapshots can be nested as long as you follow
+will make them permanent. Snapshots can be nested as long as you follow
 a stack-like discipline.
 
 Rather than use snapshots directly, it is often helpful to use the
@@ -200,7 +200,7 @@ idea:
 ```
 
 (There are various other kinds of constraints, such as "verifys"; see
-the `region_constraints` module for details.)
+the [`region_constraints`] module for details.)
 
 There is one case where we do some amount of eager unification. If you have an
 equality constraint between two regions
@@ -210,9 +210,12 @@ equality constraint between two regions
 ```
 
 we will record that fact in a unification table. You can then use
-`opportunistic_resolve_var` to convert `'b` to `'a` (or vice
+[`opportunistic_resolve_var`] to convert `'b` to `'a` (or vice
 versa). This is sometimes needed to ensure termination of fixed-point
 algorithms.
+
+[`region_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/region_constraints/index.html
+[`opportunistic_resolve_var`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/region_constraints/struct.RegionConstraintCollector.html#method.opportunistic_resolve_var
 
 ## Extracting region constraints
 
@@ -222,21 +225,26 @@ ways to solve region constraints right now: lexical and
 non-lexical. Eventually there will only be one.
 
 To solve **lexical** region constraints, you invoke
-`resolve_regions_and_report_errors`.  This "closes" the region
-constraint process and invoke the `lexical_region_resolve` code. Once
+[`resolve_regions_and_report_errors`].  This "closes" the region
+constraint process and invokes the [`lexical_region_resolve`] code. Once
 this is done, any further attempt to equate or create a subtyping
 relationship will yield an ICE.
 
 Non-lexical region constraints are not handled within the inference
 context. Instead, the NLL solver (actually, the MIR type-checker)
-invokes `take_and_reset_region_constraints` periodically. This
+invokes [`take_and_reset_region_constraints`] periodically. This
 extracts all of the outlives constraints from the region solver, but
 leaves the set of variables intact. This is used to get *just* the
 region constraints that resulted from some particular point in the
 program, since the NLL solver needs to know not just *what* regions
-were subregions but *where*. Finally, the NLL solver invokes
-`take_region_var_origins`, which "closes" the region constraint
+were subregions, but also *where*. Finally, the NLL solver invokes
+[`take_region_var_origins`], which "closes" the region constraint
 process in the same way as normal solving.
+
+[`resolve_regions_and_report_errors`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.resolve_regions_and_report_errors
+[`lexical_region_resolve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/lexical_region_resolve/index.html
+[`take_and_reset_region_constraints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.take_and_reset_region_constraints
+[`take_region_var_origins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.take_region_var_origins
 
 ## Lexical region resolution
 
