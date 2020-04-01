@@ -201,22 +201,6 @@ They are just regular files and directories. This is in contrast to `submodule` 
 If you want to synchronize or otherwise work with subrepos, install the `git subrepo` command via
 instructions found at https://github.com/ingydotnet/git-subrepo
 
-#### Creating a new subrepo dependency
-
-If you want to create a new subrepo dependency from an existing repository, call (from this
-repository's root directory!!)
-
-```
-git subrepo clone https://github.com/rust-lang/rust-clippy.git src/tools/clippy
-```
-
-This will create a new commit, which you may not rebase under any circumstances! Delete the commit
-and redo the operation if you need to rebase.
-
-Now you're done, the `src/tools/clippy` directory behaves as if clippy were part of the rustc
-monorepo, so no one but you (or others that synchronize subrepos) needs to have `git subrepo`
-installed.
-
 #### Synchronizing a subrepo
 
 There are two synchronization directions: push and pull.
@@ -232,9 +216,21 @@ A `git subrepo pull src/tools/clippy` takes all changes since the last `pull` fr
 repo and creates a single commit in the rustc repo with all the changes. Again, do not rebase this
 commit under any circumstances. Redo the operation if you need to.
 
-#### Throwing the towel (aka, everything is broken)
+#### Creating a new subrepo dependency
 
-If the subrepo has ended up in an unusable state out of any reason
+If you want to create a new subrepo dependency from an existing repository, call (from this
+repository's root directory!!)
+
+```
+git subrepo clone https://github.com/rust-lang/rust-clippy.git src/tools/clippy
+```
+
+This will create a new commit, which you may not rebase under any circumstances! Delete the commit
+and redo the operation if you need to rebase.
+
+Now you're done, the `src/tools/clippy` directory behaves as if clippy were part of the rustc
+monorepo, so no one but you (or others that synchronize subrepos) needs to have `git subrepo`
+installed.
 
 
 ### External Dependencies (submodules)
