@@ -6,7 +6,7 @@ use rustc_ast::ast::{
 };
 use rustc_ast::ast::{AttrVec, ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, TokenKind};
+use rustc_ast::token::{self, Lit, LitKind, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -255,6 +255,10 @@ impl<'a> Parser<'a> {
             }
         }
 
+        if self.check_too_many_raw_str_terminators(&mut err) {
+            return Err(err);
+        }
+
         let sm = self.sess.source_map();
         if self.prev_token.span == DUMMY_SP {
             // Account for macro context where the previous span might not be
@@ -280,6 +284,29 @@ impl<'a> Parser<'a> {
         }
         self.maybe_annotate_with_ascription(&mut err, false);
         Err(err)
+    }
+
+    fn check_too_many_raw_str_terminators(&mut self, err: &mut DiagnosticBuilder<'_>) -> bool {
+        match (&self.prev_token.kind, &self.token.kind) {
+            (
+                TokenKind::Literal(Lit {
+                    kind: LitKind::StrRaw(n_hashes) | LitKind::ByteStrRaw(n_hashes),
+                    ..
+                }),
+                TokenKind::Pound,
+            ) => {
+                err.set_primary_message("too many `#` when terminating raw string");
+                err.span_suggestion(
+                    self.token.span,
+                    "remove the extra `#`",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+                err.note(&format!("the raw string started with {} `#`s", n_hashes));
+                true
+            }
+            _ => false,
+        }
     }
 
     pub fn maybe_annotate_with_ascription(
@@ -491,7 +518,7 @@ impl<'a> Parser<'a> {
                             .unwrap_or_else(|_| pprust::expr_to_string(&e))
                     };
                     err.span_suggestion_verbose(
-                            inner_op.span.shrink_to_hi(),
+                        inner_op.span.shrink_to_hi(),
                         "split the comparison into two",
                         format!(" && {}", expr_to_str(&r1)),
                         Applicability::MaybeIncorrect,
@@ -1086,7 +1113,7 @@ impl<'a> Parser<'a> {
             self.look_ahead(2, |t| t.is_ident())
             || self.look_ahead(1, |t| t == &token::ModSep)
                 && (self.look_ahead(2, |t| t.is_ident()) ||   // `foo:bar::baz`
-             self.look_ahead(2, |t| t == &token::Lt)) // `foo:bar::<baz>`
+            self.look_ahead(2, |t| t == &token::Lt)) // `foo:bar::<baz>`
     }
 
     pub(super) fn recover_seq_parse_error(

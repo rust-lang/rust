@@ -1,20 +1,20 @@
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::util::comments;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{error_code, DiagnosticBuilder, FatalError};
-use rustc_lexer::unescape;
+use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError};
 use rustc_lexer::Base;
+use rustc_lexer::{unescape, LexRawStrError, UnvalidatedRawStr, ValidatedRawStr};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Pos, Span};
 
 use log::debug;
 use std::char;
-use std::convert::TryInto;
 
 mod tokentrees;
 mod unescape_error_reporting;
 mod unicode_chars;
+
 use unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
 #[derive(Clone, Debug)]
@@ -373,30 +373,22 @@ impl<'a> StringReader<'a> {
                 let id = self.symbol_from_to(content_start, content_end);
                 (token::ByteStr, id)
             }
-            rustc_lexer::LiteralKind::RawStr { n_hashes, started, terminated } => {
-                if !started {
-                    self.report_non_started_raw_string(start);
-                }
-                if !terminated {
-                    self.report_unterminated_raw_string(start, n_hashes)
-                }
-                let n_hashes: u16 = self.restrict_n_hashes(start, n_hashes);
+            rustc_lexer::LiteralKind::RawStr(unvalidated_raw_str) => {
+                let valid_raw_str = self.validate_and_report_errors(start, unvalidated_raw_str);
+                let n_hashes = valid_raw_str.num_hashes();
                 let n = u32::from(n_hashes);
+
                 let content_start = start + BytePos(2 + n);
                 let content_end = suffix_start - BytePos(1 + n);
                 self.validate_raw_str_escape(content_start, content_end);
                 let id = self.symbol_from_to(content_start, content_end);
                 (token::StrRaw(n_hashes), id)
             }
-            rustc_lexer::LiteralKind::RawByteStr { n_hashes, started, terminated } => {
-                if !started {
-                    self.report_non_started_raw_string(start);
-                }
-                if !terminated {
-                    self.report_unterminated_raw_string(start, n_hashes)
-                }
-                let n_hashes: u16 = self.restrict_n_hashes(start, n_hashes);
+            rustc_lexer::LiteralKind::RawByteStr(unvalidated_raw_str) => {
+                let validated_raw_str = self.validate_and_report_errors(start, unvalidated_raw_str);
+                let n_hashes = validated_raw_str.num_hashes();
                 let n = u32::from(n_hashes);
+
                 let content_start = start + BytePos(3 + n);
                 let content_end = suffix_start - BytePos(1 + n);
                 self.validate_raw_byte_str_escape(content_start, content_end);
@@ -482,6 +474,26 @@ impl<'a> StringReader<'a> {
         }
     }
 
+    fn validate_and_report_errors(
+        &self,
+        start: BytePos,
+        unvalidated_raw_str: UnvalidatedRawStr,
+    ) -> ValidatedRawStr {
+        match unvalidated_raw_str.validate() {
+            Err(LexRawStrError::InvalidStarter) => self.report_non_started_raw_string(start),
+            Err(LexRawStrError::NoTerminator { expected, found, possible_terminator_offset }) => {
+                self.report_unterminated_raw_string(
+                    start,
+                    expected,
+                    possible_terminator_offset,
+                    found,
+                )
+            }
+            Err(LexRawStrError::TooManyDelimiters) => self.report_too_many_hashes(start),
+            Ok(valid) => valid,
+        }
+    }
+
     fn report_non_started_raw_string(&self, start: BytePos) -> ! {
         let bad_char = self.str_from(start).chars().last().unwrap();
         self.struct_fatal_span_char(
@@ -495,38 +507,51 @@ impl<'a> StringReader<'a> {
         FatalError.raise()
     }
 
-    fn report_unterminated_raw_string(&self, start: BytePos, n_hashes: usize) -> ! {
+    fn report_unterminated_raw_string(
+        &self,
+        start: BytePos,
+        n_hashes: usize,
+        possible_offset: Option<usize>,
+        found_terminators: usize,
+    ) -> ! {
         let mut err = self.sess.span_diagnostic.struct_span_fatal_with_code(
             self.mk_sp(start, start),
             "unterminated raw string",
             error_code!(E0748),
         );
+
         err.span_label(self.mk_sp(start, start), "unterminated raw string");
 
         if n_hashes > 0 {
             err.note(&format!(
                 "this raw string should be terminated with `\"{}`",
-                "#".repeat(n_hashes as usize)
+                "#".repeat(n_hashes)
             ));
+        }
+
+        if let Some(possible_offset) = possible_offset {
+            let lo = start + BytePos(possible_offset as u32);
+            let hi = lo + BytePos(found_terminators as u32);
+            let span = self.mk_sp(lo, hi);
+            err.span_suggestion(
+                span,
+                "consider terminating the string here",
+                "#".repeat(n_hashes),
+                Applicability::MaybeIncorrect,
+            );
         }
 
         err.emit();
         FatalError.raise()
     }
 
-    fn restrict_n_hashes(&self, start: BytePos, n_hashes: usize) -> u16 {
-        match n_hashes.try_into() {
-            Ok(n_hashes) => n_hashes,
-            Err(_) => {
-                self.fatal_span_(
-                    start,
-                    self.pos,
-                    "too many `#` symbols: raw strings may be \
-                                  delimited by up to 65535 `#` symbols",
-                )
-                .raise();
-            }
-        }
+    fn report_too_many_hashes(&self, start: BytePos) -> ! {
+        self.fatal_span_(
+            start,
+            self.pos,
+            "too many `#` symbols: raw strings may be delimited by up to 65535 `#` symbols",
+        )
+        .raise();
     }
 
     fn validate_char_escape(&self, content_start: BytePos, content_end: BytePos) {
