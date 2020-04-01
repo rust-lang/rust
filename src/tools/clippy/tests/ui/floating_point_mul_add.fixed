@@ -1,0 +1,21 @@
+// run-rustfix
+#![warn(clippy::suboptimal_flops)]
+
+fn main() {
+    let a: f64 = 1234.567;
+    let b: f64 = 45.67834;
+    let c: f64 = 0.0004;
+    let d: f64 = 0.0001;
+
+    let _ = a.mul_add(b, c);
+    let _ = a.mul_add(b, c);
+    let _ = 2.0f64.mul_add(4.0, a);
+    let _ = 2.0f64.mul_add(4., a);
+
+    let _ = a.mul_add(b, c);
+    let _ = a.mul_add(b, c);
+    let _ = (a * b).mul_add(c, d);
+
+    let _ = a.mul_add(b, c).mul_add(a.mul_add(b, c), a.mul_add(b, c)) + c;
+    let _ = 1234.567_f64.mul_add(45.67834_f64, 0.0004_f64);
+}

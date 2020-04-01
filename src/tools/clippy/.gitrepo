@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/rust-lang/rust-clippy.git
+	branch = auto
+	commit = c211cea3e99e04c2980a853b6637de22881b72eb
+	parent = 189051f71bdf1ab4fb59eb533db4af9313e698c8
+	method = merge
+	cmdver = 0.4.1

@@ -1,0 +1,7 @@
+#!/bin/sh
+CARGO_TARGET_DIR=$(pwd)/target/
+export CARGO_TARGET_DIR
+
+echo 'Deprecated! `util/dev` usage is deprecated, please use `cargo dev` instead.'
+
+cd clippy_dev && cargo run -- "$@"

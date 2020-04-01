@@ -1,0 +1,30 @@
+// run-rustfix
+#![allow(unused_imports)]
+#![warn(
+    clippy::all,
+    clippy::style,
+    clippy::mem_replace_option_with_none,
+    clippy::mem_replace_with_default
+)]
+
+use std::mem;
+
+fn replace_option_with_none() {
+    let mut an_option = Some(1);
+    let _ = an_option.take();
+    let an_option = &mut Some(1);
+    let _ = an_option.take();
+}
+
+fn replace_with_default() {
+    let mut s = String::from("foo");
+    let _ = std::mem::take(&mut s);
+    let s = &mut String::from("foo");
+    let _ = std::mem::take(s);
+    let _ = std::mem::take(s);
+}
+
+fn main() {
+    replace_option_with_none();
+    replace_with_default();
+}

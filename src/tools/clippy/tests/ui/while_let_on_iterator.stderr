@@ -1,0 +1,34 @@
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:6:33
+   |
+LL |     while let Option::Some(x) = iter.next() {
+   |                                 ^^^^^^^^^^^ help: try: `for x in iter { .. }`
+   |
+   = note: `-D clippy::while-let-on-iterator` implied by `-D warnings`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:11:25
+   |
+LL |     while let Some(x) = iter.next() {
+   |                         ^^^^^^^^^^^ help: try: `for x in iter { .. }`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:16:25
+   |
+LL |     while let Some(_) = iter.next() {}
+   |                         ^^^^^^^^^^^ help: try: `for _ in iter { .. }`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:95:29
+   |
+LL |         while let Some(v) = y.next() {
+   |                             ^^^^^^^^ help: try: `for v in y { .. }`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:120:26
+   |
+LL |     while let Some(..) = values.iter().next() {
+   |                          ^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in values.iter() { .. }`
+
+error: aborting due to 5 previous errors
+

@@ -1,0 +1,47 @@
+error: unsafe function's docs miss `# Safety` section
+  --> $DIR/doc_unsafe.rs:7:1
+   |
+LL | / pub unsafe fn destroy_the_planet() {
+LL | |     unimplemented!();
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::missing-safety-doc` implied by `-D warnings`
+
+error: unsafe function's docs miss `# Safety` section
+  --> $DIR/doc_unsafe.rs:30:5
+   |
+LL | /     pub unsafe fn republished() {
+LL | |         unimplemented!();
+LL | |     }
+   | |_____^
+
+error: unsafe function's docs miss `# Safety` section
+  --> $DIR/doc_unsafe.rs:38:5
+   |
+LL |     unsafe fn woefully_underdocumented(self);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unsafe function's docs miss `# Safety` section
+  --> $DIR/doc_unsafe.rs:57:5
+   |
+LL | /     pub unsafe fn more_undocumented_unsafe() -> Self {
+LL | |         unimplemented!();
+LL | |     }
+   | |_____^
+
+error: unsafe function's docs miss `# Safety` section
+  --> $DIR/doc_unsafe.rs:73:9
+   |
+LL | /         pub unsafe fn whee() {
+LL | |             unimplemented!()
+LL | |         }
+   | |_________^
+...
+LL |   very_unsafe!();
+   |   --------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 5 previous errors
+

@@ -1,0 +1,83 @@
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> $DIR/derive.rs:8:1
+   |
+LL | / impl Clone for Qux {
+LL | |     fn clone(&self) -> Self {
+LL | |         Qux
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::expl-impl-clone-on-copy` implied by `-D warnings`
+note: consider deriving `Clone` or removing `Copy`
+  --> $DIR/derive.rs:8:1
+   |
+LL | / impl Clone for Qux {
+LL | |     fn clone(&self) -> Self {
+LL | |         Qux
+LL | |     }
+LL | | }
+   | |_^
+
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> $DIR/derive.rs:32:1
+   |
+LL | / impl<'a> Clone for Lt<'a> {
+LL | |     fn clone(&self) -> Self {
+LL | |         unimplemented!()
+LL | |     }
+LL | | }
+   | |_^
+   |
+note: consider deriving `Clone` or removing `Copy`
+  --> $DIR/derive.rs:32:1
+   |
+LL | / impl<'a> Clone for Lt<'a> {
+LL | |     fn clone(&self) -> Self {
+LL | |         unimplemented!()
+LL | |     }
+LL | | }
+   | |_^
+
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> $DIR/derive.rs:44:1
+   |
+LL | / impl Clone for BigArray {
+LL | |     fn clone(&self) -> Self {
+LL | |         unimplemented!()
+LL | |     }
+LL | | }
+   | |_^
+   |
+note: consider deriving `Clone` or removing `Copy`
+  --> $DIR/derive.rs:44:1
+   |
+LL | / impl Clone for BigArray {
+LL | |     fn clone(&self) -> Self {
+LL | |         unimplemented!()
+LL | |     }
+LL | | }
+   | |_^
+
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> $DIR/derive.rs:56:1
+   |
+LL | / impl Clone for FnPtr {
+LL | |     fn clone(&self) -> Self {
+LL | |         unimplemented!()
+LL | |     }
+LL | | }
+   | |_^
+   |
+note: consider deriving `Clone` or removing `Copy`
+  --> $DIR/derive.rs:56:1
+   |
+LL | / impl Clone for FnPtr {
+LL | |     fn clone(&self) -> Self {
+LL | |         unimplemented!()
+LL | |     }
+LL | | }
+   | |_^
+
+error: aborting due to 4 previous errors
+

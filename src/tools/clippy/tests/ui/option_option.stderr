@@ -1,0 +1,58 @@
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:1:13
+   |
+LL | fn input(_: Option<Option<u8>>) {}
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::option-option` implied by `-D warnings`
+
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:3:16
+   |
+LL | fn output() -> Option<Option<u8>> {
+   |                ^^^^^^^^^^^^^^^^^^
+
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:7:27
+   |
+LL | fn output_nested() -> Vec<Option<Option<u8>>> {
+   |                           ^^^^^^^^^^^^^^^^^^
+
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:12:30
+   |
+LL | fn output_nested_nested() -> Option<Option<Option<u8>>> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:17:8
+   |
+LL |     x: Option<Option<u8>>,
+   |        ^^^^^^^^^^^^^^^^^^
+
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:21:23
+   |
+LL |     fn struct_fn() -> Option<Option<u8>> {
+   |                       ^^^^^^^^^^^^^^^^^^
+
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:27:22
+   |
+LL |     fn trait_fn() -> Option<Option<u8>>;
+   |                      ^^^^^^^^^^^^^^^^^^
+
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:31:11
+   |
+LL |     Tuple(Option<Option<u8>>),
+   |           ^^^^^^^^^^^^^^^^^^
+
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:32:17
+   |
+LL |     Struct { x: Option<Option<u8>> },
+   |                 ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

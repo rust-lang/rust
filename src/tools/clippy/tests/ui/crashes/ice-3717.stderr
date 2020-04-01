@@ -1,0 +1,18 @@
+error: parameter of type `HashSet` should be generalized over different hashers
+  --> $DIR/ice-3717.rs:5:21
+   |
+LL | pub fn ice_3717(_: &HashSet<usize>) {
+   |                     ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::implicit-hasher` implied by `-D warnings`
+help: consider adding a type parameter
+   |
+LL | pub fn ice_3717<S: ::std::hash::BuildHasher + Default>(_: &HashSet<usize, S>) {
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^     ^^^^^^^^^^^^^^^^^
+help: ...and use generic constructor
+   |
+LL |     let _: HashSet<usize> = HashSet::default();
+   |                             ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

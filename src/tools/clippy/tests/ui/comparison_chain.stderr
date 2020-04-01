@@ -1,0 +1,97 @@
+error: `if` chain can be rewritten with `match`
+  --> $DIR/comparison_chain.rs:14:5
+   |
+LL | /     if x > y {
+LL | |         a()
+LL | |     } else if x < y {
+LL | |         b()
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::comparison-chain` implied by `-D warnings`
+   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+
+error: `if` chain can be rewritten with `match`
+  --> $DIR/comparison_chain.rs:27:5
+   |
+LL | /     if x > y {
+LL | |         a()
+LL | |     } else if x < y {
+LL | |         b()
+LL | |     } else {
+LL | |         c()
+LL | |     }
+   | |_____^
+   |
+   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+
+error: `if` chain can be rewritten with `match`
+  --> $DIR/comparison_chain.rs:35:5
+   |
+LL | /     if x > y {
+LL | |         a()
+LL | |     } else if y > x {
+LL | |         b()
+LL | |     } else {
+LL | |         c()
+LL | |     }
+   | |_____^
+   |
+   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+
+error: `if` chain can be rewritten with `match`
+  --> $DIR/comparison_chain.rs:43:5
+   |
+LL | /     if x > 1 {
+LL | |         a()
+LL | |     } else if x < 1 {
+LL | |         b()
+LL | |     } else if x == 1 {
+LL | |         c()
+LL | |     }
+   | |_____^
+   |
+   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+
+error: `if` chain can be rewritten with `match`
+  --> $DIR/comparison_chain.rs:117:5
+   |
+LL | /     if x > y {
+LL | |         a()
+LL | |     } else if x < y {
+LL | |         b()
+LL | |     }
+   | |_____^
+   |
+   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+
+error: `if` chain can be rewritten with `match`
+  --> $DIR/comparison_chain.rs:123:5
+   |
+LL | /     if x > y {
+LL | |         a()
+LL | |     } else if x < y {
+LL | |         b()
+LL | |     } else {
+LL | |         c()
+LL | |     }
+   | |_____^
+   |
+   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+
+error: `if` chain can be rewritten with `match`
+  --> $DIR/comparison_chain.rs:131:5
+   |
+LL | /     if x > y {
+LL | |         a()
+LL | |     } else if y > x {
+LL | |         b()
+LL | |     } else {
+LL | |         c()
+LL | |     }
+   | |_____^
+   |
+   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+
+error: aborting due to 7 previous errors
+

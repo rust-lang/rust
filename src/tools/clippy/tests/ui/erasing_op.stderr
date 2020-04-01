@@ -1,0 +1,22 @@
+error: this operation will always return zero. This is likely not the intended outcome
+  --> $DIR/erasing_op.rs:6:5
+   |
+LL |     x * 0;
+   |     ^^^^^
+   |
+   = note: `-D clippy::erasing-op` implied by `-D warnings`
+
+error: this operation will always return zero. This is likely not the intended outcome
+  --> $DIR/erasing_op.rs:7:5
+   |
+LL |     0 & x;
+   |     ^^^^^
+
+error: this operation will always return zero. This is likely not the intended outcome
+  --> $DIR/erasing_op.rs:8:5
+   |
+LL |     0 / x;
+   |     ^^^^^
+
+error: aborting due to 3 previous errors
+

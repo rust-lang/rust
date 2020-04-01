@@ -1,0 +1,10 @@
+error: casting `i32` to `i64` may become silently lossy if you later change the type
+  --> $DIR/types.rs:14:22
+   |
+LL |     let c_i64: i64 = c as i64;
+   |                      ^^^^^^^^ help: try: `i64::from(c)`
+   |
+   = note: `-D clippy::cast-lossless` implied by `-D warnings`
+
+error: aborting due to previous error
+

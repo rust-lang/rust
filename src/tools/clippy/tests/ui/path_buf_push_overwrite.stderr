@@ -1,0 +1,10 @@
+error: Calling `push` with '/' or '/' (file system root) will overwrite the previous path definition
+  --> $DIR/path_buf_push_overwrite.rs:7:12
+   |
+LL |     x.push("/bar");
+   |            ^^^^^^ help: try: `"bar"`
+   |
+   = note: `-D clippy::path-buf-push-overwrite` implied by `-D warnings`
+
+error: aborting due to previous error
+

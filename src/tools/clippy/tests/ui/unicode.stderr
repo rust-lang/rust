@@ -1,0 +1,26 @@
+error: zero-width space detected
+  --> $DIR/unicode.rs:3:12
+   |
+LL |     print!("Here >​< is a ZWS, and ​another");
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing the string with: `"Here >/u{200B}< is a ZWS, and /u{200B}another"`
+   |
+   = note: `-D clippy::zero-width-space` implied by `-D warnings`
+
+error: non-NFC Unicode sequence detected
+  --> $DIR/unicode.rs:9:12
+   |
+LL |     print!("̀àh?");
+   |            ^^^^^ help: consider replacing the string with: `"̀àh?"`
+   |
+   = note: `-D clippy::unicode-not-nfc` implied by `-D warnings`
+
+error: literal non-ASCII character detected
+  --> $DIR/unicode.rs:15:12
+   |
+LL |     print!("Üben!");
+   |            ^^^^^^^ help: consider replacing the string with: `"/u{dc}ben!"`
+   |
+   = note: `-D clippy::non-ascii-literal` implied by `-D warnings`
+
+error: aborting due to 3 previous errors
+

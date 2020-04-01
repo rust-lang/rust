@@ -1,0 +1,20 @@
+error: module has the same name as its containing module
+  --> $DIR/module_inception.rs:5:9
+   |
+LL | /         mod bar {
+LL | |             mod foo {}
+LL | |         }
+   | |_________^
+   |
+   = note: `-D clippy::module-inception` implied by `-D warnings`
+
+error: module has the same name as its containing module
+  --> $DIR/module_inception.rs:10:5
+   |
+LL | /     mod foo {
+LL | |         mod bar {}
+LL | |     }
+   | |_____^
+
+error: aborting due to 2 previous errors
+

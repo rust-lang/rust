@@ -1,0 +1,22 @@
+error: `Vec<T>` is already on the heap, the boxing is unnecessary.
+  --> $DIR/vec_box_sized.rs:14:21
+   |
+LL |         sized_type: Vec<Box<SizedStruct>>,
+   |                     ^^^^^^^^^^^^^^^^^^^^^ help: try: `Vec<SizedStruct>`
+   |
+   = note: `-D clippy::vec-box` implied by `-D warnings`
+
+error: `Vec<T>` is already on the heap, the boxing is unnecessary.
+  --> $DIR/vec_box_sized.rs:17:14
+   |
+LL |     struct A(Vec<Box<SizedStruct>>);
+   |              ^^^^^^^^^^^^^^^^^^^^^ help: try: `Vec<SizedStruct>`
+
+error: `Vec<T>` is already on the heap, the boxing is unnecessary.
+  --> $DIR/vec_box_sized.rs:18:18
+   |
+LL |     struct B(Vec<Vec<Box<(u32)>>>);
+   |                  ^^^^^^^^^^^^^^^ help: try: `Vec<u32>`
+
+error: aborting due to 3 previous errors
+
