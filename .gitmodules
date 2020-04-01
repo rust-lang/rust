@@ -16,9 +16,6 @@
 [submodule "src/tools/rls"]
 	path = src/tools/rls
 	url = https://github.com/rust-lang/rls.git
-[submodule "src/tools/clippy"]
-	path = src/tools/clippy
-	url = https://github.com/rust-lang/rust-clippy.git
 [submodule "src/tools/rustfmt"]
 	path = src/tools/rustfmt
 	url = https://github.com/rust-lang/rustfmt.git
