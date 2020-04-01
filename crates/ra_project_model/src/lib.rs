@@ -152,24 +152,17 @@ impl ProjectWorkspace {
 
     pub fn proc_macro_dylib_paths(&self) -> Vec<PathBuf> {
         match self {
-            ProjectWorkspace::Json { project } => {
-                let mut proc_macro_dylib_paths = Vec::with_capacity(project.crates.len());
-                for krate in &project.crates {
-                    if let Some(out_dir) = &krate.proc_macro_dylib_path {
-                        proc_macro_dylib_paths.push(out_dir.to_path_buf());
-                    }
-                }
-                proc_macro_dylib_paths
-            }
-            ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => {
-                let mut proc_macro_dylib_paths = Vec::with_capacity(cargo.packages().len());
-                for pkg in cargo.packages() {
-                    if let Some(dylib_path) = &cargo[pkg].proc_macro_dylib_path {
-                        proc_macro_dylib_paths.push(dylib_path.to_path_buf());
-                    }
-                }
-                proc_macro_dylib_paths
-            }
+            ProjectWorkspace::Json { project } => project
+                .crates
+                .iter()
+                .filter_map(|krate| krate.proc_macro_dylib_path.as_ref())
+                .cloned()
+                .collect(),
+            ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => cargo
+                .packages()
+                .filter_map(|pkg| cargo[pkg].proc_macro_dylib_path.as_ref())
+                .cloned()
+                .collect(),
         }
     }
 
