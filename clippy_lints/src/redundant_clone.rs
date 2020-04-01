@@ -437,7 +437,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeStorageLive {
         _block: mir::BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        _return_place: &mir::Place<'tcx>,
+        _return_place: mir::Place<'tcx>,
     ) {
         // Nothing to do when a call returns successfully
     }

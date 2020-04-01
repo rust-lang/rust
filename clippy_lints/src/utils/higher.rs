@@ -280,6 +280,9 @@ pub fn vec_macro<'e>(cx: &LateContext<'_, '_>, expr: &'e hir::Expr<'_>) -> Optio
 
                 None
             }
+            else if match_def_path(cx, fun_def_id, &paths::VEC_NEW) && args.is_empty() {
+                Some(VecArgs::Vec(&[]))
+            }
             else {
                 None
             };
