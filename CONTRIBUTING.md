@@ -195,7 +195,8 @@ differently from other crates that are directly in this repo:
 
 * [clippy](https://github.com/rust-lang/rust-clippy)
 
-They are just regular files and directories. This is in contrast to `submodule` dependencies.
+They are just regular files and directories. This is in contrast to `submodule` dependencies
+(see below for those).
 
 If you want to synchronize or otherwise work with subrepos, install the `git subrepo` command via
 instructions found at https://github.com/ingydotnet/git-subrepo
