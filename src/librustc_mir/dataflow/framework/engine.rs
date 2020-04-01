@@ -229,7 +229,7 @@ where
                     self.propagate_bits_into_entry_set_for(in_out, drop, dirty_list);
                 }
 
-                self.analysis.apply_yield_resume_effect(in_out, target, &resume_arg);
+                self.analysis.apply_yield_resume_effect(in_out, target, resume_arg);
                 self.propagate_bits_into_entry_set_for(in_out, target, dirty_list);
             }
 
@@ -273,7 +273,7 @@ where
                     }
                 }
 
-                if let Some((ref dest_place, dest_bb)) = *destination {
+                if let Some((dest_place, dest_bb)) = *destination {
                     // N.B.: This must be done *last*, otherwise the unwind path will see the call
                     // return effect.
                     self.analysis.apply_call_return_effect(in_out, bb, func, args, dest_place);
@@ -315,7 +315,7 @@ where
         in_out: &mut BitSet<A::Idx>,
         bb: BasicBlock,
         enum_def: &'tcx ty::AdtDef,
-        enum_place: &mir::Place<'tcx>,
+        enum_place: mir::Place<'tcx>,
         dirty_list: &mut WorkQueue<BasicBlock>,
         values: &[u128],
         targets: &[BasicBlock],
@@ -362,14 +362,14 @@ fn switch_on_enum_discriminant(
     tcx: TyCtxt<'tcx>,
     body: &'mir mir::Body<'tcx>,
     block: &'mir mir::BasicBlockData<'tcx>,
-    switch_on: &mir::Place<'tcx>,
-) -> Option<(&'mir mir::Place<'tcx>, &'tcx ty::AdtDef)> {
+    switch_on: mir::Place<'tcx>,
+) -> Option<(mir::Place<'tcx>, &'tcx ty::AdtDef)> {
     match block.statements.last().map(|stmt| &stmt.kind) {
         Some(mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated))))
-            if lhs == switch_on =>
+            if *lhs == switch_on =>
         {
             match &discriminated.ty(body, tcx).ty.kind {
-                ty::Adt(def, _) => Some((discriminated, def)),
+                ty::Adt(def, _) => Some((*discriminated, def)),
 
                 // `Rvalue::Discriminant` is also used to get the active yield point for a
                 // generator, but we do not need edge-specific effects in that case. This may

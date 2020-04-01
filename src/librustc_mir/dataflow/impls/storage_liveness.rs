@@ -56,7 +56,7 @@ impl dataflow::GenKillAnalysis<'tcx> for MaybeStorageLive {
         _block: BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        _return_place: &mir::Place<'tcx>,
+        _return_place: mir::Place<'tcx>,
     ) {
         // Nothing to do when a call returns successfully
     }
@@ -231,7 +231,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
         _block: BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        return_place: &mir::Place<'tcx>,
+        return_place: mir::Place<'tcx>,
     ) {
         trans.gen(return_place.local);
     }
@@ -240,7 +240,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
         &self,
         trans: &mut BitSet<Self::Idx>,
         _resume_block: BasicBlock,
-        resume_place: &mir::Place<'tcx>,
+        resume_place: mir::Place<'tcx>,
     ) {
         trans.gen(resume_place.local);
     }

@@ -49,7 +49,7 @@ where
 fn place_contents_drop_state_cannot_differ<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    place: &mir::Place<'tcx>,
+    place: mir::Place<'tcx>,
 ) -> bool {
     let ty = place.ty(body, tcx).ty;
     match ty.kind {
@@ -110,7 +110,7 @@ pub(crate) fn on_all_children_bits<'tcx, F>(
         move_data: &MoveData<'tcx>,
         path: MovePathIndex,
     ) -> bool {
-        place_contents_drop_state_cannot_differ(tcx, body, &move_data.move_paths[path].place)
+        place_contents_drop_state_cannot_differ(tcx, body, move_data.move_paths[path].place)
     }
 
     fn on_all_children_bits<'tcx, F>(

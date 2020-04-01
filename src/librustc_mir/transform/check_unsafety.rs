@@ -184,14 +184,14 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
         // because either of these would allow modifying the layout constrained field and
         // insert values that violate the layout constraints.
         if context.is_mutating_use() || context.is_borrow() {
-            self.check_mut_borrowing_layout_constrained_field(place, context.is_mutating_use());
+            self.check_mut_borrowing_layout_constrained_field(*place, context.is_mutating_use());
         }
 
         for (i, elem) in place.projection.iter().enumerate() {
             let proj_base = &place.projection[..i];
 
             if context.is_borrow() {
-                if util::is_disaligned(self.tcx, self.body, self.param_env, place) {
+                if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
                     let source_info = self.source_info;
                     let lint_root = self.body.source_scopes[source_info.scope]
                         .local_data
@@ -382,7 +382,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     }
     fn check_mut_borrowing_layout_constrained_field(
         &mut self,
-        place: &Place<'tcx>,
+        place: Place<'tcx>,
         is_mut_use: bool,
     ) {
         let mut cursor = place.projection.as_ref();

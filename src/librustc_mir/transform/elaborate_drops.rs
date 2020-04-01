@@ -346,7 +346,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
             let resume_block = self.patch.resume_block();
             match terminator.kind {
-                TerminatorKind::Drop { ref location, target, unwind } => {
+                TerminatorKind::Drop { location, target, unwind } => {
                     self.init_data.seek_before(loc);
                     match self.move_data().rev_lookup.find(location.as_ref()) {
                         LookupResult::Exact(path) => elaborate_drop(
@@ -371,7 +371,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                         }
                     }
                 }
-                TerminatorKind::DropAndReplace { ref location, ref value, target, unwind } => {
+                TerminatorKind::DropAndReplace { location, ref value, target, unwind } => {
                     assert!(!data.is_cleanup);
 
                     self.elaborate_replace(loc, location, value, target, unwind);
@@ -396,7 +396,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn elaborate_replace(
         &mut self,
         loc: Location,
-        location: &Place<'tcx>,
+        location: Place<'tcx>,
         value: &Operand<'tcx>,
         target: BasicBlock,
         unwind: Option<BasicBlock>,
@@ -407,7 +407,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
 
         let assign = Statement {
-            kind: StatementKind::Assign(box (*location, Rvalue::Use(value.clone()))),
+            kind: StatementKind::Assign(box (location, Rvalue::Use(value.clone()))),
             source_info: terminator.source_info,
         };
 
@@ -459,7 +459,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 debug!("elaborate_drop_and_replace({:?}) - untracked {:?}", terminator, parent);
                 self.patch.patch_terminator(
                     bb,
-                    TerminatorKind::Drop { location: *location, target, unwind: Some(unwind) },
+                    TerminatorKind::Drop { location, target, unwind: Some(unwind) },
                 );
             }
         }

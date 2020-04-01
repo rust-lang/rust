@@ -2030,9 +2030,9 @@ impl<'tcx> Operand<'tcx> {
 
     /// Returns the `Place` that is the target of this `Operand`, or `None` if this `Operand` is a
     /// constant.
-    pub fn place(&self) -> Option<&Place<'tcx>> {
+    pub fn place(&self) -> Option<Place<'tcx>> {
         match self {
-            Operand::Copy(place) | Operand::Move(place) => Some(place),
+            Operand::Copy(place) | Operand::Move(place) => Some(*place),
             Operand::Constant(_) => None,
         }
     }

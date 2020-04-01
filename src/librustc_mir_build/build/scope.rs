@@ -520,10 +520,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if let Some(value) = value {
                 debug!("stmt_expr Break val block_context.push(SubExpr)");
                 self.block_context.push(BlockFrame::SubExpr);
-                unpack!(block = self.into(&destination, block, value));
+                unpack!(block = self.into(destination, block, value));
                 self.block_context.pop();
             } else {
-                self.cfg.push_assign_unit(block, source_info, &destination)
+                self.cfg.push_assign_unit(block, source_info, destination)
             }
         } else {
             assert!(value.is_none(), "`return` and `break` should have a destination");

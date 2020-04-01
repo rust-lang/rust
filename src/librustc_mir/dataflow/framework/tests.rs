@@ -223,7 +223,7 @@ impl Analysis<'tcx> for MockAnalysis<'tcx> {
         block: BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        _return_place: &mir::Place<'tcx>,
+        _return_place: mir::Place<'tcx>,
     ) {
         let location = self.body.terminator_loc(block);
         let idx = self.effect_at_target(SeekTarget::AfterAssumeCallReturns(location)).unwrap();

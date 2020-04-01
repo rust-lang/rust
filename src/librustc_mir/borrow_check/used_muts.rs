@@ -51,7 +51,7 @@ struct GatherUsedMutsVisitor<'visit, 'cx, 'tcx> {
 }
 
 impl GatherUsedMutsVisitor<'_, '_, '_> {
-    fn remove_never_initialized_mut_locals(&mut self, into: &Place<'_>) {
+    fn remove_never_initialized_mut_locals(&mut self, into: Place<'_>) {
         // Remove any locals that we found were initialized from the
         // `never_initialized_mut_locals` set. At the end, the only remaining locals will
         // be those that were never initialized - we will consider those as being used as
@@ -66,10 +66,10 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
         debug!("visit_terminator_kind: kind={:?}", kind);
         match &kind {
             TerminatorKind::Call { destination: Some((into, _)), .. } => {
-                self.remove_never_initialized_mut_locals(&into);
+                self.remove_never_initialized_mut_locals(*into);
             }
             TerminatorKind::DropAndReplace { location, .. } => {
-                self.remove_never_initialized_mut_locals(&location);
+                self.remove_never_initialized_mut_locals(*location);
             }
             _ => {}
         }
@@ -82,7 +82,7 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
                     never_initialized_mut_locals={:?}",
                 statement, into.local, self.never_initialized_mut_locals
             );
-            self.remove_never_initialized_mut_locals(into);
+            self.remove_never_initialized_mut_locals(*into);
         }
     }
 

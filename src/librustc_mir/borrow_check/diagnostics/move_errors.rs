@@ -105,7 +105,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // whether or not the right-hand side is a place expression
                         if let LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                             VarBindingForm {
-                                opt_match_place: Some((ref opt_match_place, match_span)),
+                                opt_match_place: Some((opt_match_place, match_span)),
                                 binding_mode: _,
                                 opt_ty_info: _,
                                 pat_span: _,
@@ -117,7 +117,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 grouped_errors,
                                 kind,
                                 original_path,
-                                move_from,
+                                *move_from,
                                 local,
                                 opt_match_place,
                                 match_span,
@@ -143,16 +143,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         grouped_errors: &mut Vec<GroupedMoveError<'tcx>>,
         kind: IllegalMoveOriginKind<'tcx>,
         original_path: Place<'tcx>,
-        move_from: &Place<'tcx>,
+        move_from: Place<'tcx>,
         bind_to: Local,
-        match_place: &Option<Place<'tcx>>,
+        match_place: Option<Place<'tcx>>,
         match_span: Span,
         statement_span: Span,
     ) {
         debug!("append_binding_error(match_place={:?}, match_span={:?})", match_place, match_span);
 
         let from_simple_let = match_place.is_none();
-        let match_place = match_place.as_ref().unwrap_or(move_from);
+        let match_place = match_place.unwrap_or(move_from);
 
         match self.move_data.rev_lookup.find(match_place.as_ref()) {
             // Error with the match place
@@ -178,7 +178,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
                 grouped_errors.push(GroupedMoveError::MovesFromPlace {
                     span,
-                    move_from: *match_place,
+                    move_from,
                     original_path,
                     kind,
                     binds_to,
@@ -223,14 +223,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let (span, use_spans, original_path, kind): (
                 Span,
                 Option<UseSpans>,
-                &Place<'tcx>,
+                Place<'tcx>,
                 &IllegalMoveOriginKind<'_>,
             ) = match error {
-                GroupedMoveError::MovesFromPlace { span, ref original_path, ref kind, .. }
-                | GroupedMoveError::MovesFromValue { span, ref original_path, ref kind, .. } => {
+                GroupedMoveError::MovesFromPlace { span, original_path, ref kind, .. }
+                | GroupedMoveError::MovesFromValue { span, original_path, ref kind, .. } => {
                     (span, None, original_path, kind)
                 }
-                GroupedMoveError::OtherIllegalMove { use_spans, ref original_path, ref kind } => {
+                GroupedMoveError::OtherIllegalMove { use_spans, original_path, ref kind } => {
                     (use_spans.args_or_use(), Some(use_spans), original_path, kind)
                 }
             };
@@ -247,7 +247,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     IllegalMoveOriginKind::BorrowedContent { target_place } => self
                         .report_cannot_move_from_borrowed_content(
                             original_path,
-                            target_place,
+                            *target_place,
                             span,
                             use_spans,
                         ),
@@ -268,7 +268,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     fn report_cannot_move_from_static(
         &mut self,
-        place: &Place<'tcx>,
+        place: Place<'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'a> {
         let description = if place.projection.len() == 1 {
@@ -288,8 +288,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     fn report_cannot_move_from_borrowed_content(
         &mut self,
-        move_place: &Place<'tcx>,
-        deref_target_place: &Place<'tcx>,
+        move_place: Place<'tcx>,
+        deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans>,
     ) -> DiagnosticBuilder<'a> {
