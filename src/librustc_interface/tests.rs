@@ -382,7 +382,7 @@ fn test_codegen_options_tracking_hash() {
     opts.cg.linker = Some(PathBuf::from("linker"));
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
-    opts.cg.link_args = Some(vec![String::from("abc"), String::from("def")]);
+    opts.cg.link_args = vec![String::from("abc"), String::from("def")];
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.cg.link_dead_code = true;
