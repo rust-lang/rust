@@ -1,12 +1,8 @@
 //! cargo_check provides the functionality needed to run `cargo check` or
 //! another compatible command (f.x. clippy) in a background thread and provide
 //! LSP diagnostics based on the output of the command.
-use cargo_metadata::Message;
-use crossbeam_channel::{never, select, unbounded, Receiver, RecvError, Sender};
-use lsp_types::{
-    CodeAction, CodeActionOrCommand, Diagnostic, Url, WorkDoneProgress, WorkDoneProgressBegin,
-    WorkDoneProgressEnd, WorkDoneProgressReport,
-};
+mod conv;
+
 use std::{
     error, fmt,
     io::{BufRead, BufReader},
@@ -15,7 +11,12 @@ use std::{
     time::Instant,
 };
 
-mod conv;
+use cargo_metadata::Message;
+use crossbeam_channel::{never, select, unbounded, Receiver, RecvError, Sender};
+use lsp_types::{
+    CodeAction, CodeActionOrCommand, Diagnostic, Url, WorkDoneProgress, WorkDoneProgressBegin,
+    WorkDoneProgressEnd, WorkDoneProgressReport,
+};
 
 use crate::conv::{map_rust_diagnostic_to_lsp, MappedRustDiagnostic};
 
@@ -78,8 +79,15 @@ pub enum CheckCommand {
 struct CheckWatcherThread {
     options: CheckConfig,
     workspace_root: PathBuf,
-    watcher: WatchThread,
     last_update_req: Option<Instant>,
+    // XXX: drop order is significant
+    message_recv: Receiver<CheckEvent>,
+    /// WatchThread exists to wrap around the communication needed to be able to
+    /// run `cargo check` without blocking. Currently the Rust standard library
+    /// doesn't provide a way to read sub-process output without blocking, so we
+    /// have to wrap sub-processes output handling in a thread and pass messages
+    /// back over a channel.
+    check_process: Option<jod_thread::JoinHandle<()>>,
 }
 
 impl CheckWatcherThread {
@@ -87,8 +95,9 @@ impl CheckWatcherThread {
         CheckWatcherThread {
             options,
             workspace_root,
-            watcher: WatchThread::dummy(),
             last_update_req: None,
+            message_recv: never(),
+            check_process: None,
         }
     }
 
@@ -105,25 +114,21 @@ impl CheckWatcherThread {
                         break;
                     },
                 },
-                recv(self.watcher.message_recv) -> msg => match msg {
+                recv(self.message_recv) -> msg => match msg {
                     Ok(msg) => self.handle_message(msg, task_send),
                     Err(RecvError) => {
                         // Watcher finished, replace it with a never channel to
                         // avoid busy-waiting.
-                        std::mem::replace(&mut self.watcher.message_recv, never());
+                        self.message_recv = never();
+                        self.check_process = None;
                     },
                 }
             };
 
             if self.should_recheck() {
-                self.last_update_req.take();
+                self.last_update_req = None;
                 task_send.send(CheckTask::ClearDiagnostics).unwrap();
-
-                // Replace with a dummy watcher first so we drop the original and wait for completion
-                std::mem::replace(&mut self.watcher, WatchThread::dummy());
-
-                // Then create the actual new watcher
-                self.watcher = WatchThread::new(&self.options, &self.workspace_root);
+                self.restart_check_process();
             }
         }
     }
@@ -206,25 +211,65 @@ impl CheckWatcherThread {
             CheckEvent::Msg(Message::Unknown) => {}
         }
     }
+
+    fn restart_check_process(&mut self) {
+        // First, clear and cancel the old thread
+        self.message_recv = never();
+        self.check_process = None;
+        if !self.options.enable {
+            return;
+        }
+
+        let mut args: Vec<String> = vec![
+            self.options.command.clone(),
+            "--workspace".to_string(),
+            "--message-format=json".to_string(),
+            "--manifest-path".to_string(),
+            format!("{}/Cargo.toml", self.workspace_root.display()),
+        ];
+        if self.options.all_targets {
+            args.push("--all-targets".to_string());
+        }
+        args.extend(self.options.args.iter().cloned());
+
+        let (message_send, message_recv) = unbounded();
+        let workspace_root = self.workspace_root.to_owned();
+        self.message_recv = message_recv;
+        self.check_process = Some(jod_thread::spawn(move || {
+            // If we trigger an error here, we will do so in the loop instead,
+            // which will break out of the loop, and continue the shutdown
+            let _ = message_send.send(CheckEvent::Begin);
+
+            let res = run_cargo(&args, Some(&workspace_root), &mut |message| {
+                // Skip certain kinds of messages to only spend time on what's useful
+                match &message {
+                    Message::CompilerArtifact(artifact) if artifact.fresh => return true,
+                    Message::BuildScriptExecuted(_) => return true,
+                    Message::Unknown => return true,
+                    _ => {}
+                }
+
+                // if the send channel was closed, we want to shutdown
+                message_send.send(CheckEvent::Msg(message)).is_ok()
+            });
+
+            if let Err(err) = res {
+                // FIXME: make the `message_send` to be `Sender<Result<CheckEvent, CargoError>>`
+                // to display user-caused misconfiguration errors instead of just logging them here
+                log::error!("Cargo watcher failed {:?}", err);
+            }
+
+            // We can ignore any error here, as we are already in the progress
+            // of shutting down.
+            let _ = message_send.send(CheckEvent::End);
+        }))
+    }
 }
 
 #[derive(Debug)]
 pub struct DiagnosticWithFixes {
     diagnostic: Diagnostic,
     fixes: Vec<CodeAction>,
-}
-
-/// WatchThread exists to wrap around the communication needed to be able to
-/// run `cargo check` without blocking. Currently the Rust standard library
-/// doesn't provide a way to read sub-process output without blocking, so we
-/// have to wrap sub-processes output handling in a thread and pass messages
-/// back over a channel.
-/// The correct way to dispose of the thread is to drop it, on which the
-/// sub-process will be killed, and the thread will be joined.
-struct WatchThread {
-    // XXX: drop order is significant
-    message_recv: Receiver<CheckEvent>,
-    _handle: Option<jod_thread::JoinHandle<()>>,
 }
 
 enum CheckEvent {
@@ -315,60 +360,4 @@ fn run_cargo(
     };
 
     Err(CargoError(err_msg))
-}
-
-impl WatchThread {
-    fn dummy() -> WatchThread {
-        WatchThread { message_recv: never(), _handle: None }
-    }
-
-    fn new(options: &CheckConfig, workspace_root: &Path) -> WatchThread {
-        let mut args: Vec<String> = vec![
-            options.command.clone(),
-            "--workspace".to_string(),
-            "--message-format=json".to_string(),
-            "--manifest-path".to_string(),
-            format!("{}/Cargo.toml", workspace_root.display()),
-        ];
-        if options.all_targets {
-            args.push("--all-targets".to_string());
-        }
-        args.extend(options.args.iter().cloned());
-
-        let (message_send, message_recv) = unbounded();
-        let workspace_root = workspace_root.to_owned();
-        let handle = if options.enable {
-            Some(jod_thread::spawn(move || {
-                // If we trigger an error here, we will do so in the loop instead,
-                // which will break out of the loop, and continue the shutdown
-                let _ = message_send.send(CheckEvent::Begin);
-
-                let res = run_cargo(&args, Some(&workspace_root), &mut |message| {
-                    // Skip certain kinds of messages to only spend time on what's useful
-                    match &message {
-                        Message::CompilerArtifact(artifact) if artifact.fresh => return true,
-                        Message::BuildScriptExecuted(_) => return true,
-                        Message::Unknown => return true,
-                        _ => {}
-                    }
-
-                    // if the send channel was closed, we want to shutdown
-                    message_send.send(CheckEvent::Msg(message)).is_ok()
-                });
-
-                if let Err(err) = res {
-                    // FIXME: make the `message_send` to be `Sender<Result<CheckEvent, CargoError>>`
-                    // to display user-caused misconfiguration errors instead of just logging them here
-                    log::error!("Cargo watcher failed {:?}", err);
-                }
-
-                // We can ignore any error here, as we are already in the progress
-                // of shutting down.
-                let _ = message_send.send(CheckEvent::End);
-            }))
-        } else {
-            None
-        };
-        WatchThread { message_recv, _handle: handle }
-    }
 }
