@@ -28,12 +28,14 @@ source to relevant places where the name was introduced. It also generates
 helpful error messages, like typo suggestions, traits to import or lints about
 unused items.
 
-A successful run of the second phase (`Resolver::resolve_crate`) creates kind
+A successful run of the second phase ([`Resolver::resolve_crate`]) creates kind
 of an index the rest of the compilation may use to ask about the present names
 (through the `hir::lowering::Resolver` interface).
 
 The name resolution lives in the `librustc_resolve` crate, with the meat in
 `lib.rs` and some helpers or symbol-type specific logic in the other modules.
+
+[`Resolver::resolve_crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/struct.Resolver.html#method.resolve_crate
 
 ## Namespaces
 
