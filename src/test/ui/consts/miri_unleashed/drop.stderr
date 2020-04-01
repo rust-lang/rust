@@ -12,12 +12,15 @@ LL | |     // Code here does not matter - this is replaced by the
 LL | |     // real drop glue by the compiler.
 LL | |     drop_in_place(to_drop)
 LL | | }
-   | |_^ calling non-const function `<std::vec::Vec<i32> as std::ops::Drop>::drop`
+   | | ^
+   | | |
+   | |_calling non-const function `<std::vec::Vec<i32> as std::ops::Drop>::drop`
+   |   inside `std::intrinsics::drop_in_place::<std::vec::Vec<i32>> - shim(Some(std::vec::Vec<i32>))` at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
    | 
   ::: $DIR/drop.rs:23:1
    |
 LL |   };
-   |   - inside call to `std::intrinsics::drop_in_place::<std::vec::Vec<i32>> - shim(Some(std::vec::Vec<i32>))` at $DIR/drop.rs:23:1
+   |   - inside `TEST_BAD` at $DIR/drop.rs:23:1
 
 error: aborting due to previous error
 

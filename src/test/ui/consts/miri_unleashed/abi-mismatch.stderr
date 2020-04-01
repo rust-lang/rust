@@ -17,7 +17,8 @@ LL |     my_fn();
    |     ^^^^^^^
    |     |
    |     calling a function with ABI C using caller ABI Rust
-   |     inside call to `call_rust_fn` at $DIR/abi-mismatch.rs:13:17
+   |     inside `call_rust_fn` at $DIR/abi-mismatch.rs:9:5
+   |     inside `VAL` at $DIR/abi-mismatch.rs:13:17
 ...
 LL | const VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
    | --------------------------------------------------------------------------------------

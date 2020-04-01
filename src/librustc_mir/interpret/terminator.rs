@@ -4,7 +4,6 @@ use std::convert::TryFrom;
 use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout};
 use rustc_middle::ty::Instance;
 use rustc_middle::{mir, ty};
-use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
 use super::{
@@ -71,14 +70,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Some((dest, ret)) => Some((self.eval_place(dest)?, ret)),
                     None => None,
                 };
-                self.eval_fn_call(
-                    fn_val,
-                    terminator.source_info.span,
-                    abi,
-                    &args[..],
-                    ret,
-                    *cleanup,
-                )?;
+                self.eval_fn_call(fn_val, abi, &args[..], ret, *cleanup)?;
             }
 
             Drop { location, target, unwind } => {
@@ -88,7 +80,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
                 let instance = Instance::resolve_drop_in_place(*self.tcx, ty);
-                self.drop_in_place(place, instance, terminator.source_info.span, target, unwind)?;
+                self.drop_in_place(place, instance, target, unwind)?;
             }
 
             Assert { ref cond, expected, ref msg, target, cleanup } => {
@@ -196,7 +188,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn eval_fn_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-        span: Span,
         caller_abi: Abi,
         args: &[OpTy<'tcx, M::PointerTag>],
         ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
@@ -242,7 +233,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
                 assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
-                M::call_intrinsic(self, span, instance, args, ret, unwind)
+                M::call_intrinsic(self, instance, args, ret, unwind)
             }
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)
@@ -252,14 +243,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
-                let body = match M::find_mir_or_eval_fn(self, span, instance, args, ret, unwind)? {
+                let body = match M::find_mir_or_eval_fn(self, instance, args, ret, unwind)? {
                     Some(body) => body,
                     None => return Ok(()),
                 };
 
                 self.push_stack_frame(
                     instance,
-                    span,
                     body,
                     ret.map(|p| p.0),
                     StackPopCleanup::Goto { ret: ret.map(|p| p.1), unwind },
@@ -407,7 +397,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     OpTy::from(ImmTy { layout: this_receiver_ptr, imm: receiver_place.ptr.into() });
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(drop_fn, span, caller_abi, &args, ret, unwind)
+                self.eval_fn_call(drop_fn, caller_abi, &args, ret, unwind)
             }
         }
     }
@@ -416,7 +406,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         place: PlaceTy<'tcx, M::PointerTag>,
         instance: ty::Instance<'tcx>,
-        span: Span,
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
@@ -444,7 +433,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         self.eval_fn_call(
             FnVal::Instance(instance),
-            span,
             Abi::Rust,
             &[arg.into()],
             Some((dest.into(), target)),

@@ -183,7 +183,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     fn find_mir_or_eval_fn(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _span: Span,
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
         _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
@@ -204,7 +203,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     fn call_intrinsic(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _span: Span,
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
         _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
@@ -361,7 +359,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         ecx.push_stack_frame(
             Instance::new(def_id, substs),
-            span,
             dummy_body,
             ret.map(Into::into),
             StackPopCleanup::None { cleanup: false },
