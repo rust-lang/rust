@@ -922,7 +922,7 @@ fn get_indexed_assignments<'a, 'tcx>(
             .chain(expr.as_ref().into_iter().map(|e| Some(get_assignment(cx, &*e, var))))
             .filter_map(|op| op)
             .collect::<Option<Vec<_>>>()
-            .unwrap_or_else(|| vec![])
+            .unwrap_or_default()
     } else {
         get_assignment(cx, body, var).into_iter().collect()
     }
