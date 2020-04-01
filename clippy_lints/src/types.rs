@@ -108,7 +108,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub OPTION_OPTION,
-    complexity,
+    pedantic,
     "usage of `Option<Option<T>>`"
 }
 
