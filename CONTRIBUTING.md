@@ -188,7 +188,7 @@ with one another are rolled up.
 Speaking of tests, Rust has a comprehensive test suite. More information about
 it can be found [here][rctd].
 
-### External Dependencies (subrepo)
+### External Dependencies (subtree)
 
 As a developer to this repository, you don't have to treat the following external projects
 differently from other crates that are directly in this repo:
@@ -198,39 +198,39 @@ differently from other crates that are directly in this repo:
 They are just regular files and directories. This is in contrast to `submodule` dependencies
 (see below for those).
 
-If you want to synchronize or otherwise work with subrepos, install the `git subrepo` command via
-instructions found at https://github.com/ingydotnet/git-subrepo
+If you want to synchronize or otherwise work with subtrees, install the `git subtree` command via
+instructions found at https://github.com/ingydotnet/git-subtree
 
-#### Synchronizing a subrepo
+#### Synchronizing a subtree
 
-There are two synchronization directions: `subrepo push` and `subrepo pull`. Both operations create
-a synchronization commit in the rustc repo.
-This commit is very important in order to make future synchronizations work.
-Do not rebase this commit under any circumstances.
-Prefer to merge in case of conflicts or redo the operation if you really need to rebase.
+There are two synchronization directions: `subtree push` and `subtree pull`.
 
-A `git subrepo push src/tools/clippy`
+A `git subtree push -P src/tools/clippy`
 takes all the changes that
 happened to the copy in this repo and creates commits on the remote repo that match the local
-changes (so every local commit that touched the subrepo causes a commit on the remote repo).
+changes (so every local commit that touched the subtree causes a commit on the remote repo).
 
-A `git subrepo pull src/tools/clippy` takes all changes since the last `subrepo pull` from the clippy
+A `git subtree pull -P src/tools/clippy` takes all changes since the last `subtree pull` from the clippy
 repo and creates a single commit in the rustc repo with all the changes.
 
-#### Creating a new subrepo dependency
+You always need to specifiy the `-P` prefix to the subtree directory. If you specify the wrong directory
+you'll get very fun merges that try to push the wrong directory to the remote repository. Luckily you
+can just abort this without any consequences.
 
-If you want to create a new subrepo dependency from an existing repository, call (from this
+#### Creating a new subtree dependency
+
+If you want to create a new subtree dependency from an existing repository, call (from this
 repository's root directory!!)
 
 ```
-git subrepo clone https://github.com/rust-lang/rust-clippy.git src/tools/clippy
+git subtree add -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git master
 ```
 
 This will create a new commit, which you may not rebase under any circumstances! Delete the commit
 and redo the operation if you need to rebase.
 
 Now you're done, the `src/tools/clippy` directory behaves as if clippy were part of the rustc
-monorepo, so no one but you (or others that synchronize subrepos) needs to have `git subrepo`
+monorepo, so no one but you (or others that synchronize subtrees) needs to have `git subtree`
 installed.
 
 
