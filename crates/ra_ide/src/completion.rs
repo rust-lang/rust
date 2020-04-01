@@ -5,8 +5,7 @@ mod completion_context;
 mod presentation;
 
 mod complete_dot;
-mod complete_record_literal;
-mod complete_record_pattern;
+mod complete_record;
 mod complete_pattern;
 mod complete_fn_param;
 mod complete_keyword;
@@ -89,8 +88,7 @@ pub(crate) fn completions(
     complete_path::complete_path(&mut acc, &ctx);
     complete_scope::complete_scope(&mut acc, &ctx);
     complete_dot::complete_dot(&mut acc, &ctx);
-    complete_record_literal::complete_record_literal(&mut acc, &ctx);
-    complete_record_pattern::complete_record_pattern(&mut acc, &ctx);
+    complete_record::complete_record(&mut acc, &ctx);
     complete_pattern::complete_pattern(&mut acc, &ctx);
     complete_postfix::complete_postfix(&mut acc, &ctx);
     complete_macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
