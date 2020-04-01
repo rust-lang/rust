@@ -414,13 +414,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
             }
             OutputType::Assembly => {
                 modules_config.emit_asm = true;
-                // If we're not using the LLVM assembler, this function
-                // could be invoked specially with output_type_assembly, so
-                // in this case we still want the metadata object file.
-                if !sess.opts.output_types.contains_key(&OutputType::Assembly) {
-                    metadata_config.emit_obj = emit_obj;
-                    allocator_config.emit_obj = emit_obj;
-                }
             }
             OutputType::Object => {
                 modules_config.emit_obj = emit_obj;
