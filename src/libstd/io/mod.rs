@@ -1388,7 +1388,7 @@ pub trait Write {
     ///
     /// If the buffer contains no data, this will never call [`write_vectored`].
     ///
-    /// [`write_vectored`]: #tymethod.write_vectored
+    /// [`write_vectored`]: #method.write_vectored
     /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
     ///
     /// # Notes
