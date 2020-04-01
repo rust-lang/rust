@@ -182,6 +182,18 @@ nav.sub {
 	top: 0;
 	bottom: 0;
 	overflow: auto;
+	/* Improve the sidebar display on firefox */
+	scrollbar-width: thin;
+}
+
+/* Improve the sidebar display on webkit-based browsers */
+.sidebar::-webkit-scrollbar {
+	width: 8px;
+}
+
+/* Improve the sidebar display on webkit-based browsers */
+.sidebar::-webkit-scrollbar-track {
+	-webkit-box-shadow: inset 0;
 }
 
 .sidebar .block > ul > li {
