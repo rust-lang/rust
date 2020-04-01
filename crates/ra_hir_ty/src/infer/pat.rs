@@ -11,7 +11,7 @@ use hir_def::{
 use hir_expand::name::Name;
 use test_utils::tested_by;
 
-use super::{BindingMode, InferenceContext};
+use super::{BindingMode, Expectation, InferenceContext};
 use crate::{utils::variant_data, Substs, Ty, TypeCtor};
 
 impl<'a> InferenceContext<'a> {
@@ -198,7 +198,14 @@ impl<'a> InferenceContext<'a> {
 
                 Ty::apply_one(container_ty, elem_ty)
             }
-            _ => Ty::Unknown,
+            Pat::Wild => expected.clone(),
+            Pat::Range { start, end } => {
+                let start_ty = self.infer_expr(*start, &Expectation::has_type(expected.clone()));
+                let end_ty = self.infer_expr(*end, &Expectation::has_type(start_ty));
+                end_ty
+            }
+            Pat::Lit(expr) => self.infer_expr(*expr, &Expectation::has_type(expected.clone())),
+            Pat::Missing => Ty::Unknown,
         };
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
