@@ -1,3 +1,5 @@
+#![deny(clippy::option_option)]
+
 fn input(_: Option<Option<u8>>) {}
 
 fn output() -> Option<Option<u8>> {
