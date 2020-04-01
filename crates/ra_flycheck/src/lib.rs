@@ -4,8 +4,8 @@
 mod conv;
 
 use std::{
-    env, error, fmt,
-    io::{BufRead, BufReader},
+    env,
+    io::{self, BufRead, BufReader},
     path::PathBuf,
     process::{Command, Stdio},
     time::Instant,
@@ -23,10 +23,9 @@ use crate::conv::{map_rust_diagnostic_to_lsp, MappedRustDiagnostic};
 pub use crate::conv::url_from_path_with_drive_lowercasing;
 
 #[derive(Clone, Debug)]
-pub struct FlycheckConfig {
-    pub command: String,
-    pub all_targets: bool,
-    pub extra_args: Vec<String>,
+pub enum FlycheckConfig {
+    CargoCommand { command: String, all_targets: bool, extra_args: Vec<String> },
+    CustomCommand { command: String, args: Vec<String> },
 }
 
 /// Flycheck wraps the shared state and communication machinery used for
@@ -215,18 +214,25 @@ impl FlycheckThread {
         self.message_recv = never();
         self.check_process = None;
 
-        let cmd = {
-            let mut cmd = Command::new(cargo_binary());
-            cmd.arg(&self.config.command);
-            cmd.args(&["--workspace", "--message-format=json", "--manifest-path"]);
-            cmd.arg(self.workspace_root.join("Cargo.toml"));
-            if self.config.all_targets {
-                cmd.arg("--all-targets");
+        let mut cmd = match &self.config {
+            FlycheckConfig::CargoCommand { command, all_targets, extra_args } => {
+                let mut cmd = Command::new(cargo_binary());
+                cmd.arg(command);
+                cmd.args(&["--workspace", "--message-format=json", "--manifest-path"]);
+                cmd.arg(self.workspace_root.join("Cargo.toml"));
+                if *all_targets {
+                    cmd.arg("--all-targets");
+                }
+                cmd.args(extra_args);
+                cmd
             }
-            cmd.args(self.config.extra_args.iter());
-            cmd.current_dir(&self.workspace_root);
-            cmd
+            FlycheckConfig::CustomCommand { command, args } => {
+                let mut cmd = Command::new(command);
+                cmd.args(args);
+                cmd
+            }
         };
+        cmd.current_dir(&self.workspace_root);
 
         let (message_send, message_recv) = unbounded();
         self.message_recv = message_recv;
@@ -273,27 +279,12 @@ enum CheckEvent {
     End,
 }
 
-#[derive(Debug)]
-pub struct CargoError(String);
-
-impl fmt::Display for CargoError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Cargo failed: {}", self.0)
-    }
-}
-impl error::Error for CargoError {}
-
 fn run_cargo(
     mut command: Command,
     on_message: &mut dyn FnMut(cargo_metadata::Message) -> bool,
-) -> Result<(), CargoError> {
-    dbg!(&command);
-    let mut child = command
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .stdin(Stdio::null())
-        .spawn()
-        .expect("couldn't launch cargo");
+) -> io::Result<()> {
+    let mut child =
+        command.stdout(Stdio::piped()).stderr(Stdio::null()).stdin(Stdio::null()).spawn()?;
 
     // We manually read a line at a time, instead of using serde's
     // stream deserializers, because the deserializer cannot recover
@@ -307,13 +298,7 @@ fn run_cargo(
     let mut read_at_least_one_message = false;
 
     for line in stdout.lines() {
-        let line = match line {
-            Ok(line) => line,
-            Err(err) => {
-                log::error!("Couldn't read line from cargo: {}", err);
-                continue;
-            }
-        };
+        let line = line?;
 
         let message = serde_json::from_str::<cargo_metadata::Message>(&line);
         let message = match message {
@@ -334,20 +319,20 @@ fn run_cargo(
     // It is okay to ignore the result, as it only errors if the process is already dead
     let _ = child.kill();
 
-    let err_msg = match child.wait() {
-        Ok(exit_code) if !exit_code.success() && !read_at_least_one_message => {
-            // FIXME: Read the stderr to display the reason, see `read2()` reference in PR comment:
-            // https://github.com/rust-analyzer/rust-analyzer/pull/3632#discussion_r395605298
+    let exit_status = child.wait()?;
+    if !exit_status.success() && !read_at_least_one_message {
+        // FIXME: Read the stderr to display the reason, see `read2()` reference in PR comment:
+        // https://github.com/rust-analyzer/rust-analyzer/pull/3632#discussion_r395605298
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
             format!(
                 "the command produced no valid metadata (exit code: {:?}): {:?}",
-                exit_code, command
-            )
-        }
-        Err(err) => format!("io error: {:?}", err),
-        Ok(_) => return Ok(()),
-    };
+                exit_status, command
+            ),
+        ));
+    }
 
-    Err(CargoError(err_msg))
+    Ok(())
 }
 
 fn cargo_binary() -> String {
