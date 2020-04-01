@@ -12,6 +12,6 @@ pub fn target() -> TargetResult {
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
         target_c_int_width: 16.to_string(),
-        options: super::none_base::opts(),
+        options: super::freestanding_base::opts(),
     })
 }
