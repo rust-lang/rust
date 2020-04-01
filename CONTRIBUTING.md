@@ -188,11 +188,58 @@ with one another are rolled up.
 Speaking of tests, Rust has a comprehensive test suite. More information about
 it can be found [here][rctd].
 
-### External Dependencies
+### External Dependencies (subrepo)
+
+As a developer to this repository, you don't have to treat the following external projects
+differently from other crates that are directly in this repo:
+
+* [clippy](https://github.com/rust-lang/rust-clippy)
+
+They are just regular files and directories. This is in contrast to `submodule` dependencies.
+
+If you want to synchronize or otherwise work with subrepos, install the `git subrepo` command via
+instructions found at https://github.com/ingydotnet/git-subrepo
+
+#### Creating a new subrepo dependency
+
+If you want to create a new subrepo dependency from an existing repository, call (from this
+repository's root directory!!)
+
+```
+git subrepo clone https://github.com/rust-lang/rust-clippy.git src/tools/clippy
+```
+
+This will create a new commit, which you may not rebase under any circumstances! Delete the commit
+and redo the operation if you need to rebase.
+
+Now you're done, the `src/tools/clippy` directory behaves as if clippy were part of the rustc
+monorepo, so no one but you (or others that synchronize subrepos) needs to have `git subrepo`
+installed.
+
+#### Synchronizing a subrepo
+
+There are two synchronization directions: push and pull.
+
+A `git subrepo push src/tools/clippy`
+takes all the changes that
+happened to the copy in this repo and creates commits on the remote repo that match the local
+changes (so ever local commit that touched the subrepo causes a commit on the remote repo). Again,
+Even this `push` operation creates a commit in this repo that you need to get merged without
+rebasing. This is very important in order to make future synchronizations work.
+
+A `git subrepo pull src/tools/clippy` takes all changes since the last `pull` from the clippy
+repo and creates a single commit in the rustc repo with all the changes. Again, do not rebase this
+commit under any circumstances. Redo the operation if you need to.
+
+#### Throwing the towel (aka, everything is broken)
+
+If the subrepo has ended up in an unusable state out of any reason
+
+
+### External Dependencies (submodules)
 
 Currently building Rust will also build the following external projects:
 
-* [clippy](https://github.com/rust-lang/rust-clippy)
 * [miri](https://github.com/rust-lang/miri)
 * [rustfmt](https://github.com/rust-lang/rustfmt)
 * [rls](https://github.com/rust-lang/rls/)
@@ -221,7 +268,6 @@ before the PR is merged.
 
 Rust's build system builds a number of tools that make use of the
 internals of the compiler. This includes
-[Clippy](https://github.com/rust-lang/rust-clippy),
 [RLS](https://github.com/rust-lang/rls) and
 [rustfmt](https://github.com/rust-lang/rustfmt). If these tools
 break because of your changes, you may run into a sort of "chicken and egg"
