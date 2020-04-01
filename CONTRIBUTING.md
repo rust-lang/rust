@@ -196,23 +196,31 @@ differently from other crates that are directly in this repo:
 * none so far, see https://github.com/rust-lang/rust/issues/70651 for more info
 
 They are just regular files and directories. This is in contrast to `submodule` dependencies
-(see below for those).
+(see below for those). Only tool authors will actually use any operations here.
 
 #### Synchronizing a subtree
 
 There are two synchronization directions: `subtree push` and `subtree pull`.
 
-A `git subtree push -P src/tools/clippy`
+`git subtree push -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git`
+
 takes all the changes that
 happened to the copy in this repo and creates commits on the remote repo that match the local
 changes (so every local commit that touched the subtree causes a commit on the remote repo).
 
-A `git subtree pull -P src/tools/clippy` takes all changes since the last `subtree pull` from the clippy
-repo and creates a single commit in the rustc repo with all the changes.
+`git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git`
+takes all changes since the last `subtree pull` from the clippy
+repo and adds these commits to the rustc repo + a merge commit with the existing changes.
+It is recommended that you always do a push before a pull, so that the merge works without conflicts.
+While definitely possible to resolve conflicts during a pull, you may have to redo the conflict
+resolution if your PR doesn't get merged fast enough and there are new conflicts. Do not try to
+rebase the result of a `git subtree pull`, rebasing merge commits is a bad idea in general.
 
-You always need to specifiy the `-P` prefix to the subtree directory. If you specify the wrong directory
-you'll get very fun merges that try to push the wrong directory to the remote repository. Luckily you
-can just abort this without any consequences.
+You always need to specify the `-P` prefix to the subtree directory and the corresponding remote
+repository. If you specify the wrong directory or repository
+you'll get very fun merges that try to push the wrong directory to the wrong remote repository.
+Luckily you can just abort this without any consequences and try again. It is usually fairly obvious
+that this is happening because you suddenly get thousands of commits that want to be synchronized.
 
 #### Creating a new subtree dependency
 
