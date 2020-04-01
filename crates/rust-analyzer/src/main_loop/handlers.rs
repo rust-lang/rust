@@ -31,6 +31,7 @@ use stdx::format_to;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
+    config::RustfmtConfig,
     conv::{
         to_call_hierarchy_item, to_location, Conv, ConvWith, FoldConvCtx, MapConvWith, TryConvWith,
         TryConvWithToVec,
@@ -610,13 +611,24 @@ pub fn handle_formatting(
     let file_line_index = world.analysis().file_line_index(file_id)?;
     let end_position = TextUnit::of_str(&file).conv_with(&file_line_index);
 
-    let mut rustfmt = process::Command::new("rustfmt");
-    rustfmt.args(&world.config.rustfmt_args);
-    if let Some(&crate_id) = crate_ids.first() {
-        // Assume all crates are in the same edition
-        let edition = world.analysis().crate_edition(crate_id)?;
-        rustfmt.args(&["--edition", &edition.to_string()]);
-    }
+    let mut rustfmt = match &world.config.rustfmt {
+        RustfmtConfig::Rustfmt { extra_args } => {
+            let mut cmd = process::Command::new("rustfmt");
+            cmd.args(extra_args);
+            if let Some(&crate_id) = crate_ids.first() {
+                // Assume all crates are in the same edition
+                let edition = world.analysis().crate_edition(crate_id)?;
+                cmd.arg("--edition");
+                cmd.arg(edition.to_string());
+            }
+            cmd
+        }
+        RustfmtConfig::CustomCommand { command, args } => {
+            let mut cmd = process::Command::new(command);
+            cmd.args(args);
+            cmd
+        }
+    };
 
     if let Ok(path) = params.text_document.uri.to_file_path() {
         if let Some(parent) = path.parent() {

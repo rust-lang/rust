@@ -9,8 +9,76 @@
 
 use rustc_hash::FxHashMap;
 
+use lsp_types::TextDocumentClientCapabilities;
+use ra_flycheck::FlycheckConfig;
+use ra_ide::InlayHintsConfig;
 use ra_project_model::CargoFeatures;
 use serde::{Deserialize, Deserializer};
+
+#[derive(Debug, Clone)]
+pub struct Config {
+    pub publish_decorations: bool,
+    pub supports_location_link: bool,
+    pub line_folding_only: bool,
+    pub inlay_hints: InlayHintsConfig,
+    pub rustfmt: RustfmtConfig,
+    pub check: Option<FlycheckConfig>,
+    pub vscode_lldb: bool,
+    pub proc_macro_srv: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum RustfmtConfig {
+    Rustfmt {
+        extra_args: Vec<String>,
+    },
+    #[allow(unused)]
+    CustomCommand {
+        command: String,
+        args: Vec<String>,
+    },
+}
+
+impl Default for RustfmtConfig {
+    fn default() -> Self {
+        RustfmtConfig::Rustfmt { extra_args: Vec::new() }
+    }
+}
+
+pub(crate) fn get_config(
+    config: &ServerConfig,
+    text_document_caps: Option<&TextDocumentClientCapabilities>,
+) -> Config {
+    Config {
+        publish_decorations: config.publish_decorations,
+        supports_location_link: text_document_caps
+            .and_then(|it| it.definition)
+            .and_then(|it| it.link_support)
+            .unwrap_or(false),
+        line_folding_only: text_document_caps
+            .and_then(|it| it.folding_range.as_ref())
+            .and_then(|it| it.line_folding_only)
+            .unwrap_or(false),
+        inlay_hints: InlayHintsConfig {
+            type_hints: config.inlay_hints_type,
+            parameter_hints: config.inlay_hints_parameter,
+            chaining_hints: config.inlay_hints_chaining,
+            max_length: config.inlay_hints_max_length,
+        },
+        check: if config.cargo_watch_enable {
+            Some(FlycheckConfig::CargoCommand {
+                command: config.cargo_watch_command.clone(),
+                all_targets: config.cargo_watch_all_targets,
+                extra_args: config.cargo_watch_args.clone(),
+            })
+        } else {
+            None
+        },
+        rustfmt: RustfmtConfig::Rustfmt { extra_args: config.rustfmt_args.clone() },
+        vscode_lldb: config.vscode_lldb,
+        proc_macro_srv: None, // FIXME: get this from config
+    }
+}
 
 /// Client provided initialization options
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
