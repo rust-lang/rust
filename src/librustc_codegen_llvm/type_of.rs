@@ -79,7 +79,7 @@ fn uncached_llvm_type<'a, 'tcx>(
     };
 
     match layout.fields {
-        layout::FieldPlacement::Union(_) => {
+        layout::FieldsShape::Union(_) => {
             let fill = cx.type_padding_filler(layout.size, layout.align.abi);
             let packed = false;
             match name {
@@ -91,10 +91,10 @@ fn uncached_llvm_type<'a, 'tcx>(
                 }
             }
         }
-        layout::FieldPlacement::Array { count, .. } => {
+        layout::FieldsShape::Array { count, .. } => {
             cx.type_array(layout.field(cx, 0).llvm_type(cx), count)
         }
-        layout::FieldPlacement::Arbitrary { .. } => match name {
+        layout::FieldsShape::Arbitrary { .. } => match name {
             None => {
                 let (llfields, packed) = struct_llfields(cx, layout);
                 cx.type_struct(&llfields, packed)
@@ -371,13 +371,13 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             _ => {}
         }
         match self.fields {
-            layout::FieldPlacement::Union(_) => {
+            layout::FieldsShape::Union(_) => {
                 bug!("TyAndLayout::llvm_field_index({:?}): not applicable", self)
             }
 
-            layout::FieldPlacement::Array { .. } => index as u64,
+            layout::FieldsShape::Array { .. } => index as u64,
 
-            layout::FieldPlacement::Arbitrary { .. } => {
+            layout::FieldsShape::Arbitrary { .. } => {
                 1 + (self.fields.memory_index(index) as u64) * 2
             }
         }
