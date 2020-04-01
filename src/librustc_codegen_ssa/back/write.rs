@@ -421,7 +421,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let linker_info = LinkerInfo::new(tcx);
     let crate_info = CrateInfo::new(tcx);
 
-    let modules_config = ModuleConfig::new(ModuleKind::Regular, sess, no_builtins);
+    let regular_config = ModuleConfig::new(ModuleKind::Regular, sess, no_builtins);
     let metadata_config = ModuleConfig::new(ModuleKind::Metadata, sess, no_builtins);
     let allocator_config = ModuleConfig::new(ModuleKind::Allocator, sess, no_builtins);
 
@@ -437,7 +437,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         coordinator_receive,
         total_cgus,
         sess.jobserver.clone(),
-        Arc::new(modules_config),
+        Arc::new(regular_config),
         Arc::new(metadata_config),
         Arc::new(allocator_config),
         coordinator_send.clone(),
@@ -937,7 +937,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     coordinator_receive: Receiver<Box<dyn Any + Send>>,
     total_cgus: usize,
     jobserver: Client,
-    modules_config: Arc<ModuleConfig>,
+    regular_config: Arc<ModuleConfig>,
     metadata_config: Arc<ModuleConfig>,
     allocator_config: Arc<ModuleConfig>,
     tx_to_llvm_workers: Sender<Box<dyn Any + Send>>,
@@ -1020,7 +1020,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         coordinator_send,
         diag_emitter: shared_emitter.clone(),
         output_filenames: tcx.output_filenames(LOCAL_CRATE),
-        regular_module_config: modules_config,
+        regular_module_config: regular_config,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
         tm_factory: TargetMachineFactory(backend.target_machine_factory(tcx.sess, ol, false)),
