@@ -5,7 +5,7 @@ LL |     x.foo();
    |     --^^^--
    |     | |
    |     | multiple `foo` found
-   |     help: disambiguate the method call for candidate #2: `T::foo(&x)`
+   |     help: disambiguate the associated function for candidate #2: `T::foo(&x)`
    |
 note: candidate #1 is defined in an impl for the type `(dyn T + 'a)`
   --> $DIR/issue-18446.rs:9:5

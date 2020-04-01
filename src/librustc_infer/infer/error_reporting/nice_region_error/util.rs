@@ -118,7 +118,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     // enable E0621 for it.
     pub(super) fn is_self_anon(&self, is_first: bool, scope_def_id: DefId) -> bool {
         is_first
-            && self.tcx().opt_associated_item(scope_def_id).map(|i| i.method_has_self_argument)
+            && self.tcx().opt_associated_item(scope_def_id).map(|i| i.fn_has_self_parameter)
                 == Some(true)
     }
 }

@@ -162,7 +162,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ty::AssocKind::Const
                                 | ty::AssocKind::Type
                                 | ty::AssocKind::OpaqueTy => rcvr_ty,
-                                ty::AssocKind::Method => self
+                                ty::AssocKind::Fn => self
                                     .tcx
                                     .fn_sig(item.def_id)
                                     .inputs()
@@ -179,6 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 path,
                                 ty,
                                 item.kind,
+                                item.def_id,
                                 sugg_span,
                                 idx,
                                 self.tcx.sess.source_map(),
@@ -220,6 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             path,
                             rcvr_ty,
                             item.kind,
+                            item.def_id,
                             sugg_span,
                             idx,
                             self.tcx.sess.source_map(),
@@ -764,7 +766,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_label(span, msg);
                     }
                 } else if let Some(lev_candidate) = lev_candidate {
-                    let def_kind = lev_candidate.def_kind();
+                    let def_kind = lev_candidate.kind.as_def_kind();
                     err.span_suggestion(
                         span,
                         &format!(
@@ -957,7 +959,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && self
                         .associated_item(info.def_id, item_name, Namespace::ValueNS)
                         .filter(|item| {
-                            if let ty::AssocKind::Method = item.kind {
+                            if let ty::AssocKind::Fn = item.kind {
                                 let id = self.tcx.hir().as_local_hir_id(item.def_id);
                                 if let Some(hir::Node::TraitItem(hir::TraitItem {
                                     kind: hir::TraitItemKind::Fn(fn_sig, method),
@@ -1387,12 +1389,13 @@ fn print_disambiguation_help(
     trait_name: String,
     rcvr_ty: Ty<'_>,
     kind: ty::AssocKind,
+    def_id: DefId,
     span: Span,
     candidate: Option<usize>,
     source_map: &source_map::SourceMap,
 ) {
     let mut applicability = Applicability::MachineApplicable;
-    let sugg_args = if let (ty::AssocKind::Method, Some(args)) = (kind, args) {
+    let sugg_args = if let (ty::AssocKind::Fn, Some(args)) = (kind, args) {
         format!(
             "({}{})",
             if rcvr_ty.is_region_ptr() {
@@ -1416,7 +1419,7 @@ fn print_disambiguation_help(
         span,
         &format!(
             "disambiguate the {} for {}",
-            kind.suggestion_descr(),
+            kind.as_def_kind().descr(def_id),
             if let Some(candidate) = candidate {
                 format!("candidate #{}", candidate)
             } else {

@@ -85,7 +85,7 @@ fn associated_item_from_trait_item_ref(
     let def_id = tcx.hir().local_def_id(trait_item_ref.id.hir_id);
     let (kind, has_self) = match trait_item_ref.kind {
         hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
-        hir::AssocItemKind::Method { has_self } => (ty::AssocKind::Method, has_self),
+        hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
         hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
         hir::AssocItemKind::OpaqueTy => bug!("only impls can have opaque types"),
     };
@@ -98,7 +98,7 @@ fn associated_item_from_trait_item_ref(
         defaultness: trait_item_ref.defaultness,
         def_id,
         container: ty::TraitContainer(parent_def_id),
-        method_has_self_argument: has_self,
+        fn_has_self_parameter: has_self,
     }
 }
 
@@ -110,7 +110,7 @@ fn associated_item_from_impl_item_ref(
     let def_id = tcx.hir().local_def_id(impl_item_ref.id.hir_id);
     let (kind, has_self) = match impl_item_ref.kind {
         hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
-        hir::AssocItemKind::Method { has_self } => (ty::AssocKind::Method, has_self),
+        hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
         hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
         hir::AssocItemKind::OpaqueTy => (ty::AssocKind::OpaqueTy, false),
     };
@@ -123,7 +123,7 @@ fn associated_item_from_impl_item_ref(
         defaultness: impl_item_ref.defaultness,
         def_id,
         container: ty::ImplContainer(parent_def_id),
-        method_has_self_argument: has_self,
+        fn_has_self_parameter: has_self,
     }
 }
 

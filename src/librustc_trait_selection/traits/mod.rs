@@ -475,7 +475,7 @@ fn vtable_methods<'tcx>(
         let trait_methods = tcx
             .associated_items(trait_ref.def_id())
             .in_definition_order()
-            .filter(|item| item.kind == ty::AssocKind::Method);
+            .filter(|item| item.kind == ty::AssocKind::Fn);
 
         // Now list each method's DefId and InternalSubsts (for within its trait).
         // If the method can never be called from this object, produce None.

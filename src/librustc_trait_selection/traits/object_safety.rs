@@ -86,7 +86,7 @@ fn object_safety_violations_for_trait(
     let mut violations: Vec<_> = tcx
         .associated_items(trait_def_id)
         .in_definition_order()
-        .filter(|item| item.kind == ty::AssocKind::Method)
+        .filter(|item| item.kind == ty::AssocKind::Fn)
         .filter_map(|item| {
             object_safety_violation_for_method(tcx, trait_def_id, &item)
                 .map(|(code, span)| ObjectSafetyViolation::Method(item.ident.name, code, span))
@@ -362,7 +362,7 @@ fn virtual_call_violation_for_method<'tcx>(
     method: &ty::AssocItem,
 ) -> Option<MethodViolationCode> {
     // The method's first parameter must be named `self`
-    if !method.method_has_self_argument {
+    if !method.fn_has_self_parameter {
         // We'll attempt to provide a structured suggestion for `Self: Sized`.
         let sugg =
             tcx.hir().get_if_local(method.def_id).as_ref().and_then(|node| node.generics()).map(

@@ -839,7 +839,7 @@ impl EncodeContext<'tcx> {
                     rendered_const,
                 )
             }
-            ty::AssocKind::Method => {
+            ty::AssocKind::Fn => {
                 let fn_data = if let hir::TraitItemKind::Fn(m_sig, m) = &ast_item.kind {
                     let param_names = match *m {
                         hir::TraitFn::Required(ref names) => {
@@ -860,7 +860,7 @@ impl EncodeContext<'tcx> {
                 EntryKind::AssocFn(self.lazy(AssocFnData {
                     fn_data,
                     container,
-                    has_self: trait_item.method_has_self_argument,
+                    has_self: trait_item.fn_has_self_parameter,
                 }))
             }
             ty::AssocKind::Type => EntryKind::AssocType(container),
@@ -874,7 +874,7 @@ impl EncodeContext<'tcx> {
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         match trait_item.kind {
-            ty::AssocKind::Const | ty::AssocKind::Method => {
+            ty::AssocKind::Const | ty::AssocKind::Fn => {
                 self.encode_item_type(def_id);
             }
             ty::AssocKind::Type => {
@@ -884,7 +884,7 @@ impl EncodeContext<'tcx> {
             }
             ty::AssocKind::OpaqueTy => unreachable!(),
         }
-        if trait_item.kind == ty::AssocKind::Method {
+        if trait_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }
@@ -931,7 +931,7 @@ impl EncodeContext<'tcx> {
                     bug!()
                 }
             }
-            ty::AssocKind::Method => {
+            ty::AssocKind::Fn => {
                 let fn_data = if let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind {
                     FnData {
                         asyncness: sig.header.asyncness,
@@ -944,7 +944,7 @@ impl EncodeContext<'tcx> {
                 EntryKind::AssocFn(self.lazy(AssocFnData {
                     fn_data,
                     container,
-                    has_self: impl_item.method_has_self_argument,
+                    has_self: impl_item.fn_has_self_parameter,
                 }))
             }
             ty::AssocKind::OpaqueTy => EntryKind::AssocOpaqueTy(container),
@@ -958,7 +958,7 @@ impl EncodeContext<'tcx> {
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
-        if impl_item.kind == ty::AssocKind::Method {
+        if impl_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }

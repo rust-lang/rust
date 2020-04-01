@@ -1903,7 +1903,7 @@ fn check_specialization_validity<'tcx>(
 ) {
     let kind = match impl_item.kind {
         hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
-        hir::ImplItemKind::Fn(..) => ty::AssocKind::Method,
+        hir::ImplItemKind::Fn(..) => ty::AssocKind::Fn,
         hir::ImplItemKind::OpaqueTy(..) => ty::AssocKind::OpaqueTy,
         hir::ImplItemKind::TyAlias(_) => ty::AssocKind::Type,
     };
@@ -2049,7 +2049,7 @@ fn check_impl_items_against_trait<'tcx>(
                 }
                 hir::ImplItemKind::Fn(..) => {
                     let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
-                    if ty_trait_item.kind == ty::AssocKind::Method {
+                    if ty_trait_item.kind == ty::AssocKind::Fn {
                         compare_impl_method(
                             tcx,
                             &ty_impl_item,
@@ -2295,7 +2295,7 @@ fn fn_sig_suggestion(
 /// structured suggestion.
 fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
     match assoc.kind {
-        ty::AssocKind::Method => {
+        ty::AssocKind::Fn => {
             // We skip the binder here because the binder would deanonymize all
             // late-bound regions, and we don't want method signatures to show up
             // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound

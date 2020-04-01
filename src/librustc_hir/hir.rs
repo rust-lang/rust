@@ -2515,7 +2515,7 @@ pub struct ImplItemRef<'hir> {
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum AssocItemKind {
     Const,
-    Method { has_self: bool },
+    Fn { has_self: bool },
     Type,
     OpaqueTy,
 }

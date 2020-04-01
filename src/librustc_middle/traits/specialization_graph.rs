@@ -107,13 +107,13 @@ impl<'tcx> Node {
             .find(move |impl_item| {
                 match (trait_item_kind, impl_item.kind) {
                 | (Const, Const)
-                | (Method, Method)
+                | (Fn, Fn)
                 | (Type, Type)
                 | (Type, OpaqueTy)  // assoc. types can be made opaque in impls
                 => tcx.hygienic_eq(impl_item.ident, trait_item_name, trait_def_id),
 
                 | (Const, _)
-                | (Method, _)
+                | (Fn, _)
                 | (Type, _)
                 | (OpaqueTy, _)
                 => false,

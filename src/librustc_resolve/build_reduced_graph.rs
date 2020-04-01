@@ -921,7 +921,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             Res::Def(DefKind::AssocFn, def_id) => {
                 if cstore
                     .associated_item_cloned_untracked(def_id, self.r.session)
-                    .method_has_self_argument
+                    .fn_has_self_parameter
                 {
                     self.r.has_self.insert(def_id);
                 }

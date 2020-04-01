@@ -1029,7 +1029,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 err.note(&format!(
                     "{}s cannot be accessed directly on a `trait`, they can only be \
                         accessed through a specific `impl`",
-                    assoc_item.kind.suggestion_descr(),
+                    assoc_item.kind.as_def_kind().descr(def_id)
                 ));
                 err.span_suggestion(
                     span,

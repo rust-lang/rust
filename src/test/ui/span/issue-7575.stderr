@@ -25,15 +25,15 @@ LL |     fn f9(_: usize) -> usize;
            candidate #1: `CtxtFn`
            candidate #2: `OtherTrait`
            candidate #3: `UnusedTrait`
-help: disambiguate the method call for candidate #1
+help: disambiguate the associated function for candidate #1
    |
 LL |     u.f8(42) + CtxtFn::f9(u, 342) + m.fff(42)
    |                ^^^^^^^^^^^^^^^^^^
-help: disambiguate the method call for candidate #2
+help: disambiguate the associated function for candidate #2
    |
 LL |     u.f8(42) + OtherTrait::f9(u, 342) + m.fff(42)
    |                ^^^^^^^^^^^^^^^^^^^^^^
-help: disambiguate the method call for candidate #3
+help: disambiguate the associated function for candidate #3
    |
 LL |     u.f8(42) + UnusedTrait::f9(u, 342) + m.fff(42)
    |                ^^^^^^^^^^^^^^^^^^^^^^^
@@ -64,7 +64,7 @@ LL |     t.is_str()
    |     --^^^^^^--
    |     | |
    |     | this is an associated function, not a method
-   |     help: disambiguate the method call for the candidate: `ManyImplTrait::is_str(t)`
+   |     help: disambiguate the associated function for the candidate: `ManyImplTrait::is_str(t)`
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in the trait `ManyImplTrait`

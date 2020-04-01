@@ -35,15 +35,15 @@ note: candidate #3 is defined in the trait `FinalFoo`
    |
 LL |     fn foo(&self) -> u8;
    |     ^^^^^^^^^^^^^^^^^^^^
-help: disambiguate the method call for candidate #1
+help: disambiguate the associated function for candidate #1
    |
 LL |     let z = internal::X::foo(x);
    |             ^^^^^^^^^^^^^^^^^^^
-help: disambiguate the method call for candidate #2
+help: disambiguate the associated function for candidate #2
    |
 LL |     let z = nuisance_foo::NuisanceFoo::foo(x);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: disambiguate the method call for candidate #3
+help: disambiguate the associated function for candidate #3
    |
 LL |     let z = FinalFoo::foo(x);
    |             ^^^^^^^^^^^^^^^^

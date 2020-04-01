@@ -147,7 +147,7 @@ fn enforce_impl_params_are_constrained(
                     let predicates = tcx.predicates_of(def_id).instantiate_identity(tcx);
                     cgp::parameters_for(&predicates, true)
                 }
-                ty::AssocKind::Method | ty::AssocKind::Const => Vec::new(),
+                ty::AssocKind::Fn | ty::AssocKind::Const => Vec::new(),
             }
         })
         .collect();
