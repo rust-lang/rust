@@ -6,7 +6,7 @@
 
 use crate::abi::call::{ArgAbi, ArgAttribute, CastTarget, FnAbi, PassMode, Reg, RegKind, Uniform};
 use crate::abi::{
-    self, Abi, FieldPlacement, HasDataLayout, LayoutOf, Size, TyAndLayout, TyAndLayoutMethods,
+    self, Abi, FieldsShape, HasDataLayout, LayoutOf, Size, TyAndLayout, TyAndLayoutMethods,
 };
 use crate::spec::HasTargetSpec;
 
@@ -87,12 +87,12 @@ where
         },
         Abi::Vector { .. } | Abi::Uninhabited => return Err(CannotUseFpConv),
         Abi::ScalarPair(..) | Abi::Aggregate { .. } => match arg_layout.fields {
-            FieldPlacement::Union(_) => {
+            FieldsShape::Union(_) => {
                 if !arg_layout.is_zst() {
                     return Err(CannotUseFpConv);
                 }
             }
-            FieldPlacement::Array { count, .. } => {
+            FieldsShape::Array { count, .. } => {
                 for _ in 0..count {
                     let elem_layout = arg_layout.field(cx, 0);
                     should_use_fp_conv_helper(
@@ -105,7 +105,7 @@ where
                     )?;
                 }
             }
-            FieldPlacement::Arbitrary { .. } => {
+            FieldsShape::Arbitrary { .. } => {
                 match arg_layout.variants {
                     abi::Variants::Multiple { .. } => return Err(CannotUseFpConv),
                     abi::Variants::Single { .. } => (),
