@@ -4,7 +4,6 @@ use smallvec::smallvec;
 use smallvec::SmallVec;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::outlives::Component;
 use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
@@ -651,22 +650,8 @@ pub fn generator_trait_ref_and_outputs(
     ty::Binder::bind((trait_ref, sig.skip_binder().yield_ty, sig.skip_binder().return_ty))
 }
 
-pub fn impl_is_default(tcx: TyCtxt<'_>, node_item_def_id: DefId) -> bool {
-    match tcx.hir().as_local_hir_id(node_item_def_id) {
-        Some(hir_id) => {
-            let item = tcx.hir().expect_item(hir_id);
-            if let hir::ItemKind::Impl { defaultness, .. } = item.kind {
-                defaultness.is_default()
-            } else {
-                false
-            }
-        }
-        None => tcx.impl_defaultness(node_item_def_id).is_default(),
-    }
-}
-
 pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {
-    assoc_item.defaultness.is_final() && !impl_is_default(tcx, assoc_item.container.id())
+    assoc_item.defaultness.is_final() && tcx.impl_defaultness(assoc_item.container.id()).is_final()
 }
 
 pub enum TupleArgumentsFlag {

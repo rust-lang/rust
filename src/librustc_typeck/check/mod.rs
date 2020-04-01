@@ -1942,7 +1942,7 @@ fn check_specialization_validity<'tcx>(
             // grandparent. In that case, if parent is a `default impl`, inherited items use the
             // "defaultness" from the grandparent, else they are final.
             None => {
-                if traits::impl_is_default(tcx, parent_impl.def_id()) {
+                if tcx.impl_defaultness(parent_impl.def_id()).is_default() {
                     None
                 } else {
                     Some(Err(parent_impl.def_id()))
@@ -2114,10 +2114,10 @@ fn check_impl_items_against_trait<'tcx>(
         for trait_item in tcx.associated_items(impl_trait_ref.def_id).in_definition_order() {
             let is_implemented = ancestors
                 .leaf_def(tcx, trait_item.ident, trait_item.kind)
-                .map(|node_item| !node_item.node.is_from_trait())
+                .map(|node_item| !node_item.defining_node.is_from_trait())
                 .unwrap_or(false);
 
-            if !is_implemented && !traits::impl_is_default(tcx, impl_id) {
+            if !is_implemented && tcx.impl_defaultness(impl_id).is_final() {
                 if !trait_item.defaultness.has_value() {
                     missing_items.push(*trait_item);
                 }
