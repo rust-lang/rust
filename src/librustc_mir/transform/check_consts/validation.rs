@@ -260,7 +260,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
         // Special-case reborrows to be more like a copy of a reference.
         match *rvalue {
-            Rvalue::Ref(_, kind, ref place) => {
+            Rvalue::Ref(_, kind, place) => {
                 if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, *self.body, place) {
                     let ctx = match kind {
                         BorrowKind::Shared => {
@@ -281,7 +281,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                     return;
                 }
             }
-            Rvalue::AddressOf(mutbl, ref place) => {
+            Rvalue::AddressOf(mutbl, place) => {
                 if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, *self.body, place) {
                     let ctx = match mutbl {
                         Mutability::Not => {
@@ -645,7 +645,7 @@ fn check_return_ty_is_sync(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, hir_id: HirId) 
 fn place_as_reborrow(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    place: &'a Place<'tcx>,
+    place: Place<'tcx>,
 ) -> Option<&'a [PlaceElem<'tcx>]> {
     place.projection.split_last().and_then(|(outermost, inner)| {
         if outermost != &ProjectionElem::Deref {

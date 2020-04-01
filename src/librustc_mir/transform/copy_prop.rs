@@ -97,9 +97,8 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
                             if let Some(local) = place.as_local() {
                                 if local == dest_local {
                                     let maybe_action = match operand {
-                                        Operand::Copy(ref src_place)
-                                        | Operand::Move(ref src_place) => {
-                                            Action::local_copy(&body, &def_use_analysis, src_place)
+                                        Operand::Copy(src_place) | Operand::Move(src_place) => {
+                                            Action::local_copy(&body, &def_use_analysis, *src_place)
                                         }
                                         Operand::Constant(ref src_constant) => {
                                             Action::constant(src_constant)
@@ -195,7 +194,7 @@ impl<'tcx> Action<'tcx> {
     fn local_copy(
         body: &Body<'tcx>,
         def_use_analysis: &DefUseAnalysis,
-        src_place: &Place<'tcx>,
+        src_place: Place<'tcx>,
     ) -> Option<Action<'tcx>> {
         // The source must be a local.
         let src_local = if let Some(local) = src_place.as_local() {

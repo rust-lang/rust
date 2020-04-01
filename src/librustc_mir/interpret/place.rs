@@ -635,7 +635,7 @@ where
     /// place; for reading, a more efficient alternative is `eval_place_for_read`.
     pub fn eval_place(
         &mut self,
-        place: &mir::Place<'tcx>,
+        place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         let mut place_ty = match place.local {
             mir::RETURN_PLACE => {

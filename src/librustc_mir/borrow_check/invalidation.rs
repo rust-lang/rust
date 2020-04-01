@@ -56,33 +56,33 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         self.check_activations(location);
 
-        match statement.kind {
-            StatementKind::Assign(box (ref lhs, ref rhs)) => {
+        match &statement.kind {
+            StatementKind::Assign(box (lhs, rhs)) => {
                 self.consume_rvalue(location, rhs);
 
-                self.mutate_place(location, lhs, Shallow(None), JustWrite);
+                self.mutate_place(location, *lhs, Shallow(None), JustWrite);
             }
             StatementKind::FakeRead(_, _) => {
                 // Only relevant for initialized/liveness/safety checks.
             }
-            StatementKind::SetDiscriminant { ref place, variant_index: _ } => {
-                self.mutate_place(location, place, Shallow(None), JustWrite);
+            StatementKind::SetDiscriminant { place, variant_index: _ } => {
+                self.mutate_place(location, **place, Shallow(None), JustWrite);
             }
-            StatementKind::LlvmInlineAsm(ref asm) => {
+            StatementKind::LlvmInlineAsm(asm) => {
                 for (o, output) in asm.asm.outputs.iter().zip(asm.outputs.iter()) {
                     if o.is_indirect {
                         // FIXME(eddyb) indirect inline asm outputs should
                         // be encoded through MIR place derefs instead.
                         self.access_place(
                             location,
-                            output,
+                            *output,
                             (Deep, Read(ReadKind::Copy)),
                             LocalMutationIsAllowed::No,
                         );
                     } else {
                         self.mutate_place(
                             location,
-                            output,
+                            *output,
                             if o.is_rw { Deep } else { Shallow(None) },
                             if o.is_rw { WriteAndRead } else { JustWrite },
                         );
@@ -102,7 +102,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             StatementKind::StorageDead(local) => {
                 self.access_place(
                     location,
-                    &Place::from(local),
+                    Place::from(*local),
                     (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
                     LocalMutationIsAllowed::Yes,
                 );
@@ -119,27 +119,27 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             TerminatorKind::SwitchInt { ref discr, switch_ty: _, values: _, targets: _ } => {
                 self.consume_operand(location, discr);
             }
-            TerminatorKind::Drop { location: ref drop_place, target: _, unwind: _ } => {
+            TerminatorKind::Drop { location: drop_place, target: _, unwind: _ } => {
                 self.access_place(
                     location,
-                    drop_place,
+                    *drop_place,
                     (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
                     LocalMutationIsAllowed::Yes,
                 );
             }
             TerminatorKind::DropAndReplace {
-                location: ref drop_place,
+                location: drop_place,
                 value: ref new_value,
                 target: _,
                 unwind: _,
             } => {
-                self.mutate_place(location, drop_place, Deep, JustWrite);
+                self.mutate_place(location, *drop_place, Deep, JustWrite);
                 self.consume_operand(location, new_value);
             }
             TerminatorKind::Call {
                 ref func,
                 ref args,
-                ref destination,
+                destination,
                 cleanup: _,
                 from_hir_call: _,
             } => {
@@ -147,8 +147,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 for arg in args {
                     self.consume_operand(location, arg);
                 }
-                if let Some((ref dest, _ /*bb*/)) = *destination {
-                    self.mutate_place(location, dest, Deep, JustWrite);
+                if let Some((dest, _ /*bb*/)) = destination {
+                    self.mutate_place(location, *dest, Deep, JustWrite);
                 }
             }
             TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
@@ -166,19 +166,19 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 let borrow_set = self.borrow_set.clone();
                 let resume = self.location_table.start_index(resume.start_location());
                 for i in borrow_set.borrows.indices() {
-                    if borrow_of_local_data(&borrow_set.borrows[i].borrowed_place) {
+                    if borrow_of_local_data(borrow_set.borrows[i].borrowed_place) {
                         self.all_facts.invalidates.push((resume, i));
                     }
                 }
 
-                self.mutate_place(location, resume_arg, Deep, JustWrite);
+                self.mutate_place(location, *resume_arg, Deep, JustWrite);
             }
             TerminatorKind::Resume | TerminatorKind::Return | TerminatorKind::GeneratorDrop => {
                 // Invalidate all borrows of local places
                 let borrow_set = self.borrow_set.clone();
                 let start = self.location_table.start_index(location);
                 for i in borrow_set.borrows.indices() {
-                    if borrow_of_local_data(&borrow_set.borrows[i].borrowed_place) {
+                    if borrow_of_local_data(borrow_set.borrows[i].borrowed_place) {
                         self.all_facts.invalidates.push((start, i));
                     }
                 }
@@ -201,7 +201,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
     fn mutate_place(
         &mut self,
         location: Location,
-        place: &Place<'tcx>,
+        place: Place<'tcx>,
         kind: AccessDepth,
         _mode: MutateMode,
     ) {
@@ -216,7 +216,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
     /// Simulates consumption of an operand.
     fn consume_operand(&mut self, location: Location, operand: &Operand<'tcx>) {
         match *operand {
-            Operand::Copy(ref place) => {
+            Operand::Copy(place) => {
                 self.access_place(
                     location,
                     place,
@@ -224,7 +224,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                     LocalMutationIsAllowed::No,
                 );
             }
-            Operand::Move(ref place) => {
+            Operand::Move(place) => {
                 self.access_place(
                     location,
                     place,
@@ -239,7 +239,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
     // Simulates consumption of an rvalue
     fn consume_rvalue(&mut self, location: Location, rvalue: &Rvalue<'tcx>) {
         match *rvalue {
-            Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
+            Rvalue::Ref(_ /*rgn*/, bk, place) => {
                 let access_kind = match bk {
                     BorrowKind::Shallow => {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
@@ -258,7 +258,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
 
-            Rvalue::AddressOf(mutability, ref place) => {
+            Rvalue::AddressOf(mutability, place) => {
                 let access_kind = match mutability {
                     Mutability::Mut => (
                         Deep,
@@ -279,7 +279,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                 self.consume_operand(location, operand)
             }
 
-            Rvalue::Len(ref place) | Rvalue::Discriminant(ref place) => {
+            Rvalue::Len(place) | Rvalue::Discriminant(place) => {
                 let af = match *rvalue {
                     Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
                     Rvalue::Discriminant(..) => None,
@@ -313,7 +313,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
     fn access_place(
         &mut self,
         location: Location,
-        place: &Place<'tcx>,
+        place: Place<'tcx>,
         kind: (AccessDepth, ReadOrWrite),
         _is_local_mutation_allowed: LocalMutationIsAllowed,
     ) {
@@ -325,7 +325,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
     fn check_access_for_conflict(
         &mut self,
         location: Location,
-        place: &Place<'tcx>,
+        place: Place<'tcx>,
         sd: AccessDepth,
         rw: ReadOrWrite,
     ) {
@@ -413,7 +413,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
 
             self.access_place(
                 location,
-                &borrow.borrowed_place,
+                borrow.borrowed_place,
                 (Deep, Activation(WriteKind::MutableBorrow(borrow.kind), borrow_index)),
                 LocalMutationIsAllowed::No,
             );

@@ -123,7 +123,7 @@ where
         _block: mir::BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        _dest_place: &mir::Place<'tcx>,
+        _dest_place: mir::Place<'tcx>,
     ) {
     }
 }
@@ -160,13 +160,13 @@ where
 
         match rvalue {
             mir::Rvalue::AddressOf(mt, borrowed_place) => {
-                if !borrowed_place.is_indirect() && self.kind.in_address_of(*mt, borrowed_place) {
+                if !borrowed_place.is_indirect() && self.kind.in_address_of(*mt, *borrowed_place) {
                     self.trans.gen(borrowed_place.local);
                 }
             }
 
             mir::Rvalue::Ref(_, kind, borrowed_place) => {
-                if !borrowed_place.is_indirect() && self.kind.in_ref(*kind, borrowed_place) {
+                if !borrowed_place.is_indirect() && self.kind.in_ref(*kind, *borrowed_place) {
                     self.trans.gen(borrowed_place.local);
                 }
             }
@@ -230,7 +230,7 @@ impl MutBorrow<'mir, 'tcx> {
     /// below. See [rust-lang/unsafe-code-guidelines#134].
     ///
     /// [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
-    fn shared_borrow_allows_mutation(&self, place: &Place<'tcx>) -> bool {
+    fn shared_borrow_allows_mutation(&self, place: Place<'tcx>) -> bool {
         !place.ty(self.body, self.tcx).ty.is_freeze(self.tcx, self.param_env, DUMMY_SP)
     }
 }
@@ -238,17 +238,17 @@ impl MutBorrow<'mir, 'tcx> {
 pub trait BorrowAnalysisKind<'tcx> {
     const ANALYSIS_NAME: &'static str;
 
-    fn in_address_of(&self, mt: Mutability, place: &Place<'tcx>) -> bool;
-    fn in_ref(&self, kind: mir::BorrowKind, place: &Place<'tcx>) -> bool;
+    fn in_address_of(&self, mt: Mutability, place: Place<'tcx>) -> bool;
+    fn in_ref(&self, kind: mir::BorrowKind, place: Place<'tcx>) -> bool;
 }
 
 impl BorrowAnalysisKind<'tcx> for AnyBorrow {
     const ANALYSIS_NAME: &'static str = "maybe_borrowed_locals";
 
-    fn in_ref(&self, _: mir::BorrowKind, _: &Place<'_>) -> bool {
+    fn in_ref(&self, _: mir::BorrowKind, _: Place<'_>) -> bool {
         true
     }
-    fn in_address_of(&self, _: Mutability, _: &Place<'_>) -> bool {
+    fn in_address_of(&self, _: Mutability, _: Place<'_>) -> bool {
         true
     }
 }
@@ -256,7 +256,7 @@ impl BorrowAnalysisKind<'tcx> for AnyBorrow {
 impl BorrowAnalysisKind<'tcx> for MutBorrow<'mir, 'tcx> {
     const ANALYSIS_NAME: &'static str = "maybe_mut_borrowed_locals";
 
-    fn in_ref(&self, kind: mir::BorrowKind, place: &Place<'tcx>) -> bool {
+    fn in_ref(&self, kind: mir::BorrowKind, place: Place<'tcx>) -> bool {
         match kind {
             mir::BorrowKind::Mut { .. } => true,
             mir::BorrowKind::Shared | mir::BorrowKind::Shallow | mir::BorrowKind::Unique => {
@@ -265,7 +265,7 @@ impl BorrowAnalysisKind<'tcx> for MutBorrow<'mir, 'tcx> {
         }
     }
 
-    fn in_address_of(&self, mt: Mutability, place: &Place<'tcx>) -> bool {
+    fn in_address_of(&self, mt: Mutability, place: Place<'tcx>) -> bool {
         match mt {
             Mutability::Mut => true,
             Mutability::Not => self.shared_borrow_allows_mutation(place),

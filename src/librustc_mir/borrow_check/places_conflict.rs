@@ -24,8 +24,8 @@ crate enum PlaceConflictBias {
 crate fn places_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    borrow_place: &Place<'tcx>,
-    access_place: &Place<'tcx>,
+    borrow_place: Place<'tcx>,
+    access_place: Place<'tcx>,
     bias: PlaceConflictBias,
 ) -> bool {
     borrow_conflicts_with_place(
@@ -46,7 +46,7 @@ crate fn places_conflict<'tcx>(
 pub(super) fn borrow_conflicts_with_place<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    borrow_place: &Place<'tcx>,
+    borrow_place: Place<'tcx>,
     borrow_kind: BorrowKind,
     access_place: PlaceRef<'tcx>,
     access: AccessDepth,
@@ -71,7 +71,7 @@ pub(super) fn borrow_conflicts_with_place<'tcx>(
 fn place_components_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    borrow_place: &Place<'tcx>,
+    borrow_place: Place<'tcx>,
     borrow_kind: BorrowKind,
     access_place: PlaceRef<'tcx>,
     access: AccessDepth,

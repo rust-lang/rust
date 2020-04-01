@@ -78,7 +78,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.cfg.push_assign(
                         block,
                         source_info,
-                        &is_min,
+                        is_min,
                         Rvalue::BinaryOp(BinOp::Eq, arg.to_copy(), minval),
                     );
 
@@ -109,15 +109,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // malloc some memory of suitable type (thus far, uninitialized):
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
-                this.cfg.push_assign(block, source_info, &Place::from(result), box_);
+                this.cfg.push_assign(block, source_info, Place::from(result), box_);
 
                 // initialize the box contents:
                 unpack!(
-                    block = this.into(
-                        &this.hir.tcx().mk_place_deref(Place::from(result)),
-                        block,
-                        value
-                    )
+                    block =
+                        this.into(this.hir.tcx().mk_place_deref(Place::from(result)), block, value)
                 );
                 block.and(Rvalue::Use(Operand::Move(Place::from(result))))
             }
@@ -284,7 +281,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.cfg.push_assign(
                 block,
                 source_info,
-                &result_value,
+                result_value,
                 Rvalue::CheckedBinaryOp(op, lhs, rhs),
             );
             let val_fld = Field::new(0);
@@ -317,7 +314,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_assign(
                     block,
                     source_info,
-                    &is_zero,
+                    is_zero,
                     Rvalue::BinaryOp(BinOp::Eq, rhs.to_copy(), zero),
                 );
 
@@ -338,13 +335,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     self.cfg.push_assign(
                         block,
                         source_info,
-                        &is_neg_1,
+                        is_neg_1,
                         Rvalue::BinaryOp(BinOp::Eq, rhs.to_copy(), neg_1),
                     );
                     self.cfg.push_assign(
                         block,
                         source_info,
-                        &is_min,
+                        is_min,
                         Rvalue::BinaryOp(BinOp::Eq, lhs.to_copy(), min),
                     );
 
@@ -353,7 +350,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     self.cfg.push_assign(
                         block,
                         source_info,
-                        &of,
+                        of,
                         Rvalue::BinaryOp(BinOp::BitAnd, is_neg_1, is_min),
                     );
 
@@ -428,7 +425,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         this.cfg.push_assign(
             block,
             source_info,
-            &Place::from(temp),
+            Place::from(temp),
             Rvalue::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place),
         );
 

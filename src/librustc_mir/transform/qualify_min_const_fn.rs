@@ -150,7 +150,7 @@ fn check_rvalue(
         Rvalue::Len(place)
         | Rvalue::Discriminant(place)
         | Rvalue::Ref(_, _, place)
-        | Rvalue::AddressOf(_, place) => check_place(tcx, place, span, def_id, body),
+        | Rvalue::AddressOf(_, place) => check_place(tcx, *place, span, def_id, body),
         Rvalue::Cast(CastKind::Misc, operand, cast_ty) => {
             use rustc_middle::ty::cast::CastTy;
             let cast_in = CastTy::from_ty(operand.ty(body, tcx)).expect("bad input type for cast");
@@ -215,7 +215,7 @@ fn check_statement(
     let span = statement.source_info.span;
     match &statement.kind {
         StatementKind::Assign(box (place, rval)) => {
-            check_place(tcx, place, span, def_id, body)?;
+            check_place(tcx, *place, span, def_id, body)?;
             check_rvalue(tcx, body, def_id, rval, span)
         }
 
@@ -225,10 +225,12 @@ fn check_statement(
             Err((span, "loops and conditional expressions are not stable in const fn".into()))
         }
 
-        StatementKind::FakeRead(_, place) => check_place(tcx, place, span, def_id, body),
+        StatementKind::FakeRead(_, place) => check_place(tcx, **place, span, def_id, body),
 
         // just an assignment
-        StatementKind::SetDiscriminant { place, .. } => check_place(tcx, place, span, def_id, body),
+        StatementKind::SetDiscriminant { place, .. } => {
+            check_place(tcx, **place, span, def_id, body)
+        }
 
         StatementKind::LlvmInlineAsm { .. } => {
             Err((span, "cannot use inline assembly in const fn".into()))
@@ -251,7 +253,7 @@ fn check_operand(
     body: &Body<'tcx>,
 ) -> McfResult {
     match operand {
-        Operand::Move(place) | Operand::Copy(place) => check_place(tcx, place, span, def_id, body),
+        Operand::Move(place) | Operand::Copy(place) => check_place(tcx, *place, span, def_id, body),
         Operand::Constant(c) => match c.check_static_ptr(tcx) {
             Some(_) => Err((span, "cannot access `static` items in const fn".into())),
             None => Ok(()),
@@ -261,7 +263,7 @@ fn check_operand(
 
 fn check_place(
     tcx: TyCtxt<'tcx>,
-    place: &Place<'tcx>,
+    place: Place<'tcx>,
     span: Span,
     def_id: DefId,
     body: &Body<'tcx>,
@@ -330,9 +332,9 @@ fn check_terminator(
         | TerminatorKind::Return
         | TerminatorKind::Resume => Ok(()),
 
-        TerminatorKind::Drop { location, .. } => check_place(tcx, location, span, def_id, body),
+        TerminatorKind::Drop { location, .. } => check_place(tcx, *location, span, def_id, body),
         TerminatorKind::DropAndReplace { location, value, .. } => {
-            check_place(tcx, location, span, def_id, body)?;
+            check_place(tcx, *location, span, def_id, body)?;
             check_operand(tcx, value, span, def_id, body)
         }
 

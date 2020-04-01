@@ -66,7 +66,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             this.local_decls.push(local_decl)
         };
-        let temp_place = &Place::from(temp);
+        let temp_place = Place::from(temp);
 
         match expr.kind {
             // Don't bother with StorageLive and Dead for these temporaries,

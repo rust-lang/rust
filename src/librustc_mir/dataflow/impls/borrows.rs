@@ -187,7 +187,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 
     /// Kill any borrows that conflict with `place`.
-    fn kill_borrows_on_place(&self, trans: &mut impl GenKill<BorrowIndex>, place: &Place<'tcx>) {
+    fn kill_borrows_on_place(&self, trans: &mut impl GenKill<BorrowIndex>, place: Place<'tcx>) {
         debug!("kill_borrows_on_place: place={:?}", place);
 
         let other_borrows_of_local = self
@@ -216,7 +216,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             places_conflict(
                 self.tcx,
                 self.body,
-                &self.borrow_set.borrows[i].borrowed_place,
+                self.borrow_set.borrows[i].borrowed_place,
                 place,
                 PlaceConflictBias::NoOverlap,
             )
@@ -262,8 +262,8 @@ impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
         location: Location,
     ) {
         match stmt.kind {
-            mir::StatementKind::Assign(box (ref lhs, ref rhs)) => {
-                if let mir::Rvalue::Ref(_, _, ref place) = *rhs {
+            mir::StatementKind::Assign(box (lhs, ref rhs)) => {
+                if let mir::Rvalue::Ref(_, _, place) = *rhs {
                     if place.ignore_borrow(
                         self.tcx,
                         self.body,
@@ -286,13 +286,13 @@ impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
             mir::StatementKind::StorageDead(local) => {
                 // Make sure there are no remaining borrows for locals that
                 // are gone out of scope.
-                self.kill_borrows_on_place(trans, &Place::from(local));
+                self.kill_borrows_on_place(trans, Place::from(local));
             }
 
             mir::StatementKind::LlvmInlineAsm(ref asm) => {
                 for (output, kind) in asm.outputs.iter().zip(&asm.asm.outputs) {
                     if !kind.is_indirect && !kind.is_rw {
-                        self.kill_borrows_on_place(trans, output);
+                        self.kill_borrows_on_place(trans, *output);
                     }
                 }
             }
@@ -329,7 +329,7 @@ impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
         _block: mir::BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        _dest_place: &mir::Place<'tcx>,
+        _dest_place: mir::Place<'tcx>,
     ) {
     }
 }

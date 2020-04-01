@@ -15,6 +15,7 @@ use rustc_span::symbol::{sym, Symbol};
 
 use super::graphviz;
 use super::{Analysis, GenKillAnalysis, GenKillSet, Results};
+use crate::util::pretty::dump_enabled;
 
 /// A solver for dataflow problems.
 pub struct Engine<'a, 'tcx, A>
@@ -228,7 +229,7 @@ where
                     self.propagate_bits_into_entry_set_for(in_out, drop, dirty_list);
                 }
 
-                self.analysis.apply_yield_resume_effect(in_out, target, &resume_arg);
+                self.analysis.apply_yield_resume_effect(in_out, target, resume_arg);
                 self.propagate_bits_into_entry_set_for(in_out, target, dirty_list);
             }
 
@@ -272,7 +273,7 @@ where
                     }
                 }
 
-                if let Some((ref dest_place, dest_bb)) = *destination {
+                if let Some((dest_place, dest_bb)) = *destination {
                     // N.B.: This must be done *last*, otherwise the unwind path will see the call
                     // return effect.
                     self.analysis.apply_call_return_effect(in_out, bb, func, args, dest_place);
@@ -314,7 +315,7 @@ where
         in_out: &mut BitSet<A::Idx>,
         bb: BasicBlock,
         enum_def: &'tcx ty::AdtDef,
-        enum_place: &mir::Place<'tcx>,
+        enum_place: mir::Place<'tcx>,
         dirty_list: &mut WorkQueue<BasicBlock>,
         values: &[u128],
         targets: &[BasicBlock],
@@ -361,14 +362,14 @@ fn switch_on_enum_discriminant(
     tcx: TyCtxt<'tcx>,
     body: &'mir mir::Body<'tcx>,
     block: &'mir mir::BasicBlockData<'tcx>,
-    switch_on: &mir::Place<'tcx>,
-) -> Option<(&'mir mir::Place<'tcx>, &'tcx ty::AdtDef)> {
+    switch_on: mir::Place<'tcx>,
+) -> Option<(mir::Place<'tcx>, &'tcx ty::AdtDef)> {
     match block.statements.last().map(|stmt| &stmt.kind) {
         Some(mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated))))
-            if lhs == switch_on =>
+            if *lhs == switch_on =>
         {
             match &discriminated.ty(body, tcx).ty.kind {
-                ty::Adt(def, _) => Some((discriminated, def)),
+                ty::Adt(def, _) => Some((*discriminated, def)),
 
                 // `Rvalue::Discriminant` is also used to get the active yield point for a
                 // generator, but we do not need edge-specific effects in that case. This may
@@ -400,12 +401,25 @@ where
     let attrs = match RustcMirAttrs::parse(tcx, def_id) {
         Ok(attrs) => attrs,
 
-        // Invalid `rustc_mir` attrs will be reported using `span_err`.
+        // Invalid `rustc_mir` attrs are reported in `RustcMirAttrs::parse`
         Err(()) => return Ok(()),
     };
 
     let path = match attrs.output_path(A::NAME) {
         Some(path) => path,
+
+        None if tcx.sess.opts.debugging_opts.dump_mir_dataflow
+            && dump_enabled(tcx, A::NAME, def_id) =>
+        {
+            let mut path = PathBuf::from(&tcx.sess.opts.debugging_opts.dump_mir_dir);
+
+            let item_name = ty::print::with_forced_impl_filename_line(|| {
+                tcx.def_path(def_id).to_filename_friendly_no_crate()
+            });
+            path.push(format!("rustc.{}.{}.dot", item_name, A::NAME));
+            path
+        }
+
         None => return Ok(()),
     };
 
@@ -430,7 +444,12 @@ where
 
     let graphviz = graphviz::Formatter::new(body, def_id, results, &mut *formatter);
     dot::render_opts(&graphviz, &mut buf, &[dot::RenderOption::Monospace])?;
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
     fs::write(&path, buf)?;
+
     Ok(())
 }
 

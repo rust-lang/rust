@@ -78,7 +78,7 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
         let llfn = cx.declare_fn(&sym, &fn_abi);
         debug!("get_fn: not casting pointer!");
 
-        attributes::from_fn_attrs(cx, llfn, instance, &fn_abi);
+        attributes::from_fn_attrs(cx, llfn, instance);
 
         let instance_def_id = instance.def_id();
 

@@ -341,12 +341,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let lt = self.temp(bool_ty, expr_span);
 
         // len = len(slice)
-        self.cfg.push_assign(block, source_info, &len, Rvalue::Len(slice));
+        self.cfg.push_assign(block, source_info, len, Rvalue::Len(slice));
         // lt = idx < len
         self.cfg.push_assign(
             block,
             source_info,
-            &lt,
+            lt,
             Rvalue::BinaryOp(BinOp::Lt, Operand::Copy(Place::from(index)), Operand::Copy(len)),
         );
         let msg = BoundsCheck { len: Operand::Move(len), index: Operand::Copy(Place::from(index)) };
@@ -388,7 +388,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         self.cfg.push_assign(
                             block,
                             source_info,
-                            &fake_borrow_temp.into(),
+                            fake_borrow_temp.into(),
                             Rvalue::Ref(
                                 tcx.lifetimes.re_erased,
                                 BorrowKind::Shallow,

@@ -114,7 +114,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
     fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         // When we see `X = ...`, then kill borrows of
         // `(*X).foo` and so forth.
-        self.record_killed_borrows_for_place(place, location);
+        self.record_killed_borrows_for_place(*place, location);
 
         self.super_assign(place, rvalue, location);
     }
@@ -139,7 +139,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
 
         // A `Call` terminator's return value can be a local which has borrows,
         // so we need to record those as `killed` as well.
-        if let TerminatorKind::Call { ref destination, .. } = terminator.kind {
+        if let TerminatorKind::Call { destination, .. } = terminator.kind {
             if let Some((place, _)) = destination {
                 self.record_killed_borrows_for_place(place, location);
             }
@@ -177,7 +177,7 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
 
     /// When recording facts for Polonius, records the borrows on the specified place
     /// as `killed`. For example, when assigning to a local, or on a call's return destination.
-    fn record_killed_borrows_for_place(&mut self, place: &Place<'tcx>, location: Location) {
+    fn record_killed_borrows_for_place(&mut self, place: Place<'tcx>, location: Location) {
         if let Some(all_facts) = self.all_facts {
             let _prof_timer = self.infcx.tcx.prof.generic_activity("polonius_fact_generation");
 
@@ -217,7 +217,7 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
                             let places_conflict = places_conflict::places_conflict(
                                 self.infcx.tcx,
                                 self.body,
-                                &self.borrow_set.borrows[borrow_index].borrowed_place,
+                                self.borrow_set.borrows[borrow_index].borrowed_place,
                                 place,
                                 places_conflict::PlaceConflictBias::NoOverlap,
                             );
