@@ -82,8 +82,8 @@ class TextDocumentContentProvider implements vscode.TextDocumentContentProvider 
 
 // FIXME: consider implementing this via the Tree View API?
 // https://code.visualstudio.com/api/extension-guides/tree-view
-class AstInspector implements vscode.HoverProvider, Disposable {
-    private static readonly astDecorationType = vscode.window.createTextEditorDecorationType({
+class AstInspector implements vscode.HoverProvider, vscode.DefinitionProvider, Disposable {
+    private readonly astDecorationType = vscode.window.createTextEditorDecorationType({
         borderColor: new vscode.ThemeColor('rust_analyzer.syntaxTreeBorder'),
         borderStyle: "solid",
         borderWidth: "2px",
@@ -91,15 +91,44 @@ class AstInspector implements vscode.HoverProvider, Disposable {
     });
     private rustEditor: undefined | RustEditor;
 
+    // Lazy rust token range -> syntax tree file range.
+    private readonly rust2Ast = new Lazy(() => {
+        const astEditor = this.findAstTextEditor();
+        if (!this.rustEditor || !astEditor) return undefined;
+
+        const buf: [vscode.Range, vscode.Range][] = [];
+        for (let i = 0; i < astEditor.document.lineCount; ++i) {
+            const astLine = astEditor.document.lineAt(i);
+
+            // Heuristically look for nodes with quoted text (which are token nodes)
+            const isTokenNode = astLine.text.lastIndexOf('"') >= 0;
+            if (!isTokenNode) continue;
+
+            const rustRange = this.parseRustTextRange(this.rustEditor.document, astLine.text);
+            if (!rustRange) continue;
+
+            buf.push([rustRange, this.findAstNodeRange(astLine)]);
+        }
+        return buf;
+    });
+
     constructor(ctx: Ctx) {
         ctx.pushCleanup(vscode.languages.registerHoverProvider({ scheme: AST_FILE_SCHEME }, this));
+        ctx.pushCleanup(vscode.languages.registerDefinitionProvider({ language: "rust" }, this));
         vscode.workspace.onDidCloseTextDocument(this.onDidCloseTextDocument, this, ctx.subscriptions);
+        vscode.workspace.onDidChangeTextDocument(this.onDidChangeTextDocument, this, ctx.subscriptions);
         vscode.window.onDidChangeVisibleTextEditors(this.onDidChangeVisibleTextEditors, this, ctx.subscriptions);
 
         ctx.pushCleanup(this);
     }
     dispose() {
         this.setRustEditor(undefined);
+    }
+
+    private onDidChangeTextDocument(event: vscode.TextDocumentChangeEvent) {
+        if (this.rustEditor && event.document.uri.toString() === this.rustEditor.document.uri.toString()) {
+            this.rust2Ast.reset();
+        }
     }
 
     private onDidCloseTextDocument(doc: vscode.TextDocument) {
@@ -109,38 +138,67 @@ class AstInspector implements vscode.HoverProvider, Disposable {
     }
 
     private onDidChangeVisibleTextEditors(editors: vscode.TextEditor[]) {
-        if (editors.every(suspect => suspect.document.uri.scheme !== AST_FILE_SCHEME)) {
+        if (!this.findAstTextEditor()) {
             this.setRustEditor(undefined);
             return;
         }
         this.setRustEditor(editors.find(isRustEditor));
     }
 
+    private findAstTextEditor(): undefined | vscode.TextEditor {
+        return vscode.window.visibleTextEditors.find(it => it.document.uri.scheme === AST_FILE_SCHEME);
+    }
+
     private setRustEditor(newRustEditor: undefined | RustEditor) {
-        if (newRustEditor !== this.rustEditor) {
-            this.rustEditor?.setDecorations(AstInspector.astDecorationType, []);
+        if (this.rustEditor && this.rustEditor !== newRustEditor) {
+            this.rustEditor.setDecorations(this.astDecorationType, []);
+            this.rust2Ast.reset();
         }
         this.rustEditor = newRustEditor;
     }
 
+    // additional positional params are omitted
+    provideDefinition(doc: vscode.TextDocument, pos: vscode.Position): vscode.ProviderResult<vscode.DefinitionLink[]> {
+        if (!this.rustEditor || doc.uri.toString() !== this.rustEditor.document.uri.toString()) return;
+
+        const astEditor = this.findAstTextEditor();
+        if (!astEditor) return;
+
+        const rust2AstRanges = this.rust2Ast.get()?.find(([rustRange, _]) => rustRange.contains(pos));
+        if (!rust2AstRanges) return;
+
+        const [rustFileRange, astFileRange] = rust2AstRanges;
+
+        astEditor.revealRange(astFileRange);
+        astEditor.selection = new vscode.Selection(astFileRange.start, astFileRange.end);
+
+        return [{
+            targetRange: astFileRange,
+            targetUri: astEditor.document.uri,
+            originSelectionRange: rustFileRange,
+            targetSelectionRange: astFileRange,
+        }];
+    }
+
+    // additional positional params are omitted
     provideHover(doc: vscode.TextDocument, hoverPosition: vscode.Position): vscode.ProviderResult<vscode.Hover> {
         if (!this.rustEditor) return;
 
-        const astTextLine = doc.lineAt(hoverPosition.line);
+        const astFileLine = doc.lineAt(hoverPosition.line);
 
-        const rustTextRange = this.parseRustTextRange(this.rustEditor.document, astTextLine.text);
-        if (!rustTextRange) return;
+        const rustFileRange = this.parseRustTextRange(this.rustEditor.document, astFileLine.text);
+        if (!rustFileRange) return;
 
-        this.rustEditor.setDecorations(AstInspector.astDecorationType, [rustTextRange]);
-        this.rustEditor.revealRange(rustTextRange);
+        this.rustEditor.setDecorations(this.astDecorationType, [rustFileRange]);
+        this.rustEditor.revealRange(rustFileRange);
 
-        const rustSourceCode = this.rustEditor.document.getText(rustTextRange);
-        const astTextRange = this.findAstRange(astTextLine);
+        const rustSourceCode = this.rustEditor.document.getText(rustFileRange);
+        const astFileRange = this.findAstNodeRange(astFileLine);
 
-        return new vscode.Hover(["```rust\n" + rustSourceCode + "\n```"], astTextRange);
+        return new vscode.Hover(["```rust\n" + rustSourceCode + "\n```"], astFileRange);
     }
 
-    private findAstRange(astLine: vscode.TextLine) {
+    private findAstNodeRange(astLine: vscode.TextLine) {
         const lineOffset = astLine.range.start;
         const begin = lineOffset.translate(undefined, astLine.firstNonWhitespaceCharacterIndex);
         const end = lineOffset.translate(undefined, astLine.text.trimEnd().length);
@@ -154,5 +212,19 @@ class AstInspector implements vscode.HoverProvider, Disposable {
         const [begin, end] = parsedRange.slice(1).map(off => doc.positionAt(+off));
 
         return new vscode.Range(begin, end);
+    }
+}
+
+class Lazy<T> {
+    val: undefined | T;
+
+    constructor(private readonly compute: () => undefined | T) { }
+
+    get() {
+        return this.val ?? (this.val = this.compute());
+    }
+
+    reset() {
+        this.val = undefined;
     }
 }
