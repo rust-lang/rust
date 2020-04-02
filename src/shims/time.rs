@@ -117,6 +117,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
+    #[allow(non_snake_case)]
+    fn QueryPerformanceCounter(&mut self, lpPerformanceCount_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.assert_target_os("windows", "QueryPerformanceCounter");
+        this.check_no_isolation("QueryPerformanceCounter")?;
+
+        // QPC uses a hardware counter as its basis.
+        // Miri will assume that the machine's hardware counter has a resolution of 1 nanosecond.
+        let duration = Instant::now().duration_since(this.machine.time_anchor);
+        let qpc = i64::try_from(duration.as_nanos())
+            .map_err(|_| err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported"))?;
+        this.write_scalar(Scalar::from_i64(qpc), this.deref_operand(lpPerformanceCount_op)?.into())?;
+        Ok(-1) // return non-zero on success
+    }
+
+    #[allow(non_snake_case)]
+    fn QueryPerformanceFrequency(&mut self, lpFrequency_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.assert_target_os("windows", "QueryPerformanceFrequency");
+        this.check_no_isolation("QueryPerformanceFrequency")?;
+
+        // Retrieves the frequency of the hardware performance counter.
+        // The frequency of the performance counter is fixed at system boot and
+        // is consistent across all processors.
+        // Miri will assume that the frequency of
+        // the machine's hardware performance counter is 1 GHz ( = 1 x 10^9 Hz).
+        this.write_scalar(Scalar::from_i64(1_000_000_000), this.deref_operand(lpFrequency_op)?.into())?;
+        Ok(-1) // Return non-zero on success
+    }
+
     fn mach_absolute_time(&self) -> InterpResult<'tcx, u64> {
         let this = self.eval_context_ref();
 

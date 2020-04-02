@@ -24,27 +24,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.GetEnvironmentVariableW(args[0], args[1], args[2])?;
                 this.write_scalar(Scalar::from_u32(result), dest)?;
             }
-
             "SetEnvironmentVariableW" => {
                 let result = this.SetEnvironmentVariableW(args[0], args[1])?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
-
             "GetEnvironmentStringsW" => {
                 let result = this.GetEnvironmentStringsW()?;
                 this.write_scalar(result, dest)?;
             }
-
             "FreeEnvironmentStringsW" => {
                 let result = this.FreeEnvironmentStringsW(args[0])?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
-
             "GetCurrentDirectoryW" => {
                 let result = this.GetCurrentDirectoryW(args[0], args[1])?;
                 this.write_scalar(Scalar::from_u32(result), dest)?;
             }
-
             "SetCurrentDirectoryW" => {
                 let result = this.SetCurrentDirectoryW(args[0])?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
@@ -170,6 +165,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Time related shims
             "GetSystemTimeAsFileTime" => {
                 this.GetSystemTimeAsFileTime(args[0])?;
+            }
+            "QueryPerformanceCounter" => {
+                let result = this.QueryPerformanceCounter(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "QueryPerformanceFrequency" => {
+                let result = this.QueryPerformanceFrequency(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
             // Miscellaneous
