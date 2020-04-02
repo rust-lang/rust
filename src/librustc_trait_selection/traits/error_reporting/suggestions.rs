@@ -1378,10 +1378,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             )
         };
 
-        let push_target_span = |span: &mut MultiSpan| {
+        let push_target_span_with_fallback = |span: &mut MultiSpan, fallback: &str| {
             if target_ty.is_impl_trait() {
                 // It's not very useful to tell the user the type if it's opaque.
-                span.push_span_label(target_span, "created here".to_string());
+                span.push_span_label(target_span, fallback.to_string());
             } else {
                 span.push_span_label(target_span, format!("has type `{}`", target_ty));
             }
@@ -1390,10 +1390,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         if let Some(await_span) = from_awaited_ty {
             // The type causing this obligation is one being awaited at await_span.
             let mut span = MultiSpan::from_span(await_span);
-            span.push_span_label(await_span, "await occurs here".to_string());
 
-            if target_span != await_span {
-                push_target_span(&mut span);
+            if target_span == await_span {
+                push_target_span_with_fallback(&mut span, "await occurs here");
+            } else {
+                span.push_span_label(await_span, "await occurs here".to_string());
+                push_target_span_with_fallback(&mut span, "created here");
             }
 
             err.span_note(
@@ -1413,7 +1415,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 format!("{} occurs here, with `{}` maybe used later", await_or_yield, snippet),
             );
 
-            push_target_span(&mut span);
+            push_target_span_with_fallback(&mut span, "created here");
 
             // If available, use the scope span to annotate the drop location.
             if let Some(scope_span) = scope_span {
