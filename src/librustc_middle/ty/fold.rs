@@ -142,6 +142,13 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
     }
 
+    /// Indicates whether this value still has parameters/placeholders/inference variables
+    /// which could be replaced later, in a way that would change the results of `impl`
+    /// specialization.
+    fn still_further_specializable(&self) -> bool {
+        self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
+    }
+
     /// A visitor that does not recurse into types, works like `fn walk_shallow` in `Ty`.
     fn visit_tys_shallow(&self, visit: impl FnMut(Ty<'tcx>) -> bool) -> bool {
         pub struct Visitor<F>(F);
