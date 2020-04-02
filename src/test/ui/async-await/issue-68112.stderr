@@ -8,16 +8,13 @@ LL |     require_send(send_fut);
    |     ^^^^^^^^^^^^ future created by async block is not `Send`
    |
    = help: the trait `std::marker::Sync` is not implemented for `std::cell::RefCell<i32>`
-note: future is not `Send` as this value is used across an await
-  --> $DIR/issue-68112.rs:32:9
+note: future is not `Send` as this value is used in an await
+  --> $DIR/issue-68112.rs:31:17
    |
 LL |         let non_send_fut = make_non_send_future1();
    |             ------------ created here
 LL |         let _ = non_send_fut.await;
-LL |         ready(0).await;
-   |         ^^^^^^^^ await occurs here, with `non_send_fut` maybe used later
-LL |     };
-   |     - `non_send_fut` is later dropped here
+   |                 ^^^^^^^^^^^^ await occurs here
 
 error[E0277]: `std::cell::RefCell<i32>` cannot be shared between threads safely
   --> $DIR/issue-68112.rs:49:5

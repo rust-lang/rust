@@ -590,6 +590,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             await_span,
             self.allow_gen_future.clone(),
         );
+        let expr = self.lower_expr(expr);
 
         let pinned_ident = Ident::with_dummy_span(sym::pinned);
         let (pinned_pat, pinned_pat_hid) =
@@ -671,7 +672,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let unit = self.expr_unit(span);
             let yield_expr = self.expr(
                 span,
-                hir::ExprKind::Yield(unit, hir::YieldSource::Await),
+                hir::ExprKind::Yield(unit, hir::YieldSource::Await { expr: Some(expr.hir_id) }),
                 ThinVec::new(),
             );
             let yield_expr = self.arena.alloc(yield_expr);
@@ -704,7 +705,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // match <expr> {
         //     mut pinned => loop { .. }
         // }
-        let expr = self.lower_expr(expr);
         hir::ExprKind::Match(expr, arena_vec![self; pinned_arm], hir::MatchSource::AwaitDesugar)
     }
 

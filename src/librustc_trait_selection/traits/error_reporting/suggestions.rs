@@ -127,13 +127,14 @@ pub trait InferCtxtExt<'tcx> {
         scope_span: &Option<Span>,
         expr: Option<hir::HirId>,
         snippet: String,
-        inner_generator: DefId,
+        inner_generator_body: Option<&hir::Body<'_>>,
         outer_generator: Option<DefId>,
         trait_ref: ty::TraitRef<'_>,
         target_ty: Ty<'tcx>,
         tables: &ty::TypeckTables<'_>,
         obligation: &PredicateObligation<'tcx>,
         next_code: Option<&ObligationCauseCode<'tcx>>,
+        from_awaited_ty: Option<Span>,
     );
 
     fn note_obligation_cause_code<T>(
@@ -1203,6 +1204,17 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
+        let generator_body = self.tcx
+            .hir()
+            .as_local_hir_id(generator_did)
+            .and_then(|hir_id| self.tcx.hir().maybe_body_owned_by(hir_id))
+            .map(|body_id| self.tcx.hir().body(body_id));
+        let mut visitor = AwaitsVisitor::default();
+        if let Some(body) = generator_body {
+            visitor.visit_body(body);
+        }
+        debug!("maybe_note_obligation_cause_for_async_await: awaits = {:?}", visitor.awaits);
+
         // Look for a type inside the generator interior that matches the target type to get
         // a span.
         let target_ty_erased = self.tcx.erase_regions(&target_ty);
@@ -1232,8 +1244,26 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 );
                 eq
             })
-            .map(|ty::GeneratorInteriorTypeCause { span, scope_span, expr, .. }| {
-                (span, source_map.span_to_snippet(*span), scope_span, expr)
+            .map(|cause| {
+                // Check to see if any awaited expressions have the target type.
+                let from_awaited_ty = visitor.awaits.into_iter()
+                    .map(|id| self.tcx.hir().expect_expr(id))
+                    .find(|expr| {
+                        let ty = tables.expr_ty_adjusted(&expr);
+                        // Compare types using the same logic as above.
+                        let ty_erased = self.tcx.erase_late_bound_regions(&ty::Binder::bind(ty));
+                        let ty_erased = self.tcx.erase_regions(&ty_erased);
+                        let eq = ty::TyS::same_type(ty_erased, target_ty_erased);
+                        debug!(
+                            "maybe_note_obligation_cause_for_async_await: await_expr={:?} \
+                            await_ty_erased={:?}  target_ty_erased={:?} eq={:?}",
+                            expr, ty_erased, target_ty_erased, eq
+                        );
+                        eq
+                    })
+                    .map(|expr| expr.span);
+                let ty::GeneratorInteriorTypeCause { span, scope_span, expr, .. } = cause;
+                (span, source_map.span_to_snippet(*span), scope_span, expr, from_awaited_ty)
             });
 
         debug!(
@@ -1241,20 +1271,21 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 generator_interior_types={:?} target_span={:?}",
             target_ty, tables.generator_interior_types, target_span
         );
-        if let Some((target_span, Ok(snippet), scope_span, expr)) = target_span {
+        if let Some((target_span, Ok(snippet), scope_span, expr, from_awaited_ty)) = target_span {
             self.note_obligation_cause_for_async_await(
                 err,
                 *target_span,
                 scope_span,
                 *expr,
                 snippet,
-                generator_did,
+                generator_body,
                 outer_generator,
                 trait_ref,
                 target_ty,
                 tables,
                 obligation,
                 next_code,
+                from_awaited_ty,
             );
             true
         } else {
@@ -1271,22 +1302,18 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         scope_span: &Option<Span>,
         expr: Option<hir::HirId>,
         snippet: String,
-        inner_generator: DefId,
+        inner_generator_body: Option<&hir::Body<'_>>,
         outer_generator: Option<DefId>,
         trait_ref: ty::TraitRef<'_>,
         target_ty: Ty<'tcx>,
         tables: &ty::TypeckTables<'_>,
         obligation: &PredicateObligation<'tcx>,
         next_code: Option<&ObligationCauseCode<'tcx>>,
+        from_awaited_ty: Option<Span>,
     ) {
         let source_map = self.tcx.sess.source_map();
 
-        let is_async = self
-            .tcx
-            .hir()
-            .as_local_hir_id(inner_generator)
-            .and_then(|hir_id| self.tcx.hir().maybe_body_owned_by(hir_id))
-            .map(|body_id| self.tcx.hir().body(body_id))
+        let is_async = inner_generator_body
             .and_then(|body| body.generator_kind())
             .map(|generator_kind| match generator_kind {
                 hir::GeneratorKind::Async(..) => true,
@@ -1345,33 +1372,57 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             )
         };
 
-        // Look at the last interior type to get a span for the `.await`.
-        let await_span = tables.generator_interior_types.iter().map(|t| t.span).last().unwrap();
-        let mut span = MultiSpan::from_span(await_span);
-        span.push_span_label(
-            await_span,
-            format!("{} occurs here, with `{}` maybe used later", await_or_yield, snippet),
-        );
+        let push_target_span = |span: &mut MultiSpan| {
+            if target_ty.is_impl_trait() {
+                // It's not very useful to tell the user the type if it's opaque.
+                span.push_span_label(target_span, "created here".to_string());
+            } else {
+                span.push_span_label(target_span, format!("has type `{}`", target_ty));
+            }
+        };
 
-        if target_ty.is_impl_trait() {
-            // It's not very useful to tell the user the type if it's opaque.
-            span.push_span_label(target_span, "created here".to_string());
-        } else {
-            span.push_span_label(target_span, format!("has type `{}`", target_ty));
-        }
-
-        // If available, use the scope span to annotate the drop location.
-        if let Some(scope_span) = scope_span {
+        if let Some(await_span) = from_awaited_ty {
+            // The type causing this obligation is one being awaited at await_span.
+            let mut span = MultiSpan::from_span(await_span);
             span.push_span_label(
-                source_map.end_point(*scope_span),
-                format!("`{}` is later dropped here", snippet),
+                await_span,
+                "await occurs here".to_string(),
+            );
+
+            push_target_span(&mut span);
+
+            err.span_note(
+                span,
+                &format!("{} as this value is used in an await", trait_explanation),
+            );
+        } else {
+            // Look at the last interior type to get a span for the `.await`.
+            debug!(
+                "note_obligation_cause_for_async_await generator_interior_types: {:#?}",
+                tables.generator_interior_types
+            );
+            let await_span = tables.generator_interior_types.iter().map(|t| t.span).last().unwrap();
+            let mut span = MultiSpan::from_span(await_span);
+            span.push_span_label(
+                await_span,
+                format!("{} occurs here, with `{}` maybe used later", await_or_yield, snippet),
+            );
+
+            push_target_span(&mut span);
+
+            // If available, use the scope span to annotate the drop location.
+            if let Some(scope_span) = scope_span {
+                span.push_span_label(
+                    source_map.end_point(*scope_span),
+                    format!("`{}` is later dropped here", snippet),
+                );
+            }
+
+            err.span_note(
+                span,
+                &format!("{} as this value is used across an {}", trait_explanation, await_or_yield),
             );
         }
-
-        err.span_note(
-            span,
-            &format!("{} as this value is used across an {}", trait_explanation, await_or_yield),
-        );
 
         if let Some(expr_id) = expr {
             let expr = hir.expect_expr(expr_id);
@@ -1713,6 +1764,29 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
             }
         }
         hir::intravisit::walk_body(self, body);
+    }
+}
+
+/// Collect all the awaited expressions within the input expression.
+#[derive(Default)]
+struct AwaitsVisitor {
+    awaits: Vec<hir::HirId>,
+}
+
+impl<'v> Visitor<'v> for AwaitsVisitor {
+    type Map = hir::intravisit::ErasedMap<'v>;
+
+    fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
+        hir::intravisit::NestedVisitorMap::None
+    }
+
+    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+        match ex.kind {
+            hir::ExprKind::Yield(_, hir::YieldSource::Await { expr: Some(id) }) =>
+                self.awaits.push(id),
+            _ => (),
+        }
+        hir::intravisit::walk_expr(self, ex)
     }
 }
 
