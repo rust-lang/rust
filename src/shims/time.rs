@@ -125,7 +125,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("QueryPerformanceCounter")?;
 
         // QPC uses a hardware counter as its basis.
-        // Miri will assume that the machine's hardware counter has a resolution of 1 nanosecond.
+        // Miri will emulate a counter with a resolution of 1 nanosecond.
         let duration = Instant::now().duration_since(this.machine.time_anchor);
         let qpc = i64::try_from(duration.as_nanos())
             .map_err(|_| err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported"))?;
