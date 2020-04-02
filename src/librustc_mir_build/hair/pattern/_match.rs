@@ -236,15 +236,16 @@ use super::{compare_const_vals, PatternFoldable, PatternFolder};
 use super::{FieldPat, Pat, PatKind, PatRange};
 
 use rustc_attr::{SignedInt, UnsignedInt};
+use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, RangeEnd};
 use rustc_middle::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
 use rustc_middle::mir::Field;
-use rustc_middle::ty::layout::{Integer, IntegerExt, Size, VariantIdx};
+use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeFoldable, VariantDef};
-use rustc_middle::util::common::ErrorReported;
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi::{Integer, Size, VariantIdx};
 
 use arena::TypedArena;
 

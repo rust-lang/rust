@@ -15,7 +15,7 @@ use rustc_span::DUMMY_SP;
 use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, Conv, FnAbi, PassMode, Reg, RegKind,
 };
-pub use rustc_target::abi::*;
+use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy};
 
 use std::cmp;

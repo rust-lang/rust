@@ -15,6 +15,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, 
 use rustc_hir::definitions::DefPathTable;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
+use rustc_hir::lang_items;
 use rustc_hir::{AnonConst, GenericParamKind};
 use rustc_index::vec::Idx;
 use rustc_middle::hir::map::Map;
@@ -25,17 +26,16 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
 };
-use rustc_middle::middle::lang_items;
 use rustc_middle::mir::{self, interpret};
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::{self as ty_codec, TyEncoder};
-use rustc_middle::ty::layout::VariantIdx;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
 use rustc_session::config::{self, CrateType};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span};
+use rustc_target::abi::VariantIdx;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;

@@ -8,8 +8,10 @@ use crate::MemFlags;
 
 use rustc_middle::mir;
 use rustc_middle::mir::tcx::PlaceTy;
-use rustc_middle::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyAndLayout, VariantIdx};
+use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
+use rustc_target::abi::{Abi, Align, DiscriminantKind, FieldsShape, Int};
+use rustc_target::abi::{LayoutOf, VariantIdx, Variants};
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceRef<'tcx, V> {
@@ -66,7 +68,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 
     pub fn len<Cx: ConstMethods<'tcx, Value = V>>(&self, cx: &Cx) -> V {
-        if let layout::FieldsShape::Array { count, .. } = self.layout.fields {
+        if let FieldsShape::Array { count, .. } = self.layout.fields {
             if self.layout.is_unsized() {
                 assert_eq!(count, 0);
                 self.llextra.unwrap()
@@ -94,7 +96,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             // Unions and newtypes only use an offset of 0.
             let llval = if offset.bytes() == 0 {
                 self.llval
-            } else if let layout::Abi::ScalarPair(ref a, ref b) = self.layout.abi {
+            } else if let Abi::ScalarPair(ref a, ref b) = self.layout.abi {
                 // Offsets have to match either first or second field.
                 assert_eq!(offset, a.value.size(bx.cx()).align_to(b.value.align(bx.cx()).abi));
                 bx.struct_gep(self.llval, 1)
@@ -198,7 +200,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             return bx.cx().const_undef(cast_to);
         }
         let (discr_scalar, discr_kind, discr_index) = match self.layout.variants {
-            layout::Variants::Single { index } => {
+            Variants::Single { index } => {
                 let discr_val = self
                     .layout
                     .ty
@@ -206,7 +208,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     .map_or(index.as_u32() as u128, |discr| discr.val);
                 return bx.cx().const_uint_big(cast_to, discr_val);
             }
-            layout::Variants::Multiple { ref discr, ref discr_kind, discr_index, .. } => {
+            Variants::Multiple { ref discr, ref discr_kind, discr_index, .. } => {
                 (discr, discr_kind, discr_index)
             }
         };
@@ -217,22 +219,18 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
 
         // Decode the discriminant (specifically if it's niche-encoded).
         match *discr_kind {
-            layout::DiscriminantKind::Tag => {
+            DiscriminantKind::Tag => {
                 let signed = match discr_scalar.value {
                     // We use `i1` for bytes that are always `0` or `1`,
                     // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
                     // let LLVM interpret the `i1` as signed, because
                     // then `i1 1` (i.e., `E::B`) is effectively `i8 -1`.
-                    layout::Int(_, signed) => !discr_scalar.is_bool() && signed,
+                    Int(_, signed) => !discr_scalar.is_bool() && signed,
                     _ => false,
                 };
                 bx.intcast(encoded_discr.immediate(), cast_to, signed)
             }
-            layout::DiscriminantKind::Niche {
-                dataful_variant,
-                ref niche_variants,
-                niche_start,
-            } => {
+            DiscriminantKind::Niche { dataful_variant, ref niche_variants, niche_start } => {
                 // Rebase from niche values to discriminants, and check
                 // whether the result is in range for the niche variants.
                 let niche_llty = bx.cx().immediate_backend_type(encoded_discr.layout);
@@ -311,14 +309,10 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             return;
         }
         match self.layout.variants {
-            layout::Variants::Single { index } => {
+            Variants::Single { index } => {
                 assert_eq!(index, variant_index);
             }
-            layout::Variants::Multiple {
-                discr_kind: layout::DiscriminantKind::Tag,
-                discr_index,
-                ..
-            } => {
+            Variants::Multiple { discr_kind: DiscriminantKind::Tag, discr_index, .. } => {
                 let ptr = self.project_field(bx, discr_index);
                 let to =
                     self.layout.ty.discriminant_for_variant(bx.tcx(), variant_index).unwrap().val;
@@ -328,9 +322,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     ptr.align,
                 );
             }
-            layout::Variants::Multiple {
+            Variants::Multiple {
                 discr_kind:
-                    layout::DiscriminantKind::Niche { dataful_variant, ref niche_variants, niche_start },
+                    DiscriminantKind::Niche { dataful_variant, ref niche_variants, niche_start },
                 discr_index,
                 ..
             } => {

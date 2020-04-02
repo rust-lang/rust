@@ -1,6 +1,6 @@
 use super::BackendTypes;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::layout::Align;
+use rustc_target::abi::Align;
 
 pub trait StaticMethods: BackendTypes {
     fn static_addr_of(&self, cv: Self::Value, align: Align, kind: Option<&str>) -> Self::Value;

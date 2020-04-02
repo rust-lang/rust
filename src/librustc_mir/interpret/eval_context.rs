@@ -13,11 +13,12 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::{
     sign_extend, truncate, AllocId, FrameInfo, GlobalId, InterpResult, Pointer, Scalar,
 };
-use rustc_middle::ty::layout::{self, Align, HasDataLayout, LayoutOf, Size, TyAndLayout};
+use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::query::TyCtxtAt;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map::DUMMY_SP;
+use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
     Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
@@ -173,7 +174,7 @@ impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpCx<'mir, 'tcx, M> {
     #[inline]
-    fn data_layout(&self) -> &layout::TargetDataLayout {
+    fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }

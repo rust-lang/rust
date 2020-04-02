@@ -16,9 +16,9 @@ use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout::VariantIdx;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::Span;
+use rustc_target::abi::VariantIdx;
 use smallvec::{smallvec, SmallVec};
 
 // helper functions, broken out by category:

@@ -8,13 +8,14 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_apfloat::{ieee, Float, Round, Status};
-use rustc_middle::middle::lang_items::ExchangeMallocFnLangItem;
+use rustc_hir::lang_items::ExchangeMallocFnLangItem;
 use rustc_middle::mir;
 use rustc_middle::ty::cast::{CastTy, IntTy};
-use rustc_middle::ty::layout::{self, HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::sym;
+use rustc_target::abi::{Abi, Int, LayoutOf, Variants};
 
 use std::{i128, u128};
 
@@ -292,7 +293,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let r_t_out = CastTy::from_ty(cast.ty).expect("bad output type for cast");
                         let ll_t_in = bx.cx().immediate_backend_type(operand.layout);
                         match operand.layout.variants {
-                            layout::Variants::Single { index } => {
+                            Variants::Single { index } => {
                                 if let Some(discr) =
                                     operand.layout.ty.discriminant_for_variant(bx.tcx(), index)
                                 {
@@ -311,13 +312,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     );
                                 }
                             }
-                            layout::Variants::Multiple { .. } => {}
+                            Variants::Multiple { .. } => {}
                         }
                         let llval = operand.immediate();
 
                         let mut signed = false;
-                        if let layout::Abi::Scalar(ref scalar) = operand.layout.abi {
-                            if let layout::Int(_, s) = scalar.value {
+                        if let Abi::Scalar(ref scalar) = operand.layout.abi {
+                            if let Int(_, s) = scalar.value {
                                 // We use `i1` for bytes that are always `0` or `1`,
                                 // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
                                 // let LLVM interpret the `i1` as signed, because
