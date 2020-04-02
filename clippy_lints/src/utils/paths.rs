@@ -10,6 +10,7 @@ pub const BEGIN_PANIC: [&str; 3] = ["std", "panicking", "begin_panic"];
 pub const BEGIN_PANIC_FMT: [&str; 3] = ["std", "panicking", "begin_panic_fmt"];
 pub const BINARY_HEAP: [&str; 4] = ["alloc", "collections", "binary_heap", "BinaryHeap"];
 pub const BORROW_TRAIT: [&str; 3] = ["core", "borrow", "Borrow"];
+pub const BOX: [&str; 3] = ["alloc", "boxed", "Box"];
 pub const BTREEMAP: [&str; 5] = ["alloc", "collections", "btree", "map", "BTreeMap"];
 pub const BTREEMAP_ENTRY: [&str; 5] = ["alloc", "collections", "btree", "map", "Entry"];
 pub const BTREESET: [&str; 5] = ["alloc", "collections", "btree", "set", "BTreeSet"];
