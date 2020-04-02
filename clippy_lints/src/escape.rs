@@ -2,10 +2,10 @@ use rustc_hir::intravisit;
 use rustc_hir::{self, Body, FnDecl, HirId, HirIdSet, ItemKind, Node};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
+use rustc_target::abi::LayoutOf;
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Place, PlaceBase};
 
 use crate::utils::span_lint;
