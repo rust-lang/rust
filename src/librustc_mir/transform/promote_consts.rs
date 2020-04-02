@@ -122,8 +122,8 @@ impl Candidate {
     /// Returns `true` if we should use the "explicit" rules for promotability for this `Candidate`.
     fn forces_explicit_promotion(&self) -> bool {
         match self {
-            Candidate::Ref(_) | Candidate::Repeat(_) => false,
-            Candidate::Argument { .. } => true,
+            Candidate::Ref(_) => false,
+            Candidate::Argument { .. } | Candidate::Repeat(_) => true,
         }
     }
 }
@@ -203,14 +203,20 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
 
-        match *rvalue {
+        match rvalue {
             Rvalue::Ref(..) => {
                 self.candidates.push(Candidate::Ref(location));
             }
-            Rvalue::Repeat(..) if self.ccx.tcx.features().const_in_array_repeat_expressions => {
-                // FIXME(#49147) only promote the element when it isn't `Copy`
-                // (so that code that can copy it at runtime is unaffected).
-                self.candidates.push(Candidate::Repeat(location));
+            Rvalue::Repeat(elem, _)
+                if self.ccx.tcx.features().const_in_array_repeat_expressions =>
+            {
+                if !elem.ty(&self.ccx.body.local_decls, self.ccx.tcx).is_copy_modulo_regions(
+                    self.ccx.tcx,
+                    self.ccx.param_env,
+                    self.span,
+                ) {
+                    self.candidates.push(Candidate::Repeat(location));
+                }
             }
             _ => {}
         }
@@ -380,7 +386,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 }
             }
             Candidate::Repeat(loc) => {
-                assert!(!self.explicit);
+                assert!(self.explicit);
 
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
