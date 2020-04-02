@@ -297,8 +297,9 @@ impl<'tcx> LiteralExpander<'tcx> {
                     }
                 }
             }
-            // Unsize array to slice if pattern is array
-            // but match value or other patterns are slice.
+			// Unsize the array to a slice if we're matching on a slice,
+			// or other patterns are a slice (despite this pattern being
+			// an array).
             (ConstValue::Scalar(s), ty::Array(t, n), ty::Slice(u)) => {
                 assert_eq!(t, u);
                 let n = n.eval_usize(self.tcx, ty::ParamEnv::empty()).try_into().unwrap();
