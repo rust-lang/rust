@@ -105,7 +105,7 @@ pub fn gen_modules_list<'a>(lints: impl Iterator<Item = &'a Lint>) -> Vec<String
     lints
         .map(|l| &l.module)
         .unique()
-        .map(|module| format!("pub mod {};", module))
+        .map(|module| format!("mod {};", module))
         .sorted()
         .collect::<Vec<String>>()
 }
@@ -503,10 +503,7 @@ fn test_gen_modules_list() {
         Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
         Lint::new("incorrect_stuff", "group3", "abc", None, "another_module"),
     ];
-    let expected = vec![
-        "pub mod another_module;".to_string(),
-        "pub mod module_name;".to_string(),
-    ];
+    let expected = vec!["mod another_module;".to_string(), "mod module_name;".to_string()];
     assert_eq!(expected, gen_modules_list(lints.iter()));
 }
 
