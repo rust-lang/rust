@@ -128,7 +128,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Miri will assume that the machine's hardware counter has a resolution of 1 nanosecond.
         let duration = Instant::now().duration_since(this.machine.time_anchor);
         let qpc = i64::try_from(duration.as_nanos())
-            .map_err(|_| err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported"))?;
+            .map_err(|_| err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported"))?;
         this.write_scalar(Scalar::from_i64(qpc), this.deref_operand(lpPerformanceCount_op)?.into())?;
         Ok(-1) // return non-zero on success
     }
