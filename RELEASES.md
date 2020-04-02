@@ -37,9 +37,6 @@ Libraries
   `TryFrom<Arc<[T]>>`,`TryFrom<Box<[T]>>`, and `TryFrom<Rc<[T]>>`
   respectively.][69538] **Note** These conversions are only available when `N`
   is `0..=32`.
-- [All `to_be_bytes`, `to_le_bytes`, `to_ne_bytes`, `from_be_bytes`,
-  `from_le_bytes`, and `from_ne_bytes` methods for integers are
-  now `const`.][69373]
 - [You can now use associated constants on floats and integers directly, rather
   than having to import the module.][68952] e.g. You can now write `u32::MAX` or
   `f32::NAN` with no imports.
@@ -74,6 +71,17 @@ Misc
 - [Certain checks in the `const_err` lint were deemed unrelated to const
   evaluation][69185], and have been moved to the `unconditional_panic` and
   `arithmetic_overflow` lints.
+  
+Compatibility Notes
+-------------------
+
+- [Having trailing syntax in the `assert!` macro is now a hard error.][69548] This
+  has been a warning since 1.36.0.
+- [Fixed `Self` not having the correctly inferred type.][69340] This incorrectly
+  led to some instances being accepted, and now correctly emits a hard error.
+- [][]
+
+[69340]: https://github.com/rust-lang/rust/pull/69340
 
 Internal Only
 -------------
@@ -114,10 +122,10 @@ related tools.
 [69194]: https://github.com/rust-lang/rust/pull/69194/
 [69201]: https://github.com/rust-lang/rust/pull/69201/
 [69227]: https://github.com/rust-lang/rust/pull/69227/
+[69548]: https://github.com/rust-lang/rust/pull/69548/
 [69256]: https://github.com/rust-lang/rust/pull/69256/
 [69361]: https://github.com/rust-lang/rust/pull/69361/
 [69366]: https://github.com/rust-lang/rust/pull/69366/
-[69373]: https://github.com/rust-lang/rust/pull/69373/
 [69538]: https://github.com/rust-lang/rust/pull/69538/
 [cargo/7823]: https://github.com/rust-lang/cargo/pull/7823
 [cargo/7697]: https://github.com/rust-lang/cargo/pull/7697
