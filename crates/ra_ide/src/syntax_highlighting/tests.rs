@@ -131,3 +131,19 @@ fn test_ranges() {
 
     assert_eq!(&highlights[0].highlight.to_string(), "field.declaration");
 }
+
+#[test]
+fn test_flattening() {
+    let (analysis, file_id) = single_file(r#"#[cfg(feature = "foo")]"#);
+
+    let highlights = analysis.highlight(file_id).unwrap();
+
+    // The source code snippet contains 2 nested highlights:
+    // 1) Attribute spanning the whole string
+    // 2) The string "foo"
+    // The resulting flattening splits the attribute range:
+    assert_eq!(highlights.len(), 3);
+    assert_eq!(&highlights[0].highlight.to_string(), "attribute");
+    assert_eq!(&highlights[1].highlight.to_string(), "string_literal");
+    assert_eq!(&highlights[2].highlight.to_string(), "attribute");
+}
