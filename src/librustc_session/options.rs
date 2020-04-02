@@ -236,9 +236,8 @@ macro_rules! options {
 
     #[allow(non_upper_case_globals, dead_code)]
     mod $mod_desc {
-        pub const parse_bool: Option<&str> = None;
-        pub const parse_opt_bool: Option<&str> =
-            Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
+        pub const parse_bool: Option<&str> = Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
+        pub const parse_opt_bool: Option<&str> = parse_bool;
         pub const parse_string: Option<&str> = Some("a string");
         pub const parse_string_push: Option<&str> = Some("a string");
         pub const parse_pathbuf_push: Option<&str> = Some("a path");
@@ -310,35 +309,35 @@ macro_rules! options {
             }
         )*
 
-        /// Set a flag to true. Note that it cannot set the flag to false, so
-        /// using this parser in combination with a flag that defaults to true
-        /// is useless; the flag will always be true.
+        /// Use this for any boolean option that has a static default.
         fn parse_bool(slot: &mut bool, v: Option<&str>) -> bool {
             match v {
-                Some(..) => false,
-                None => { *slot = true; true }
+                Some("y") | Some("yes") | Some("on") | None => { *slot = true; true }
+                Some("n") | Some("no") | Some("off") => { *slot = false; true }
+                _ => false,
             }
         }
 
+        /// Use this for any boolean option that lacks a static default. (The
+        /// actions taken when such an option is not specified will depend on
+        /// other factors, such as other options, or target options.)
         fn parse_opt_bool(slot: &mut Option<bool>, v: Option<&str>) -> bool {
             match v {
-                Some(s) => {
-                    match s {
-                        "n" | "no" | "off" => {
-                            *slot = Some(false);
-                        }
-                        "y" | "yes" | "on" => {
-                            *slot = Some(true);
-                        }
-                        _ => { return false; }
-                    }
-
-                    true
-                },
-                None => { *slot = Some(true); true }
+                Some("y") | Some("yes") | Some("on") | None => { *slot = Some(true); true }
+                Some("n") | Some("no") | Some("off") => { *slot = Some(false); true }
+                _ => false,
             }
         }
 
+        /// Use this for any string option that has a static default.
+        fn parse_string(slot: &mut String, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => { *slot = s.to_string(); true },
+                None => false,
+            }
+        }
+
+        /// Use this for any string option that lacks a static default.
         fn parse_opt_string(slot: &mut Option<String>, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = Some(s.to_string()); true },
@@ -349,13 +348,6 @@ macro_rules! options {
         fn parse_opt_pathbuf(slot: &mut Option<PathBuf>, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = Some(PathBuf::from(s)); true },
-                None => false,
-            }
-        }
-
-        fn parse_string(slot: &mut String, v: Option<&str>) -> bool {
-            match v {
-                Some(s) => { *slot = s.to_string(); true },
                 None => false,
             }
         }
@@ -417,6 +409,7 @@ macro_rules! options {
             }
         }
 
+        /// Use this for any uint option that has a static default.
         fn parse_uint(slot: &mut usize, v: Option<&str>) -> bool {
             match v.and_then(|s| s.parse().ok()) {
                 Some(i) => { *slot = i; true },
@@ -424,6 +417,7 @@ macro_rules! options {
             }
         }
 
+        /// Use this for any uint option that lacks a static default.
         fn parse_opt_uint(slot: &mut Option<usize>, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = s.parse().ok(); slot.is_some() }
