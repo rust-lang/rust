@@ -203,7 +203,7 @@ They are just regular files and directories. This is in contrast to `submodule` 
 There are two synchronization directions: `subtree push` and `subtree pull`.
 
 ```
-git subtree push -P src/tools/clippy git@github.com:your-github-name/rust-clippy rustup
+git subtree push -P src/tools/clippy git@github.com:your-github-name/rust-clippy sync-from-rust
 ```
 
 takes all the changes that
@@ -211,8 +211,8 @@ happened to the copy in this repo and creates commits on the remote repo that ma
 changes. Every local commit that touched the subtree causes a commit on the remote repo, but is
 modified to move the files from the specified directory to the tool repo root.
 
-Make sure to not pick the `master` branch, so you can open a normal PR to the tool to merge that
-subrepo push.
+Make sure to not pick the `master` branch on the tool repo, so you can open a normal PR to the tool
+to merge that subrepo push.
 
 ```
 git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy master
@@ -224,20 +224,21 @@ the specified directory in the rust repository.
 
 It is recommended that you always do a push first and get that merged to the tool master branch.
 Then, when you do a pull, the merge works without conflicts.
-While definitely possible to resolve conflicts during a pull, you may have to redo the conflict
+While it's definitely possible to resolve conflicts during a pull, you may have to redo the conflict
 resolution if your PR doesn't get merged fast enough and there are new conflicts. Do not try to
 rebase the result of a `git subtree pull`, rebasing merge commits is a bad idea in general.
 
 You always need to specify the `-P` prefix to the subtree directory and the corresponding remote
 repository. If you specify the wrong directory or repository
 you'll get very fun merges that try to push the wrong directory to the wrong remote repository.
-Luckily you can just abort this without any consequences and try again. It is usually fairly obvious
+Luckily you can just abort this without any consequences by throwing away either the pulled commits
+in rustc or the pushed branch on the remote and try again. It is usually fairly obvious
 that this is happening because you suddenly get thousands of commits that want to be synchronized.
 
 #### Creating a new subtree dependency
 
 If you want to create a new subtree dependency from an existing repository, call (from this
-repository's root directory!!)
+repository's root directory!)
 
 ```
 git subtree add -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git master
@@ -247,7 +248,7 @@ This will create a new commit, which you may not rebase under any circumstances!
 and redo the operation if you need to rebase.
 
 Now you're done, the `src/tools/clippy` directory behaves as if clippy were part of the rustc
-monorepo, so no one but you (or others that synchronize subtrees) needs actually use `git subtree`.
+monorepo, so no one but you (or others that synchronize subtrees) actually needs to use `git subtree`.
 
 
 ### External Dependencies (submodules)
