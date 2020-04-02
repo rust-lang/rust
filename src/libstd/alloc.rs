@@ -61,6 +61,7 @@
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
+use core::intrinsics;
 use core::ptr::NonNull;
 use core::sync::atomic::{AtomicPtr, Ordering};
 use core::{mem, ptr};
@@ -138,27 +139,18 @@ pub struct System;
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for System {
     #[inline]
-    fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        if layout.size() == 0 {
-            Ok((layout.dangling(), 0))
-        } else {
-            unsafe {
-                NonNull::new(GlobalAlloc::alloc(self, layout))
-                    .ok_or(AllocErr)
-                    .map(|p| (p, layout.size()))
-            }
-        }
-    }
-
-    #[inline]
-    fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        if layout.size() == 0 {
-            Ok((layout.dangling(), 0))
-        } else {
-            unsafe {
-                NonNull::new(GlobalAlloc::alloc_zeroed(self, layout))
-                    .ok_or(AllocErr)
-                    .map(|p| (p, layout.size()))
+    fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<MemoryBlock, AllocErr> {
+        unsafe {
+            let size = layout.size();
+            if size == 0 {
+                Ok(MemoryBlock { ptr: layout.dangling(), size: 0 })
+            } else {
+                let raw_ptr = match init {
+                    AllocInit::Uninitialized => GlobalAlloc::alloc(self, layout),
+                    AllocInit::Zeroed => GlobalAlloc::alloc_zeroed(self, layout),
+                };
+                let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
+                Ok(MemoryBlock { ptr, size })
             }
         }
     }
@@ -171,26 +163,75 @@ unsafe impl AllocRef for System {
     }
 
     #[inline]
-    unsafe fn realloc(
+    unsafe fn grow(
         &mut self,
         ptr: NonNull<u8>,
         layout: Layout,
         new_size: usize,
-    ) -> Result<(NonNull<u8>, usize), AllocErr> {
-        match (layout.size(), new_size) {
-            (0, 0) => Ok((layout.dangling(), 0)),
-            (0, _) => self.alloc(Layout::from_size_align_unchecked(new_size, layout.align())),
-            (_, 0) => {
-                self.dealloc(ptr, layout);
-                Ok((layout.dangling(), 0))
+        placement: ReallocPlacement,
+        init: AllocInit,
+    ) -> Result<MemoryBlock, AllocErr> {
+        let size = layout.size();
+        debug_assert!(
+            new_size >= size,
+            "`new_size` must be greater than or equal to `memory.size()`"
+        );
+
+        if size == new_size {
+            return Ok(MemoryBlock { ptr, size });
+        }
+
+        match placement {
+            ReallocPlacement::InPlace => Err(AllocErr),
+            ReallocPlacement::MayMove if layout.size() == 0 => {
+                let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+                self.alloc(new_layout, init)
             }
-            (_, _) => NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size))
-                .ok_or(AllocErr)
-                .map(|p| (p, new_size)),
+            ReallocPlacement::MayMove => {
+                // `realloc` probably checks for `new_size > size` or something similar.
+                intrinsics::assume(new_size > size);
+                let ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
+                let memory =
+                    MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size };
+                init.init_offset(memory, size);
+                Ok(memory)
+            }
+        }
+    }
+
+    #[inline]
+    unsafe fn shrink(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+        placement: ReallocPlacement,
+    ) -> Result<MemoryBlock, AllocErr> {
+        let size = layout.size();
+        debug_assert!(
+            new_size <= size,
+            "`new_size` must be smaller than or equal to `memory.size()`"
+        );
+
+        if size == new_size {
+            return Ok(MemoryBlock { ptr, size });
+        }
+
+        match placement {
+            ReallocPlacement::InPlace => Err(AllocErr),
+            ReallocPlacement::MayMove if new_size == 0 => {
+                self.dealloc(ptr, layout);
+                Ok(MemoryBlock { ptr: layout.dangling(), size: 0 })
+            }
+            ReallocPlacement::MayMove => {
+                // `realloc` probably checks for `new_size < size` or something similar.
+                intrinsics::assume(new_size < size);
+                let ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
+                Ok(MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size })
+            }
         }
     }
 }
-
 static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 
 /// Registers a custom allocation error hook, replacing any that was previously registered.
@@ -238,9 +279,7 @@ pub fn rust_oom(layout: Layout) -> ! {
     let hook: fn(Layout) =
         if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute(hook) } };
     hook(layout);
-    unsafe {
-        crate::sys::abort_internal();
-    }
+    unsafe { crate::sys::abort_internal() }
 }
 
 #[cfg(not(test))]

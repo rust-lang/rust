@@ -143,10 +143,9 @@ use core::ops::{
 };
 use core::pin::Pin;
 use core::ptr::{self, NonNull, Unique};
-use core::slice;
 use core::task::{Context, Poll};
 
-use crate::alloc::{self, AllocRef, Global};
+use crate::alloc::{self, AllocInit, AllocRef, Global};
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
 use crate::vec::Vec;
@@ -196,14 +195,12 @@ impl<T> Box<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
-        unsafe {
-            let ptr = if layout.size() == 0 {
-                NonNull::dangling()
-            } else {
-                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).0.cast()
-            };
-            Box::from_raw(ptr.as_ptr())
-        }
+        let ptr = Global
+            .alloc(layout, AllocInit::Uninitialized)
+            .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
+            .ptr
+            .cast();
+        unsafe { Box::from_raw(ptr.as_ptr()) }
     }
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
@@ -226,11 +223,13 @@ impl<T> Box<T> {
     /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
-        unsafe {
-            let mut uninit = Self::new_uninit();
-            ptr::write_bytes::<T>(uninit.as_mut_ptr(), 0, 1);
-            uninit
-        }
+        let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
+        let ptr = Global
+            .alloc(layout, AllocInit::Zeroed)
+            .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
+            .ptr
+            .cast();
+        unsafe { Box::from_raw(ptr.as_ptr()) }
     }
 
     /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
@@ -265,15 +264,7 @@ impl<T> Box<[T]> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
-        unsafe {
-            let ptr = if layout.size() == 0 {
-                NonNull::dangling()
-            } else {
-                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).0.cast()
-            };
-            Box::from_raw(slice::from_raw_parts_mut(ptr.as_ptr(), len))
-        }
+        unsafe { RawVec::with_capacity(len).into_box(len) }
     }
 }
 
@@ -778,7 +769,7 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
         let buf = RawVec::with_capacity(len);
         unsafe {
             ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
-            buf.into_box()
+            buf.into_box(slice.len()).assume_init()
         }
     }
 }

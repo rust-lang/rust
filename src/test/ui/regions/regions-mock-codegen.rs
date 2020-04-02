@@ -1,34 +1,34 @@
 // run-pass
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
-
 // pretty-expanded FIXME #23616
-
 #![feature(allocator_api)]
 
-use std::alloc::{AllocRef, Global, Layout, handle_alloc_error};
+use std::alloc::{handle_alloc_error, AllocInit, AllocRef, Global, Layout};
 use std::ptr::NonNull;
 
 struct arena(());
 
 struct Bcx<'a> {
-    fcx: &'a Fcx<'a>
+    fcx: &'a Fcx<'a>,
 }
 
 struct Fcx<'a> {
     arena: &'a arena,
-    ccx: &'a Ccx
+    ccx: &'a Ccx,
 }
 
 struct Ccx {
-    x: isize
+    x: isize,
 }
 
 fn alloc(_bcx: &arena) -> &Bcx<'_> {
     unsafe {
         let layout = Layout::new::<Bcx>();
-        let (ptr, _) = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
-        &*(ptr.as_ptr() as *const _)
+        let memory = Global
+            .alloc(layout, AllocInit::Uninitialized)
+            .unwrap_or_else(|_| handle_alloc_error(layout));
+        &*(memory.ptr.as_ptr() as *const _)
     }
 }
 

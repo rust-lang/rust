@@ -1142,7 +1142,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
             (*left_node.as_leaf_mut()).len += right_len as u16 + 1;
 
-            if self.node.height > 1 {
+            let layout = if self.node.height > 1 {
                 ptr::copy_nonoverlapping(
                     right_node.cast_unchecked().as_internal().edges.as_ptr(),
                     left_node
@@ -1159,10 +1159,11 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                         .correct_parent_link();
                 }
 
-                Global.dealloc(right_node.node.cast(), Layout::new::<InternalNode<K, V>>());
+                Layout::new::<InternalNode<K, V>>()
             } else {
-                Global.dealloc(right_node.node.cast(), Layout::new::<LeafNode<K, V>>());
-            }
+                Layout::new::<LeafNode<K, V>>()
+            };
+            Global.dealloc(right_node.node.cast(), layout);
 
             Handle::new_edge(self.node, self.idx)
         }
