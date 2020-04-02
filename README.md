@@ -102,27 +102,14 @@ fn does_not_work_on_miri() {
 
 An exhaustive list of what `miri` does not support is not available, as this could be
 an unbounded set with FFI and more. However `miri` will explicitly tell you when it finds
-something unsupported with an error:
+something unsupported with an error, containing a message such as:
 
 ```
 error: unsupported operation: can't call foreign function: mach_timebase_info
-   --> /home/r/.rustup/toolchains/miri/lib/rustlib/src/rust/src/libstd/sys/unix/time.rs:239:13
-    |
-239 |             mach_timebase_info(&mut info);
-    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't call foreign function: mach_timebase_info
-    |
-    = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
-    = note: inside call to `std::sys::unix::time::inner::info` at /home/r/.rustup/toolchains/miri/lib/rustlib/src/rust/src/libstd/sys/unix/time.rs:156:24
-    = note: inside call to `std::sys::unix::time::inner::Instant::checked_sub_instant` at /home/r/.rustup/toolchains/miri/lib/rustlib/src/rust/src/libstd/time.rs:263:9
-note: inside call to `std::time::Instant::duration_since` at tests/run-pass/time.rs:25:20
-   --> tests/run-pass/time.rs:25:20
-    |
-25  |         let diff = now2.duration_since(now1);
-    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^
-    = note: inside call to `main` at /home/r/.rustup/toolchains/miri/lib/rustlib/src/rust/src/libstd/rt.rs:67:34
+    ...
+    = help: this is likely not a bug in the program; it indicates that the program \
+            performed an operation that the interpreter does not support
 ```
-
-If you do not see an error like this, you are able to keep using `miri`!
 
 ### Running Miri on CI
 
