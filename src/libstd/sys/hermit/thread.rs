@@ -53,7 +53,7 @@ impl Thread {
         let ret = abi::spawn(
             &mut tid as *mut Tid,
             thread_start,
-            p as *mut u8 as usize,
+            p as usize,
             Priority::into(NORMAL_PRIO),
             core_id,
         );
