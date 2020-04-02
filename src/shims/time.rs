@@ -143,8 +143,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Retrieves the frequency of the hardware performance counter.
         // The frequency of the performance counter is fixed at system boot and
         // is consistent across all processors.
-        // Miri will assume that the frequency of
-        // the machine's hardware performance counter is 1 GHz ( = 1 x 10^9 Hz).
+        // Miri emulates a "hardware" performance counter with a resolution of 1ns,
+        // and thus 10^9 counts per second.
         this.write_scalar(Scalar::from_i64(1_000_000_000), this.deref_operand(lpFrequency_op)?.into())?;
         Ok(-1) // Return non-zero on success
     }
