@@ -375,7 +375,7 @@ fn test_codegen_options_tracking_hash() {
     let mut opts = Options::default();
 
     // Make sure the changing an [UNTRACKED] option leaves the hash unchanged
-    opts.cg.ar = Some(String::from("abc"));
+    opts.cg.ar = String::from("abc");
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.cg.linker = Some(PathBuf::from("linker"));
@@ -479,11 +479,11 @@ fn test_codegen_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.cg.debuginfo = Some(0xdeadbeef);
+    opts.cg.debuginfo = 0xdeadbeef;
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.cg.debuginfo = Some(0xba5eba11);
+    opts.cg.debuginfo = 0xba5eba11;
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();

@@ -115,7 +115,7 @@ pub struct ModuleConfig {
     pub vectorize_slp: bool,
     pub merge_functions: bool,
     pub inline_threshold: Option<usize>,
-    pub new_llvm_pass_manager: Option<bool>,
+    pub new_llvm_pass_manager: bool,
 }
 
 impl ModuleConfig {

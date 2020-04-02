@@ -185,7 +185,7 @@ pub fn new_handler(
                     debugging_opts.terminal_width,
                     false,
                 )
-                .ui_testing(debugging_opts.ui_testing()),
+                .ui_testing(debugging_opts.ui_testing),
             )
         }
         ErrorOutputType::Json { pretty, json_rendered } => {
@@ -194,7 +194,7 @@ pub fn new_handler(
             });
             Box::new(
                 JsonEmitter::stderr(None, source_map, pretty, json_rendered, false)
-                    .ui_testing(debugging_opts.ui_testing()),
+                    .ui_testing(debugging_opts.ui_testing),
             )
         }
     };

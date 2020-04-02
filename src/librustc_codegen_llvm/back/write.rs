@@ -347,7 +347,7 @@ pub(crate) fn should_use_new_llvm_pass_manager(config: &ModuleConfig) -> bool {
     }
 
     // The new pass manager is disabled by default.
-    config.new_llvm_pass_manager.unwrap_or(false)
+    config.new_llvm_pass_manager
 }
 
 pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
