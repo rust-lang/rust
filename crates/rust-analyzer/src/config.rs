@@ -133,13 +133,30 @@ impl Config {
         set(value, "/cargo/allFeatures", &mut self.cargo.all_features);
         set(value, "/cargo/features", &mut self.cargo.features);
         set(value, "/cargo/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
-        if let RustfmtConfig::Rustfmt { extra_args } = &mut self.rustfmt {
+        if let Some(mut args) = get::<Vec<String>>(value, "/rustfmt/overrideCommand") {
+            if !args.is_empty() {
+                let command = args.remove(0);
+                self.rustfmt = RustfmtConfig::CustomCommand {
+                    command,
+                    args,
+                }
+            }
+        } else if let RustfmtConfig::Rustfmt { extra_args } = &mut self.rustfmt {
             set(value, "/rustfmt/extraArgs", extra_args);
         }
         if let Some(false) = get(value, "/checkOnSave/enable") {
             self.check = None
         } else {
-            if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets }) = &mut self.check
+            if let Some(mut args) = get::<Vec<String>>(value, "/checkOnSave/overrideCommand") {
+                if !args.is_empty() {
+                    let command = args.remove(0);
+                    self.check = Some(FlycheckConfig::CustomCommand {
+                        command,
+                        args,
+                    })
+                }
+
+            } else if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets }) = &mut self.check
             {
                 set(value, "/checkOnSave/extraArgs", extra_args);
                 set(value, "/checkOnSave/command", command);
