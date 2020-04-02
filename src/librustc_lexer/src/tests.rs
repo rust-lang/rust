@@ -23,6 +23,7 @@ mod tests {
                 n_start_hashes: 0,
                 n_end_hashes: 0,
                 valid_start: true,
+                valid_end: true,
                 possible_terminator_offset: None,
             },
             Ok(ValidatedRawStr { n_hashes: 0 }),
@@ -37,6 +38,7 @@ mod tests {
                 n_start_hashes: 0,
                 n_end_hashes: 0,
                 valid_start: true,
+                valid_end: true,
                 possible_terminator_offset: None,
             },
             Ok(ValidatedRawStr { n_hashes: 0 }),
@@ -51,6 +53,7 @@ mod tests {
             UnvalidatedRawStr {
                 n_start_hashes: 1,
                 n_end_hashes: 1,
+                valid_end: true,
                 valid_start: true,
                 possible_terminator_offset: None,
             },
@@ -65,6 +68,7 @@ mod tests {
             UnvalidatedRawStr {
                 n_start_hashes: 1,
                 n_end_hashes: 0,
+                valid_end: false,
                 valid_start: true,
                 possible_terminator_offset: None,
             },
@@ -80,6 +84,7 @@ mod tests {
                 n_start_hashes: 2,
                 n_end_hashes: 1,
                 valid_start: true,
+                valid_end: false,
                 possible_terminator_offset: Some(7),
             },
             Err(LexRawStrError::NoTerminator {
@@ -95,6 +100,7 @@ mod tests {
                 n_start_hashes: 2,
                 n_end_hashes: 0,
                 valid_start: true,
+                valid_end: false,
                 possible_terminator_offset: None,
             },
             Err(LexRawStrError::NoTerminator {
@@ -113,9 +119,30 @@ mod tests {
                 n_start_hashes: 1,
                 n_end_hashes: 0,
                 valid_start: false,
+                valid_end: false,
                 possible_terminator_offset: None,
             },
             Err(LexRawStrError::InvalidStarter),
+        );
+    }
+
+    #[test]
+    fn test_unterminated_no_pound() {
+        // https://github.com/rust-lang/rust/issues/70677
+        check_raw_str(
+            r#"""#,
+            UnvalidatedRawStr {
+                n_start_hashes: 0,
+                n_end_hashes: 0,
+                valid_start: true,
+                valid_end: false,
+                possible_terminator_offset: None,
+            },
+            Err(LexRawStrError::NoTerminator {
+                expected: 0,
+                found: 0,
+                possible_terminator_offset: None,
+            }),
         );
     }
 }
