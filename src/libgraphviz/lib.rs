@@ -437,9 +437,9 @@ pub trait Labeller<'a> {
 
     /// Returns a label that will be applied to the graph itself.
     ///
-    /// The label need not be unique, and defaults to the empty string.
-    fn graph_label(&'a self) -> LabelText<'a> {
-        LabelStr("".into())
+    /// If `None` (the default), no label will be emitted.
+    fn graph_label(&'a self) -> Option<LabelText<'a>> {
+        None
     }
 
     /// Maps `n` to a unique identifier with respect to `self`. The
@@ -643,9 +643,10 @@ where
         writeln!(w, r#"    edge[fontname="monospace"];"#)?;
     }
 
-    // Graph label
-    writeln!(w, r#"    label={};"#, g.graph_label().to_dot_string())?;
-    writeln!(w, r#"    labelloc="t";"#)?;
+    if let Some(graph_label) = g.graph_label() {
+        writeln!(w, r#"    label={};"#, graph_label.to_dot_string())?;
+        writeln!(w, r#"    labelloc="t";"#)?;
+    }
 
     for n in g.nodes().iter() {
         write!(w, "    ")?;

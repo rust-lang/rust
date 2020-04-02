@@ -107,10 +107,10 @@ where
         dot::Id::new(format!("graph_for_def_id_{}", name)).unwrap()
     }
 
-    fn graph_label(&self) -> dot::LabelText<'_> {
+    fn graph_label(&self) -> Option<dot::LabelText<'_>> {
         let mut label = Vec::new();
         self.write_graph_label(&mut label).unwrap();
-        dot::LabelText::html(String::from_utf8(label).unwrap())
+        Some(dot::LabelText::html(String::from_utf8(label).unwrap()))
     }
 
     fn node_id(&self, n: &Self::Node) -> dot::Id<'_> {
