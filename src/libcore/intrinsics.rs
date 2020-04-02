@@ -1582,7 +1582,15 @@ extern "rust-intrinsic" {
     /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
     /// (<https://github.com/rust-lang/rust/issues/10184>)
     /// This is under stabilization at <https://github.com/rust-lang/rust/issues/67058>
+    #[cfg(bootstrap)]
     pub fn float_to_int_approx_unchecked<Float: Copy, Int: Copy>(value: Float) -> Int;
+
+    /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
+    /// (<https://github.com/rust-lang/rust/issues/10184>)
+    ///
+    /// Stabilized as `f32::to_int_unchecked` and `f64::to_int_unchecked`.
+    #[cfg(not(bootstrap))]
+    pub fn float_to_int_unchecked<Float: Copy, Int: Copy>(value: Float) -> Int;
 
     /// Returns the number of bits set in an integer type `T`
     ///
