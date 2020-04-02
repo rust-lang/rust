@@ -1070,8 +1070,10 @@ pub(crate) mod builtin {
 
     /// Includes a utf8-encoded file as a string.
     ///
-    /// The file is located relative to the current file. (similarly to how
-    /// modules are found)
+    /// The file is located relative to the current file (similarly to how
+    /// modules are found). The provided path is interpreted in a platform-specific
+    /// way at compile time. So, for instance, an invocation with a Windows path
+    /// containing backslashes `\` would not compile correctly on Unix.
     ///
     /// This macro will yield an expression of type `&'static str` which is the
     /// contents of the file.
@@ -1108,8 +1110,10 @@ pub(crate) mod builtin {
 
     /// Includes a file as a reference to a byte array.
     ///
-    /// The file is located relative to the current file. (similarly to how
-    /// modules are found)
+    /// The file is located relative to the current file (similarly to how
+    /// modules are found). The provided path is interpreted in a platform-specific
+    /// way at compile time. So, for instance, an invocation with a Windows path
+    /// containing backslashes `\` would not compile correctly on Unix.
     ///
     /// This macro will yield an expression of type `&'static [u8; N]` which is
     /// the contents of the file.
@@ -1202,7 +1206,9 @@ pub(crate) mod builtin {
     /// Parses a file as an expression or an item according to the context.
     ///
     /// The file is located relative to the current file (similarly to how
-    /// modules are found).
+    /// modules are found). The provided path is interpreted in a platform-specific
+    /// way at compile time. So, for instance, an invocation with a Windows path
+    /// containing backslashes `\` would not compile correctly on Unix.
     ///
     /// Using this macro is often a bad idea, because if the file is
     /// parsed as an expression, it is going to be placed in the
