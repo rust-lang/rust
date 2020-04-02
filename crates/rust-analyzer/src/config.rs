@@ -19,8 +19,6 @@ pub struct Config {
 
     pub with_sysroot: bool,
     pub publish_diagnostics: bool,
-    // TODO: move to experimental capabilities
-    pub vscode_lldb: bool,
     pub lru_capacity: Option<usize>,
     pub proc_macro_srv: Option<String>,
     pub files: FilesConfig,
@@ -78,7 +76,6 @@ impl Default for Config {
 
             with_sysroot: true,
             publish_diagnostics: true,
-            vscode_lldb: false,
             lru_capacity: None,
             proc_macro_srv: None,
             files: FilesConfig { watcher: FilesWatcher::Notify, exclude: Vec::new() },
@@ -122,7 +119,6 @@ impl Config {
 
         set(value, "/withSysroot", &mut self.with_sysroot);
         set(value, "/featureFlags/lsp.diagnostics", &mut self.publish_diagnostics);
-        set(value, "/vscodeLldb", &mut self.vscode_lldb);
         set(value, "/lruCapacity", &mut self.lru_capacity);
         if let Some(watcher) =  get::<String>(value, "/files/watcher") {
             self.files.watcher = match watcher.as_str() {

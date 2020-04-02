@@ -66,6 +66,10 @@ export function debugSingle(ctx: Ctx): Cmd {
     return async (config: ra.Runnable) => {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
+        if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
+            vscode.window.showErrorMessage("Install `vadimcn.vscode-lldb` extension for debugging");
+            return;
+        }
 
         const debugConfig = {
             type: "lldb",
