@@ -1,12 +1,14 @@
 //! A helpful diagram for debugging dataflow problems.
 
 use std::cell::RefCell;
-use std::{io, ops, str};
+use std::{fmt, io, ops, str};
 
 use rustc_hir::def_id::DefId;
+use rustc_hir::Mutability;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::{self, BasicBlock, Body, Location};
+use rustc_middle::ty::TyCtxt;
 
 use super::{Analysis, GenKillSet, Results, ResultsRefCursor};
 use crate::util::graphviz_safe_def_name;
@@ -15,6 +17,7 @@ pub struct Formatter<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
+    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     def_id: DefId,
 
@@ -27,6 +30,7 @@ where
     A: Analysis<'tcx>,
 {
     pub fn new(
+        tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
         def_id: DefId,
         results: &'a Results<'tcx, A>,
@@ -38,7 +42,40 @@ where
             state_formatter,
         };
 
-        Formatter { body, def_id, block_formatter: RefCell::new(block_formatter) }
+        Formatter { tcx, body, def_id, block_formatter: RefCell::new(block_formatter) }
+    }
+
+    fn write_graph_label(&self, w: &mut impl io::Write) -> io::Result<()> {
+        let Formatter { tcx, body, def_id, .. } = *self;
+
+        fn escape_debug(v: &impl fmt::Debug) -> String {
+            dot::escape_html(&format!("{:?}", v))
+        }
+
+        write!(w, "fn {}(", dot::escape_html(&tcx.def_path_str(def_id)))?;
+        write!(w, r#"<br align="left"/>"#)?;
+
+        for arg in body.args_iter() {
+            write!(w, "    {:?}: {},", arg, escape_debug(&body.local_decls[arg].ty))?;
+            write!(w, r#"<br align="left"/>"#)?;
+        }
+
+        write!(w, ") -&gt; {};", escape_debug(&body.return_ty()))?;
+        write!(w, r#"<br align="left"/>"#)?;
+
+        for local in body.vars_and_temps_iter() {
+            let decl = &body.local_decls[local];
+
+            write!(w, "    let ")?;
+            if decl.mutability == Mutability::Mut {
+                write!(w, "mut ")?;
+            }
+
+            write!(w, "{:?}: {};", local, escape_debug(&decl.ty))?;
+            write!(w, r#"<br align="left"/>"#)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -68,6 +105,12 @@ where
     fn graph_id(&self) -> dot::Id<'_> {
         let name = graphviz_safe_def_name(self.def_id);
         dot::Id::new(format!("graph_for_def_id_{}", name)).unwrap()
+    }
+
+    fn graph_label(&self) -> dot::LabelText<'_> {
+        let mut label = Vec::new();
+        self.write_graph_label(&mut label).unwrap();
+        dot::LabelText::html(String::from_utf8(label).unwrap())
     }
 
     fn node_id(&self, n: &Self::Node) -> dot::Id<'_> {

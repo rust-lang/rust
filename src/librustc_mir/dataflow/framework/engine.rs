@@ -442,7 +442,7 @@ where
     debug!("printing dataflow results for {:?} to {}", def_id, path.display());
     let mut buf = Vec::new();
 
-    let graphviz = graphviz::Formatter::new(body, def_id, results, &mut *formatter);
+    let graphviz = graphviz::Formatter::new(tcx, body, def_id, results, &mut *formatter);
     dot::render_opts(&graphviz, &mut buf, &[dot::RenderOption::Monospace])?;
 
     if let Some(parent) = path.parent() {
