@@ -46,6 +46,7 @@ build_script:
 test_script:
     - set RUST_TEST_NOCAPTURE=1
     - set RUST_BACKTRACE=1
+    - set CARGO_INCREMENTAL=0
     # Test host miri: 32bit Windows
     - cargo miri setup
     - set MIRI_SYSROOT=%USERPROFILE%\AppData\Local\rust-lang\miri\cache\HOST

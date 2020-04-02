@@ -19,6 +19,7 @@ env:
   global:
   - RUST_TEST_NOCAPTURE=1
   - RUST_BACKTRACE=1
+  - CARGO_INCREMENTAL=0
 
 before_script:
 # Compute the rust version we use. We do not use "language: rust" to have more control here.
