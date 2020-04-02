@@ -155,6 +155,16 @@ There's also two VS Code commands which might be of interest:
 
 * `Rust Analyzer: Syntax Tree` shows syntax tree of the current file/selection.
 
+  You can hover over syntax nodes in the opened text file to see the appropriate
+  rust code that it refers to and the rust editor will also highlight the proper
+  text range.
+
+  If you press <kbd>Ctrl</kbd> (i.e. trigger goto definition) in the inspected
+  Rust source file the syntax tree read-only editor should scroll to and select the
+  appropriate syntax node token.
+
+  ![demo](https://user-images.githubusercontent.com/36276403/78225773-6636a480-74d3-11ea-9d9f-1c9d42da03b0.png)
+
 # Profiling
 
 We have a built-in hierarchical profiler, you can enable it by using `RA_PROFILE` env-var:

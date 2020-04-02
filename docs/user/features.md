@@ -81,16 +81,6 @@ Join selected lines into one, smartly fixing up whitespace and trailing commas.
 Shows the parse tree of the current file. It exists mostly for debugging
 rust-analyzer itself.
 
-You can hover over syntax nodes in the opened text file to see the appropriate
-rust code that it refers to and the rust editor will also highlight the proper
-text range.
-
-If you press <kbd>Ctrl</kbd> (i.e. trigger goto definition) in the inspected
-Rust source file the syntax tree readonly editor should scroll to and select the
-appropriate syntax node token.
-
-<img src="https://user-images.githubusercontent.com/36276403/78043783-7425e180-737c-11ea-8653-b02b773c5aa1.png" alt="demo" height="200px" >
-
 #### Expand Macro Recursively
 
 Shows the full macro expansion of the macro at current cursor.
