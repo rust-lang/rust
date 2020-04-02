@@ -278,7 +278,7 @@
                     "items": {
                         "type": "string"
                     },
-                    "markdownDescription": "Advanced option, fully override the command rust-analyzer uses for checking. The command must include `--message=format=json`."
+                    "markdownDescription": "Advanced option, fully override the command rust-analyzer uses for checking. The command should include `--message=format=json` or similar option."
                 },
                 "rust-analyzer.checkOnSave.allTargets": {
                     "type": "boolean",
