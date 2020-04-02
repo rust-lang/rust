@@ -206,7 +206,8 @@ pub fn compute() {
     [24; 106) 'match ...     }': ()
     [30; 37) 'nope!()': {unknown}
     [48; 94) 'SizeSk...tail }': {unknown}
-    [82; 86) 'true': {unknown}
+    [82; 86) 'true': bool
+    [82; 86) 'true': bool
     [88; 92) 'tail': {unknown}
     [98; 100) '{}': ()
     "###
