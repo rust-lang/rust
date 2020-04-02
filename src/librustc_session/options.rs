@@ -239,19 +239,18 @@ macro_rules! options {
         pub const parse_bool: Option<&str> = Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
         pub const parse_opt_bool: Option<&str> = parse_bool;
         pub const parse_string: Option<&str> = Some("a string");
-        pub const parse_string_push: Option<&str> = Some("a string");
-        pub const parse_pathbuf_push: Option<&str> = Some("a path");
-        pub const parse_opt_string: Option<&str> = Some("a string");
+        pub const parse_opt_string: Option<&str> = parse_string;
+        pub const parse_string_push: Option<&str> = parse_string;
         pub const parse_opt_pathbuf: Option<&str> = Some("a path");
+        pub const parse_pathbuf_push: Option<&str> = parse_opt_pathbuf;
         pub const parse_list: Option<&str> = Some("a space-separated list of strings");
-        pub const parse_opt_list: Option<&str> = Some("a space-separated list of strings");
+        pub const parse_opt_list: Option<&str> = parse_list;
         pub const parse_opt_comma_list: Option<&str> = Some("a comma-separated list of strings");
-        pub const parse_threads: Option<&str> = Some("a number");
         pub const parse_uint: Option<&str> = Some("a number");
+        pub const parse_opt_uint: Option<&str> = parse_uint;
+        pub const parse_threads: Option<&str> = parse_uint;
         pub const parse_passes: Option<&str> =
             Some("a space-separated list of passes, or `all`");
-        pub const parse_opt_uint: Option<&str> =
-            Some("a number");
         pub const parse_panic_strategy: Option<&str> =
             Some("either `unwind` or `abort`");
         pub const parse_relro_level: Option<&str> =
