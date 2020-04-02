@@ -411,6 +411,21 @@
                 ]
             }
         ],
+        "languages": [
+            {
+                "id": "ra_syntax_tree",
+                "extensions": [
+                    ".rast"
+                ]
+            }
+        ],
+        "grammars": [
+            {
+                "language": "ra_syntax_tree",
+                "scopeName": "source.ra_syntax_tree",
+                "path": "ra_syntax_tree.tmGrammar.json"
+            }
+        ],
         "problemMatchers": [
             {
                 "name": "rustc",
