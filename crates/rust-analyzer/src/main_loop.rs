@@ -23,6 +23,7 @@ use lsp_types::{
 use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckTask};
 use ra_ide::{Canceled, FileId, LibraryData, SourceRootId};
 use ra_prof::profile;
+use ra_project_model::{PackageRoot, ProjectWorkspace};
 use ra_vfs::{VfsFile, VfsTask, Watch};
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashSet;
@@ -131,8 +132,8 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
             let registration_options = req::DidChangeWatchedFilesRegistrationOptions {
                 watchers: workspaces
                     .iter()
-                    .flat_map(|ws| ws.to_roots())
-                    .filter(|root| root.is_member())
+                    .flat_map(ProjectWorkspace::to_roots)
+                    .filter(PackageRoot::is_member)
                     .map(|root| format!("{}/**/*.rs", root.path().display()))
                     .map(|glob_pattern| req::FileSystemWatcher { glob_pattern, kind: None })
                     .collect(),

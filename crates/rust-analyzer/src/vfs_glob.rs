@@ -29,10 +29,14 @@ impl RustPackageFilterBuilder {
         self.is_member = is_member;
         self
     }
-    pub fn exclude(mut self, glob: Glob) -> RustPackageFilterBuilder {
-        self.exclude.add(glob);
+
+    pub fn exclude(mut self, globs: impl IntoIterator<Item = Glob>) -> RustPackageFilterBuilder {
+        for glob in globs.into_iter() {
+            self.exclude.add(glob);
+        }
         self
     }
+
     pub fn into_vfs_filter(self) -> Box<dyn Filter> {
         let RustPackageFilterBuilder { is_member, mut exclude } = self;
         for &glob in ALWAYS_IGNORED {
@@ -87,7 +91,7 @@ fn test_globs() {
 
     let filter = RustPackageFilterBuilder::default()
         .set_member(true)
-        .exclude(Glob::new("src/llvm-project/**").unwrap())
+        .exclude(std::iter::once(Glob::new("src/llvm-project/**").unwrap()))
         .into_vfs_filter();
 
     assert!(!filter.include_dir(RelativePath::new("src/llvm-project/clang")));

@@ -62,16 +62,16 @@ pub struct PackageRoot {
     /// Is a member of the current workspace
     is_member: bool,
 }
-
 impl PackageRoot {
-    pub fn new(path: PathBuf, is_member: bool) -> PackageRoot {
-        PackageRoot { path, is_member }
+    pub fn new_member(path: PathBuf) -> PackageRoot {
+        Self { path, is_member: true }
     }
-
-    pub fn path(&self) -> &PathBuf {
+    pub fn new_non_member(path: PathBuf) -> PackageRoot {
+        Self { path, is_member: false }
+    }
+    pub fn path(&self) -> &Path {
         &self.path
     }
-
     pub fn is_member(&self) -> bool {
         self.is_member
     }
@@ -130,70 +130,45 @@ impl ProjectWorkspace {
     pub fn to_roots(&self) -> Vec<PackageRoot> {
         match self {
             ProjectWorkspace::Json { project } => {
-                let mut roots = Vec::with_capacity(project.roots.len());
-                for root in &project.roots {
-                    roots.push(PackageRoot::new(root.path.clone(), true));
-                }
-                roots
+                project.roots.iter().map(|r| PackageRoot::new_member(r.path.clone())).collect()
             }
-            ProjectWorkspace::Cargo { cargo, sysroot } => {
-                let mut roots = Vec::with_capacity(cargo.packages().len() + sysroot.crates().len());
-                for pkg in cargo.packages() {
-                    let root = cargo[pkg].root().to_path_buf();
-                    let member = cargo[pkg].is_member;
-                    roots.push(PackageRoot::new(root, member));
-                }
-                for krate in sysroot.crates() {
-                    roots.push(PackageRoot::new(sysroot[krate].root_dir().to_path_buf(), false))
-                }
-                roots
-            }
+            ProjectWorkspace::Cargo { cargo, sysroot } => cargo
+                .packages()
+                .map(|pkg| PackageRoot {
+                    path: cargo[pkg].root().to_path_buf(),
+                    is_member: cargo[pkg].is_member,
+                })
+                .chain(sysroot.crates().map(|krate| {
+                    PackageRoot::new_non_member(sysroot[krate].root_dir().to_path_buf())
+                }))
+                .collect(),
         }
     }
 
     pub fn out_dirs(&self) -> Vec<PathBuf> {
         match self {
             ProjectWorkspace::Json { project } => {
-                let mut out_dirs = Vec::with_capacity(project.crates.len());
-                for krate in &project.crates {
-                    if let Some(out_dir) = &krate.out_dir {
-                        out_dirs.push(out_dir.to_path_buf());
-                    }
-                }
-                out_dirs
+                project.crates.iter().filter_map(|krate| krate.out_dir.as_ref()).cloned().collect()
             }
-            ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => {
-                let mut out_dirs = Vec::with_capacity(cargo.packages().len());
-                for pkg in cargo.packages() {
-                    if let Some(out_dir) = &cargo[pkg].out_dir {
-                        out_dirs.push(out_dir.to_path_buf());
-                    }
-                }
-                out_dirs
+            ProjectWorkspace::Cargo { cargo, sysroot: _ } => {
+                cargo.packages().filter_map(|pkg| cargo[pkg].out_dir.as_ref()).cloned().collect()
             }
         }
     }
 
     pub fn proc_macro_dylib_paths(&self) -> Vec<PathBuf> {
         match self {
-            ProjectWorkspace::Json { project } => {
-                let mut proc_macro_dylib_paths = Vec::with_capacity(project.crates.len());
-                for krate in &project.crates {
-                    if let Some(out_dir) = &krate.proc_macro_dylib_path {
-                        proc_macro_dylib_paths.push(out_dir.to_path_buf());
-                    }
-                }
-                proc_macro_dylib_paths
-            }
-            ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => {
-                let mut proc_macro_dylib_paths = Vec::with_capacity(cargo.packages().len());
-                for pkg in cargo.packages() {
-                    if let Some(dylib_path) = &cargo[pkg].proc_macro_dylib_path {
-                        proc_macro_dylib_paths.push(dylib_path.to_path_buf());
-                    }
-                }
-                proc_macro_dylib_paths
-            }
+            ProjectWorkspace::Json { project } => project
+                .crates
+                .iter()
+                .filter_map(|krate| krate.proc_macro_dylib_path.as_ref())
+                .cloned()
+                .collect(),
+            ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => cargo
+                .packages()
+                .filter_map(|pkg| cargo[pkg].proc_macro_dylib_path.as_ref())
+                .cloned()
+                .collect(),
         }
     }
 
@@ -216,10 +191,12 @@ impl ProjectWorkspace {
         let mut crate_graph = CrateGraph::default();
         match self {
             ProjectWorkspace::Json { project } => {
-                let mut crates = FxHashMap::default();
-                for (id, krate) in project.crates.iter().enumerate() {
-                    let crate_id = json_project::CrateId(id);
-                    if let Some(file_id) = load(&krate.root_module) {
+                let crates: FxHashMap<_, _> = project
+                    .crates
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(seq_index, krate)| {
+                        let file_id = load(&krate.root_module)?;
                         let edition = match krate.edition {
                             json_project::Edition::Edition2015 => Edition::Edition2015,
                             json_project::Edition::Edition2018 => Edition::Edition2018,
@@ -249,8 +226,8 @@ impl ProjectWorkspace {
                             .clone()
                             .map(|it| proc_macro_client.by_dylib_path(&it));
                         // FIXME: No crate name in json definition such that we cannot add OUT_DIR to env
-                        crates.insert(
-                            crate_id,
+                        Some((
+                            json_project::CrateId(seq_index),
                             crate_graph.add_crate_root(
                                 file_id,
                                 edition,
@@ -261,9 +238,9 @@ impl ProjectWorkspace {
                                 extern_source,
                                 proc_macro.unwrap_or_default(),
                             ),
-                        );
-                    }
-                }
+                        ))
+                    })
+                    .collect();
 
                 for (id, krate) in project.crates.iter().enumerate() {
                     for dep in &krate.deps {
@@ -287,9 +264,11 @@ impl ProjectWorkspace {
                 }
             }
             ProjectWorkspace::Cargo { cargo, sysroot } => {
-                let mut sysroot_crates = FxHashMap::default();
-                for krate in sysroot.crates() {
-                    if let Some(file_id) = load(&sysroot[krate].root) {
+                let sysroot_crates: FxHashMap<_, _> = sysroot
+                    .crates()
+                    .filter_map(|krate| {
+                        let file_id = load(&sysroot[krate].root)?;
+
                         // Crates from sysroot have `cfg(test)` disabled
                         let cfg_options = {
                             let mut opts = default_cfg_options.clone();
@@ -300,22 +279,22 @@ impl ProjectWorkspace {
                         let env = Env::default();
                         let extern_source = ExternSource::default();
                         let proc_macro = vec![];
+                        let crate_name = CrateName::new(&sysroot[krate].name)
+                            .expect("Sysroot crate names should not contain dashes");
 
                         let crate_id = crate_graph.add_crate_root(
                             file_id,
                             Edition::Edition2018,
-                            Some(
-                                CrateName::new(&sysroot[krate].name)
-                                    .expect("Sysroot crate names should not contain dashes"),
-                            ),
+                            Some(crate_name),
                             cfg_options,
                             env,
                             extern_source,
                             proc_macro,
                         );
-                        sysroot_crates.insert(krate, crate_id);
-                    }
-                }
+                        Some((krate, crate_id))
+                    })
+                    .collect();
+
                 for from in sysroot.crates() {
                     for &to in sysroot[from].deps.iter() {
                         let name = &sysroot[to].name;

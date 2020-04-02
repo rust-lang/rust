@@ -36,8 +36,7 @@ pub(crate) fn load_cargo(
     extern_dirs.extend(ws.out_dirs());
 
     let mut project_roots = ws.to_roots();
-    project_roots
-        .extend(extern_dirs.iter().map(|path| PackageRoot::new(path.to_path_buf(), false)));
+    project_roots.extend(extern_dirs.iter().cloned().map(PackageRoot::new_non_member));
 
     let (sender, receiver) = unbounded();
     let sender = Box::new(move |t| sender.send(t).unwrap());
@@ -46,7 +45,7 @@ pub(crate) fn load_cargo(
             .iter()
             .map(|pkg_root| {
                 RootEntry::new(
-                    pkg_root.path().clone(),
+                    pkg_root.path().to_owned(),
                     RustPackageFilterBuilder::default()
                         .set_member(pkg_root.is_member())
                         .into_vfs_filter(),
@@ -58,12 +57,12 @@ pub(crate) fn load_cargo(
     );
 
     let source_roots = roots
-        .iter()
-        .map(|&vfs_root| {
+        .into_iter()
+        .map(|vfs_root| {
             let source_root_id = vfs_root_to_id(vfs_root);
             let project_root = project_roots
                 .iter()
-                .find(|it| it.path() == &vfs.root2path(vfs_root))
+                .find(|it| it.path() == vfs.root2path(vfs_root))
                 .unwrap()
                 .clone();
             (source_root_id, project_root)
