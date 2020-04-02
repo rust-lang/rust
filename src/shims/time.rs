@@ -100,11 +100,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let NANOS_PER_INTERVAL = NANOS_PER_SEC / INTERVALS_PER_SEC;
         let SECONDS_TO_UNIX_EPOCH = INTERVALS_TO_UNIX_EPOCH / INTERVALS_PER_SEC;
 
-        let duration = system_time_to_duration(&SystemTime::now())?
-            .checked_add(Duration::from_secs(SECONDS_TO_UNIX_EPOCH))
-            .unwrap();        
+        let duration = system_time_to_duration(&SystemTime::now())? + Duration::from_secs(SECONDS_TO_UNIX_EPOCH);
         let duration_ticks = u64::try_from(duration.as_nanos() / u128::from(NANOS_PER_INTERVAL))
-            .map_err(|_| err_unsup_format!("programs running longer than 2^64 ticks are not supported"))?;
+            .map_err(|_| err_unsup_format!("programs running more than 2^64 Windows ticks after the Windows epoch are not supported"))?;
 
         let dwLowDateTime = u32::try_from(duration_ticks & 0x00000000FFFFFFFF).unwrap();
         let dwHighDateTime = u32::try_from((duration_ticks & 0xFFFFFFFF00000000) >> 32).unwrap();
