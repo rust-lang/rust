@@ -38,12 +38,12 @@ pub struct Config {
 
 #[derive(Debug, Clone)]
 pub struct FilesConfig {
-    watcher: FilesWatcher,
-    exclude: Vec<String>,
+    pub watcher: FilesWatcher,
+    pub exclude: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
-enum FilesWatcher {
+pub enum FilesWatcher {
     Client,
     Notify,
 }

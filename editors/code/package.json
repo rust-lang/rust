@@ -217,7 +217,6 @@
                     "type": "boolean",
                     "markdownDescription": "Whether to show `can't find Cargo.toml` error message"
                 },
-
                 "rust-analyzer.cargo.noDefaultFeatures": {
                     "type": "boolean",
                     "default": false,
@@ -272,7 +271,6 @@
                     "default": true,
                     "markdownDescription": "Check all targets and tests (will be passed as `--all-targets`)"
                 },
-
                 "rust-analyzer.inlayHints.typeHints": {
                     "type": "boolean",
                     "default": true,
@@ -298,7 +296,6 @@
                     "exclusiveMinimum": true,
                     "description": "Maximum length for inlay hints"
                 },
-
                 "rust-analyzer.completion.addCallParenthesis": {
                     "type": "boolean",
                     "default": true,
@@ -318,7 +315,6 @@
                     "type": "boolean",
                     "description": "Show function name and docs in parameter hints"
                 },
-
                 "rust-analyzer.highlighting.semanticTokens": {
                     "type": "boolean",
                     "default": false,
@@ -370,7 +366,7 @@
                     "description": "Enable logging of VS Code extensions itself",
                     "type": "boolean",
                     "default": false
-                },
+                }
             }
         },
         "problemPatterns": [

@@ -30,7 +30,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
 
 use crate::{
-    config::Config,
+    config::{Config, FilesWatcher},
     diagnostics::DiagnosticTask,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
@@ -40,7 +40,6 @@ use crate::{
     world::{WorldSnapshot, WorldState},
     Result,
 };
-use req::ConfigurationParams;
 
 #[derive(Debug)]
 pub struct LspError {
@@ -122,12 +121,13 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
         };
 
         let globs = config
-            .exclude_globs
+            .files
+            .exclude
             .iter()
             .map(|glob| crate::vfs_glob::Glob::new(glob))
             .collect::<std::result::Result<Vec<_>, _>>()?;
 
-        if config.use_client_watching {
+        if let FilesWatcher::Client = config.files.watcher {
             let registration_options = req::DidChangeWatchedFilesRegistrationOptions {
                 watchers: workspaces
                     .iter()
@@ -153,7 +153,7 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
             workspaces,
             config.lru_capacity,
             &globs,
-            Watch(!config.use_client_watching),
+            Watch(matches!(config.files.watcher, FilesWatcher::Notify)),
             config,
         )
     };
@@ -607,7 +607,12 @@ fn on_notification(
             let request_id = loop_state.next_request_id();
             let request = request_new::<req::WorkspaceConfiguration>(
                 request_id.clone(),
-                ConfigurationParams::default(),
+                req::ConfigurationParams {
+                    items: vec![req::ConfigurationItem {
+                        scope_uri: None,
+                        section: Some("rust-analyzer".to_string()),
+                    }],
+                },
             );
             msg_sender.send(request.into())?;
             loop_state.configuration_request_id = Some(request_id);
