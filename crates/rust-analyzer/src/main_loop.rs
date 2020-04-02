@@ -889,10 +889,9 @@ fn update_file_notifications_on_threadpool(
     subscriptions: Vec<FileId>,
 ) {
     log::trace!("updating notifications for {:?}", subscriptions);
-    let publish_diagnostics = world.config.publish_diagnostics;
-    pool.execute(move || {
-        for file_id in subscriptions {
-            if publish_diagnostics {
+    if world.config.publish_diagnostics {
+        pool.execute(move || {
+            for file_id in subscriptions {
                 match handlers::publish_diagnostics(&world, file_id) {
                     Err(e) => {
                         if !is_canceled(&e) {
@@ -904,8 +903,8 @@ fn update_file_notifications_on_threadpool(
                     }
                 }
             }
-        }
-    });
+        })
+    }
 }
 
 pub fn show_message(typ: req::MessageType, message: impl Into<String>, sender: &Sender<Message>) {

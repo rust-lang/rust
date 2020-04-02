@@ -18,7 +18,6 @@ pub struct Config {
     pub client_caps: ClientCapsConfig,
 
     pub with_sysroot: bool,
-    // TODO: verify that it means what I think it means
     pub publish_diagnostics: bool,
     // TODO: move to experimental capabilities
     pub vscode_lldb: bool,
