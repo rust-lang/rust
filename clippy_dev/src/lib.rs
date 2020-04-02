@@ -94,13 +94,7 @@ impl Lint {
 #[must_use]
 pub fn gen_lint_group_list<'a>(lints: impl Iterator<Item = &'a Lint>) -> Vec<String> {
     lints
-        .filter_map(|l| {
-            if l.deprecation.is_some() {
-                None
-            } else {
-                Some(format!("        LintId::of(&{}::{}),", l.module, l.name.to_uppercase()))
-            }
-        })
+        .map(|l| format!("        LintId::of(&{}::{}),", l.module, l.name.to_uppercase()))
         .sorted()
         .collect::<Vec<String>>()
 }
@@ -120,14 +114,8 @@ pub fn gen_modules_list<'a>(lints: impl Iterator<Item = &'a Lint>) -> Vec<String
 #[must_use]
 pub fn gen_changelog_lint_list<'a>(lints: impl Iterator<Item = &'a Lint>) -> Vec<String> {
     lints
-        .sorted_by_key(|l| l.name.clone())
-        .filter_map(|l| {
-            if l.group.starts_with("internal") {
-                None
-            } else {
-                Some(format!("[`{}`]: {}#{}", l.name, DOCS_LINK, l.name))
-            }
-        })
+        .sorted_by_key(|l| &l.name)
+        .map(|l| format!("[`{}`]: {}#{}", l.name, DOCS_LINK, l.name))
         .collect()
 }
 
@@ -135,17 +123,19 @@ pub fn gen_changelog_lint_list<'a>(lints: impl Iterator<Item = &'a Lint>) -> Vec
 #[must_use]
 pub fn gen_deprecated<'a>(lints: impl Iterator<Item = &'a Lint>) -> Vec<String> {
     lints
-        .filter_map(|l| {
-            l.clone().deprecation.map(|depr_text| {
-                vec![
-                    "    store.register_removed(".to_string(),
-                    format!("        \"clippy::{}\",", l.name),
-                    format!("        \"{}\",", depr_text),
-                    "    );".to_string(),
-                ]
-            })
+        .flat_map(|l| {
+            l.deprecation
+                .clone()
+                .map(|depr_text| {
+                    vec![
+                        "    store.register_removed(".to_string(),
+                        format!("        \"clippy::{}\",", l.name),
+                        format!("        \"{}\",", depr_text),
+                        "    );".to_string(),
+                    ]
+                })
+                .expect("only deprecated lints should be passed")
         })
-        .flatten()
         .collect::<Vec<String>>()
 }
 
@@ -458,7 +448,6 @@ fn test_gen_changelog_lint_list() {
     let lints = vec![
         Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
         Lint::new("should_assert_eq2", "group2", "abc", None, "module_name"),
-        Lint::new("incorrect_internal", "internal_style", "abc", None, "module_name"),
     ];
     let expected = vec![
         format!("[`should_assert_eq`]: {}#should_assert_eq", DOCS_LINK.to_string()),
@@ -484,7 +473,6 @@ fn test_gen_deprecated() {
             Some("will be removed"),
             "module_name",
         ),
-        Lint::new("should_assert_eq2", "group2", "abc", None, "module_name"),
     ];
     let expected: Vec<String> = vec![
         "    store.register_removed(",
@@ -503,12 +491,17 @@ fn test_gen_deprecated() {
 }
 
 #[test]
+#[should_panic]
+fn test_gen_deprecated_fail() {
+    let lints = vec![Lint::new("should_assert_eq2", "group2", "abc", None, "module_name")];
+    let _ = gen_deprecated(lints.iter());
+}
+
+#[test]
 fn test_gen_modules_list() {
     let lints = vec![
         Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
-        Lint::new("should_assert_eq2", "group2", "abc", Some("abc"), "deprecated"),
         Lint::new("incorrect_stuff", "group3", "abc", None, "another_module"),
-        Lint::new("incorrect_internal", "internal_style", "abc", None, "module_name"),
     ];
     let expected = vec![
         "pub mod another_module;".to_string(),
@@ -522,7 +515,6 @@ fn test_gen_lint_group_list() {
     let lints = vec![
         Lint::new("abc", "group1", "abc", None, "module_name"),
         Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
-        Lint::new("should_assert_eq2", "group2", "abc", Some("abc"), "deprecated"),
         Lint::new("internal", "internal_style", "abc", None, "module_name"),
     ];
     let expected = vec![
