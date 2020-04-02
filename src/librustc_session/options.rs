@@ -259,7 +259,8 @@ macro_rules! options {
             Some("one of: `address`, `leak`, `memory` or `thread`");
         pub const parse_sanitizer_list: Option<&str> =
             Some("comma separated list of sanitizers");
-        pub const parse_sanitizer_memory_track_origins: Option<&str> = None;
+        pub const parse_sanitizer_memory_track_origins: Option<&str> =
+            Some("0, 1, or 2");
         pub const parse_cfguard: Option<&str> =
             Some("either `disabled`, `nochecks`, or `checks`");
         pub const parse_linker_flavor: Option<&str> =
@@ -491,18 +492,11 @@ macro_rules! options {
         }
 
         fn parse_sanitizer_memory_track_origins(slot: &mut usize, v: Option<&str>) -> bool {
-            match v.map(|s| s.parse()) {
-                None => {
-                    *slot = 2;
-                    true
-                }
-                Some(Ok(i)) if i <= 2 => {
-                    *slot = i;
-                    true
-                }
-                _ => {
-                    false
-                }
+            match v {
+                Some("2") | None => { *slot = 2; true }
+                Some("1") => { *slot = 1; true }
+                Some("0") => { *slot = 0; true }
+                Some(_) => false,
             }
         }
 
