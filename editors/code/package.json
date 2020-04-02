@@ -521,65 +521,34 @@
                 "description": "Style for unsafe operations"
             }
         ],
-        "semanticTokenStyleDefaults": [
+        "semanticTokenScopes": [
             {
-                "selector": "attribute",
-                "scope": [
-                    "meta.attribute"
-                ]
-            },
-            {
-                "selector": "builtinType",
-                "scope": [
-                    "support.type.primitive"
-                ]
-            },
-            {
-                "selector": "lifetime",
-                "scope": [
-                    "entity.name.lifetime.rust"
-                ]
-            },
-            {
-                "selector": "typeAlias",
-                "scope": [
-                    "entity.name.typeAlias"
-                ]
-            },
-            {
-                "selector": "union",
-                "scope": [
-                    "entity.name.union"
-                ]
-            },
-            {
-                "selector": "keyword.unsafe",
-                "scope": [
-                    "keyword.other.unsafe"
-                ]
-            },
-            {
-                "selector": "keyword.control",
-                "scope": [
-                    "keyword.control"
-                ]
-            },
-            {
-                "selector": "variable.constant",
-                "scope": [
-                    "entity.name.constant"
-                ]
-            },
-            {
-                "selector": "*.mutable",
-                "light": {
-                    "fontStyle": "underline"
-                },
-                "dark": {
-                    "fontStyle": "underline"
-                },
-                "highContrast": {
-                    "fontStyle": "underline"
+                "language": "rust",
+                "scopes": {
+                    "attribute": [
+                        "meta.attribute"
+                    ],
+                    "builtinType": [
+                        "support.type.primitive"
+                    ],
+                    "lifetime": [
+                        "entity.name.lifetime.rust"
+                    ],
+                    "typeAlias": [
+                        "entity.name.typeAlias"
+                    ],
+                    "union": [
+                        "entity.name.union"
+                    ],
+                    "keyword.unsafe": [
+                        "keyword.other.unsafe"
+                    ],
+                    "keyword.control": [
+                        "keyword.control"
+                    ],
+                    "variable.constant": [
+                        "entity.name.constant"
+                    ]
                 }
             }
         ]
