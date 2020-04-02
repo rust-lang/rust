@@ -428,7 +428,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     span: Span,
     func: &Operand<'tcx>,
     args: &[Operand<'tcx>],
-    destination: &Option<(Place<'tcx>, BasicBlock)>,
+    destination: Option<(Place<'tcx>, BasicBlock)>,
 ) {
     let fn_ty = fx.monomorphize(&func.ty(fx.mir, fx.tcx));
     let sig = fx
@@ -436,8 +436,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
 
     let destination = destination
-        .as_ref()
-        .map(|&(ref place, bb)| (trans_place(fx, place), bb));
+        .map(|(place, bb)| (trans_place(fx, place), bb));
 
     if let ty::FnDef(def_id, substs) = fn_ty.kind {
         let instance =

@@ -95,7 +95,7 @@ pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
                     bb_data.terminator().source_info.span,
                     func,
                     args,
-                    destination,
+                    *destination,
                 ));
                 destination.map(|(_ret_place, ret_block)| ret_block)
             }
@@ -126,7 +126,7 @@ pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
                         bb_data.terminator().source_info.span,
                         func,
                         args,
-                        destination,
+                        *destination,
                     ));
                     destination.map(|(_ret_place, ret_block)| ret_block)
                 }
@@ -336,7 +336,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                     bb_data.terminator().source_info.span,
                     func,
                     args,
-                    destination,
+                    *destination,
                 ));
             }
             TerminatorKind::Resume | TerminatorKind::Abort => {
@@ -357,7 +357,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 target,
                 unwind: _,
             } => {
-                let drop_place = trans_place(fx, location);
+                let drop_place = trans_place(fx, *location);
                 crate::abi::codegen_drop(fx, bb_data.terminator().source_info.span, drop_place);
 
                 let target_block = fx.get_block(*target);
@@ -394,11 +394,11 @@ fn trans_stmt<'tcx>(
             place,
             variant_index,
         } => {
-            let place = trans_place(fx, place);
+            let place = trans_place(fx, **place);
             crate::discriminant::codegen_set_discriminant(fx, place, *variant_index);
         }
         StatementKind::Assign(to_place_and_rval) => {
-            let lval = trans_place(fx, &to_place_and_rval.0);
+            let lval = trans_place(fx, to_place_and_rval.0);
             let dest_layout = lval.layout();
             match &to_place_and_rval.1 {
                 Rvalue::Use(operand) => {
@@ -406,7 +406,7 @@ fn trans_stmt<'tcx>(
                     lval.write_cvalue(fx, val);
                 }
                 Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
-                    let place = trans_place(fx, place);
+                    let place = trans_place(fx, *place);
                     place.write_place_ref(fx, lval);
                 }
                 Rvalue::BinaryOp(bin_op, lhs, rhs) => {
@@ -565,7 +565,7 @@ fn trans_stmt<'tcx>(
                     operand.unsize_value(fx, lval);
                 }
                 Rvalue::Discriminant(place) => {
-                    let place = trans_place(fx, place);
+                    let place = trans_place(fx, *place);
                     let value = place.to_cvalue(fx);
                     let discr =
                         crate::discriminant::codegen_get_discriminant(fx, value, dest_layout);
@@ -586,7 +586,7 @@ fn trans_stmt<'tcx>(
                     }
                 }
                 Rvalue::Len(place) => {
-                    let place = trans_place(fx, place);
+                    let place = trans_place(fx, *place);
                     let usize_layout = fx.layout_of(fx.tcx.types.usize);
                     let len = codegen_array_len(fx, place);
                     lval.write_cvalue(fx, CValue::by_val(len, usize_layout));
@@ -739,11 +739,11 @@ fn codegen_array_len<'tcx>(
 
 pub(crate) fn trans_place<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    place: &Place<'tcx>,
+    place: Place<'tcx>,
 ) -> CPlace<'tcx> {
     let mut cplace = fx.get_local_place(place.local);
 
-    for elem in &*place.projection {
+    for elem in place.projection {
         match *elem {
             PlaceElem::Deref => {
                 cplace = cplace.place_deref(fx);
@@ -811,7 +811,7 @@ pub(crate) fn trans_operand<'tcx>(
 ) -> CValue<'tcx> {
     match operand {
         Operand::Move(place) | Operand::Copy(place) => {
-            let cplace = trans_place(fx, place);
+            let cplace = trans_place(fx, *place);
             cplace.to_cvalue(fx)
         }
         Operand::Constant(const_) => crate::constant::trans_constant(fx, const_),
