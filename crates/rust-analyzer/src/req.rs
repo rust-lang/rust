@@ -1,6 +1,6 @@
 //! Defines `rust-analyzer` specific custom messages.
 
-use lsp_types::{Location, Position, Range, TextDocumentIdentifier, Url};
+use lsp_types::{Location, Position, Range, TextDocumentIdentifier};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
@@ -84,36 +84,6 @@ impl Request for FindMatchingBrace {
 pub struct FindMatchingBraceParams {
     pub text_document: TextDocumentIdentifier,
     pub offsets: Vec<Position>,
-}
-
-pub enum DecorationsRequest {}
-
-impl Request for DecorationsRequest {
-    type Params = TextDocumentIdentifier;
-    type Result = Vec<Decoration>;
-    const METHOD: &'static str = "rust-analyzer/decorationsRequest";
-}
-
-pub enum PublishDecorations {}
-
-impl Notification for PublishDecorations {
-    type Params = PublishDecorationsParams;
-    const METHOD: &'static str = "rust-analyzer/publishDecorations";
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct PublishDecorationsParams {
-    pub uri: Url,
-    pub decorations: Vec<Decoration>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Decoration {
-    pub range: Range,
-    pub tag: String,
-    pub binding_hash: Option<String>,
 }
 
 pub enum ParentModule {}

@@ -182,16 +182,6 @@
                     "default": false,
                     "description": "Use proposed semantic tokens API for syntax highlighting"
                 },
-                "rust-analyzer.highlightingOn": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Highlight Rust code (overrides built-in syntax highlighting)"
-                },
-                "rust-analyzer.rainbowHighlightingOn": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "When highlighting Rust code, use a unique color per identifier"
-                },
                 "rust-analyzer.featureFlags": {
                     "type": "object",
                     "default": {},

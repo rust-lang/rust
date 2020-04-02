@@ -250,9 +250,7 @@ impl fmt::Debug for Event {
                 }
             }
             Event::Task(Task::Notify(not)) => {
-                if notification_is::<req::PublishDecorations>(not)
-                    || notification_is::<req::PublishDiagnostics>(not)
-                {
+                if notification_is::<req::PublishDiagnostics>(not) {
                     return debug_verbose_not(not, f);
                 }
             }
@@ -427,7 +425,6 @@ fn loop_turn(
         update_file_notifications_on_threadpool(
             pool,
             world_state.snapshot(),
-            world_state.config.publish_decorations,
             task_sender.clone(),
             loop_state.subscriptions.subscriptions(),
         )
@@ -508,7 +505,6 @@ fn on_request(
         .on::<req::GotoTypeDefinition>(handlers::handle_goto_type_definition)?
         .on::<req::ParentModule>(handlers::handle_parent_module)?
         .on::<req::Runnables>(handlers::handle_runnables)?
-        .on::<req::DecorationsRequest>(handlers::handle_decorations)?
         .on::<req::Completion>(handlers::handle_completion)?
         .on::<req::CodeActionRequest>(handlers::handle_code_action)?
         .on::<req::CodeLensRequest>(handlers::handle_code_lens)?
@@ -884,7 +880,6 @@ where
 fn update_file_notifications_on_threadpool(
     pool: &ThreadPool,
     world: WorldSnapshot,
-    publish_decorations: bool,
     task_sender: Sender<Task>,
     subscriptions: Vec<FileId>,
 ) {
@@ -901,19 +896,6 @@ fn update_file_notifications_on_threadpool(
                     }
                     Ok(task) => {
                         task_sender.send(Task::Diagnostic(task)).unwrap();
-                    }
-                }
-            }
-            if publish_decorations {
-                match handlers::publish_decorations(&world, file_id) {
-                    Err(e) => {
-                        if !is_canceled(&e) {
-                            log::error!("failed to compute decorations: {:?}", e);
-                        }
-                    }
-                    Ok(params) => {
-                        let not = notification_new::<req::PublishDecorations>(params);
-                        task_sender.send(Task::Notify(not)).unwrap();
                     }
                 }
             }
