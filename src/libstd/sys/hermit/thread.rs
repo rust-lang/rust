@@ -5,10 +5,9 @@ use crate::fmt;
 use crate::io;
 use crate::mem;
 use crate::sys::hermit::abi;
+use crate::sys::stack_overflow;
 use crate::time::Duration;
 use core::u32;
-
-use crate::sys_common::thread::*;
 
 pub type Tid = abi::Tid;
 
@@ -49,26 +48,32 @@ impl Thread {
         p: Box<dyn FnOnce()>,
         core_id: isize,
     ) -> io::Result<Thread> {
-        let p = box p;
+        let p = Box::into_raw(box p);
         let mut tid: Tid = u32::MAX;
         let ret = abi::spawn(
             &mut tid as *mut Tid,
             thread_start,
-            &*p as *const _ as *const u8 as usize,
+            p as usize,
             Priority::into(NORMAL_PRIO),
             core_id,
         );
 
-        return if ret == 0 {
-            mem::forget(p); // ownership passed to pthread_create
-            Ok(Thread { tid: tid })
-        } else {
+        return if ret != 0 {
+            // The thread failed to start and as a result p was not consumed. Therefore, it is
+            // safe to reconstruct the box so that it gets deallocated.
+            drop(Box::from_raw(p));
             Err(io::Error::new(io::ErrorKind::Other, "Unable to create thread!"))
+        } else {
+            Ok(Thread { tid: tid })
         };
 
         extern "C" fn thread_start(main: usize) {
             unsafe {
-                start_thread(main as *mut u8);
+                // Next, set up our stack overflow handler which may get triggered if we run
+                // out of stack.
+                let _handler = stack_overflow::Handler::new();
+                // Finally, let's run some code.
+                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
             }
         }
     }
