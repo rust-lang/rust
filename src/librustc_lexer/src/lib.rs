@@ -148,6 +148,10 @@ pub enum LiteralKind {
 pub struct UnvalidatedRawStr {
     /// The prefix (`r###"`) is valid
     valid_start: bool,
+
+    /// The postfix (`"###`) is valid
+    valid_end: bool,
+
     /// The number of leading `#`
     n_start_hashes: usize,
     /// The number of trailing `#`. `n_end_hashes` <= `n_start_hashes`
@@ -197,7 +201,7 @@ impl UnvalidatedRawStr {
         let n_start_safe: u16 =
             self.n_start_hashes.try_into().map_err(|_| LexRawStrError::TooManyDelimiters)?;
 
-        if self.n_start_hashes > self.n_end_hashes {
+        if self.n_start_hashes > self.n_end_hashes || !self.valid_end {
             Err(LexRawStrError::NoTerminator {
                 expected: self.n_start_hashes,
                 found: self.n_end_hashes,
@@ -687,6 +691,7 @@ impl Cursor<'_> {
             _ => {
                 return UnvalidatedRawStr {
                     valid_start,
+                    valid_end: false,
                     n_start_hashes,
                     n_end_hashes: 0,
                     possible_terminator_offset,
@@ -702,6 +707,7 @@ impl Cursor<'_> {
             if self.is_eof() {
                 return UnvalidatedRawStr {
                     valid_start,
+                    valid_end: false,
                     n_start_hashes,
                     n_end_hashes: max_hashes,
                     possible_terminator_offset,
@@ -727,6 +733,7 @@ impl Cursor<'_> {
             if n_end_hashes == n_start_hashes {
                 return UnvalidatedRawStr {
                     valid_start,
+                    valid_end: true,
                     n_start_hashes,
                     n_end_hashes,
                     possible_terminator_offset: None,
