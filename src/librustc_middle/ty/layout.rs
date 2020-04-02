@@ -900,6 +900,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     let mut niche_variants = VariantIdx::MAX..=VariantIdx::new(0);
                     let mut max_size = Size::ZERO;
                     let mut second_max_size = Size::ZERO;
+                    let mut align = dl.aggregate_align;
 
                     // The size computations below assume that the padding is minimum.
                     // This is the case when fields are re-ordered.
@@ -909,7 +910,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             niche_variants =
                                 *niche_variants.start().min(&d)..=*niche_variants.end().max(&d);
                         };
-                        let mut align = dl.aggregate_align;
 
                         // Find the largest and second largest variant.
                         for (v, fields) in variants.iter_enumerated() {
@@ -938,10 +938,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 second_max_size = second_max_size.max(size);
                                 extend_niche_range(v);
                             }
-                        }
-                        if !max_size.is_aligned(align.abi) {
-                            // Don't perform niche optimisation if there is padding anyway
-                            dataful_variant = None;
                         }
                     } else {
                         // Find one non-ZST variant.
@@ -980,12 +976,22 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             .filter_map(|(j, &field)| Some((j, field.largest_niche.as_ref()?)))
                             .max_by_key(|(_, n)| (n.available(dl), cmp::Reverse(n.offset)))
                             .and_then(|(field_index, niche)| {
-                                // make sure there is enough room for the other variants
-                                if struct_reordering_opt
-                                    && max_size - (niche.offset + niche.scalar.value.size(dl))
+                                if struct_reordering_opt {
+                                    // make sure there is enough room for the other variants
+                                    if max_size - (niche.offset + niche.scalar.value.size(dl))
                                         < second_max_size
-                                {
-                                    return None;
+                                    {
+                                        return None;
+                                    }
+                                    // Don't perform niche optimisation if there is more padding than
+                                    // what's available in the biggest niche
+                                    let padding_bits =
+                                        (max_size.align_to(align.abi) - max_size).bits();
+                                    if padding_bits >= 128
+                                        || (1 << padding_bits) > niche.available(dl)
+                                    {
+                                        return None;
+                                    }
                                 }
                                 Some((field_index, niche, niche.reserve(self, count)?))
                             });
@@ -1028,7 +1034,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             } else {
                                 st[dataful_variant].fields.offset(field_index) + niche.offset
                             };
-                            let size = st[dataful_variant].size;
+                            let size = st[dataful_variant].size.align_to(align.abi);
+                            debug_assert!(
+                                !struct_reordering_opt || size == max_size.align_to(align.abi)
+                            );
                             debug_assert!(st.iter().all(|v| { v.size <= size }));
 
                             let abi = if st.iter().all(|v| v.abi.is_uninhabited()) {
