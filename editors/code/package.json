@@ -49,7 +49,7 @@
         "tslib": "^1.11.1",
         "typescript": "^3.8.3",
         "typescript-formatter": "^7.2.2",
-        "vsce": "^1.74.0"
+        "vsce": "^1.75.0"
     },
     "activationEvents": [
         "onLanguage:rust",
