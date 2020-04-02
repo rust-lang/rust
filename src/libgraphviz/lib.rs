@@ -435,6 +435,13 @@ pub trait Labeller<'a> {
     /// Must return a DOT compatible identifier naming the graph.
     fn graph_id(&'a self) -> Id<'a>;
 
+    /// Returns a label that will be applied to the graph itself.
+    ///
+    /// The label need not be unique, and defaults to the empty string.
+    fn graph_label(&'a self) -> LabelText<'a> {
+        LabelStr("".into())
+    }
+
     /// Maps `n` to a unique identifier with respect to `self`. The
     /// implementor is responsible for ensuring that the returned name
     /// is a valid DOT identifier.
@@ -635,6 +642,10 @@ where
         writeln!(w, r#"    node[fontname="monospace"];"#)?;
         writeln!(w, r#"    edge[fontname="monospace"];"#)?;
     }
+
+    // Graph label
+    writeln!(w, r#"    label={};"#, g.graph_label().to_dot_string())?;
+    writeln!(w, r#"    labelloc="t";"#)?;
 
     for n in g.nodes().iter() {
         write!(w, "    ")?;
