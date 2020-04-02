@@ -1,0 +1,8 @@
+error: unexpected closing delimiter: `}`
+  --> $DIR/issue-70583-block-is-empty-1.rs:20:1
+   |
+LL | }
+   | ^ unexpected closing delimiter
+
+error: aborting due to previous error
+
