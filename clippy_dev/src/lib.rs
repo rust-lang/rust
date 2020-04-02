@@ -63,7 +63,7 @@ impl Lint {
 
     /// Returns all non-deprecated lints and non-internal lints
     pub fn usable_lints(lints: impl Iterator<Item = Self>) -> impl Iterator<Item = Self> {
-        lints.filter(|l| l.deprecation.is_none() && !l.is_internal())
+        lints.filter(|l| l.deprecation.is_none() && !l.group.starts_with("internal"))
     }
 
     /// Returns all internal lints (not `internal_warn` lints)
@@ -75,11 +75,6 @@ impl Lint {
     #[must_use]
     pub fn by_lint_group(lints: impl Iterator<Item = Self>) -> HashMap<String, Vec<Self>> {
         lints.map(|lint| (lint.group.to_string(), lint)).into_group_map()
-    }
-
-    #[must_use]
-    pub fn is_internal(&self) -> bool {
-        self.group.starts_with("internal")
     }
 }
 
@@ -103,14 +98,8 @@ pub fn gen_lint_group_list(lints: &[Lint]) -> Vec<String> {
 #[must_use]
 pub fn gen_modules_list(lints: &[Lint]) -> Vec<String> {
     lints
-        .into_iter()
-        .filter_map(|l| {
-            if l.is_internal() || l.deprecation.is_some() {
-                None
-            } else {
-                Some(l.module.clone())
-            }
-        })
+        .iter()
+        .map(|l| &l.module)
         .unique()
         .map(|module| format!("pub mod {};", module))
         .sorted()
@@ -124,7 +113,7 @@ pub fn gen_changelog_lint_list(lints: &[Lint]) -> Vec<String> {
         .iter()
         .sorted_by_key(|l| l.name.clone())
         .filter_map(|l| {
-            if l.is_internal() {
+            if l.group.starts_with("internal") {
                 None
             } else {
                 Some(format!("[`{}`]: {}#{}", l.name, DOCS_LINK, l.name))
@@ -158,13 +147,7 @@ pub fn gen_register_lint_list(lints: &[Lint]) -> Vec<String> {
     let post = "    ]);".to_string();
     let mut inner = lints
         .iter()
-        .filter_map(|l| {
-            if !l.is_internal() && l.deprecation.is_none() {
-                Some(format!("        &{}::{},", l.module, l.name.to_uppercase()))
-            } else {
-                None
-            }
-        })
+        .map(|l| format!("        &{}::{},", l.module, l.name.to_uppercase()))
         .sorted()
         .collect::<Vec<String>>();
     inner.insert(0, pre);

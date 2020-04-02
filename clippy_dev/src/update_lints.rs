@@ -81,7 +81,7 @@ pub fn run(update_mode: UpdateMode) {
         "end register lints",
         false,
         update_mode == UpdateMode::Change,
-        || gen_register_lint_list(&lint_list),
+        || gen_register_lint_list(&usable_lints),
     )
     .changed;
 
@@ -91,7 +91,7 @@ pub fn run(update_mode: UpdateMode) {
         "end lints modules",
         false,
         update_mode == UpdateMode::Change,
-        || gen_modules_list(&lint_list),
+        || gen_modules_list(&usable_lints),
     )
     .changed;
 
