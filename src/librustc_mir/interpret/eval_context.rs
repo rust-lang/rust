@@ -18,7 +18,7 @@ use rustc_middle::ty::query::TyCtxtAt;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map::DUMMY_SP;
-use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
+use rustc_target::abi::{Abi, Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
     Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
@@ -212,20 +212,25 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
 
 /// Test if it is valid for a MIR assignment to assign `src`-typed place to `dest`-typed value.
 /// This test should be symmetric, as it is primarily about layout compatibility.
-pub(super) fn mir_assign_valid_types<'tcx>(src: Ty<'tcx>, dest: Ty<'tcx>) -> bool {
-    src == dest
-        || match (&src.kind, &dest.kind) {
-            (ty::Ref(_, src_pointee, _), ty::Ref(_, dest_pointee, _)) => {
-                // After optimizations, there can be assignments that change reference mutability.
-                // This does not affect reference layout, so that is fine.
-                src_pointee == dest_pointee
-            }
-            (ty::FnPtr(_), ty::FnPtr(_)) => {
-                // All function pointers have equal layout, and thus can be assigned.
-                true
-            }
-            _ => false,
-        }
+pub(super) fn mir_assign_valid_types<'tcx>(
+    src: TyAndLayout<'tcx>,
+    dest: TyAndLayout<'tcx>,
+) -> bool {
+    if src.ty == dest.ty {
+        // Equal types, all is good.
+        return true;
+    }
+    // Type-changing assignments can happen for (at least) two reasons:
+    // - `&mut T` -> `&T` gets optimized from a reborrow to a mere assignment.
+    // - Subtyping is used. While all normal lifetimes are erased, higher-ranked lifetime
+    //   bounds are still around and can lead to type differences.
+    // There is no good way to check the latter, so we compare layouts instead -- but only
+    // for values with `Scalar`/`ScalarPair` abi.
+    // FIXME: Do something more accurate, type-based.
+    match &src.abi {
+        Abi::Scalar(..) | Abi::ScalarPair(..) => src.layout == dest.layout,
+        _ => false,
+    }
 }
 
 /// Use the already known layout if given (but sanity check in debug mode),
@@ -241,7 +246,7 @@ pub(super) fn from_known_layout<'tcx>(
             if cfg!(debug_assertions) {
                 let check_layout = compute()?;
                 assert!(
-                    mir_assign_valid_types(check_layout.ty, known_layout.ty),
+                    mir_assign_valid_types(check_layout, known_layout),
                     "expected type differs from actual type.\nexpected: {:?}\nactual: {:?}",
                     known_layout.ty,
                     check_layout.ty,
