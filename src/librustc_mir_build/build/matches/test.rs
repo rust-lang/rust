@@ -9,14 +9,14 @@ use crate::build::matches::{Candidate, MatchPair, Test, TestKind};
 use crate::build::Builder;
 use crate::hair::pattern::compare_const_vals;
 use crate::hair::*;
-use rustc_middle::mir::*;
-use rustc_middle::ty::layout::VariantIdx;
-use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, adjustment::PointerCast, Ty};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::RangeEnd;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::*;
+use rustc_middle::ty::util::IntTypeExt;
+use rustc_middle::ty::{self, adjustment::PointerCast, Ty};
 use rustc_span::symbol::sym;
+use rustc_target::abi::VariantIdx;
 
 use std::cmp::Ordering;
 
@@ -362,7 +362,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
-        use rustc_middle::middle::lang_items::EqTraitLangItem;
+        use rustc_hir::lang_items::EqTraitLangItem;
 
         let mut expect = self.literal_operand(source_info.span, value);
         let mut val = Operand::Copy(place);

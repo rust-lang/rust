@@ -7,13 +7,11 @@ use std::ops::{Deref, DerefMut, Range};
 
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_target::abi::HasDataLayout;
+use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
     read_target_uint, write_target_uint, AllocId, InterpResult, Pointer, Scalar, ScalarMaybeUndef,
 };
-
-use crate::ty::layout::{Align, Size};
 
 // NOTE: When adding new fields, make sure to adjust the `Snapshot` impl in
 // `src/librustc_mir/interpret/snapshot.rs`.

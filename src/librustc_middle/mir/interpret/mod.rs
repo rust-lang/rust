@@ -109,10 +109,10 @@ use rustc_data_structures::tiny_list::TinyList;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable, Encoder};
+use rustc_target::abi::{Endian, Size};
 
 use crate::mir;
 use crate::ty::codec::TyDecoder;
-use crate::ty::layout::{self, Size};
 use crate::ty::subst::GenericArgKind;
 use crate::ty::{self, Instance, Ty, TyCtxt};
 
@@ -521,22 +521,22 @@ impl<'tcx> AllocMap<'tcx> {
 
 #[inline]
 pub fn write_target_uint(
-    endianness: layout::Endian,
+    endianness: Endian,
     mut target: &mut [u8],
     data: u128,
 ) -> Result<(), io::Error> {
     let len = target.len();
     match endianness {
-        layout::Endian::Little => target.write_uint128::<LittleEndian>(data, len),
-        layout::Endian::Big => target.write_uint128::<BigEndian>(data, len),
+        Endian::Little => target.write_uint128::<LittleEndian>(data, len),
+        Endian::Big => target.write_uint128::<BigEndian>(data, len),
     }
 }
 
 #[inline]
-pub fn read_target_uint(endianness: layout::Endian, mut source: &[u8]) -> Result<u128, io::Error> {
+pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, io::Error> {
     match endianness {
-        layout::Endian::Little => source.read_uint128::<LittleEndian>(source.len()),
-        layout::Endian::Big => source.read_uint128::<BigEndian>(source.len()),
+        Endian::Little => source.read_uint128::<LittleEndian>(source.len()),
+        Endian::Big => source.read_uint128::<BigEndian>(source.len()),
     }
 }
 

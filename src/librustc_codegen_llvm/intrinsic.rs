@@ -7,23 +7,22 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 use crate::value::Value;
+
 use rustc_ast::ast;
 use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
+use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
 use rustc_hir as hir;
-use rustc_middle::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf, Primitive};
+use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
-use rustc_target::abi::HasDataLayout;
-
-use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
-use rustc_codegen_ssa::traits::*;
-
 use rustc_span::Span;
+use rustc_target::abi::{self, HasDataLayout, LayoutOf, Primitive};
 
 use std::cmp::Ordering;
 use std::{i128, iter, u128};
@@ -145,7 +144,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
             "va_arg" => {
                 match fn_abi.ret.layout.abi {
-                    layout::Abi::Scalar(ref scalar) => {
+                    abi::Abi::Scalar(ref scalar) => {
                         match scalar.value {
                             Primitive::Int(..) => {
                                 if self.cx().size_of(ret_ty).bytes() < 4 {

@@ -14,14 +14,13 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::bug;
 use rustc_middle::mir::mono::CodegenUnit;
-use rustc_middle::ty::layout::{
-    HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyAndLayout, VariantIdx,
-};
+use rustc_middle::ty::layout::{HasParamEnv, LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::{self, CFGuard, DebugInfo};
 use rustc_session::Session;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::Symbol;
+use rustc_target::abi::{HasDataLayout, LayoutOf, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use std::cell::{Cell, RefCell};
@@ -817,8 +816,8 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
     }
 }
 
-impl ty::layout::HasDataLayout for CodegenCx<'ll, 'tcx> {
-    fn data_layout(&self) -> &ty::layout::TargetDataLayout {
+impl HasDataLayout for CodegenCx<'ll, 'tcx> {
+    fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }

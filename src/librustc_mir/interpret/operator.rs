@@ -4,11 +4,8 @@ use rustc_apfloat::Float;
 use rustc_ast::ast::FloatTy;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
-use rustc_middle::ty::{
-    self,
-    layout::{LayoutOf, TyAndLayout},
-    Ty,
-};
+use rustc_middle::ty::{self, layout::TyAndLayout, Ty};
+use rustc_target::abi::LayoutOf;
 
 use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
 

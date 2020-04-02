@@ -32,11 +32,10 @@ use super::FnCtxt;
 
 use crate::hir::def_id::DefId;
 use crate::type_error_struct;
-use crate::util::common::ErrorReported;
 use rustc_ast::ast;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
-use rustc_middle::middle::lang_items;
+use rustc_hir::lang_items;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;

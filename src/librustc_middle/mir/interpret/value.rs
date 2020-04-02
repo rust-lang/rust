@@ -6,12 +6,9 @@ use rustc_apfloat::{
     Float,
 };
 use rustc_macros::HashStable;
-use rustc_target::abi::TargetDataLayout;
+use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 
-use crate::ty::{
-    layout::{HasDataLayout, Size},
-    ParamEnv, Ty, TyCtxt,
-};
+use crate::ty::{ParamEnv, Ty, TyCtxt};
 
 use super::{sign_extend, truncate, AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
 

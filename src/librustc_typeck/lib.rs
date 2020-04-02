@@ -89,7 +89,7 @@ mod outlives;
 mod structured_errors;
 mod variance;
 
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
@@ -100,7 +100,6 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util;
-use rustc_middle::util::common::ErrorReported;
 use rustc_session::config::EntryFnType;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;

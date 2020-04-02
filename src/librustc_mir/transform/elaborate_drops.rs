@@ -13,9 +13,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout::VariantIdx;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
+use rustc_target::abi::VariantIdx;
 use std::fmt;
 
 pub struct ElaborateDrops;

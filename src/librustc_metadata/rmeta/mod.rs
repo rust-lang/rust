@@ -8,11 +8,11 @@ use rustc_data_structures::sync::MetadataRef;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, DefIndex};
+use rustc_hir::lang_items;
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir::exports::Export;
 use rustc_middle::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLibrary};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
-use rustc_middle::middle::lang_items;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_serialize::opaque::Encoder;
@@ -197,7 +197,7 @@ crate struct CrateRoot<'tcx> {
     impls: Lazy<[TraitImpls]>,
     interpret_alloc_index: Lazy<[u32]>,
 
-    per_def: LazyPerDefTables<'tcx>,
+    tables: LazyTables<'tcx>,
 
     /// The DefIndex's of any proc macros declared by this crate.
     proc_macro_data: Option<Lazy<[DefIndex]>>,
@@ -228,22 +228,22 @@ crate struct TraitImpls {
     impls: Lazy<[DefIndex]>,
 }
 
-/// Define `LazyPerDefTables` and `PerDefTableBuilders` at the same time.
-macro_rules! define_per_def_tables {
+/// Define `LazyTables` and `TableBuilders` at the same time.
+macro_rules! define_tables {
     ($($name:ident: Table<DefIndex, $T:ty>),+ $(,)?) => {
         #[derive(RustcEncodable, RustcDecodable)]
-        crate struct LazyPerDefTables<'tcx> {
+        crate struct LazyTables<'tcx> {
             $($name: Lazy!(Table<DefIndex, $T>)),+
         }
 
         #[derive(Default)]
-        struct PerDefTableBuilders<'tcx> {
+        struct TableBuilders<'tcx> {
             $($name: TableBuilder<DefIndex, $T>),+
         }
 
-        impl PerDefTableBuilders<'tcx> {
-            fn encode(&self, buf: &mut Encoder) -> LazyPerDefTables<'tcx> {
-                LazyPerDefTables {
+        impl TableBuilders<'tcx> {
+            fn encode(&self, buf: &mut Encoder) -> LazyTables<'tcx> {
+                LazyTables {
                     $($name: self.$name.encode(buf)),+
                 }
             }
@@ -251,7 +251,7 @@ macro_rules! define_per_def_tables {
     }
 }
 
-define_per_def_tables! {
+define_tables! {
     kind: Table<DefIndex, Lazy<EntryKind>>,
     visibility: Table<DefIndex, Lazy<ty::Visibility>>,
     span: Table<DefIndex, Lazy<Span>>,

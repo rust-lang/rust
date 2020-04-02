@@ -16,12 +16,11 @@ use rustc_middle::mir::interpret::{
     read_target_uint, Allocation, ConstValue, ErrorHandled, Pointer,
 };
 use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::ty::layout::{self, Align, LayoutOf, Size};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use rustc_target::abi::HasDataLayout;
+use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Primitive, Scalar, Size};
 
 use std::ffi::CStr;
 
@@ -56,7 +55,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
             as u64;
         llvals.push(cx.scalar_to_backend(
             Pointer::new(alloc_id, Size::from_bytes(ptr_offset)).into(),
-            &layout::Scalar { value: layout::Primitive::Pointer, valid_range: 0..=!0 },
+            &Scalar { value: Primitive::Pointer, valid_range: 0..=!0 },
             cx.type_i8p(),
         ));
         next_offset = offset + pointer_size;

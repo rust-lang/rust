@@ -2,11 +2,11 @@ use crate::traits::query::outlives_bounds::InferCtxtExt as _;
 use crate::traits::{self, TraitEngine, TraitEngineExt};
 
 use rustc_hir as hir;
+use rustc_hir::lang_items;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{Canonical, CanonicalizedQueryResponse, QueryResponse};
-use rustc_middle::middle::lang_items;
 use rustc_middle::traits::query::Fallible;
 use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_span::{Span, DUMMY_SP};

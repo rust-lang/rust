@@ -10,7 +10,6 @@ use crate::middle::region;
 use crate::mir::interpret::ConstValue;
 use crate::mir::interpret::{LitToConstInput, Scalar};
 use crate::mir::Promoted;
-use crate::ty::layout::VariantIdx;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::{
     self, AdtDef, DefIdTree, Discr, Ty, TyCtxt, TypeFlags, TypeFoldable, WithConstness,
@@ -24,6 +23,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, Symbol};
+use rustc_target::abi::{Size, VariantIdx};
 use rustc_target::spec::abi;
 use smallvec::SmallVec;
 use std::borrow::Cow;
@@ -1623,16 +1623,19 @@ impl RegionKind {
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_INFER;
                 flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
+                flags = flags | TypeFlags::STILL_FURTHER_SPECIALIZABLE;
             }
             ty::RePlaceholder(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_PLACEHOLDER;
+                flags = flags | TypeFlags::STILL_FURTHER_SPECIALIZABLE;
             }
             ty::ReEarlyBound(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_PARAM;
+                flags = flags | TypeFlags::STILL_FURTHER_SPECIALIZABLE;
             }
             ty::ReFree { .. } | ty::ReScope { .. } => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
@@ -2501,7 +2504,7 @@ impl<'tcx> ConstKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_to_bits(&self, size: ty::layout::Size) -> Option<u128> {
+    pub fn try_to_bits(&self, size: Size) -> Option<u128> {
         if let ConstKind::Value(val) = self { val.try_to_bits(size) } else { None }
     }
 }

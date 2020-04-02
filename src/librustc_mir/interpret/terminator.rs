@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 
-use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::Instance;
 use rustc_middle::{mir, ty};
+use rustc_target::abi::{self, LayoutOf as _};
 use rustc_target::spec::abi::Abi;
 
 use super::{
@@ -142,12 +143,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Different valid ranges are okay (once we enforce validity,
             // that will take care to make it UB to leave the range, just
             // like for transmute).
-            (layout::Abi::Scalar(ref caller), layout::Abi::Scalar(ref callee)) => {
+            (abi::Abi::Scalar(ref caller), abi::Abi::Scalar(ref callee)) => {
                 caller.value == callee.value
             }
             (
-                layout::Abi::ScalarPair(ref caller1, ref caller2),
-                layout::Abi::ScalarPair(ref callee1, ref callee2),
+                abi::Abi::ScalarPair(ref caller1, ref caller2),
+                abi::Abi::ScalarPair(ref callee1, ref callee2),
             ) => caller1.value == callee1.value && caller2.value == callee2.value,
             // Be conservative
             _ => false,

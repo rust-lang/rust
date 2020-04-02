@@ -420,7 +420,7 @@ fn virtual_call_violation_for_method<'tcx>(
         } else {
             // Do sanity check to make sure the receiver actually has the layout of a pointer.
 
-            use rustc_middle::ty::layout::Abi;
+            use rustc_target::abi::Abi;
 
             let param_env = tcx.param_env(method.def_id);
 

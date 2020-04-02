@@ -12,9 +12,10 @@ use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{self, Align, Size, TyAndLayout};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::Ty;
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
+use rustc_target::abi::{Align, Integer, Size};
 
 use std::fmt;
 use std::ptr;
@@ -114,14 +115,14 @@ impl CodegenCx<'ll, 'tcx> {
 
     crate fn type_pointee_for_align(&self, align: Align) -> &'ll Type {
         // FIXME(eddyb) We could find a better approximation if ity.align < align.
-        let ity = layout::Integer::approximate_align(self, align);
+        let ity = Integer::approximate_align(self, align);
         self.type_from_integer(ity)
     }
 
     /// Return a LLVM type that has at most the required alignment,
     /// and exactly the required size, as a best-effort padding array.
     crate fn type_padding_filler(&self, size: Size, align: Align) -> &'ll Type {
-        let unit = layout::Integer::approximate_align(self, align);
+        let unit = Integer::approximate_align(self, align);
         let size = size.bytes();
         let unit_size = unit.size().bytes();
         assert_eq!(size % unit_size, 0);

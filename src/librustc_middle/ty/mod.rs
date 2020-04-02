@@ -11,14 +11,12 @@ use crate::hir::exports::ExportMap;
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::Canonical;
 use crate::middle::cstore::CrateStoreDyn;
-use crate::middle::lang_items::{FnMutTraitLangItem, FnOnceTraitLangItem, FnTraitLangItem};
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
 use crate::mir::interpret::ErrorHandled;
 use crate::mir::GeneratorLayout;
 use crate::mir::ReadOnlyBodyAndCache;
 use crate::traits::{self, Reveal};
 use crate::ty;
-use crate::ty::layout::VariantIdx;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
 use crate::ty::walk::TypeWalker;
@@ -35,6 +33,7 @@ use rustc_data_structures::sync::{self, par_iter, Lrc, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::lang_items::{FnMutTraitLangItem, FnOnceTraitLangItem, FnTraitLangItem};
 use rustc_hir::{Constness, GlobMap, Node, TraitMap};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
@@ -43,7 +42,7 @@ use rustc_session::DataTypeKind;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use rustc_target::abi::Align;
+use rustc_target::abi::{Align, VariantIdx};
 
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
@@ -524,101 +523,106 @@ bitflags! {
         // Does this have parameters? Used to determine whether substitution is
         // required.
         /// Does this have [Param]?
-        const HAS_TY_PARAM              = 1 << 0;
+        const HAS_TY_PARAM                = 1 << 0;
         /// Does this have [ReEarlyBound]?
-        const HAS_RE_PARAM              = 1 << 1;
+        const HAS_RE_PARAM                = 1 << 1;
         /// Does this have [ConstKind::Param]?
-        const HAS_CT_PARAM              = 1 << 2;
+        const HAS_CT_PARAM                = 1 << 2;
 
-        const NEEDS_SUBST               = TypeFlags::HAS_TY_PARAM.bits
-                                        | TypeFlags::HAS_RE_PARAM.bits
-                                        | TypeFlags::HAS_CT_PARAM.bits;
+        const NEEDS_SUBST                 = TypeFlags::HAS_TY_PARAM.bits
+                                          | TypeFlags::HAS_RE_PARAM.bits
+                                          | TypeFlags::HAS_CT_PARAM.bits;
 
         /// Does this have [Infer]?
-        const HAS_TY_INFER              = 1 << 3;
+        const HAS_TY_INFER                = 1 << 3;
         /// Does this have [ReVar]?
-        const HAS_RE_INFER              = 1 << 4;
+        const HAS_RE_INFER                = 1 << 4;
         /// Does this have [ConstKind::Infer]?
-        const HAS_CT_INFER              = 1 << 5;
+        const HAS_CT_INFER                = 1 << 5;
 
         /// Does this have inference variables? Used to determine whether
         /// inference is required.
-        const NEEDS_INFER               = TypeFlags::HAS_TY_INFER.bits
-                                        | TypeFlags::HAS_RE_INFER.bits
-                                        | TypeFlags::HAS_CT_INFER.bits;
+        const NEEDS_INFER                 = TypeFlags::HAS_TY_INFER.bits
+                                          | TypeFlags::HAS_RE_INFER.bits
+                                          | TypeFlags::HAS_CT_INFER.bits;
 
         /// Does this have [Placeholder]?
-        const HAS_TY_PLACEHOLDER        = 1 << 6;
+        const HAS_TY_PLACEHOLDER          = 1 << 6;
         /// Does this have [RePlaceholder]?
-        const HAS_RE_PLACEHOLDER        = 1 << 7;
+        const HAS_RE_PLACEHOLDER          = 1 << 7;
         /// Does this have [ConstKind::Placeholder]?
-        const HAS_CT_PLACEHOLDER        = 1 << 8;
+        const HAS_CT_PLACEHOLDER          = 1 << 8;
 
         /// `true` if there are "names" of regions and so forth
         /// that are local to a particular fn/inferctxt
-        const HAS_FREE_LOCAL_REGIONS    = 1 << 9;
+        const HAS_FREE_LOCAL_REGIONS      = 1 << 9;
 
         /// `true` if there are "names" of types and regions and so forth
         /// that are local to a particular fn
-        const HAS_FREE_LOCAL_NAMES      = TypeFlags::HAS_TY_PARAM.bits
-                                        | TypeFlags::HAS_CT_PARAM.bits
-                                        | TypeFlags::HAS_TY_INFER.bits
-                                        | TypeFlags::HAS_CT_INFER.bits
-                                        | TypeFlags::HAS_TY_PLACEHOLDER.bits
-                                        | TypeFlags::HAS_CT_PLACEHOLDER.bits
-                                        | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits;
+        const HAS_FREE_LOCAL_NAMES        = TypeFlags::HAS_TY_PARAM.bits
+                                          | TypeFlags::HAS_CT_PARAM.bits
+                                          | TypeFlags::HAS_TY_INFER.bits
+                                          | TypeFlags::HAS_CT_INFER.bits
+                                          | TypeFlags::HAS_TY_PLACEHOLDER.bits
+                                          | TypeFlags::HAS_CT_PLACEHOLDER.bits
+                                          | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits;
 
         /// Does this have [Projection] or [UnnormalizedProjection]?
-        const HAS_TY_PROJECTION         = 1 << 10;
+        const HAS_TY_PROJECTION           = 1 << 10;
         /// Does this have [Opaque]?
-        const HAS_TY_OPAQUE             = 1 << 11;
+        const HAS_TY_OPAQUE               = 1 << 11;
         /// Does this have [ConstKind::Unevaluated]?
-        const HAS_CT_PROJECTION         = 1 << 12;
+        const HAS_CT_PROJECTION           = 1 << 12;
 
         /// Could this type be normalized further?
-        const HAS_PROJECTION            = TypeFlags::HAS_TY_PROJECTION.bits
-                                        | TypeFlags::HAS_TY_OPAQUE.bits
-                                        | TypeFlags::HAS_CT_PROJECTION.bits;
+        const HAS_PROJECTION              = TypeFlags::HAS_TY_PROJECTION.bits
+                                          | TypeFlags::HAS_TY_OPAQUE.bits
+                                          | TypeFlags::HAS_CT_PROJECTION.bits;
 
         /// Present if the type belongs in a local type context.
         /// Set for placeholders and inference variables that are not "Fresh".
-        const KEEP_IN_LOCAL_TCX         = 1 << 13;
+        const KEEP_IN_LOCAL_TCX           = 1 << 13;
 
         /// Is an error type reachable?
-        const HAS_TY_ERR                = 1 << 14;
+        const HAS_TY_ERR                  = 1 << 14;
 
         /// Does this have any region that "appears free" in the type?
         /// Basically anything but [ReLateBound] and [ReErased].
-        const HAS_FREE_REGIONS          = 1 << 15;
+        const HAS_FREE_REGIONS            = 1 << 15;
 
         /// Does this have any [ReLateBound] regions? Used to check
         /// if a global bound is safe to evaluate.
-        const HAS_RE_LATE_BOUND         = 1 << 16;
+        const HAS_RE_LATE_BOUND           = 1 << 16;
 
         /// Does this have any [ReErased] regions?
-        const HAS_RE_ERASED             = 1 << 17;
+        const HAS_RE_ERASED               = 1 << 17;
+
+        /// Does this value have parameters/placeholders/inference variables which could be
+        /// replaced later, in a way that would change the results of `impl` specialization?
+        const STILL_FURTHER_SPECIALIZABLE = 1 << 18;
 
         /// Flags representing the nominal content of a type,
         /// computed by FlagsComputation. If you add a new nominal
         /// flag, it should be added here too.
-        const NOMINAL_FLAGS             = TypeFlags::HAS_TY_PARAM.bits
-                                        | TypeFlags::HAS_RE_PARAM.bits
-                                        | TypeFlags::HAS_CT_PARAM.bits
-                                        | TypeFlags::HAS_TY_INFER.bits
-                                        | TypeFlags::HAS_RE_INFER.bits
-                                        | TypeFlags::HAS_CT_INFER.bits
-                                        | TypeFlags::HAS_TY_PLACEHOLDER.bits
-                                        | TypeFlags::HAS_RE_PLACEHOLDER.bits
-                                        | TypeFlags::HAS_CT_PLACEHOLDER.bits
-                                        | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits
-                                        | TypeFlags::HAS_TY_PROJECTION.bits
-                                        | TypeFlags::HAS_TY_OPAQUE.bits
-                                        | TypeFlags::HAS_CT_PROJECTION.bits
-                                        | TypeFlags::KEEP_IN_LOCAL_TCX.bits
-                                        | TypeFlags::HAS_TY_ERR.bits
-                                        | TypeFlags::HAS_FREE_REGIONS.bits
-                                        | TypeFlags::HAS_RE_LATE_BOUND.bits
-                                        | TypeFlags::HAS_RE_ERASED.bits;
+        const NOMINAL_FLAGS               = TypeFlags::HAS_TY_PARAM.bits
+                                          | TypeFlags::HAS_RE_PARAM.bits
+                                          | TypeFlags::HAS_CT_PARAM.bits
+                                          | TypeFlags::HAS_TY_INFER.bits
+                                          | TypeFlags::HAS_RE_INFER.bits
+                                          | TypeFlags::HAS_CT_INFER.bits
+                                          | TypeFlags::HAS_TY_PLACEHOLDER.bits
+                                          | TypeFlags::HAS_RE_PLACEHOLDER.bits
+                                          | TypeFlags::HAS_CT_PLACEHOLDER.bits
+                                          | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits
+                                          | TypeFlags::HAS_TY_PROJECTION.bits
+                                          | TypeFlags::HAS_TY_OPAQUE.bits
+                                          | TypeFlags::HAS_CT_PROJECTION.bits
+                                          | TypeFlags::KEEP_IN_LOCAL_TCX.bits
+                                          | TypeFlags::HAS_TY_ERR.bits
+                                          | TypeFlags::HAS_FREE_REGIONS.bits
+                                          | TypeFlags::HAS_RE_LATE_BOUND.bits
+                                          | TypeFlags::HAS_RE_ERASED.bits
+                                          | TypeFlags::STILL_FURTHER_SPECIALIZABLE.bits;
     }
 }
 
@@ -2078,7 +2082,7 @@ pub struct AdtDef {
     /// The `DefId` of the struct, enum or union item.
     pub did: DefId,
     /// Variants of the ADT. If this is a struct or union, then there will be a single variant.
-    pub variants: IndexVec<self::layout::VariantIdx, VariantDef>,
+    pub variants: IndexVec<VariantIdx, VariantDef>,
     /// Flags of the ADT (e.g., is this a struct? is this non-exhaustive?).
     flags: AdtFlags,
     /// Repr options provided by the user.
