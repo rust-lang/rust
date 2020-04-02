@@ -81,8 +81,10 @@ class TextDocumentContentProvider implements vscode.TextDocumentContentProvider 
 // https://code.visualstudio.com/api/extension-guides/tree-view
 class AstInspector implements vscode.HoverProvider, Disposable {
     private static readonly astDecorationType = vscode.window.createTextEditorDecorationType({
-        fontStyle: "normal",
-        border: "#ffffff 1px solid",
+        borderColor: new vscode.ThemeColor('rust_analyzer.syntaxTreeBorder'),
+        borderStyle: "solid",
+        borderWidth: "2px",
+
     });
     private rustEditor: undefined | RustEditor;
 

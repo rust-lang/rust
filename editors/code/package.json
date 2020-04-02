@@ -450,6 +450,15 @@
                     "light": "#747474",
                     "highContrast": "#BEBEBE"
                 }
+            },
+            {
+                "id": "rust_analyzer.syntaxTreeBorder",
+                "description": "Color of the border displayed in the Rust source code for the selected syntax node (see \"Show Syntax Tree\" command)",
+                "defaults": {
+                    "dark": "#ffffff",
+                    "light": "#b700ff",
+                    "highContrast": "#b700ff"
+                }
             }
         ],
         "semanticTokenTypes": [
