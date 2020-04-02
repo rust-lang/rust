@@ -189,18 +189,18 @@ class AstInspector implements vscode.HoverProvider, Disposable {
     provideHover(doc: vscode.TextDocument, hoverPosition: vscode.Position): vscode.ProviderResult<vscode.Hover> {
         if (!this.rustEditor) return;
 
-        const astTextLine = doc.lineAt(hoverPosition.line);
+        const astFileLine = doc.lineAt(hoverPosition.line);
 
-        const rustTextRange = this.parseRustTextRange(this.rustEditor.document, astTextLine.text);
-        if (!rustTextRange) return;
+        const rustFileRange = this.parseRustTextRange(this.rustEditor.document, astFileLine.text);
+        if (!rustFileRange) return;
 
-        this.rustEditor.setDecorations(this.astDecorationType, [rustTextRange]);
-        this.rustEditor.revealRange(rustTextRange);
+        this.rustEditor.setDecorations(this.astDecorationType, [rustFileRange]);
+        this.rustEditor.revealRange(rustFileRange);
 
-        const rustSourceCode = this.rustEditor.document.getText(rustTextRange);
-        const astTextRange = this.findAstRange(astTextLine);
+        const rustSourceCode = this.rustEditor.document.getText(rustFileRange);
+        const astFileRange = this.findAstRange(astFileLine);
 
-        return new vscode.Hover(["```rust\n" + rustSourceCode + "\n```"], astTextRange);
+        return new vscode.Hover(["```rust\n" + rustSourceCode + "\n```"], astFileRange);
     }
 
     private findAstRange(astLine: vscode.TextLine) {
