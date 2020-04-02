@@ -1,4 +1,3 @@
-use hir::ImplDef;
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
     TextUnit,
@@ -99,18 +98,7 @@ fn already_has_from_impl(
     };
     let var_ty = hir_enum_var.fields(sema.db)[0].signature_ty(sema.db);
 
-    let krate = match scope.module() {
-        Some(s) => s.krate(),
-        _ => return false,
-    };
-    let impls = ImplDef::for_trait(sema.db, krate, from_trait);
-    let imp = impls.iter().find(|imp| {
-        let targets_enum = imp.target_ty(sema.db) == e_ty;
-        let param_matches = imp.target_trait_substs_matches(sema.db, &[var_ty.clone()]);
-        targets_enum && param_matches
-    });
-
-    imp.is_some()
+    e_ty.impls_trait(sema.db, from_trait, &[var_ty.clone()])
 }
 
 #[cfg(test)]
@@ -192,7 +180,7 @@ impl From<String> for A {
         A::Two(v)
     }
 }
-    
+
 pub trait From<T> {
     fn from(T) -> Self;
 }"#,
@@ -209,7 +197,7 @@ impl From<String> for A {
         A::Two(v)
     }
 }
-    
+
 pub trait From<T> {
     fn from(T) -> Self;
 }"#,

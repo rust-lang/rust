@@ -23,7 +23,7 @@ use hir_expand::{
 };
 use hir_ty::{
     autoderef, display::HirFormatter, expr::ExprValidator, method_resolution, ApplicationTy,
-    Canonical, InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk,
+    Canonical, InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
 };
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
@@ -960,38 +960,6 @@ impl ImplDef {
         db.impl_data(self.id).target_trait.clone()
     }
 
-    pub fn target_trait_substs_matches(&self, db: &dyn HirDatabase, typs: &[Type]) -> bool {
-        let type_ref = match self.target_trait(db) {
-            Some(typ_ref) => typ_ref,
-            None => return false,
-        };
-        let resolver = self.id.resolver(db.upcast());
-        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let ty = Ty::from_hir(&ctx, &type_ref);
-        let d = match ty.dyn_trait_ref() {
-            Some(d) => d,
-            None => return false,
-        };
-        let mut matches = true;
-        let mut i = 0;
-        d.substs.walk(&mut |t| {
-            if matches {
-                if i >= typs.len() {
-                    matches = false;
-                    return;
-                }
-                match t {
-                    Ty::Bound(_) => matches = i == 0,
-                    _ => {
-                        matches = *t == typs[i].ty.value;
-                        i += 1;
-                    }
-                }
-            }
-        });
-        matches
-    }
-
     pub fn target_type(&self, db: &dyn HirDatabase) -> TypeRef {
         db.impl_data(self.id).target_type.clone()
     }
@@ -1114,6 +1082,26 @@ impl Type {
             krate,
             std_future_trait,
         )
+    }
+
+    pub fn impls_trait(&self, db: &dyn HirDatabase, trait_: Trait, args: &[Type]) -> bool {
+        let trait_ref = hir_ty::TraitRef {
+            trait_: trait_.id,
+            substs: Substs::build_for_def(db, trait_.id)
+                .push(self.ty.value.clone())
+                .fill(args.iter().map(|t| t.ty.value.clone()))
+                .build(),
+        };
+
+        let goal = Canonical {
+            value: hir_ty::InEnvironment::new(
+                self.ty.environment.clone(),
+                hir_ty::Obligation::Trait(trait_ref),
+            ),
+            num_vars: 0,
+        };
+
+        db.trait_solve(self.krate, goal).is_some()
     }
 
     // FIXME: this method is broken, as it doesn't take closures into account.
