@@ -7,7 +7,6 @@ import * as commands from './commands';
 import { activateInlayHints } from './inlay_hints';
 import { activateStatusDisplay } from './status_display';
 import { Ctx } from './ctx';
-import { activateHighlighting } from './highlighting';
 import { Config, NIGHTLY_TAG } from './config';
 import { log, assert } from './util';
 import { PersistentState } from './persistent_state';
@@ -97,9 +96,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     activateStatusDisplay(ctx);
 
-    if (!ctx.config.highlightingSemanticTokens) {
-        activateHighlighting(ctx);
-    }
     activateInlayHints(ctx);
 
     vscode.workspace.onDidChangeConfiguration(

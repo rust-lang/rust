@@ -7,7 +7,6 @@ import { SemanticTokensFeature, DocumentSemanticsTokensSignature } from 'vscode-
 
 export function configToServerOptions(config: Config) {
     return {
-        publishDecorations: !config.highlightingSemanticTokens,
         lruCapacity: config.lruCapacity,
 
         inlayHintsType: config.inlayHints.typeHints,

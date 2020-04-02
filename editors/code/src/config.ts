@@ -71,8 +71,6 @@ export class Config {
     get channel() { return this.cfg.get<UpdatesChannel>("updates.channel")!; }
     get askBeforeDownload() { return this.cfg.get<boolean>("updates.askBeforeDownload")!; }
     get highlightingSemanticTokens() { return this.cfg.get<boolean>("highlighting.semanticTokens")!; }
-    get highlightingOn() { return this.cfg.get<boolean>("highlightingOn")!; }
-    get rainbowHighlightingOn() { return this.cfg.get<boolean>("rainbowHighlightingOn")!; }
     get lruCapacity() { return this.cfg.get<null | number>("lruCapacity")!; }
     get excludeGlobs() { return this.cfg.get<string[]>("excludeGlobs")!; }
     get useClientWatching() { return this.cfg.get<boolean>("useClientWatching")!; }

@@ -38,7 +38,7 @@ use crate::{
     },
     diagnostics::DiagnosticTask,
     from_json,
-    req::{self, Decoration, InlayHint, InlayHintsParams},
+    req::{self, InlayHint, InlayHintsParams},
     semantic_tokens::SemanticTokensBuilder,
     world::WorldSnapshot,
     LspError, Result,
@@ -387,15 +387,6 @@ pub fn handle_runnables(
         cwd: workspace_root.map(|root| root.to_string_lossy().to_string()),
     });
     Ok(res)
-}
-
-pub fn handle_decorations(
-    world: WorldSnapshot,
-    params: TextDocumentIdentifier,
-) -> Result<Vec<Decoration>> {
-    let _p = profile("handle_decorations");
-    let file_id = params.try_conv_with(&world)?;
-    highlight(&world, file_id)
 }
 
 pub fn handle_completion(
@@ -970,15 +961,6 @@ pub fn publish_diagnostics(world: &WorldSnapshot, file_id: FileId) -> Result<Dia
     Ok(DiagnosticTask::SetNative(file_id, diagnostics))
 }
 
-pub fn publish_decorations(
-    world: &WorldSnapshot,
-    file_id: FileId,
-) -> Result<req::PublishDecorationsParams> {
-    let _p = profile("publish_decorations");
-    let uri = world.file_id_to_uri(file_id)?;
-    Ok(req::PublishDecorationsParams { uri, decorations: highlight(&world, file_id)? })
-}
-
 fn to_lsp_runnable(
     world: &WorldSnapshot,
     file_id: FileId,
@@ -1006,21 +988,6 @@ fn to_lsp_runnable(
         },
         cwd: world.workspace_root_for(file_id).map(|root| root.to_string_lossy().to_string()),
     })
-}
-
-fn highlight(world: &WorldSnapshot, file_id: FileId) -> Result<Vec<Decoration>> {
-    let line_index = world.analysis().file_line_index(file_id)?;
-    let res = world
-        .analysis()
-        .highlight(file_id)?
-        .into_iter()
-        .map(|h| Decoration {
-            range: h.range.conv_with(&line_index),
-            tag: h.highlight.to_string(),
-            binding_hash: h.binding_hash.map(|x| x.to_string()),
-        })
-        .collect();
-    Ok(res)
 }
 
 pub fn handle_inlay_hints(

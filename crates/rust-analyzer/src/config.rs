@@ -16,7 +16,6 @@ use serde::Deserialize;
 #[derive(Debug, Clone)]
 pub struct Config {
     pub client_caps: ClientCapsConfig,
-    pub publish_decorations: bool,
     pub publish_diagnostics: bool,
     pub notifications: NotificationsConfig,
     pub inlay_hints: InlayHintsConfig,
@@ -60,7 +59,6 @@ pub struct ClientCapsConfig {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            publish_decorations: false,
             publish_diagnostics: true,
             notifications: NotificationsConfig {
                 workspace_loaded: true,
@@ -105,7 +103,6 @@ impl Config {
         *self = Default::default();
         self.client_caps = client_caps;
 
-        set(value, "/publishDecorations", &mut self.publish_decorations);
         set(value, "/excludeGlobs", &mut self.exclude_globs);
         set(value, "/useClientWatching", &mut self.use_client_watching);
         set(value, "/lruCapacity", &mut self.lru_capacity);
