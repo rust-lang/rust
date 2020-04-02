@@ -82,7 +82,7 @@ class TextDocumentContentProvider implements vscode.TextDocumentContentProvider 
 
 // FIXME: consider implementing this via the Tree View API?
 // https://code.visualstudio.com/api/extension-guides/tree-view
-class AstInspector implements vscode.HoverProvider, Disposable {
+class AstInspector implements vscode.HoverProvider, vscode.DefinitionProvider, Disposable {
     private readonly astDecorationType = vscode.window.createTextEditorDecorationType({
         borderColor: new vscode.ThemeColor('rust_analyzer.syntaxTreeBorder'),
         borderStyle: "solid",
@@ -96,8 +96,7 @@ class AstInspector implements vscode.HoverProvider, Disposable {
         const astEditor = this.findAstTextEditor();
         if (!this.rustEditor || !astEditor) return undefined;
 
-        console.time("Build goto def index");
-        let buf: [vscode.Range, vscode.Range][] = [];
+        const buf: [vscode.Range, vscode.Range][] = [];
         for (let i = 0; i < astEditor.document.lineCount; ++i) {
             const astLine = astEditor.document.lineAt(i);
 
@@ -108,10 +107,8 @@ class AstInspector implements vscode.HoverProvider, Disposable {
             const rustRange = this.parseRustTextRange(this.rustEditor.document, astLine.text);
             if (!rustRange) continue;
 
-            buf.push([rustRange, this.findAstRange(astLine)]);
+            buf.push([rustRange, this.findAstNodeRange(astLine)]);
         }
-
-        console.timeEnd("Build goto def index");
         return buf;
     });
 
@@ -167,9 +164,7 @@ class AstInspector implements vscode.HoverProvider, Disposable {
         const astEditor = this.findAstTextEditor();
         if (!astEditor) return;
 
-        console.time("Goto def");
         const rust2AstRanges = this.rust2Ast.get()?.find(([rustRange, _]) => rustRange.contains(pos));
-        console.timeEnd("Goto def");
         if (!rust2AstRanges) return;
 
         const [rustFileRange, astFileRange] = rust2AstRanges;
@@ -198,12 +193,12 @@ class AstInspector implements vscode.HoverProvider, Disposable {
         this.rustEditor.revealRange(rustFileRange);
 
         const rustSourceCode = this.rustEditor.document.getText(rustFileRange);
-        const astFileRange = this.findAstRange(astFileLine);
+        const astFileRange = this.findAstNodeRange(astFileLine);
 
         return new vscode.Hover(["```rust\n" + rustSourceCode + "\n```"], astFileRange);
     }
 
-    private findAstRange(astLine: vscode.TextLine) {
+    private findAstNodeRange(astLine: vscode.TextLine) {
         const lineOffset = astLine.range.start;
         const begin = lineOffset.translate(undefined, astLine.firstNonWhitespaceCharacterIndex);
         const end = lineOffset.translate(undefined, astLine.text.trimEnd().length);
@@ -223,7 +218,7 @@ class AstInspector implements vscode.HoverProvider, Disposable {
 class Lazy<T> {
     val: undefined | T;
 
-    constructor(private readonly compute: () => undefined | T) {}
+    constructor(private readonly compute: () => undefined | T) { }
 
     get() {
         return this.val ?? (this.val = this.compute());
@@ -232,5 +227,4 @@ class Lazy<T> {
     reset() {
         this.val = undefined;
     }
-
 }
