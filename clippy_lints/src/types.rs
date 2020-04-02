@@ -106,7 +106,7 @@ declare_clippy_lint! {
     ///
     /// **Example**
     /// ```rust,ignore
-    /// fn get_node_data(n: Node) -> Option<Option<u32>> {
+    /// fn get_data() -> Option<Option<u32>> {
     ///     None
     /// }
     /// ```
@@ -120,7 +120,7 @@ declare_clippy_lint! {
     ///     None,          // Was None
     /// }
     ///
-    /// fn get_node_data(n: Node) -> Contents {
+    /// fn get_data() -> Contents {
     ///     Contents::None
     /// }
     /// ```
