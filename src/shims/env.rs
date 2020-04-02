@@ -2,13 +2,11 @@ use std::ffi::{OsString, OsStr};
 use std::env;
 use std::convert::TryFrom;
 
-use crate::stacked_borrows::Tag;
-use crate::rustc_target::abi::LayoutOf;
-use crate::*;
-
+use rustc_target::abi::{Size, LayoutOf};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::ty::layout::Size;
 use rustc_mir::interpret::Pointer;
+
+use crate::*;
 
 /// Check whether an operation that writes to a target buffer was successful.
 /// Accordingly select return value.

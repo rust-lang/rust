@@ -4,12 +4,9 @@ use std::mem;
 use log::trace;
 
 use rustc_middle::mir;
-use rustc_middle::ty::{
-    self,
-    layout::{self, LayoutOf, Size, TyAndLayout},
-    List, TyCtxt,
-};
+use rustc_middle::ty::{self, List, TyCtxt, layout::TyAndLayout};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_target::abi::{LayoutOf, Size, FieldsShape, Variants};
 
 use rand::RngCore;
 
@@ -298,7 +295,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // walking this value, we have to make sure it is not a
                     // `Variants::Multiple`.
                     match v.layout.variants {
-                        layout::Variants::Multiple { .. } => {
+                        Variants::Multiple { .. } => {
                             // A multi-variant enum, or generator, or so.
                             // Treat this like a union: without reading from memory,
                             // we cannot determine the variant we are in. Reading from
@@ -308,7 +305,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             // `UnsafeCell` action.
                             (self.unsafe_cell_action)(v)
                         }
-                        layout::Variants::Single { .. } => {
+                        Variants::Single { .. } => {
                             // Proceed further, try to find where exactly that `UnsafeCell`
                             // is hiding.
                             self.walk_value(v)
@@ -324,19 +321,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 fields: impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Tag>>>,
             ) -> InterpResult<'tcx> {
                 match place.layout.fields {
-                    layout::FieldsShape::Array { .. } => {
+                    FieldsShape::Array { .. } => {
                         // For the array layout, we know the iterator will yield sorted elements so
                         // we can avoid the allocation.
                         self.walk_aggregate(place, fields)
                     }
-                    layout::FieldsShape::Arbitrary { .. } => {
+                    FieldsShape::Arbitrary { .. } => {
                         // Gather the subplaces and sort them before visiting.
                         let mut places =
                             fields.collect::<InterpResult<'tcx, Vec<MPlaceTy<'tcx, Tag>>>>()?;
                         places.sort_by_key(|place| place.ptr.assert_ptr().offset);
                         self.walk_aggregate(place, places.into_iter().map(Ok))
                     }
-                    layout::FieldsShape::Union { .. } => {
+                    FieldsShape::Union { .. } => {
                         // Uh, what?
                         bug!("a union is not an aggregate we should ever visit")
                     }
