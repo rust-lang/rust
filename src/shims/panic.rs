@@ -51,7 +51,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        trace!("miri_start_panic: {:?}", this.frame().span);
+        trace!("miri_start_panic: {:?}", this.frame().instance);
 
         // Get the raw pointer stored in arg[0] (the panic payload).
         let payload = this.read_scalar(args[0])?.not_undef()?;
@@ -133,7 +133,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let (true, Some(catch_unwind)) = (unwinding, extra.catch_unwind.take()) {
             // We've just popped a frame that was pushed by `try`,
             // and we are unwinding, so we should catch that.
-            trace!("unwinding: found catch_panic frame during unwinding: {:?}", this.frame().span);
+            trace!("unwinding: found catch_panic frame during unwinding: {:?}", this.frame().instance);
 
             // We set the return value of `try` to 1, since there was a panic.
             this.write_scalar(Scalar::from_i32(1), catch_unwind.dest)?;

@@ -129,15 +129,12 @@ fn report_msg<'tcx, 'mir>(
         err.help(help);
     }
     // Add backtrace
-    let frames = ecx.generate_stacktrace(None);
-    // We iterate with indices because we need to look at the next frame (the caller).
-    for idx in 0..frames.len() {
-        let frame_info = &frames[idx];
-        let call_site_is_local = frames
-            .get(idx + 1)
-            .map_or(false, |caller_info| caller_info.instance.def_id().is_local());
-        if call_site_is_local {
-            err.span_note(frame_info.call_site, &frame_info.to_string());
+    let frames = ecx.generate_stacktrace();
+    for (idx, frame_info) in frames.iter().enumerate() {
+        let is_local = frame_info.instance.def_id().is_local();
+        // No span for non-local frames and the first frame (which is the error site).
+        if is_local && idx > 0 {
+            err.span_note(frame_info.span, &frame_info.to_string());
         } else {
             err.note(&frame_info.to_string());
         }

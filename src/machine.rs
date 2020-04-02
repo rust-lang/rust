@@ -18,7 +18,7 @@ use rustc_middle::ty::{
     Ty,
 };
 use rustc_ast::attr;
-use rustc_span::{source_map::Span, symbol::{sym, Symbol}};
+use rustc_span::symbol::{sym, Symbol};
 
 use crate::*;
 
@@ -253,7 +253,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     #[inline(always)]
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
@@ -276,13 +275,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     #[inline(always)]
     fn call_intrinsic(
         ecx: &mut rustc_mir::interpret::InterpCx<'mir, 'tcx, Self>,
-        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        ecx.call_intrinsic(span, instance, args, ret, unwind)
+        ecx.call_intrinsic(instance, args, ret, unwind)
     }
 
     #[inline(always)]

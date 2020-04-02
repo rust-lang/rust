@@ -10,7 +10,6 @@ use rustc_middle::ty::{
     List, TyCtxt,
 };
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc_span::source_map::DUMMY_SP;
 
 use rand::RngCore;
 
@@ -170,13 +169,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Push frame.
         let mir = &*this.load_mir(f.def, None)?;
-        let span = this
-            .stack()
-            .last()
-            .and_then(Frame::current_source_info)
-            .map(|si| si.span)
-            .unwrap_or(DUMMY_SP);
-        this.push_stack_frame(f, span, mir, dest, stack_pop)?;
+        this.push_stack_frame(f, mir, dest, stack_pop)?;
 
         // Initialize arguments.
         let mut callee_args = this.frame().body.args_iter();
@@ -331,19 +324,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 fields: impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Tag>>>,
             ) -> InterpResult<'tcx> {
                 match place.layout.fields {
-                    layout::FieldPlacement::Array { .. } => {
+                    layout::FieldsShape::Array { .. } => {
                         // For the array layout, we know the iterator will yield sorted elements so
                         // we can avoid the allocation.
                         self.walk_aggregate(place, fields)
                     }
-                    layout::FieldPlacement::Arbitrary { .. } => {
+                    layout::FieldsShape::Arbitrary { .. } => {
                         // Gather the subplaces and sort them before visiting.
                         let mut places =
                             fields.collect::<InterpResult<'tcx, Vec<MPlaceTy<'tcx, Tag>>>>()?;
                         places.sort_by_key(|place| place.ptr.assert_ptr().offset);
                         self.walk_aggregate(place, places.into_iter().map(Ok))
                     }
-                    layout::FieldPlacement::Union { .. } => {
+                    layout::FieldsShape::Union { .. } => {
                         // Uh, what?
                         bug!("a union is not an aggregate we should ever visit")
                     }
