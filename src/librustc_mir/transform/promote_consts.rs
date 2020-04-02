@@ -62,7 +62,8 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
         let def_id = src.def_id();
 
         let mut rpo = traversal::reverse_postorder(body);
-        let (temps, all_candidates) = collect_temps_and_candidates(tcx, body, &mut rpo);
+        let ccx = ConstCx::new(tcx, def_id, body);
+        let (temps, all_candidates) = collect_temps_and_candidates(&ccx, &mut rpo);
 
         let promotable_candidates = validate_candidates(tcx, body, def_id, &temps, &all_candidates);
 
@@ -139,8 +140,7 @@ fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Vec<usize>> {
 }
 
 struct Collector<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
+    ccx: &'a ConstCx<'a, 'tcx>,
     temps: IndexVec<Local, TempState>,
     candidates: Vec<Candidate>,
     span: Span,
@@ -150,7 +150,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
     fn visit_local(&mut self, &index: &Local, context: PlaceContext, location: Location) {
         debug!("visit_local: index={:?} context={:?} location={:?}", index, context, location);
         // We're only interested in temporaries and the return place
-        match self.body.local_kind(index) {
+        match self.ccx.body.local_kind(index) {
             LocalKind::Temp | LocalKind::ReturnPointer => {}
             LocalKind::Arg | LocalKind::Var => return,
         }
@@ -203,7 +203,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
             Rvalue::Ref(..) => {
                 self.candidates.push(Candidate::Ref(location));
             }
-            Rvalue::Repeat(..) if self.tcx.features().const_in_array_repeat_expressions => {
+            Rvalue::Repeat(..) if self.ccx.tcx.features().const_in_array_repeat_expressions => {
                 // FIXME(#49147) only promote the element when it isn't `Copy`
                 // (so that code that can copy it at runtime is unaffected).
                 self.candidates.push(Candidate::Repeat(location));
@@ -216,10 +216,10 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         self.super_terminator_kind(kind, location);
 
         if let TerminatorKind::Call { ref func, .. } = *kind {
-            if let ty::FnDef(def_id, _) = func.ty(self.body, self.tcx).kind {
-                let fn_sig = self.tcx.fn_sig(def_id);
+            if let ty::FnDef(def_id, _) = func.ty(self.ccx.body, self.ccx.tcx).kind {
+                let fn_sig = self.ccx.tcx.fn_sig(def_id);
                 if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
-                    let name = self.tcx.item_name(def_id);
+                    let name = self.ccx.tcx.item_name(def_id);
                     // FIXME(eddyb) use `#[rustc_args_required_const(2)]` for shuffles.
                     if name.as_str().starts_with("simd_shuffle") {
                         self.candidates.push(Candidate::Argument { bb: location.block, index: 2 });
@@ -228,7 +228,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
                     }
                 }
 
-                if let Some(constant_args) = args_required_const(self.tcx, def_id) {
+                if let Some(constant_args) = args_required_const(self.ccx.tcx, def_id) {
                     for index in constant_args {
                         self.candidates.push(Candidate::Argument { bb: location.block, index });
                     }
@@ -243,16 +243,14 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 }
 
 pub fn collect_temps_and_candidates(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
+    ccx: &ConstCx<'mir, 'tcx>,
     rpo: &mut ReversePostorder<'_, 'tcx>,
 ) -> (IndexVec<Local, TempState>, Vec<Candidate>) {
     let mut collector = Collector {
-        tcx,
-        body,
-        temps: IndexVec::from_elem(TempState::Undefined, &body.local_decls),
+        temps: IndexVec::from_elem(TempState::Undefined, &ccx.body.local_decls),
         candidates: vec![],
-        span: body.span,
+        span: ccx.body.span,
+        ccx,
     };
     for (bb, data) in rpo {
         collector.visit_basic_block_data(bb, data);
@@ -1151,7 +1149,7 @@ crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
     operand: &Operand<'tcx>,
 ) -> bool {
     let mut rpo = traversal::reverse_postorder(&ccx.body);
-    let (temps, _) = collect_temps_and_candidates(ccx.tcx, &ccx.body, &mut rpo);
+    let (temps, _) = collect_temps_and_candidates(&ccx, &mut rpo);
     let validator = Validator { ccx, temps: &temps, explicit: false };
 
     let should_promote = validator.validate_operand(operand).is_ok();
