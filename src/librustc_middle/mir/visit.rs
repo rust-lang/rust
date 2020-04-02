@@ -510,7 +510,7 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(value, source_location);
                         self.visit_place(
                             resume_arg,
-                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            PlaceContext::MutatingUse(MutatingUseContext::Yield),
                             source_location,
                         );
                     }
@@ -1052,6 +1052,8 @@ pub enum MutatingUseContext {
     AsmOutput,
     /// Destination of a call.
     Call,
+    /// Destination of a yield.
+    Yield,
     /// Being dropped.
     Drop,
     /// Mutable borrow.

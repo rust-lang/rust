@@ -269,7 +269,8 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
     fn visit_local(&mut self, &local: &mir::Local, context: PlaceContext, location: Location) {
         match context {
-            PlaceContext::MutatingUse(MutatingUseContext::Call) => {
+            PlaceContext::MutatingUse(MutatingUseContext::Call)
+            | PlaceContext::MutatingUse(MutatingUseContext::Yield) => {
                 self.assign(local, location);
             }
 
