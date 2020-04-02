@@ -1,0 +1,96 @@
+- // MIR for `main` before SimplifyCfg-initial
++ // MIR for `main` after SimplifyCfg-initial
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/simplify_cfg.rs:5:11: 5:11
+      let mut _1: ();                      // in scope 0 at $DIR/simplify_cfg.rs:5:1: 11:2
+      let mut _2: bool;                    // in scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
+      let mut _3: !;                       // in scope 0 at $DIR/simplify_cfg.rs:7:18: 9:10
+  
+      bb0: {
+-         goto -> bb1;                     // bb0[0]: scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
++         falseUnwind -> [real: bb1, cleanup: bb2]; // bb0[0]: scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
+      }
+  
+      bb1: {
+-         falseUnwind -> [real: bb3, cleanup: bb4]; // bb1[0]: scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
+-     }
+- 
+-     bb2: {
+-         goto -> bb13;                    // bb2[0]: scope 0 at $DIR/simplify_cfg.rs:11:2: 11:2
+-     }
+- 
+-     bb3: {
+-         StorageLive(_2);                 // bb3[0]: scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
+-         _2 = const bar() -> [return: bb5, unwind: bb4]; // bb3[1]: scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
++         StorageLive(_2);                 // bb1[0]: scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
++         _2 = const bar() -> [return: bb3, unwind: bb2]; // bb1[1]: scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
+                                           // ty::Const
+                                           // + ty: fn() -> bool {bar}
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_cfg.rs:7:12: 7:15
+                                           // + literal: Const { ty: fn() -> bool {bar}, val: Value(Scalar(<ZST>)) }
+      }
+  
+-     bb4 (cleanup): {
+-         resume;                          // bb4[0]: scope 0 at $DIR/simplify_cfg.rs:5:1: 11:2
++     bb2 (cleanup): {
++         resume;                          // bb2[0]: scope 0 at $DIR/simplify_cfg.rs:5:1: 11:2
+      }
+  
+-     bb5: {
+-         FakeRead(ForMatchedPlace, _2);   // bb5[0]: scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
+-         switchInt(_2) -> [false: bb7, otherwise: bb6]; // bb5[1]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
++     bb3: {
++         FakeRead(ForMatchedPlace, _2);   // bb3[0]: scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
++         switchInt(_2) -> [false: bb5, otherwise: bb4]; // bb3[1]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
+      }
+  
+-     bb6: {
+-         falseEdges -> [real: bb8, imaginary: bb7]; // bb6[0]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
++     bb4: {
++         falseEdges -> [real: bb6, imaginary: bb5]; // bb4[0]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
+      }
+  
+-     bb7: {
+-         _1 = ();                         // bb7[0]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
+-         goto -> bb12;                    // bb7[1]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
++     bb5: {
++         _1 = ();                         // bb5[0]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
++         StorageDead(_2);                 // bb5[1]: scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
++         goto -> bb0;                     // bb5[2]: scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
+      }
+  
+-     bb8: {
+-         _0 = ();                         // bb8[0]: scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
+-         goto -> bb9;                     // bb8[1]: scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
+-     }
+- 
+-     bb9: {
+-         StorageDead(_2);                 // bb9[0]: scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
+-         goto -> bb2;                     // bb9[1]: scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
+-     }
+- 
+-     bb10: {
+-         unreachable;                     // bb10[0]: scope 0 at $DIR/simplify_cfg.rs:7:18: 9:10
+-     }
+- 
+-     bb11: {
+-         goto -> bb12;                    // bb11[0]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
+-     }
+- 
+-     bb12: {
+-         StorageDead(_2);                 // bb12[0]: scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
+-         goto -> bb1;                     // bb12[1]: scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
+-     }
+- 
+-     bb13: {
+-         return;                          // bb13[0]: scope 0 at $DIR/simplify_cfg.rs:11:2: 11:2
++     bb6: {
++         _0 = ();                         // bb6[0]: scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
++         StorageDead(_2);                 // bb6[1]: scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
++         return;                          // bb6[2]: scope 0 at $DIR/simplify_cfg.rs:11:2: 11:2
+      }
+  }
+  

@@ -1,0 +1,19 @@
+// MIR for `process_never` after SimplifyLocals
+
+fn process_never(_1: *const !) -> () {
+    debug input => _1;                   // in scope 0 at $DIR/uninhabited-enum.rs:7:22: 7:27
+    let mut _0: ();                      // return place in scope 0 at $DIR/uninhabited-enum.rs:7:39: 7:39
+    let _2: &!;                          // in scope 0 at $DIR/uninhabited-enum.rs:8:8: 8:14
+    scope 1 {
+        debug _input => _2;              // in scope 1 at $DIR/uninhabited-enum.rs:8:8: 8:14
+    }
+    scope 2 {
+    }
+
+    bb0: {
+        StorageLive(_2);                 // bb0[0]: scope 0 at $DIR/uninhabited-enum.rs:8:8: 8:14
+        _2 = &(*_1);                     // bb0[1]: scope 2 at $DIR/uninhabited-enum.rs:8:26: 8:33
+        StorageDead(_2);                 // bb0[2]: scope 0 at $DIR/uninhabited-enum.rs:9:1: 9:2
+        unreachable;                     // bb0[3]: scope 0 at $DIR/uninhabited-enum.rs:7:39: 9:2
+    }
+}

@@ -1,0 +1,47 @@
+// MIR for `borrow_and_cast` after SimplifyCfg-initial
+
+fn borrow_and_cast(_1: i32) -> () {
+    debug x => _1;                       // in scope 0 at $DIR/address-of.rs:41:20: 41:25
+    let mut _0: ();                      // return place in scope 0 at $DIR/address-of.rs:41:32: 41:32
+    let _2: *const i32;                  // in scope 0 at $DIR/address-of.rs:42:9: 42:10
+    let _3: &i32;                        // in scope 0 at $DIR/address-of.rs:42:13: 42:15
+    let _5: &mut i32;                    // in scope 0 at $DIR/address-of.rs:43:13: 43:19
+    let mut _7: &mut i32;                // in scope 0 at $DIR/address-of.rs:44:13: 44:19
+    scope 1 {
+        debug p => _2;                   // in scope 1 at $DIR/address-of.rs:42:9: 42:10
+        let _4: *const i32;              // in scope 1 at $DIR/address-of.rs:43:9: 43:10
+        scope 2 {
+            debug q => _4;               // in scope 2 at $DIR/address-of.rs:43:9: 43:10
+            let _6: *mut i32;            // in scope 2 at $DIR/address-of.rs:44:9: 44:10
+            scope 3 {
+                debug r => _6;           // in scope 3 at $DIR/address-of.rs:44:9: 44:10
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);                 // bb0[0]: scope 0 at $DIR/address-of.rs:42:9: 42:10
+        StorageLive(_3);                 // bb0[1]: scope 0 at $DIR/address-of.rs:42:13: 42:15
+        _3 = &_1;                        // bb0[2]: scope 0 at $DIR/address-of.rs:42:13: 42:15
+        _2 = &raw const (*_3);           // bb0[3]: scope 0 at $DIR/address-of.rs:42:13: 42:15
+        FakeRead(ForLet, _2);            // bb0[4]: scope 0 at $DIR/address-of.rs:42:9: 42:10
+        StorageDead(_3);                 // bb0[5]: scope 0 at $DIR/address-of.rs:42:29: 42:30
+        StorageLive(_4);                 // bb0[6]: scope 1 at $DIR/address-of.rs:43:9: 43:10
+        StorageLive(_5);                 // bb0[7]: scope 1 at $DIR/address-of.rs:43:13: 43:19
+        _5 = &mut _1;                    // bb0[8]: scope 1 at $DIR/address-of.rs:43:13: 43:19
+        _4 = &raw const (*_5);           // bb0[9]: scope 1 at $DIR/address-of.rs:43:13: 43:19
+        FakeRead(ForLet, _4);            // bb0[10]: scope 1 at $DIR/address-of.rs:43:9: 43:10
+        StorageDead(_5);                 // bb0[11]: scope 1 at $DIR/address-of.rs:43:33: 43:34
+        StorageLive(_6);                 // bb0[12]: scope 2 at $DIR/address-of.rs:44:9: 44:10
+        StorageLive(_7);                 // bb0[13]: scope 2 at $DIR/address-of.rs:44:13: 44:19
+        _7 = &mut _1;                    // bb0[14]: scope 2 at $DIR/address-of.rs:44:13: 44:19
+        _6 = &raw mut (*_7);             // bb0[15]: scope 2 at $DIR/address-of.rs:44:13: 44:19
+        FakeRead(ForLet, _6);            // bb0[16]: scope 2 at $DIR/address-of.rs:44:9: 44:10
+        StorageDead(_7);                 // bb0[17]: scope 2 at $DIR/address-of.rs:44:31: 44:32
+        _0 = ();                         // bb0[18]: scope 0 at $DIR/address-of.rs:41:32: 45:2
+        StorageDead(_6);                 // bb0[19]: scope 2 at $DIR/address-of.rs:45:1: 45:2
+        StorageDead(_4);                 // bb0[20]: scope 1 at $DIR/address-of.rs:45:1: 45:2
+        StorageDead(_2);                 // bb0[21]: scope 0 at $DIR/address-of.rs:45:1: 45:2
+        return;                          // bb0[22]: scope 0 at $DIR/address-of.rs:45:2: 45:2
+    }
+}

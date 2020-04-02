@@ -1,0 +1,46 @@
+// MIR for `main` after SimplifyCfg-elaborate-drops
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/byte_slice.rs:4:11: 4:11
+    let _1: &[u8; 3];                    // in scope 0 at $DIR/byte_slice.rs:5:9: 5:10
+    scope 1 {
+        debug x => _1;                   // in scope 1 at $DIR/byte_slice.rs:5:9: 5:10
+        let _2: [u8; 2];                 // in scope 1 at $DIR/byte_slice.rs:6:9: 6:10
+        scope 2 {
+            debug y => _2;               // in scope 2 at $DIR/byte_slice.rs:6:9: 6:10
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/byte_slice.rs:5:9: 5:10
+        _1 = const b"foo";               // bb0[1]: scope 0 at $DIR/byte_slice.rs:5:13: 5:19
+                                         // ty::Const
+                                         // + ty: &[u8; 3]
+                                         // + val: Value(Scalar(alloc0+0))
+                                         // mir::Constant
+                                         // + span: $DIR/byte_slice.rs:5:13: 5:19
+                                         // + literal: Const { ty: &[u8; 3], val: Value(Scalar(alloc0+0)) }
+        StorageLive(_2);                 // bb0[2]: scope 1 at $DIR/byte_slice.rs:6:9: 6:10
+        _2 = [const 5u8, const 120u8];   // bb0[3]: scope 1 at $DIR/byte_slice.rs:6:13: 6:24
+                                         // ty::Const
+                                         // + ty: u8
+                                         // + val: Value(Scalar(0x05))
+                                         // mir::Constant
+                                         // + span: $DIR/byte_slice.rs:6:14: 6:17
+                                         // + literal: Const { ty: u8, val: Value(Scalar(0x05)) }
+                                         // ty::Const
+                                         // + ty: u8
+                                         // + val: Value(Scalar(0x78))
+                                         // mir::Constant
+                                         // + span: $DIR/byte_slice.rs:6:19: 6:23
+                                         // + literal: Const { ty: u8, val: Value(Scalar(0x78)) }
+        _0 = ();                         // bb0[4]: scope 0 at $DIR/byte_slice.rs:4:11: 7:2
+        StorageDead(_2);                 // bb0[5]: scope 1 at $DIR/byte_slice.rs:7:1: 7:2
+        StorageDead(_1);                 // bb0[6]: scope 0 at $DIR/byte_slice.rs:7:1: 7:2
+        return;                          // bb0[7]: scope 0 at $DIR/byte_slice.rs:7:2: 7:2
+    }
+}
+
+alloc0 (size: 3, align: 1) {
+    66 6f 6f                                        │ foo
+}

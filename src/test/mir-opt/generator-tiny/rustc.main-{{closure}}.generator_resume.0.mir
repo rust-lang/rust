@@ -1,0 +1,72 @@
+// MIR for `main::{{closure}}#0` 0 generator_resume
+// generator_layout = GeneratorLayout { field_tys: [HasDrop], variant_fields: [[], [], [], [_0]], storage_conflicts: BitMatrix { num_rows: 1, num_columns: 1, words: [1], marker: PhantomData } }
+
+fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:18:16: 24:6 {u8, HasDrop, ()}]>, _2: u8) -> std::ops::GeneratorState<(), ()> {
+    debug _x => _10;                     // in scope 0 at $DIR/generator-tiny.rs:18:17: 18:19
+    let mut _0: std::ops::GeneratorState<(), ()>; // return place in scope 0 at $DIR/generator-tiny.rs:18:16: 24:6
+    let _3: HasDrop;                     // in scope 0 at $DIR/generator-tiny.rs:19:13: 19:15
+    let mut _4: !;                       // in scope 0 at $DIR/generator-tiny.rs:20:9: 23:10
+    let mut _5: ();                      // in scope 0 at $DIR/generator-tiny.rs:18:16: 24:6
+    let _6: u8;                          // in scope 0 at $DIR/generator-tiny.rs:21:13: 21:18
+    let mut _7: ();                      // in scope 0 at $DIR/generator-tiny.rs:21:13: 21:18
+    let _8: ();                          // in scope 0 at $DIR/generator-tiny.rs:22:13: 22:21
+    let mut _9: ();                      // in scope 0 at $DIR/generator-tiny.rs:18:25: 18:25
+    let _10: u8;                         // in scope 0 at $DIR/generator-tiny.rs:18:17: 18:19
+    let mut _11: isize;                  // in scope 0 at $DIR/generator-tiny.rs:18:16: 24:6
+    scope 1 {
+        debug _d => (((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:18:16: 24:6 {u8, HasDrop, ()}])) as variant#3).0: HasDrop); // in scope 1 at $DIR/generator-tiny.rs:19:13: 19:15
+    }
+
+    bb0: {
+        _11 = discriminant((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:18:16: 24:6 {u8, HasDrop, ()}]))); // bb0[0]: scope 0 at $DIR/generator-tiny.rs:18:16: 24:6
+        switchInt(move _11) -> [0u32: bb1, 3u32: bb5, otherwise: bb6]; // bb0[1]: scope 0 at $DIR/generator-tiny.rs:18:16: 24:6
+    }
+
+    bb1: {
+        _10 = move _2;                   // bb1[0]: scope 0 at $DIR/generator-tiny.rs:18:16: 24:6
+        nop;                             // bb1[1]: scope 0 at $DIR/generator-tiny.rs:19:13: 19:15
+        (((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:18:16: 24:6 {u8, HasDrop, ()}])) as variant#3).0: HasDrop) = HasDrop; // bb1[2]: scope 0 at $DIR/generator-tiny.rs:19:18: 19:25
+        StorageLive(_4);                 // bb1[3]: scope 1 at $DIR/generator-tiny.rs:20:9: 23:10
+        goto -> bb2;                     // bb1[4]: scope 1 at $DIR/generator-tiny.rs:20:9: 23:10
+    }
+
+    bb2: {
+        StorageLive(_6);                 // bb2[0]: scope 1 at $DIR/generator-tiny.rs:21:13: 21:18
+        StorageLive(_7);                 // bb2[1]: scope 1 at $DIR/generator-tiny.rs:21:13: 21:18
+        _7 = ();                         // bb2[2]: scope 1 at $DIR/generator-tiny.rs:21:13: 21:18
+        _0 = std::ops::GeneratorState::<(), ()>::Yielded(move _7,); // bb2[3]: scope 1 at $DIR/generator-tiny.rs:21:13: 21:18
+        discriminant((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:18:16: 24:6 {u8, HasDrop, ()}]))) = 3; // bb2[4]: scope 1 at $DIR/generator-tiny.rs:21:13: 21:18
+        return;                          // bb2[5]: scope 1 at $DIR/generator-tiny.rs:21:13: 21:18
+    }
+
+    bb3: {
+        StorageDead(_7);                 // bb3[0]: scope 1 at $DIR/generator-tiny.rs:21:17: 21:18
+        StorageDead(_6);                 // bb3[1]: scope 1 at $DIR/generator-tiny.rs:21:18: 21:19
+        StorageLive(_8);                 // bb3[2]: scope 1 at $DIR/generator-tiny.rs:22:13: 22:21
+        _8 = const callee() -> bb4;      // bb3[3]: scope 1 at $DIR/generator-tiny.rs:22:13: 22:21
+                                         // ty::Const
+                                         // + ty: fn() {callee}
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/generator-tiny.rs:22:13: 22:19
+                                         // + literal: Const { ty: fn() {callee}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb4: {
+        StorageDead(_8);                 // bb4[0]: scope 1 at $DIR/generator-tiny.rs:22:21: 22:22
+        _5 = ();                         // bb4[1]: scope 1 at $DIR/generator-tiny.rs:20:14: 23:10
+        goto -> bb2;                     // bb4[2]: scope 1 at $DIR/generator-tiny.rs:20:9: 23:10
+    }
+
+    bb5: {
+        StorageLive(_4);                 // bb5[0]: scope 0 at $DIR/generator-tiny.rs:18:16: 24:6
+        StorageLive(_6);                 // bb5[1]: scope 0 at $DIR/generator-tiny.rs:18:16: 24:6
+        StorageLive(_7);                 // bb5[2]: scope 0 at $DIR/generator-tiny.rs:18:16: 24:6
+        _6 = move _2;                    // bb5[3]: scope 0 at $DIR/generator-tiny.rs:18:16: 24:6
+        goto -> bb3;                     // bb5[4]: scope 0 at $DIR/generator-tiny.rs:18:16: 24:6
+    }
+
+    bb6: {
+        unreachable;                     // bb6[0]: scope 0 at $DIR/generator-tiny.rs:18:16: 24:6
+    }
+}

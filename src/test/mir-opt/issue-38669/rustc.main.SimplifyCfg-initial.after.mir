@@ -1,0 +1,69 @@
+// MIR for `main` after SimplifyCfg-initial
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/issue-38669.rs:4:11: 4:11
+    let mut _1: bool;                    // in scope 0 at $DIR/issue-38669.rs:5:9: 5:25
+    let mut _2: ();                      // in scope 0 at $DIR/issue-38669.rs:4:1: 12:2
+    let _3: ();                          // in scope 0 at $DIR/issue-38669.rs:7:9: 9:10
+    let mut _4: bool;                    // in scope 0 at $DIR/issue-38669.rs:7:12: 7:24
+    let mut _5: !;                       // in scope 0 at $DIR/issue-38669.rs:7:25: 9:10
+    scope 1 {
+        debug should_break => _1;        // in scope 1 at $DIR/issue-38669.rs:5:9: 5:25
+    }
+
+    bb0: {
+        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/issue-38669.rs:5:9: 5:25
+        _1 = const false;                // bb0[1]: scope 0 at $DIR/issue-38669.rs:5:28: 5:33
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x00))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-38669.rs:5:28: 5:33
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+        FakeRead(ForLet, _1);            // bb0[2]: scope 0 at $DIR/issue-38669.rs:5:9: 5:25
+        goto -> bb2;                     // bb0[3]: scope 1 at $DIR/issue-38669.rs:6:5: 11:6
+    }
+
+    bb1 (cleanup): {
+        resume;                          // bb1[0]: scope 0 at $DIR/issue-38669.rs:4:1: 12:2
+    }
+
+    bb2: {
+        falseUnwind -> [real: bb3, cleanup: bb1]; // bb2[0]: scope 1 at $DIR/issue-38669.rs:6:5: 11:6
+    }
+
+    bb3: {
+        StorageLive(_3);                 // bb3[0]: scope 1 at $DIR/issue-38669.rs:7:9: 9:10
+        StorageLive(_4);                 // bb3[1]: scope 1 at $DIR/issue-38669.rs:7:12: 7:24
+        _4 = _1;                         // bb3[2]: scope 1 at $DIR/issue-38669.rs:7:12: 7:24
+        FakeRead(ForMatchedPlace, _4);   // bb3[3]: scope 1 at $DIR/issue-38669.rs:7:12: 7:24
+        switchInt(_4) -> [false: bb5, otherwise: bb4]; // bb3[4]: scope 1 at $DIR/issue-38669.rs:7:9: 9:10
+    }
+
+    bb4: {
+        falseEdges -> [real: bb6, imaginary: bb5]; // bb4[0]: scope 1 at $DIR/issue-38669.rs:7:9: 9:10
+    }
+
+    bb5: {
+        _3 = ();                         // bb5[0]: scope 1 at $DIR/issue-38669.rs:7:9: 9:10
+        StorageDead(_4);                 // bb5[1]: scope 1 at $DIR/issue-38669.rs:9:9: 9:10
+        StorageDead(_3);                 // bb5[2]: scope 1 at $DIR/issue-38669.rs:9:9: 9:10
+        _1 = const true;                 // bb5[3]: scope 1 at $DIR/issue-38669.rs:10:9: 10:28
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x01))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-38669.rs:10:24: 10:28
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+        _2 = ();                         // bb5[4]: scope 1 at $DIR/issue-38669.rs:6:10: 11:6
+        goto -> bb2;                     // bb5[5]: scope 1 at $DIR/issue-38669.rs:6:5: 11:6
+    }
+
+    bb6: {
+        _0 = ();                         // bb6[0]: scope 1 at $DIR/issue-38669.rs:8:13: 8:18
+        StorageDead(_4);                 // bb6[1]: scope 1 at $DIR/issue-38669.rs:9:9: 9:10
+        StorageDead(_3);                 // bb6[2]: scope 1 at $DIR/issue-38669.rs:9:9: 9:10
+        StorageDead(_1);                 // bb6[3]: scope 0 at $DIR/issue-38669.rs:12:1: 12:2
+        return;                          // bb6[4]: scope 0 at $DIR/issue-38669.rs:12:2: 12:2
+    }
+}

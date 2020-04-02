@@ -14,17 +14,9 @@ impl<T> PrintName<T> {
     const VOID: ! = panic!();
 }
 
+// EMIT_MIR rustc.no_codegen.PreCodegen.after.mir
 fn no_codegen<T>() {
     let _ = PrintName::<T>::VOID;
 }
 
 fn main() {}
-
-// END RUST SOURCE
-// START rustc.no_codegen.PreCodegen.after.mir
-// bb0: {
-//     StorageLive(_1);
-//     _1 = const PrintName::<T>::VOID;
-//     unreachable;
-// }
-// END rustc.no_codegen.PreCodegen.after.mir

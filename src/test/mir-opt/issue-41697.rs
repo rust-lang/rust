@@ -13,7 +13,8 @@ trait Foo {
     fn get(&self) -> [u8; 2];
 }
 
-impl Foo for [u8; 2] {
+// EMIT_MIR rustc.{{impl}}-{{constant}}.SimplifyCfg-qualify-consts.after.mir
+impl Foo for [u8; 1+1] {
     fn get(&self) -> [u8; 2] {
         *self
     }

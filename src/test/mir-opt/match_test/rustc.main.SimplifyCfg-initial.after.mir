@@ -1,0 +1,166 @@
+// MIR for `main` after SimplifyCfg-initial
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/match_test.rs:6:11: 6:11
+    let _1: i32;                         // in scope 0 at $DIR/match_test.rs:7:9: 7:10
+    let _3: i32;                         // in scope 0 at $DIR/match_test.rs:12:5: 17:6
+    let mut _4: bool;                    // in scope 0 at $DIR/match_test.rs:14:9: 14:16
+    let mut _5: bool;                    // in scope 0 at $DIR/match_test.rs:14:9: 14:16
+    let mut _6: bool;                    // in scope 0 at $DIR/match_test.rs:13:9: 13:14
+    let mut _7: bool;                    // in scope 0 at $DIR/match_test.rs:13:9: 13:14
+    let mut _8: &i32;                    // in scope 0 at $DIR/match_test.rs:12:11: 12:12
+    let mut _9: bool;                    // in scope 0 at $DIR/match_test.rs:13:18: 13:19
+    scope 1 {
+        debug x => _1;                   // in scope 1 at $DIR/match_test.rs:7:9: 7:10
+        let _2: bool;                    // in scope 1 at $DIR/match_test.rs:8:9: 8:10
+        scope 2 {
+            debug b => _2;               // in scope 2 at $DIR/match_test.rs:8:9: 8:10
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/match_test.rs:7:9: 7:10
+        _1 = const 3i32;                 // bb0[1]: scope 0 at $DIR/match_test.rs:7:13: 7:14
+                                         // ty::Const
+                                         // + ty: i32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/match_test.rs:7:13: 7:14
+                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000003)) }
+        FakeRead(ForLet, _1);            // bb0[2]: scope 0 at $DIR/match_test.rs:7:9: 7:10
+        StorageLive(_2);                 // bb0[3]: scope 1 at $DIR/match_test.rs:8:9: 8:10
+        _2 = const true;                 // bb0[4]: scope 1 at $DIR/match_test.rs:8:13: 8:17
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x01))
+                                         // mir::Constant
+                                         // + span: $DIR/match_test.rs:8:13: 8:17
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+        FakeRead(ForLet, _2);            // bb0[5]: scope 1 at $DIR/match_test.rs:8:9: 8:10
+        StorageLive(_3);                 // bb0[6]: scope 2 at $DIR/match_test.rs:12:5: 17:6
+        FakeRead(ForMatchedPlace, _1);   // bb0[7]: scope 2 at $DIR/match_test.rs:12:11: 12:12
+        _6 = Le(const 0i32, _1);         // bb0[8]: scope 2 at $DIR/match_test.rs:13:9: 13:14
+                                         // ty::Const
+                                         // + ty: i32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/match_test.rs:13:9: 13:14
+                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
+        switchInt(move _6) -> [false: bb4, otherwise: bb1]; // bb0[9]: scope 2 at $DIR/match_test.rs:13:9: 13:14
+    }
+
+    bb1: {
+        _7 = Lt(_1, const 10i32);        // bb1[0]: scope 2 at $DIR/match_test.rs:13:9: 13:14
+                                         // ty::Const
+                                         // + ty: i32
+                                         // + val: Value(Scalar(0x0000000a))
+                                         // mir::Constant
+                                         // + span: $DIR/match_test.rs:13:9: 13:14
+                                         // + literal: Const { ty: i32, val: Value(Scalar(0x0000000a)) }
+        switchInt(move _7) -> [false: bb4, otherwise: bb2]; // bb1[1]: scope 2 at $DIR/match_test.rs:13:9: 13:14
+    }
+
+    bb2: {
+        falseEdges -> [real: bb9, imaginary: bb6]; // bb2[0]: scope 2 at $DIR/match_test.rs:13:9: 13:14
+    }
+
+    bb3: {
+        _3 = const 3i32;                 // bb3[0]: scope 2 at $DIR/match_test.rs:16:14: 16:15
+                                         // ty::Const
+                                         // + ty: i32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/match_test.rs:16:14: 16:15
+                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000003)) }
+        goto -> bb14;                    // bb3[1]: scope 2 at $DIR/match_test.rs:12:5: 17:6
+    }
+
+    bb4: {
+        _4 = Le(const 10i32, _1);        // bb4[0]: scope 2 at $DIR/match_test.rs:14:9: 14:16
+                                         // ty::Const
+                                         // + ty: i32
+                                         // + val: Value(Scalar(0x0000000a))
+                                         // mir::Constant
+                                         // + span: $DIR/match_test.rs:14:9: 14:16
+                                         // + literal: Const { ty: i32, val: Value(Scalar(0x0000000a)) }
+        switchInt(move _4) -> [false: bb7, otherwise: bb5]; // bb4[1]: scope 2 at $DIR/match_test.rs:14:9: 14:16
+    }
+
+    bb5: {
+        _5 = Le(_1, const 20i32);        // bb5[0]: scope 2 at $DIR/match_test.rs:14:9: 14:16
+                                         // ty::Const
+                                         // + ty: i32
+                                         // + val: Value(Scalar(0x00000014))
+                                         // mir::Constant
+                                         // + span: $DIR/match_test.rs:14:9: 14:16
+                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000014)) }
+        switchInt(move _5) -> [false: bb7, otherwise: bb6]; // bb5[1]: scope 2 at $DIR/match_test.rs:14:9: 14:16
+    }
+
+    bb6: {
+        falseEdges -> [real: bb12, imaginary: bb8]; // bb6[0]: scope 2 at $DIR/match_test.rs:14:9: 14:16
+    }
+
+    bb7: {
+        switchInt(_1) -> [-1i32: bb8, otherwise: bb3]; // bb7[0]: scope 2 at $DIR/match_test.rs:15:9: 15:11
+    }
+
+    bb8: {
+        falseEdges -> [real: bb13, imaginary: bb3]; // bb8[0]: scope 2 at $DIR/match_test.rs:15:9: 15:11
+    }
+
+    bb9: {
+        _8 = &shallow _1;                // bb9[0]: scope 2 at $DIR/match_test.rs:12:11: 12:12
+        StorageLive(_9);                 // bb9[1]: scope 2 at $DIR/match_test.rs:13:18: 13:19
+        _9 = _2;                         // bb9[2]: scope 2 at $DIR/match_test.rs:13:18: 13:19
+        switchInt(move _9) -> [false: bb11, otherwise: bb10]; // bb9[3]: scope 2 at $DIR/match_test.rs:13:18: 13:19
+    }
+
+    bb10: {
+        StorageDead(_9);                 // bb10[0]: scope 2 at $DIR/match_test.rs:13:24: 13:25
+        FakeRead(ForMatchGuard, _8);     // bb10[1]: scope 2 at $DIR/match_test.rs:13:18: 13:19
+        _3 = const 0i32;                 // bb10[2]: scope 2 at $DIR/match_test.rs:13:23: 13:24
+                                         // ty::Const
+                                         // + ty: i32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/match_test.rs:13:23: 13:24
+                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
+        goto -> bb14;                    // bb10[3]: scope 2 at $DIR/match_test.rs:12:5: 17:6
+    }
+
+    bb11: {
+        StorageDead(_9);                 // bb11[0]: scope 2 at $DIR/match_test.rs:13:24: 13:25
+        falseEdges -> [real: bb3, imaginary: bb6]; // bb11[1]: scope 2 at $DIR/match_test.rs:13:18: 13:19
+    }
+
+    bb12: {
+        _3 = const 1i32;                 // bb12[0]: scope 2 at $DIR/match_test.rs:14:20: 14:21
+                                         // ty::Const
+                                         // + ty: i32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/match_test.rs:14:20: 14:21
+                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
+        goto -> bb14;                    // bb12[1]: scope 2 at $DIR/match_test.rs:12:5: 17:6
+    }
+
+    bb13: {
+        _3 = const 2i32;                 // bb13[0]: scope 2 at $DIR/match_test.rs:15:15: 15:16
+                                         // ty::Const
+                                         // + ty: i32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/match_test.rs:15:15: 15:16
+                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000002)) }
+        goto -> bb14;                    // bb13[1]: scope 2 at $DIR/match_test.rs:12:5: 17:6
+    }
+
+    bb14: {
+        StorageDead(_3);                 // bb14[0]: scope 2 at $DIR/match_test.rs:17:6: 17:7
+        _0 = ();                         // bb14[1]: scope 0 at $DIR/match_test.rs:6:11: 18:2
+        StorageDead(_2);                 // bb14[2]: scope 1 at $DIR/match_test.rs:18:1: 18:2
+        StorageDead(_1);                 // bb14[3]: scope 0 at $DIR/match_test.rs:18:1: 18:2
+        return;                          // bb14[4]: scope 0 at $DIR/match_test.rs:18:2: 18:2
+    }
+}

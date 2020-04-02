@@ -1,15 +1,7 @@
 // compile-flags: -Z mir-opt-level=0
 
+// EMIT_MIR rustc.main.SimplifyCfg-elaborate-drops.after.mir
 fn main() {
     let x = b"foo";
     let y = [5u8, b'x'];
 }
-
-// END RUST SOURCE
-// START rustc.main.SimplifyCfg-elaborate-drops.after.mir
-// ...
-// _1 = const b"foo";
-// ...
-// _2 = [const 5u8, const 120u8];
-// ...
-// END rustc.main.SimplifyCfg-elaborate-drops.after.mir

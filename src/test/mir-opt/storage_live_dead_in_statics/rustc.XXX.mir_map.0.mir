@@ -1,0 +1,670 @@
+// MIR for `XXX` 0 mir_map
+
+static XXX: &Foo = {
+    let mut _0: &Foo;                    // return place in scope 0 at $DIR/storage_live_dead_in_statics.rs:5:13: 5:25
+    let _1: &Foo;                        // in scope 0 at $DIR/storage_live_dead_in_statics.rs:5:28: 23:2
+    let _2: Foo;                         // in scope 0 at $DIR/storage_live_dead_in_statics.rs:5:29: 23:2
+    let mut _3: &[(u32, u32)];           // in scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6
+    let mut _4: &[(u32, u32); 42];       // in scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6
+    let _5: &[(u32, u32); 42];           // in scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6
+    let _6: [(u32, u32); 42];            // in scope 0 at $DIR/storage_live_dead_in_statics.rs:7:12: 22:6
+    let mut _7: (u32, u32);              // in scope 0 at $DIR/storage_live_dead_in_statics.rs:8:9: 8:15
+    let mut _8: (u32, u32);              // in scope 0 at $DIR/storage_live_dead_in_statics.rs:8:17: 8:23
+    let mut _9: (u32, u32);              // in scope 0 at $DIR/storage_live_dead_in_statics.rs:8:25: 8:31
+    let mut _10: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:9:9: 9:15
+    let mut _11: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:9:17: 9:23
+    let mut _12: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:9:25: 9:31
+    let mut _13: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:10:9: 10:15
+    let mut _14: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:10:17: 10:23
+    let mut _15: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:10:25: 10:31
+    let mut _16: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:11:9: 11:15
+    let mut _17: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:11:17: 11:23
+    let mut _18: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:11:25: 11:31
+    let mut _19: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:12:9: 12:15
+    let mut _20: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:12:17: 12:23
+    let mut _21: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:12:25: 12:31
+    let mut _22: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:13:9: 13:15
+    let mut _23: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:13:17: 13:23
+    let mut _24: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:13:25: 13:31
+    let mut _25: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:14:9: 14:15
+    let mut _26: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:14:17: 14:23
+    let mut _27: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:14:25: 14:31
+    let mut _28: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:15:9: 15:15
+    let mut _29: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:15:17: 15:23
+    let mut _30: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:15:25: 15:31
+    let mut _31: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:16:9: 16:15
+    let mut _32: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:16:17: 16:23
+    let mut _33: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:16:25: 16:31
+    let mut _34: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:17:9: 17:15
+    let mut _35: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:17:17: 17:23
+    let mut _36: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:17:25: 17:31
+    let mut _37: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:18:9: 18:15
+    let mut _38: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:18:17: 18:23
+    let mut _39: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:18:25: 18:31
+    let mut _40: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:19:9: 19:15
+    let mut _41: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:19:17: 19:23
+    let mut _42: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:19:25: 19:31
+    let mut _43: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:20:9: 20:15
+    let mut _44: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:20:17: 20:23
+    let mut _45: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:20:25: 20:31
+    let mut _46: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:21:9: 21:15
+    let mut _47: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:21:17: 21:23
+    let mut _48: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:21:25: 21:31
+
+    bb0: {
+        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/storage_live_dead_in_statics.rs:5:28: 23:2
+        StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/storage_live_dead_in_statics.rs:5:29: 23:2
+        StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6
+        StorageLive(_4);                 // bb0[3]: scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6
+        StorageLive(_5);                 // bb0[4]: scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6
+        StorageLive(_6);                 // bb0[5]: scope 0 at $DIR/storage_live_dead_in_statics.rs:7:12: 22:6
+        StorageLive(_7);                 // bb0[6]: scope 0 at $DIR/storage_live_dead_in_statics.rs:8:9: 8:15
+        _7 = (const 0u32, const 1u32);   // bb0[7]: scope 0 at $DIR/storage_live_dead_in_statics.rs:8:9: 8:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:8:10: 8:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:8:13: 8:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_8);                 // bb0[8]: scope 0 at $DIR/storage_live_dead_in_statics.rs:8:17: 8:23
+        _8 = (const 0u32, const 2u32);   // bb0[9]: scope 0 at $DIR/storage_live_dead_in_statics.rs:8:17: 8:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:8:18: 8:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:8:21: 8:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_9);                 // bb0[10]: scope 0 at $DIR/storage_live_dead_in_statics.rs:8:25: 8:31
+        _9 = (const 0u32, const 3u32);   // bb0[11]: scope 0 at $DIR/storage_live_dead_in_statics.rs:8:25: 8:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:8:26: 8:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:8:29: 8:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        StorageLive(_10);                // bb0[12]: scope 0 at $DIR/storage_live_dead_in_statics.rs:9:9: 9:15
+        _10 = (const 0u32, const 1u32);  // bb0[13]: scope 0 at $DIR/storage_live_dead_in_statics.rs:9:9: 9:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:9:10: 9:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:9:13: 9:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_11);                // bb0[14]: scope 0 at $DIR/storage_live_dead_in_statics.rs:9:17: 9:23
+        _11 = (const 0u32, const 2u32);  // bb0[15]: scope 0 at $DIR/storage_live_dead_in_statics.rs:9:17: 9:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:9:18: 9:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:9:21: 9:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_12);                // bb0[16]: scope 0 at $DIR/storage_live_dead_in_statics.rs:9:25: 9:31
+        _12 = (const 0u32, const 3u32);  // bb0[17]: scope 0 at $DIR/storage_live_dead_in_statics.rs:9:25: 9:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:9:26: 9:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:9:29: 9:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        StorageLive(_13);                // bb0[18]: scope 0 at $DIR/storage_live_dead_in_statics.rs:10:9: 10:15
+        _13 = (const 0u32, const 1u32);  // bb0[19]: scope 0 at $DIR/storage_live_dead_in_statics.rs:10:9: 10:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:10:10: 10:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:10:13: 10:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_14);                // bb0[20]: scope 0 at $DIR/storage_live_dead_in_statics.rs:10:17: 10:23
+        _14 = (const 0u32, const 2u32);  // bb0[21]: scope 0 at $DIR/storage_live_dead_in_statics.rs:10:17: 10:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:10:18: 10:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:10:21: 10:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_15);                // bb0[22]: scope 0 at $DIR/storage_live_dead_in_statics.rs:10:25: 10:31
+        _15 = (const 0u32, const 3u32);  // bb0[23]: scope 0 at $DIR/storage_live_dead_in_statics.rs:10:25: 10:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:10:26: 10:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:10:29: 10:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        StorageLive(_16);                // bb0[24]: scope 0 at $DIR/storage_live_dead_in_statics.rs:11:9: 11:15
+        _16 = (const 0u32, const 1u32);  // bb0[25]: scope 0 at $DIR/storage_live_dead_in_statics.rs:11:9: 11:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:11:10: 11:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:11:13: 11:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_17);                // bb0[26]: scope 0 at $DIR/storage_live_dead_in_statics.rs:11:17: 11:23
+        _17 = (const 0u32, const 2u32);  // bb0[27]: scope 0 at $DIR/storage_live_dead_in_statics.rs:11:17: 11:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:11:18: 11:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:11:21: 11:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_18);                // bb0[28]: scope 0 at $DIR/storage_live_dead_in_statics.rs:11:25: 11:31
+        _18 = (const 0u32, const 3u32);  // bb0[29]: scope 0 at $DIR/storage_live_dead_in_statics.rs:11:25: 11:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:11:26: 11:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:11:29: 11:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        StorageLive(_19);                // bb0[30]: scope 0 at $DIR/storage_live_dead_in_statics.rs:12:9: 12:15
+        _19 = (const 0u32, const 1u32);  // bb0[31]: scope 0 at $DIR/storage_live_dead_in_statics.rs:12:9: 12:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:12:10: 12:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:12:13: 12:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_20);                // bb0[32]: scope 0 at $DIR/storage_live_dead_in_statics.rs:12:17: 12:23
+        _20 = (const 0u32, const 2u32);  // bb0[33]: scope 0 at $DIR/storage_live_dead_in_statics.rs:12:17: 12:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:12:18: 12:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:12:21: 12:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_21);                // bb0[34]: scope 0 at $DIR/storage_live_dead_in_statics.rs:12:25: 12:31
+        _21 = (const 0u32, const 3u32);  // bb0[35]: scope 0 at $DIR/storage_live_dead_in_statics.rs:12:25: 12:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:12:26: 12:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:12:29: 12:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        StorageLive(_22);                // bb0[36]: scope 0 at $DIR/storage_live_dead_in_statics.rs:13:9: 13:15
+        _22 = (const 0u32, const 1u32);  // bb0[37]: scope 0 at $DIR/storage_live_dead_in_statics.rs:13:9: 13:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:13:10: 13:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:13:13: 13:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_23);                // bb0[38]: scope 0 at $DIR/storage_live_dead_in_statics.rs:13:17: 13:23
+        _23 = (const 0u32, const 2u32);  // bb0[39]: scope 0 at $DIR/storage_live_dead_in_statics.rs:13:17: 13:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:13:18: 13:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:13:21: 13:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_24);                // bb0[40]: scope 0 at $DIR/storage_live_dead_in_statics.rs:13:25: 13:31
+        _24 = (const 0u32, const 3u32);  // bb0[41]: scope 0 at $DIR/storage_live_dead_in_statics.rs:13:25: 13:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:13:26: 13:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:13:29: 13:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        StorageLive(_25);                // bb0[42]: scope 0 at $DIR/storage_live_dead_in_statics.rs:14:9: 14:15
+        _25 = (const 0u32, const 1u32);  // bb0[43]: scope 0 at $DIR/storage_live_dead_in_statics.rs:14:9: 14:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:14:10: 14:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:14:13: 14:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_26);                // bb0[44]: scope 0 at $DIR/storage_live_dead_in_statics.rs:14:17: 14:23
+        _26 = (const 0u32, const 2u32);  // bb0[45]: scope 0 at $DIR/storage_live_dead_in_statics.rs:14:17: 14:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:14:18: 14:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:14:21: 14:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_27);                // bb0[46]: scope 0 at $DIR/storage_live_dead_in_statics.rs:14:25: 14:31
+        _27 = (const 0u32, const 3u32);  // bb0[47]: scope 0 at $DIR/storage_live_dead_in_statics.rs:14:25: 14:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:14:26: 14:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:14:29: 14:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        StorageLive(_28);                // bb0[48]: scope 0 at $DIR/storage_live_dead_in_statics.rs:15:9: 15:15
+        _28 = (const 0u32, const 1u32);  // bb0[49]: scope 0 at $DIR/storage_live_dead_in_statics.rs:15:9: 15:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:15:10: 15:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:15:13: 15:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_29);                // bb0[50]: scope 0 at $DIR/storage_live_dead_in_statics.rs:15:17: 15:23
+        _29 = (const 0u32, const 2u32);  // bb0[51]: scope 0 at $DIR/storage_live_dead_in_statics.rs:15:17: 15:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:15:18: 15:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:15:21: 15:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_30);                // bb0[52]: scope 0 at $DIR/storage_live_dead_in_statics.rs:15:25: 15:31
+        _30 = (const 0u32, const 3u32);  // bb0[53]: scope 0 at $DIR/storage_live_dead_in_statics.rs:15:25: 15:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:15:26: 15:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:15:29: 15:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        StorageLive(_31);                // bb0[54]: scope 0 at $DIR/storage_live_dead_in_statics.rs:16:9: 16:15
+        _31 = (const 0u32, const 1u32);  // bb0[55]: scope 0 at $DIR/storage_live_dead_in_statics.rs:16:9: 16:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:16:10: 16:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:16:13: 16:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_32);                // bb0[56]: scope 0 at $DIR/storage_live_dead_in_statics.rs:16:17: 16:23
+        _32 = (const 0u32, const 2u32);  // bb0[57]: scope 0 at $DIR/storage_live_dead_in_statics.rs:16:17: 16:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:16:18: 16:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:16:21: 16:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_33);                // bb0[58]: scope 0 at $DIR/storage_live_dead_in_statics.rs:16:25: 16:31
+        _33 = (const 0u32, const 3u32);  // bb0[59]: scope 0 at $DIR/storage_live_dead_in_statics.rs:16:25: 16:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:16:26: 16:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:16:29: 16:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        StorageLive(_34);                // bb0[60]: scope 0 at $DIR/storage_live_dead_in_statics.rs:17:9: 17:15
+        _34 = (const 0u32, const 1u32);  // bb0[61]: scope 0 at $DIR/storage_live_dead_in_statics.rs:17:9: 17:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:17:10: 17:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:17:13: 17:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_35);                // bb0[62]: scope 0 at $DIR/storage_live_dead_in_statics.rs:17:17: 17:23
+        _35 = (const 0u32, const 2u32);  // bb0[63]: scope 0 at $DIR/storage_live_dead_in_statics.rs:17:17: 17:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:17:18: 17:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:17:21: 17:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_36);                // bb0[64]: scope 0 at $DIR/storage_live_dead_in_statics.rs:17:25: 17:31
+        _36 = (const 0u32, const 3u32);  // bb0[65]: scope 0 at $DIR/storage_live_dead_in_statics.rs:17:25: 17:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:17:26: 17:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:17:29: 17:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        StorageLive(_37);                // bb0[66]: scope 0 at $DIR/storage_live_dead_in_statics.rs:18:9: 18:15
+        _37 = (const 0u32, const 1u32);  // bb0[67]: scope 0 at $DIR/storage_live_dead_in_statics.rs:18:9: 18:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:18:10: 18:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:18:13: 18:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_38);                // bb0[68]: scope 0 at $DIR/storage_live_dead_in_statics.rs:18:17: 18:23
+        _38 = (const 0u32, const 2u32);  // bb0[69]: scope 0 at $DIR/storage_live_dead_in_statics.rs:18:17: 18:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:18:18: 18:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:18:21: 18:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_39);                // bb0[70]: scope 0 at $DIR/storage_live_dead_in_statics.rs:18:25: 18:31
+        _39 = (const 0u32, const 3u32);  // bb0[71]: scope 0 at $DIR/storage_live_dead_in_statics.rs:18:25: 18:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:18:26: 18:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:18:29: 18:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        StorageLive(_40);                // bb0[72]: scope 0 at $DIR/storage_live_dead_in_statics.rs:19:9: 19:15
+        _40 = (const 0u32, const 1u32);  // bb0[73]: scope 0 at $DIR/storage_live_dead_in_statics.rs:19:9: 19:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:19:10: 19:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:19:13: 19:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_41);                // bb0[74]: scope 0 at $DIR/storage_live_dead_in_statics.rs:19:17: 19:23
+        _41 = (const 0u32, const 2u32);  // bb0[75]: scope 0 at $DIR/storage_live_dead_in_statics.rs:19:17: 19:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:19:18: 19:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:19:21: 19:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_42);                // bb0[76]: scope 0 at $DIR/storage_live_dead_in_statics.rs:19:25: 19:31
+        _42 = (const 0u32, const 3u32);  // bb0[77]: scope 0 at $DIR/storage_live_dead_in_statics.rs:19:25: 19:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:19:26: 19:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:19:29: 19:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        StorageLive(_43);                // bb0[78]: scope 0 at $DIR/storage_live_dead_in_statics.rs:20:9: 20:15
+        _43 = (const 0u32, const 1u32);  // bb0[79]: scope 0 at $DIR/storage_live_dead_in_statics.rs:20:9: 20:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:20:10: 20:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:20:13: 20:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_44);                // bb0[80]: scope 0 at $DIR/storage_live_dead_in_statics.rs:20:17: 20:23
+        _44 = (const 0u32, const 2u32);  // bb0[81]: scope 0 at $DIR/storage_live_dead_in_statics.rs:20:17: 20:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:20:18: 20:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:20:21: 20:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_45);                // bb0[82]: scope 0 at $DIR/storage_live_dead_in_statics.rs:20:25: 20:31
+        _45 = (const 0u32, const 3u32);  // bb0[83]: scope 0 at $DIR/storage_live_dead_in_statics.rs:20:25: 20:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:20:26: 20:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:20:29: 20:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        StorageLive(_46);                // bb0[84]: scope 0 at $DIR/storage_live_dead_in_statics.rs:21:9: 21:15
+        _46 = (const 0u32, const 1u32);  // bb0[85]: scope 0 at $DIR/storage_live_dead_in_statics.rs:21:9: 21:15
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:21:10: 21:11
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:21:13: 21:14
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
+        StorageLive(_47);                // bb0[86]: scope 0 at $DIR/storage_live_dead_in_statics.rs:21:17: 21:23
+        _47 = (const 0u32, const 2u32);  // bb0[87]: scope 0 at $DIR/storage_live_dead_in_statics.rs:21:17: 21:23
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:21:18: 21:19
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:21:21: 21:22
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
+        StorageLive(_48);                // bb0[88]: scope 0 at $DIR/storage_live_dead_in_statics.rs:21:25: 21:31
+        _48 = (const 0u32, const 3u32);  // bb0[89]: scope 0 at $DIR/storage_live_dead_in_statics.rs:21:25: 21:31
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000000))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:21:26: 21:27
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
+                                         // ty::Const
+                                         // + ty: u32
+                                         // + val: Value(Scalar(0x00000003))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:21:29: 21:30
+                                         // + literal: Const { ty: u32, val: Value(Scalar(0x00000003)) }
+        _6 = [move _7, move _8, move _9, move _10, move _11, move _12, move _13, move _14, move _15, move _16, move _17, move _18, move _19, move _20, move _21, move _22, move _23, move _24, move _25, move _26, move _27, move _28, move _29, move _30, move _31, move _32, move _33, move _34, move _35, move _36, move _37, move _38, move _39, move _40, move _41, move _42, move _43, move _44, move _45, move _46, move _47, move _48]; // bb0[90]: scope 0 at $DIR/storage_live_dead_in_statics.rs:7:12: 22:6
+        _5 = &_6;                        // bb0[91]: scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6
+        _4 = &(*_5);                     // bb0[92]: scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6
+        _3 = move _4 as &[(u32, u32)] (Pointer(Unsize)); // bb0[93]: scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6
+        _2 = Foo { tup: const "hi", data: move _3 }; // bb0[94]: scope 0 at $DIR/storage_live_dead_in_statics.rs:5:29: 23:2
+                                         // ty::Const
+                                         // + ty: &str
+                                         // + val: Value(Slice { data: Allocation { bytes: [104, 105], relocations: Relocations(SortedMap { data: [] }), undef_mask: UndefMask { blocks: [3], len: Size { raw: 2 } }, size: Size { raw: 2 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 2 })
+                                         // mir::Constant
+                                         // + span: $DIR/storage_live_dead_in_statics.rs:6:10: 6:14
+                                         // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [104, 105], relocations: Relocations(SortedMap { data: [] }), undef_mask: UndefMask { blocks: [3], len: Size { raw: 2 } }, size: Size { raw: 2 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 2 }) }
+        _1 = &_2;                        // bb0[95]: scope 0 at $DIR/storage_live_dead_in_statics.rs:5:28: 23:2
+        _0 = &(*_1);                     // bb0[96]: scope 0 at $DIR/storage_live_dead_in_statics.rs:5:28: 23:2
+        StorageDead(_5);                 // bb0[97]: scope 0 at $DIR/storage_live_dead_in_statics.rs:23:1: 23:2
+        StorageDead(_1);                 // bb0[98]: scope 0 at $DIR/storage_live_dead_in_statics.rs:23:1: 23:2
+        return;                          // bb0[99]: scope 0 at $DIR/storage_live_dead_in_statics.rs:5:1: 23:3
+    }
+
+    bb1 (cleanup): {
+        resume;                          // bb1[0]: scope 0 at $DIR/storage_live_dead_in_statics.rs:5:1: 23:3
+    }
+}
