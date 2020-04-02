@@ -1147,22 +1147,19 @@ pub fn promote_candidates<'tcx>(
 /// Feature attribute should be suggested if `operand` can be promoted and the feature is not
 /// enabled.
 crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    mir_def_id: DefId,
-    body: &Body<'tcx>,
+    ccx: ConstCx<'_, 'tcx>,
     operand: &Operand<'tcx>,
 ) -> bool {
-    let mut rpo = traversal::reverse_postorder(&body);
-    let (temps, _) = collect_temps_and_candidates(tcx, &body, &mut rpo);
-    let validator =
-        Validator { ccx: ConstCx::new(tcx, mir_def_id, body), temps: &temps, explicit: false };
+    let mut rpo = traversal::reverse_postorder(&ccx.body);
+    let (temps, _) = collect_temps_and_candidates(ccx.tcx, &ccx.body, &mut rpo);
+    let validator = Validator { ccx, temps: &temps, explicit: false };
 
     let should_promote = validator.validate_operand(operand).is_ok();
-    let feature_flag = tcx.features().const_in_array_repeat_expressions;
+    let feature_flag = validator.ccx.tcx.features().const_in_array_repeat_expressions;
     debug!(
-        "should_suggest_const_in_array_repeat_expressions_flag: mir_def_id={:?} \
+        "should_suggest_const_in_array_repeat_expressions_flag: def_id={:?} \
             should_promote={:?} feature_flag={:?}",
-        mir_def_id, should_promote, feature_flag
+        validator.ccx.def_id, should_promote, feature_flag
     );
     should_promote && !feature_flag
 }

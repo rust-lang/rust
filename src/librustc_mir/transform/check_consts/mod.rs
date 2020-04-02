@@ -31,6 +31,15 @@ pub struct ConstCx<'mir, 'tcx> {
 impl ConstCx<'mir, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'mir mir::Body<'tcx>) -> Self {
         let param_env = tcx.param_env(def_id);
+        Self::new_with_param_env(tcx, def_id, body, param_env)
+    }
+
+    pub fn new_with_param_env(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        body: &'mir mir::Body<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Self {
         let const_kind = ConstKind::for_item(tcx, def_id);
 
         ConstCx { body, tcx, def_id, param_env, const_kind }
