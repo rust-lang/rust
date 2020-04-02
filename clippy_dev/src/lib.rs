@@ -85,7 +85,7 @@ impl Lint {
 
 /// Generates the Vec items for `register_lint_group` calls in `clippy_lints/src/lib.rs`.
 #[must_use]
-pub fn gen_lint_group_list(lints: Vec<Lint>) -> Vec<String> {
+pub fn gen_lint_group_list(lints: &[Lint]) -> Vec<String> {
     lints
         .into_iter()
         .filter_map(|l| {
@@ -101,14 +101,14 @@ pub fn gen_lint_group_list(lints: Vec<Lint>) -> Vec<String> {
 
 /// Generates the `pub mod module_name` list in `clippy_lints/src/lib.rs`.
 #[must_use]
-pub fn gen_modules_list(lints: Vec<Lint>) -> Vec<String> {
+pub fn gen_modules_list(lints: &[Lint]) -> Vec<String> {
     lints
         .into_iter()
         .filter_map(|l| {
             if l.is_internal() || l.deprecation.is_some() {
                 None
             } else {
-                Some(l.module)
+                Some(l.module.clone())
             }
         })
         .unique()
@@ -119,11 +119,10 @@ pub fn gen_modules_list(lints: Vec<Lint>) -> Vec<String> {
 
 /// Generates the list of lint links at the bottom of the README
 #[must_use]
-pub fn gen_changelog_lint_list(lints: Vec<Lint>) -> Vec<String> {
-    let mut lint_list_sorted: Vec<Lint> = lints;
-    lint_list_sorted.sort_by_key(|l| l.name.clone());
-    lint_list_sorted
+pub fn gen_changelog_lint_list(lints: &[Lint]) -> Vec<String> {
+    lints
         .iter()
+        .sorted_by_key(|l| l.name.clone())
         .filter_map(|l| {
             if l.is_internal() {
                 None
@@ -475,7 +474,7 @@ fn test_gen_changelog_lint_list() {
         format!("[`should_assert_eq`]: {}#should_assert_eq", DOCS_LINK.to_string()),
         format!("[`should_assert_eq2`]: {}#should_assert_eq2", DOCS_LINK.to_string()),
     ];
-    assert_eq!(expected, gen_changelog_lint_list(lints));
+    assert_eq!(expected, gen_changelog_lint_list(&lints));
 }
 
 #[test]
@@ -525,7 +524,7 @@ fn test_gen_modules_list() {
         "pub mod another_module;".to_string(),
         "pub mod module_name;".to_string(),
     ];
-    assert_eq!(expected, gen_modules_list(lints));
+    assert_eq!(expected, gen_modules_list(&lints));
 }
 
 #[test]
@@ -541,5 +540,5 @@ fn test_gen_lint_group_list() {
         "        LintId::of(&module_name::INTERNAL),".to_string(),
         "        LintId::of(&module_name::SHOULD_ASSERT_EQ),".to_string(),
     ];
-    assert_eq!(expected, gen_lint_group_list(lints));
+    assert_eq!(expected, gen_lint_group_list(&lints));
 }
