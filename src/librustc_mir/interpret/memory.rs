@@ -429,6 +429,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
         is_write: bool,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
+        // The call to `resolve_maybe_global_alloc` is needed to enable Miri to
+        // support thread local statics. In `M::canonical_alloc_id`, for a
+        // thread local static, Miri reserves a fresh allocation id, but the
+        // actual allocation is left to the code that handles statics which
+        // calls this function (`get_global_alloc`). Since the allocation id is
+        // fresh, it has no information about the original static. The call to
+        // `resolve_maybe_global_alloc` allows Miri to retrieve this information
+        // for us.
         let (alloc, def_id) = match M::resolve_maybe_global_alloc(tcx, memory_extra, id) {
             Some(GlobalAlloc::Memory(mem)) => {
                 // Memory of a constant or promoted or anonymous memory referenced by a static.
@@ -589,6 +597,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
 
         // # Statics
+        // The call to `resolve_maybe_global_alloc` is needed here because Miri
+        // via the call to `canonical_alloc_id` above reserves fresh allocation
+        // ids for thread local statics. However, the actual allocation is done
+        // not in `canonical_alloc_id`, but in `get_raw` and `get_raw_mut`.
+        // Since this function may get called before `get_raw`, we need to allow
+        // Miri to retrieve the information about the static for us.
         match M::resolve_maybe_global_alloc(self.tcx, &self.extra, id) {
             Some(GlobalAlloc::Static(did)) => {
                 // Use size and align of the type.

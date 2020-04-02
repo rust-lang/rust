@@ -243,8 +243,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ///     locals in Miri is that in the internals of the compiler they look as
     ///     normal statics, except that they have the `thread_local` attribute.
     ///     However, in Miri we want to have a property that each allocation has
-    ///     a unique id and, therefore, for these thread locals we generate a
-    ///     fresh allocation id for each thread.
+    ///     a unique id. Therefore, for these thread locals in
+    ///     `canonical_alloc_id` we reserve fresh allocation ids for each
+    ///     thread. Please note that `canonical_alloc_id` only reserves the
+    ///     allocation ids, the actual allocation for the thread local statics
+    ///     is done in the same way as for regular statics.
     ///
     /// This function must be idempotent.
     #[inline]
@@ -255,8 +258,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Called to obtain the `GlobalAlloc` associated with the allocation id.
     ///
     /// Miri uses this callback to resolve the information about the original
-    /// thread local static for which `canonical_alloc_id` generated a fresh
-    /// allocation id.
+    /// thread local static for which `canonical_alloc_id` reserved a fresh
+    /// allocation id. Since `canonical_alloc_id` does not create the actual
+    /// allocation and the reserved allocation id has no reference to its
+    /// parent, we need to ask Miri to retrieve information for us.
     #[inline(always)]
     fn resolve_maybe_global_alloc(
         tcx: TyCtxtAt<'tcx>,
