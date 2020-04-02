@@ -1496,7 +1496,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Is the current token the start of an `FnHeader` / not a valid parse?
-    fn check_fn_front_matter(&mut self) -> bool {
+    pub(super) fn check_fn_front_matter(&mut self) -> bool {
         // We use an over-approximation here.
         // `const const`, `fn const` won't parse, but we're not stepping over other syntax either.
         const QUALS: [Symbol; 4] = [kw::Const, kw::Async, kw::Unsafe, kw::Extern];
@@ -1523,7 +1523,7 @@ impl<'a> Parser<'a> {
     /// FnQual = "const"? "async"? "unsafe"? Extern? ;
     /// FnFrontMatter = FnQual? "fn" ;
     /// ```
-    fn parse_fn_front_matter(&mut self) -> PResult<'a, FnHeader> {
+    pub(super) fn parse_fn_front_matter(&mut self) -> PResult<'a, FnHeader> {
         let constness = self.parse_constness();
         let asyncness = self.parse_asyncness();
         let unsafety = self.parse_unsafety();
