@@ -10,7 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{GeneratorKind, AsyncGeneratorKind, Node};
+use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_middle::ty::TypeckTables;
 use rustc_middle::ty::{
     self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
@@ -1204,7 +1204,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
-        let generator_body = self.tcx
+        let generator_body = self
+            .tcx
             .hir()
             .as_local_hir_id(generator_did)
             .and_then(|hir_id| self.tcx.hir().maybe_body_owned_by(hir_id))
@@ -1246,7 +1247,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             })
             .map(|cause| {
                 // Check to see if any awaited expressions have the target type.
-                let from_awaited_ty = visitor.awaits.into_iter()
+                let from_awaited_ty = visitor
+                    .awaits
+                    .into_iter()
                     .map(|id| self.tcx.hir().expect_expr(id))
                     .find(|expr| {
                         let ty = tables.expr_ty_adjusted(&expr);
@@ -1335,29 +1338,32 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             err.clear_code();
             err.set_primary_message(format!(
                 "{} cannot be {} between threads safely",
-                future_or_generator,
-                trait_verb
+                future_or_generator, trait_verb
             ));
 
             let original_span = err.span.primary_span().unwrap();
             let mut span = MultiSpan::from_span(original_span);
 
             let message = outer_generator
-                .and_then(|generator_did| Some(
-                    match self.tcx.generator_kind(generator_did).unwrap() {
+                .and_then(|generator_did| {
+                    Some(match self.tcx.generator_kind(generator_did).unwrap() {
                         GeneratorKind::Gen => format!("generator is not {}", trait_name),
-                        GeneratorKind::Async(AsyncGeneratorKind::Fn) =>
-                            self.tcx.parent(generator_did)
-                                .and_then(|parent_did| hir.as_local_hir_id(parent_did))
-                                .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
-                                .map(|name| format!("future returned by `{}` is not {}",
-                                                    name, trait_name))?,
-                        GeneratorKind::Async(AsyncGeneratorKind::Block) =>
-                            format!("future created by async block is not {}", trait_name),
-                        GeneratorKind::Async(AsyncGeneratorKind::Closure) =>
-                            format!("future created by async closure is not {}", trait_name),
-                    }
-                ))
+                        GeneratorKind::Async(AsyncGeneratorKind::Fn) => self
+                            .tcx
+                            .parent(generator_did)
+                            .and_then(|parent_did| hir.as_local_hir_id(parent_did))
+                            .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
+                            .map(|name| {
+                                format!("future returned by `{}` is not {}", name, trait_name)
+                            })?,
+                        GeneratorKind::Async(AsyncGeneratorKind::Block) => {
+                            format!("future created by async block is not {}", trait_name)
+                        }
+                        GeneratorKind::Async(AsyncGeneratorKind::Closure) => {
+                            format!("future created by async closure is not {}", trait_name)
+                        }
+                    })
+                })
                 .unwrap_or_else(|| format!("{} is not {}", future_or_generator, trait_name));
 
             span.push_span_label(original_span, message);
@@ -1384,10 +1390,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         if let Some(await_span) = from_awaited_ty {
             // The type causing this obligation is one being awaited at await_span.
             let mut span = MultiSpan::from_span(await_span);
-            span.push_span_label(
-                await_span,
-                "await occurs here".to_string(),
-            );
+            span.push_span_label(await_span, "await occurs here".to_string());
 
             if target_span != await_span {
                 push_target_span(&mut span);
@@ -1422,7 +1425,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
             err.span_note(
                 span,
-                &format!("{} as this value is used across an {}", trait_explanation, await_or_yield),
+                &format!(
+                    "{} as this value is used across an {}",
+                    trait_explanation, await_or_yield
+                ),
             );
         }
 
@@ -1784,8 +1790,9 @@ impl<'v> Visitor<'v> for AwaitsVisitor {
 
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
         match ex.kind {
-            hir::ExprKind::Yield(_, hir::YieldSource::Await { expr: Some(id) }) =>
-                self.awaits.push(id),
+            hir::ExprKind::Yield(_, hir::YieldSource::Await { expr: Some(id) }) => {
+                self.awaits.push(id)
+            }
             _ => (),
         }
         hir::intravisit::walk_expr(self, ex)
