@@ -734,7 +734,7 @@ impl OpenOptions {
     /// let file = options.read(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> OpenOptions {
+    pub fn new() -> Self {
         OpenOptions(fs_imp::OpenOptions::new())
     }
 
@@ -751,7 +751,7 @@ impl OpenOptions {
     /// let file = OpenOptions::new().read(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn read(&mut self, read: bool) -> &mut OpenOptions {
+    pub fn read(&mut self, read: bool) -> &mut Self {
         self.0.read(read);
         self
     }
@@ -772,7 +772,7 @@ impl OpenOptions {
     /// let file = OpenOptions::new().write(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn write(&mut self, write: bool) -> &mut OpenOptions {
+    pub fn write(&mut self, write: bool) -> &mut Self {
         self.0.write(write);
         self
     }
@@ -819,7 +819,7 @@ impl OpenOptions {
     /// let file = OpenOptions::new().append(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn append(&mut self, append: bool) -> &mut OpenOptions {
+    pub fn append(&mut self, append: bool) -> &mut Self {
         self.0.append(append);
         self
     }
@@ -839,7 +839,7 @@ impl OpenOptions {
     /// let file = OpenOptions::new().write(true).truncate(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn truncate(&mut self, truncate: bool) -> &mut OpenOptions {
+    pub fn truncate(&mut self, truncate: bool) -> &mut Self {
         self.0.truncate(truncate);
         self
     }
@@ -860,7 +860,7 @@ impl OpenOptions {
     /// let file = OpenOptions::new().write(true).create(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn create(&mut self, create: bool) -> &mut OpenOptions {
+    pub fn create(&mut self, create: bool) -> &mut Self {
         self.0.create(create);
         self
     }
@@ -893,7 +893,7 @@ impl OpenOptions {
     ///                              .open("foo.txt");
     /// ```
     #[stable(feature = "expand_open_options2", since = "1.9.0")]
-    pub fn create_new(&mut self, create_new: bool) -> &mut OpenOptions {
+    pub fn create_new(&mut self, create_new: bool) -> &mut Self {
         self.0.create_new(create_new);
         self
     }
