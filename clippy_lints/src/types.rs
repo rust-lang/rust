@@ -105,7 +105,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example**
-    /// ```rust,ignore
+    /// ```rust
     /// fn get_data() -> Option<Option<u32>> {
     ///     None
     /// }
@@ -113,7 +113,7 @@ declare_clippy_lint! {
     ///
     /// Better:
     ///
-    /// ```rust,ignore
+    /// ```rust
     /// pub enum Contents {
     ///     Data(Vec<u8>), // Was Some(Some(Vec<u8>))
     ///     NotYetFetched, // Was Some(None)
