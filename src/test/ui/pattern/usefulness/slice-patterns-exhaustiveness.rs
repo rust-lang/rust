@@ -87,7 +87,6 @@ fn main() {
         CONST => {}
     }
     match s {
-    //~^ ERROR `&[true]` not covered
         [] => {},
         [false] => {},
         CONST => {},

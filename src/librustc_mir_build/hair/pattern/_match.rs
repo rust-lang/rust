@@ -2407,24 +2407,44 @@ fn specialize_one_pattern<'p, 'tcx>(
                         _ => span_bug!(pat.span, "array pattern is {:?}", value,),
                     }
                 }
-                ty::Slice(t) => {
-                    match value.val {
-                        ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => {
-                            let offset = Size::from_bytes(start);
-                            let n = (end - start) as u64;
-                            (Cow::Borrowed(data), offset, n, t)
-                        }
-                        ty::ConstKind::Value(ConstValue::ByRef { .. }) => {
-                            // FIXME(oli-obk): implement `deref` for `ConstValue`
-                            return None;
-                        }
-                        _ => span_bug!(
-                            pat.span,
-                            "slice pattern constant must be scalar pair but is {:?}",
-                            value,
-                        ),
+                ty::Slice(t) => match value.val {
+                    ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => {
+                        let offset = Size::from_bytes(start as u64);
+                        let n = (end - start) as u64;
+                        (Cow::Borrowed(data), offset, n, t)
                     }
-                }
+                    ty::ConstKind::Value(ConstValue::ByRef { alloc, offset }) => {
+                        // The following code is essentially a `deref` operation for slice wide
+                        // pointers.
+                        // First, read a pointer.
+                        let offset = Pointer::new(AllocId(0), offset);
+                        let ptr = alloc
+                            .read_ptr_sized(&cx.tcx, offset)
+                            .unwrap()
+                            .not_undef()
+                            .unwrap()
+                            .assert_ptr();
+                        // Then read a length.
+                        let offset =
+                            offset.offset(cx.tcx.data_layout.pointer_size, &cx.tcx).unwrap();
+                        let len = alloc
+                            .read_ptr_sized(&cx.tcx, offset)
+                            .unwrap()
+                            .not_undef()
+                            .unwrap()
+                            .assert_bits(cx.tcx.data_layout.pointer_size)
+                            .try_into()
+                            .unwrap();
+                        // Now load the memory where the pointer points to.
+                        let data = cx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
+                        (Cow::Borrowed(data), ptr.offset, len, t)
+                    }
+                    _ => span_bug!(
+                        pat.span,
+                        "slice pattern constant must be scalar pair but is {:?}",
+                        value,
+                    ),
+                },
                 _ => span_bug!(
                     pat.span,
                     "unexpected const-val {:?} with ctor {:?}",
