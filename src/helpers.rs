@@ -324,19 +324,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 fields: impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Tag>>>,
             ) -> InterpResult<'tcx> {
                 match place.layout.fields {
-                    layout::FieldPlacement::Array { .. } => {
+                    layout::FieldsShape::Array { .. } => {
                         // For the array layout, we know the iterator will yield sorted elements so
                         // we can avoid the allocation.
                         self.walk_aggregate(place, fields)
                     }
-                    layout::FieldPlacement::Arbitrary { .. } => {
+                    layout::FieldsShape::Arbitrary { .. } => {
                         // Gather the subplaces and sort them before visiting.
                         let mut places =
                             fields.collect::<InterpResult<'tcx, Vec<MPlaceTy<'tcx, Tag>>>>()?;
                         places.sort_by_key(|place| place.ptr.assert_ptr().offset);
                         self.walk_aggregate(place, places.into_iter().map(Ok))
                     }
-                    layout::FieldPlacement::Union { .. } => {
+                    layout::FieldsShape::Union { .. } => {
                         // Uh, what?
                         bug!("a union is not an aggregate we should ever visit")
                     }
