@@ -655,7 +655,11 @@ fn infer_placeholder_type(
         }
     }
 
-    ty
+    // Typeck doesn't expect erased regions to be returned from `type_of`.
+    tcx.fold_regions(&ty, &mut false, |r, _| match r {
+        ty::ReErased => tcx.lifetimes.re_static,
+        _ => r,
+    })
 }
 
 fn report_assoc_ty_on_inherent_impl(tcx: TyCtxt<'_>, span: Span) {
