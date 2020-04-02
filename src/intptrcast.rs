@@ -6,9 +6,8 @@ use log::trace;
 use rand::Rng;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::ty::layout::HasDataLayout;
 use rustc_mir::interpret::{AllocCheck, AllocId, InterpResult, Memory, Machine, Pointer, PointerArithmetic};
-use rustc_target::abi::Size;
+use rustc_target::abi::{Size, HasDataLayout};
 
 use crate::{Evaluator, Tag, STACK_ADDR};
 

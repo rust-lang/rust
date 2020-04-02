@@ -13,9 +13,8 @@
 
 use log::trace;
 
-use rustc_middle::mir;
-use rustc_middle::ty::{self, layout::LayoutOf};
-use rustc_target::spec::PanicStrategy;
+use rustc_middle::{mir, ty};
+use rustc_target::{spec::PanicStrategy, abi::LayoutOf};
 
 use crate::*;
 

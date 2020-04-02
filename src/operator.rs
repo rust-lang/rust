@@ -2,11 +2,8 @@ use std::convert::TryFrom;
 
 use log::trace;
 
-use rustc_middle::mir;
-use rustc_middle::ty::{
-    layout::{LayoutOf, Size},
-    Ty,
-};
+use rustc_middle::{mir, ty::Ty};
+use rustc_target::abi::{LayoutOf, Size};
 
 use crate::*;
 

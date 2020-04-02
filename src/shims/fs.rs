@@ -6,7 +6,7 @@ use std::path::Path;
 use std::time::SystemTime;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::ty::layout::{Align, LayoutOf, Size};
+use rustc_target::abi::{Align, LayoutOf, Size};
 
 use crate::stacked_borrows::Tag;
 use crate::*;

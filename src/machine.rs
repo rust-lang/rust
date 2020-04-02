@@ -11,12 +11,8 @@ use log::trace;
 use rand::rngs::StdRng;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::mir;
-use rustc_middle::ty::{
-    self,
-    layout::{LayoutOf, Size},
-    Ty,
-};
+use rustc_middle::{mir, ty};
+use rustc_target::abi::{LayoutOf, Size};
 use rustc_ast::attr;
 use rustc_span::symbol::{sym, Symbol};
 
@@ -303,7 +299,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Tag>,
         right: ImmTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, (Scalar<Tag>, bool, Ty<'tcx>)> {
+    ) -> InterpResult<'tcx, (Scalar<Tag>, bool, ty::Ty<'tcx>)> {
         ecx.binary_ptr_op(bin_op, left, right)
     }
 

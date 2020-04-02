@@ -1,11 +1,11 @@
 use std::time::{Duration, SystemTime, Instant};
 use std::convert::TryFrom;
 
+use rustc_target::abi::LayoutOf;
+
 use crate::stacked_borrows::Tag;
 use crate::*;
 use helpers::{immty_from_int_checked, immty_from_uint_checked};
-
-use rustc_middle::ty::layout::LayoutOf;
 
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
 pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Duration> {

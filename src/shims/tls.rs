@@ -4,8 +4,8 @@ use std::collections::BTreeMap;
 
 use log::trace;
 
-use rustc_middle::{ty, ty::layout::{Size, HasDataLayout}};
-use rustc_target::abi::LayoutOf;
+use rustc_middle::ty;
+use rustc_target::abi::{LayoutOf, Size, HasDataLayout};
 
 use crate::{HelpersEvalContextExt, InterpResult, MPlaceTy, Scalar, StackPopCleanup, Tag};
 

@@ -9,7 +9,7 @@ use std::os::unix::ffi::{OsStrExt, OsStringExt};
 #[cfg(windows)]
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_target::abi::LayoutOf;
 
 use crate::*;
 
