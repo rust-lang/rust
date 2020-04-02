@@ -4,14 +4,20 @@ error: missing type for `const` item
 LL | const C = 42;
    |       ^ help: provide a type for the item: `C: i32`
 
+error: missing type for `const` item
+  --> $DIR/const-no-type.rs:38:7
+   |
+LL | const D = &&42;
+   |       ^ help: provide a type for the item: `D: &&i32`
+
 error: missing type for `static` item
-  --> $DIR/const-no-type.rs:38:8
+  --> $DIR/const-no-type.rs:43:8
    |
 LL | static S = Vec::<String>::new();
    |        ^ help: provide a type for the item: `S: std::vec::Vec<std::string::String>`
 
 error: missing type for `static mut` item
-  --> $DIR/const-no-type.rs:43:12
+  --> $DIR/const-no-type.rs:48:12
    |
 LL | static mut SM = "abc";
    |            ^^ help: provide a type for the item: `SM: &str`
@@ -34,5 +40,5 @@ error: missing type for `static mut` item
 LL | static mut SM2 = "abc";
    |            ^^^ help: provide a type for the item: `SM2: <type>`
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
