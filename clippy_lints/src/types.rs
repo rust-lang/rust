@@ -99,12 +99,29 @@ declare_clippy_lint! {
     /// represents an optional optional value which is logically the same thing as an optional
     /// value but has an unneeded extra level of wrapping.
     ///
+    /// If you have a case where `Some(Some(_))`, `Some(None)` and `None` are distinct cases,
+    /// consider a custom `enum` instead, with clear names for each case.
+    ///
     /// **Known problems:** None.
     ///
     /// **Example**
     /// ```rust
-    /// fn x() -> Option<Option<u32>> {
+    /// fn get_data() -> Option<Option<u32>> {
     ///     None
+    /// }
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust
+    /// pub enum Contents {
+    ///     Data(Vec<u8>), // Was Some(Some(Vec<u8>))
+    ///     NotYetFetched, // Was Some(None)
+    ///     None,          // Was None
+    /// }
+    ///
+    /// fn get_data() -> Contents {
+    ///     Contents::None
     /// }
     /// ```
     pub OPTION_OPTION,
