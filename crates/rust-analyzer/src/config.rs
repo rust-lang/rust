@@ -16,20 +16,24 @@ use serde::Deserialize;
 #[derive(Debug, Clone)]
 pub struct Config {
     pub client_caps: ClientCapsConfig,
+
+    pub with_sysroot: bool,
     pub publish_diagnostics: bool,
+    pub use_client_watching: bool,
+    // TODO: move to experimental capabilities
+    pub vscode_lldb: bool,
+    pub lru_capacity: Option<usize>,
+    pub proc_macro_srv: Option<String>,
+    pub exclude_globs: Vec<String>,
     pub notifications: NotificationsConfig,
+
+    pub cargo: CargoConfig,
+    pub rustfmt: RustfmtConfig,
+    pub check: Option<FlycheckConfig>,
+
     pub inlay_hints: InlayHintsConfig,
     pub completion: CompletionConfig,
     pub call_info_full: bool,
-    pub rustfmt: RustfmtConfig,
-    pub check: Option<FlycheckConfig>,
-    pub vscode_lldb: bool,
-    pub proc_macro_srv: Option<String>,
-    pub lru_capacity: Option<usize>,
-    pub use_client_watching: bool,
-    pub exclude_globs: Vec<String>,
-    pub cargo: CargoConfig,
-    pub with_sysroot: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -59,12 +63,28 @@ pub struct ClientCapsConfig {
 impl Default for Config {
     fn default() -> Self {
         Config {
+            client_caps: ClientCapsConfig::default(),
+
+            with_sysroot: true,
             publish_diagnostics: true,
+            use_client_watching: false,
+            vscode_lldb: false,
+            lru_capacity: None,
+            proc_macro_srv: None,
+            exclude_globs: Vec::new(),
             notifications: NotificationsConfig {
                 workspace_loaded: true,
                 cargo_toml_not_found: true,
             },
-            client_caps: ClientCapsConfig::default(),
+
+            cargo: CargoConfig::default(),
+            rustfmt: RustfmtConfig::Rustfmt { extra_args: Vec::new() },
+            check: Some(FlycheckConfig::CargoCommand {
+                command: "check".to_string(),
+                all_targets: true,
+                extra_args: Vec::new(),
+            }),
+
             inlay_hints: InlayHintsConfig {
                 type_hints: true,
                 parameter_hints: true,
@@ -77,19 +97,6 @@ impl Default for Config {
                 add_call_argument_snippets: true,
             },
             call_info_full: true,
-            rustfmt: RustfmtConfig::Rustfmt { extra_args: Vec::new() },
-            check: Some(FlycheckConfig::CargoCommand {
-                command: "check".to_string(),
-                all_targets: true,
-                extra_args: Vec::new(),
-            }),
-            vscode_lldb: false,
-            proc_macro_srv: None,
-            lru_capacity: None,
-            use_client_watching: false,
-            exclude_globs: Vec::new(),
-            cargo: CargoConfig::default(),
-            with_sysroot: true,
         }
     }
 }
@@ -103,15 +110,22 @@ impl Config {
         *self = Default::default();
         self.client_caps = client_caps;
 
-        set(value, "/excludeGlobs", &mut self.exclude_globs);
+        set(value, "/withSysroot", &mut self.with_sysroot);
+        set(value, "/featureFlags/lsp.diagnostics", &mut self.publish_diagnostics);
         set(value, "/useClientWatching", &mut self.use_client_watching);
+        set(value, "/vscodeLldb", &mut self.vscode_lldb);
         set(value, "/lruCapacity", &mut self.lru_capacity);
+        set(value, "/excludeGlobs", &mut self.exclude_globs);
+        set(value, "/featureFlags/notifications.workspace-loaded", &mut self.notifications.workspace_loaded);
+        set(value, "/featureFlags/notifications.cargo-toml-not-found", &mut self.notifications.cargo_toml_not_found);
 
-        set(value, "/inlayHintsType", &mut self.inlay_hints.type_hints);
-        set(value, "/inlayHintsParameter", &mut self.inlay_hints.parameter_hints);
-        set(value, "/inlayHintsChaining", &mut self.inlay_hints.chaining_hints);
-        set(value, "/inlayHintsMaxLength", &mut self.inlay_hints.max_length);
-
+        set(value, "/cargoFeatures/noDefaultFeatures", &mut self.cargo.no_default_features);
+        set(value, "/cargoFeatures/allFeatures", &mut self.cargo.all_features);
+        set(value, "/cargoFeatures/features", &mut self.cargo.features);
+        set(value, "/cargoFeatures/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
+        if let RustfmtConfig::Rustfmt { extra_args } = &mut self.rustfmt {
+            set(value, "/rustfmtArgs", extra_args);
+        }
         if let Some(false) = get(value, "cargo_watch_enable") {
             self.check = None
         } else {
@@ -123,21 +137,10 @@ impl Config {
             }
         };
 
-        set(value, "/withSysroot", &mut self.with_sysroot);
-        if let RustfmtConfig::Rustfmt { extra_args } = &mut self.rustfmt {
-            set(value, "/rustfmtArgs", extra_args);
-        }
-
-        set(value, "/cargoFeatures/noDefaultFeatures", &mut self.cargo.no_default_features);
-        set(value, "/cargoFeatures/allFeatures", &mut self.cargo.all_features);
-        set(value, "/cargoFeatures/features", &mut self.cargo.features);
-        set(value, "/cargoFeatures/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
-
-        set(value, "/vscodeLldb", &mut self.vscode_lldb);
-
-        set(value, "/featureFlags/lsp.diagnostics", &mut self.publish_diagnostics);
-        set(value, "/featureFlags/notifications.workspace-loaded", &mut self.notifications.workspace_loaded);
-        set(value, "/featureFlags/notifications.cargo-toml-not-found", &mut self.notifications.cargo_toml_not_found);
+        set(value, "/inlayHintsType", &mut self.inlay_hints.type_hints);
+        set(value, "/inlayHintsParameter", &mut self.inlay_hints.parameter_hints);
+        set(value, "/inlayHintsChaining", &mut self.inlay_hints.chaining_hints);
+        set(value, "/inlayHintsMaxLength", &mut self.inlay_hints.max_length);
         set(value, "/featureFlags/completion.enable-postfix", &mut self.completion.enable_postfix_completions);
         set(value, "/featureFlags/completion.insertion.add-call-parenthesis", &mut self.completion.add_call_parenthesis);
         set(value, "/featureFlags/completion.insertion.add-argument-snippets", &mut self.completion.add_call_argument_snippets);
