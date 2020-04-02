@@ -171,7 +171,6 @@ fn trans_const_place<'tcx>(
         );
         ecx.push_stack_frame(
             fx.instance,
-            DUMMY_SP,
             fx.mir,
             None,
             StackPopCleanup::None { cleanup: false },
@@ -412,7 +411,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
 
     fn find_mir_or_eval_fn(
         _: &mut InterpCx<'mir, 'tcx, Self>,
-        _: Span,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
         _: Option<(PlaceTy<'tcx>, BasicBlock)>,
@@ -423,7 +421,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
 
     fn call_intrinsic(
         _: &mut InterpCx<'mir, 'tcx, Self>,
-        _: Span,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
         _: Option<(PlaceTy<'tcx>, BasicBlock)>,
