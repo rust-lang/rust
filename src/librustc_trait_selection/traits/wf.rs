@@ -24,7 +24,7 @@ pub fn obligations<'a, 'tcx>(
 ) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
     // Handle the "livelock" case (see comment above) by bailing out if necessary.
     let ty = match ty.kind {
-        ty::Infer(_) => {
+        ty::Infer(ty::TyVar(_)) => {
             let resolved_ty = infcx.shallow_resolve(ty);
             if resolved_ty == ty {
                 // No progress, bail out to prevent "livelock".
@@ -356,6 +356,12 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // WfScalar, WfParameter, etc
                 }
 
+                // Can only infer to `ty::Int(_) | ty::Uint(_)`.
+                ty::Infer(ty::IntVar(_)) => {}
+
+                // Can only infer to `ty::Float(_)`.
+                ty::Infer(ty::FloatVar(_)) => {}
+
                 ty::Slice(subty) => {
                     self.require_sized(subty, traits::SliceOrArrayElem);
                 }
@@ -514,7 +520,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 // prevention, which happens before this can be reached.
                 ty::Infer(_) => {
                     let ty = self.infcx.shallow_resolve(ty);
-                    if let ty::Infer(_) = ty.kind {
+                    if let ty::Infer(ty::TyVar(_)) = ty.kind {
                         // Not yet resolved, but we've made progress.
                         let cause = self.cause(traits::MiscObligation);
                         self.out.push(traits::Obligation::new(
