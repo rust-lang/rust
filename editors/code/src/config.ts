@@ -11,9 +11,8 @@ export class Config {
     private readonly rootSection = "rust-analyzer";
     private readonly requiresReloadOpts = [
         "serverPath",
-        "cargoFeatures",
-        "excludeGlobs",
-        "useClientWatching",
+        "cargo",
+        "files",
         "highlighting",
         "updates.channel",
     ]
@@ -71,16 +70,7 @@ export class Config {
     get channel() { return this.cfg.get<UpdatesChannel>("updates.channel")!; }
     get askBeforeDownload() { return this.cfg.get<boolean>("updates.askBeforeDownload")!; }
     get highlightingSemanticTokens() { return this.cfg.get<boolean>("highlighting.semanticTokens")!; }
-    get lruCapacity() { return this.cfg.get<null | number>("lruCapacity")!; }
-    get excludeGlobs() { return this.cfg.get<string[]>("excludeGlobs")!; }
-    get useClientWatching() { return this.cfg.get<boolean>("useClientWatching")!; }
-    get featureFlags() { return this.cfg.get<Record<string, boolean>>("featureFlags")!; }
-    get rustfmtArgs() { return this.cfg.get<string[]>("rustfmtArgs")!; }
-    get loadOutDirsFromCheck() { return this.cfg.get<boolean>("loadOutDirsFromCheck")!; }
     get traceExtension() { return this.cfg.get<boolean>("trace.extension")!; }
-
-    // for internal use
-    get withSysroot() { return this.cfg.get<boolean>("withSysroot", true)!; }
 
     get inlayHints() {
         return {
@@ -91,21 +81,9 @@ export class Config {
         };
     }
 
-    get cargoWatchOptions() {
+    get checkOnSave() {
         return {
-            enable: this.cfg.get<boolean>("cargo-watch.enable")!,
-            arguments: this.cfg.get<string[]>("cargo-watch.arguments")!,
-            allTargets: this.cfg.get<boolean>("cargo-watch.allTargets")!,
-            command: this.cfg.get<string>("cargo-watch.command")!,
-        };
-    }
-
-    get cargoFeatures() {
-        return {
-            noDefaultFeatures: this.cfg.get<boolean>("cargoFeatures.noDefaultFeatures")!,
-            allFeatures: this.cfg.get<boolean>("cargoFeatures.allFeatures")!,
-            features: this.cfg.get<string[]>("cargoFeatures.features")!,
-            loadOutDirsFromCheck: this.cfg.get<boolean>("cargoFeatures.loadOutDirsFromCheck")!,
+            command: this.cfg.get<string>("checkOnSave.command")!,
         };
     }
 }

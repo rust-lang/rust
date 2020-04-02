@@ -5,30 +5,6 @@ import { Config } from './config';
 import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
 import { SemanticTokensFeature, DocumentSemanticsTokensSignature } from 'vscode-languageclient/lib/semanticTokens.proposed';
 
-export function configToServerOptions(config: Config) {
-    return {
-        lruCapacity: config.lruCapacity,
-
-        inlayHintsType: config.inlayHints.typeHints,
-        inlayHintsParameter: config.inlayHints.parameterHints,
-        inlayHintsChaining: config.inlayHints.chainingHints,
-        inlayHintsMaxLength: config.inlayHints.maxLength,
-
-        cargoWatchEnable: config.cargoWatchOptions.enable,
-        cargoWatchArgs: config.cargoWatchOptions.arguments,
-        cargoWatchCommand: config.cargoWatchOptions.command,
-        cargoWatchAllTargets: config.cargoWatchOptions.allTargets,
-
-        excludeGlobs: config.excludeGlobs,
-        useClientWatching: config.useClientWatching,
-        featureFlags: config.featureFlags,
-        withSysroot: config.withSysroot,
-        cargoFeatures: config.cargoFeatures,
-        rustfmtArgs: config.rustfmtArgs,
-        vscodeLldb: vscode.extensions.getExtension("vadimcn.vscode-lldb") != null,
-    };
-}
-
 export async function createClient(config: Config, serverPath: string, cwd: string): Promise<lc.LanguageClient> {
     // '.' Is the fallback if no folder is open
     // TODO?: Workspace folders support Uri's (eg: file://test.txt).
@@ -48,7 +24,7 @@ export async function createClient(config: Config, serverPath: string, cwd: stri
 
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'rust' }],
-        initializationOptions: configToServerOptions(config),
+        initializationOptions: vscode.workspace.getConfiguration("rust-analyzer"),
         traceOutputChannel,
         middleware: {
             // Workaround for https://github.com/microsoft/vscode-languageserver-node/issues/576
