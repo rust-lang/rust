@@ -17,6 +17,7 @@ use log::trace;
 use rustc_middle::{mir, ty};
 
 use crate::*;
+use helpers::check_arg_count;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -32,7 +33,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // There are some more lang items we want to hook that CTFE does not hook (yet).
         if this.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
-            this.align_offset(args[0], args[1], ret, unwind)?;
+            let &[ptr, align] = check_arg_count(args)?;
+            this.align_offset(ptr, align, ret, unwind)?;
             return Ok(None);
         }
 
