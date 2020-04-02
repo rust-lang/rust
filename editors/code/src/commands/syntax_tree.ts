@@ -15,6 +15,9 @@ export function syntaxTree(ctx: Ctx): Cmd {
     void new AstInspector(ctx);
 
     ctx.pushCleanup(vscode.workspace.registerTextDocumentContentProvider(AST_FILE_SCHEME, tdcp));
+    ctx.pushCleanup(vscode.languages.setLanguageConfiguration("ra_syntax_tree", {
+        brackets: [["[", ")"]],
+    }));
 
     return async () => {
         const editor = vscode.window.activeTextEditor;
@@ -36,7 +39,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
 }
 
 class TextDocumentContentProvider implements vscode.TextDocumentContentProvider {
-    readonly uri = vscode.Uri.parse('rust-analyzer://syntaxtree');
+    readonly uri = vscode.Uri.parse('rust-analyzer://syntaxtree/tree.rast');
     readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
 
 
