@@ -124,7 +124,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.assert_target_os("windows", "QueryPerformanceCounter");
         this.check_no_isolation("QueryPerformanceCounter")?;
 
-        // QPC uses a hardware counter as its basis.
+        // QueryPerformanceCounter uses a hardware counter as its basis.
         // Miri will emulate a counter with a resolution of 1 nanosecond.
         let duration = Instant::now().duration_since(this.machine.time_anchor);
         let qpc = i64::try_from(duration.as_nanos())
