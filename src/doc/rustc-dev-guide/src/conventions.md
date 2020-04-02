@@ -14,7 +14,7 @@ enforced by a script we affectionately call the "tidy" script.  The
 tidy script runs automatically when you do `./x.py test` and can be run
 in isolation with `./x.py test tidy`.
 
-[fmt]: https://github.com/rust-lang-nursery/fmt-rfcs
+[fmt]: https://github.com/rust-dev-tools/fmt-rfcs
 
 <a name="copyright"></a>
 

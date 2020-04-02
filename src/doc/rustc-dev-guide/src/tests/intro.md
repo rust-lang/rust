@@ -183,7 +183,7 @@ communicate with the server to coordinate running tests (see
 
 ## Crater
 
-[Crater](https://github.com/rust-lang-nursery/crater) is a tool for compiling
+[Crater](https://github.com/rust-lang/crater) is a tool for compiling
 and running tests for _every_ crate on [crates.io](https://crates.io) (and a
 few on GitHub). It is mainly used for checking for extent of breakage when
 implementing potentially breaking changes and ensuring lack of breakage by

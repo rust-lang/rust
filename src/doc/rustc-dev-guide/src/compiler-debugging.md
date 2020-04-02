@@ -261,8 +261,8 @@ until it finds the regression. You can then look at the PR to get more context
 on *why* it was changed.  See [this tutorial][bisect-tutorial] on how to use
 it.
 
-[bisect]: https://github.com/rust-lang-nursery/cargo-bisect-rustc
-[bisect-tutorial]: https://github.com/rust-lang-nursery/cargo-bisect-rustc/blob/master/TUTORIAL.md
+[bisect]: https://github.com/rust-lang/cargo-bisect-rustc
+[bisect-tutorial]: https://github.com/rust-lang/cargo-bisect-rustc/blob/master/TUTORIAL.md
 
 ## Downloading Artifacts from Rust's CI
 

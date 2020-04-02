@@ -43,7 +43,7 @@ In terms of code, these types are defined in
 
 [pphhf]: ./bibliography.html#pphhf
 [traits_mod]: https://github.com/rust-lang/rust/blob/master/src/librustc_middle/traits/mod.rs
-[chalk_ir]: https://github.com/rust-lang-nursery/chalk/blob/master/chalk-ir/src/lib.rs
+[chalk_ir]: https://github.com/rust-lang/chalk/blob/master/chalk-ir/src/lib.rs
 
 <a name="domain-goals"></a>
 

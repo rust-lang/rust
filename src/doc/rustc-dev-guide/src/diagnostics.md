@@ -82,7 +82,7 @@ is passed) as JSON for consumption by tools, most notably the [Rust Language
 Server][rls] and [`rustfix`][rustfix].
 
 [rls]: https://github.com/rust-lang/rls
-[rustfix]: https://github.com/rust-lang-nursery/rustfix
+[rustfix]: https://github.com/rust-lang/rustfix
 
 Not all suggestions should be applied mechanically. Use the
 [`span_suggestion`][span_suggestion] method of `DiagnosticBuilder` to

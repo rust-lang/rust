@@ -59,10 +59,10 @@ do that, the first step is to clone
 [the rustc-perf repository][rustc-perf-gh]:
 
 ```bash
-git clone https://github.com/rust-lang-nursery/rustc-perf
+git clone https://github.com/rust-lang/rustc-perf
 ```
 
-[rustc-perf-gh]: https://github.com/rust-lang-nursery/rustc-perf
+[rustc-perf-gh]: https://github.com/rust-lang/rustc-perf
 
 #### Doing it the easy way
 
@@ -70,7 +70,7 @@ Once you've cloned the repo, you can use the `collector` executable to
 do profiling for you! You can find
 [instructions in the rustc-perf readme][rustc-perf-readme].
 
-[rustc-perf-readme]: https://github.com/rust-lang-nursery/rustc-perf/blob/master/collector/README.md#profiling
+[rustc-perf-readme]: https://github.com/rust-lang/rustc-perf/blob/master/collector/README.md#profiling
 
 For example, to measure the clap-rs test, you might do:
 
@@ -94,7 +94,7 @@ are found in [the `collector/benchmarks` directory][dir]. So let's go
 into the directory of a specific test; we'll use `clap-rs` as an
 example:
 
-[dir]: https://github.com/rust-lang-nursery/rustc-perf/tree/master/collector/benchmarks
+[dir]: https://github.com/rust-lang/rustc-perf/tree/master/collector/benchmarks
 
 ```bash
 cd collector/benchmarks/clap-rs
