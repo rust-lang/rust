@@ -4,7 +4,6 @@ pub use self::hcx::{
     hash_stable_trait_impls, NodeIdHashingMode, StableHashingContext, StableHashingContextProvider,
 };
 use rustc_span::symbol::{sym, Symbol};
-pub use rustc_span::CachingSourceMapView;
 
 mod hcx;
 

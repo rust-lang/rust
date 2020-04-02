@@ -9,8 +9,9 @@ use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc_middle::traits::Reveal;
-use rustc_middle::ty::{self, layout, layout::LayoutOf, subst::Subst, TyCtxt};
+use rustc_middle::ty::{self, subst::Subst, TyCtxt};
 use rustc_span::source_map::Span;
+use rustc_target::abi::{Abi, LayoutOf};
 use std::convert::TryInto;
 
 pub fn note_on_undefined_behavior_error() -> &'static str {
@@ -105,8 +106,8 @@ pub(super) fn op_to_const<'tcx>(
     // the usual cases of extracting e.g. a `usize`, without there being a real use case for the
     // `Undef` situation.
     let try_as_immediate = match op.layout.abi {
-        layout::Abi::Scalar(..) => true,
-        layout::Abi::ScalarPair(..) => match op.layout.ty.kind {
+        Abi::Scalar(..) => true,
+        Abi::ScalarPair(..) => match op.layout.ty.kind {
             ty::Ref(_, inner, _) => match inner.kind {
                 ty::Slice(elem) => elem == ecx.tcx.types.u8,
                 ty::Str => true,

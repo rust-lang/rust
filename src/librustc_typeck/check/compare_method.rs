@@ -1,4 +1,4 @@
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;
@@ -8,7 +8,6 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
-use rustc_middle::util::common::ErrorReported;
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, Reveal};

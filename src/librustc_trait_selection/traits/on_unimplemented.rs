@@ -1,13 +1,11 @@
 use fmt_macros::{Parser, Piece, Position};
 
-use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
-use rustc_middle::util::common::ErrorReported;
-
 use rustc_ast::ast::{MetaItem, NestedMetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, ErrorReported};
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 

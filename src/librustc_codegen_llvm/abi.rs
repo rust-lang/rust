@@ -10,16 +10,14 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{self};
+pub use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::Ty;
 use rustc_target::abi::call::ArgAbi;
-use rustc_target::abi::{HasDataLayout, LayoutOf};
+pub use rustc_target::abi::call::*;
+use rustc_target::abi::{self, HasDataLayout, Int, LayoutOf};
+pub use rustc_target::spec::abi::Abi;
 
 use libc::c_uint;
-
-pub use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
-pub use rustc_target::abi::call::*;
-pub use rustc_target::spec::abi::Abi;
 
 macro_rules! for_each_kind {
     ($flags: ident, $f: ident, $($kind: ident),+) => ({
@@ -450,11 +448,11 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect(ref attrs, _) => apply(attrs, Some(self.ret.layout.llvm_type(bx))),
             _ => {}
         }
-        if let layout::Abi::Scalar(ref scalar) = self.ret.layout.abi {
+        if let abi::Abi::Scalar(ref scalar) = self.ret.layout.abi {
             // If the value is a boolean, the range is 0..2 and that ultimately
             // become 0..0 when the type becomes i1, which would be rejected
             // by the LLVM verifier.
-            if let layout::Int(..) = scalar.value {
+            if let Int(..) = scalar.value {
                 if !scalar.is_bool() {
                     let range = scalar.valid_range_exclusive(bx);
                     if range.start != range.end {

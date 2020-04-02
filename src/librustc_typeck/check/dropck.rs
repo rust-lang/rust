@@ -1,8 +1,7 @@
 use crate::check::regionck::RegionCtxt;
 use crate::hir;
 use crate::hir::def_id::DefId;
-use crate::util::common::ErrorReported;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, ErrorReported};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferOk, RegionckMode, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;

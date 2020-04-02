@@ -19,13 +19,13 @@ use rustc_middle::mir::interpret::{get_slice_bytes, sign_extend, ConstValue, Err
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::mir::UserTypeProjection;
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
-use rustc_middle::ty::layout::VariantIdx;
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
 use rustc_middle::ty::{self, AdtDef, DefIdTree, Region, Ty, TyCtxt, UserType};
 use rustc_middle::ty::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
 };
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi::VariantIdx;
 
 use std::cmp::Ordering;
 use std::fmt;
@@ -1047,8 +1047,8 @@ crate fn compare_const_vals<'tcx>(
             }
             ty::Int(ity) => {
                 use rustc_attr::SignedInt;
-                use rustc_middle::ty::layout::{Integer, IntegerExt};
-                let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
+                use rustc_middle::ty::layout::IntegerExt;
+                let size = rustc_target::abi::Integer::from_attr(&tcx, SignedInt(ity)).size();
                 let a = sign_extend(a, size);
                 let b = sign_extend(b, size);
                 Some((a as i128).cmp(&(b as i128)))

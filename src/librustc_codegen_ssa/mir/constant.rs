@@ -3,9 +3,10 @@ use crate::traits::*;
 use rustc_index::vec::Idx;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ConstValue, ErrorHandled};
-use rustc_middle::ty::layout::{self, HasTyCtxt};
+use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Span;
+use rustc_target::abi::Abi;
 
 use super::FunctionCx;
 
@@ -87,7 +88,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if let Some(prim) = field.try_to_scalar() {
                             let layout = bx.layout_of(field_ty);
                             let scalar = match layout.abi {
-                                layout::Abi::Scalar(ref x) => x,
+                                Abi::Scalar(ref x) => x,
                                 _ => bug!("from_const: invalid ByVal layout: {:#?}", layout),
                             };
                             bx.scalar_to_backend(prim, scalar, bx.immediate_backend_type(layout))

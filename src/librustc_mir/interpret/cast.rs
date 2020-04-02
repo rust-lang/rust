@@ -7,10 +7,10 @@ use rustc_ast::ast::FloatTy;
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::CastKind;
 use rustc_middle::ty::adjustment::PointerCast;
-use rustc_middle::ty::layout::{self, Size, TyAndLayout};
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc_span::symbol::sym;
-use rustc_target::abi::LayoutOf;
+use rustc_target::abi::{LayoutOf, Size, Variants};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn cast(
@@ -132,7 +132,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // Handle cast from a univariant (ZST) enum.
         match src.layout.variants {
-            layout::Variants::Single { index } => {
+            Variants::Single { index } => {
                 if let Some(discr) = src.layout.ty.discriminant_for_variant(*self.tcx, index) {
                     assert!(src.layout.is_zst());
                     let discr_layout = self.layout_of(discr.ty)?;
@@ -141,7 +141,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .into());
                 }
             }
-            layout::Variants::Multiple { .. } => {}
+            Variants::Multiple { .. } => {}
         }
 
         // Handle casting the metadata away from a fat pointer.

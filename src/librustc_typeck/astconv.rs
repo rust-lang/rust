@@ -6,18 +6,18 @@
 // ignore-tidy-filelength
 
 use crate::collect::PlaceholderHirTyCollector;
-use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
-use crate::util::common::ErrorReported;
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
+use rustc_hir::lang_items::SizedTraitLangItem;
 use rustc_hir::{Constness, GenericArg, GenericArgs};
 use rustc_middle::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{

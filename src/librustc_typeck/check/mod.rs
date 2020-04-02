@@ -88,18 +88,19 @@ mod wfcheck;
 pub mod writeback;
 
 use crate::astconv::{AstConv, GenericArgCountMismatch, PathSeg};
-use crate::middle::lang_items;
 use rustc_ast::ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::lang_items;
 use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, QPath};
 use rustc_index::vec::Idx;
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
@@ -114,7 +115,6 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
-use rustc_middle::ty::layout::VariantIdx;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{
     GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSelfTy, UserSubsts,
@@ -132,6 +132,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
+use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::opaque_types::{InferCtxtExt as _, OpaqueTypeDecl};
@@ -151,7 +152,7 @@ use std::ops::{self, Deref};
 use std::slice;
 
 use crate::require_c_abi_if_c_variadic;
-use crate::util::common::{indenter, ErrorReported};
+use crate::util::common::indenter;
 use crate::TypeAndSubsts;
 
 use self::autoderef::Autoderef;

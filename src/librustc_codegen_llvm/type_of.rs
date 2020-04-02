@@ -4,10 +4,12 @@ use crate::type_::Type;
 use log::debug;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{self, Align, FnAbiExt, LayoutOf, PointeeInfo, Size, TyAndLayout};
+use rustc_middle::ty::layout::{FnAbiExt, TyAndLayout};
 use rustc_middle::ty::print::obsolete::DefPathBasedNames;
 use rustc_middle::ty::{self, Ty, TypeFoldable};
-use rustc_target::abi::TyAndLayoutMethods;
+use rustc_target::abi::{Abi, Align, FieldsShape};
+use rustc_target::abi::{Int, Pointer, F32, F64};
+use rustc_target::abi::{LayoutOf, PointeeInfo, Scalar, Size, TyAndLayoutMethods, Variants};
 
 use std::fmt::Write;
 
@@ -17,8 +19,8 @@ fn uncached_llvm_type<'a, 'tcx>(
     defer: &mut Option<(&'a Type, TyAndLayout<'tcx>)>,
 ) -> &'a Type {
     match layout.abi {
-        layout::Abi::Scalar(_) => bug!("handled elsewhere"),
-        layout::Abi::Vector { ref element, count } => {
+        Abi::Scalar(_) => bug!("handled elsewhere"),
+        Abi::Vector { ref element, count } => {
             // LLVM has a separate type for 64-bit SIMD vectors on X86 called
             // `x86_mmx` which is needed for some SIMD operations. As a bit of a
             // hack (all SIMD definitions are super unstable anyway) we
@@ -37,7 +39,7 @@ fn uncached_llvm_type<'a, 'tcx>(
                 return cx.type_vector(element, count);
             }
         }
-        layout::Abi::ScalarPair(..) => {
+        Abi::ScalarPair(..) => {
             return cx.type_struct(
                 &[
                     layout.scalar_pair_element_llvm_type(cx, 0, false),
@@ -46,7 +48,7 @@ fn uncached_llvm_type<'a, 'tcx>(
                 false,
             );
         }
-        layout::Abi::Uninhabited | layout::Abi::Aggregate { .. } => {}
+        Abi::Uninhabited | Abi::Aggregate { .. } => {}
     }
 
     let name = match layout.ty.kind {
@@ -61,14 +63,14 @@ fn uncached_llvm_type<'a, 'tcx>(
             let mut name = String::with_capacity(32);
             let printer = DefPathBasedNames::new(cx.tcx, true, true);
             printer.push_type_name(layout.ty, &mut name, false);
-            if let (&ty::Adt(def, _), &layout::Variants::Single { index })
+            if let (&ty::Adt(def, _), &Variants::Single { index })
                  = (&layout.ty.kind, &layout.variants)
             {
                 if def.is_enum() && !def.variants.is_empty() {
                     write!(&mut name, "::{}", def.variants[index].ident).unwrap();
                 }
             }
-            if let (&ty::Generator(_, substs, _), &layout::Variants::Single { index })
+            if let (&ty::Generator(_, substs, _), &Variants::Single { index })
                  = (&layout.ty.kind, &layout.variants)
             {
                 write!(&mut name, "::{}", substs.as_generator().variant_name(index)).unwrap();
@@ -79,7 +81,7 @@ fn uncached_llvm_type<'a, 'tcx>(
     };
 
     match layout.fields {
-        layout::FieldsShape::Union(_) => {
+        FieldsShape::Union(_) => {
             let fill = cx.type_padding_filler(layout.size, layout.align.abi);
             let packed = false;
             match name {
@@ -91,10 +93,8 @@ fn uncached_llvm_type<'a, 'tcx>(
                 }
             }
         }
-        layout::FieldsShape::Array { count, .. } => {
-            cx.type_array(layout.field(cx, 0).llvm_type(cx), count)
-        }
-        layout::FieldsShape::Arbitrary { .. } => match name {
+        FieldsShape::Array { count, .. } => cx.type_array(layout.field(cx, 0).llvm_type(cx), count),
+        FieldsShape::Arbitrary { .. } => match name {
             None => {
                 let (llfields, packed) = struct_llfields(cx, layout);
                 cx.type_struct(&llfields, packed)
@@ -189,7 +189,7 @@ pub trait LayoutLlvmExt<'tcx> {
     fn scalar_llvm_type_at<'a>(
         &self,
         cx: &CodegenCx<'a, 'tcx>,
-        scalar: &layout::Scalar,
+        scalar: &Scalar,
         offset: Size,
     ) -> &'a Type;
     fn scalar_pair_element_llvm_type<'a>(
@@ -205,19 +205,16 @@ pub trait LayoutLlvmExt<'tcx> {
 impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn is_llvm_immediate(&self) -> bool {
         match self.abi {
-            layout::Abi::Scalar(_) | layout::Abi::Vector { .. } => true,
-            layout::Abi::ScalarPair(..) => false,
-            layout::Abi::Uninhabited | layout::Abi::Aggregate { .. } => self.is_zst(),
+            Abi::Scalar(_) | Abi::Vector { .. } => true,
+            Abi::ScalarPair(..) => false,
+            Abi::Uninhabited | Abi::Aggregate { .. } => self.is_zst(),
         }
     }
 
     fn is_llvm_scalar_pair(&self) -> bool {
         match self.abi {
-            layout::Abi::ScalarPair(..) => true,
-            layout::Abi::Uninhabited
-            | layout::Abi::Scalar(_)
-            | layout::Abi::Vector { .. }
-            | layout::Abi::Aggregate { .. } => false,
+            Abi::ScalarPair(..) => true,
+            Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } | Abi::Aggregate { .. } => false,
         }
     }
 
@@ -233,7 +230,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
     fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
-        if let layout::Abi::Scalar(ref scalar) = self.abi {
+        if let Abi::Scalar(ref scalar) = self.abi {
             // Use a different cache for scalars because pointers to DSTs
             // can be either fat or thin (data pointers of fat pointers).
             if let Some(&llty) = cx.scalar_lltypes.borrow().get(&self.ty) {
@@ -255,7 +252,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
         // Check the cache.
         let variant_index = match self.variants {
-            layout::Variants::Single { index } => Some(index),
+            Variants::Single { index } => Some(index),
             _ => None,
         };
         if let Some(&llty) = cx.lltypes.borrow().get(&(self.ty, variant_index)) {
@@ -293,7 +290,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     }
 
     fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
-        if let layout::Abi::Scalar(ref scalar) = self.abi {
+        if let Abi::Scalar(ref scalar) = self.abi {
             if scalar.is_bool() {
                 return cx.type_i1();
             }
@@ -304,14 +301,14 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     fn scalar_llvm_type_at<'a>(
         &self,
         cx: &CodegenCx<'a, 'tcx>,
-        scalar: &layout::Scalar,
+        scalar: &Scalar,
         offset: Size,
     ) -> &'a Type {
         match scalar.value {
-            layout::Int(i, _) => cx.type_from_integer(i),
-            layout::F32 => cx.type_f32(),
-            layout::F64 => cx.type_f64(),
-            layout::Pointer => {
+            Int(i, _) => cx.type_from_integer(i),
+            F32 => cx.type_f32(),
+            F64 => cx.type_f64(),
+            Pointer => {
                 // If we know the alignment, pick something better than i8.
                 let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {
                     cx.type_pointee_for_align(pointee.align)
@@ -343,7 +340,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         }
 
         let (a, b) = match self.abi {
-            layout::Abi::ScalarPair(ref a, ref b) => (a, b),
+            Abi::ScalarPair(ref a, ref b) => (a, b),
             _ => bug!("TyAndLayout::scalar_pair_element_llty({:?}): not applicable", self),
         };
         let scalar = [a, b][index];
@@ -365,21 +362,19 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
     fn llvm_field_index(&self, index: usize) -> u64 {
         match self.abi {
-            layout::Abi::Scalar(_) | layout::Abi::ScalarPair(..) => {
+            Abi::Scalar(_) | Abi::ScalarPair(..) => {
                 bug!("TyAndLayout::llvm_field_index({:?}): not applicable", self)
             }
             _ => {}
         }
         match self.fields {
-            layout::FieldsShape::Union(_) => {
+            FieldsShape::Union(_) => {
                 bug!("TyAndLayout::llvm_field_index({:?}): not applicable", self)
             }
 
-            layout::FieldsShape::Array { .. } => index as u64,
+            FieldsShape::Array { .. } => index as u64,
 
-            layout::FieldsShape::Arbitrary { .. } => {
-                1 + (self.fields.memory_index(index) as u64) * 2
-            }
+            FieldsShape::Arbitrary { .. } => 1 + (self.fields.memory_index(index) as u64) * 2,
         }
     }
 

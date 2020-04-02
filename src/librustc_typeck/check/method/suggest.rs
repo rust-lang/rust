@@ -2,7 +2,6 @@
 //! found or is otherwise invalid.
 
 use crate::check::FnCtxt;
-use crate::middle::lang_items::FnOnceTraitLangItem;
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -11,6 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit;
+use rustc_hir::lang_items::FnOnceTraitLangItem;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::hir::map as hir_map;

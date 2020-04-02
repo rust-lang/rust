@@ -7,11 +7,11 @@ use crate::type_of::LayoutLlvmExt;
 use log::debug;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_middle::mir::mono::{Linkage, Visibility};
-use rustc_middle::ty::layout::{FnAbiExt, LayoutOf};
-use rustc_middle::ty::{Instance, TypeFoldable};
-
 pub use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::mir::mono::{Linkage, Visibility};
+use rustc_middle::ty::layout::FnAbiExt;
+use rustc_middle::ty::{Instance, TypeFoldable};
+use rustc_target::abi::LayoutOf;
 
 impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn predefine_static(

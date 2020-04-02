@@ -7,8 +7,8 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ParItemLikeVisitor;
+use rustc_hir::lang_items;
 use rustc_hir::ItemKind;
-use rustc_middle::middle::lang_items;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
