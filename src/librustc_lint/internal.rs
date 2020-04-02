@@ -175,18 +175,15 @@ fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment<'_>) -> bo
 }
 
 fn is_ty_or_ty_ctxt(cx: &LateContext<'_, '_>, ty: &Ty<'_>) -> Option<String> {
-    match &ty.kind {
-        TyKind::Path(qpath) => {
-            if let QPath::Resolved(_, path) = qpath {
-                let did = path.res.opt_def_id()?;
-                if cx.tcx.is_diagnostic_item(sym::Ty, did) {
-                    return Some(format!("Ty{}", gen_args(path.segments.last().unwrap())));
-                } else if cx.tcx.is_diagnostic_item(sym::TyCtxt, did) {
-                    return Some(format!("TyCtxt{}", gen_args(path.segments.last().unwrap())));
-                }
+    if let TyKind::Path(qpath) = &ty.kind {
+        if let QPath::Resolved(_, path) = qpath {
+            let did = path.res.opt_def_id()?;
+            if cx.tcx.is_diagnostic_item(sym::Ty, did) {
+                return Some(format!("Ty{}", gen_args(path.segments.last().unwrap())));
+            } else if cx.tcx.is_diagnostic_item(sym::TyCtxt, did) {
+                return Some(format!("TyCtxt{}", gen_args(path.segments.last().unwrap())));
             }
         }
-        _ => {}
     }
 
     None

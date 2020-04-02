@@ -4,15 +4,15 @@
 
 use crate::check::FnCtxt;
 
-use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
-use rustc::ty::fold::{TypeFoldable, TypeFolder};
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::opaque_types::InferCtxtExt;
@@ -213,18 +213,17 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
                     tables.adjustments_mut().get_mut(base.hir_id).map(|a| {
                         // Discard the need for a mutable borrow
-                        match a.pop() {
-                            // Extra adjustment made when indexing causes a drop
-                            // of size information - we need to get rid of it
-                            // Since this is "after" the other adjustment to be
-                            // discarded, we do an extra `pop()`
-                            Some(Adjustment {
-                                kind: Adjust::Pointer(PointerCast::Unsize), ..
-                            }) => {
-                                // So the borrow discard actually happens here
-                                a.pop();
-                            }
-                            _ => {}
+
+                        // Extra adjustment made when indexing causes a drop
+                        // of size information - we need to get rid of it
+                        // Since this is "after" the other adjustment to be
+                        // discarded, we do an extra `pop()`
+                        if let Some(Adjustment {
+                            kind: Adjust::Pointer(PointerCast::Unsize), ..
+                        }) = a.pop()
+                        {
+                            // So the borrow discard actually happens here
+                            a.pop();
                         }
                     });
                 }

@@ -289,11 +289,7 @@ impl<'a> AstValidator<'a> {
         match expr.kind {
             ExprKind::Lit(..) | ExprKind::Err => {}
             ExprKind::Path(..) if allow_paths => {}
-            ExprKind::Unary(UnOp::Neg, ref inner)
-                if match inner.kind {
-                    ExprKind::Lit(_) => true,
-                    _ => false,
-                } => {}
+            ExprKind::Unary(UnOp::Neg, ref inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
             _ => self.err_handler().span_err(
                 expr.span,
                 "arbitrary expressions aren't allowed \
@@ -402,7 +398,7 @@ impl<'a> AstValidator<'a> {
 
     fn check_defaultness(&self, span: Span, defaultness: Defaultness) {
         if let Defaultness::Default(def_span) = defaultness {
-            let span = self.session.source_map().def_span(span);
+            let span = self.session.source_map().guess_head_span(span);
             self.err_handler()
                 .struct_span_err(span, "`default` is only allowed on items in `impl` definitions")
                 .span_label(def_span, "`default` because of this")
@@ -517,7 +513,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn current_extern_span(&self) -> Span {
-        self.session.source_map().def_span(self.extern_mod.unwrap().span)
+        self.session.source_map().guess_head_span(self.extern_mod.unwrap().span)
     }
 
     /// An `fn` in `extern { ... }` cannot have qualfiers, e.g. `async fn`.
@@ -643,6 +639,34 @@ impl<'a> AstValidator<'a> {
             .emit();
         }
     }
+
+    /// Enforce generic args coming before constraints in `<...>` of a path segment.
+    fn check_generic_args_before_constraints(&self, data: &AngleBracketedArgs) {
+        // Early exit in case it's partitioned as it should be.
+        if data.args.iter().is_partitioned(|arg| matches!(arg, AngleBracketedArg::Arg(_))) {
+            return;
+        }
+        // Find all generic argument coming after the first constraint...
+        let mut misplaced_args = Vec::new();
+        let mut first = None;
+        for arg in &data.args {
+            match (arg, first) {
+                (AngleBracketedArg::Arg(a), Some(_)) => misplaced_args.push(a.span()),
+                (AngleBracketedArg::Constraint(c), None) => first = Some(c.span),
+                (AngleBracketedArg::Arg(_), None) | (AngleBracketedArg::Constraint(_), Some(_)) => {
+                }
+            }
+        }
+        // ...and then error:
+        self.err_handler()
+            .struct_span_err(
+                misplaced_args.clone(),
+                "generic arguments must come before the first constraint",
+            )
+            .span_label(first.unwrap(), "the first constraint is provided here")
+            .span_labels(misplaced_args, "generic argument")
+            .emit();
+    }
 }
 
 /// Checks that generic parameters are in the correct order,
@@ -720,12 +744,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_expr(&mut self, expr: &'a Expr) {
         match &expr.kind {
-            ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
+            ExprKind::LlvmInlineAsm(..) if !self.session.target.target.options.allow_asm => {
                 struct_span_err!(
                     self.session,
                     expr.span,
                     E0472,
-                    "asm! is unsupported on this target"
+                    "llvm_asm! is unsupported on this target"
                 )
                 .emit();
             }
@@ -1012,17 +1036,20 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_generic_args(&mut self, _: Span, generic_args: &'a GenericArgs) {
         match *generic_args {
             GenericArgs::AngleBracketed(ref data) => {
-                walk_list!(self, visit_generic_arg, &data.args);
+                self.check_generic_args_before_constraints(data);
 
-                // Type bindings such as `Item = impl Debug` in `Iterator<Item = Debug>`
-                // are allowed to contain nested `impl Trait`.
-                self.with_impl_trait(None, |this| {
-                    walk_list!(
-                        this,
-                        visit_assoc_ty_constraint_from_generic_args,
-                        &data.constraints
-                    );
-                });
+                for arg in &data.args {
+                    match arg {
+                        AngleBracketedArg::Arg(arg) => self.visit_generic_arg(arg),
+                        // Type bindings such as `Item = impl Debug` in `Iterator<Item = Debug>`
+                        // are allowed to contain nested `impl Trait`.
+                        AngleBracketedArg::Constraint(constraint) => {
+                            self.with_impl_trait(None, |this| {
+                                this.visit_assoc_ty_constraint_from_generic_args(constraint);
+                            });
+                        }
+                    }
+                }
             }
             GenericArgs::Parenthesized(ref data) => {
                 walk_list!(self, visit_ty, &data.inputs);

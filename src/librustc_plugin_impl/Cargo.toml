@@ -11,7 +11,7 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-rustc = { path = "../librustc" }
+rustc_middle = { path = "../librustc_middle" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_lint = { path = "../librustc_lint" }

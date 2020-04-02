@@ -8,9 +8,9 @@ mod project;
 mod structural_impls;
 mod util;
 
-use rustc::ty::error::{ExpectedFound, TypeError};
-use rustc::ty::{self, Ty};
 use rustc_hir as hir;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
 pub use self::FulfillmentErrorCode::*;
@@ -26,7 +26,7 @@ pub use self::project::{
 };
 crate use self::util::elaborate_predicates;
 
-pub use rustc::traits::*;
+pub use rustc_middle::traits::*;
 
 /// An `Obligation` represents some trait reference (e.g., `int: Eq`) for
 /// which the vtable must be found. The process of finding a vtable is

@@ -1,17 +1,17 @@
 //! Borrow checker diagnostics.
 
-use rustc::mir::{
-    AggregateKind, Constant, Field, Local, LocalInfo, LocalKind, Location, Operand, Place,
-    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
-};
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::print::Print;
-use rustc::ty::{self, DefIdTree, Ty, TyCtxt};
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_hir::GeneratorKind;
+use rustc_middle::mir::{
+    AggregateKind, Constant, Field, Local, LocalInfo, LocalKind, Location, Operand, Place,
+    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+};
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::print::Print;
+use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
 use rustc_span::Span;
 
 use super::borrow_set::BorrowData;
@@ -137,8 +137,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    /// End-user visible description of `place` if one can be found. If the
-    /// place is a temporary for instance, None will be returned.
+    /// End-user visible description of `place` if one can be found.
+    /// If the place is a temporary for instance, `"value"` will be returned.
+    pub(super) fn describe_any_place(&self, place_ref: PlaceRef<'tcx>) -> String {
+        match self.describe_place(place_ref) {
+            Some(mut descr) => {
+                // Surround descr with `backticks`.
+                descr.reserve(2);
+                descr.insert_str(0, "`");
+                descr.push_str("`");
+                descr
+            }
+            None => "value".to_string(),
+        }
+    }
+
+    /// End-user visible description of `place` if one can be found.
+    /// If the place is a temporary for instance, None will be returned.
     pub(super) fn describe_place(&self, place_ref: PlaceRef<'tcx>) -> Option<String> {
         self.describe_place_with_options(place_ref, IncludingDowncast(false))
     }

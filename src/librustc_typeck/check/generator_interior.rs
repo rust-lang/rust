@@ -4,14 +4,14 @@
 //! types computed here.
 
 use super::FnCtxt;
-use rustc::middle::region::{self, YieldData};
-use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, ExprKind, Pat, PatKind};
+use rustc_middle::middle::region::{self, YieldData};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
 struct InteriorVisitor<'a, 'tcx> {
@@ -205,7 +205,7 @@ pub fn resolve_interior<'a, 'tcx>(
 }
 
 // This visitor has to have the same visit_expr calls as RegionResolutionVisitor in
-// librustc/middle/region.rs since `expr_count` is compared against the results
+// librustc_middle/middle/region.rs since `expr_count` is compared against the results
 // there.
 impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
     type Map = intravisit::ErasedMap<'tcx>;

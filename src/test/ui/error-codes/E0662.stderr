@@ -1,8 +1,8 @@
 error[E0662]: input operand constraint contains '='
-  --> $DIR/E0662.rs:8:12
+  --> $DIR/E0662.rs:8:17
    |
-LL |          : "=test"("a")
-   |            ^^^^^^^
+LL |               : "=test"("a")
+   |                 ^^^^^^^
 
 error: aborting due to previous error
 

@@ -2,16 +2,16 @@
 
 use std::collections::VecDeque;
 
-use rustc::mir::{
-    Body, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place, Rvalue,
-    Statement, StatementKind, TerminatorKind,
-};
-use rustc::ty::adjustment::PointerCast;
-use rustc::ty::{self, RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::NLLRegionVariableOrigin;
+use rustc_middle::mir::{
+    Body, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place, Rvalue,
+    Statement, StatementKind, TerminatorKind,
+};
+use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
@@ -227,29 +227,26 @@ impl BorrowExplanation {
         span: Span,
         region_name: &RegionName,
     ) {
-        match category {
-            ConstraintCategory::OpaqueType => {
-                if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
-                    let suggestable_name = if region_name.was_named() {
-                        region_name.to_string()
-                    } else {
-                        "'_".to_string()
-                    };
+        if let ConstraintCategory::OpaqueType = category {
+            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
+                let suggestable_name = if region_name.was_named() {
+                    region_name.to_string()
+                } else {
+                    "'_".to_string()
+                };
 
-                    err.span_suggestion(
-                        span,
-                        &format!(
-                            "you can add a bound to the {}to make it last less than \
+                err.span_suggestion(
+                    span,
+                    &format!(
+                        "you can add a bound to the {}to make it last less than \
                              `'static` and match `{}`",
-                            category.description(),
-                            region_name,
-                        ),
-                        format!("{} + {}", snippet, suggestable_name),
-                        Applicability::Unspecified,
-                    );
-                }
+                        category.description(),
+                        region_name,
+                    ),
+                    format!("{} + {}", snippet, suggestable_name),
+                    Applicability::Unspecified,
+                );
             }
-            _ => {}
         }
     }
 }
@@ -289,7 +286,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         location: Location,
         borrow: &BorrowData<'tcx>,
-        kind_place: Option<(WriteKind, &Place<'tcx>)>,
+        kind_place: Option<(WriteKind, Place<'tcx>)>,
     ) -> BorrowExplanation {
         debug!(
             "explain_why_borrow_contains_point(location={:?}, borrow={:?}, kind_place={:?})",

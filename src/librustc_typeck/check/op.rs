@@ -2,13 +2,15 @@
 
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs};
-use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
-use rustc::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
-use rustc::ty::{self, Ty, TypeFoldable};
 use rustc_ast::ast::Ident;
 use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
+};
+use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
+use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 
@@ -492,36 +494,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_label(span, ty.to_string());
         if let FnDef(def_id, _) = ty.kind {
             let source_map = self.tcx.sess.source_map();
-            let hir_id = match self.tcx.hir().as_local_hir_id(def_id) {
-                Some(hir_id) => hir_id,
-                None => return false,
-            };
             if !self.tcx.has_typeck_tables(def_id) {
                 return false;
             }
-            let fn_sig = {
-                match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(hir_id) {
-                    Some(f) => *f,
-                    None => {
-                        bug!("No fn-sig entry for def_id={:?}", def_id);
-                    }
-                }
-            };
+            // We're emitting a suggestion, so we can just ignore regions
+            let fn_sig = *self.tcx.fn_sig(def_id).skip_binder();
 
             let other_ty = if let FnDef(def_id, _) = other_ty.kind {
-                let hir_id = match self.tcx.hir().as_local_hir_id(def_id) {
-                    Some(hir_id) => hir_id,
-                    None => return false,
-                };
                 if !self.tcx.has_typeck_tables(def_id) {
                     return false;
                 }
-                match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(hir_id) {
-                    Some(f) => f.clone().output(),
-                    None => {
-                        bug!("No fn-sig entry for def_id={:?}", def_id);
-                    }
-                }
+                // We're emitting a suggestion, so we can just ignore regions
+                self.tcx.fn_sig(def_id).skip_binder().output()
             } else {
                 other_ty
             };

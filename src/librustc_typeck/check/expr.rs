@@ -17,12 +17,6 @@ use crate::check::TupleArgumentsFlag::DontTupleArguments;
 use crate::type_error_struct;
 use crate::util::common::ErrorReported;
 
-use rustc::middle::lang_items;
-use rustc::ty;
-use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
-use rustc::ty::Ty;
-use rustc::ty::TypeFoldable;
-use rustc::ty::{AdtKind, Visibility};
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
@@ -33,6 +27,14 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_middle::middle::lang_items;
+use rustc_middle::ty;
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
+};
+use rustc_middle::ty::Ty;
+use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::{AdtKind, Visibility};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -230,7 +232,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_addr_of(kind, mutbl, oprnd, expected, expr)
             }
             ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr),
-            ExprKind::InlineAsm(ref asm) => {
+            ExprKind::LlvmInlineAsm(ref asm) => {
                 for expr in asm.outputs_exprs.iter().chain(asm.inputs_exprs.iter()) {
                     self.check_expr(expr);
                 }
@@ -475,7 +477,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.types.err
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
-                report_unexpected_variant_res(tcx, res, expr.span, qpath);
+                report_unexpected_variant_res(tcx, res, expr.span);
                 tcx.types.err
             }
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
@@ -696,10 +698,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self,
                     &cause,
                     &mut |db| {
-                        db.span_label(
-                            fn_decl.output.span(),
-                            format!("expected `{}` because of this return type", fn_decl.output,),
-                        );
+                        let span = fn_decl.output.span();
+                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                            db.span_label(
+                                span,
+                                format!("expected `{}` because of this return type", snippet),
+                            );
+                        }
                     },
                     true,
                 );
@@ -1668,20 +1673,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let (Some(len), Ok(user_index)) =
             (len.try_eval_usize(self.tcx, self.param_env), field.as_str().parse::<u64>())
         {
-            let base = self
-                .tcx
-                .sess
-                .source_map()
-                .span_to_snippet(base.span)
-                .unwrap_or_else(|_| self.tcx.hir().hir_to_pretty_string(base.hir_id));
-            let help = "instead of using tuple indexing, use array indexing";
-            let suggestion = format!("{}[{}]", base, field);
-            let applicability = if len < user_index {
-                Applicability::MachineApplicable
-            } else {
-                Applicability::MaybeIncorrect
-            };
-            err.span_suggestion(expr.span, help, suggestion, applicability);
+            if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
+                let help = "instead of using tuple indexing, use array indexing";
+                let suggestion = format!("{}[{}]", base, field);
+                let applicability = if len < user_index {
+                    Applicability::MachineApplicable
+                } else {
+                    Applicability::MaybeIncorrect
+                };
+                err.span_suggestion(expr.span, help, suggestion, applicability);
+            }
         }
     }
 
@@ -1692,15 +1693,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base: &hir::Expr<'_>,
         field: ast::Ident,
     ) {
-        let base = self
-            .tcx
-            .sess
-            .source_map()
-            .span_to_snippet(base.span)
-            .unwrap_or_else(|_| self.tcx.hir().hir_to_pretty_string(base.hir_id));
-        let msg = format!("`{}` is a raw pointer; try dereferencing it", base);
-        let suggestion = format!("(*{}).{}", base, field);
-        err.span_suggestion(expr.span, &msg, suggestion, Applicability::MaybeIncorrect);
+        if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
+            let msg = format!("`{}` is a raw pointer; try dereferencing it", base);
+            let suggestion = format!("(*{}).{}", base, field);
+            err.span_suggestion(expr.span, &msg, suggestion, Applicability::MaybeIncorrect);
+        }
     }
 
     fn no_such_field_err<T: Display>(

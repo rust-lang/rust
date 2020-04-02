@@ -253,7 +253,7 @@ pub mod __default_lib_allocator {
     // `__rust_alloc` etc symbols (see `src/liballoc/alloc.rs) when there is
     // no `#[global_allocator]` attribute.
 
-    // for symbol names src/librustc/middle/allocator.rs
+    // for symbol names src/librustc_middle/middle/allocator.rs
     // for signatures src/librustc_allocator/lib.rs
 
     // linkage directives are provided as part of the current compiler allocator

@@ -4,10 +4,10 @@ use crate::build::expr::category::Category;
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
-use rustc::middle::region;
-use rustc::mir::AssertKind::BoundsCheck;
-use rustc::mir::*;
-use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, Variance};
+use rustc_middle::middle::region;
+use rustc_middle::mir::AssertKind::BoundsCheck;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, Variance};
 use rustc_span::Span;
 
 use rustc_index::vec::Idx;
@@ -255,7 +255,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Return { .. }
             | ExprKind::Literal { .. }
             | ExprKind::StaticRef { .. }
-            | ExprKind::InlineAsm { .. }
+            | ExprKind::LlvmInlineAsm { .. }
             | ExprKind::Yield { .. }
             | ExprKind::Call { .. } => {
                 // these are not places, so we need to make a temporary.
@@ -341,12 +341,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let lt = self.temp(bool_ty, expr_span);
 
         // len = len(slice)
-        self.cfg.push_assign(block, source_info, &len, Rvalue::Len(slice));
+        self.cfg.push_assign(block, source_info, len, Rvalue::Len(slice));
         // lt = idx < len
         self.cfg.push_assign(
             block,
             source_info,
-            &lt,
+            lt,
             Rvalue::BinaryOp(BinOp::Lt, Operand::Copy(Place::from(index)), Operand::Copy(len)),
         );
         let msg = BoundsCheck { len: Operand::Move(len), index: Operand::Copy(Place::from(index)) };
@@ -388,7 +388,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         self.cfg.push_assign(
                             block,
                             source_info,
-                            &fake_borrow_temp.into(),
+                            fake_borrow_temp.into(),
                             Rvalue::Ref(
                                 tcx.lifetimes.re_erased,
                                 BorrowKind::Shallow,

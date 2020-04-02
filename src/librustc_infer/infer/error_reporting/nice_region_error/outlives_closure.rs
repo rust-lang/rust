@@ -4,9 +4,9 @@
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError::SubSupConflict;
 use crate::infer::SubregionOrigin;
-use rustc::ty::RegionKind;
-use rustc::util::common::ErrorReported;
 use rustc_hir::{Expr, ExprKind::Closure, Node};
+use rustc_middle::ty::RegionKind;
+use rustc_middle::util::common::ErrorReported;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when binding escapes a closure.

@@ -425,7 +425,7 @@ impl Handler {
     }
 
     // This is here to not allow mutation of flags;
-    // as of this writing it's only used in tests in librustc.
+    // as of this writing it's only used in tests in librustc_middle.
     pub fn can_emit_warnings(&self) -> bool {
         self.flags.can_emit_warnings
     }
@@ -802,13 +802,13 @@ impl HandlerInner {
                     ));
                     self.failure(&format!(
                         "For more information about an error, try \
-                                           `rustc --explain {}`.",
+                         `rustc --explain {}`.",
                         &error_codes[0]
                     ));
                 } else {
                     self.failure(&format!(
                         "For more information about this error, try \
-                                           `rustc --explain {}`.",
+                         `rustc --explain {}`.",
                         &error_codes[0]
                     ));
                 }

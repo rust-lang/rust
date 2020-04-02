@@ -32,28 +32,3 @@ pub use unicode_data::lowercase::lookup as Lowercase;
 pub use unicode_data::n::lookup as N;
 pub use unicode_data::uppercase::lookup as Uppercase;
 pub use unicode_data::white_space::lookup as White_Space;
-
-#[inline(always)]
-fn range_search<const N: usize, const N1: usize, const N2: usize>(
-    needle: u32,
-    chunk_idx_map: &[u8; N],
-    (last_chunk_idx, last_chunk_mapping): (u16, u8),
-    bitset_chunk_idx: &[[u8; 16]; N1],
-    bitset: &[u64; N2],
-) -> bool {
-    let bucket_idx = (needle / 64) as usize;
-    let chunk_map_idx = bucket_idx / 16;
-    let chunk_piece = bucket_idx % 16;
-    let chunk_idx = if chunk_map_idx >= N {
-        if chunk_map_idx == last_chunk_idx as usize {
-            last_chunk_mapping
-        } else {
-            return false;
-        }
-    } else {
-        chunk_idx_map[chunk_map_idx]
-    };
-    let idx = bitset_chunk_idx[(chunk_idx as usize)][chunk_piece];
-    let word = bitset[(idx as usize)];
-    (word & (1 << (needle % 64) as u64)) != 0
-}

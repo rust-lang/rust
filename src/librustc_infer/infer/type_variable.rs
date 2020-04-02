@@ -1,5 +1,5 @@
-use rustc::ty::{self, Ty, TyVid};
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::{self, Ty, TyVid};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 

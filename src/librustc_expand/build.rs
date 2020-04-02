@@ -36,7 +36,8 @@ impl<'a> ExtCtxt<'a> {
             idents.into_iter().map(|ident| ast::PathSegment::from_ident(ident.with_span_pos(span))),
         );
         let args = if !args.is_empty() {
-            ast::AngleBracketedArgs { args, constraints: Vec::new(), span }.into()
+            let args = args.into_iter().map(ast::AngleBracketedArg::Arg).collect();
+            ast::AngleBracketedArgs { args, span }.into()
         } else {
             None
         };

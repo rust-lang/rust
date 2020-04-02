@@ -1,5 +1,5 @@
 // run-pass
-
+#![allow(unused_braces)]
 #![allow(unused_comparisons)]
 #![allow(dead_code)]
 #![allow(unused_mut)]

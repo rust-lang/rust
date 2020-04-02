@@ -1,7 +1,7 @@
 use crate::transform::{MirPass, MirSource};
 use crate::util::expand_aggregate;
-use rustc::mir::*;
-use rustc::ty::TyCtxt;
+use rustc_middle::mir::*;
+use rustc_middle::ty::TyCtxt;
 
 pub struct Deaggregator;
 

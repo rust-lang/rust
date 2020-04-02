@@ -1,8 +1,8 @@
 use crate::clean::{self, AttributesExt, GetDefId};
 use crate::fold::DocFolder;
-use rustc::middle::privacy::AccessLevels;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc_middle::middle::privacy::AccessLevels;
 use rustc_span::source_map::FileName;
 use rustc_span::symbol::sym;
 use std::collections::BTreeMap;
@@ -590,7 +590,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     for item in search_index {
         item.parent_idx = item.parent.and_then(|defid| {
             if defid_to_pathid.contains_key(&defid) {
-                defid_to_pathid.get(&defid).map(|x| *x)
+                defid_to_pathid.get(&defid).copied()
             } else {
                 let pathid = lastpathid;
                 defid_to_pathid.insert(defid, pathid);

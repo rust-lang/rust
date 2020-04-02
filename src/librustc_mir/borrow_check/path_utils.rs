@@ -2,10 +2,10 @@ use crate::borrow_check::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation}
 use crate::borrow_check::places_conflict;
 use crate::borrow_check::AccessDepth;
 use crate::dataflow::indexes::BorrowIndex;
-use rustc::mir::BorrowKind;
-use rustc::mir::{BasicBlock, Body, Location, Place};
-use rustc::ty::TyCtxt;
 use rustc_data_structures::graph::dominators::Dominators;
+use rustc_middle::mir::BorrowKind;
+use rustc_middle::mir::{BasicBlock, Body, Location, Place};
+use rustc_middle::ty::TyCtxt;
 
 /// Returns `true` if the borrow represented by `kind` is
 /// allowed to be split into separate Reservation and
@@ -27,7 +27,7 @@ pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     _location: Location,
-    access_place: (AccessDepth, &Place<'tcx>),
+    access_place: (AccessDepth, Place<'tcx>),
     borrow_set: &BorrowSet<'tcx>,
     candidates: I,
     mut op: F,
@@ -48,7 +48,7 @@ pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
         if places_conflict::borrow_conflicts_with_place(
             tcx,
             body,
-            &borrowed.borrowed_place,
+            borrowed.borrowed_place,
             borrowed.kind,
             place.as_ref(),
             access,
@@ -130,7 +130,7 @@ pub(super) fn is_active<'tcx>(
 
 /// Determines if a given borrow is borrowing local data
 /// This is called for all Yield expressions on movable generators
-pub(super) fn borrow_of_local_data(place: &Place<'_>) -> bool {
+pub(super) fn borrow_of_local_data(place: Place<'_>) -> bool {
     // Reborrow of already borrowed data is ignored
     // Any errors will be caught on the initial borrow
     !place.is_indirect()

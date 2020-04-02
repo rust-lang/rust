@@ -3,7 +3,6 @@ mod dep_node;
 mod graph;
 mod prev;
 mod query;
-mod safe;
 mod serialized;
 
 pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
@@ -11,8 +10,6 @@ pub use graph::WorkProductFileKind;
 pub use graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, WorkProduct};
 pub use prev::PreviousDepGraph;
 pub use query::DepGraphQuery;
-pub use safe::AssertDepGraphSafe;
-pub use safe::DepGraphSafe;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -25,10 +22,12 @@ use std::hash::Hash;
 
 pub trait DepContext: Copy {
     type DepKind: self::DepKind;
-    type StableHashingContext: crate::HashStableContext;
+    type StableHashingContext;
 
     /// Create a hashing context for hashing new results.
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext;
+
+    fn debug_dep_tasks(&self) -> bool;
 
     /// Try to force a dep node to execute and see if it's green.
     fn try_force_from_dep_node(&self, dep_node: &DepNode<Self::DepKind>) -> bool;
@@ -48,12 +47,21 @@ pub trait DepContext: Copy {
     /// Register diagnostics for the given node, for use in next session.
     fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>);
 
+    /// Register diagnostics for the given node, for use in next session.
+    fn store_diagnostics_for_anon_node(
+        &self,
+        dep_node_index: DepNodeIndex,
+        diagnostics: ThinVec<Diagnostic>,
+    );
+
     /// Access the profiler.
     fn profiler(&self) -> &SelfProfilerRef;
 }
 
 /// Describe the different families of dependency nodes.
 pub trait DepKind: Copy + fmt::Debug + Eq + Ord + Hash {
+    const NULL: Self;
+
     /// Return whether this kind always require evaluation.
     fn is_eval_always(&self) -> bool;
 
@@ -72,4 +80,6 @@ pub trait DepKind: Copy + fmt::Debug + Eq + Ord + Hash {
     fn read_deps<OP>(op: OP) -> ()
     where
         OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<Self>>>) -> ();
+
+    fn can_reconstruct_query_key(&self) -> bool;
 }

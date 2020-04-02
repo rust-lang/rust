@@ -1,14 +1,14 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use rustc::ty::{Ty, TyCtxt};
 use rustc_errors::struct_span_err;
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::Span;
 
 use crate::base;
 use crate::traits::*;
-use rustc::middle::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
+use rustc_middle::middle::lang_items::LangItem;
 
 use crate::traits::BuilderMethods;
 use rustc_hir as hir;

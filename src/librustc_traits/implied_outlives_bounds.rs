@@ -1,13 +1,13 @@
 //! Provider for the `implied_outlives_bounds` query.
-//! Do not call this query directory. See [`rustc::traits::query::implied_outlives_bounds`].
+//! Do not call this query directory. See [`rustc_middle::traits::query::implied_outlives_bounds`].
 
-use rustc::ty::outlives::Component;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::{self, Canonical};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
+use rustc_middle::ty::outlives::Component;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::outlives_bounds::OutlivesBound;

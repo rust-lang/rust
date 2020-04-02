@@ -4,13 +4,14 @@
 //! That's useful because it means other passes (e.g. promotion) can rely on `const`s
 //! to be const-safe.
 
+use std::convert::TryFrom;
 use std::fmt::Write;
 use std::ops::RangeInclusive;
 
-use rustc::ty;
-use rustc::ty::layout::{self, LayoutOf, TyLayout, VariantIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout, VariantIdx};
 use rustc_span::symbol::{sym, Symbol};
 
 use std::hash::Hash;
@@ -176,7 +177,7 @@ struct ValidityVisitor<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 }
 
 impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M> {
-    fn aggregate_field_path_elem(&mut self, layout: TyLayout<'tcx>, field: usize) -> PathElem {
+    fn aggregate_field_path_elem(&mut self, layout: TyAndLayout<'tcx>, field: usize) -> PathElem {
         // First, check if we are projecting to a variant.
         match layout.variants {
             layout::Variants::Multiple { discr_index, .. } => {
@@ -265,7 +266,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
     fn check_wide_ptr_meta(
         &mut self,
         meta: MemPlaceMeta<M::PointerTag>,
-        pointee: TyLayout<'tcx>,
+        pointee: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx> {
         let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
         match tail.kind {
@@ -746,7 +747,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
                 // This is the element type size.
                 let layout = self.ecx.layout_of(tys)?;
-                // This is the size in bytes of the whole array.
+                // This is the size in bytes of the whole array. (This checks for overflow.)
                 let size = layout.size * len;
                 // Size is not 0, get a pointer.
                 let ptr = self.ecx.force_ptr(mplace.ptr)?;
@@ -777,7 +778,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                 // Some byte was undefined, determine which
                                 // element that byte belongs to so we can
                                 // provide an index.
-                                let i = (ptr.offset.bytes() / layout.size.bytes()) as usize;
+                                let i = usize::try_from(ptr.offset.bytes() / layout.size.bytes())
+                                    .unwrap();
                                 self.path.push(PathElem::ArrayElem(i));
 
                                 throw_validation_failure!("undefined bytes", self.path)

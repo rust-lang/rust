@@ -3,14 +3,6 @@ use crate::proc_macro_decls;
 use crate::util;
 
 use log::{info, log_enabled, warn};
-use rustc::arena::Arena;
-use rustc::dep_graph::DepGraph;
-use rustc::hir::map::Definitions;
-use rustc::middle;
-use rustc::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
-use rustc::ty::steal::Steal;
-use rustc::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
-use rustc::util::common::ErrorReported;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self, ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
@@ -21,8 +13,16 @@ use rustc_data_structures::{box_region_allow_access, declare_box_region_type, pa
 use rustc_errors::PResult;
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_hir::definitions::Definitions;
 use rustc_hir::Crate;
 use rustc_lint::LintStore;
+use rustc_middle::arena::Arena;
+use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::middle;
+use rustc_middle::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
+use rustc_middle::ty::steal::Steal;
+use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc_middle::util::common::ErrorReported;
 use rustc_mir as mir;
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
@@ -715,7 +715,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     providers.analysis = analysis;
     proc_macro_decls::provide(providers);
     plugin::build::provide(providers);
-    rustc::hir::provide(providers);
+    rustc_middle::hir::provide(providers);
     mir::provide(providers);
     mir_build::provide(providers);
     rustc_privacy::provide(providers);
@@ -748,7 +748,7 @@ impl<'tcx> QueryContext<'tcx> {
     }
 
     pub fn print_stats(&mut self) {
-        self.enter(|tcx| ty::query::print_stats(tcx))
+        self.enter(ty::query::print_stats)
     }
 }
 
@@ -813,7 +813,7 @@ pub fn create_global_ctxt<'tcx>(
 fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     assert_eq!(cnum, LOCAL_CRATE);
 
-    rustc::hir::map::check_crate(tcx);
+    rustc_passes::hir_id_validator::check_crate(tcx);
 
     let sess = tcx.sess;
     let mut entry_point = None;

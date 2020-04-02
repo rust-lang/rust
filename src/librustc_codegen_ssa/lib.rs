@@ -15,17 +15,17 @@
 #[macro_use]
 extern crate log;
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 
-use rustc::dep_graph::WorkProduct;
-use rustc::middle::cstore::{CrateSource, LibSource, NativeLibrary};
-use rustc::middle::dependency_format::Dependencies;
-use rustc::middle::lang_items::LangItem;
-use rustc::ty::query::Providers;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::CrateNum;
+use rustc_middle::dep_graph::WorkProduct;
+use rustc_middle::middle::cstore::{CrateSource, LibSource, NativeLibrary};
+use rustc_middle::middle::dependency_format::Dependencies;
+use rustc_middle::middle::lang_items::LangItem;
+use rustc_middle::ty::query::Providers;
 use rustc_session::config::{OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc_span::symbol::Symbol;
 use std::path::{Path, PathBuf};
@@ -144,7 +144,7 @@ pub struct CodegenResults {
     pub allocator_module: Option<CompiledModule>,
     pub metadata_module: Option<CompiledModule>,
     pub crate_hash: Svh,
-    pub metadata: rustc::middle::cstore::EncodedMetadata,
+    pub metadata: rustc_middle::middle::cstore::EncodedMetadata,
     pub windows_subsystem: Option<String>,
     pub linker_info: back::linker::LinkerInfo,
     pub crate_info: CrateInfo,

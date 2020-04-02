@@ -7,6 +7,7 @@
 #![feature(const_fn)] // For the unsizing cast on `&[]`
 #![feature(const_panic)]
 #![feature(in_band_lifetimes)]
+#![feature(or_patterns)]
 #![feature(specialization)]
 #![recursion_limit = "256"]
 
@@ -23,7 +24,6 @@ pub mod intravisit;
 pub mod itemlikevisit;
 pub mod lang_items;
 pub mod pat_util;
-pub mod print;
 mod stable_hash_impls;
 mod target;
 pub mod weak_lang_items;

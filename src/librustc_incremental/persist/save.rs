@@ -1,7 +1,7 @@
-use rustc::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
-use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::join;
+use rustc_middle::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
+use rustc_middle::ty::TyCtxt;
 use rustc_serialize::opaque::Encoder;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_session::Session;
@@ -31,11 +31,9 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
 
         join(
             move || {
-                if tcx.sess.opts.debugging_opts.incremental_queries {
-                    sess.time("incr_comp_persist_result_cache", || {
-                        save_in(sess, query_cache_path, |e| encode_query_cache(tcx, e));
-                    });
-                }
+                sess.time("incr_comp_persist_result_cache", || {
+                    save_in(sess, query_cache_path, |e| encode_query_cache(tcx, e));
+                });
             },
             || {
                 sess.time("incr_comp_persist_dep_graph", || {

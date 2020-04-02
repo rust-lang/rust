@@ -42,8 +42,6 @@ use std::rc::Rc;
 use std::str;
 use std::sync::Arc;
 
-use rustc::middle::privacy::AccessLevels;
-use rustc::middle::stability;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -51,6 +49,8 @@ use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Mutability;
+use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::stability;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::FileName;
@@ -782,7 +782,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                         .split('"')
                         .next()
                         .map(|s| s.to_owned())
-                        .unwrap_or_else(|| String::new()),
+                        .unwrap_or_else(String::new),
                 );
             }
         }
@@ -2158,7 +2158,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                     docs = MarkdownSummaryLine(doc_value, &myitem.links()).to_string(),
                     class = myitem.type_(),
                     add = add,
-                    stab = stab.unwrap_or_else(|| String::new()),
+                    stab = stab.unwrap_or_else(String::new),
                     unsafety_flag = unsafety_flag,
                     href = item_path(myitem.type_(), myitem.name.as_ref().unwrap()),
                     title = [full_path(cx, myitem), myitem.type_().to_string()]
@@ -4593,12 +4593,9 @@ fn collect_paths_for_type(first_ty: clean::Type) -> Vec<String> {
                 let get_extern = || cache.external_paths.get(&did).map(|s| s.0.clone());
                 let fqp = cache.exact_paths.get(&did).cloned().or_else(get_extern);
 
-                match fqp {
-                    Some(path) => {
-                        out.push(path.join("::"));
-                    }
-                    _ => {}
-                };
+                if let Some(path) = fqp {
+                    out.push(path.join("::"));
+                }
             }
             clean::Type::Tuple(tys) => {
                 work.extend(tys.into_iter());

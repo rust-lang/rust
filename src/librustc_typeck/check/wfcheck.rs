@@ -1,12 +1,6 @@
 use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
-use rustc::middle::lang_items;
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::trait_def::TraitSpecializationKind;
-use rustc::ty::{
-    self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
-};
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
@@ -14,6 +8,12 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 use rustc_hir::ItemKind;
+use rustc_middle::middle::lang_items;
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::trait_def::TraitSpecializationKind;
+use rustc_middle::ty::{
+    self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -124,18 +124,16 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
                 }
                 (ty::ImplPolarity::Negative, ast::ImplPolarity::Negative(span)) => {
                     // FIXME(#27579): what amount of WF checking do we need for neg impls?
-                    if let (Some(of_trait), false) = (of_trait, is_auto) {
+                    if let hir::Defaultness::Default { .. } = defaultness {
+                        let mut spans = vec![span];
+                        spans.extend(defaultness_span);
                         struct_span_err!(
                             tcx.sess,
-                            span.to(of_trait.path.span),
-                            E0192,
-                            "invalid negative impl"
+                            spans,
+                            E0750,
+                            "negative impls cannot be default impls"
                         )
-                        .note(
-                            "negative impls are only allowed for auto traits, like `Send` and \
-                             `Sync`",
-                        )
-                        .emit()
+                        .emit();
                     }
                 }
                 (ty::ImplPolarity::Reservation, _) => {
@@ -902,13 +900,13 @@ fn check_opaque_types<'fcx, 'tcx>(
                                             .struct_span_err(
                                                 span,
                                                 "non-defining opaque type use \
-                                                    in defining scope",
+                                                 in defining scope",
                                             )
                                             .span_label(
                                                 param_span,
                                                 "cannot use static lifetime; use a bound lifetime \
-                                                instead or remove the lifetime parameter from the \
-                                                opaque type",
+                                                 instead or remove the lifetime parameter from the \
+                                                 opaque type",
                                             )
                                             .emit();
                                     } else {
@@ -923,13 +921,13 @@ fn check_opaque_types<'fcx, 'tcx>(
                                             .struct_span_err(
                                                 span,
                                                 "non-defining opaque type use \
-                                                in defining scope",
+                                                 in defining scope",
                                             )
                                             .span_note(
                                                 tcx.def_span(param.def_id),
                                                 &format!(
                                                     "used non-generic const {} for \
-                                                    generic parameter",
+                                                     generic parameter",
                                                     ty,
                                                 ),
                                             )
@@ -944,7 +942,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                                     .struct_span_err(
                                         span,
                                         "non-defining opaque type use \
-                                            in defining scope",
+                                         in defining scope",
                                     )
                                     .span_note(spans, "lifetime used multiple times")
                                     .emit();
@@ -1030,7 +1028,7 @@ fn check_method_receiver<'fcx, 'tcx>(
                     span,
                     &format!(
                         "`{}` cannot be used as the type of `self` without \
-                            the `arbitrary_self_types` feature",
+                         the `arbitrary_self_types` feature",
                         receiver_ty,
                     ),
                 )

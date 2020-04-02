@@ -1,5 +1,5 @@
 // run-pass
-
+#![allow(unused_braces)]
 #![allow(non_snake_case)]
 #![allow(unused_variables)]
 // Test that destructors for rvalue temporaries run either at end of

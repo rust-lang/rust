@@ -1,9 +1,6 @@
 // run-pass
-
+#![allow(unused_braces)]
 #![allow(dead_code)]
-
-
-
 
 // Tests for standalone blocks as expressions
 

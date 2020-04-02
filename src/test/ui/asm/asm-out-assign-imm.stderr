@@ -1,13 +1,13 @@
 error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/asm-out-assign-imm.rs:24:34
+  --> $DIR/asm-out-assign-imm.rs:24:39
    |
 LL |     let x: isize;
    |         - help: make this binding mutable: `mut x`
 LL |     x = 1;
    |     ----- first assignment to `x`
 ...
-LL |         asm!("mov $1, $0" : "=r"(x) : "r"(5));
-   |                                  ^ cannot assign twice to immutable variable
+LL |         llvm_asm!("mov $1, $0" : "=r"(x) : "r"(5));
+   |                                       ^ cannot assign twice to immutable variable
 
 error: aborting due to previous error
 

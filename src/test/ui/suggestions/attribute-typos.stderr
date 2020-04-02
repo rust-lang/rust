@@ -1,10 +1,8 @@
-error[E0658]: attributes starting with `rustc` are reserved for use by the `rustc` compiler
+error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
   --> $DIR/attribute-typos.rs:11:3
    |
 LL | #[rustc_err]
    |   ^^^^^^^^^
-   |
-   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error: cannot find attribute `rustc_err` in this scope
   --> $DIR/attribute-typos.rs:11:3
@@ -31,4 +29,3 @@ LL | #[deprcated]
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0658`.

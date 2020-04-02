@@ -5,6 +5,7 @@ LL |     match 0isize {
    |           ^^^^^^ patterns `std::isize::MIN..=-6isize` and `21isize..=std::isize::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `isize`
 
 error[E0004]: non-exhaustive patterns: `0usize` and `21usize..=std::usize::MAX` not covered
   --> $DIR/precise_pointer_size_matching.rs:29:11
@@ -13,6 +14,7 @@ LL |     match 0usize {
    |           ^^^^^^ patterns `0usize` and `21usize..=std::usize::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `usize`
 
 error: aborting due to 2 previous errors
 

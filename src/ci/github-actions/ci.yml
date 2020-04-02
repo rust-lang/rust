@@ -1,0 +1,709 @@
+######################################################
+#   WARNING! Action needed when changing this file   #
+######################################################
+
+# Due to GitHub Actions limitations, we can't use YAML Anchors directly in the
+# CI configuration stored on the repository. To work around that this file is
+# expanded by a tool in the repository, and the expansion is committed as well.
+#
+# After you make any change to the file you'll need to run this command:
+#
+#   ./x.py run src/tools/expand-yaml-anchors
+#
+# ...and commit the file it updated in addition to this one. If you forget this
+# step CI will fail.
+
+---
+
+###############################
+#   YAML Anchors Definition   #
+###############################
+
+# This key contains most of the YAML anchors that will be used later in the
+# document. YAML anchors allows us to greatly reduce duplication inside the CI
+# configuration by reusing parts of the configuration.
+#
+# YAML anchors work by defining an anchor with `&anchor-name` and reusing its
+# content in another place with `*anchor-name`. The special `<<` map key merges
+# the content of the map with the content of the anchor (or list of anchors).
+#
+# The expand-yaml-anchors tool will automatically remove this block from the
+# output YAML file.
+x--expand-yaml-anchors--remove:
+
+  - &shared-ci-variables
+    CI_JOB_NAME: ${{ matrix.name }}
+
+  - &public-variables
+    SCCACHE_BUCKET: rust-lang-gha-caches
+    TOOLSTATE_REPO: https://github.com/pietroalbini/rust-toolstate
+
+  - &prod-variables
+    SCCACHE_BUCKET: rust-lang-gha-caches
+    DEPLOY_BUCKET: rust-lang-gha
+    TOOLSTATE_REPO: https://github.com/pietroalbini/rust-toolstate
+    TOOLSTATE_ISSUES_API_URL: https://api.github.com/repos/pietroalbini/rust-toolstate/issues
+    TOOLSTATE_PUBLISH: 1
+    # AWS_SECRET_ACCESS_KEYs are stored in GitHub's secrets storage, named
+    # AWS_SECRET_ACCESS_KEY_<keyid>. Including the key id in the name allows to
+    # rotate them in a single branch while keeping the old key in another
+    # branch, which wouldn't be possible if the key was named with the kind
+    # (caches, artifacts...).
+    CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZOMUQATD5
+    ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZH5AYXDVF
+
+  - &base-job
+    env: {}
+
+  - &job-linux-xl
+    os: ubuntu-latest-xl
+    <<: *base-job
+
+  - &job-macos-xl
+    os: macos-latest  # We don't have an XL builder for this
+    <<: *base-job
+
+  - &job-windows-xl
+    os: windows-latest-xl
+    <<: *base-job
+
+  - &step
+    if: success() && !env.SKIP_JOB
+
+  - &step-run
+    <<: *step
+    # While on Linux and macOS builders it just forwards the arguments to the
+    # system bash, this wrapper allows switching from the host's bash.exe to
+    # the one we install along with MSYS2 mid-build on Windows.
+    #
+    # Once the step to install MSYS2 is executed, the CI_OVERRIDE_SHELL
+    # environment variable is set pointing to our MSYS2's bash.exe. From that
+    # moment the host's bash.exe will not be called anymore.
+    #
+    # This is needed because we can't launch our own bash.exe from the host
+    # bash.exe, as that would load two different cygwin1.dll in memory, causing
+    # "cygwin heap mismatch" errors.
+    shell: python src/ci/exec-with-shell.py {0}
+
+  - &base-ci-job
+    timeout-minutes: 600
+    runs-on: "${{ matrix.os }}"
+    env: *shared-ci-variables
+    steps:
+      - name: disable git crlf conversion
+        run: git config --global core.autocrlf false
+        shell: bash
+
+      - name: checkout the source code
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 2
+
+      - name: configure GitHub Actions to kill the build when outdated
+        uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+        with:
+          github_token: "${{ secrets.github_token }}"
+        <<: *step
+
+      - name: add extra environment variables
+        run: src/ci/scripts/setup-environment.sh
+        env:
+          # Since it's not possible to merge `${{ matrix.env }}` with the other
+          # variables in `job.<name>.env`, the variables defined in the matrix
+          # are passed to the `setup-environment.sh` script encoded in JSON,
+          # which then uses log commands to actually set them.
+          EXTRA_VARIABLES: ${{ toJson(matrix.env) }}
+        <<: *step-run
+
+      - name: decide whether to skip this job
+        run: src/ci/scripts/should-skip-this.sh
+        <<: *step-run
+
+      - name: collect CPU statistics
+        run: src/ci/scripts/collect-cpu-stats.sh
+        <<: *step-run
+
+      - name: show the current environment
+        run: src/ci/scripts/dump-environment.sh
+        <<: *step-run
+
+      - name: install awscli
+        run: src/ci/scripts/install-awscli.sh
+        <<: *step-run
+
+      - name: install sccache
+        run: src/ci/scripts/install-sccache.sh
+        <<: *step-run
+
+      - name: install clang
+        run: src/ci/scripts/install-clang.sh
+        <<: *step-run
+
+      - name: install WIX
+        run: src/ci/scripts/install-wix.sh
+        <<: *step-run
+
+      - name: install InnoSetup
+        run: src/ci/scripts/install-innosetup.sh
+        <<: *step-run
+
+      - name: ensure the build happens on a partition with enough space
+        run: src/ci/scripts/symlink-build-dir.sh
+        <<: *step-run
+
+      - name: disable git crlf conversion
+        run: src/ci/scripts/disable-git-crlf-conversion.sh
+        <<: *step-run
+
+      - name: install MSYS2
+        run: src/ci/scripts/install-msys2.sh
+        <<: *step-run
+
+      - name: install MSYS2 packages
+        run: src/ci/scripts/install-msys2-packages.sh
+        <<: *step-run
+
+      - name: install MinGW
+        run: src/ci/scripts/install-mingw.sh
+        <<: *step-run
+
+      - name: install ninja
+        run: src/ci/scripts/install-ninja.sh
+        <<: *step-run
+
+      - name: enable ipv6 on Docker
+        run: src/ci/scripts/enable-docker-ipv6.sh
+        <<: *step-run
+
+      # Disable automatic line ending conversion (again). On Windows, when we're
+      # installing dependencies, something switches the git configuration directory or
+      # re-enables autocrlf. We've not tracked down the exact cause -- and there may
+      # be multiple -- but this should ensure submodules are checked out with the
+      # appropriate line endings.
+      - name: disable git crlf conversion
+        run: src/ci/scripts/disable-git-crlf-conversion.sh
+        <<: *step-run
+
+      - name: checkout submodules
+        run: src/ci/scripts/checkout-submodules.sh
+        <<: *step-run
+
+      - name: ensure line endings are correct
+        run: src/ci/scripts/verify-line-endings.sh
+        <<: *step-run
+
+      - name: run the build
+        run: src/ci/scripts/run-build-from-ci.sh
+        env:
+          AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
+          TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
+        <<: *step-run
+
+      - name: upload artifacts to S3
+        run: src/ci/scripts/upload-artifacts.sh
+        env:
+          AWS_ACCESS_KEY_ID: ${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}
+        # Adding a condition on DEPLOY=1 or DEPLOY_ALT=1 is not needed as all deploy
+        # builders *should* have the AWS credentials available. Still, explicitly
+        # adding the condition is helpful as this way CI will not silently skip
+        # deploying artifacts from a dist builder if the variables are misconfigured,
+        # erroring about invalid credentials instead.
+        if: success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')
+        <<: *step-run
+
+  # These snippets are used by the try-success, try-failure, auto-success and auto-failure jobs.
+  # Check out their documentation for more information on why they're needed.
+
+  - &base-outcome-job
+    name: bors build finished
+    runs-on: ubuntu-latest
+
+  - &base-success-job
+    steps:
+      - name: mark the job as a success
+        run: exit 0
+    <<: *base-outcome-job
+
+  - &base-failure-job
+    steps:
+      - name: mark the job as a failure
+        run: exit 1
+    <<: *base-outcome-job
+
+###########################
+#   Builders definition   #
+###########################
+
+name: CI
+on:
+  push:
+    branches:
+      - auto
+      - try
+      - master
+  pull_request:
+    branches:
+      - "**"
+
+jobs:
+  pr:
+    <<: *base-ci-job
+    name: PR
+    env:
+      <<: [*shared-ci-variables, *public-variables]
+    if: github.event_name == 'pull_request'
+    strategy:
+      matrix:
+        name:
+          - mingw-check
+          - x86_64-gnu-llvm-7
+          - x86_64-gnu-tools
+        include:
+          - name: mingw-check
+            <<: *job-linux-xl
+
+          - name: x86_64-gnu-llvm-7
+            <<: *job-linux-xl
+
+          - name: x86_64-gnu-tools
+            env:
+              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
+            <<: *job-linux-xl
+
+  try:
+    <<: *base-ci-job
+    name: try
+    env:
+      <<: [*shared-ci-variables, *prod-variables]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'
+    strategy:
+      matrix:
+        name:
+          - dist-x86_64-linux
+          - dist-x86_64-linux-alt
+        include:
+          - name: dist-x86_64-linux
+            <<: *job-linux-xl
+
+          - name: dist-x86_64-linux-alt
+            env:
+              IMAGE: dist-x86_64-linux
+            <<: *job-linux-xl
+
+  auto:
+    <<: *base-ci-job
+    name: auto
+    env:
+      <<: [*shared-ci-variables, *prod-variables]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
+    strategy:
+      matrix:
+        name:
+          - arm-android
+          - armhf-gnu
+          - dist-aarch64-linux
+          - dist-android
+          - dist-arm-linux
+          - dist-armhf-linux
+          - dist-armv7-linux
+          - dist-i586-gnu-i586-i686-musl
+          - dist-i686-freebsd
+          - dist-i686-linux
+          - dist-i686-mingw
+          - dist-i686-msvc
+          - dist-mips-linux
+          - dist-mips64-linux
+          - dist-mips64el-linux
+          - dist-mipsel-linux
+          - dist-powerpc-linux
+          - dist-powerpc64-linux
+          - dist-powerpc64le-linux
+          - dist-s390x-linux
+          - dist-various-1
+          - dist-various-2
+          - dist-x86_64-apple
+          - dist-x86_64-apple-alt
+          - dist-x86_64-freebsd
+          - dist-x86_64-linux
+          - dist-x86_64-linux-alt
+          - dist-x86_64-mingw
+          - dist-x86_64-msvc
+          - dist-x86_64-msvc-alt
+          - dist-x86_64-musl
+          - dist-x86_64-netbsd
+          - i686-gnu
+          - i686-gnu-nopt
+          - i686-mingw-1
+          - i686-mingw-2
+          - i686-msvc-1
+          - i686-msvc-2
+          - mingw-check
+          - test-various
+          - wasm32
+          - x86_64-apple
+          - x86_64-gnu
+          - x86_64-gnu-aux
+          - x86_64-gnu-debug
+          - x86_64-gnu-distcheck
+          - x86_64-gnu-full-bootstrap
+          - x86_64-gnu-llvm-7
+          - x86_64-gnu-nopt
+          - x86_64-gnu-tools
+          - x86_64-mingw-1
+          - x86_64-mingw-2
+          - x86_64-msvc-1
+          - x86_64-msvc-2
+          - x86_64-msvc-aux
+          - x86_64-msvc-cargo
+          - x86_64-msvc-tools
+        include:
+          #############################
+          #   Linux/Docker builders   #
+          #############################
+
+          - name: arm-android
+            <<: *job-linux-xl
+
+          - name: armhf-gnu
+            <<: *job-linux-xl
+
+          - name: dist-aarch64-linux
+            <<: *job-linux-xl
+
+          - name: dist-android
+            <<: *job-linux-xl
+
+          - name: dist-arm-linux
+            <<: *job-linux-xl
+
+          - name: dist-armhf-linux
+            <<: *job-linux-xl
+
+          - name: dist-armv7-linux
+            <<: *job-linux-xl
+
+          - name: dist-i586-gnu-i586-i686-musl
+            <<: *job-linux-xl
+
+          - name: dist-i686-freebsd
+            <<: *job-linux-xl
+
+          - name: dist-i686-linux
+            <<: *job-linux-xl
+
+          - name: dist-mips-linux
+            <<: *job-linux-xl
+
+          - name: dist-mips64-linux
+            <<: *job-linux-xl
+
+          - name: dist-mips64el-linux
+            <<: *job-linux-xl
+
+          - name: dist-mipsel-linux
+            <<: *job-linux-xl
+
+          - name: dist-powerpc-linux
+            <<: *job-linux-xl
+
+          - name: dist-powerpc64-linux
+            <<: *job-linux-xl
+
+          - name: dist-powerpc64le-linux
+            <<: *job-linux-xl
+
+          - name: dist-s390x-linux
+            <<: *job-linux-xl
+
+          - name: dist-various-1
+            <<: *job-linux-xl
+
+          - name: dist-various-2
+            <<: *job-linux-xl
+
+          - name: dist-x86_64-freebsd
+            <<: *job-linux-xl
+
+          - name: dist-x86_64-linux
+            <<: *job-linux-xl
+
+          - name: dist-x86_64-linux-alt
+            env:
+              IMAGE: dist-x86_64-linux
+            <<: *job-linux-xl
+
+          - name: dist-x86_64-musl
+            <<: *job-linux-xl
+
+          - name: dist-x86_64-netbsd
+            <<: *job-linux-xl
+
+          - name: i686-gnu
+            <<: *job-linux-xl
+
+          - name: i686-gnu-nopt
+            <<: *job-linux-xl
+
+          - name: mingw-check
+            <<: *job-linux-xl
+
+          - name: test-various
+            <<: *job-linux-xl
+
+          - name: wasm32
+            <<: *job-linux-xl
+
+          - name: x86_64-gnu
+            <<: *job-linux-xl
+
+          - name: x86_64-gnu-aux
+            <<: *job-linux-xl
+
+          - name: x86_64-gnu-debug
+            <<: *job-linux-xl
+
+          - name: x86_64-gnu-distcheck
+            <<: *job-linux-xl
+
+          - name: x86_64-gnu-full-bootstrap
+            <<: *job-linux-xl
+
+          - name: x86_64-gnu-llvm-7
+            env:
+              RUST_BACKTRACE: 1
+            <<: *job-linux-xl
+
+          - name: x86_64-gnu-nopt
+            <<: *job-linux-xl
+
+          - name: x86_64-gnu-tools
+            env:
+              DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
+            <<: *job-linux-xl
+
+          ####################
+          #  macOS Builders  #
+          ####################
+
+          - name: dist-x86_64-apple
+            env:
+              SCRIPT: ./x.py dist
+              RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-macos-xl
+
+          - name: dist-x86_64-apple-alt
+            env:
+              SCRIPT: ./x.py dist
+              RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+            <<: *job-macos-xl
+
+          - name: x86_64-apple
+            env:
+              SCRIPT: ./x.py test
+              RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.8
+              MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+            <<: *job-macos-xl
+
+          ######################
+          #  Windows Builders  #
+          ######################
+
+          - name: x86_64-msvc-1
+            env:
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+              SCRIPT: make ci-subset-1
+              # FIXME(#59637)
+              NO_DEBUG_ASSERTIONS: 1
+              NO_LLVM_ASSERTIONS: 1
+            <<: *job-windows-xl
+
+          - name: x86_64-msvc-2
+            env:
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+              SCRIPT: make ci-subset-2
+            <<: *job-windows-xl
+
+          - name: i686-msvc-1
+            env:
+              RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+              SCRIPT: make ci-subset-1
+              # FIXME(#59637)
+              NO_DEBUG_ASSERTIONS: 1
+              NO_LLVM_ASSERTIONS: 1
+            <<: *job-windows-xl
+
+          - name: i686-msvc-2
+            env:
+              RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+              SCRIPT: make ci-subset-2
+              # FIXME(#59637)
+              NO_DEBUG_ASSERTIONS: 1
+              NO_LLVM_ASSERTIONS: 1
+            <<: *job-windows-xl
+
+          - name: x86_64-msvc-aux
+            env:
+              RUST_CHECK_TARGET: check-aux EXCLUDE_CARGO=1
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+            <<: *job-windows-xl
+
+          - name: x86_64-msvc-cargo
+            env:
+              SCRIPT: python x.py test src/tools/cargotest src/tools/cargo
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+              VCVARS_BAT: vcvars64.bat
+              # FIXME(#59637)
+              NO_DEBUG_ASSERTIONS: 1
+              NO_LLVM_ASSERTIONS: 1
+            <<: *job-windows-xl
+
+          - name: x86_64-msvc-tools
+            env:
+              SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json
+            <<: *job-windows-xl
+
+          # 32/64-bit MinGW builds.
+          #
+          # We are using MinGW with posix threads since LLVM does not compile with
+          # the win32 threads version due to missing support for C++'s std::thread.
+          #
+          # Instead of relying on the MinGW version installed on appveryor we download
+          # and install one ourselves so we won't be surprised by changes to appveyor's
+          # build image.
+          #
+          # Finally, note that the downloads below are all in the `rust-lang-ci` S3
+          # bucket, but they cleraly didn't originate there! The downloads originally
+          # came from the mingw-w64 SourceForge download site. Unfortunately
+          # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
+
+          - name: i686-mingw-1
+            env:
+              RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+              SCRIPT: make ci-mingw-subset-1
+              CUSTOM_MINGW: 1
+              # FIXME(#59637)
+              NO_DEBUG_ASSERTIONS: 1
+              NO_LLVM_ASSERTIONS: 1
+            <<: *job-windows-xl
+
+          - name: i686-mingw-2
+            env:
+              RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+              SCRIPT: make ci-mingw-subset-2
+              CUSTOM_MINGW: 1
+            <<: *job-windows-xl
+
+          - name: x86_64-mingw-1
+            env:
+              SCRIPT: make ci-mingw-subset-1
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+              CUSTOM_MINGW: 1
+              # FIXME(#59637)
+              NO_DEBUG_ASSERTIONS: 1
+              NO_LLVM_ASSERTIONS: 1
+            <<: *job-windows-xl
+
+          - name: x86_64-mingw-2
+            env:
+              SCRIPT: make ci-mingw-subset-2
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+              CUSTOM_MINGW: 1
+            <<: *job-windows-xl
+
+          - name: dist-x86_64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: >-
+                --build=x86_64-pc-windows-msvc
+                --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
+                --enable-full-tools
+                --enable-profiler
+              SCRIPT: python x.py dist
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-windows-xl
+
+          - name: dist-i686-msvc
+            env:
+              RUST_CONFIGURE_ARGS: >-
+                --build=i686-pc-windows-msvc
+                --target=i586-pc-windows-msvc
+                --enable-full-tools
+                --enable-profiler
+              SCRIPT: python x.py dist
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-windows-xl
+
+          - name: dist-i686-mingw
+            env:
+              RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools --enable-profiler
+              SCRIPT: python x.py dist
+              CUSTOM_MINGW: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-windows-xl
+
+          - name: dist-x86_64-mingw
+            env:
+              SCRIPT: python x.py dist
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler
+              CUSTOM_MINGW: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-windows-xl
+
+          - name: dist-x86_64-msvc-alt
+            env:
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
+              SCRIPT: python x.py dist
+            <<: *job-windows-xl
+
+  master:
+    name: master
+    runs-on: ubuntu-latest
+    env:
+      <<: [*prod-variables]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'
+    steps:
+      - name: checkout the source code
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 2
+
+      - name: publish toolstate
+        run: src/ci/publish_toolstate.sh
+        env:
+          TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
+        <<: *step-run
+
+  # These jobs don't actually test anything, but they're used to tell bors the
+  # build completed, as there is no practical way to detect when a workflow is
+  # successful listening to webhooks only.
+  try-success:
+    needs: [try]
+    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'"
+    <<: *base-success-job
+  try-failure:
+    needs: [try]
+    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'"
+    <<: *base-failure-job
+  auto-success:
+    needs: [auto]
+    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
+    <<: *base-success-job
+  auto-failure:
+    needs: [auto]
+    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
+    <<: *base-failure-job

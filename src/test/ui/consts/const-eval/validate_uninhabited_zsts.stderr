@@ -5,7 +5,8 @@ LL |     unsafe { std::mem::transmute(()) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^
    |              |
    |              transmuting to uninhabited type
-   |              inside call to `foo` at $DIR/validate_uninhabited_zsts.rs:14:26
+   |              inside `foo` at $DIR/validate_uninhabited_zsts.rs:5:14
+   |              inside `FOO` at $DIR/validate_uninhabited_zsts.rs:14:26
 ...
 LL | const FOO: [Empty; 3] = [foo(); 3];
    | -----------------------------------

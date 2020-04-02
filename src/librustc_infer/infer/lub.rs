@@ -4,8 +4,8 @@ use super::InferCtxt;
 use super::Subtype;
 
 use crate::traits::ObligationCause;
-use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 /// "Least upper bound" (common supertype)
 pub struct Lub<'combine, 'infcx, 'tcx> {

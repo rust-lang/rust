@@ -2,8 +2,6 @@ use std::cmp::Reverse;
 use std::ptr;
 
 use log::debug;
-use rustc::bug;
-use rustc::ty::{self, DefIdTree};
 use rustc_ast::ast::{self, Ident, Path};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast_pretty::pprust;
@@ -13,6 +11,8 @@ use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_middle::bug;
+use rustc_middle::ty::{self, DefIdTree};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
@@ -791,12 +791,12 @@ impl<'a> Resolver<'a> {
                 _ => Some(
                     self.session
                         .source_map()
-                        .def_span(self.cstore().get_span_untracked(def_id, self.session)),
+                        .guess_head_span(self.cstore().get_span_untracked(def_id, self.session)),
                 ),
             });
             if let Some(span) = def_span {
                 err.span_label(
-                    self.session.source_map().def_span(span),
+                    self.session.source_map().guess_head_span(span),
                     &format!(
                         "similarly named {} `{}` defined here",
                         suggestion.res.descr(),
@@ -986,7 +986,7 @@ impl<'a> Resolver<'a> {
                 which = if first { "" } else { " which" },
                 dots = if next_binding.is_some() { "..." } else { "" },
             );
-            let def_span = self.session.source_map().def_span(binding.span);
+            let def_span = self.session.source_map().guess_head_span(binding.span);
             let mut note_span = MultiSpan::from_span(def_span);
             if !first && binding.vis == ty::Visibility::Public {
                 note_span.push_span_label(def_span, "consider importing it directly".into());

@@ -1,10 +1,6 @@
 #![allow(non_snake_case)]
 
 use crate::{LateContext, LateLintPass, LintContext};
-use rustc::mir::interpret::{sign_extend, truncate};
-use rustc::ty::layout::{self, IntegerExt, LayoutOf, SizeSkeleton, VariantIdx};
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc_ast::ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
@@ -13,6 +9,10 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{is_range_literal, ExprKind, Node};
 use rustc_index::vec::Idx;
+use rustc_middle::mir::interpret::{sign_extend, truncate};
+use rustc_middle::ty::layout::{self, IntegerExt, LayoutOf, SizeSkeleton, VariantIdx};
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -919,7 +919,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
-        use crate::rustc::ty::TypeFoldable;
+        use rustc_middle::ty::TypeFoldable;
 
         struct ProhibitOpaqueTypes<'tcx> {
             ty: Option<Ty<'tcx>>,

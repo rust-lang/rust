@@ -3,13 +3,13 @@ use crate::borrow_check::path_utils::allow_two_phase_borrow;
 use crate::borrow_check::place_ext::PlaceExt;
 use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::MoveData;
-use rustc::mir::traversal;
-use rustc::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
-use rustc::mir::{self, Body, Local, Location, ReadOnlyBodyAndCache};
-use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir::traversal;
+use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::{self, Body, Local, Location, ReadOnlyBodyAndCache};
+use rustc_middle::ty::{RegionVid, TyCtxt};
 use std::fmt;
 use std::ops::Index;
 
@@ -107,7 +107,7 @@ impl LocalsStateAtExit {
             LocalsStateAtExit::AllAreInvalidated
         } else {
             let mut has_storage_dead = HasStorageDead(BitSet::new_empty(body.local_decls.len()));
-            has_storage_dead.visit_body(body);
+            has_storage_dead.visit_body(&body);
             let mut has_storage_dead_or_moved = has_storage_dead.0;
             for move_out in &move_data.moves {
                 if let Some(index) = move_data.base_local(move_out.path) {
@@ -206,7 +206,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             let idx = self.idx_vec.push(borrow);
             self.location_map.insert(location, idx);
 
-            self.insert_as_pending_if_two_phase(location, &assigned_place, kind, idx);
+            self.insert_as_pending_if_two_phase(location, assigned_place, kind, idx);
 
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
         }

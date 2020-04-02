@@ -1,7 +1,7 @@
 #![feature(rustc_private)]
 
-extern crate rustc;
 extern crate rustc_codegen_ssa;
+extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -11,14 +11,14 @@ extern crate rustc_span;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 
-use rustc::dep_graph::DepGraph;
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoader, MetadataLoaderDyn};
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
-use rustc::util::common::ErrorReported;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::sync::MetadataRef;
+use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader, MetadataLoaderDyn};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
+use rustc_middle::util::common::ErrorReported;
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;

@@ -4,14 +4,14 @@ use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
 use crate::middle::{lang_items, region};
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::InternalSubsts;
-use rustc::ty::{self, GenericParamDefKind, Ty};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::infer::{InferOk, InferResult};
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::{self, GenericParamDefKind, Ty};
 use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::ArgKind;

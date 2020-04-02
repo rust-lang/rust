@@ -1,10 +1,10 @@
-use rustc::ty::subst::{GenericArg, GenericArgKind, Subst};
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Node;
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
 use super::explicit::ExplicitPredicatesMap;

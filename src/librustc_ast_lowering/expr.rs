@@ -159,7 +159,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let e = e.as_ref().map(|x| self.lower_expr(x));
                 hir::ExprKind::Ret(e)
             }
-            ExprKind::InlineAsm(ref asm) => self.lower_expr_asm(asm),
+            ExprKind::LlvmInlineAsm(ref asm) => self.lower_expr_asm(asm),
             ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
                 let maybe_expr = maybe_expr.as_ref().map(|x| self.lower_expr(x));
                 hir::ExprKind::Struct(
@@ -952,13 +952,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         result
     }
 
-    fn lower_expr_asm(&mut self, asm: &InlineAsm) -> hir::ExprKind<'hir> {
-        let inner = hir::InlineAsmInner {
+    fn lower_expr_asm(&mut self, asm: &LlvmInlineAsm) -> hir::ExprKind<'hir> {
+        let inner = hir::LlvmInlineAsmInner {
             inputs: asm.inputs.iter().map(|&(c, _)| c).collect(),
             outputs: asm
                 .outputs
                 .iter()
-                .map(|out| hir::InlineAsmOutput {
+                .map(|out| hir::LlvmInlineAsmOutput {
                     constraint: out.constraint,
                     is_rw: out.is_rw,
                     is_indirect: out.is_indirect,
@@ -972,7 +972,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             alignstack: asm.alignstack,
             dialect: asm.dialect,
         };
-        let hir_asm = hir::InlineAsm {
+        let hir_asm = hir::LlvmInlineAsm {
             inner,
             inputs_exprs: self.arena.alloc_from_iter(
                 asm.inputs.iter().map(|&(_, ref input)| self.lower_expr_mut(input)),
@@ -981,7 +981,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .arena
                 .alloc_from_iter(asm.outputs.iter().map(|out| self.lower_expr_mut(&out.expr))),
         };
-        hir::ExprKind::InlineAsm(self.arena.alloc(hir_asm))
+        hir::ExprKind::LlvmInlineAsm(self.arena.alloc(hir_asm))
     }
 
     fn lower_field(&mut self, f: &Field) -> hir::Field<'hir> {

@@ -1,4 +1,5 @@
 #![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 
 unsafe auto trait Trait {
     fn method(&self) { //~ ERROR E0380

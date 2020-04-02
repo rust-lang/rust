@@ -2,11 +2,11 @@ use crate::build;
 use crate::build::scope::DropKind;
 use crate::hair::cx::Cx;
 use crate::hair::{BindingMode, LintLevel, PatKind};
-use rustc::middle::lang_items;
-use rustc::middle::region;
-use rustc::mir::*;
-use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::middle::lang_items;
+use rustc_middle::middle::region;
+use rustc_middle::mir::*;
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_attr::{self as attr, UnwindAttr};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -663,7 +663,7 @@ fn construct_const<'a, 'tcx>(
     let mut block = START_BLOCK;
     let ast_expr = &tcx.hir().body(body_id).value;
     let expr = builder.hir.mirror(ast_expr);
-    unpack!(block = builder.into_expr(&Place::return_place(), block, expr));
+    unpack!(block = builder.into_expr(Place::return_place(), block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -969,7 +969,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        self.into(&Place::return_place(), block, body)
+        self.into(Place::return_place(), block, body)
     }
 
     fn set_correct_source_scope_for_arg(

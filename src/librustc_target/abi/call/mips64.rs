@@ -1,5 +1,5 @@
 use crate::abi::call::{ArgAbi, ArgAttribute, CastTarget, FnAbi, PassMode, Reg, RegKind, Uniform};
-use crate::abi::{self, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods};
+use crate::abi::{self, HasDataLayout, LayoutOf, Size, TyAndLayout, TyAndLayoutMethods};
 
 fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
     // Always sign extend u32 values on 64-bit mips
@@ -19,8 +19,8 @@ fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
 
 fn float_reg<'a, Ty, C>(cx: &C, ret: &ArgAbi<'a, Ty>, i: usize) -> Option<Reg>
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     match ret.layout.field(cx, i).abi {
         abi::Abi::Scalar(ref scalar) => match scalar.value {
@@ -34,8 +34,8 @@ where
 
 fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>)
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     if !ret.layout.is_aggregate() {
         extend_integer_width_mips(ret, 64);
@@ -49,7 +49,7 @@ where
         // use of float registers to structures (not unions) containing exactly one or two
         // float fields.
 
-        if let abi::FieldPlacement::Arbitrary { .. } = ret.layout.fields {
+        if let abi::FieldsShape::Arbitrary { .. } = ret.layout.fields {
             if ret.layout.fields.count() == 1 {
                 if let Some(reg) = float_reg(cx, ret, 0) {
                     ret.cast_to(reg);
@@ -74,8 +74,8 @@ where
 
 fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     if !arg.layout.is_aggregate() {
         extend_integer_width_mips(arg, 64);
@@ -88,15 +88,15 @@ where
     let mut prefix_index = 0;
 
     match arg.layout.fields {
-        abi::FieldPlacement::Array { .. } => {
+        abi::FieldsShape::Array { .. } => {
             // Arrays are passed indirectly
             arg.make_indirect();
             return;
         }
-        abi::FieldPlacement::Union(_) => {
+        abi::FieldsShape::Union(_) => {
             // Unions and are always treated as a series of 64-bit integer chunks
         }
-        abi::FieldPlacement::Arbitrary { .. } => {
+        abi::FieldsShape::Arbitrary { .. } => {
             // Structures are split up into a series of 64-bit integer chunks, but any aligned
             // doubles not part of another aggregate are passed as floats.
             let mut last_offset = Size::ZERO;
@@ -143,8 +143,8 @@ where
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     if !fn_abi.ret.is_ignore() {
         classify_ret(cx, &mut fn_abi.ret);

@@ -57,7 +57,7 @@ const EXCEPTIONS: &[(&str, &str)] = &[
 const RUNTIME_CRATES: &[&str] = &["std", "core", "alloc", "test", "panic_abort", "panic_unwind"];
 
 /// Which crates to check against the whitelist?
-const WHITELIST_CRATES: &[&str] = &["rustc", "rustc_codegen_llvm"];
+const WHITELIST_CRATES: &[&str] = &["rustc_middle", "rustc_codegen_llvm"];
 
 /// Whitelist of crates rustc is allowed to depend on. Avoid adding to the list if possible.
 ///

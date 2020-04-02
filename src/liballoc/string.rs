@@ -1461,6 +1461,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "string_split_off", since = "1.16.0")]
+    #[must_use = "use `.truncate()` if you don't need the other half"]
     pub fn split_off(&mut self, at: usize) -> String {
         assert!(self.is_char_boundary(at));
         let other = self.vec.split_off(at);
@@ -1847,6 +1848,21 @@ impl<'a, 'b> Pattern<'a> for &'b String {
     #[inline]
     fn is_prefix_of(self, haystack: &'a str) -> bool {
         self[..].is_prefix_of(haystack)
+    }
+
+    #[inline]
+    fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
+        self[..].strip_prefix_of(haystack)
+    }
+
+    #[inline]
+    fn is_suffix_of(self, haystack: &'a str) -> bool {
+        self[..].is_suffix_of(haystack)
+    }
+
+    #[inline]
+    fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str> {
+        self[..].strip_suffix_of(haystack)
     }
 }
 

@@ -22,7 +22,6 @@ pub fn target() -> TargetResult {
             // dependency on this specific gcc.
             asm_args: vec!["-mcpu=msp430".to_string()],
             linker: Some("msp430-elf-gcc".to_string()),
-            no_integrated_as: true,
 
             // There are no atomic CAS instructions available in the MSP430
             // instruction set, and the LLVM backend doesn't currently support

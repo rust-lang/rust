@@ -3,10 +3,10 @@
 // compile-flags: -C codegen-units=2
 // ignore-emscripten
 
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 fn main() {
     unsafe {
-        asm!("nowayisthisavalidinstruction"); //~ ERROR instruction
+        llvm_asm!("nowayisthisavalidinstruction"); //~ ERROR instruction
     }
 }
