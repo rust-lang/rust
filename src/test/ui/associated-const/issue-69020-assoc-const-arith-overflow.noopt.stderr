@@ -1,0 +1,54 @@
+error: this arithmetic operation will overflow
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:28:22
+   |
+LL |     const NEG: i32 = -i32::MIN + T::NEG;
+   |                      ^^^^^^^^^ attempt to negate with overflow
+   |
+   = note: `#[deny(arithmetic_overflow)]` on by default
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:30:31
+   |
+LL |     const GEN: i32 = T::NEG + (-i32::MIN);
+   |                               ^^^^^^^^^^^ attempt to negate with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:33:22
+   |
+LL |     const ADD: i32 = (i32::MAX+1) + T::ADD;
+   |                      ^^^^^^^^^^^^ attempt to add with overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:35:32
+   |
+LL |     const DDA: i32 =  T::ADD + (i32::MAX+1);
+   |                                ^^^^^^^^^^^^ attempt to add with overflow
+
+error: this operation will panic at runtime
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:38:22
+   |
+LL |     const DIV: i32 = (1/0) + T::DIV;
+   |                      ^^^^^ attempt to divide by zero
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: this operation will panic at runtime
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:40:31
+   |
+LL |     const VID: i32 = T::DIV + (1/0);
+   |                               ^^^^^ attempt to divide by zero
+
+error: this operation will panic at runtime
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:43:22
+   |
+LL |     const OOB: i32 = [1][1] + T::OOB;
+   |                      ^^^^^^ index out of bounds: the len is 1 but the index is 1
+
+error: this operation will panic at runtime
+  --> $DIR/issue-69020-assoc-const-arith-overflow.rs:45:31
+   |
+LL |     const BOO: i32 = T::OOB + [1][1];
+   |                               ^^^^^^ index out of bounds: the len is 1 but the index is 1
+
+error: aborting due to 8 previous errors
+
