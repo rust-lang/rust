@@ -65,7 +65,7 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
         let ccx = ConstCx::new(tcx, def_id, body);
         let (temps, all_candidates) = collect_temps_and_candidates(&ccx, &mut rpo);
 
-        let promotable_candidates = validate_candidates(tcx, body, def_id, &temps, &all_candidates);
+        let promotable_candidates = validate_candidates(&ccx, &temps, &all_candidates);
 
         let promoted = promote_candidates(def_id, body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);
@@ -262,7 +262,7 @@ pub fn collect_temps_and_candidates(
 ///
 /// This wraps an `Item`, and has access to all fields of that `Item` via `Deref` coercion.
 struct Validator<'a, 'tcx> {
-    ccx: ConstCx<'a, 'tcx>,
+    ccx: &'a ConstCx<'a, 'tcx>,
     temps: &'a IndexVec<Local, TempState>,
 
     /// Explicit promotion happens e.g. for constant arguments declared via
@@ -715,13 +715,11 @@ impl<'tcx> Validator<'_, 'tcx> {
 
 // FIXME(eddyb) remove the differences for promotability in `static`, `const`, `const fn`.
 pub fn validate_candidates(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
-    def_id: DefId,
+    ccx: &ConstCx<'_, '_>,
     temps: &IndexVec<Local, TempState>,
     candidates: &[Candidate],
 ) -> Vec<Candidate> {
-    let mut validator = Validator { ccx: ConstCx::new(tcx, def_id, body), temps, explicit: false };
+    let mut validator = Validator { ccx, temps, explicit: false };
 
     candidates
         .iter()
@@ -735,9 +733,9 @@ pub fn validate_candidates(
             let is_promotable = validator.validate_candidate(candidate).is_ok();
             match candidate {
                 Candidate::Argument { bb, index } if !is_promotable => {
-                    let span = body[bb].terminator().source_info.span;
+                    let span = ccx.body[bb].terminator().source_info.span;
                     let msg = format!("argument {} is required to be a constant", index + 1);
-                    tcx.sess.span_err(span, &msg);
+                    ccx.tcx.sess.span_err(span, &msg);
                 }
                 _ => (),
             }
@@ -1145,7 +1143,7 @@ pub fn promote_candidates<'tcx>(
 /// Feature attribute should be suggested if `operand` can be promoted and the feature is not
 /// enabled.
 crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
-    ccx: ConstCx<'_, 'tcx>,
+    ccx: &ConstCx<'_, 'tcx>,
     operand: &Operand<'tcx>,
 ) -> bool {
     let mut rpo = traversal::reverse_postorder(&ccx.body);

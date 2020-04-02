@@ -1997,7 +1997,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             // be mentioned, need to check if the rvalue is promotable.
                             let should_suggest =
                                 should_suggest_const_in_array_repeat_expressions_attribute(
-                                    ccx, operand,
+                                    &ccx, operand,
                                 );
                             debug!("check_rvalue: should_suggest={:?}", should_suggest);
 
