@@ -1,4 +1,4 @@
-use crate::ty::subst::{GenericArgKind, SubstsRef};
+use crate::ty::subst::{GenericArg, GenericArgKind};
 use crate::ty::{self, InferConst, Ty, TypeFlags};
 
 #[derive(Debug)]
@@ -81,6 +81,7 @@ impl FlagComputation {
 
             &ty::Param(_) => {
                 self.add_flags(TypeFlags::HAS_TY_PARAM);
+                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
             &ty::Generator(_, ref substs, _) => {
@@ -99,14 +100,17 @@ impl FlagComputation {
 
             &ty::Bound(debruijn, _) => {
                 self.add_binder(debruijn);
+                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
             &ty::Placeholder(..) => {
                 self.add_flags(TypeFlags::HAS_TY_PLACEHOLDER);
+                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
             &ty::Infer(infer) => {
                 self.add_flags(TypeFlags::HAS_TY_INFER);
+                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
                     ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {}
 
@@ -218,17 +222,23 @@ impl FlagComputation {
             }
             ty::ConstKind::Infer(infer) => {
                 self.add_flags(TypeFlags::HAS_CT_INFER);
+                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
                     InferConst::Fresh(_) => {}
                     InferConst::Var(_) => self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX),
                 }
             }
-            ty::ConstKind::Bound(debruijn, _) => self.add_binder(debruijn),
+            ty::ConstKind::Bound(debruijn, _) => {
+                self.add_binder(debruijn);
+                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
+            }
             ty::ConstKind::Param(_) => {
                 self.add_flags(TypeFlags::HAS_CT_PARAM);
+                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
             ty::ConstKind::Placeholder(_) => {
                 self.add_flags(TypeFlags::HAS_CT_PLACEHOLDER);
+                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
             ty::ConstKind::Value(_) => {}
         }
@@ -243,7 +253,7 @@ impl FlagComputation {
         self.add_substs(projection_ty.substs);
     }
 
-    fn add_substs(&mut self, substs: SubstsRef<'_>) {
+    fn add_substs(&mut self, substs: &[GenericArg<'_>]) {
         for kind in substs {
             match kind.unpack() {
                 GenericArgKind::Type(ty) => self.add_ty(ty),
