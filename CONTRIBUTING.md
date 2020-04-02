@@ -203,21 +203,27 @@ They are just regular files and directories. This is in contrast to `submodule` 
 There are two synchronization directions: `subtree push` and `subtree pull`.
 
 ```
-git subtree push -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git
+git subtree push -P src/tools/clippy git@github.com:your-github-name/rust-clippy rustup
 ```
 
 takes all the changes that
 happened to the copy in this repo and creates commits on the remote repo that match the local
-changes (so every local commit that touched the subtree causes a commit on the remote repo).
+changes. Every local commit that touched the subtree causes a commit on the remote repo, but is
+modified to move the files from the specified directory to the tool repo root.
+
+Make sure to not pick the `master` branch, so you can open a normal PR to the tool to merge that
+subrepo push.
 
 ```
-git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git
+git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy master
 ```
 
+takes all changes since the last `subtree pull` from the tool repo
+repo and adds these commits to the rustc repo + a merge commit that moves the tool changes into
+the specified directory in the rust repository.
 
-takes all changes since the last `subtree pull` from the clippy
-repo and adds these commits to the rustc repo + a merge commit with the existing changes.
-It is recommended that you always do a push before a pull, so that the merge works without conflicts.
+It is recommended that you always do a push first and get that merged to the tool master branch.
+Then, when you do a pull, the merge works without conflicts.
 While definitely possible to resolve conflicts during a pull, you may have to redo the conflict
 resolution if your PR doesn't get merged fast enough and there are new conflicts. Do not try to
 rebase the result of a `git subtree pull`, rebasing merge commits is a bad idea in general.
