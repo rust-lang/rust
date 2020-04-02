@@ -543,13 +543,13 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
 
-            "float_to_int_approx_unchecked" => {
+            "float_to_int_unchecked" => {
                 if float_type_width(arg_tys[0]).is_none() {
                     span_invalid_monomorphization_error(
                         tcx.sess,
                         span,
                         &format!(
-                            "invalid monomorphization of `float_to_int_approx_unchecked` \
+                            "invalid monomorphization of `float_to_int_unchecked` \
                                   intrinsic: expected basic float type, \
                                   found `{}`",
                             arg_tys[0]
@@ -570,7 +570,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             tcx.sess,
                             span,
                             &format!(
-                                "invalid monomorphization of `float_to_int_approx_unchecked` \
+                                "invalid monomorphization of `float_to_int_unchecked` \
                                       intrinsic:  expected basic integer type, \
                                       found `{}`",
                                 ret_ty

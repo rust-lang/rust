@@ -33,9 +33,7 @@ impl fmt::Display for AllocErr {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub enum AllocInit {
-    /// The contents of the new memory are undefined.
-    ///
-    /// Reading uninitialized memory is Undefined Behavior; it must be initialized before use.
+    /// The contents of the new memory are uninitialized.
     Uninitialized,
     /// The new memory is guaranteed to be zeroed.
     Zeroed,
@@ -196,7 +194,11 @@ pub unsafe trait AllocRef {
     ///
     /// # Safety
     ///
-    /// `memory` must be a memory block returned by this allocator.
+    /// * `ptr` must be [*currently allocated*] via this allocator, and
+    /// * `layout` must [*fit*] the `ptr`.
+    ///
+    /// [*currently allocated*]: #currently-allocated-memory
+    /// [*fit*]: #memory-fitting
     unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout);
 
     /// Attempts to extend the memory block.
@@ -237,7 +239,7 @@ pub unsafe trait AllocRef {
     // * `new_size must be strictly greater than `memory.size` or both are zero
     /// * `new_size` must be greater than or equal to `layout.size()`
     /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`, must not overflow
-    ///   (i.e., the rounded value must be less than `usize::MAX`).
+    ///   (i.e., the rounded value must be less than or equal to `usize::MAX`).
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
