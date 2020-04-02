@@ -75,7 +75,7 @@ pub type Target = Idx<TargetData>;
 
 #[derive(Debug, Clone)]
 pub struct PackageData {
-    pub id: String,
+    pub version: String,
     pub name: String,
     pub manifest: PathBuf,
     pub targets: Vec<Target>,
@@ -174,14 +174,15 @@ impl CargoWorkspace {
         let ws_members = &meta.workspace_members;
 
         for meta_pkg in meta.packages {
-            let cargo_metadata::Package { id, edition, name, manifest_path, .. } = meta_pkg;
+            let cargo_metadata::Package { id, edition, name, manifest_path, version, .. } =
+                meta_pkg;
             let is_member = ws_members.contains(&id);
             let edition = edition
                 .parse::<Edition>()
                 .with_context(|| format!("Failed to parse edition {}", edition))?;
             let pkg = packages.alloc(PackageData {
                 name,
-                id: id.to_string(),
+                version: version.to_string(),
                 manifest: manifest_path,
                 targets: Vec::new(),
                 is_member,
@@ -256,7 +257,7 @@ impl CargoWorkspace {
         if self.is_unique(&*package.name) {
             package.name.clone()
         } else {
-            package.id.clone()
+            format!("{}:{}", package.name, package.version)
         }
     }
 
