@@ -1389,7 +1389,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 "await occurs here".to_string(),
             );
 
-            push_target_span(&mut span);
+            if target_span != await_span {
+                push_target_span(&mut span);
+            }
 
             err.span_note(
                 span,
