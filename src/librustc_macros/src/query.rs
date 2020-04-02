@@ -107,7 +107,9 @@ impl Parse for QueryModifier {
             let block = input.parse()?;
             Ok(QueryModifier::LoadCached(tcx, id, block))
         } else if modifier == "storage" {
-            let ty = input.parse()?;
+            let args;
+            parenthesized!(args in input);
+            let ty = args.parse()?;
             Ok(QueryModifier::Storage(ty))
         } else if modifier == "fatal_cycle" {
             Ok(QueryModifier::FatalCycle)
