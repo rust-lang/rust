@@ -124,7 +124,6 @@ declare_clippy_lint! {
     ///     Contents::None
     /// }
     /// ```
-    ///
     pub OPTION_OPTION,
     pedantic,
     "usage of `Option<Option<T>>`"
