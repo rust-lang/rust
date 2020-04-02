@@ -35,6 +35,15 @@ fn test1() {
     //~^ ERROR future cannot be sent between threads
 }
 
+fn test1_no_let() {
+    let send_fut = async {
+        let _ = make_non_send_future1().await;
+        ready(0).await;
+    };
+    require_send(send_fut);
+    //~^ ERROR future cannot be sent between threads
+}
+
 async fn ready2<T>(t: T) -> T { t }
 fn make_non_send_future2() -> impl Future<Output = Arc<RefCell<i32>>> {
     ready2(Arc::new(RefCell::new(0)))
