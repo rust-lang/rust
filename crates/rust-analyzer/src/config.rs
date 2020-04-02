@@ -18,13 +18,13 @@ pub struct Config {
     pub client_caps: ClientCapsConfig,
 
     pub with_sysroot: bool,
+    // TODO: verify that it means what I think it means
     pub publish_diagnostics: bool,
-    pub use_client_watching: bool,
     // TODO: move to experimental capabilities
     pub vscode_lldb: bool,
     pub lru_capacity: Option<usize>,
     pub proc_macro_srv: Option<String>,
-    pub exclude_globs: Vec<String>,
+    pub files: FilesConfig,
     pub notifications: NotificationsConfig,
 
     pub cargo: CargoConfig,
@@ -34,6 +34,18 @@ pub struct Config {
     pub inlay_hints: InlayHintsConfig,
     pub completion: CompletionConfig,
     pub call_info_full: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct FilesConfig {
+    watcher: FilesWatcher,
+    exclude: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+enum FilesWatcher {
+    Client,
+    Notify,
 }
 
 #[derive(Debug, Clone)]
@@ -67,11 +79,10 @@ impl Default for Config {
 
             with_sysroot: true,
             publish_diagnostics: true,
-            use_client_watching: false,
             vscode_lldb: false,
             lru_capacity: None,
             proc_macro_srv: None,
-            exclude_globs: Vec::new(),
+            files: FilesConfig { watcher: FilesWatcher::Notify, exclude: Vec::new() },
             notifications: NotificationsConfig {
                 workspace_loaded: true,
                 cargo_toml_not_found: true,
@@ -112,39 +123,43 @@ impl Config {
 
         set(value, "/withSysroot", &mut self.with_sysroot);
         set(value, "/featureFlags/lsp.diagnostics", &mut self.publish_diagnostics);
-        set(value, "/useClientWatching", &mut self.use_client_watching);
         set(value, "/vscodeLldb", &mut self.vscode_lldb);
         set(value, "/lruCapacity", &mut self.lru_capacity);
-        set(value, "/excludeGlobs", &mut self.exclude_globs);
-        set(value, "/featureFlags/notifications.workspace-loaded", &mut self.notifications.workspace_loaded);
-        set(value, "/featureFlags/notifications.cargo-toml-not-found", &mut self.notifications.cargo_toml_not_found);
-
-        set(value, "/cargoFeatures/noDefaultFeatures", &mut self.cargo.no_default_features);
-        set(value, "/cargoFeatures/allFeatures", &mut self.cargo.all_features);
-        set(value, "/cargoFeatures/features", &mut self.cargo.features);
-        set(value, "/cargoFeatures/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
-        if let RustfmtConfig::Rustfmt { extra_args } = &mut self.rustfmt {
-            set(value, "/rustfmtArgs", extra_args);
+        if let Some(watcher) =  get::<String>(value, "/files/watcher") {
+            self.files.watcher = match watcher.as_str() {
+                "client" => FilesWatcher::Client,
+                "notify"| _ => FilesWatcher::Notify,
+            }
         }
-        if let Some(false) = get(value, "cargo_watch_enable") {
+        set(value, "/notifications/workspaceLoaded", &mut self.notifications.workspace_loaded);
+        set(value, "/notifications/cargoTomlNotFound", &mut self.notifications.cargo_toml_not_found);
+
+        set(value, "/cargo/noDefaultFeatures", &mut self.cargo.no_default_features);
+        set(value, "/cargo/allFeatures", &mut self.cargo.all_features);
+        set(value, "/cargo/features", &mut self.cargo.features);
+        set(value, "/cargo/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
+        if let RustfmtConfig::Rustfmt { extra_args } = &mut self.rustfmt {
+            set(value, "/rustfmt/extraArgs", extra_args);
+        }
+        if let Some(false) = get(value, "/checkOnSave/enable") {
             self.check = None
         } else {
             if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets }) = &mut self.check
             {
-                set(value, "/cargoWatchArgs", extra_args);
-                set(value, "/cargoWatchCommand", command);
-                set(value, "/cargoWatchAllTargets", all_targets);
+                set(value, "/checkOnSave/extraArgs", extra_args);
+                set(value, "/checkOnSave/command", command);
+                set(value, "/checkOnSave/allTargets", all_targets);
             }
         };
 
-        set(value, "/inlayHintsType", &mut self.inlay_hints.type_hints);
-        set(value, "/inlayHintsParameter", &mut self.inlay_hints.parameter_hints);
-        set(value, "/inlayHintsChaining", &mut self.inlay_hints.chaining_hints);
-        set(value, "/inlayHintsMaxLength", &mut self.inlay_hints.max_length);
-        set(value, "/featureFlags/completion.enable-postfix", &mut self.completion.enable_postfix_completions);
-        set(value, "/featureFlags/completion.insertion.add-call-parenthesis", &mut self.completion.add_call_parenthesis);
-        set(value, "/featureFlags/completion.insertion.add-argument-snippets", &mut self.completion.add_call_argument_snippets);
-        set(value, "/featureFlags/call-info.full", &mut self.call_info_full);
+        set(value, "/inlayHints/typeHints", &mut self.inlay_hints.type_hints);
+        set(value, "/inlayHints/parameterHints", &mut self.inlay_hints.parameter_hints);
+        set(value, "/inlayHints/chainingHints", &mut self.inlay_hints.chaining_hints);
+        set(value, "/inlayHints/maxLength", &mut self.inlay_hints.max_length);
+        set(value, "/completion/postfix/enable", &mut self.completion.enable_postfix_completions);
+        set(value, "/completion/addCallParenthesis", &mut self.completion.add_call_parenthesis);
+        set(value, "/completion/addCallArgumentSnippets", &mut self.completion.add_call_argument_snippets);
+        set(value, "/callInfo/full", &mut self.call_info_full);
 
         log::info!("Config::update() = {:#?}", self);
 
