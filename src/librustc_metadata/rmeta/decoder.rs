@@ -798,7 +798,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
-    fn get_adt_def(&self, item_id: DefIndex, tcx: TyCtxt<'tcx>) -> ty::AdtDef {
+    fn get_adt_def(&self, item_id: DefIndex, tcx: TyCtxt<'tcx>) -> &'tcx ty::AdtDef {
         let kind = self.kind(item_id);
         let did = self.local_def_id(item_id);
 

@@ -12,8 +12,11 @@ macro_rules! arena_types {
     ($macro:path, $args:tt, $tcx:lifetime) => (
         $macro!($args, [
             [] layouts: rustc_target::abi::Layout,
+            // AdtDef are interned and compared by address
+            [] adt_def: rustc_middle::ty::AdtDef,
             [decode] tables: rustc_middle::ty::TypeckTables<$tcx>,
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
+            // Required for the incremental on-disk cache
             [few, decode] mir_keys: rustc_hir::def_id::DefIdSet,
             [] region_scope_tree: rustc_middle::middle::region::ScopeTree,
             [] dropck_outlives:

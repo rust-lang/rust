@@ -282,8 +282,7 @@ rustc_queries! {
         query trait_def(_: DefId) -> ty::TraitDef {
             storage(ArenaCacheSelector<'tcx>)
         }
-        query adt_def(_: DefId) -> ty::AdtDef {
-            storage(ArenaCacheSelector<'tcx>)
+        query adt_def(_: DefId) -> &'tcx ty::AdtDef {
         }
         query adt_destructor(_: DefId) -> Option<ty::Destructor> {}
 

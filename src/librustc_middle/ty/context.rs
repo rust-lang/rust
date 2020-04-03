@@ -1008,8 +1008,8 @@ impl<'tcx> TyCtxt<'tcx> {
         kind: AdtKind,
         variants: IndexVec<VariantIdx, ty::VariantDef>,
         repr: ReprOptions,
-    ) -> ty::AdtDef {
-        ty::AdtDef::new(self, did, kind, variants, repr)
+    ) -> &'tcx ty::AdtDef {
+        self.arena.alloc(ty::AdtDef::new(self, did, kind, variants, repr))
     }
 
     pub fn intern_const_alloc(self, alloc: Allocation) -> &'tcx Allocation {
