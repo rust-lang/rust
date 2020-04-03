@@ -432,18 +432,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         body: &hir::Body<'_>,
         expected_sig: ExpectedSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
-        let expr_map_node = self.tcx.hir().get_if_local(expr_def_id).unwrap();
+        let hir = self.tcx.hir();
+        let expr_map_node = hir.get_if_local(expr_def_id).unwrap();
         let expected_args: Vec<_> = expected_sig
             .sig
             .inputs()
             .iter()
             .map(|ty| ArgKind::from_expected_ty(ty, None))
             .collect();
-        let (closure_span, found_args) = self.get_fn_like_arguments(expr_map_node);
-        let expected_span = expected_sig.cause_span.unwrap_or(closure_span);
+        let (closure_span, found_args) = match self.get_fn_like_arguments(expr_map_node) {
+            Some((sp, args)) => (Some(sp), args),
+            None => (None, Vec::new()),
+        };
+        let expected_span =
+            expected_sig.cause_span.unwrap_or_else(|| hir.span_if_local(expr_def_id).unwrap());
         self.report_arg_count_mismatch(
             expected_span,
-            Some(closure_span),
+            closure_span,
             expected_args,
             found_args,
             true,
