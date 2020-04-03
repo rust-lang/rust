@@ -279,11 +279,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     subpatterns: field_pats(destructured.fields),
                 }
             }
-            ty::Adt(_, _) => {
-                let destructured = tcx.destructure_const(param_env.and(cv));
-                PatKind::Leaf { subpatterns: field_pats(destructured.fields) }
-            }
-            ty::Tuple(_) => {
+            ty::Tuple(_) | ty::Adt(_, _) => {
                 let destructured = tcx.destructure_const(param_env.and(cv));
                 PatKind::Leaf { subpatterns: field_pats(destructured.fields) }
             }
