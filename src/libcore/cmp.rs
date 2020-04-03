@@ -817,7 +817,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// When comparison is impossible:
     ///
     /// ```
-    /// let result = std::f64::NAN.partial_cmp(&1.0);
+    /// let result = f64::NAN.partial_cmp(&1.0);
     /// assert_eq!(result, None);
     /// ```
     #[must_use]

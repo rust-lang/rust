@@ -139,10 +139,9 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// ```
     /// #![feature(range_is_empty)]
     ///
-    /// use std::f32::NAN;
     /// assert!(!(3.0..5.0).is_empty());
-    /// assert!( (3.0..NAN).is_empty());
-    /// assert!( (NAN..5.0).is_empty());
+    /// assert!( (3.0..f32::NAN).is_empty());
+    /// assert!( (f32::NAN..5.0).is_empty());
     /// ```
     #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
     pub fn is_empty(&self) -> bool {
@@ -496,10 +495,9 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// ```
     /// #![feature(range_is_empty)]
     ///
-    /// use std::f32::NAN;
     /// assert!(!(3.0..=5.0).is_empty());
-    /// assert!( (3.0..=NAN).is_empty());
-    /// assert!( (NAN..=5.0).is_empty());
+    /// assert!( (3.0..=f32::NAN).is_empty());
+    /// assert!( (f32::NAN..=5.0).is_empty());
     /// ```
     ///
     /// This method returns `true` after iteration has finished:
