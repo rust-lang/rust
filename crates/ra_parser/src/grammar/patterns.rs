@@ -70,15 +70,6 @@ fn pattern_single_r(p: &mut Parser, recovery_set: TokenSet) {
                 return;
             }
         }
-        // test marco_pat
-        // fn main() {
-        //     let m!(x) = 0;
-        // }
-        if lhs.kind() == PATH_PAT && p.at(T![!]) {
-            let m = lhs.undo_completion(p);
-            items::macro_call_after_excl(p);
-            m.complete(p, MACRO_CALL);
-        }
     }
 }
 
@@ -92,12 +83,12 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
         IDENT => match p.nth(1) {
             // Checks the token after an IDENT to see if a pattern is a path (Struct { .. }) or macro
             // (T![x]).
-            T!['('] | T!['{'] | T![!] => path_pat(p),
+            T!['('] | T!['{'] | T![!] => path_or_macro_pat(p),
             T![:] if p.nth_at(1, T![::]) => path_pat(p),
             _ => bind_pat(p, true),
         },
 
-        _ if paths::is_use_path_start(p) => path_pat(p),
+        _ if paths::is_use_path_start(p) => path_or_macro_pat(p),
         _ if is_literal_pat_start(p) => literal_pat(p),
 
         T![.] if p.at(T![..]) => dot_dot_pat(p),
@@ -146,7 +137,7 @@ fn literal_pat(p: &mut Parser) -> CompletedMarker {
 //     let Bar { .. } = ();
 //     let Bar(..) = ();
 // }
-fn path_pat(p: &mut Parser) -> CompletedMarker {
+fn path_or_macro_pat(p: &mut Parser) -> CompletedMarker {
     assert!(paths::is_use_path_start(p));
     let m = p.start();
     paths::expr_path(p);
@@ -158,6 +149,14 @@ fn path_pat(p: &mut Parser) -> CompletedMarker {
         T!['{'] => {
             record_field_pat_list(p);
             RECORD_PAT
+        }
+        // test marco_pat
+        // fn main() {
+        //     let m!(x) = 0;
+        // }
+        T![!] => {
+            items::macro_call_after_excl(p);
+            MACRO_CALL
         }
         _ => PATH_PAT,
     };
