@@ -789,7 +789,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "inefficient_to_string",
-        group: "perf",
+        group: "pedantic",
         desc: "using `to_string` on `&&T` where `T: ToString`",
         deprecation: None,
         module: "methods",
