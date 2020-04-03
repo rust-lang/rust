@@ -2,5 +2,6 @@
 !out/main.js
 !package.json
 !package-lock.json
+!ra_syntax_tree.tmGrammar.json
 !icon.png
 !README.md
