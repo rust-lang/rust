@@ -1,3 +1,5 @@
+//! Driver for proc macro server
+
 use ra_proc_macro::msg::{self, Message};
 use ra_proc_macro_srv::{expand_task, list_macros};
 
