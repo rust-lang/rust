@@ -77,6 +77,7 @@ mod tests {
                 delete: [246; 246),
                 insert: "X",
                 kind: EnumVariant,
+                detail: "()",
             },
             CompletionItem {
                 label: "Z",

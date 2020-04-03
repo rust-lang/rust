@@ -57,14 +57,16 @@ impl Completions {
         let kind = match resolution {
             ScopeDef::ModuleDef(Module(..)) => CompletionItemKind::Module,
             ScopeDef::ModuleDef(Function(func)) => {
-                return self.add_function_with_name(ctx, Some(local_name), *func);
+                return self.add_function(ctx, *func, Some(local_name));
             }
             ScopeDef::ModuleDef(Adt(hir::Adt::Struct(_))) => CompletionItemKind::Struct,
             // FIXME: add CompletionItemKind::Union
             ScopeDef::ModuleDef(Adt(hir::Adt::Union(_))) => CompletionItemKind::Struct,
             ScopeDef::ModuleDef(Adt(hir::Adt::Enum(_))) => CompletionItemKind::Enum,
 
-            ScopeDef::ModuleDef(EnumVariant(..)) => CompletionItemKind::EnumVariant,
+            ScopeDef::ModuleDef(EnumVariant(var)) => {
+                return self.add_enum_variant(ctx, *var, Some(local_name));
+            }
             ScopeDef::ModuleDef(Const(..)) => CompletionItemKind::Const,
             ScopeDef::ModuleDef(Static(..)) => CompletionItemKind::Static,
             ScopeDef::ModuleDef(Trait(..)) => CompletionItemKind::Trait,
@@ -125,10 +127,6 @@ impl Completions {
         completion_item.kind(kind).set_documentation(docs).add_to(self)
     }
 
-    pub(crate) fn add_function(&mut self, ctx: &CompletionContext, func: hir::Function) {
-        self.add_function_with_name(ctx, None, func)
-    }
-
     fn guess_macro_braces(&self, macro_name: &str, docs: &str) -> &'static str {
         let mut votes = [0, 0, 0];
         for (idx, s) in docs.match_indices(&macro_name) {
@@ -187,15 +185,15 @@ impl Completions {
         self.add(builder);
     }
 
-    fn add_function_with_name(
+    pub(crate) fn add_function(
         &mut self,
         ctx: &CompletionContext,
-        name: Option<String>,
         func: hir::Function,
+        local_name: Option<String>,
     ) {
         let has_self_param = func.has_self_param(ctx.db);
 
-        let name = name.unwrap_or_else(|| func.name(ctx.db).to_string());
+        let name = local_name.unwrap_or_else(|| func.name(ctx.db).to_string());
         let ast_node = func.source(ctx.db).value;
         let function_signature = FunctionSignature::from(&ast_node);
 
@@ -217,7 +215,7 @@ impl Completions {
             .cloned()
             .collect();
 
-        builder = builder.add_call_parens(ctx, name, params);
+        builder = builder.add_call_parens(ctx, name, Params::Named(params));
 
         self.add(builder)
     }
@@ -254,14 +252,20 @@ impl Completions {
             .add_to(self);
     }
 
-    pub(crate) fn add_enum_variant(&mut self, ctx: &CompletionContext, variant: hir::EnumVariant) {
+    pub(crate) fn add_enum_variant(
+        &mut self,
+        ctx: &CompletionContext,
+        variant: hir::EnumVariant,
+        local_name: Option<String>,
+    ) {
         let is_deprecated = is_deprecated(variant, ctx.db);
-        let name = variant.name(ctx.db);
+        let name = local_name.unwrap_or_else(|| variant.name(ctx.db).to_string());
         let detail_types = variant
             .fields(ctx.db)
             .into_iter()
             .map(|field| (field.name(ctx.db), field.signature_ty(ctx.db)));
-        let detail = match variant.kind(ctx.db) {
+        let variant_kind = variant.kind(ctx.db);
+        let detail = match variant_kind {
             StructKind::Tuple | StructKind::Unit => detail_types
                 .map(|(_, t)| t.display(ctx.db).to_string())
                 .sep_by(", ")
@@ -273,22 +277,42 @@ impl Completions {
                 .surround_with("{ ", " }")
                 .to_string(),
         };
-        CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
-            .kind(CompletionItemKind::EnumVariant)
-            .set_documentation(variant.docs(ctx.db))
-            .set_deprecated(is_deprecated)
-            .detail(detail)
-            .add_to(self);
+        let mut res =
+            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.clone())
+                .kind(CompletionItemKind::EnumVariant)
+                .set_documentation(variant.docs(ctx.db))
+                .set_deprecated(is_deprecated)
+                .detail(detail);
+
+        if variant_kind == StructKind::Tuple {
+            let params = Params::Anonymous(variant.fields(ctx.db).len());
+            res = res.add_call_parens(ctx, name, params)
+        }
+
+        res.add_to(self);
+    }
+}
+
+enum Params {
+    Named(Vec<String>),
+    Anonymous(usize),
+}
+
+impl Params {
+    fn len(&self) -> usize {
+        match self {
+            Params::Named(xs) => xs.len(),
+            Params::Anonymous(len) => *len,
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
 impl Builder {
-    fn add_call_parens(
-        mut self,
-        ctx: &CompletionContext,
-        name: String,
-        params: Vec<String>,
-    ) -> Builder {
+    fn add_call_parens(mut self, ctx: &CompletionContext, name: String, params: Params) -> Builder {
         if !ctx.config.add_call_parenthesis {
             return self;
         }
@@ -302,15 +326,16 @@ impl Builder {
             (format!("{}()$0", name), format!("{}()", name))
         } else {
             self = self.trigger_call_info();
-            let snippet = if ctx.config.add_call_argument_snippets {
-                let function_params_snippet = params
-                    .iter()
-                    .enumerate()
-                    .map(|(index, param_name)| format!("${{{}:{}}}", index + 1, param_name))
-                    .sep_by(", ");
-                format!("{}({})$0", name, function_params_snippet)
-            } else {
-                format!("{}($0)", name)
+            let snippet = match (ctx.config.add_call_argument_snippets, params) {
+                (true, Params::Named(params)) => {
+                    let function_params_snippet = params
+                        .iter()
+                        .enumerate()
+                        .map(|(index, param_name)| format!("${{{}:{}}}", index + 1, param_name))
+                        .sep_by(", ");
+                    format!("{}({})$0", name, function_params_snippet)
+                }
+                _ => format!("{}($0)", name),
             };
 
             (snippet, format!("{}(…)", name))
@@ -385,12 +410,14 @@ mod tests {
         @r###"
         [
             CompletionItem {
-                label: "Foo",
+                label: "Foo(…)",
                 source_range: [115; 117),
                 delete: [115; 117),
-                insert: "Foo",
+                insert: "Foo($0)",
                 kind: EnumVariant,
+                lookup: "Foo",
                 detail: "(i32, i32)",
+                trigger_call_info: true,
             },
         ]"###
         );
@@ -558,6 +585,101 @@ mod tests {
                 kind: Method,
                 lookup: "foo",
                 detail: "fn foo(&self)",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn inserts_parens_for_tuple_enums() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                enum Option<T> { Some(T), None }
+                use Option::*;
+                fn main() -> Option<i32> {
+                    Som<|>
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "None",
+                source_range: [144; 147),
+                delete: [144; 147),
+                insert: "None",
+                kind: EnumVariant,
+                detail: "()",
+            },
+            CompletionItem {
+                label: "Option",
+                source_range: [144; 147),
+                delete: [144; 147),
+                insert: "Option",
+                kind: Enum,
+            },
+            CompletionItem {
+                label: "Some(…)",
+                source_range: [144; 147),
+                delete: [144; 147),
+                insert: "Some($0)",
+                kind: EnumVariant,
+                lookup: "Some",
+                detail: "(T)",
+                trigger_call_info: true,
+            },
+            CompletionItem {
+                label: "main()",
+                source_range: [144; 147),
+                delete: [144; 147),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main() -> Option<i32>",
+            },
+        ]
+        "###
+        );
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                enum Option<T> { Some(T), None }
+                use Option::*;
+                fn main(value: Option<i32>) {
+                    match value {
+                        Som<|>
+                    }
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "None",
+                source_range: [185; 188),
+                delete: [185; 188),
+                insert: "None",
+                kind: EnumVariant,
+                detail: "()",
+            },
+            CompletionItem {
+                label: "Option",
+                source_range: [185; 188),
+                delete: [185; 188),
+                insert: "Option",
+                kind: Enum,
+            },
+            CompletionItem {
+                label: "Some(…)",
+                source_range: [185; 188),
+                delete: [185; 188),
+                insert: "Some($0)",
+                kind: EnumVariant,
+                lookup: "Some",
+                detail: "(T)",
+                trigger_call_info: true,
             },
         ]
         "###
