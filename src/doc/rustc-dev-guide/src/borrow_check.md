@@ -37,8 +37,8 @@ the [`mir_borrowck`] query.
   we will modify this copy in place to modify the types and things to
   include references to the new regions that we are computing.
 - We then invoke [`replace_regions_in_mir`] to modify our local MIR.
-  Among other things, this function will replace all of the [regions](./appendix/glossary.md#region) in
-  the MIR with fresh [inference variables](./appendix/glossary.md#inf-var).
+  Among other things, this function will replace all of the [regions](./appendix/glossary.md#region)
+  in the MIR with fresh [inference variables](./appendix/glossary.md#inf-var).
 - Next, we perform a number of
   [dataflow analyses](./appendix/background.md#dataflow) that
   compute what data is moved and when.
