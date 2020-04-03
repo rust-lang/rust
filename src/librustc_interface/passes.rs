@@ -51,13 +51,40 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::{env, fs, iter, mem};
 
-pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
-    let krate = sess.time("parse_crate", || match input {
-        Input::File(file) => parse_crate_from_file(file, &sess.parse_sess),
+#[cfg(rust_analyzer)]
+fn parse_with_ra<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate>
+{
+    match input {
+        Input::File(file) => {
+            rustc_parse_ra::parse_crate_from_file(file, &sess.parse_sess)
+        },
         Input::Str { input, name } => {
-            parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
+            rustc_parse_ra::parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
         }
-    })?;
+    }
+}
+
+#[cfg(not(rust_analyzer))]
+fn parse_with_ra<'a>(sess: &'a Session, _input: &Input) -> PResult<'a, ast::Crate>
+{
+    Err(sess.struct_fatal("parsing with rust-analyzer is not supported because this version of rustc was not compiled with the \"rust_analyzer\" feature flag enabled"))
+}
+
+pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
+    let krate = sess.time("parse_crate", ||
+        if sess.opts.debugging_opts.parse_with_rust_analyzer {
+            parse_with_ra(sess, input)
+        } else {
+            match input {
+                Input::File(file) => {
+                    parse_crate_from_file(file, &sess.parse_sess)
+                },
+                Input::Str { input, name } => {
+                    parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
+                }
+            }
+        }
+    )?;
 
     if sess.opts.debugging_opts.ast_json_noexpand {
         println!("{}", json::as_json(&krate));

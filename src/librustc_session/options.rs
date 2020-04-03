@@ -959,4 +959,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "use new LLVM pass manager"),
     link_native_libraries: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
         "Link native libraries in the linker invocation."),
+    parse_with_rust_analyzer: bool = (false, parse_bool, [UNTRACKED],
+        "Use rust_analyzer to parse Rust instead of the rustc parser"),
 }

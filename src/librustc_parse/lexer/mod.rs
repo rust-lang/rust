@@ -83,6 +83,7 @@ impl<'a> StringReader<'a> {
         let mut sr = StringReader::new(sess, begin.sf, None);
 
         // Seek the lexer to the right byte range.
+        sr.pos = span.lo();
         sr.end_src_index = sr.src_index(span.hi());
 
         sr

@@ -436,6 +436,10 @@
 # override the default allocator for rustc and LLVM.
 #jemalloc = false
 
+# Enable experimental features that depend on rust-analyzer. Assumes that you
+# have a rust-analyzer directory in the same directory as the rustc directory
+#rust-analyzer = false
+
 # Run tests in various test suites with the "nll compare mode" in addition to
 # running the tests in normal mode. Largely only used on CI and during local
 # development of NLL

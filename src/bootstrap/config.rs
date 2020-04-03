@@ -116,6 +116,7 @@ pub struct Config {
     pub targets: Vec<Interned<String>>,
     pub local_rebuild: bool,
     pub jemalloc: bool,
+    pub rust_analyzer: bool,
     pub control_flow_guard: bool,
 
     // dist misc
@@ -341,6 +342,7 @@ struct Rust {
     thin_lto_import_instr_limit: Option<u32>,
     remap_debuginfo: Option<bool>,
     jemalloc: Option<bool>,
+    rust_analyzer: Option<bool>,
     test_compare_mode: Option<bool>,
     llvm_libunwind: Option<bool>,
     control_flow_guard: Option<bool>,
@@ -569,6 +571,7 @@ impl Config {
             set(&mut config.codegen_tests, rust.codegen_tests);
             set(&mut config.rust_rpath, rust.rpath);
             set(&mut config.jemalloc, rust.jemalloc);
+            set(&mut config.rust_analyzer, rust.rust_analyzer);
             set(&mut config.test_compare_mode, rust.test_compare_mode);
             set(&mut config.llvm_libunwind, rust.llvm_libunwind);
             set(&mut config.backtrace, rust.backtrace);
