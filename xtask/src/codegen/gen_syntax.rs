@@ -5,6 +5,8 @@
 
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
+use std::borrow::Cow;
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use crate::{
     ast_src::{AstSrc, FieldSrc, KindsSrc, AST_SRC, KINDS_SRC},
@@ -18,13 +20,125 @@ pub fn generate_syntax(mode: Mode) -> Result<()> {
     update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
     let ast_file = project_root().join(codegen::AST);
-    let ast = generate_ast(AST_SRC)?;
+    let ast = generate_ast(KINDS_SRC, AST_SRC)?;
     update(ast_file.as_path(), &ast, mode)?;
 
     Ok(())
 }
 
-fn generate_ast(grammar: AstSrc<'_>) -> Result<String> {
+#[derive(Debug, Default, Clone)]
+struct ElementKinds {
+    kinds: BTreeSet<proc_macro2::Ident>,
+    has_nodes: bool,
+    has_tokens: bool,
+}
+
+fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
+    let all_token_kinds: Vec<_> = kinds
+        .punct
+        .into_iter()
+        .map(|(_, kind)| kind)
+        .copied()
+        .map(|x| x.into())
+        .chain(
+            kinds
+                .keywords
+                .into_iter()
+                .chain(kinds.contextual_keywords.into_iter())
+                .map(|name| Cow::Owned(format!("{}_KW", to_upper_snake_case(&name)))),
+        )
+        .chain(kinds.literals.into_iter().copied().map(|x| x.into()))
+        .chain(kinds.tokens.into_iter().copied().map(|x| x.into()))
+        .collect();
+
+    let mut element_kinds_map = HashMap::new();
+    for kind in &all_token_kinds {
+        let kind = &**kind;
+        let name = to_pascal_case(kind);
+        element_kinds_map.insert(
+            name,
+            ElementKinds {
+                kinds: Some(format_ident!("{}", kind)).into_iter().collect(),
+                has_nodes: false,
+                has_tokens: true,
+            },
+        );
+    }
+
+    for kind in kinds.nodes {
+        let name = to_pascal_case(kind);
+        element_kinds_map.insert(
+            name,
+            ElementKinds {
+                kinds: Some(format_ident!("{}", *kind)).into_iter().collect(),
+                has_nodes: true,
+                has_tokens: false,
+            },
+        );
+    }
+
+    for en in grammar.enums {
+        let mut element_kinds: ElementKinds = Default::default();
+        for variant in en.variants {
+            if let Some(variant_element_kinds) = element_kinds_map.get(*variant) {
+                element_kinds.kinds.extend(variant_element_kinds.kinds.iter().cloned());
+                element_kinds.has_tokens |= variant_element_kinds.has_tokens;
+                element_kinds.has_nodes |= variant_element_kinds.has_nodes;
+            } else {
+                panic!("Enum variant has type that does not exist or was not declared before the enum: {}", *variant);
+            }
+        }
+        element_kinds_map.insert(en.name.to_string(), element_kinds);
+    }
+
+    let tokens = all_token_kinds.iter().map(|kind_str| {
+        let kind_str = &**kind_str;
+        let kind = format_ident!("{}", kind_str);
+        let name = format_ident!("{}", to_pascal_case(kind_str));
+        quote! {
+            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+            pub struct #name(SyntaxToken);
+
+            impl std::fmt::Display for #name {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    std::fmt::Display::fmt(self.syntax(), f)
+                }
+            }
+
+            impl AstToken for #name {
+                fn can_cast(kind: SyntaxKind) -> bool {
+                    match kind {
+                        #kind => true,
+                        _ => false,
+                    }
+                }
+                fn cast_or_return(syntax: SyntaxToken) -> Result<Self, SyntaxToken> {
+                    if Self::can_cast(syntax.kind()) { Ok(Self(syntax)) } else { Err(syntax) }
+                }
+                fn syntax(&self) -> &SyntaxToken { &self.0 }
+                fn into_syntax(self) -> SyntaxToken { self.0 }
+            }
+
+            impl AstElement for #name {
+                fn can_cast_element(kind: SyntaxKind) -> bool {
+                    match kind {
+                        #kind => true,
+                        _ => false,
+                    }
+                }
+                fn cast_or_return_element(syntax: SyntaxElement) -> Result<Self, SyntaxElement> {
+                    if Self::can_cast_element(syntax.kind()) { Ok(Self(syntax.into_token().unwrap())) } else { Err(syntax) }
+                }
+                fn syntax_element(&self) -> NodeOrToken<&SyntaxNode, &SyntaxToken> {
+                    NodeOrToken::Token(&self.0)
+                }
+                fn into_syntax_element(self) -> SyntaxElement {
+                    NodeOrToken::Token(self.0)
+                }
+            }
+        }
+    });
+
     let nodes = grammar.nodes.iter().map(|node| {
         let name = format_ident!("{}", node.name);
         let kind = format_ident!("{}", to_upper_snake_case(&name.to_string()));
@@ -42,20 +156,28 @@ fn generate_ast(grammar: AstSrc<'_>) -> Result<String> {
                 FieldSrc::Optional(ty) | FieldSrc::Many(ty) => ty,
                 FieldSrc::Shorthand => name,
             };
+            let element_kinds = &element_kinds_map.get(*ty).unwrap_or_else(|| panic!("type not found: {}", *ty));
+            let iter = if !element_kinds.has_tokens {
+                format_ident!("AstChildren")
+            } else if !element_kinds.has_nodes {
+                format_ident!("AstChildTokens")
+            } else {
+                format_ident!("AstChildElements")
+            };
             let ty = format_ident!("{}", ty);
 
             match field {
                 FieldSrc::Many(_) => {
                     quote! {
-                        pub fn #method_name(&self) -> AstChildren<#ty> {
-                            AstChildren::new(&self.syntax)
+                        pub fn #method_name(&self) -> #iter<#ty> {
+                            #iter::new(&self.syntax)
                         }
                     }
                 }
                 FieldSrc::Optional(_) | FieldSrc::Shorthand => {
                     quote! {
                         pub fn #method_name(&self) -> Option<#ty> {
-                            AstChildren::new(&self.syntax).next()
+                            #iter::new(&self.syntax).next()
                         }
                     }
                 }
@@ -81,11 +203,31 @@ fn generate_ast(grammar: AstSrc<'_>) -> Result<String> {
                         _ => false,
                     }
                 }
-                fn cast(syntax: SyntaxNode) -> Option<Self> {
-                    if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+                fn cast_or_return(syntax: SyntaxNode) -> Result<Self, SyntaxNode> {
+                    if Self::can_cast(syntax.kind()) { Ok(Self { syntax }) } else { Err(syntax) }
                 }
                 fn syntax(&self) -> &SyntaxNode { &self.syntax }
+                fn into_syntax(self) -> SyntaxNode { self.syntax }
             }
+
+            impl AstElement for #name {
+                fn can_cast_element(kind: SyntaxKind) -> bool {
+                    match kind {
+                        #kind => true,
+                        _ => false,
+                    }
+                }
+                fn cast_or_return_element(syntax: SyntaxElement) -> Result<Self, SyntaxElement> {
+                    if Self::can_cast_element(syntax.kind()) { Ok(Self { syntax: syntax.into_node().unwrap() }) } else { Err(syntax) }
+                }
+                fn syntax_element(&self) -> NodeOrToken<&SyntaxNode, &SyntaxToken> {
+                    NodeOrToken::Node(&self.syntax)
+                }
+                fn into_syntax_element(self) -> SyntaxElement {
+                    NodeOrToken::Node(self.syntax)
+                }
+            }
+
             #(#traits)*
 
             impl #name {
@@ -96,15 +238,70 @@ fn generate_ast(grammar: AstSrc<'_>) -> Result<String> {
 
     let enums = grammar.enums.iter().map(|en| {
         let variants = en.variants.iter().map(|var| format_ident!("{}", var)).collect::<Vec<_>>();
+        let element_kinds = &element_kinds_map[&en.name.to_string()];
         let name = format_ident!("{}", en.name);
-        let kinds = variants
+        let kinds = en.variants
             .iter()
-            .map(|name| format_ident!("{}", to_upper_snake_case(&name.to_string())))
+            .map(|name| {
+                element_kinds_map[*name].kinds.iter().collect::<Vec<_>>()
+            })
             .collect::<Vec<_>>();
         let traits = en.traits.iter().map(|trait_name| {
             let trait_name = format_ident!("{}", trait_name);
             quote!(impl ast::#trait_name for #name {})
         });
+
+        let all_kinds = &element_kinds.kinds;
+
+        let specific_ast_trait = if element_kinds.has_nodes != element_kinds.has_tokens {
+            let (ast_trait, syntax_type) = if element_kinds.has_tokens {
+                (
+                    quote!(AstToken),
+                    quote!(SyntaxToken),
+                )
+            } else {
+                (
+                    quote!(AstNode),
+                    quote!(SyntaxNode),
+                )
+            };
+
+            quote! {
+                impl #ast_trait for #name {
+                    fn can_cast(kind: SyntaxKind) -> bool {
+                        match kind {
+                            #(#all_kinds)|* => true,
+                            _ => false,
+                        }
+                    }
+                    #[allow(unreachable_patterns)]
+                    fn cast_or_return(syntax: #syntax_type) -> Result<Self, #syntax_type> {
+                        match syntax.kind() {
+                            #(
+                            #(#kinds)|* => #variants::cast_or_return(syntax).map(|x| #name::#variants(x)),
+                            )*
+                            _ => Err(syntax),
+                        }
+                    }
+                    fn syntax(&self) -> &#syntax_type {
+                        match self {
+                            #(
+                            #name::#variants(it) => it.syntax(),
+                            )*
+                        }
+                    }
+                    fn into_syntax(self) -> #syntax_type {
+                        match self {
+                            #(
+                            #name::#variants(it) => it.into_syntax(),
+                            )*
+                        }
+                    }
+                }
+            }
+        } else {
+            Default::default()
+        };
 
         quote! {
             #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -122,44 +319,71 @@ fn generate_ast(grammar: AstSrc<'_>) -> Result<String> {
 
             impl std::fmt::Display for #name {
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    std::fmt::Display::fmt(self.syntax(), f)
+                    match self {
+                        #(
+                        #name::#variants(it) => std::fmt::Display::fmt(it, f),
+                        )*
+                    }
                 }
             }
 
-            impl AstNode for #name {
-                fn can_cast(kind: SyntaxKind) -> bool {
+            #specific_ast_trait
+
+            impl AstElement for #name {
+                fn can_cast_element(kind: SyntaxKind) -> bool {
                     match kind {
-                        #(#kinds)|* => true,
+                        #(#all_kinds)|* => true,
                         _ => false,
                     }
                 }
-                fn cast(syntax: SyntaxNode) -> Option<Self> {
-                    let res = match syntax.kind() {
+                #[allow(unreachable_patterns)]
+                fn cast_or_return_element(syntax: SyntaxElement) -> Result<Self, SyntaxElement> {
+                    match syntax.kind() {
                         #(
-                        #kinds => #name::#variants(#variants { syntax }),
+                        #(#kinds)|* => #variants::cast_or_return_element(syntax).map(|x| #name::#variants(x)),
                         )*
-                        _ => return None,
-                    };
-                    Some(res)
+                        _ => Err(syntax),
+                    }
                 }
-                fn syntax(&self) -> &SyntaxNode {
+                fn syntax_element(&self) -> NodeOrToken<&SyntaxNode, &SyntaxToken> {
                     match self {
                         #(
-                        #name::#variants(it) => &it.syntax,
+                        #name::#variants(it) => it.syntax_element(),
+                        )*
+                    }
+                }
+                fn into_syntax_element(self) -> SyntaxElement {
+                    match self {
+                        #(
+                        #name::#variants(it) => it.into_syntax_element(),
                         )*
                     }
                 }
             }
+
             #(#traits)*
         }
     });
 
+    let defined_nodes: HashSet<_> = grammar.nodes.iter().map(|node| node.name).collect();
+
+    for node in kinds
+        .nodes
+        .iter()
+        .map(|kind| to_pascal_case(*kind))
+        .filter(|name| !defined_nodes.contains(&**name))
+    {
+        eprintln!("Warning: node {} not defined in ast source", node);
+    }
+
     let ast = quote! {
+        #[allow(unused_imports)]
         use crate::{
-            SyntaxNode, SyntaxKind::{self, *},
-            ast::{self, AstNode, AstChildren},
+            SyntaxNode, SyntaxToken, SyntaxElement, NodeOrToken, SyntaxKind::{self, *},
+            ast::{self, AstNode, AstToken, AstElement, AstChildren, AstChildTokens, AstChildElements},
         };
 
+        #(#tokens)*
         #(#nodes)*
         #(#enums)*
     };
@@ -282,12 +506,12 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
 
 fn to_upper_snake_case(s: &str) -> String {
     let mut buf = String::with_capacity(s.len());
-    let mut prev_is_upper = None;
+    let mut prev = false;
     for c in s.chars() {
-        if c.is_ascii_uppercase() && prev_is_upper == Some(false) {
+        if c.is_ascii_uppercase() && prev {
             buf.push('_')
         }
-        prev_is_upper = Some(c.is_ascii_uppercase());
+        prev = true;
 
         buf.push(c.to_ascii_uppercase());
     }
@@ -296,14 +520,30 @@ fn to_upper_snake_case(s: &str) -> String {
 
 fn to_lower_snake_case(s: &str) -> String {
     let mut buf = String::with_capacity(s.len());
-    let mut prev_is_upper = None;
+    let mut prev = false;
     for c in s.chars() {
-        if c.is_ascii_uppercase() && prev_is_upper == Some(false) {
+        if c.is_ascii_uppercase() && prev {
             buf.push('_')
         }
-        prev_is_upper = Some(c.is_ascii_uppercase());
+        prev = true;
 
         buf.push(c.to_ascii_lowercase());
+    }
+    buf
+}
+
+fn to_pascal_case(s: &str) -> String {
+    let mut buf = String::with_capacity(s.len());
+    let mut prev_is_underscore = true;
+    for c in s.chars() {
+        if c == '_' {
+            prev_is_underscore = true;
+        } else if prev_is_underscore {
+            buf.push(c.to_ascii_uppercase());
+            prev_is_underscore = false;
+        } else {
+            buf.push(c.to_ascii_lowercase());
+        }
     }
     buf
 }

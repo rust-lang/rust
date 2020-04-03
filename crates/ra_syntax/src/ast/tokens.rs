@@ -1,25 +1,9 @@
 //! There are many AstNodes, but only a few tokens, so we hand-write them here.
 
 use crate::{
-    ast::AstToken,
-    SyntaxKind::{COMMENT, RAW_STRING, STRING, WHITESPACE},
-    SyntaxToken, TextRange, TextUnit,
+    ast::{AstToken, Comment, RawString, String, Whitespace},
+    TextRange, TextUnit,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Comment(SyntaxToken);
-
-impl AstToken for Comment {
-    fn cast(token: SyntaxToken) -> Option<Self> {
-        match token.kind() {
-            COMMENT => Some(Comment(token)),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.0
-    }
-}
 
 impl Comment {
     pub fn kind(&self) -> CommentKind {
@@ -89,20 +73,6 @@ fn prefix_by_kind(kind: CommentKind) -> &'static str {
     unreachable!()
 }
 
-pub struct Whitespace(SyntaxToken);
-
-impl AstToken for Whitespace {
-    fn cast(token: SyntaxToken) -> Option<Self> {
-        match token.kind() {
-            WHITESPACE => Some(Whitespace(token)),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.0
-    }
-}
-
 impl Whitespace {
     pub fn spans_multiple_lines(&self) -> bool {
         let text = self.text();
@@ -168,20 +138,6 @@ pub trait HasStringValue: HasQuotes {
     fn value(&self) -> Option<std::string::String>;
 }
 
-pub struct String(SyntaxToken);
-
-impl AstToken for String {
-    fn cast(token: SyntaxToken) -> Option<Self> {
-        match token.kind() {
-            STRING => Some(String(token)),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.0
-    }
-}
-
 impl HasStringValue for String {
     fn value(&self) -> Option<std::string::String> {
         let text = self.text().as_str();
@@ -198,20 +154,6 @@ impl HasStringValue for String {
             return None;
         }
         Some(buf)
-    }
-}
-
-pub struct RawString(SyntaxToken);
-
-impl AstToken for RawString {
-    fn cast(token: SyntaxToken) -> Option<Self> {
-        match token.kind() {
-            RAW_STRING => Some(RawString(token)),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.0
     }
 }
 

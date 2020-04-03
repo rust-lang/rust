@@ -11,7 +11,10 @@ pub mod make;
 use std::marker::PhantomData;
 
 use crate::{
-    syntax_node::{SyntaxNode, SyntaxNodeChildren, SyntaxToken},
+    syntax_node::{
+        NodeOrToken, SyntaxElement, SyntaxElementChildren, SyntaxNode, SyntaxNodeChildren,
+        SyntaxToken,
+    },
     SmolStr, SyntaxKind,
 };
 
@@ -30,16 +33,24 @@ pub use self::{
 /// conversion itself has zero runtime cost: ast and syntax nodes have exactly
 /// the same representation: a pointer to the tree root and a pointer to the
 /// node itself.
-pub trait AstNode: std::fmt::Display {
+pub trait AstNode: AstElement {
     fn can_cast(kind: SyntaxKind) -> bool
+    where
+        Self: Sized;
+
+    fn cast_or_return(syntax: SyntaxNode) -> Result<Self, SyntaxNode>
     where
         Self: Sized;
 
     fn cast(syntax: SyntaxNode) -> Option<Self>
     where
-        Self: Sized;
+        Self: Sized,
+    {
+        <Self as AstNode>::cast_or_return(syntax).ok()
+    }
 
     fn syntax(&self) -> &SyntaxNode;
+    fn into_syntax(self) -> SyntaxNode;
 }
 
 #[test]
@@ -48,14 +59,49 @@ fn assert_ast_is_object_safe() {
 }
 
 /// Like `AstNode`, but wraps tokens rather than interior nodes.
-pub trait AstToken {
-    fn cast(token: SyntaxToken) -> Option<Self>
+pub trait AstToken: AstElement {
+    fn can_cast(token: SyntaxKind) -> bool
     where
         Self: Sized;
+
+    fn cast_or_return(syntax: SyntaxToken) -> Result<Self, SyntaxToken>
+    where
+        Self: Sized;
+
+    fn cast(syntax: SyntaxToken) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        <Self as AstToken>::cast_or_return(syntax).ok()
+    }
+
     fn syntax(&self) -> &SyntaxToken;
+    fn into_syntax(self) -> SyntaxToken;
+
     fn text(&self) -> &SmolStr {
         self.syntax().text()
     }
+}
+
+/// Like `AstNode`, but wraps either nodes or tokens rather than interior nodes.
+pub trait AstElement: std::fmt::Display {
+    fn can_cast_element(kind: SyntaxKind) -> bool
+    where
+        Self: Sized;
+
+    fn cast_or_return_element(syntax: SyntaxElement) -> Result<Self, SyntaxElement>
+    where
+        Self: Sized;
+
+    fn cast_element(syntax: SyntaxElement) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        <Self as AstElement>::cast_or_return_element(syntax).ok()
+    }
+
+    fn syntax_element(&self) -> NodeOrToken<&SyntaxNode, &SyntaxToken>;
+    fn into_syntax_element(self) -> SyntaxElement;
 }
 
 /// An iterator over `SyntaxNode` children of a particular AST type.
@@ -84,6 +130,64 @@ fn child_opt<P: AstNode + ?Sized, C: AstNode>(parent: &P) -> Option<C> {
 
 fn children<P: AstNode + ?Sized, C: AstNode>(parent: &P) -> AstChildren<C> {
     AstChildren::new(parent.syntax())
+}
+
+/// An iterator over `SyntaxToken` children of a particular AST type.
+#[derive(Debug, Clone)]
+pub struct AstChildTokens<N> {
+    inner: SyntaxElementChildren,
+    ph: PhantomData<N>,
+}
+
+impl<N> AstChildTokens<N> {
+    fn new(parent: &SyntaxNode) -> Self {
+        AstChildTokens { inner: parent.children_with_tokens(), ph: PhantomData }
+    }
+}
+
+impl<N: AstToken> Iterator for AstChildTokens<N> {
+    type Item = N;
+    fn next(&mut self) -> Option<N> {
+        self.inner.by_ref().filter_map(|x| x.into_token()).find_map(N::cast)
+    }
+}
+
+fn child_token_opt<P: AstNode + ?Sized, C: AstToken>(parent: &P) -> Option<C> {
+    child_tokens(parent).next()
+}
+
+fn child_tokens<P: AstNode + ?Sized, C: AstToken>(parent: &P) -> AstChildTokens<C> {
+    AstChildTokens::new(parent.syntax())
+}
+
+/// An iterator over `SyntaxNode` children of a particular AST type.
+#[derive(Debug, Clone)]
+pub struct AstChildElements<N> {
+    inner: SyntaxElementChildren,
+    ph: PhantomData<N>,
+}
+
+impl<N> AstChildElements<N> {
+    fn new(parent: &SyntaxNode) -> Self {
+        AstChildElements { inner: parent.children_with_tokens(), ph: PhantomData }
+    }
+}
+
+impl<N: AstElement> Iterator for AstChildElements<N> {
+    type Item = N;
+    fn next(&mut self) -> Option<N> {
+        self.inner.by_ref().find_map(N::cast_element)
+    }
+}
+
+#[allow(dead_code)]
+fn child_element_opt<P: AstNode + ?Sized, C: AstElement>(parent: &P) -> Option<C> {
+    child_elements(parent).next()
+}
+
+#[allow(dead_code)]
+fn child_elements<P: AstNode + ?Sized, C: AstElement>(parent: &P) -> AstChildElements<C> {
+    AstChildElements::new(parent.syntax())
 }
 
 #[test]
