@@ -165,9 +165,9 @@ impl<'a> Parser<'a> {
                     // Rewind to before attempting to parse the type and continue parsing.
                     let parser_snapshot_after_type = self.clone();
                     mem::replace(self, parser_snapshot_before_type);
-
-                    let snippet = self.span_to_snippet(pat.span).unwrap();
-                    err.span_label(pat.span, format!("while parsing the type for `{}`", snippet));
+                    if let Ok(snip) = self.span_to_snippet(pat.span) {
+                        err.span_label(pat.span, format!("while parsing the type for `{}`", snip));
+                    }
                     (Some((parser_snapshot_after_type, colon_sp, err)), None)
                 }
             }
