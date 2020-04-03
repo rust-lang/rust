@@ -19,16 +19,16 @@ we'll talk about that later.
 
 **TODO: someone else should confirm this vvv**
 
-- User writes a program and invokes `rustc` on it (possibly through `cargo`).
-- First, we parse command line flags, etc. This is done in [`librustc_driver`].
-  We now know what the exact work is we need to do (e.g. which nightly features
-  are enabled, whether we are doing a `check`-only build or emiting LLVM-IR or
-  a full compilation).
-- Then, we start to do compilation...
-- We first [_lex_ the user program][lex]. This turns the program into a stream
-  of _tokens_ (yes, the same sort of tokens as `proc_macros` (sort of)).
-  [`StringReader`] from [`librustc_parse`] integrates [`librustc_lexer`] with
-  `rustc` data structures.
+- The compile process begins when a user writes a Rust source program in text and invokes the `rustc` compiler on it. The work that the compiler needs to perform is defined with command line options. For example, it is possible to optionally enable nightly features, perform `check`-only builds, or emit LLVM-IR rather than complete the entire compile process defined here. The `rustc` executable call may be indirect through the use of `cargo`.
+- Command line argument parsing occurs in the [`librustc_driver`]. This crate defines the compile configuration that is requested by the user.
+- The raw Rust source text is analyzed by a low-level lexer located in [`librustc_lexer`]. At this stage, the source text is turned into a stream of atomic source code units known as _tokens_. (**TODO**: chrissimpkins - Maybe discuss Unicode handling during this stage?)
+- The token stream passes through a higher-level lexer located in [`librustc_parse`] to prepare for the next stage of the compile process. The [`StringReader`] struct is used at this stage to perform a set of validations and turn strings into interned symbols.
+- (**TODO**: chrissimpkins - Expand info on parser) We then [_parse_ the stream of tokens][parser] to build an Abstract Syntax Tree (AST).
+  - macro expansion (**TODO** chrissimpkins)
+  - ast validation (**TODO** chrissimpkins)
+  - nameres (**TODO** chrissimpkins)
+  - early linting (**TODO** chrissimpkins)
+
 - We then [_parse_ the stream of tokens][parser] to build an Abstract Syntax
   Tree (AST).
 - We then take the AST and [convert it to High-Level Intermediate
@@ -45,27 +45,27 @@ we'll talk about that later.
 - We (want to) do [many optimizations on the MIR][mir-opt] because it is still
   generic and that improves the code we generate later, improving compilation
   speed too. (**TODO: size optimizations too?**)
-    - MIR is a higher level (and generic) representation, so it is easier to do
-      some optimizations at MIR level than at LLVM-IR level. For example LLVM
-      doesn't seem to be able to optimize the pattern the [`simplify_try`] mir
-      opt looks for.
+  - MIR is a higher level (and generic) representation, so it is easier to do
+    some optimizations at MIR level than at LLVM-IR level. For example LLVM
+    doesn't seem to be able to optimize the pattern the [`simplify_try`] mir
+    opt looks for.
 - Rust code is _monomorphized_, which means making copies of all the generic
   code with the type parameters replaced by concrete types. To do
   this, we need to collect a list of what concrete types to generate code for.
   This is called _monomorphization collection_.
 - We then begin what is vaguely called _code generation_ or _codegen_.
-    - The [code generation stage (codegen)][codegen] is when higher level
-      representations of source are turned into an executable binary. `rustc`
+  - The [code generation stage (codegen)][codegen] is when higher level
+    representations of source are turned into an executable binary. `rustc`
       uses LLVM for code generation.  The first step is the MIR is then
-      converted to LLVM Intermediate Representation (LLVM IR). This is where
-      the MIR is actually monomorphized, according to the list we created in
-      the previous step.
-    - The LLVM IR is passed to LLVM, which does a lot more optimizations on it.
-      It then emits machine code. It is basically assembly code with additional
-      low-level types and annotations added. (e.g. an ELF object or wasm).
-      **TODO: reference for this section?**
-    - The different libraries/binaries are linked together to produce the final
-      binary. **TODO: reference for this section?**
+    converted to LLVM Intermediate Representation (LLVM IR). This is where
+    the MIR is actually monomorphized, according to the list we created in
+    the previous step.
+  - The LLVM IR is passed to LLVM, which does a lot more optimizations on it.
+    It then emits machine code. It is basically assembly code with additional
+    low-level types and annotations added. (e.g. an ELF object or wasm).
+    **TODO: reference for this section?**
+  - The different libraries/binaries are linked together to produce the final
+    binary. **TODO: reference for this section?**
 
 [`librustc_lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
 [`librustc_driver`]: https://rust-lang.github.io/rustc-guide/rustc-driver.html
@@ -90,12 +90,12 @@ satisfy/optimize for. For example,
 
 - Compilation speed: how fast is it to compile a program. More/better
   compile-time analyses often means compilation is slower.
-    - Also, we want to support incremental compilation, so we need to take that
-      into account. How can we keep track of what work needs to be redone and
-      what can be reused if the user modifies their program?
-        - Also we can't store too much stuff in the incremental cache because
-          it would take a long time to load from disk and it could take a lot
-          of space on the user's system...
+  - Also, we want to support incremental compilation, so we need to take that
+    into account. How can we keep track of what work needs to be redone and
+    what can be reused if the user modifies their program?
+    - Also we can't store too much stuff in the incremental cache because
+      it would take a long time to load from disk and it could take a lot
+      of space on the user's system...
 - Compiler memory usage: while compiling a program, we don't want to use more
   memory than we need.
 - Program speed: how fast is your compiled program. More/better compile-time
@@ -277,46 +277,46 @@ but there are already some promising performance improvements.
 # References
 
 - Command line parsing
-    - Guide: [The Rustc Driver and Interface](https://rust-lang.github.io/rustc-guide/rustc-driver.html)
-    - Driver definition: [`rustc_driver`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/)
-    - Main entry point: **TODO**
+  - Guide: [The Rustc Driver and Interface](https://rust-lang.github.io/rustc-guide/rustc-driver.html)
+  - Driver definition: [`rustc_driver`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/)
+  - Main entry point: **TODO**
 - Lexical Analysis: Lex the user program to a stream of tokens
-    - Guide: [Lexing and Parsing](https://rust-lang.github.io/rustc-guide/the-parser.html)
-    - Lexer definition: [`librustc_lexer`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html)
-    - Main entry point: **TODO**
+  - Guide: [Lexing and Parsing](https://rust-lang.github.io/rustc-guide/the-parser.html)
+  - Lexer definition: [`librustc_lexer`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html)
+  - Main entry point: **TODO**
 - Parsing: Parse the stream of tokens to an Abstract Syntax Tree (AST)
-    - Guide: [Lexing and Parsing](https://rust-lang.github.io/rustc-guide/the-parser.html)
-    - Parser definition: [`librustc_parse`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html)
-    - Main entry point: **TODO**
-    - AST definition: [`librustc_ast`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html)
+  - Guide: [Lexing and Parsing](https://rust-lang.github.io/rustc-guide/the-parser.html)
+  - Parser definition: [`librustc_parse`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html)
+  - Main entry point: **TODO**
+  - AST definition: [`librustc_ast`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html)
 - The High Level Intermediate Representation (HIR)
-    - Guide: [The HIR](https://rust-lang.github.io/rustc-guide/hir.html)
-    - Guide: [Identifiers in the HIR](https://rust-lang.github.io/rustc-guide/hir.html#identifiers-in-the-hir)
-    - Guide: [The HIR Map](https://rust-lang.github.io/rustc-guide/hir.html#the-hir-map)
-    - Guide: [Lowering AST to HIR](https://rust-lang.github.io/rustc-guide/lowering.html)
-    - How to view HIR representation for your code `cargo rustc -- -Zunpretty=hir-tree`
-    - Rustc HIR definition: [`rustc_hir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html)
-    - Main entry point: **TODO**
+  - Guide: [The HIR](https://rust-lang.github.io/rustc-guide/hir.html)
+  - Guide: [Identifiers in the HIR](https://rust-lang.github.io/rustc-guide/hir.html#identifiers-in-the-hir)
+  - Guide: [The HIR Map](https://rust-lang.github.io/rustc-guide/hir.html#the-hir-map)
+  - Guide: [Lowering AST to HIR](https://rust-lang.github.io/rustc-guide/lowering.html)
+  - How to view HIR representation for your code `cargo rustc -- -Zunpretty=hir-tree`
+  - Rustc HIR definition: [`rustc_hir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html)
+  - Main entry point: **TODO**
 - Type Inference
-    - Guide: [Type Inference](https://rust-lang.github.io/rustc-guide/type-inference.html)
-    - Guide: [The ty Module: Representing Types](https://rust-lang.github.io/rustc-guide/ty.html) (semantics)
-    - Main entry point: **TODO**
+  - Guide: [Type Inference](https://rust-lang.github.io/rustc-guide/type-inference.html)
+  - Guide: [The ty Module: Representing Types](https://rust-lang.github.io/rustc-guide/ty.html) (semantics)
+  - Main entry point: **TODO**
 - The Mid Level Intermediate Representation (MIR)
-    - Guide: [The MIR (Mid level IR)](https://rust-lang.github.io/rustc-guide/mir/index.html)
-    - Definition: [`librustc/mir`](https://github.com/rust-lang/rust/tree/master/src/librustc/mir)
-    - Definition of source that manipulates the MIR: [`librustc_mir`](https://github.com/rust-lang/rust/tree/master/src/librustc_mir)
-    - Main entry point: **TODO**
+  - Guide: [The MIR (Mid level IR)](https://rust-lang.github.io/rustc-guide/mir/index.html)
+  - Definition: [`librustc/mir`](https://github.com/rust-lang/rust/tree/master/src/librustc/mir)
+  - Definition of source that manipulates the MIR: [`librustc_mir`](https://github.com/rust-lang/rust/tree/master/src/librustc_mir)
+  - Main entry point: **TODO**
 - The Borrow Checker
-    - Guide: [MIR Borrow Check](https://rust-lang.github.io/rustc-guide/borrow_check.html)
-    - Definition: [`rustc_mir/borrow_check`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/index.html)
-    - Main entry point: **TODO**
+  - Guide: [MIR Borrow Check](https://rust-lang.github.io/rustc-guide/borrow_check.html)
+  - Definition: [`rustc_mir/borrow_check`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/index.html)
+  - Main entry point: **TODO**
 - MIR Optimizations
-    - Guide: [MIR Optimizations](https://rust-lang.github.io/rustc-guide/mir/optimizations.html)
-    - Definition: [`rustc_mir/transform`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/index.html) **TODO: is this correct?**
-    - Main entry point: **TODO**
+  - Guide: [MIR Optimizations](https://rust-lang.github.io/rustc-guide/mir/optimizations.html)
+  - Definition: [`rustc_mir/transform`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/index.html) **TODO: is this correct?**
+  - Main entry point: **TODO**
 - Code Generation
-    - Guide: [Code Generation](https://rust-lang.github.io/rustc-guide/codegen.html)
-    - Guide: [Generating LLVM IR](https://rust-lang.github.io/rustc-guide/codegen.html#generating-llvm-ir) - **TODO: this is not available yet**
-    - Generating Machine Code from LLVM IR with LLVM - **TODO: reference?**
-    - Main entry point MIR -> LLVM IR: **TODO**
-    - Main entry point LLVM IR -> Machine Code **TODO**
+  - Guide: [Code Generation](https://rust-lang.github.io/rustc-guide/codegen.html)
+  - Guide: [Generating LLVM IR](https://rust-lang.github.io/rustc-guide/codegen.html#generating-llvm-ir) - **TODO: this is not available yet**
+  - Generating Machine Code from LLVM IR with LLVM - **TODO: reference?**
+  - Main entry point MIR -> LLVM IR: **TODO**
+  - Main entry point LLVM IR -> Machine Code **TODO**
