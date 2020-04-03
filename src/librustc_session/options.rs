@@ -421,7 +421,7 @@ macro_rules! options {
         fn parse_opt_uint(slot: &mut Option<usize>, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = s.parse().ok(); slot.is_some() }
-                None => { *slot = None; false }
+                None => false
             }
         }
 
