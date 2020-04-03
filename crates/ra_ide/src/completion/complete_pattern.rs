@@ -4,23 +4,25 @@ use crate::completion::{CompletionContext, Completions};
 
 /// Completes constats and paths in patterns.
 pub(super) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.is_pat_binding {
+    if !ctx.is_pat_binding_or_const {
         return;
     }
     // FIXME: ideally, we should look at the type we are matching against and
     // suggest variants + auto-imports
     ctx.scope().process_all_names(&mut |name, res| {
-        let def = match &res {
-            hir::ScopeDef::ModuleDef(def) => def,
+        match &res {
+            hir::ScopeDef::ModuleDef(def) => match def {
+                hir::ModuleDef::Adt(hir::Adt::Enum(..))
+                | hir::ModuleDef::Adt(hir::Adt::Struct(..))
+                | hir::ModuleDef::EnumVariant(..)
+                | hir::ModuleDef::Const(..)
+                | hir::ModuleDef::Module(..) => (),
+                _ => return,
+            },
+            hir::ScopeDef::MacroDef(_) => (),
             _ => return,
         };
-        match def {
-            hir::ModuleDef::Adt(hir::Adt::Enum(..))
-            | hir::ModuleDef::EnumVariant(..)
-            | hir::ModuleDef::Const(..)
-            | hir::ModuleDef::Module(..) => (),
-            _ => return,
-        }
+
         acc.add_resolution(ctx, name.to_string(), &res)
     });
 }
@@ -70,20 +72,6 @@ mod tests {
                 kind: Enum,
             },
             CompletionItem {
-                label: "E",
-                source_range: [246; 246),
-                delete: [246; 246),
-                insert: "E",
-                kind: Enum,
-            },
-            CompletionItem {
-                label: "X",
-                source_range: [246; 246),
-                delete: [246; 246),
-                insert: "X",
-                kind: EnumVariant,
-            },
-            CompletionItem {
                 label: "X",
                 source_range: [246; 246),
                 delete: [246; 246),
@@ -96,20 +84,6 @@ mod tests {
                 delete: [246; 246),
                 insert: "Z",
                 kind: Const,
-            },
-            CompletionItem {
-                label: "Z",
-                source_range: [246; 246),
-                delete: [246; 246),
-                insert: "Z",
-                kind: Const,
-            },
-            CompletionItem {
-                label: "m",
-                source_range: [246; 246),
-                delete: [246; 246),
-                insert: "m",
-                kind: Module,
             },
             CompletionItem {
                 label: "m",
@@ -138,13 +112,6 @@ mod tests {
         );
         assert_debug_snapshot!(completions, @r###"
         [
-            CompletionItem {
-                label: "E",
-                source_range: [151; 151),
-                delete: [151; 151),
-                insert: "E",
-                kind: Enum,
-            },
             CompletionItem {
                 label: "E",
                 source_range: [151; 151),

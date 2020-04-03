@@ -325,6 +325,9 @@ impl ast::BindPat {
     pub fn is_ref(&self) -> bool {
         self.syntax().children_with_tokens().any(|n| n.kind() == T![ref])
     }
+    pub fn has_at(&self) -> bool {
+        self.syntax().children_with_tokens().any(|it| it.kind() == T![@])
+    }
 }
 
 pub struct SlicePatComponents {

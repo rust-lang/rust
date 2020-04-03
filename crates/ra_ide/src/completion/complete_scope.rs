@@ -1,19 +1,13 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
 use crate::completion::{CompletionContext, Completions};
-use hir::{ModuleDef, ScopeDef};
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.is_trivial_path && !ctx.is_pat_binding_and_path {
+    if !(ctx.is_trivial_path && !ctx.is_pat_binding_or_const) {
         return;
     }
 
-    ctx.scope().process_all_names(&mut |name, res| match (ctx.is_pat_binding_and_path, &res) {
-        (true, ScopeDef::ModuleDef(ModuleDef::Function(..))) => (),
-        (true, ScopeDef::ModuleDef(ModuleDef::Static(..))) => (),
-        (true, ScopeDef::Local(..)) => (),
-        _ => acc.add_resolution(ctx, name.to_string(), &res),
-    });
+    ctx.scope().process_all_names(&mut |name, res| acc.add_resolution(ctx, name.to_string(), &res));
 }
 
 #[cfg(test)]
