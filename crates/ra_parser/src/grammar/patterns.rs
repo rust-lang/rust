@@ -84,7 +84,7 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
             // Checks the token after an IDENT to see if a pattern is a path (Struct { .. }) or macro
             // (T![x]).
             T!['('] | T!['{'] | T![!] => path_or_macro_pat(p),
-            T![:] if p.nth_at(1, T![::]) => path_pat(p),
+            T![:] if p.nth_at(1, T![::]) => path_or_macro_pat(p),
             _ => bind_pat(p, true),
         },
 
@@ -156,7 +156,7 @@ fn path_or_macro_pat(p: &mut Parser) -> CompletedMarker {
         // }
         T![!] => {
             items::macro_call_after_excl(p);
-            MACRO_CALL
+            return m.complete(p, MACRO_CALL).precede(p).complete(p, MACRO_PAT);
         }
         _ => PATH_PAT,
     };

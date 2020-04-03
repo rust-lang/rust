@@ -167,6 +167,7 @@ pub enum SyntaxKind {
     SLICE_PAT,
     RANGE_PAT,
     LITERAL_PAT,
+    MACRO_PAT,
     TUPLE_EXPR,
     ARRAY_EXPR,
     PAREN_EXPR,

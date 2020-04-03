@@ -1,7 +1,9 @@
-use super::{infer, type_at, type_at_pos};
-use crate::test_db::TestDB;
 use insta::assert_snapshot;
 use ra_db::fixture::WithFixture;
+
+use super::{infer, type_at, type_at_pos};
+
+use crate::test_db::TestDB;
 
 #[test]
 fn cfg_impl_def() {
@@ -657,4 +659,29 @@ fn test() {
 "#,
     );
     assert_eq!("S", type_at_pos(&db, pos));
+}
+
+#[test]
+fn macro_in_arm() {
+    assert_snapshot!(
+        infer(r#"
+macro_rules! unit {
+    () => { () };
+}
+
+fn main() {
+    let x = match () {
+        unit!() => 92u32,
+    };
+}
+"#),
+        @r###"
+    [52; 111) '{     ...  }; }': ()
+    [62; 63) 'x': u32
+    [66; 108) 'match ...     }': u32
+    [72; 74) '()': ()
+    [85; 92) 'unit!()': ()
+    [96; 101) '92u32': u32
+    "###
+    );
 }

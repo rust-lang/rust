@@ -138,6 +138,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "SLICE_PAT",
         "RANGE_PAT",
         "LITERAL_PAT",
+        "MACRO_PAT",
         // atoms
         "TUPLE_EXPR",
         "ARRAY_EXPR",
@@ -440,6 +441,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct SlicePat { args: [Pat] }
         struct RangePat {}
         struct LiteralPat { Literal }
+        struct MacroPat { MacroCall }
 
         struct RecordPat { RecordFieldPatList, Path }
         struct RecordFieldPatList {
@@ -622,6 +624,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             SlicePat,
             RangePat,
             LiteralPat,
+            MacroPat,
         }
 
         enum AttrInput { Literal, TokenTree }

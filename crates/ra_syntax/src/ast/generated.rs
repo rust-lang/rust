@@ -2563,6 +2563,38 @@ impl LiteralPat {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MacroPat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl std::fmt::Display for MacroPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstNode for MacroPat {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            MACRO_PAT => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl MacroPat {
+    pub fn macro_call(&self) -> Option<MacroCall> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordPat {
     pub(crate) syntax: SyntaxNode,
 }
@@ -4600,6 +4632,7 @@ pub enum Pat {
     SlicePat(SlicePat),
     RangePat(RangePat),
     LiteralPat(LiteralPat),
+    MacroPat(MacroPat),
 }
 impl From<OrPat> for Pat {
     fn from(node: OrPat) -> Pat {
@@ -4671,6 +4704,11 @@ impl From<LiteralPat> for Pat {
         Pat::LiteralPat(node)
     }
 }
+impl From<MacroPat> for Pat {
+    fn from(node: MacroPat) -> Pat {
+        Pat::MacroPat(node)
+    }
+}
 impl std::fmt::Display for Pat {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -4681,7 +4719,7 @@ impl AstNode for Pat {
         match kind {
             OR_PAT | PAREN_PAT | REF_PAT | BOX_PAT | BIND_PAT | PLACEHOLDER_PAT | DOT_DOT_PAT
             | PATH_PAT | RECORD_PAT | TUPLE_STRUCT_PAT | TUPLE_PAT | SLICE_PAT | RANGE_PAT
-            | LITERAL_PAT => true,
+            | LITERAL_PAT | MACRO_PAT => true,
             _ => false,
         }
     }
@@ -4701,6 +4739,7 @@ impl AstNode for Pat {
             SLICE_PAT => Pat::SlicePat(SlicePat { syntax }),
             RANGE_PAT => Pat::RangePat(RangePat { syntax }),
             LITERAL_PAT => Pat::LiteralPat(LiteralPat { syntax }),
+            MACRO_PAT => Pat::MacroPat(MacroPat { syntax }),
             _ => return None,
         };
         Some(res)
@@ -4721,6 +4760,7 @@ impl AstNode for Pat {
             Pat::SlicePat(it) => &it.syntax,
             Pat::RangePat(it) => &it.syntax,
             Pat::LiteralPat(it) => &it.syntax,
+            Pat::MacroPat(it) => &it.syntax,
         }
     }
 }
