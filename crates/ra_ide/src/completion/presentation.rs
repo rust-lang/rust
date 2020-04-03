@@ -7,7 +7,8 @@ use test_utils::tested_by;
 
 use crate::{
     completion::{
-        CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
+        completion_item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
+        CompletionKind, Completions,
     },
     display::{const_label, macro_label, type_label, FunctionSignature},
     RootDatabase,
@@ -193,7 +194,6 @@ impl Completions {
         func: hir::Function,
     ) {
         let has_self_param = func.has_self_param(ctx.db);
-        let params = func.params(ctx.db);
 
         let name = name.unwrap_or_else(|| func.name(ctx.db).to_string());
         let ast_node = func.source(ctx.db).value;
@@ -210,32 +210,14 @@ impl Completions {
                 .set_deprecated(is_deprecated(func, ctx.db))
                 .detail(function_signature.to_string());
 
-        // If not an import, add parenthesis automatically.
-        if ctx.use_item_syntax.is_none() && !ctx.is_call && ctx.config.add_call_parenthesis {
-            tested_by!(inserts_parens_for_function_calls);
+        let params = function_signature
+            .parameter_names
+            .iter()
+            .skip(if function_signature.has_self_param { 1 } else { 0 })
+            .cloned()
+            .collect();
 
-            let (snippet, label) = if params.is_empty() || has_self_param && params.len() == 1 {
-                (format!("{}()$0", name), format!("{}()", name))
-            } else {
-                builder = builder.trigger_call_info();
-                let snippet = if ctx.config.add_call_argument_snippets {
-                    let to_skip = if has_self_param { 1 } else { 0 };
-                    let function_params_snippet = function_signature
-                        .parameter_names
-                        .iter()
-                        .skip(to_skip)
-                        .enumerate()
-                        .map(|(index, param_name)| format!("${{{}:{}}}", index + 1, param_name))
-                        .sep_by(", ");
-                    format!("{}({})$0", name, function_params_snippet)
-                } else {
-                    format!("{}($0)", name)
-                };
-
-                (snippet, format!("{}(…)", name))
-            };
-            builder = builder.lookup_by(name).label(label).insert_snippet(snippet);
-        }
+        builder = builder.add_call_parens(ctx, name, params);
 
         self.add(builder)
     }
@@ -297,6 +279,43 @@ impl Completions {
             .set_deprecated(is_deprecated)
             .detail(detail)
             .add_to(self);
+    }
+}
+
+impl Builder {
+    fn add_call_parens(
+        mut self,
+        ctx: &CompletionContext,
+        name: String,
+        params: Vec<String>,
+    ) -> Builder {
+        if !ctx.config.add_call_parenthesis {
+            return self;
+        }
+        if ctx.use_item_syntax.is_some() || ctx.is_call {
+            return self;
+        }
+        // If not an import, add parenthesis automatically.
+        tested_by!(inserts_parens_for_function_calls);
+
+        let (snippet, label) = if params.is_empty() {
+            (format!("{}()$0", name), format!("{}()", name))
+        } else {
+            self = self.trigger_call_info();
+            let snippet = if ctx.config.add_call_argument_snippets {
+                let function_params_snippet = params
+                    .iter()
+                    .enumerate()
+                    .map(|(index, param_name)| format!("${{{}:{}}}", index + 1, param_name))
+                    .sep_by(", ");
+                format!("{}({})$0", name, function_params_snippet)
+            } else {
+                format!("{}($0)", name)
+            };
+
+            (snippet, format!("{}(…)", name))
+        };
+        self.lookup_by(name).label(label).insert_snippet(snippet)
     }
 }
 
