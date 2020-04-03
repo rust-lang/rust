@@ -5,7 +5,6 @@ use crate::fmt;
 use crate::io;
 use crate::mem;
 use crate::sys::hermit::abi;
-use crate::sys::stack_overflow;
 use crate::time::Duration;
 use core::u32;
 
@@ -69,9 +68,6 @@ impl Thread {
 
         extern "C" fn thread_start(main: usize) {
             unsafe {
-                // Next, set up our stack overflow handler which may get triggered if we run
-                // out of stack.
-                let _handler = stack_overflow::Handler::new();
                 // Finally, let's run some code.
                 Box::from_raw(main as *mut Box<dyn FnOnce()>)();
             }
