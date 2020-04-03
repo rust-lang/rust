@@ -181,27 +181,22 @@ macro_rules! options {
             let value = iter.next();
             let option_to_lookup = key.replace("-", "_");
             let mut found = false;
-            for &(candidate, setter, opt_type_desc, _) in $stat {
+            for &(candidate, setter, type_desc, _) in $stat {
                 if option_to_lookup != candidate { continue }
                 if !setter(&mut op, value) {
-                    match (value, opt_type_desc) {
-                        (Some(..), None) => {
-                            early_error(error_format, &format!("{} option `{}` takes no \
-                                                                value", $outputname, key))
-                        }
-                        (None, Some(type_desc)) => {
+                    match value {
+                        None => {
                             early_error(error_format, &format!("{0} option `{1}` requires \
                                                                 {2} ({3} {1}=<value>)",
                                                                $outputname, key,
                                                                type_desc, $prefix))
                         }
-                        (Some(value), Some(type_desc)) => {
+                        Some(value) => {
                             early_error(error_format, &format!("incorrect value `{}` for {} \
                                                                 option `{}` - {} was expected",
                                                                value, $outputname,
                                                                key, type_desc))
                         }
-                        (None, None) => panic!()
                     }
                 }
                 found = true;
@@ -231,60 +226,44 @@ macro_rules! options {
     }
 
     pub type $setter_name = fn(&mut $struct_name, v: Option<&str>) -> bool;
-    pub const $stat: &[(&str, $setter_name, Option<&str>, &str)] =
+    pub const $stat: &[(&str, $setter_name, &str, &str)] =
         &[ $( (stringify!($opt), $mod_set::$opt, $mod_desc::$parse, $desc) ),* ];
 
     #[allow(non_upper_case_globals, dead_code)]
     mod $mod_desc {
-        pub const parse_bool: Option<&str> = Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
-        pub const parse_opt_bool: Option<&str> = parse_bool;
-        pub const parse_string: Option<&str> = Some("a string");
-        pub const parse_opt_string: Option<&str> = parse_string;
-        pub const parse_string_push: Option<&str> = parse_string;
-        pub const parse_opt_pathbuf: Option<&str> = Some("a path");
-        pub const parse_pathbuf_push: Option<&str> = parse_opt_pathbuf;
-        pub const parse_list: Option<&str> = Some("a space-separated list of strings");
-        pub const parse_opt_list: Option<&str> = parse_list;
-        pub const parse_opt_comma_list: Option<&str> = Some("a comma-separated list of strings");
-        pub const parse_uint: Option<&str> = Some("a number");
-        pub const parse_opt_uint: Option<&str> = parse_uint;
-        pub const parse_threads: Option<&str> = parse_uint;
-        pub const parse_passes: Option<&str> =
-            Some("a space-separated list of passes, or `all`");
-        pub const parse_panic_strategy: Option<&str> =
-            Some("either `unwind` or `abort`");
-        pub const parse_relro_level: Option<&str> =
-            Some("one of: `full`, `partial`, or `off`");
-        pub const parse_sanitizer: Option<&str> =
-            Some("one of: `address`, `leak`, `memory` or `thread`");
-        pub const parse_sanitizer_list: Option<&str> =
-            Some("comma separated list of sanitizers");
-        pub const parse_sanitizer_memory_track_origins: Option<&str> =
-            Some("0, 1, or 2");
-        pub const parse_cfguard: Option<&str> =
-            Some("either `disabled`, `nochecks`, or `checks`");
-        pub const parse_linker_flavor: Option<&str> =
-            Some(::rustc_target::spec::LinkerFlavor::one_of());
-        pub const parse_optimization_fuel: Option<&str> =
-            Some("crate=integer");
-        pub const parse_unpretty: Option<&str> =
-            Some("`string` or `string=string`");
-        pub const parse_treat_err_as_bug: Option<&str> =
-            Some("either no value or a number bigger than 0");
-        pub const parse_lto: Option<&str> =
-            Some("either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, \
-                  `fat`, or omitted");
-        pub const parse_linker_plugin_lto: Option<&str> =
-            Some("either a boolean (`yes`, `no`, `on`, `off`, etc), \
-                  or the path to the linker plugin");
-        pub const parse_switch_with_opt_path: Option<&str> =
-            Some("an optional path to the profiling data output directory");
-        pub const parse_merge_functions: Option<&str> =
-            Some("one of: `disabled`, `trampolines`, or `aliases`");
-        pub const parse_symbol_mangling_version: Option<&str> =
-            Some("either `legacy` or `v0` (RFC 2603)");
-        pub const parse_src_file_hash: Option<&str> =
-            Some("either `md5`, or `sha1`");
+        pub const parse_bool: &str = "one of: `y`, `yes`, `on`, `n`, `no`, or `off`";
+        pub const parse_opt_bool: &str = parse_bool;
+        pub const parse_string: &str = "a string";
+        pub const parse_opt_string: &str = parse_string;
+        pub const parse_string_push: &str = parse_string;
+        pub const parse_opt_pathbuf: &str = "a path";
+        pub const parse_pathbuf_push: &str = parse_opt_pathbuf;
+        pub const parse_list: &str = "a space-separated list of strings";
+        pub const parse_opt_list: &str = parse_list;
+        pub const parse_opt_comma_list: &str = "a comma-separated list of strings";
+        pub const parse_uint: &str = "a number";
+        pub const parse_opt_uint: &str = parse_uint;
+        pub const parse_threads: &str = parse_uint;
+        pub const parse_passes: &str = "a space-separated list of passes, or `all`";
+        pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
+        pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
+        pub const parse_sanitizer: &str = "one of: `address`, `leak`, `memory` or `thread`";
+        pub const parse_sanitizer_list: &str = "comma separated list of sanitizers";
+        pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
+        pub const parse_cfguard: &str = "either `disabled`, `nochecks`, or `checks`";
+        pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavor::one_of();
+        pub const parse_optimization_fuel: &str = "crate=integer";
+        pub const parse_unpretty: &str = "`string` or `string=string`";
+        pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
+        pub const parse_lto: &str =
+            "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
+        pub const parse_linker_plugin_lto: &str =
+            "either a boolean (`yes`, `no`, `on`, `off`, etc), or the path to the linker plugin";
+        pub const parse_switch_with_opt_path: &str =
+            "an optional path to the profiling data output directory";
+        pub const parse_merge_functions: &str = "one of: `disabled`, `trampolines`, or `aliases`";
+        pub const parse_symbol_mangling_version: &str = "either `legacy` or `v0` (RFC 2603)";
+        pub const parse_src_file_hash: &str = "either `md5` or `sha1`";
     }
 
     #[allow(dead_code)]
