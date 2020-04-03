@@ -33,17 +33,73 @@ In general, when writing about a particular part of the compiler's code, we
 recommend that you link to the relevant parts of the [rustc
 rustdocs][rustdocs].
 
-To help prevent accidentally introducing broken links, we use the
-`mdbook-linkcheck`. If installed on your machine `mdbook` will automatically
-invoke this link checker, otherwise it will emit a warning saying it couldn't
-be found.
+### Build Instructions
+
+Deactivate the CI testing link validations by commenting out the `[output.linkcheck]` field in the `book.toml` configuration file like this:
+
+```toml
+[book]
+title = "Guide to Rustc Development"
+author = "Rustc developers"
+description = "A guide to developing rustc"
+
+[build]
+create-missing = false
+
+[output.html]
+git-repository-url = "https://github.com/rust-lang/rustc-dev-guide"
+
+[output.html.fold]
+enable = true
+level = 1
+
+# [output.linkcheck]
+# follow-web-links = false
+# exclude = [ "crates\\.io", "gcc\\.godbolt\\.org", "youtube\\.com", "youtu\\.be", "dl\\.acm\\.org", "cs\\.bgu\\.ac\\.il" ]
+# cache-timeout = 172800
+# warning-policy = "error"
+```
+
+These validations can cause errors during local builds (see Link Validations section below).  Please **do not** commit these `book.toml` file changes when you submit a pull request.
+
+To build a local static HTML site, install [`mdbook`](https://github.com/rust-lang/mdBook) with:
+
+```
+> cargo install mdbook
+```
+
+and execute the following command in the root of the repository:
+
+```
+> mdbook build
+```
+
+The build files are found in the `book` directory.
+
+### Link Validations
+
+We use `mdbook-linkcheck` to validate URLs included in our documentation. To perform link checks, uncomment the `[output.linkcheck]` field in the `book.toml` configuration file and install `mdbook-linkcheck` with:
 
 ```bash
 > cargo install mdbook-linkcheck
 ```
 
-You will need `mdbook` version `>= 0.3.5` and `mdbook-linkcheck` version `>= 0.5`.
-`linkcheck` will be run automatically when you run `mdbook build`.
+You will need `mdbook` version `>= 0.3.5` and `mdbook-linkcheck` version `>= 0.5` to check links.
+`linkcheck` will be run automatically when you build with the instructions in the section above.
+
+**Please note**: You may receive errors like the following when link checks are active on local `mdbook` builds:
+
+```
+error: The server responded with 429 Too Many Requests for "https://github.com/rust-lang/rust/tree/master/src/tools/compiletest"
+
+   ┌── tests/intro.md:6:1 ───
+   │
+ 6 │ [`src/tools/compiletest`] directory). This section gives a brief
+   │ ^ Server responded with 429 Too Many Requests
+```
+
+There is not a workaround for this error at the moment.  Comment out the `[output.linkcheck]` field in the `book.toml` using the build instructions above to complete a local site build without link validations.
+
 
 ## How to fix toolstate failures
 
