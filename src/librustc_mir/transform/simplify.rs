@@ -368,21 +368,39 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
             if location.statement_index != block.statements.len() {
                 let stmt = &block.statements[location.statement_index];
 
+                fn can_skip_constant(c: &ty::Const<'tcx>) -> bool {
+                    // Keep assignments from unevaluated constants around, since the
+                    // evaluation may report errors, even if the use of the constant
+                    // is dead code.
+                    !matches!(c.val, ty::ConstKind::Unevaluated(..))
+                }
+
+                fn can_skip_operand(o: &Operand<'_>) -> bool {
+                    match o {
+                        Operand::Copy(p) | Operand::Move(p) => !p.is_indirect(),
+                        Operand::Constant(c) => can_skip_constant(c.literal),
+                    }
+                }
+
                 if let StatementKind::Assign(box (dest, rvalue)) = &stmt.kind {
                     if !dest.is_indirect() && dest.local == *local {
-                        if let Rvalue::Use(Operand::Constant(c)) = rvalue {
-                            match c.literal.val {
-                                // Keep assignments from unevaluated constants around, since the
-                                // evaluation may report errors, even if the use of the constant
-                                // is dead code.
-                                ty::ConstKind::Unevaluated(..) => {}
-                                _ => {
-                                    trace!("skipping store of const value {:?} to {:?}", c, dest);
-                                    return;
-                                }
+                        let can_skip = match rvalue {
+                            Rvalue::Use(op) => can_skip_operand(op),
+                            Rvalue::Discriminant(_) => true,
+                            Rvalue::BinaryOp(_, l, r) | Rvalue::CheckedBinaryOp(_, l, r) => {
+                                can_skip_operand(l) && can_skip_operand(r)
                             }
-                        } else if let Rvalue::Discriminant(d) = rvalue {
-                            trace!("skipping store of discriminant value {:?} to {:?}", d, dest);
+                            Rvalue::Repeat(op, c) => can_skip_operand(op) && can_skip_constant(c),
+                            Rvalue::AddressOf(_, _) => true,
+                            Rvalue::Len(_) => true,
+                            Rvalue::UnaryOp(_, op) => can_skip_operand(op),
+                            Rvalue::Aggregate(_, operands) => operands.iter().all(can_skip_operand),
+
+                            _ => false,
+                        };
+
+                        if can_skip {
+                            trace!("skipping store of {:?} to {:?}", rvalue, dest);
                             return;
                         }
                     }
