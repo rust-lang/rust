@@ -4,7 +4,8 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
-use rustc_middle::mir::{Body, ConstQualifs, MirPhase, Promoted};
+use rustc_middle::mir::visit::Visitor as _;
+use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::steal::Steal;
 use rustc_middle::ty::{InstanceDef, TyCtxt, TypeFoldable};
@@ -33,6 +34,7 @@ pub mod rustc_peek;
 pub mod simplify;
 pub mod simplify_branches;
 pub mod simplify_try;
+pub mod uneval_const_set;
 pub mod uninhabited_enum_branching;
 pub mod unreachable_prop;
 
@@ -237,6 +239,15 @@ fn mir_validated(
     let _ = tcx.mir_const_qualif(def_id);
 
     let mut body = tcx.mir_const(def_id).steal();
+
+    let mut uneval_consts = Vec::new();
+    let mut uneval_const_visitor =
+        self::uneval_const_set::UnevalConstSetVisitor::new(&mut uneval_consts);
+    for (bb, bb_data) in traversal::reverse_postorder(&body) {
+        uneval_const_visitor.visit_basic_block_data(bb, bb_data);
+    }
+    body.uneval_consts = uneval_consts;
+
     let promote_pass = promote_consts::PromoteTemps::default();
     run_passes(
         tcx,
