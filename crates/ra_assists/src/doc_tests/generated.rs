@@ -59,6 +59,33 @@ fn main() {
 }
 
 #[test]
+fn doctest_add_function() {
+    check(
+        "add_function",
+        r#####"
+struct Baz;
+fn baz() -> Baz { Baz }
+fn foo() {
+     bar<|>("", baz());
+}
+
+"#####,
+        r#####"
+struct Baz;
+fn baz() -> Baz { Baz }
+fn foo() {
+     bar("", baz());
+}
+
+fn bar(arg: &str, baz: Baz) {
+    unimplemented!()
+}
+
+"#####,
+    )
+}
+
+#[test]
 fn doctest_add_hash() {
     check(
         "add_hash",

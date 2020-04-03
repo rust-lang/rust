@@ -56,6 +56,32 @@ fn main() {
 }
 ```
 
+## `add_function`
+
+Adds a stub function with a signature matching the function under the cursor.
+
+```rust
+// BEFORE
+struct Baz;
+fn baz() -> Baz { Baz }
+fn foo() {
+     bar┃("", baz());
+}
+
+
+// AFTER
+struct Baz;
+fn baz() -> Baz { Baz }
+fn foo() {
+     bar("", baz());
+}
+
+fn bar(arg: &str, baz: Baz) {
+    unimplemented!()
+}
+
+```
+
 ## `add_hash`
 
 Adds a hash to a raw string literal.
