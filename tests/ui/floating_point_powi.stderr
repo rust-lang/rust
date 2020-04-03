@@ -1,0 +1,16 @@
+error: square can be computed more accurately
+  --> $DIR/floating_point_powi.rs:7:13
+   |
+LL |     let _ = x.powi(2);
+   |             ^^^^^^^^^ help: consider using: `x * x`
+   |
+   = note: `-D clippy::imprecise-flops` implied by `-D warnings`
+
+error: square can be computed more accurately
+  --> $DIR/floating_point_powi.rs:8:13
+   |
+LL |     let _ = x.powi(1 + 1);
+   |             ^^^^^^^^^^^^^ help: consider using: `x * x`
+
+error: aborting due to 2 previous errors
+

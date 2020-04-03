@@ -1,6 +1,6 @@
 use crate::consts::{
     constant, constant_simple, Constant,
-    Constant::{F32, F64},
+    Constant::{Int, F32, F64},
 };
 use crate::utils::{higher, numeric_literal, span_lint_and_sugg, sugg, SpanlessEq};
 use if_chain::if_chain;
@@ -293,6 +293,30 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     }
 }
 
+fn check_powi(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
+    // Check argument
+    if let Some((value, _)) = constant(cx, cx.tables, &args[1]) {
+        let (lint, help, suggestion) = match value {
+            Int(2) => (
+                IMPRECISE_FLOPS,
+                "square can be computed more accurately",
+                format!("{} * {}", Sugg::hir(cx, &args[0], ".."), Sugg::hir(cx, &args[0], "..")),
+            ),
+            _ => return,
+        };
+
+        span_lint_and_sugg(
+            cx,
+            lint,
+            expr.span,
+            help,
+            "consider using",
+            suggestion,
+            Applicability::MachineApplicable,
+        );
+    }
+}
+
 // TODO: Lint expressions of the form `x.exp() - y` where y > 1
 // and suggest usage of `x.exp_m1() - (y - 1)` instead
 fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
@@ -489,6 +513,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
                     "ln" => check_ln1p(cx, expr, args),
                     "log" => check_log_base(cx, expr, args),
                     "powf" => check_powf(cx, expr, args),
+                    "powi" => check_powi(cx, expr, args),
                     _ => {},
                 }
             }
