@@ -53,7 +53,7 @@ impl CodegenBackend for TheBackend {
         rustc_symbol_mangling::provide(providers);
 
         providers.target_features_whitelist = |tcx, _cnum| {
-            tcx.arena.alloc(Default::default()) // Just a dummy
+            Default::default() // Just a dummy
         };
         providers.is_reachable_non_generic = |_tcx, _defid| true;
         providers.exported_symbols = |_tcx, _crate| &[];
