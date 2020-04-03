@@ -1,5 +1,3 @@
-#![allow(clippy::implicit_hasher)]
-
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};

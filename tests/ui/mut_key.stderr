@@ -1,5 +1,5 @@
 error: mutable key type
-  --> $DIR/mut_key.rs:29:32
+  --> $DIR/mut_key.rs:27:32
    |
 LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<Key> {
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,19 +7,19 @@ LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> Hash
    = note: `#[deny(clippy::mutable_key_type)]` on by default
 
 error: mutable key type
-  --> $DIR/mut_key.rs:29:72
+  --> $DIR/mut_key.rs:27:72
    |
 LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<Key> {
    |                                                                        ^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:30:5
+  --> $DIR/mut_key.rs:28:5
    |
 LL |     let _other: HashMap<Key, bool> = HashMap::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mutable key type
-  --> $DIR/mut_key.rs:49:22
+  --> $DIR/mut_key.rs:47:22
    |
 LL | fn tuples_bad<U>(_m: &mut HashMap<(Key, U), bool>) {}
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

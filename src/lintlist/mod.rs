@@ -747,7 +747,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "implicit_hasher",
-        group: "style",
+        group: "pedantic",
         desc: "missing generalization over different hashers",
         deprecation: None,
         module: "types",

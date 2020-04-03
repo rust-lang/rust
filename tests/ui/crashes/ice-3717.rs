@@ -1,3 +1,5 @@
+#![deny(clippy::implicit_hasher)]
+
 use std::collections::HashSet;
 
 fn main() {}
