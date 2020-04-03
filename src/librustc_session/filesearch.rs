@@ -143,8 +143,8 @@ fn find_libdir(sysroot: &Path) -> Cow<'static, str> {
     // FIXME: This is a quick hack to make the rustc binary able to locate
     // Rust libraries in Linux environments where libraries might be installed
     // to lib64/lib32. This would be more foolproof by basing the sysroot off
-    // of the directory where librustc_middle is located, rather than where the rustc
-    // binary is.
+    // of the directory where `librustc_driver` is located, rather than
+    // where the rustc binary is.
     // If --libdir is set during configuration to the value other than
     // "lib" (i.e., non-default), this value is used (see issue #16552).
 

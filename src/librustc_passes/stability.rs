@@ -438,7 +438,7 @@ fn new_index(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
         // If the `-Z force-unstable-if-unmarked` flag is passed then we provide
         // a parent stability annotation which indicates that this is private
         // with the `rustc_private` feature. This is intended for use when
-        // compiling librustc_middle crates themselves so we can leverage crates.io
+        // compiling `librustc_*` crates themselves so we can leverage crates.io
         // while maintaining the invariant that all sysroot crates are unstable
         // by default and are unable to be used.
         if tcx.sess.opts.debugging_opts.force_unstable_if_unmarked {
