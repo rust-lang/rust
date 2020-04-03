@@ -79,8 +79,6 @@ fn is_expr_stmt_attr_allowed(kind: SyntaxKind) -> bool {
 }
 
 pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
-    // test block_items
-    // fn a() { fn b() {} }
     let m = p.start();
     // test attr_on_expr_stmt
     // fn foo() {
@@ -97,6 +95,8 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
         return;
     }
 
+    // test block_items
+    // fn a() { fn b() {} }
     let m = match items::maybe_item(p, m, items::ItemFlavor::Mod) {
         Ok(()) => return,
         Err(m) => m,
