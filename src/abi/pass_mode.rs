@@ -82,11 +82,11 @@ pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) 
         PassMode::NoPass
     } else {
         match &layout.abi {
-            layout::Abi::Uninhabited => PassMode::NoPass,
-            layout::Abi::Scalar(scalar) => {
+            Abi::Uninhabited => PassMode::NoPass,
+            Abi::Scalar(scalar) => {
                 PassMode::ByVal(scalar_to_clif_type(tcx, scalar.clone()))
             }
-            layout::Abi::ScalarPair(a, b) => {
+            Abi::ScalarPair(a, b) => {
                 let a = scalar_to_clif_type(tcx, a.clone());
                 let b = scalar_to_clif_type(tcx, b.clone());
                 if a == types::I128 && b == types::I128 {
@@ -100,9 +100,9 @@ pub(super) fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) 
             }
 
             // FIXME implement Vector Abi in a cg_llvm compatible way
-            layout::Abi::Vector { .. } => PassMode::ByRef { sized: true },
+            Abi::Vector { .. } => PassMode::ByRef { sized: true },
 
-            &layout::Abi::Aggregate { sized } => PassMode::ByRef { sized },
+            &Abi::Aggregate { sized } => PassMode::ByRef { sized },
         }
     }
 }

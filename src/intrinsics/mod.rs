@@ -144,7 +144,7 @@ fn lane_type_and_count<'tcx>(
 ) -> (TyAndLayout<'tcx>, u16) {
     assert!(layout.ty.is_simd());
     let lane_count = match layout.fields {
-        layout::FieldsShape::Array { stride: _, count } => u16::try_from(count).unwrap(),
+        rustc_target::abi::FieldsShape::Array { stride: _, count } => u16::try_from(count).unwrap(),
         _ => unreachable!("lane_type_and_count({:?})", layout),
     };
     let lane_layout = layout.field(&ty::layout::LayoutCx {

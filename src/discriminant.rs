@@ -1,5 +1,7 @@
 //! Adapted from https://github.com/rust-lang/rust/blob/d760df5aea483aae041c9a241e7acacf48f75035/src/librustc_codegen_ssa/mir/place.rs
 
+use rustc_target::abi::{DiscriminantKind, Int, Variants};
+
 use crate::prelude::*;
 
 pub(crate) fn codegen_set_discriminant<'tcx>(
@@ -12,13 +14,13 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
         return;
     }
     match layout.variants {
-        layout::Variants::Single { index } => {
+        Variants::Single { index } => {
             assert_eq!(index, variant_index);
         }
-        layout::Variants::Multiple {
+        Variants::Multiple {
             discr: _,
             discr_index,
-            discr_kind: layout::DiscriminantKind::Tag,
+            discr_kind: DiscriminantKind::Tag,
             variants: _,
         } => {
             let ptr = place.place_field(fx, mir::Field::new(discr_index));
@@ -30,11 +32,11 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
             let discr = CValue::const_val(fx, ptr.layout(), to);
             ptr.write_cvalue(fx, discr);
         }
-        layout::Variants::Multiple {
+        Variants::Multiple {
             discr: _,
             discr_index,
             discr_kind:
-                layout::DiscriminantKind::Niche {
+                DiscriminantKind::Niche {
                     dataful_variant,
                     ref niche_variants,
                     niche_start,
@@ -59,7 +61,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
 ) -> CValue<'tcx> {
     let layout = value.layout();
 
-    if layout.abi == layout::Abi::Uninhabited {
+    if layout.abi == Abi::Uninhabited {
         return trap_unreachable_ret_value(
             fx,
             dest_layout,
@@ -68,14 +70,14 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
     }
 
     let (discr_scalar, discr_index, discr_kind) = match &layout.variants {
-        layout::Variants::Single { index } => {
+        Variants::Single { index } => {
             let discr_val = layout
                 .ty
                 .discriminant_for_variant(fx.tcx, *index)
                 .map_or(u128::from(index.as_u32()), |discr| discr.val);
             return CValue::const_val(fx, dest_layout, discr_val);
         }
-        layout::Variants::Multiple {
+        Variants::Multiple {
             discr,
             discr_index,
             discr_kind,
@@ -91,15 +93,15 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
 
     // Decode the discriminant (specifically if it's niche-encoded).
     match *discr_kind {
-        layout::DiscriminantKind::Tag => {
+        DiscriminantKind::Tag => {
             let signed = match discr_scalar.value {
-                layout::Int(_, signed) => signed,
+                Int(_, signed) => signed,
                 _ => false,
             };
             let val = clif_intcast(fx, encoded_discr, cast_to, signed);
             return CValue::by_val(val, dest_layout);
         }
-        layout::DiscriminantKind::Niche {
+        DiscriminantKind::Niche {
             dataful_variant,
             ref niche_variants,
             niche_start,

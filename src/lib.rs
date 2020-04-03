@@ -8,6 +8,7 @@ extern crate rustc_middle;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
+extern crate rustc_errors;
 extern crate rustc_fs_util;
 extern crate rustc_hir;
 extern crate rustc_incremental;
@@ -21,11 +22,11 @@ extern crate rustc_ast;
 
 use std::any::Any;
 
+use rustc_errors::ErrorReported;
 use rustc_middle::dep_graph::{DepGraph, WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc_session::config::OutputFilenames;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::util::common::ErrorReported;
 use rustc_codegen_ssa::traits::CodegenBackend;
 
 use cranelift_codegen::settings;
@@ -72,7 +73,8 @@ mod prelude {
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
     pub(crate) use rustc_middle::mir::{self, *};
     pub(crate) use rustc_session::Session;
-    pub(crate) use rustc_middle::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyAndLayout, VariantIdx};
+    pub(crate) use rustc_middle::ty::layout::{self, TyAndLayout};
+    pub(crate) use rustc_target::abi::{Abi, LayoutOf, Scalar, Size, VariantIdx};
     pub(crate) use rustc_middle::ty::{
         self, FnSig, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeAndMut, TypeFoldable,
     };

@@ -177,8 +177,8 @@ fn write_usize(tcx: TyCtxt, buf: &mut [u8], idx: usize, num: u64) {
     let mut target = &mut buf[idx * usize_size..(idx + 1) * usize_size];
 
     match tcx.data_layout.endian {
-        layout::Endian::Little => target.write_uint::<LittleEndian>(num, usize_size),
-        layout::Endian::Big => target.write_uint::<BigEndian>(num, usize_size),
+        rustc_target::abi::Endian::Little => target.write_uint::<LittleEndian>(num, usize_size),
+        rustc_target::abi::Endian::Big => target.write_uint::<BigEndian>(num, usize_size),
     }
     .unwrap()
 }

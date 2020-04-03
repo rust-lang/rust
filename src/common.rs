@@ -1,4 +1,4 @@
-use rustc_middle::ty::layout::{Integer, Primitive};
+use rustc_target::abi::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 use rustc_index::vec::IndexVec;
 
@@ -304,8 +304,8 @@ impl<'tcx, B: Backend + 'static> layout::HasTyCtxt<'tcx> for FunctionCx<'_, 'tcx
     }
 }
 
-impl<'tcx, B: Backend + 'static> layout::HasDataLayout for FunctionCx<'_, 'tcx, B> {
-    fn data_layout(&self) -> &layout::TargetDataLayout {
+impl<'tcx, B: Backend + 'static> rustc_target::abi::HasDataLayout for FunctionCx<'_, 'tcx, B> {
+    fn data_layout(&self) -> &rustc_target::abi::TargetDataLayout {
         &self.tcx.data_layout
     }
 }

@@ -18,6 +18,7 @@
 #![feature(nll)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
+#![feature(alloc_layout_extra)]
 #![cfg_attr(
     all(target_arch = "wasm32", not(target_os = "emscripten")),
     feature(integer_atomics, stdsimd)
@@ -41,8 +42,10 @@ const MIN_ALIGN: usize = 8;
               target_arch = "sparc64")))]
 #[allow(dead_code)]
 const MIN_ALIGN: usize = 16;
-use core::alloc::{AllocRef, GlobalAlloc, AllocErr, Layout};
+use core::alloc::*;
 use core::ptr::NonNull;
+use core::intrinsics;
+
 /// The default memory allocator provided by the operating system.
 ///
 /// This is based on `malloc` on Unix platforms and `HeapAlloc` on Windows,
@@ -72,29 +75,97 @@ pub struct System;
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for System {
     #[inline]
-    fn alloc(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        NonNull::new(unsafe { GlobalAlloc::alloc(self, layout) })
-            .ok_or(AllocErr)
-            .map(|p| (p, layout.size()))
+    fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<MemoryBlock, AllocErr> {
+        unsafe {
+            let size = layout.size();
+            if size == 0 {
+                Ok(MemoryBlock { ptr: layout.dangling(), size: 0 })
+            } else {
+                let raw_ptr = match init {
+                    AllocInit::Uninitialized => GlobalAlloc::alloc(self, layout),
+                    AllocInit::Zeroed => GlobalAlloc::alloc_zeroed(self, layout),
+                };
+                let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
+                Ok(MemoryBlock { ptr, size })
+            }
+        }
     }
-    #[inline]
-    fn alloc_zeroed(&mut self, layout: Layout) -> Result<(NonNull<u8>, usize), AllocErr> {
-        NonNull::new(unsafe { GlobalAlloc::alloc_zeroed(self, layout) })
-            .ok_or(AllocErr)
-            .map(|p| (p, layout.size()))
-    }
+
     #[inline]
     unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-        GlobalAlloc::dealloc(self, ptr.as_ptr(), layout)
+        if layout.size() != 0 {
+            GlobalAlloc::dealloc(self, ptr.as_ptr(), layout)
+        }
     }
+
     #[inline]
-    unsafe fn realloc(&mut self,
-                      ptr: NonNull<u8>,
-                      layout: Layout,
-                      new_size: usize) -> Result<(NonNull<u8>, usize), AllocErr> {
-        NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size))
-            .ok_or(AllocErr)
-            .map(|p| (p, layout.size()))
+    unsafe fn grow(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+        placement: ReallocPlacement,
+        init: AllocInit,
+    ) -> Result<MemoryBlock, AllocErr> {
+        let size = layout.size();
+        debug_assert!(
+            new_size >= size,
+            "`new_size` must be greater than or equal to `memory.size()`"
+        );
+
+        if size == new_size {
+            return Ok(MemoryBlock { ptr, size });
+        }
+
+        match placement {
+            ReallocPlacement::InPlace => Err(AllocErr),
+            ReallocPlacement::MayMove if layout.size() == 0 => {
+                let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+                self.alloc(new_layout, init)
+            }
+            ReallocPlacement::MayMove => {
+                // `realloc` probably checks for `new_size > size` or something similar.
+                intrinsics::assume(new_size > size);
+                let ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
+                let memory =
+                    MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size };
+                init.init_offset(memory, size);
+                Ok(memory)
+            }
+        }
+    }
+
+    #[inline]
+    unsafe fn shrink(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+        placement: ReallocPlacement,
+    ) -> Result<MemoryBlock, AllocErr> {
+        let size = layout.size();
+        debug_assert!(
+            new_size <= size,
+            "`new_size` must be smaller than or equal to `memory.size()`"
+        );
+
+        if size == new_size {
+            return Ok(MemoryBlock { ptr, size });
+        }
+
+        match placement {
+            ReallocPlacement::InPlace => Err(AllocErr),
+            ReallocPlacement::MayMove if new_size == 0 => {
+                self.dealloc(ptr, layout);
+                Ok(MemoryBlock { ptr: layout.dangling(), size: 0 })
+            }
+            ReallocPlacement::MayMove => {
+                // `realloc` probably checks for `new_size < size` or something similar.
+                intrinsics::assume(new_size < size);
+                let ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
+                Ok(MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size })
+            }
+        }
     }
 }
 #[cfg(any(windows, unix, target_os = "cloudabi", target_os = "redox"))]

@@ -118,8 +118,8 @@ impl<'tcx> CValue<'tcx> {
         match self.0 {
             CValueInner::ByRef(ptr, None) => {
                 let clif_ty = match layout.abi {
-                    layout::Abi::Scalar(ref scalar) => scalar_to_clif_type(fx.tcx, scalar.clone()),
-                    layout::Abi::Vector { ref element, count } => {
+                    Abi::Scalar(ref scalar) => scalar_to_clif_type(fx.tcx, scalar.clone()),
+                    Abi::Vector { ref element, count } => {
                         scalar_to_clif_type(fx.tcx, element.clone())
                             .by(u16::try_from(count).unwrap()).unwrap()
                     }
@@ -142,7 +142,7 @@ impl<'tcx> CValue<'tcx> {
         match self.0 {
             CValueInner::ByRef(ptr, None) => {
                 let (a_scalar, b_scalar) = match &layout.abi {
-                    layout::Abi::ScalarPair(a, b) => (a, b),
+                    Abi::ScalarPair(a, b) => (a, b),
                     _ => unreachable!("load_scalar_pair({:?})", self),
                 };
                 let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
@@ -167,7 +167,7 @@ impl<'tcx> CValue<'tcx> {
         match self.0 {
             CValueInner::ByVal(val) => {
                 match layout.abi {
-                    layout::Abi::Vector { element: _, count } => {
+                    Abi::Vector { element: _, count } => {
                         let count = u8::try_from(count).expect("SIMD type with more than 255 lanes???");
                         let field = u8::try_from(field.index()).unwrap();
                         assert!(field < count);

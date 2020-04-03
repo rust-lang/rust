@@ -62,7 +62,7 @@ pub(super) fn add_local_place_comments<'tcx>(
     local: Local,
 ) {
     let TyAndLayout { ty, layout } = place.layout();
-    let ty::layout::Layout {
+    let rustc_target::abi::Layout {
         size,
         align,
         abi: _,

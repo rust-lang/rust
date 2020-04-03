@@ -6,7 +6,8 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, InterpResult, Scalar,
 };
-use rustc_middle::ty::{layout::Align, Const, ConstKind};
+use rustc_middle::ty::{Const, ConstKind};
+use rustc_target::abi::Align;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_mir::interpret::{
     ImmTy, InterpCx, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
