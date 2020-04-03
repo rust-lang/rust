@@ -172,7 +172,6 @@ impl<'a> TokenTreesReader<'a> {
                         let mut unclosed_delimiter = None;
                         let mut candidate = None;
 
-
                         if self.last_unclosed_found_span != Some(self.token.span) {
                             // do not complain about the same unclosed delimiter multiple times
                             self.last_unclosed_found_span = Some(self.token.span);

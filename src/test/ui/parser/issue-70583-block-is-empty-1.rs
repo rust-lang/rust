@@ -16,5 +16,5 @@ fn struct_generic(x: Vec<i32>) {
     for v in x {
         println!("{}", v);
     }
-    } 
+    }
 } //~ ERROR unexpected closing delimiter: `}`

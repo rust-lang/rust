@@ -6,8 +6,8 @@ pub enum ErrorHandled {
 impl ErrorHandled {
     pub fn assert_reported(self) {
         match self {
-            ErrorHandled::Reported => {}} 
-                                     //^~ ERROR this block is empty, you might have not mean to close it
+            ErrorHandled::Reported => {}}
+                                     //^~ ERROR this block is empty, you might have not meant to close it
             ErrorHandled::TooGeneric => panic!(),
         }
     }
