@@ -1139,7 +1139,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "match_bool",
-        group: "style",
+        group: "pedantic",
         desc: "a `match` on a boolean expression instead of an `if..else` block",
         deprecation: None,
         module: "matches",

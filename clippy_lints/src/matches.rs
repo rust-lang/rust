@@ -138,7 +138,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub MATCH_BOOL,
-    style,
+    pedantic,
     "a `match` on a boolean expression instead of an `if..else` block"
 }
 
