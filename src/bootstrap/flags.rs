@@ -31,6 +31,7 @@ pub struct Flags {
     pub incremental: bool,
     pub exclude: Vec<PathBuf>,
     pub rustc_error_format: Option<String>,
+    pub json_output: bool,
     pub dry_run: bool,
 
     // This overrides the deny-warnings configuration option,
@@ -156,6 +157,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             "VALUE",
         );
         opts.optopt("", "error-format", "rustc error format", "FORMAT");
+        opts.optflag("", "json-output", "use message-format=json");
         opts.optopt(
             "",
             "llvm-skip-rebuild",
@@ -503,6 +505,7 @@ Arguments:
             dry_run: matches.opt_present("dry-run"),
             on_fail: matches.opt_str("on-fail"),
             rustc_error_format: matches.opt_str("error-format"),
+            json_output: matches.opt_present("json-output"),
             keep_stage: matches
                 .opt_strs("keep-stage")
                 .into_iter()

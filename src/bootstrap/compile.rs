@@ -935,7 +935,11 @@ pub fn stream_cargo(
     }
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
-    let mut message_format = String::from("json-render-diagnostics");
+    let mut message_format = if builder.config.json_output {
+        String::from("json")
+    } else {
+        String::from("json-render-diagnostics")
+    };
     if let Some(s) = &builder.config.rustc_error_format {
         message_format.push_str(",json-diagnostic-");
         message_format.push_str(s);

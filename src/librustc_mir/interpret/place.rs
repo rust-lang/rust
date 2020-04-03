@@ -7,16 +7,15 @@ use std::hash::Hash;
 
 use rustc_macros::HashStable;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::truncate;
 use rustc_middle::ty::layout::{PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::{Abi, Align, DiscriminantKind, FieldsShape};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, VariantIdx, Variants};
 
 use super::{
-    AllocId, AllocMap, Allocation, AllocationExtra, ImmTy, Immediate, InterpCx, InterpResult,
-    LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer, PointerArithmetic, RawConst, Scalar,
-    ScalarMaybeUndef,
+    mir_assign_valid_types, truncate, AllocId, AllocMap, Allocation, AllocationExtra, ImmTy,
+    Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer,
+    PointerArithmetic, RawConst, Scalar, ScalarMaybeUndef,
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
@@ -869,10 +868,10 @@ where
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
         assert!(
-            src.layout.layout == dest.layout.layout,
-            "Layout mismatch when copying!\nsrc: {:#?}\ndest: {:#?}",
-            src,
-            dest
+            mir_assign_valid_types(src.layout, dest.layout),
+            "type mismatch when copying!\nsrc: {:?},\ndest: {:?}",
+            src.layout.ty,
+            dest.layout.ty,
         );
 
         // Let us see if the layout is simple so we take a shortcut, avoid force_allocation.
@@ -923,7 +922,7 @@ where
         src: OpTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        if src.layout.layout == dest.layout.layout {
+        if mir_assign_valid_types(src.layout, dest.layout) {
             // Fast path: Just use normal `copy_op`
             return self.copy_op(src, dest);
         }
