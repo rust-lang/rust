@@ -2161,7 +2161,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "trivially_copy_pass_by_ref",
-        group: "perf",
+        group: "pedantic",
         desc: "functions taking small copyable arguments by reference",
         deprecation: None,
         module: "trivially_copy_pass_by_ref",

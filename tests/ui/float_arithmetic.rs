@@ -5,8 +5,7 @@
     clippy::shadow_unrelated,
     clippy::no_effect,
     clippy::unnecessary_operation,
-    clippy::op_ref,
-    clippy::trivially_copy_pass_by_ref
+    clippy::op_ref
 )]
 
 #[rustfmt::skip]

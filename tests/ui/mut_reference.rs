@@ -1,4 +1,4 @@
-#![allow(unused_variables, clippy::trivially_copy_pass_by_ref)]
+#![allow(unused_variables)]
 
 fn takes_an_immutable_reference(a: &i32) {}
 fn takes_a_mutable_reference(a: &mut i32) {}

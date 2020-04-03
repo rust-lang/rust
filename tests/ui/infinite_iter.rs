@@ -1,5 +1,4 @@
 use std::iter::repeat;
-#[allow(clippy::trivially_copy_pass_by_ref)]
 fn square_is_lower_64(x: &u32) -> bool {
     x * x < 64
 }

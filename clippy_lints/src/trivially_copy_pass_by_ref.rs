@@ -49,7 +49,7 @@ declare_clippy_lint! {
     /// fn foo(v: u32) {}
     /// ```
     pub TRIVIALLY_COPY_PASS_BY_REF,
-    perf,
+    pedantic,
     "functions taking small copyable arguments by reference"
 }
 
