@@ -188,34 +188,16 @@ where
     }
 }
 
-// NOTE: for `I: FusedIterator`, we assume that the iterator is always `Some`
-impl<I: FusedIterator> Fuse<I> {
-    #[inline(always)]
-    fn as_inner(&self) -> &I {
-        match self.iter {
-            Some(ref iter) => iter,
+// NOTE: for `I: FusedIterator`, we assume that the iterator is always `Some`.
+// Implementing this as a directly-expanded macro helps codegen performance.
+macro_rules! unchecked {
+    ($self:ident) => {
+        match $self {
+            Fuse { iter: Some(iter) } => iter,
             // SAFETY: the specialized iterator never sets `None`
-            None => unsafe { intrinsics::unreachable() },
+            Fuse { iter: None } => unsafe { intrinsics::unreachable() },
         }
-    }
-
-    #[inline(always)]
-    fn as_inner_mut(&mut self) -> &mut I {
-        match self.iter {
-            Some(ref mut iter) => iter,
-            // SAFETY: the specialized iterator never sets `None`
-            None => unsafe { intrinsics::unreachable() },
-        }
-    }
-
-    #[inline(always)]
-    fn into_inner(self) -> I {
-        match self.iter {
-            Some(iter) => iter,
-            // SAFETY: the specialized iterator never sets `None`
-            None => unsafe { intrinsics::unreachable() },
-        }
-    }
+    };
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -225,27 +207,27 @@ where
 {
     #[inline]
     fn next(&mut self) -> Option<<I as Iterator>::Item> {
-        self.as_inner_mut().next()
+        unchecked!(self).next()
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<I::Item> {
-        self.as_inner_mut().nth(n)
+        unchecked!(self).nth(n)
     }
 
     #[inline]
     fn last(self) -> Option<I::Item> {
-        self.into_inner().last()
+        unchecked!(self).last()
     }
 
     #[inline]
     fn count(self) -> usize {
-        self.into_inner().count()
+        unchecked!(self).count()
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.as_inner().size_hint()
+        unchecked!(self).size_hint()
     }
 
     #[inline]
@@ -255,7 +237,7 @@ where
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Ok = Acc>,
     {
-        self.as_inner_mut().try_fold(init, fold)
+        unchecked!(self).try_fold(init, fold)
     }
 
     #[inline]
@@ -263,7 +245,7 @@ where
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        self.into_inner().fold(init, fold)
+        unchecked!(self).fold(init, fold)
     }
 
     #[inline]
@@ -271,7 +253,7 @@ where
     where
         P: FnMut(&Self::Item) -> bool,
     {
-        self.as_inner_mut().find(predicate)
+        unchecked!(self).find(predicate)
     }
 }
 
@@ -282,12 +264,12 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
-        self.as_inner_mut().next_back()
+        unchecked!(self).next_back()
     }
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
-        self.as_inner_mut().nth_back(n)
+        unchecked!(self).nth_back(n)
     }
 
     #[inline]
@@ -297,7 +279,7 @@ where
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Ok = Acc>,
     {
-        self.as_inner_mut().try_rfold(init, fold)
+        unchecked!(self).try_rfold(init, fold)
     }
 
     #[inline]
@@ -305,7 +287,7 @@ where
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        self.into_inner().rfold(init, fold)
+        unchecked!(self).rfold(init, fold)
     }
 
     #[inline]
@@ -313,7 +295,7 @@ where
     where
         P: FnMut(&Self::Item) -> bool,
     {
-        self.as_inner_mut().rfind(predicate)
+        unchecked!(self).rfind(predicate)
     }
 }
 
@@ -323,11 +305,11 @@ where
     I: ExactSizeIterator + FusedIterator,
 {
     fn len(&self) -> usize {
-        self.as_inner().len()
+        unchecked!(self).len()
     }
 
     fn is_empty(&self) -> bool {
-        self.as_inner().is_empty()
+        unchecked!(self).is_empty()
     }
 }
 
