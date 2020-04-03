@@ -1743,41 +1743,41 @@ impl RegionKind {
         }
     }
 
-    pub fn keep_in_local_tcx(&self) -> bool {
-        if let ty::ReVar(..) = self { true } else { false }
-    }
-
     pub fn type_flags(&self) -> TypeFlags {
         let mut flags = TypeFlags::empty();
-
-        if self.keep_in_local_tcx() {
-            flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
-        }
 
         match *self {
             ty::ReVar(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_INFER;
+                flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
             }
             ty::RePlaceholder(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_PLACEHOLDER;
+            }
+            ty::ReEarlyBound(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
+                flags = flags | TypeFlags::HAS_RE_PARAM;
+            }
+            ty::ReFree { .. } | ty::ReScope { .. } => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
+            }
+            ty::ReEmpty(_) | ty::ReStatic => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+            }
+            ty::ReClosureBound(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
             ty::ReLateBound(..) => {
                 flags = flags | TypeFlags::HAS_RE_LATE_BOUND;
             }
-            ty::ReEarlyBound(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_PARAM;
-            }
-            ty::ReEmpty(_) | ty::ReStatic | ty::ReFree { .. } | ty::ReScope { .. } => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-            }
             ty::ReErased => {
                 flags = flags | TypeFlags::HAS_RE_ERASED;
-            }
-            ty::ReClosureBound(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
         }
 
