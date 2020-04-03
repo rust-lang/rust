@@ -28,6 +28,22 @@ impl<I> Fuse<I> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Fuse<I> where I: Iterator {}
 
+/// Fuse the iterator if the expression is `None`.
+macro_rules! fuse {
+    ($self:ident . iter . $($call:tt)+) => {
+        match $self.iter {
+            Some(ref mut iter) => match iter.$($call)+ {
+                None => {
+                    $self.iter = None;
+                    None
+                }
+                item => item,
+            },
+            None => None,
+        }
+    };
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Fuse<I>
 where
@@ -37,35 +53,36 @@ where
 
     #[inline]
     default fn next(&mut self) -> Option<<I as Iterator>::Item> {
-        let next = self.iter.as_mut()?.next();
-        if next.is_none() {
-            self.iter = None;
-        }
-        next
+        fuse!(self.iter.next())
     }
 
     #[inline]
     default fn nth(&mut self, n: usize) -> Option<I::Item> {
-        let nth = self.iter.as_mut()?.nth(n);
-        if nth.is_none() {
-            self.iter = None;
-        }
-        nth
+        fuse!(self.iter.nth(n))
     }
 
     #[inline]
     default fn last(self) -> Option<I::Item> {
-        self.iter?.last()
+        match self.iter {
+            Some(iter) => iter.last(),
+            None => None,
+        }
     }
 
     #[inline]
     default fn count(self) -> usize {
-        self.iter.map_or(0, I::count)
+        match self.iter {
+            Some(iter) => iter.count(),
+            None => 0,
+        }
     }
 
     #[inline]
     default fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.as_ref().map_or((0, Some(0)), I::size_hint)
+        match self.iter {
+            Some(ref iter) => iter.size_hint(),
+            None => (0, Some(0)),
+        }
     }
 
     #[inline]
@@ -98,11 +115,7 @@ where
     where
         P: FnMut(&Self::Item) -> bool,
     {
-        let found = self.iter.as_mut()?.find(predicate);
-        if found.is_none() {
-            self.iter = None;
-        }
-        found
+        fuse!(self.iter.find(predicate))
     }
 }
 
@@ -113,20 +126,12 @@ where
 {
     #[inline]
     default fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
-        let next = self.iter.as_mut()?.next_back();
-        if next.is_none() {
-            self.iter = None;
-        }
-        next
+        fuse!(self.iter.next_back())
     }
 
     #[inline]
     default fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
-        let nth = self.iter.as_mut()?.nth_back(n);
-        if nth.is_none() {
-            self.iter = None;
-        }
-        nth
+        fuse!(self.iter.nth_back(n))
     }
 
     #[inline]
@@ -159,11 +164,7 @@ where
     where
         P: FnMut(&Self::Item) -> bool,
     {
-        let found = self.iter.as_mut()?.rfind(predicate);
-        if found.is_none() {
-            self.iter = None;
-        }
-        found
+        fuse!(self.iter.rfind(predicate))
     }
 }
 
@@ -173,11 +174,17 @@ where
     I: ExactSizeIterator,
 {
     default fn len(&self) -> usize {
-        self.iter.as_ref().map_or(0, I::len)
+        match self.iter {
+            Some(ref iter) => iter.len(),
+            None => 0,
+        }
     }
 
     default fn is_empty(&self) -> bool {
-        self.iter.as_ref().map_or(true, I::is_empty)
+        match self.iter {
+            Some(ref iter) => iter.is_empty(),
+            None => true,
+        }
     }
 }
 
