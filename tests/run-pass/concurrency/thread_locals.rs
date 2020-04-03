@@ -12,18 +12,24 @@ unsafe fn get_a_ref() -> *mut u8 {
     &mut A
 }
 
+struct Sender(*mut u8);
+
+unsafe impl Send for Sender {}
+
 fn main() {
 
-    unsafe {
+    let ptr = unsafe {
         let x = get_a_ref();
         *x = 5;
         assert_eq!(A, 5);
         B = 15;
         C = 25;
-    }
+        Sender(&mut A)
+    };
     
-    thread::spawn(|| {
+    thread::spawn(move || {
         unsafe {
+            assert_eq!(*ptr.0, 5);
             assert_eq!(A, 0);
             assert_eq!(B, 0);
             assert_eq!(C, 25);
@@ -32,6 +38,7 @@ fn main() {
             let y = get_a_ref();
             assert_eq!(*y, 0);
             *y = 4;
+            assert_eq!(*ptr.0, 5);
             assert_eq!(A, 4);
             assert_eq!(*get_a_ref(), 4);
             
@@ -46,3 +53,4 @@ fn main() {
     }
     
 }
+

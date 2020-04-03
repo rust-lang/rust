@@ -433,6 +433,29 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         Ok(())
     }
 
+    fn access_local(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        frame: &Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
+        local: mir::Local,
+    ) -> InterpResult<'tcx, Operand<Self::PointerTag>> {
+        match frame.body.local_decls[local].local_info {
+            mir::LocalInfo::StaticRef { def_id, is_thread_local: true } => {
+                let static_alloc_id = ecx.tcx.alloc_map.lock().create_static_alloc(def_id);
+                let alloc_id = ecx.memory.extra.tls.get_or_register_allocation(*ecx.memory.tcx, static_alloc_id);
+                let tag = Self::tag_global_base_pointer(&ecx.memory.extra, alloc_id);
+                let pointer: Pointer = alloc_id.into();
+                let pointer = pointer.with_tag(tag);
+                let scalar: Scalar<_> = pointer.into();
+                let scalar: ScalarMaybeUndef<_> = scalar.into();
+                let immediate: Immediate<_> = scalar.into();
+                Ok(
+                    Operand::Immediate(immediate)
+                )
+            },
+            _ => frame.locals[local].access(),
+        }
+    }
+
     fn canonical_alloc_id(mem: &Memory<'mir, 'tcx, Self>, id: AllocId) -> AllocId {
         let tcx = mem.tcx;
         let alloc = tcx.alloc_map.lock().get(id);
