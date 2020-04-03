@@ -266,6 +266,10 @@ impl RawItemsCollector {
                 self.add_macro(current_module, it);
                 return;
             }
+            ast::ModuleItem::ExternBlock(_) => {
+                // FIXME: add extern block
+                return;
+            }
         };
         if let Some(name) = name {
             let name = name.as_name();

@@ -60,10 +60,10 @@ pub fn extract_trivial_expression(block: &ast::BlockExpr) -> Option<ast::Expr> {
     } else {
         // Unwrap `{ continue; }`
         let (stmt,) = block.statements().next_tuple()?;
-        if has_anything_else(stmt.syntax()) {
-            return None;
-        }
         if let ast::Stmt::ExprStmt(expr_stmt) = stmt {
+            if has_anything_else(expr_stmt.syntax()) {
+                return None;
+            }
             let expr = expr_stmt.expr()?;
             match expr.syntax().kind() {
                 CONTINUE_EXPR | BREAK_EXPR | RETURN_EXPR => return Some(expr),

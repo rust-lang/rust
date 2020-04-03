@@ -84,6 +84,10 @@ impl RawVisibility {
                 let path = ModPath { kind: PathKind::Super(1), segments: Vec::new() };
                 RawVisibility::Module(path)
             }
+            ast::VisibilityKind::PubSelf => {
+                let path = ModPath { kind: PathKind::Plain, segments: Vec::new() };
+                RawVisibility::Module(path)
+            }
             ast::VisibilityKind::Pub => RawVisibility::Public,
         }
     }

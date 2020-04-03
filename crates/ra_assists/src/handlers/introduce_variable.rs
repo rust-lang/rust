@@ -1,5 +1,5 @@
 use ra_syntax::{
-    ast::{self, AstNode},
+    ast::{self, AstElement, AstNode},
     SyntaxKind::{
         BLOCK_EXPR, BREAK_EXPR, COMMENT, LAMBDA_EXPR, LOOP_EXPR, MATCH_ARM, PATH_EXPR, RETURN_EXPR,
         WHITESPACE,
@@ -124,7 +124,7 @@ fn anchor_stmt(expr: ast::Expr) -> Option<(SyntaxNode, bool)> {
             }
         }
 
-        if ast::Stmt::cast(node.clone()).is_some() {
+        if ast::Stmt::cast_element(node.clone().into()).is_some() {
             return Some((node, false));
         }
 
