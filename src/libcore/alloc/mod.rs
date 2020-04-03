@@ -119,7 +119,7 @@ pub enum ReallocPlacement {
 ///
 /// Unlike [`GlobalAlloc`][], zero-sized allocations are allowed in `AllocRef`. If an underlying
 /// allocator does not support this (like jemalloc) or return a null pointer (such as
-/// `libc::malloc`), this is caught by the implementation.
+/// `libc::malloc`), this must be caught by the implementation.
 ///
 /// ### Currently allocated memory
 ///
