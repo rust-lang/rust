@@ -577,7 +577,7 @@ pub struct Scalar {
     pub value: Primitive,
 
     /// Inclusive wrap-around range of valid values, that is, if
-    /// start > end, it represents `start..=max_value()`,
+    /// start > end, it represents `start..=MAX`,
     /// followed by `0..=end`.
     ///
     /// That is, for an i8 primitive, a range of `254..=2` means following

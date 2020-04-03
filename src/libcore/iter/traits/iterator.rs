@@ -198,7 +198,7 @@ pub trait Iterator {
     /// // and the maximum possible lower bound
     /// let iter = 0..;
     ///
-    /// assert_eq!((usize::max_value(), None), iter.size_hint());
+    /// assert_eq!((usize::MAX, None), iter.size_hint());
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -2920,7 +2920,7 @@ pub trait Iterator {
     /// assert_eq!([1.].iter().partial_cmp([1., 2.].iter()), Some(Ordering::Less));
     /// assert_eq!([1., 2.].iter().partial_cmp([1.].iter()), Some(Ordering::Greater));
     ///
-    /// assert_eq!([std::f64::NAN].iter().partial_cmp([1.].iter()), None);
+    /// assert_eq!([f64::NAN].iter().partial_cmp([1.].iter()), None);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn partial_cmp<I>(self, other: I) -> Option<Ordering>
@@ -3170,7 +3170,7 @@ pub trait Iterator {
     /// assert!(![1, 3, 2, 4].iter().is_sorted());
     /// assert!([0].iter().is_sorted());
     /// assert!(std::iter::empty::<i32>().is_sorted());
-    /// assert!(![0.0, 1.0, std::f32::NAN].iter().is_sorted());
+    /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted());
     /// ```
     #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
@@ -3197,7 +3197,7 @@ pub trait Iterator {
     /// assert!(![1, 3, 2, 4].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// assert!([0].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| a.partial_cmp(b)));
-    /// assert!(![0.0, 1.0, std::f32::NAN].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// ```
     ///
     /// [`is_sorted`]: trait.Iterator.html#method.is_sorted
