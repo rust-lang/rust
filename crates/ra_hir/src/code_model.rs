@@ -1084,6 +1084,26 @@ impl Type {
         )
     }
 
+    pub fn impls_trait(&self, db: &dyn HirDatabase, trait_: Trait, args: &[Type]) -> bool {
+        let trait_ref = hir_ty::TraitRef {
+            trait_: trait_.id,
+            substs: Substs::build_for_def(db, trait_.id)
+                .push(self.ty.value.clone())
+                .fill(args.iter().map(|t| t.ty.value.clone()))
+                .build(),
+        };
+
+        let goal = Canonical {
+            value: hir_ty::InEnvironment::new(
+                self.ty.environment.clone(),
+                hir_ty::Obligation::Trait(trait_ref),
+            ),
+            num_vars: 0,
+        };
+
+        db.trait_solve(self.krate, goal).is_some()
+    }
+
     // FIXME: this method is broken, as it doesn't take closures into account.
     pub fn as_callable(&self) -> Option<CallableDef> {
         Some(self.ty.value.as_callable()?.0)
