@@ -50,7 +50,7 @@ we'll talk about that later.
       doesn't seem to be able to optimize the pattern the [`simplify_try`] mir
       opt looks for.
 - Rust code is _monomorphized_, which means making copies of all the generic
-  code with the type parameters replaced by concrete types. In order to do
+  code with the type parameters replaced by concrete types. To do
   this, we need to collect a list of what concrete types to generate code for.
   This is called _monomorphization collection_.
 - We then begin what is vaguely called _code generation_ or _codegen_.
@@ -105,7 +105,7 @@ satisfy/optimize for. For example,
 - Compiler compilation speed: how long does it take to compile the compiler?
   This impacts contributors and compiler maintenance.
 - Compiler implementation complexity: building a compiler is one of the hardest
-  things a person/group can do, and rust is not a very simple language, so how
+  things a person/group can do, and Rust is not a very simple language, so how
   do we make the compiler's code base manageable?
 - Compiler correctness: the binaries produced by the compiler should do what
   the input programs says they do, and should continue to do so despite the
@@ -119,14 +119,13 @@ satisfy/optimize for. For example,
   always going on to its implementation.
 - Limitations of other tools: rustc uses LLVM in its backend, and LLVM has some
   strengths we leverage and some limitations/weaknesses we need to work around.
-- And others that I'm probably forgetting.
 
 So, as you read through the rest of the guide, keep these things in mind. They
 will often inform decisions that we make.
 
 ### Constant change
 
-One thing to keep in mind is that `rustc` is a real production-quality product.
+Keep in mind that `rustc` is a real production-quality product.
 As such, it has its fair share of codebase churn and technical debt. A lot of
 the designs discussed throughout this guide are idealized designs that are not
 fully realized yet. And things keep changing so that it is hard to keep this
@@ -139,19 +138,19 @@ to keep up with the requirements above.
 
 As with most compilers, `rustc` uses some intermediate representations (IRs) to
 facilitate computations. In general, working directly with the source code is
-extremely inconvenient. Source code is designed to be human-friendly while at
+extremely inconvenient and error-prone. Source code is designed to be human-friendly while at
 the same time being unambiguous, but it's less convenient for doing something
 like, say, type checking.
 
 Instead most compilers, including `rustc`, build some sort of IR out of the
 source code which is easier to analyze. `rustc` has a few IRs, each optimized
-for different things:
+for different purposes:
 
 - Abstract Syntax Tree (AST): the abstract syntax tree is built from the stream
   of tokens produced by the lexer directly from the source code. It represents
   pretty much exactly what the user wrote. It helps to do some syntactic sanity
   checking (e.g. checking that a type is expected where the user wrote one).
-- High-level IR (HIR): This is a sort of very desugared AST. It's still close
+- High-level IR (HIR): This is a sort of desugared AST. It's still close
   to what the user wrote syntactically, but it includes some implicit things
   such as some elided lifetimes, etc. This IR is amenable to type checking.
 - HAIR: This is an intermediate between HIR and MIR. This only exists to make
@@ -166,7 +165,7 @@ for different things:
   MIRI). Because MIR is still generic, we can do a lot of analyses here more
   efficiently than after monomorphization.
 - LLVM IR: This is the standard form of all input to the LLVM compiler. LLVM IR
-  is basically a sort of typed assembly language with lots of annotations. It's
+  is a sort of typed assembly language with lots of annotations. It's
   a standard format that is used by all compilers that use LLVM (e.g. the clang
   C compiler also outputs LLVM IR). LLVM IR is designed to be easy for other
   compilers to emit and also rich enough for LLVM to run a bunch of
@@ -181,9 +180,9 @@ compiler does this to make incremental compilation possible -- that is, if the
 user makes a change to their program and recompiles, we want to do as little
 redundant work as possible to produce the new binary.
 
-In rustc, all the major steps above are organized as a bunch of queries that
+In `rustc`, all the major steps above are organized as a bunch of queries that
 call each other. For example, there is a query to ask for the type of something
-and another to ask for the optimized MIR of a function, and so on. These
+and another to ask for the optimized MIR of a function. These
 queries can call each other and are all tracked through the query system, and
 the results of the queries are cached on disk so that we can tell which
 queries' results changed from the last compilation and only redo those. This is
@@ -209,7 +208,7 @@ to remain to ensure that unreachable functions still have their errors emitted.
 
 Moreover, the compiler wasn't originally built to use a query system; the query
 system has been retrofitted into the compiler, so parts of it are not
-query-fied yet. Also, LLVM isn't our code, so obviously that isn't querified
+query-fied yet. Also, LLVM isn't our code, so that isn't querified
 either. The plan is to eventually query-fy all of the steps listed in the
 previous section, but as of this writing, only the steps between HIR and
 LLVM-IR are query-fied. That is, lexing and parsing are done all at once for
@@ -239,8 +238,8 @@ Oh, and also the `rustc::ty` module defines the `TyCtxt` struct we mentioned bef
 
 ### Parallelism
 
-Compiler performance is a problem that we would very much like to improve on
-(and are always working on). One aspect of that is attempting to parallelize
+Compiler performance is a problem that we would like to improve on
+(and are always working on). One aspect of that is parallelizing
 `rustc` itself.
 
 Currently, there is only one part of rustc that is already parallel: codegen.
