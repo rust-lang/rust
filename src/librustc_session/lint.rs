@@ -195,7 +195,7 @@ pub enum BuiltinLintDiagnostics {
 }
 
 /// Lints that are buffered up early on in the `Session` before the
-/// `LintLevels` is calculated. These are later passed to `librustc_middle`.
+/// `LintLevels` is calculated.
 #[derive(PartialEq)]
 pub struct BufferedEarlyLint {
     /// The span of code that we are linting on.
@@ -207,7 +207,8 @@ pub struct BufferedEarlyLint {
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
 
-    /// A lint Id that can be passed to `rustc_session::lint::Lint::from_parser_lint_id`.
+    /// A lint Id that can be passed to
+    /// `rustc_lint::early::EarlyContextAndPass::check_id`.
     pub lint_id: LintId,
 
     /// Customization of the `DiagnosticBuilder<'_>` for the lint.

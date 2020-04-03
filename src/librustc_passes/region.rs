@@ -27,8 +27,8 @@ pub struct Context {
     /// of the innermost fn body. Each fn forms its own disjoint tree
     /// in the region hierarchy. These fn bodies are themselves
     /// arranged into a tree. See the "Modeling closures" section of
-    /// the README in `infer::region_constraints` for more
-    /// details.
+    /// the README in `rustc_trait_selection::infer::region_constraints`
+    /// for more details.
     root_id: Option<hir::ItemLocalId>,
 
     /// The scope that contains any new variables declared, plus its depth in

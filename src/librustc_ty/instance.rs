@@ -118,7 +118,7 @@ fn resolve_associated_item<'tcx>(
             // Since this is a trait item, we need to see if the item is either a trait default item
             // or a specialization because we can't resolve those unless we can `Reveal::All`.
             // NOTE: This should be kept in sync with the similar code in
-            // `rustc_middle::traits::project::assemble_candidates_from_impls()`.
+            // `rustc_trait_selection::traits::project::assemble_candidates_from_impls()`.
             let eligible = if leaf_def.is_final() {
                 // Non-specializable items are always projectable.
                 true

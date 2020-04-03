@@ -1053,7 +1053,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// regions which are extracted and stored as having occurred at
     /// `locations`.
     ///
-    /// **Any `rustc_middle::infer` operations that might generate region
+    /// **Any `rustc_infer::infer` operations that might generate region
     /// constraints should occur within this method so that those
     /// constraints can be properly localized!**
     fn fully_perform_op<R>(

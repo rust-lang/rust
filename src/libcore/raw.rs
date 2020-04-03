@@ -6,7 +6,8 @@
 //! They can be used as targets of transmutes in unsafe code for manipulating
 //! the raw representations directly.
 //!
-//! Their definition should always match the ABI defined in `rustc_target::abi`.
+//! Their definition should always match the ABI defined in
+//! `rustc_middle::ty::layout`.
 
 /// The representation of a trait object like `&SomeTrait`.
 ///
