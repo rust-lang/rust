@@ -972,8 +972,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         f: impl FnOnce(&mut Self) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>),
     ) -> hir::BodyId {
         let prev_gen_kind = self.generator_kind.take();
+        let task_context = self.task_context.take();
         let (parameters, result) = f(self);
         let body_id = self.record_body(parameters, result);
+        self.task_context = task_context;
         self.generator_kind = prev_gen_kind;
         body_id
     }

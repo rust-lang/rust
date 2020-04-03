@@ -1,10 +1,9 @@
 use crate::ffi::CStr;
 use crate::io;
-use crate::mem;
 use crate::ptr;
 use crate::sys::c;
 use crate::sys::handle::Handle;
-use crate::sys_common::thread::*;
+use crate::sys::stack_overflow;
 use crate::time::Duration;
 
 use libc::c_void;
@@ -20,7 +19,7 @@ pub struct Thread {
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-        let p = box p;
+        let p = Box::into_raw(box p);
 
         // FIXME On UNIX, we guard against stack sizes that are too small but
         // that's because pthreads enforces that stacks are at least
@@ -34,21 +33,27 @@ impl Thread {
             ptr::null_mut(),
             stack_size,
             thread_start,
-            &*p as *const _ as *mut _,
+            p as *mut _,
             c::STACK_SIZE_PARAM_IS_A_RESERVATION,
             ptr::null_mut(),
         );
 
         return if ret as usize == 0 {
+            // The thread failed to start and as a result p was not consumed. Therefore, it is
+            // safe to reconstruct the box so that it gets deallocated.
+            drop(Box::from_raw(p));
             Err(io::Error::last_os_error())
         } else {
-            mem::forget(p); // ownership passed to CreateThread
             Ok(Thread { handle: Handle::new(ret) })
         };
 
         extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {
             unsafe {
-                start_thread(main as *mut u8);
+                // Next, set up our stack overflow handler which may get triggered if we run
+                // out of stack.
+                let _handler = stack_overflow::Handler::new();
+                // Finally, let's run some code.
+                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
             }
             0
         }

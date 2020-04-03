@@ -659,8 +659,8 @@ impl<T: ?Sized> *const T {
     /// `align`.
     ///
     /// If it is not possible to align the pointer, the implementation returns
-    /// `usize::max_value()`. It is permissible for the implementation to *always*
-    /// return `usize::max_value()`. Only your algorithm's performance can depend
+    /// `usize::MAX`. It is permissible for the implementation to *always*
+    /// return `usize::MAX`. Only your algorithm's performance can depend
     /// on getting a usable offset here, not its correctness.
     ///
     /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be

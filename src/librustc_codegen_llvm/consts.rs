@@ -436,24 +436,21 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                 //
                 // We could remove this hack whenever we decide to drop macOS 10.10 support.
                 if self.tcx.sess.target.target.options.is_like_osx {
-                    assert_eq!(alloc.relocations().len(), 0);
-
-                    let is_zeroed = {
-                        // Treats undefined bytes as if they were defined with the byte value that
-                        // happens to be currently assigned in mir. This is valid since reading
-                        // undef bytes may yield arbitrary values.
-                        //
-                        // FIXME: ignore undef bytes even with representation `!= 0`.
-                        //
-                        // The `inspect` method is okay here because we checked relocations, and
-                        // because we are doing this access to inspect the final interpreter state
-                        // (not as part of the interpreter execution).
-                        alloc
+                    // The `inspect` method is okay here because we checked relocations, and
+                    // because we are doing this access to inspect the final interpreter state
+                    // (not as part of the interpreter execution).
+                    //
+                    // FIXME: This check requires that the (arbitrary) value of undefined bytes
+                    // happens to be zero. Instead, we should only check the value of defined bytes
+                    // and set all undefined bytes to zero if this allocation is headed for the
+                    // BSS.
+                    let all_bytes_are_zero = alloc.relocations().is_empty()
+                        && alloc
                             .inspect_with_undef_and_ptr_outside_interpreter(0..alloc.len())
                             .iter()
-                            .all(|b| *b == 0)
-                    };
-                    let sect_name = if is_zeroed {
+                            .all(|&byte| byte == 0);
+
+                    let sect_name = if all_bytes_are_zero {
                         CStr::from_bytes_with_nul_unchecked(b"__DATA,__thread_bss\0")
                     } else {
                         CStr::from_bytes_with_nul_unchecked(b"__DATA,__thread_data\0")

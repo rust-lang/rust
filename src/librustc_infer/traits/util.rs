@@ -2,9 +2,12 @@ use smallvec::smallvec;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::outlives::Component;
-use rustc_middle::ty::{self, ToPolyTraitRef, TyCtxt};
+use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, TyCtxt, WithConstness};
 
-fn anonymize_predicate<'tcx>(tcx: TyCtxt<'tcx>, pred: &ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+pub fn anonymize_predicate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    pred: &ty::Predicate<'tcx>,
+) -> ty::Predicate<'tcx> {
     match *pred {
         ty::Predicate::Trait(ref data, constness) => {
             ty::Predicate::Trait(tcx.anonymize_late_bound_regions(data), constness)
@@ -88,6 +91,21 @@ pub struct Elaborator<'tcx> {
     visited: PredicateSet<'tcx>,
 }
 
+pub fn elaborate_trait_ref<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+) -> Elaborator<'tcx> {
+    elaborate_predicates(tcx, vec![trait_ref.without_const().to_predicate()])
+}
+
+pub fn elaborate_trait_refs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+) -> Elaborator<'tcx> {
+    let predicates = trait_refs.map(|trait_ref| trait_ref.without_const().to_predicate()).collect();
+    elaborate_predicates(tcx, predicates)
+}
+
 pub fn elaborate_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut predicates: Vec<ty::Predicate<'tcx>>,
@@ -98,6 +116,10 @@ pub fn elaborate_predicates<'tcx>(
 }
 
 impl Elaborator<'tcx> {
+    pub fn filter_to_traits(self) -> FilterToTraits<Self> {
+        FilterToTraits::new(self)
+    }
+
     fn elaborate(&mut self, predicate: &ty::Predicate<'tcx>) {
         let tcx = self.visited.tcx;
         match *predicate {
@@ -221,5 +243,59 @@ impl Iterator for Elaborator<'tcx> {
         } else {
             None
         }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Supertrait iterator
+///////////////////////////////////////////////////////////////////////////
+
+pub type Supertraits<'tcx> = FilterToTraits<Elaborator<'tcx>>;
+
+pub fn supertraits<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+) -> Supertraits<'tcx> {
+    elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
+}
+
+pub fn transitive_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+) -> Supertraits<'tcx> {
+    elaborate_trait_refs(tcx, bounds).filter_to_traits()
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Other
+///////////////////////////////////////////////////////////////////////////
+
+/// A filter around an iterator of predicates that makes it yield up
+/// just trait references.
+pub struct FilterToTraits<I> {
+    base_iterator: I,
+}
+
+impl<I> FilterToTraits<I> {
+    fn new(base: I) -> FilterToTraits<I> {
+        FilterToTraits { base_iterator: base }
+    }
+}
+
+impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<I> {
+    type Item = ty::PolyTraitRef<'tcx>;
+
+    fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
+        while let Some(pred) = self.base_iterator.next() {
+            if let ty::Predicate::Trait(data, _) = pred {
+                return Some(data.to_poly_trait_ref());
+            }
+        }
+        None
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.base_iterator.size_hint();
+        (0, upper)
     }
 }

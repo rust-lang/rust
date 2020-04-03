@@ -470,7 +470,7 @@ impl f32 {
     ///
     /// let value = -128.9_f32;
     /// let rounded = unsafe { value.to_int_unchecked::<i8>() };
-    /// assert_eq!(rounded, std::i8::MIN);
+    /// assert_eq!(rounded, i8::MIN);
     /// ```
     ///
     /// # Safety

@@ -6,7 +6,7 @@ mod engine;
 pub mod error_reporting;
 mod project;
 mod structural_impls;
-mod util;
+pub mod util;
 
 use rustc_hir as hir;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
