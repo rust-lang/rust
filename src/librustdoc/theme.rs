@@ -8,18 +8,6 @@ use rustc_errors::Handler;
 #[cfg(test)]
 mod tests;
 
-macro_rules! try_something {
-    ($e:expr, $diag:expr, $out:expr) => {{
-        match $e {
-            Ok(c) => c,
-            Err(e) => {
-                $diag.struct_err(&e.to_string()).emit();
-                return $out;
-            }
-        }
-    }};
-}
-
 #[derive(Debug, Clone, Eq)]
 pub struct CssPath {
     pub name: String,
@@ -265,7 +253,13 @@ pub fn test_theme_against<P: AsRef<Path>>(
     against: &CssPath,
     diag: &Handler,
 ) -> (bool, Vec<String>) {
-    let data = try_something!(fs::read(f), diag, (false, vec![]));
+    let data = match fs::read(f) {
+        Ok(c) => c,
+        Err(e) => {
+            diag.struct_err(&e.to_string()).emit();
+            return (false, vec![]);
+        }
+    };
 
     let paths = load_css_paths(&data);
     let mut ret = vec![];
