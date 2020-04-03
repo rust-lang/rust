@@ -30,6 +30,7 @@ use crate::intrinsics::{assume, exact_div, is_aligned_and_not_null, unchecked_su
 use crate::isize;
 use crate::iter::*;
 use crate::marker::{self, Copy, Send, Sized, Sync};
+use crate::marker::{StructuralEq, StructuralPartialEq};
 use crate::mem;
 use crate::ops::{self, FnMut, Range};
 use crate::option::Option;
@@ -5752,6 +5753,9 @@ extern "C" {
     fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32;
 }
 
+#[unstable(feature = "structural_match", issue = "31434")]
+impl<A> StructuralPartialEq for [A] where A: StructuralPartialEq {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> PartialEq<[B]> for [A]
 where
@@ -5765,6 +5769,9 @@ where
         SlicePartialEq::not_equal(self, other)
     }
 }
+
+#[unstable(feature = "structural_match", issue = "31434")]
+impl<A> StructuralEq for [A] where A: StructuralEq {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Eq> Eq for [T] {}

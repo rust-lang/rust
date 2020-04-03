@@ -12,6 +12,7 @@ use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::marker::Unsize;
+use crate::marker::{StructuralEq, StructuralPartialEq};
 use crate::slice::{Iter, IterMut};
 
 mod iter;
@@ -228,6 +229,14 @@ where
     }
 }
 
+#[unstable(feature = "structural_match", issue = "31434")]
+impl<A, const N: usize> StructuralPartialEq for [A; N]
+where
+    A: StructuralPartialEq,
+    [A; N]: LengthAtMost32,
+{
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, const N: usize> PartialEq<[B; N]> for [A; N]
 where
@@ -344,6 +353,14 @@ where
 // NOTE: some less important impls are omitted to reduce code bloat
 // __impl_slice_eq2! { [A; $N], &'b [B; $N] }
 // __impl_slice_eq2! { [A; $N], &'b mut [B; $N] }
+
+#[unstable(feature = "structural_match", issue = "31434")]
+impl<A, const N: usize> StructuralEq for [A; N]
+where
+    A: StructuralEq,
+    [A; N]: LengthAtMost32,
+{
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Eq, const N: usize> Eq for [T; N] where [T; N]: LengthAtMost32 {}

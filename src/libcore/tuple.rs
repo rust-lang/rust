@@ -2,6 +2,7 @@
 
 use crate::cmp::Ordering::*;
 use crate::cmp::*;
+use crate::marker::{StructuralEq, StructuralPartialEq};
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {
@@ -22,6 +23,14 @@ macro_rules! tuple_impls {
                     $(self.$idx != other.$idx)||+
                 }
             }
+
+            #[unstable(feature = "structural_match", issue = "31434")]
+            impl<$($T:StructuralPartialEq),+> StructuralPartialEq for ($($T,)+)
+                where last_type!($($T,)+): ?Sized {}
+
+            #[unstable(feature = "structural_match", issue = "31434")]
+            impl<$($T:StructuralEq),+> StructuralEq for ($($T,)+)
+                where last_type!($($T,)+): ?Sized {}
 
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T:Eq),+> Eq for ($($T,)+) where last_type!($($T,)+): ?Sized {}

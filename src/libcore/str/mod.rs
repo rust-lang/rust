@@ -1720,6 +1720,7 @@ Section: Trait implementations
 
 mod traits {
     use crate::cmp::Ordering;
+    use crate::marker::{StructuralEq, StructuralPartialEq};
     use crate::ops;
     use crate::slice::{self, SliceIndex};
 
@@ -1738,6 +1739,9 @@ mod traits {
         }
     }
 
+    #[unstable(feature = "structural_match", issue = "31434")]
+    impl StructuralEq for str {}
+
     #[stable(feature = "rust1", since = "1.0.0")]
     impl PartialEq for str {
         #[inline]
@@ -1749,6 +1753,9 @@ mod traits {
             !(*self).eq(other)
         }
     }
+
+    #[unstable(feature = "structural_match", issue = "31434")]
+    impl StructuralPartialEq for str {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Eq for str {}

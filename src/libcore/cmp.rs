@@ -1043,6 +1043,7 @@ pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
 mod impls {
     use crate::cmp::Ordering::{self, Equal, Greater, Less};
     use crate::hint::unreachable_unchecked;
+    use crate::marker::{StructuralEq, StructuralPartialEq};
 
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(
@@ -1209,6 +1210,9 @@ mod impls {
 
     // & pointers
 
+    #[unstable(feature = "structural_match", issue = "31434")]
+    impl<A: ?Sized> StructuralPartialEq for &A where A: StructuralPartialEq {}
+
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized, B: ?Sized> PartialEq<&B> for &A
     where
@@ -1259,10 +1263,17 @@ mod impls {
             Ord::cmp(*self, *other)
         }
     }
+
+    #[unstable(feature = "structural_match", issue = "31434")]
+    impl<A: ?Sized> StructuralEq for &A where A: StructuralEq {}
+
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized> Eq for &A where A: Eq {}
 
     // &mut pointers
+
+    #[unstable(feature = "structural_match", issue = "31434")]
+    impl<A: ?Sized> StructuralPartialEq for &mut A where A: StructuralPartialEq {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized, B: ?Sized> PartialEq<&mut B> for &mut A
@@ -1314,6 +1325,10 @@ mod impls {
             Ord::cmp(*self, *other)
         }
     }
+
+    #[unstable(feature = "structural_match", issue = "31434")]
+    impl<A: ?Sized> StructuralEq for &mut A where A: StructuralEq {}
+
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized> Eq for &mut A where A: Eq {}
 
