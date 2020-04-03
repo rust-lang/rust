@@ -88,7 +88,6 @@ very_unsafe!();
 // we don't lint code from external macros
 undocd_unsafe!();
 
-#[allow(clippy::let_unit_value)]
 fn main() {
     unsafe {
         you_dont_see_me();

@@ -999,7 +999,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "let_unit_value",
-        group: "style",
+        group: "pedantic",
         desc: "creating a `let` binding to a value of unit type, which usually can\'t be used afterwards",
         deprecation: None,
         module: "types",

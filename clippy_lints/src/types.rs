@@ -593,7 +593,7 @@ declare_clippy_lint! {
     /// };
     /// ```
     pub LET_UNIT_VALUE,
-    style,
+    pedantic,
     "creating a `let` binding to a value of unit type, which usually can't be used afterwards"
 }
 
