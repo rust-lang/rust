@@ -316,7 +316,7 @@ impl<'a> SyntaxRewriter<'a> {
     }
 }
 
-impl<'a> ops::AddAssign for SyntaxRewriter<'_> {
+impl ops::AddAssign for SyntaxRewriter<'_> {
     fn add_assign(&mut self, rhs: SyntaxRewriter) {
         assert!(rhs.f.is_none());
         self.replacements.extend(rhs.replacements)
