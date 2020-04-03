@@ -41,16 +41,12 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::traits;
-use rustc_middle::ty::{
-    self,
-    layout::{self, IntegerExt},
-    subst::GenericArg,
-    Binder, Ty, TyCtxt, TypeFoldable,
-};
+use rustc_middle::ty::{self, layout::IntegerExt, subst::GenericArg, Binder, Ty, TyCtxt, TypeFoldable};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::symbol::{self, kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
+use rustc_target::abi::Integer;
 use rustc_trait_selection::traits::predicate_for_trait_def;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
@@ -1080,9 +1076,7 @@ pub fn get_arg_name(pat: &Pat<'_>) -> Option<ast::Name> {
 }
 
 pub fn int_bits(tcx: TyCtxt<'_>, ity: ast::IntTy) -> u64 {
-    layout::Integer::from_attr(&tcx, attr::IntType::SignedInt(ity))
-        .size()
-        .bits()
+    Integer::from_attr(&tcx, attr::IntType::SignedInt(ity)).size().bits()
 }
 
 #[allow(clippy::cast_possible_wrap)]
@@ -1101,9 +1095,7 @@ pub fn unsext(tcx: TyCtxt<'_>, u: i128, ity: ast::IntTy) -> u128 {
 
 /// clip unused bytes
 pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: ast::UintTy) -> u128 {
-    let bits = layout::Integer::from_attr(&tcx, attr::IntType::UnsignedInt(ity))
-        .size()
-        .bits();
+    let bits = Integer::from_attr(&tcx, attr::IntType::UnsignedInt(ity)).size().bits();
     let amt = 128 - bits;
     (u << amt) >> amt
 }
