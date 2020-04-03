@@ -767,6 +767,13 @@ impl Session {
             return n as usize;
         }
 
+        // If incremental compilation is turned on, we default to a high number
+        // codegen units in order to reduce the "collateral damage" small
+        // changes cause.
+        if self.opts.incremental.is_some() {
+            return 256;
+        }
+
         // Why is 16 codegen units the default all the time?
         //
         // The main reason for enabling multiple codegen units by default is to

@@ -2513,7 +2513,7 @@ impl<'test> TestCx<'test> {
                     .filter(|s| !s.is_empty())
                     .map(|s| {
                         if cgu_has_crate_disambiguator {
-                            remove_crate_disambiguator_from_cgu(s)
+                            remove_crate_disambiguators_from_set_of_cgu_names(s)
                         } else {
                             s.to_string()
                         }
@@ -2562,6 +2562,16 @@ impl<'test> TestCx<'test> {
             new_name.replace_range(d1.start()..d1.end(), "");
 
             new_name
+        }
+
+        // The name of merged CGUs is constructed as the names of the original
+        // CGUs joined with "--". This function splits such composite CGU names
+        // and handles each component individually.
+        fn remove_crate_disambiguators_from_set_of_cgu_names(cgus: &str) -> String {
+            cgus.split("--")
+                .map(|cgu| remove_crate_disambiguator_from_cgu(cgu))
+                .collect::<Vec<_>>()
+                .join("--")
         }
     }
 
