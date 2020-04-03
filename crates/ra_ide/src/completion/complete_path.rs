@@ -38,7 +38,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         hir::ModuleDef::Adt(_) | hir::ModuleDef::TypeAlias(_) => {
             if let hir::ModuleDef::Adt(Adt::Enum(e)) = def {
                 for variant in e.variants(ctx.db) {
-                    acc.add_enum_variant(ctx, variant);
+                    acc.add_enum_variant(ctx, variant, None);
                 }
             }
             let ty = match def {
@@ -58,7 +58,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                     match item {
                         hir::AssocItem::Function(func) => {
                             if !func.has_self_param(ctx.db) {
-                                acc.add_function(ctx, func);
+                                acc.add_function(ctx, func, None);
                             }
                         }
                         hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
@@ -87,7 +87,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 match item {
                     hir::AssocItem::Function(func) => {
                         if !func.has_self_param(ctx.db) {
-                            acc.add_function(ctx, func);
+                            acc.add_function(ctx, func, None);
                         }
                     }
                     hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
@@ -355,15 +355,17 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "Bar",
+                label: "Bar(…)",
                 source_range: [116; 116),
                 delete: [116; 116),
-                insert: "Bar",
+                insert: "Bar($0)",
                 kind: EnumVariant,
+                lookup: "Bar",
                 detail: "(i32)",
                 documentation: Documentation(
                     "Bar Variant with i32",
                 ),
+                trigger_call_info: true,
             },
             CompletionItem {
                 label: "Foo",
@@ -403,15 +405,17 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "Bar",
+                label: "Bar(…)",
                 source_range: [180; 180),
                 delete: [180; 180),
-                insert: "Bar",
+                insert: "Bar($0)",
                 kind: EnumVariant,
+                lookup: "Bar",
                 detail: "(i32, u32)",
                 documentation: Documentation(
                     "Bar Variant with i32 and u32",
                 ),
+                trigger_call_info: true,
             },
             CompletionItem {
                 label: "Foo",
@@ -425,15 +429,17 @@ mod tests {
                 ),
             },
             CompletionItem {
-                label: "S",
+                label: "S(…)",
                 source_range: [180; 180),
                 delete: [180; 180),
-                insert: "S",
+                insert: "S($0)",
                 kind: EnumVariant,
+                lookup: "S",
                 detail: "(S)",
                 documentation: Documentation(
                     "",
                 ),
+                trigger_call_info: true,
             },
         ]
         "###

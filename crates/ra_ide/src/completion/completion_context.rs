@@ -35,10 +35,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_param: bool,
     /// If a name-binding or reference to a const in a pattern.
     /// Irrefutable patterns (like let) are excluded.
-    pub(super) is_pat_binding: bool,
-    // A bind battern which may also be part of a path.
-    // if let Some(En<|>) = Some(Enum::A)
-    pub(super) is_pat_binding_and_path: bool,
+    pub(super) is_pat_binding_or_const: bool,
     /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
     pub(super) is_trivial_path: bool,
     /// If not a trivial path, the prefix (qualifier).
@@ -97,8 +94,7 @@ impl<'a> CompletionContext<'a> {
             record_lit_pat: None,
             impl_def: None,
             is_param: false,
-            is_pat_binding: false,
-            is_pat_binding_and_path: false,
+            is_pat_binding_or_const: false,
             is_trivial_path: false,
             path_prefix: None,
             after_if: false,
@@ -190,18 +186,19 @@ impl<'a> CompletionContext<'a> {
         // suggest declaration names, see `CompletionKind::Magic`.
         if let Some(name) = find_node_at_offset::<ast::Name>(&file_with_fake_ident, offset) {
             if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
-                let parent = bind_pat.syntax().parent();
-                if parent.clone().and_then(ast::MatchArm::cast).is_some()
-                    || parent.clone().and_then(ast::Condition::cast).is_some()
-                {
-                    self.is_pat_binding = true;
+                self.is_pat_binding_or_const = true;
+                if bind_pat.has_at() || bind_pat.is_ref() || bind_pat.is_mutable() {
+                    self.is_pat_binding_or_const = false;
                 }
-
-                if parent.and_then(ast::RecordFieldPatList::cast).is_none()
-                    && bind_pat.pat().is_none()
-                    && !bind_pat.is_ref()
-                {
-                    self.is_pat_binding_and_path = true;
+                if bind_pat.syntax().parent().and_then(ast::RecordFieldPatList::cast).is_some() {
+                    self.is_pat_binding_or_const = false;
+                }
+                if let Some(let_stmt) = bind_pat.syntax().ancestors().find_map(ast::LetStmt::cast) {
+                    if let Some(pat) = let_stmt.pat() {
+                        if bind_pat.syntax().text_range().is_subrange(&pat.syntax().text_range()) {
+                            self.is_pat_binding_or_const = false;
+                        }
+                    }
                 }
             }
             if is_node::<ast::Param>(name.syntax()) {
