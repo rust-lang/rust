@@ -162,8 +162,13 @@ impl Collector<'tcx> {
             }
         }
         if lib.cfg.is_some() && !self.tcx.features().link_cfg {
-            feature_err(&self.tcx.sess.parse_sess, sym::link_cfg, span.unwrap(), "is unstable")
-                .emit();
+            feature_err(
+                &self.tcx.sess.parse_sess,
+                sym::link_cfg,
+                span.unwrap(),
+                "kind=\"link_cfg\" is unstable",
+            )
+            .emit();
         }
         if lib.kind == cstore::NativeStaticNobundle && !self.tcx.features().static_nobundle {
             feature_err(
