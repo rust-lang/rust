@@ -1,8 +1,3 @@
-// FIXME: missing sysroot spans (#53081)
-// ignore-i586-unknown-linux-gnu
-// ignore-i586-unknown-linux-musl
-// ignore-i686-unknown-linux-musl
-
 #![feature(const_raw_ptr_deref)]
 #![feature(const_ptr_offset_from)]
 #![feature(ptr_offset_from)]

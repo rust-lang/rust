@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `(true, false)` not covered
-  --> $DIR/match-arm-statics-2.rs:22:11
+  --> $DIR/match-arm-statics-2.rs:17:11
    |
 LL |     match (true, false) {
    |           ^^^^^^^^^^^^^ pattern `(true, false)` not covered
@@ -8,7 +8,7 @@ LL |     match (true, false) {
    = note: the matched value is of type `(bool, bool)`
 
 error[E0004]: non-exhaustive patterns: `Some(Some(West))` not covered
-  --> $DIR/match-arm-statics-2.rs:34:11
+  --> $DIR/match-arm-statics-2.rs:29:11
    |
 LL |     match Some(Some(North)) {
    |           ^^^^^^^^^^^^^^^^^ pattern `Some(Some(West))` not covered
@@ -25,7 +25,7 @@ LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
    = note: the matched value is of type `std::option::Option<std::option::Option<Direction>>`
 
 error[E0004]: non-exhaustive patterns: `Foo { bar: Some(North), baz: NewBool(true) }` not covered
-  --> $DIR/match-arm-statics-2.rs:53:11
+  --> $DIR/match-arm-statics-2.rs:48:11
    |
 LL | / struct Foo {
 LL | |     bar: Option<Direction>,

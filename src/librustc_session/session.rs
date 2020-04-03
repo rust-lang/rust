@@ -140,6 +140,15 @@ pub struct Session {
     /// Options range from returning the error without a backtrace to returning an error
     /// and immediately printing the backtrace to stderr.
     pub ctfe_backtrace: Lock<CtfeBacktrace>,
+
+    /// Base directory containing the `src/` for the Rust standard library, and
+    /// potentially `rustc` as well, if we can can find it. Right now it's always
+    /// `$sysroot/lib/rustlib/src/rust` (i.e. the `rustup` `rust-src` component).
+    ///
+    /// This directory is what the virtual `/rustc/$hash` is translated back to,
+    /// if Rust was built with path remapping to `/rustc/$hash` enabled
+    /// (the `rust.remap-debuginfo` option in `config.toml`).
+    pub real_rust_source_base_dir: Option<PathBuf>,
 }
 
 pub struct PerfStats {
@@ -1056,6 +1065,26 @@ fn build_session_(
         _ => CtfeBacktrace::Disabled,
     });
 
+    // Try to find a directory containing the Rust `src`, for more details see
+    // the doc comment on the `real_rust_source_base_dir` field.
+    let real_rust_source_base_dir = {
+        // This is the location used by the `rust-src` `rustup` component.
+        let mut candidate = sysroot.join("lib/rustlib/src/rust");
+        if let Ok(metadata) = candidate.symlink_metadata() {
+            // Replace the symlink rustbuild creates, with its destination.
+            // We could try to use `fs::canonicalize` instead, but that might
+            // produce unnecessarily verbose path.
+            if metadata.file_type().is_symlink() {
+                if let Ok(symlink_dest) = std::fs::read_link(&candidate) {
+                    candidate = symlink_dest;
+                }
+            }
+        }
+
+        // Only use this directory if it has a file we can expect to always find.
+        if candidate.join("src/libstd/lib.rs").is_file() { Some(candidate) } else { None }
+    };
+
     let sess = Session {
         target: target_cfg,
         host,
@@ -1094,6 +1123,7 @@ fn build_session_(
         confused_type_with_std_module: Lock::new(Default::default()),
         system_library_path: OneThread::new(RefCell::new(Default::default())),
         ctfe_backtrace,
+        real_rust_source_base_dir,
     };
 
     validate_commandline_args_with_session_available(&sess);

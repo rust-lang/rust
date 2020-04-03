@@ -22,7 +22,7 @@ use serde::Deserialize;
 use crate::builder::Cargo;
 use crate::dist;
 use crate::native;
-use crate::util::{exe, is_dylib};
+use crate::util::{exe, is_dylib, symlink_dir};
 use crate::{Compiler, GitRepo, Mode};
 
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
@@ -633,6 +633,30 @@ impl Step for Sysroot {
         };
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
+
+        // Symlink the source root into the same location inside the sysroot,
+        // where `rust-src` component would go (`$sysroot/lib/rustlib/src/rust`),
+        // so that any tools relying on `rust-src` also work for local builds,
+        // and also for translating the virtual `/rustc/$hash` back to the real
+        // directory (for running tests with `rust.remap-debuginfo = true`).
+        let sysroot_lib_rustlib_src = sysroot.join("lib/rustlib/src");
+        t!(fs::create_dir_all(&sysroot_lib_rustlib_src));
+        let sysroot_lib_rustlib_src_rust = sysroot_lib_rustlib_src.join("rust");
+        if let Err(e) = symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_src_rust) {
+            eprintln!(
+                "warning: creating symbolic link `{}` to `{}` failed with {}",
+                sysroot_lib_rustlib_src_rust.display(),
+                builder.src.display(),
+                e,
+            );
+            if builder.config.rust_remap_debuginfo {
+                eprintln!(
+                    "warning: some `src/test/ui` tests will fail when lacking `{}`",
+                    sysroot_lib_rustlib_src_rust.display(),
+                );
+            }
+        }
+
         INTERNER.intern_path(sysroot)
     }
 }

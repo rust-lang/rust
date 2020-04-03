@@ -1,5 +1,5 @@
 error[E0369]: binary operation `==` cannot be applied to type `Error`
-  --> $DIR/derives-span-PartialEq-enum.rs:13:6
+  --> $DIR/derives-span-PartialEq-enum.rs:9:6
    |
 LL |      Error
    |      ^^^^^
@@ -8,7 +8,7 @@ LL |      Error
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0369]: binary operation `!=` cannot be applied to type `Error`
-  --> $DIR/derives-span-PartialEq-enum.rs:13:6
+  --> $DIR/derives-span-PartialEq-enum.rs:9:6
    |
 LL |      Error
    |      ^^^^^

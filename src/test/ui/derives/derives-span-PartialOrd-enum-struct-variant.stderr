@@ -1,5 +1,5 @@
 error[E0277]: can't compare `Error` with `Error`
-  --> $DIR/derives-span-PartialOrd-enum-struct-variant.rs:13:6
+  --> $DIR/derives-span-PartialOrd-enum-struct-variant.rs:9:6
    |
 LL |      x: Error
    |      ^^^^^^^^ no implementation for `Error < Error` and `Error > Error`
@@ -9,7 +9,7 @@ LL |      x: Error
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `Error` with `Error`
-  --> $DIR/derives-span-PartialOrd-enum-struct-variant.rs:13:6
+  --> $DIR/derives-span-PartialOrd-enum-struct-variant.rs:9:6
    |
 LL |      x: Error
    |      ^^^^^^^^ no implementation for `Error < Error` and `Error > Error`
@@ -19,7 +19,7 @@ LL |      x: Error
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `Error` with `Error`
-  --> $DIR/derives-span-PartialOrd-enum-struct-variant.rs:13:6
+  --> $DIR/derives-span-PartialOrd-enum-struct-variant.rs:9:6
    |
 LL |      x: Error
    |      ^^^^^^^^ no implementation for `Error < Error` and `Error > Error`
@@ -29,7 +29,7 @@ LL |      x: Error
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `Error` with `Error`
-  --> $DIR/derives-span-PartialOrd-enum-struct-variant.rs:13:6
+  --> $DIR/derives-span-PartialOrd-enum-struct-variant.rs:9:6
    |
 LL |      x: Error
    |      ^^^^^^^^ no implementation for `Error < Error` and `Error > Error`
@@ -39,7 +39,7 @@ LL |      x: Error
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `Error` with `Error`
-  --> $DIR/derives-span-PartialOrd-enum-struct-variant.rs:13:6
+  --> $DIR/derives-span-PartialOrd-enum-struct-variant.rs:9:6
    |
 LL |      x: Error
    |      ^^^^^^^^ no implementation for `Error < Error` and `Error > Error`

@@ -1,5 +1,5 @@
 error: cannot find derive macro `Eqr` in this scope
-  --> $DIR/deriving-meta-unknown-trait.rs:5:10
+  --> $DIR/deriving-meta-unknown-trait.rs:1:10
    |
 LL | #[derive(Eqr)]
    |          ^^^ help: a derive macro with a similar name exists: `Eq`
@@ -10,7 +10,7 @@ LL | pub macro Eq($item:item) {
    | ------------------------ similarly named derive macro `Eq` defined here
 
 error: cannot find derive macro `Eqr` in this scope
-  --> $DIR/deriving-meta-unknown-trait.rs:5:10
+  --> $DIR/deriving-meta-unknown-trait.rs:1:10
    |
 LL | #[derive(Eqr)]
    |          ^^^ help: a derive macro with a similar name exists: `Eq`
