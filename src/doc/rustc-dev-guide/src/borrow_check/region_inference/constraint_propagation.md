@@ -55,7 +55,7 @@ includes a region R is live at some [point] P. This simply means that
 the value of R must include the point P. Liveness constraints are
 computed by the MIR type checker.
 
-[point]: ../../appendix/glossary.md
+[point]: ../../appendix/glossary.md#point
 
 A liveness constraint `R live at E` is satisfied if `E` is a member of
 `Values(R)`. So to "apply" such a constraint to `Values`, we just have

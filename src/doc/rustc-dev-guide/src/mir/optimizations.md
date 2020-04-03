@@ -9,7 +9,7 @@ effective; we can optimize the generic version, so all of the monomorphizations
 are cheaper!
 
 [mir]: https://rustc-dev-guide.rust-lang.org/mir/index.html
-[monomorph]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html?highlight=monomorphize#appendix-c-glossary
+[monomorph]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html#mono
 
 MIR optimizations run after borrow checking. We run a series of optimization
 passes over the MIR to improve it. Some passes are required to run on all code,
@@ -23,7 +23,7 @@ optimizes it, and returns the improved MIR.
 
 [optmir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/fn.optimized_mir.html
 [query]: https://rustc-dev-guide.rust-lang.org/query.html
-[defid]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html?highlight=DefId#appendix-c-glossary
+[defid]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html#def-id
 [steal]: https://rustc-dev-guide.rust-lang.org/mir/passes.html?highlight=steal#stealing
 
 ## Defining optimization passes

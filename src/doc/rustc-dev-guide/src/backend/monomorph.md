@@ -53,7 +53,7 @@ The monomorphization collector is run just before MIR lowering and codegen.
 [`rustc_codegen_ssa::base::codegen_crate`][codegen1] calls the
 [`collect_and_partition_mono_items`][mono] query, which does monomorphization
 collection and then partitions them into [codegen
-units](../appendix/glossary.md).
+units](../appendix/glossary.md#codegen-unit).
 
 [mono]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/monomorphize/partitioning/fn.collect_and_partition_mono_items.html
 [codegen1]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_crate.html

@@ -6,9 +6,10 @@ setup to a "demand-driven" system. **The Compiler Query System is the
 key to our new demand-driven organization.** The idea is pretty
 simple. You have various queries that compute things about the input
 – for example, there is a query called `type_of(def_id)` that, given
-the def-id of some item, will compute the type of that item and return
+the [def-id] of some item, will compute the type of that item and return
 it to you.
 
+[def-id]: appendix/glossary.md#def-id
 [hl]: high-level-overview.html
 
 Query execution is **memoized** – so the first time you invoke a

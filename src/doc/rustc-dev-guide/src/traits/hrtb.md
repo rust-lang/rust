@@ -41,7 +41,7 @@ subtyping, we recommend you read the paper). There are a few parts:
 3. Check for _placeholder leaks_.
 
 [hrsubtype]: ./hrtb.md
-[placeholder]: ../appendix/glossary.html#appendix-c-glossary
+[placeholder]: ../appendix/glossary.html#placeholder
 [paper by SPJ]: http://research.microsoft.com/en-us/um/people/simonpj/papers/higher-rank/
 
 So let's work through our example.

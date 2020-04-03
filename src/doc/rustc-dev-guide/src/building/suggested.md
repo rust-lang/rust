@@ -53,7 +53,7 @@ the MIR).
 
 **The TL;DR is that you might get weird behavior from a compile when
 using `--keep-stage 1`** -- for example, strange
-[ICEs](../appendix/glossary.html) or other panics. In that case, you
+[ICEs](../appendix/glossary.html#ice) or other panics. In that case, you
 should simply remove the `--keep-stage 1` from the command and
 rebuild.  That ought to fix the problem.
 
