@@ -9,6 +9,7 @@ Term                    | Meaning
 arena/arena allocation  |  An _arena_ is a large memory buffer from which other memory allocations are made. This style of allocation is called _arena allocation_. See [this chapter](../memory.md) for more info.
 AST                     |  The abstract syntax tree produced by the `rustc_ast` crate; reflects user syntax very closely.
 binder                  |  A "binder" is a place where a variable or type is declared; for example, the `<T>` is a binder for the generic type parameter `T` in `fn foo<T>(..)`, and \|`a`\|` ...` is a binder for the parameter `a`. See [the background chapter for more](./background.html#free-vs-bound).
+BodyId                  |  An identifier that refers to a specific body (definition of a function or constant) in the crate. See [the HIR chapter for more](../hir.html#identifiers-in-the-hir).
 bound variable          |  A "bound variable" is one that is declared within an expression/term. For example, the variable `a` is bound within the closure expression \|`a`\|` a * 2`. See [the background chapter for more](./background.html#free-vs-bound)
 codegen                 |  The code to translate MIR into LLVM IR.
 codegen unit            |  When we produce LLVM IR, we group the Rust code into a number of codegen units (sometimes abbreviated as CGUs). Each of these units is processed by LLVM independently from one another, enabling parallelism. They are also the unit of incremental re-use. ([see more](../backend/codegen.md))
@@ -18,7 +19,7 @@ CTFE                    |  Short for Compile-Time Function Evaluation, this is t
 cx                      |  We tend to use "cx" as an abbreviation for context. See also `tcx`, `infcx`, etc.
 DAG                     |  A directed acyclic graph is used during compilation to keep track of dependencies between queries. ([see more](../queries/incremental-compilation.html))
 data-flow analysis      |  A static analysis that figures out what properties are true at each point in the control-flow of a program; see [the background chapter for more](./background.html#dataflow).
-DefId                   |  An index identifying a definition (see `librustc_middle/hir/def_id.rs`). Uniquely identifies a `DefPath`.
+DefId                   |  An index identifying a definition (see `librustc_middle/hir/def_id.rs`). Uniquely identifies a `DefPath`. See [the HIR chapter for more](../hir.html#identifiers-in-the-hir).
 Double pointer          |  A pointer with additional metadata. See "fat pointer" for more.
 drop glue               |  (internal) compiler-generated instructions that handle calling the destructors (`Drop`) for data types.
 DST                     |  Short for Dynamically-Sized Type, this is a type for which the compiler cannot statically know the size in memory (e.g. `str` or `[u8]`). Such types don't implement `Sized` and cannot be allocated on the stack. They can only occur as the last field in a struct. They can only be used behind a pointer (e.g. `&str` or `&[u8]`).
@@ -28,7 +29,7 @@ Fat pointer             |  A two word value carrying the address of some value, 
 free variable           |  A "free variable" is one that is not bound within an expression or term; see [the background chapter for more](./background.html#free-vs-bound)
 generics                |  The set of generic type parameters defined on a type or item.
 HIR                     |  The High-level IR, created by lowering and desugaring the AST. ([see more](../hir.html))
-HirId                   |  Identifies a particular node in the HIR by combining a def-id with an "intra-definition offset".
+HirId                   |  Identifies a particular node in the HIR by combining a def-id with an "intra-definition offset". See [the HIR chapter for more](../hir.html#identifiers-in-the-hir).
 HIR Map                 |  The HIR map, accessible via tcx.hir, allows you to quickly navigate the HIR and convert between various forms of identifiers.
 ICE                     |  Short for internal compiler error, this is when the compiler crashes.
 ICH                     |  Short for incremental compilation hash, these are used as fingerprints for things such as HIR and crate metadata, to check if changes have been made. This is useful in incremental compilation to see if part of a crate has changed and should be recompiled.
@@ -50,7 +51,7 @@ monomorphization        |  The process of taking generic implementations of type
 normalize               |  A general term for converting to a more canonical form, but in the case of rustc typically refers to [associated type normalization](../traits/associated-types.html#normalize).
 newtype                 |  A wrapper around some other type (e.g., `struct Foo(T)` is a "newtype" for `T`). This is commonly used in Rust to give a stronger type for indices.
 NLL                     |  Short for [non-lexical lifetimes](../borrow_check/region_inference.html), this is an extension to Rust's borrowing system to make it be based on the control-flow graph.
-node-id or NodeId       |  An index identifying a particular node in the AST or HIR; gradually being phased out and replaced with `HirId`.
+node-id or NodeId       |  An index identifying a particular node in the AST or HIR; gradually being phased out and replaced with `HirId`. See [the HIR chapter for more](../hir.html#identifiers-in-the-hir).
 obligation              |  Something that must be proven by the trait system. ([see more](../traits/resolution.html))
 placeholder             |  **NOTE: skolemization is deprecated by placeholder** a way of handling subtyping around "for-all" types (e.g., `for<'a> fn(&'a u32)`) as well as solving higher-ranked trait bounds (e.g., `for<'a> T: Trait<'a>`). See [the chapter on placeholder and universes](../borrow_check/region_inference/placeholders_and_universes.md) for more details.
 point                   |  Used in the NLL analysis to refer to some particular location in the MIR; typically used to refer to a node in the control-flow graph.
