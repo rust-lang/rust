@@ -289,10 +289,10 @@ pub fn rust_oom(layout: Layout) -> ! {
 pub mod __default_lib_allocator {
     use super::{GlobalAlloc, Layout, System};
     // These magic symbol names are used as a fallback for implementing the
-    // `__rust_alloc` etc symbols (see `src/liballoc/alloc.rs) when there is
+    // `__rust_alloc` etc symbols (see `src/liballoc/alloc.rs`) when there is
     // no `#[global_allocator]` attribute.
 
-    // for symbol names src/librustc_middle/middle/allocator.rs
+    // for symbol names src/librustc_ast/expand/allocator.rs
     // for signatures src/librustc_allocator/lib.rs
 
     // linkage directives are provided as part of the current compiler allocator

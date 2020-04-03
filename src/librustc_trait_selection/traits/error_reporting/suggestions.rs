@@ -732,12 +732,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 true
             };
 
+        let sm = self.tcx.sess.source_map();
         let (snippet, last_ty) =
             if let (true, hir::TyKind::TraitObject(..), Ok(snippet), true, Some(last_ty)) = (
                 // Verify that we're dealing with a return `dyn Trait`
                 ret_ty.span.overlaps(span),
                 &ret_ty.kind,
-                self.tcx.sess.source_map().span_to_snippet(ret_ty.span),
+                sm.span_to_snippet(ret_ty.span),
                 // If any of the return types does not conform to the trait, then we can't
                 // suggest `impl Trait` nor trait objects, it is a type mismatch error.
                 all_returns_conform_to_trait,
@@ -775,26 +776,23 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             if is_object_safe {
                 // Suggest `-> Box<dyn Trait>` and `Box::new(returned_value)`.
                 // Get all the return values and collect their span and suggestion.
-                let mut suggestions = visitor
+                if let Some(mut suggestions) = visitor
                     .returns
                     .iter()
                     .map(|expr| {
-                        (
-                            expr.span,
-                            format!(
-                                "Box::new({})",
-                                self.tcx.sess.source_map().span_to_snippet(expr.span).unwrap()
-                            ),
-                        )
+                        let snip = sm.span_to_snippet(expr.span).ok()?;
+                        Some((expr.span, format!("Box::new({})", snip)))
                     })
-                    .collect::<Vec<_>>();
-                // Add the suggestion for the return type.
-                suggestions.push((ret_ty.span, format!("Box<dyn {}>", trait_obj)));
-                err.multipart_suggestion(
-                    "return a boxed trait object instead",
-                    suggestions,
-                    Applicability::MaybeIncorrect,
-                );
+                    .collect::<Option<Vec<_>>>()
+                {
+                    // Add the suggestion for the return type.
+                    suggestions.push((ret_ty.span, format!("Box<dyn {}>", trait_obj)));
+                    err.multipart_suggestion(
+                        "return a boxed trait object instead",
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             } else {
                 // This is currently not possible to trigger because E0038 takes precedence, but
                 // leave it in for completeness in case anything changes in an earlier stage.

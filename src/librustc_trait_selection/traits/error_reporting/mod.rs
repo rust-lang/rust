@@ -65,7 +65,7 @@ pub trait InferCtxtExt<'tcx> {
     /// returns a span and `ArgKind` information that describes the
     /// arguments it expects. This can be supplied to
     /// `report_arg_count_mismatch`.
-    fn get_fn_like_arguments(&self, node: Node<'_>) -> (Span, Vec<ArgKind>);
+    fn get_fn_like_arguments(&self, node: Node<'_>) -> Option<(Span, Vec<ArgKind>)>;
 
     /// Reports an error when the number of arguments needed by a
     /// trait match doesn't match the number that the expression
@@ -611,10 +611,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     )
                 } else {
                     let (closure_span, found) = found_did
-                        .and_then(|did| self.tcx.hir().get_if_local(did))
-                        .map(|node| {
-                            let (found_span, found) = self.get_fn_like_arguments(node);
-                            (Some(found_span), found)
+                        .and_then(|did| {
+                            let node = self.tcx.hir().get_if_local(did)?;
+                            let (found_span, found) = self.get_fn_like_arguments(node)?;
+                            Some((Some(found_span), found))
                         })
                         .unwrap_or((found_span, found));
 
@@ -672,43 +672,38 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// returns a span and `ArgKind` information that describes the
     /// arguments it expects. This can be supplied to
     /// `report_arg_count_mismatch`.
-    fn get_fn_like_arguments(&self, node: Node<'_>) -> (Span, Vec<ArgKind>) {
-        match node {
+    fn get_fn_like_arguments(&self, node: Node<'_>) -> Option<(Span, Vec<ArgKind>)> {
+        let sm = self.tcx.sess.source_map();
+        let hir = self.tcx.hir();
+        Some(match node {
             Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(_, ref _decl, id, span, _),
                 ..
             }) => (
-                self.tcx.sess.source_map().guess_head_span(span),
-                self.tcx
-                    .hir()
-                    .body(id)
+                sm.guess_head_span(span),
+                hir.body(id)
                     .params
                     .iter()
                     .map(|arg| {
                         if let hir::Pat { kind: hir::PatKind::Tuple(ref args, _), span, .. } =
                             *arg.pat
                         {
-                            ArgKind::Tuple(
+                            Some(ArgKind::Tuple(
                                 Some(span),
                                 args.iter()
                                     .map(|pat| {
-                                        let snippet = self
-                                            .tcx
-                                            .sess
-                                            .source_map()
-                                            .span_to_snippet(pat.span)
-                                            .unwrap();
-                                        (snippet, "_".to_owned())
+                                        sm.span_to_snippet(pat.span)
+                                            .ok()
+                                            .map(|snippet| (snippet, "_".to_owned()))
                                     })
-                                    .collect::<Vec<_>>(),
-                            )
+                                    .collect::<Option<Vec<_>>>()?,
+                            ))
                         } else {
-                            let name =
-                                self.tcx.sess.source_map().span_to_snippet(arg.pat.span).unwrap();
-                            ArgKind::Arg(name, "_".to_owned())
+                            let name = sm.span_to_snippet(arg.pat.span).ok()?;
+                            Some(ArgKind::Arg(name, "_".to_owned()))
                         }
                     })
-                    .collect::<Vec<ArgKind>>(),
+                    .collect::<Option<Vec<ArgKind>>>()?,
             ),
             Node::Item(&hir::Item { span, kind: hir::ItemKind::Fn(ref sig, ..), .. })
             | Node::ImplItem(&hir::ImplItem {
@@ -721,7 +716,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 kind: hir::TraitItemKind::Fn(ref sig, _),
                 ..
             }) => (
-                self.tcx.sess.source_map().guess_head_span(span),
+                sm.guess_head_span(span),
                 sig.decl
                     .inputs
                     .iter()
@@ -735,16 +730,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .collect::<Vec<ArgKind>>(),
             ),
             Node::Ctor(ref variant_data) => {
-                let span = variant_data
-                    .ctor_hir_id()
-                    .map(|hir_id| self.tcx.hir().span(hir_id))
-                    .unwrap_or(DUMMY_SP);
-                let span = self.tcx.sess.source_map().guess_head_span(span);
-
+                let span = variant_data.ctor_hir_id().map(|id| hir.span(id)).unwrap_or(DUMMY_SP);
+                let span = sm.guess_head_span(span);
                 (span, vec![ArgKind::empty(); variant_data.fields().len()])
             }
             _ => panic!("non-FnLike node found: {:?}", node),
-        }
+        })
     }
 
     /// Reports an error when the number of arguments needed by a

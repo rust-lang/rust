@@ -481,7 +481,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// If one of the types is an uncalled function and calling it would yield the other type,
-    /// suggest calling the function. Returns whether a suggestion was given.
+    /// suggest calling the function. Returns `true` if suggestion would apply (even if not given).
     fn add_type_neq_err_label(
         &self,
         err: &mut rustc_errors::DiagnosticBuilder<'_>,
@@ -514,24 +514,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .lookup_op_method(fn_sig.output(), &[other_ty], Op::Binary(op, is_assign))
                 .is_ok()
             {
-                let (variable_snippet, applicability) = if !fn_sig.inputs().is_empty() {
-                    (
-                        format!("{}( /* arguments */ )", source_map.span_to_snippet(span).unwrap()),
-                        Applicability::HasPlaceholders,
-                    )
-                } else {
-                    (
-                        format!("{}()", source_map.span_to_snippet(span).unwrap()),
-                        Applicability::MaybeIncorrect,
-                    )
-                };
+                if let Ok(snippet) = source_map.span_to_snippet(span) {
+                    let (variable_snippet, applicability) = if !fn_sig.inputs().is_empty() {
+                        (format!("{}( /* arguments */ )", snippet), Applicability::HasPlaceholders)
+                    } else {
+                        (format!("{}()", snippet), Applicability::MaybeIncorrect)
+                    };
 
-                err.span_suggestion(
-                    span,
-                    "you might have forgotten to call this function",
-                    variable_snippet,
-                    applicability,
-                );
+                    err.span_suggestion(
+                        span,
+                        "you might have forgotten to call this function",
+                        variable_snippet,
+                        applicability,
+                    );
+                }
                 return true;
             }
         }

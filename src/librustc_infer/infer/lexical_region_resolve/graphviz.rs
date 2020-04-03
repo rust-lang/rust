@@ -1,5 +1,5 @@
 //! This module provides linkage between libgraphviz traits and
-//! `rustc_middle::middle::typeck::infer::region_constraints`, generating a
+//! `rustc_trait_selection::infer::region_constraints`, generating a
 //! rendering of the graph represented by the list of `Constraint`
 //! instances (which make up the edges of the graph), as well as the
 //! origin for each constraint (which are attached to the labels on

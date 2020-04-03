@@ -1,5 +1,6 @@
 //! Provider for the `implied_outlives_bounds` query.
-//! Do not call this query directory. See [`rustc_middle::traits::query::implied_outlives_bounds`].
+//! Do not call this query directory. See
+//! [`rustc_trait_selection::traits::query::type_op::implied_outlives_bounds`].
 
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::{self, Canonical};
