@@ -488,7 +488,8 @@
             },
             {
                 "id": "builtinType",
-                "description": "Style for builtin types"
+                "description": "Style for builtin types",
+                "superType": "type"
             },
             {
                 "id": "lifetime",
@@ -496,11 +497,13 @@
             },
             {
                 "id": "typeAlias",
-                "description": "Style for type aliases"
+                "description": "Style for type aliases",
+                "superType": "type"
             },
             {
                 "id": "union",
-                "description": "Style for C-style untagged unions"
+                "description": "Style for C-style untagged unions",
+                "superType": "type"
             }
         ],
         "semanticTokenModifiers": [
