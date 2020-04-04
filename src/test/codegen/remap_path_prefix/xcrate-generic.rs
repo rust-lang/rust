@@ -11,4 +11,4 @@ pub fn foo() {
 }
 
 // Here we check that local debuginfo is mapped correctly.
-// CHECK: !DIFile(filename: "/the/aux-src/xcrate-generic.rs", directory: "")
+// CHECK: !DIFile(filename: "/the/aux-src/xcrate-generic.rs", directory: ""

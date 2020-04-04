@@ -10,6 +10,7 @@ use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel
 
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
+use rustc_span::SourceFileHashAlgorithm;
 
 use std::collections::BTreeMap;
 
@@ -283,12 +284,14 @@ macro_rules! options {
             Some("one of: `disabled`, `trampolines`, or `aliases`");
         pub const parse_symbol_mangling_version: Option<&str> =
             Some("either `legacy` or `v0` (RFC 2603)");
+        pub const parse_src_file_hash: Option<&str> =
+            Some("either `md5`, or `sha1`");
     }
 
     #[allow(dead_code)]
     mod $mod_set {
         use super::{$struct_name, Passes, Sanitizer, LtoCli, LinkerPluginLto, SwitchWithOptPath,
-            SymbolManglingVersion, CFGuard};
+            SymbolManglingVersion, CFGuard, SourceFileHashAlgorithm};
         use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
         use std::str::FromStr;
@@ -620,6 +623,14 @@ macro_rules! options {
                 Some("v0") => SymbolManglingVersion::V0,
                 _ => return false,
             };
+            true
+        }
+
+        fn parse_src_file_hash(slot: &mut Option<SourceFileHashAlgorithm>, v: Option<&str>) -> bool {
+            match v.and_then(|s| SourceFileHashAlgorithm::from_str(s).ok()) {
+                Some(hash_kind) => *slot = Some(hash_kind),
+                _ => return false,
+            }
             true
         }
     }
@@ -961,4 +972,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "use new LLVM pass manager"),
     link_native_libraries: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
         "Link native libraries in the linker invocation."),
+    src_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_src_file_hash, [TRACKED],
+        "hash algorithm of source files in debug info (`md5`, or `sha1`)"),
 }
