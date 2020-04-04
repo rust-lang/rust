@@ -301,34 +301,19 @@ fn setup(ask_user: bool) {
                 .stdout;
             let sysroot = std::str::from_utf8(&sysroot).unwrap();
             let sysroot = Path::new(sysroot.trim_end_matches('\n'));
-            // First try: `$SYSROOT/lib/rustlib/src/rust`; test if that contains `Cargo.lock`.
-            let rustup_src = sysroot.join("lib").join("rustlib").join("src").join("rust");
-            let base_dir = if rustup_src.join("Cargo.lock").exists() {
-                // Just use this.
-                rustup_src
-            } else {
-                // Maybe this is a local toolchain built with `x.py` and linked into `rustup`?
-                // Second try: `$SYSROOT/../../..`; test if that contains `x.py`.
-                let local_src = sysroot.parent().and_then(Path::parent).and_then(Path::parent);
-                match local_src {
-                    Some(local_src) if local_src.join("x.py").exists() => {
-                        // Use this.
-                        PathBuf::from(local_src)
-                    }
-                    _ => {
-                        // Fallback: Ask the user to install the `rust-src` component, and use that.
-                        let mut cmd = Command::new("rustup");
-                        cmd.args(&["component", "add", "rust-src"]);
-                        ask_to_run(
-                            cmd,
-                            ask_user,
-                            "install the rustc-src component for the selected toolchain",
-                        );
-                        rustup_src
-                    }
-                }
-            };
-            base_dir.join("src") // Xargo wants the src-subdir
+            // Check for `$SYSROOT/lib/rustlib/src/rust/src`; test if that contains `libstd/lib.rs`.
+            let rustup_src = sysroot.join("lib").join("rustlib").join("src").join("rust").join("src");
+            if !rustup_src.join("libstd").join("lib.rs").exists() {
+                // Ask the user to install the `rust-src` component, and use that.
+                let mut cmd = Command::new("rustup");
+                cmd.args(&["component", "add", "rust-src"]);
+                ask_to_run(
+                    cmd,
+                    ask_user,
+                    "install the rustc-src component for the selected toolchain",
+                );
+            }
+            rustup_src
         }
     };
     if !rust_src.exists() {
