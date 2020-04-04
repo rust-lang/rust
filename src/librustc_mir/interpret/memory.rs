@@ -20,6 +20,7 @@ use super::{
     AllocId, AllocMap, Allocation, AllocationExtra, CheckInAllocMsg, ErrorHandled, GlobalAlloc,
     GlobalId, InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Scalar,
 };
+use crate::util::pretty;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum MemoryKind<T> {
@@ -644,22 +645,22 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         self.dump_allocs(vec![id]);
     }
 
-    fn dump_alloc_helper<Tag, Extra>(
-        &self,
-        allocs_to_print: &mut VecDeque<AllocId>,
-        alloc: &Allocation<Tag, Extra>,
-    ) {
-        for &(_, target_id) in alloc.relocations().values() {
-            allocs_to_print.push_back(target_id);
-        }
-        crate::util::pretty::write_allocation(self.tcx.tcx, alloc, &mut std::io::stderr(), "")
-            .unwrap();
-    }
-
     /// Print a list of allocations and all allocations they point to, recursively.
     /// This prints directly to stderr, ignoring RUSTC_LOG! It is up to the caller to
     /// control for this.
     pub fn dump_allocs(&self, mut allocs: Vec<AllocId>) {
+        // Cannot be a closure because it is generic in `Tag`, `Extra`.
+        fn write_allocation_track_relocs<'tcx, Tag, Extra>(
+            tcx: TyCtxtAt<'tcx>,
+            allocs_to_print: &mut VecDeque<AllocId>,
+            alloc: &Allocation<Tag, Extra>,
+        ) {
+            for &(_, target_id) in alloc.relocations().values() {
+                allocs_to_print.push_back(target_id);
+            }
+            pretty::write_allocation(tcx.tcx, alloc, &mut std::io::stderr()).unwrap();
+        }
+
         allocs.sort();
         allocs.dedup();
         let mut allocs_to_print = VecDeque::from(allocs);
@@ -671,46 +672,42 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // Already printed, so skip this.
                 continue;
             }
-            eprint!("Alloc {:<5}: ", id);
-            fn msg<Tag, Extra>(alloc: &Allocation<Tag, Extra>, extra: &str) {
-                eprintln!(
-                    "({} bytes, alignment {}){}",
-                    alloc.size.bytes(),
-                    alloc.align.bytes(),
-                    extra
-                )
-            };
 
-            // normal alloc?
-            match self.alloc_map.get_or(id, || Err(())) {
-                Ok((kind, alloc)) => {
+            eprint!("{}", id);
+            match self.alloc_map.get(id) {
+                Some(&(kind, ref alloc)) => {
+                    // normal alloc
                     match kind {
-                        MemoryKind::Stack => msg(alloc, " (stack)"),
-                        MemoryKind::Vtable => msg(alloc, " (vtable)"),
-                        MemoryKind::CallerLocation => msg(alloc, " (caller_location)"),
-                        MemoryKind::Machine(m) => msg(alloc, &format!(" ({:?})", m)),
+                        MemoryKind::Stack => eprint!(" (stack variable, "),
+                        MemoryKind::Vtable => eprint!(" (vtable, "),
+                        MemoryKind::CallerLocation => eprint!(" (caller_location, "),
+                        MemoryKind::Machine(m) if Some(m) == M::GLOBAL_KIND => {
+                            eprint!(" (global, ")
+                        }
+                        MemoryKind::Machine(m) => eprint!(" ({:?}, ", m),
                     };
-                    self.dump_alloc_helper(&mut allocs_to_print, alloc);
+                    write_allocation_track_relocs(self.tcx, &mut allocs_to_print, alloc);
                 }
-                Err(()) => {
-                    // global alloc?
+                None => {
+                    // global alloc
                     match self.tcx.alloc_map.lock().get(id) {
                         Some(GlobalAlloc::Memory(alloc)) => {
-                            msg(alloc, " (immutable)");
-                            self.dump_alloc_helper(&mut allocs_to_print, alloc);
+                            eprint!(" (global, ");
+                            write_allocation_track_relocs(self.tcx, &mut allocs_to_print, alloc);
                         }
                         Some(GlobalAlloc::Function(func)) => {
-                            eprintln!("{}", func);
+                            eprint!(" (fn: {})", func);
                         }
                         Some(GlobalAlloc::Static(did)) => {
-                            eprintln!("{:?}", did);
+                            eprint!(" (static: {})", self.tcx.def_path_str(did));
                         }
                         None => {
-                            eprintln!("(deallocated)");
+                            eprint!(" (deallocated)");
                         }
                     }
                 }
-            };
+            }
+            eprintln!();
         }
     }
 
