@@ -51,6 +51,26 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
     }
 }
 
+/// Convert a closure into a waker.
+///
+/// # Examples
+///
+/// ```
+/// use std::sync::Arc;
+/// use std::task::Waker;
+///
+/// let waker = Waker::from(Arc::new(|| {
+///     // wake called
+/// }));
+/// waker.wake();
+/// ```
+#[unstable(feature = "wake_from_fn", issue = "none")]
+impl<F: Fn() + Send + Sync + 'static> Wake for F {
+    fn wake(self: Arc<Self>) {
+        (self)()
+    }
+}
+
 // NB: This private function for constructing a RawWaker is used, rather than
 // inlining this into the `From<Arc<W>> for RawWaker` impl, to ensure that
 // the safety of `From<Arc<W>> for Waker` does not depend on the correct
