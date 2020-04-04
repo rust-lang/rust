@@ -6,6 +6,7 @@ use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufWriter};
+use std::mem;
 use std::path::{Path, PathBuf};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -117,8 +118,7 @@ pub trait Linker {
     fn group_start(&mut self);
     fn group_end(&mut self);
     fn linker_plugin_lto(&mut self);
-    // Should have been finalize(self), but we don't support self-by-value on trait objects (yet?).
-    fn finalize(&mut self) -> Command;
+    fn finalize(&mut self);
 }
 
 impl dyn Linker + '_ {
@@ -128,6 +128,10 @@ impl dyn Linker + '_ {
 
     pub fn args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>>) {
         self.cmd().args(args);
+    }
+
+    pub fn take_cmd(&mut self) -> Command {
+        mem::replace(self.cmd(), Command::new(""))
     }
 }
 
@@ -515,10 +519,8 @@ impl<'a> Linker for GccLinker<'a> {
         self.linker_arg(&subsystem);
     }
 
-    fn finalize(&mut self) -> Command {
+    fn finalize(&mut self) {
         self.hint_dynamic(); // Reset to default before returning the composed command line.
-
-        ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
     fn group_start(&mut self) {
@@ -768,9 +770,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    fn finalize(&mut self) -> Command {
-        ::std::mem::replace(&mut self.cmd, Command::new(""))
-    }
+    fn finalize(&mut self) {}
 
     // MSVC doesn't need group indicators
     fn group_start(&mut self) {}
@@ -937,9 +937,7 @@ impl<'a> Linker for EmLinker<'a> {
         // noop
     }
 
-    fn finalize(&mut self) -> Command {
-        ::std::mem::replace(&mut self.cmd, Command::new(""))
-    }
+    fn finalize(&mut self) {}
 
     // Appears not necessary on Emscripten
     fn group_start(&mut self) {}
@@ -1107,9 +1105,7 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn no_position_independent_executable(&mut self) {}
 
-    fn finalize(&mut self) -> Command {
-        ::std::mem::replace(&mut self.cmd, Command::new(""))
-    }
+    fn finalize(&mut self) {}
 
     // Not needed for now with LLD
     fn group_start(&mut self) {}
@@ -1209,14 +1205,12 @@ impl<'a> Linker for PtxLinker<'a> {
         self.cmd.arg("-o").arg(path);
     }
 
-    fn finalize(&mut self) -> Command {
+    fn finalize(&mut self) {
         // Provide the linker with fallback to internal `target-cpu`.
         self.cmd.arg("--fallback-arch").arg(match self.sess.opts.cg.target_cpu {
             Some(ref s) => s,
             None => &self.sess.target.target.options.cpu,
         });
-
-        ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
     fn link_dylib(&mut self, _lib: Symbol) {

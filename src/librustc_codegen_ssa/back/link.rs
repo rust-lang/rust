@@ -154,7 +154,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
 // toolchain
-pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathBuf, Command) {
+pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> Command {
     let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
@@ -232,7 +232,7 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathB
     }
     cmd.env("PATH", env::join_paths(new_path).unwrap());
 
-    (linker.to_path_buf(), cmd)
+    cmd
 }
 
 pub fn each_linked_rlib(
@@ -487,95 +487,18 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     target_cpu: &str,
 ) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
-    let (linker, flavor) = linker_and_flavor(sess);
+    let (linker_path, flavor) = linker_and_flavor(sess);
+    let mut cmd = linker_with_args::<B>(
+        &linker_path,
+        flavor,
+        sess,
+        crate_type,
+        tmpdir,
+        out_filename,
+        codegen_results,
+        target_cpu,
+    );
 
-    let any_dynamic_crate = crate_type == config::CrateType::Dylib
-        || codegen_results.crate_info.dependency_formats.iter().any(|(ty, list)| {
-            *ty == crate_type && list.iter().any(|&linkage| linkage == Linkage::Dynamic)
-        });
-
-    // The invocations of cc share some flags across platforms
-    let (pname, mut cmd) = get_linker(sess, &linker, flavor);
-
-    if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
-        cmd.args(args);
-    }
-    if let Some(args) = sess.target.target.options.pre_link_args_crt.get(&flavor) {
-        if sess.crt_static(Some(crate_type)) {
-            cmd.args(args);
-        }
-    }
-    cmd.args(&sess.opts.debugging_opts.pre_link_args);
-
-    if sess.target.target.options.is_like_fuchsia {
-        let prefix = match sess.opts.debugging_opts.sanitizer {
-            Some(Sanitizer::Address) => "asan/",
-            _ => "",
-        };
-        cmd.arg(format!("--dynamic-linker={}ld.so.1", prefix));
-    }
-
-    let pre_link_objects = if crate_type == config::CrateType::Executable {
-        &sess.target.target.options.pre_link_objects_exe
-    } else {
-        &sess.target.target.options.pre_link_objects_dll
-    };
-    for obj in pre_link_objects {
-        cmd.arg(get_file_path(sess, obj));
-    }
-
-    if crate_type == config::CrateType::Executable && sess.crt_static(Some(crate_type)) {
-        for obj in &sess.target.target.options.pre_link_objects_exe_crt {
-            cmd.arg(get_file_path(sess, obj));
-        }
-    }
-
-    if sess.target.target.options.is_like_emscripten {
-        cmd.arg("-s");
-        cmd.arg(if sess.panic_strategy() == PanicStrategy::Abort {
-            "DISABLE_EXCEPTION_CATCHING=1"
-        } else {
-            "DISABLE_EXCEPTION_CATCHING=0"
-        });
-    }
-
-    {
-        let mut linker = codegen_results.linker_info.to_linker(cmd, &sess, flavor, target_cpu);
-        link_sanitizer_runtime(sess, crate_type, &mut *linker);
-        link_args::<B>(
-            &mut *linker,
-            flavor,
-            sess,
-            crate_type,
-            tmpdir,
-            out_filename,
-            codegen_results,
-        );
-        cmd = linker.finalize();
-    }
-    if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
-        cmd.args(args);
-    }
-    if any_dynamic_crate {
-        if let Some(args) = sess.target.target.options.late_link_args_dynamic.get(&flavor) {
-            cmd.args(args);
-        }
-    } else {
-        if let Some(args) = sess.target.target.options.late_link_args_static.get(&flavor) {
-            cmd.args(args);
-        }
-    }
-    for obj in &sess.target.target.options.post_link_objects {
-        cmd.arg(get_file_path(sess, obj));
-    }
-    if sess.crt_static(Some(crate_type)) {
-        for obj in &sess.target.target.options.post_link_objects_crt {
-            cmd.arg(get_file_path(sess, obj));
-        }
-    }
-    if let Some(args) = sess.target.target.options.post_link_args.get(&flavor) {
-        cmd.args(args);
-    }
     for &(ref k, ref v) in &sess.target.target.options.link_env {
         cmd.env(k, v);
     }
@@ -597,7 +520,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     let mut i = 0;
     loop {
         i += 1;
-        prog = sess.time("run_linker", || exec_linker(sess, &mut cmd, out_filename, tmpdir));
+        prog = sess.time("run_linker", || exec_linker(sess, &cmd, out_filename, tmpdir));
         let output = match prog {
             Ok(ref output) => output,
             Err(_) => break,
@@ -698,7 +621,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
                 output.extend_from_slice(&prog.stdout);
                 sess.struct_err(&format!(
                     "linking with `{}` failed: {}",
-                    pname.display(),
+                    linker_path.display(),
                     prog.status
                 ))
                 .note(&format!("{:?}", &cmd))
@@ -714,9 +637,12 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
 
             let mut linker_error = {
                 if linker_not_found {
-                    sess.struct_err(&format!("linker `{}` not found", pname.display()))
+                    sess.struct_err(&format!("linker `{}` not found", linker_path.display()))
                 } else {
-                    sess.struct_err(&format!("could not exec the linker `{}`", pname.display()))
+                    sess.struct_err(&format!(
+                        "could not exec the linker `{}`",
+                        linker_path.display()
+                    ))
                 }
             };
 
@@ -1087,7 +1013,7 @@ pub fn get_file_path(sess: &Session, name: &str) -> PathBuf {
 
 pub fn exec_linker(
     sess: &Session,
-    cmd: &mut Command,
+    cmd: &Command,
     out_filename: &Path,
     tmpdir: &Path,
 ) -> io::Result<Output> {
@@ -1233,15 +1159,66 @@ pub fn exec_linker(
     }
 }
 
-fn link_args<'a, B: ArchiveBuilder<'a>>(
-    cmd: &mut dyn Linker,
+fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
+    path: &Path,
     flavor: LinkerFlavor,
     sess: &'a Session,
     crate_type: config::CrateType,
     tmpdir: &Path,
     out_filename: &Path,
     codegen_results: &CodegenResults,
-) {
+    target_cpu: &str,
+) -> Command {
+    let base_cmd = get_linker(sess, path, flavor);
+    // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
+    // to the linker args construction.
+    assert!(base_cmd.get_args().is_empty() || sess.target.target.target_vendor == "uwp");
+    let cmd = &mut *codegen_results.linker_info.to_linker(base_cmd, &sess, flavor, target_cpu);
+
+    if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
+        cmd.args(args);
+    }
+    if let Some(args) = sess.target.target.options.pre_link_args_crt.get(&flavor) {
+        if sess.crt_static(Some(crate_type)) {
+            cmd.args(args);
+        }
+    }
+    cmd.args(&sess.opts.debugging_opts.pre_link_args);
+
+    if sess.target.target.options.is_like_fuchsia {
+        let prefix = match sess.opts.debugging_opts.sanitizer {
+            Some(Sanitizer::Address) => "asan/",
+            _ => "",
+        };
+        cmd.arg(format!("--dynamic-linker={}ld.so.1", prefix));
+    }
+
+    let pre_link_objects = if crate_type == config::CrateType::Executable {
+        &sess.target.target.options.pre_link_objects_exe
+    } else {
+        &sess.target.target.options.pre_link_objects_dll
+    };
+    for obj in pre_link_objects {
+        cmd.arg(get_file_path(sess, obj));
+    }
+
+    if crate_type == config::CrateType::Executable && sess.crt_static(Some(crate_type)) {
+        for obj in &sess.target.target.options.pre_link_objects_exe_crt {
+            cmd.arg(get_file_path(sess, obj));
+        }
+    }
+
+    if sess.target.target.options.is_like_emscripten {
+        cmd.arg("-s");
+        cmd.arg(if sess.panic_strategy() == PanicStrategy::Abort {
+            "DISABLE_EXCEPTION_CATCHING=1"
+        } else {
+            "DISABLE_EXCEPTION_CATCHING=0"
+        });
+    }
+
+    link_sanitizer_runtime(sess, crate_type, cmd);
+
     // Linker plugins should be specified early in the list of arguments
     cmd.linker_plugin_lto();
 
@@ -1440,6 +1417,38 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
     cmd.args(user_link_args);
+
+    cmd.finalize();
+
+    if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
+        cmd.args(args);
+    }
+    let any_dynamic_crate = crate_type == config::CrateType::Dylib
+        || codegen_results.crate_info.dependency_formats.iter().any(|(ty, list)| {
+            *ty == crate_type && list.iter().any(|&linkage| linkage == Linkage::Dynamic)
+        });
+    if any_dynamic_crate {
+        if let Some(args) = sess.target.target.options.late_link_args_dynamic.get(&flavor) {
+            cmd.args(args);
+        }
+    } else {
+        if let Some(args) = sess.target.target.options.late_link_args_static.get(&flavor) {
+            cmd.args(args);
+        }
+    }
+    for obj in &sess.target.target.options.post_link_objects {
+        cmd.arg(get_file_path(sess, obj));
+    }
+    if sess.crt_static(Some(crate_type)) {
+        for obj in &sess.target.target.options.post_link_objects_crt {
+            cmd.arg(get_file_path(sess, obj));
+        }
+    }
+    if let Some(args) = sess.target.target.options.post_link_args.get(&flavor) {
+        cmd.args(args);
+    }
+
+    cmd.take_cmd()
 }
 
 // # Native library linking
