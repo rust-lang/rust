@@ -120,12 +120,10 @@ impl Config {
         set(value, "/withSysroot", &mut self.with_sysroot);
         set(value, "/featureFlags/lsp.diagnostics", &mut self.publish_diagnostics);
         set(value, "/lruCapacity", &mut self.lru_capacity);
-        if let Some(watcher) =  get::<String>(value, "/files/watcher") {
-            self.files.watcher = match watcher.as_str() {
-                "client" => FilesWatcher::Client,
-                "notify"| _ => FilesWatcher::Notify,
-            }
-        }
+        self.files.watcher = match get::<&str>(value, "/files/watcher") {
+            Some("client") => FilesWatcher::Client,
+            Some("notify") | _ => FilesWatcher::Notify
+        };
         set(value, "/notifications/workspaceLoaded", &mut self.notifications.workspace_loaded);
         set(value, "/notifications/cargoTomlNotFound", &mut self.notifications.cargo_toml_not_found);
 
@@ -144,8 +142,9 @@ impl Config {
         } else if let RustfmtConfig::Rustfmt { extra_args } = &mut self.rustfmt {
             set(value, "/rustfmt/extraArgs", extra_args);
         }
+
         if let Some(false) = get(value, "/checkOnSave/enable") {
-            self.check = None
+            self.check = None;
         } else {
             if let Some(mut args) = get::<Vec<String>>(value, "/checkOnSave/overrideCommand") {
                 if !args.is_empty() {
@@ -153,7 +152,7 @@ impl Config {
                     self.check = Some(FlycheckConfig::CustomCommand {
                         command,
                         args,
-                    })
+                    });
                 }
 
             } else if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets }) = &mut self.check
@@ -179,7 +178,7 @@ impl Config {
             value.pointer(pointer).and_then(|it| T::deserialize(it).ok())
         }
 
-        fn set<'a, T: Deserialize<'a> + std::fmt::Debug>(value: &'a serde_json::Value, pointer: &str, slot: &mut T) {
+        fn set<'a, T: Deserialize<'a>>(value: &'a serde_json::Value, pointer: &str, slot: &mut T) {
             if let Some(new_value) = get(value, pointer) {
                 *slot = new_value
             }
