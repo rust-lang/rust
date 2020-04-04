@@ -787,7 +787,7 @@ fn link_sanitizer_runtime(sess: &Session, crate_type: config::CrateType, linker:
             // PR #41352 for details).
             let libname = format!("rustc{}_rt.{}", channel, name);
             let rpath = default_tlib.to_str().expect("non-utf8 component in path");
-            linker.args(&["-Wl,-rpath".into(), "-Xlinker".into(), rpath.into()]);
+            linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
             linker.link_dylib(Symbol::intern(&libname));
         }
         "x86_64-unknown-linux-gnu" | "x86_64-fuchsia" | "aarch64-fuchsia" => {
@@ -1300,8 +1300,7 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
     }
 
     let attr_link_args = codegen_results.crate_info.link_args.iter();
-    let user_link_args: Vec<_> =
-        sess.opts.cg.link_args.iter().chain(attr_link_args).cloned().collect();
+    let user_link_args = sess.opts.cg.link_args.iter().chain(attr_link_args);
 
     if crate_type == config::CrateType::Executable {
         let mut position_independent_executable = false;
@@ -1309,7 +1308,7 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
         if t.options.position_independent_executables {
             if is_pic(sess)
                 && !sess.crt_static(Some(crate_type))
-                && !user_link_args.iter().any(|x| x == "-static")
+                && !user_link_args.clone().any(|x| x == "-static")
             {
                 position_independent_executable = true;
             }
@@ -1440,7 +1439,7 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
 
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
-    cmd.args(&user_link_args);
+    cmd.args(user_link_args);
 }
 
 // # Native library linking

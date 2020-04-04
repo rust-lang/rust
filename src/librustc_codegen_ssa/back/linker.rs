@@ -87,6 +87,7 @@ impl LinkerInfo {
 /// used to dispatch on whether a GNU-like linker (generally `ld.exe`) or an
 /// MSVC linker (e.g., `link.exe`) is being used.
 pub trait Linker {
+    fn cmd(&mut self) -> &mut Command;
     fn link_dylib(&mut self, lib: Symbol);
     fn link_rust_dylib(&mut self, lib: Symbol, path: &Path);
     fn link_framework(&mut self, framework: Symbol);
@@ -111,7 +112,6 @@ pub trait Linker {
     fn no_default_libraries(&mut self);
     fn build_dylib(&mut self, out_filename: &Path);
     fn build_static_executable(&mut self);
-    fn args(&mut self, args: &[String]);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType);
     fn subsystem(&mut self, subsystem: &str);
     fn group_start(&mut self);
@@ -119,6 +119,16 @@ pub trait Linker {
     fn linker_plugin_lto(&mut self);
     // Should have been finalize(self), but we don't support self-by-value on trait objects (yet?).
     fn finalize(&mut self) -> Command;
+}
+
+impl dyn Linker + '_ {
+    pub fn arg(&mut self, arg: impl AsRef<OsStr>) {
+        self.cmd().arg(arg);
+    }
+
+    pub fn args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>>) {
+        self.cmd().args(args);
+    }
 }
 
 pub struct GccLinker<'a> {
@@ -208,6 +218,9 @@ impl<'a> GccLinker<'a> {
 }
 
 impl<'a> Linker for GccLinker<'a> {
+    fn cmd(&mut self) -> &mut Command {
+        &mut self.cmd
+    }
     fn link_dylib(&mut self, lib: Symbol) {
         self.hint_dynamic();
         self.cmd.arg(format!("-l{}", lib));
@@ -250,9 +263,6 @@ impl<'a> Linker for GccLinker<'a> {
     }
     fn build_static_executable(&mut self) {
         self.cmd.arg("-static");
-    }
-    fn args(&mut self, args: &[String]) {
-        self.cmd.args(args);
     }
 
     fn link_rust_dylib(&mut self, lib: Symbol, _path: &Path) {
@@ -545,14 +555,14 @@ pub struct MsvcLinker<'a> {
 }
 
 impl<'a> Linker for MsvcLinker<'a> {
+    fn cmd(&mut self) -> &mut Command {
+        &mut self.cmd
+    }
     fn link_rlib(&mut self, lib: &Path) {
         self.cmd.arg(lib);
     }
     fn add_object(&mut self, path: &Path) {
         self.cmd.arg(path);
-    }
-    fn args(&mut self, args: &[String]) {
-        self.cmd.args(args);
     }
 
     fn build_dylib(&mut self, out_filename: &Path) {
@@ -778,6 +788,9 @@ pub struct EmLinker<'a> {
 }
 
 impl<'a> Linker for EmLinker<'a> {
+    fn cmd(&mut self) -> &mut Command {
+        &mut self.cmd
+    }
     fn include_path(&mut self, path: &Path) {
         self.cmd.arg("-L").arg(path);
     }
@@ -835,10 +848,6 @@ impl<'a> Linker for EmLinker<'a> {
 
     fn no_relro(&mut self) {
         // noop
-    }
-
-    fn args(&mut self, args: &[String]) {
-        self.cmd.args(args);
     }
 
     fn framework_path(&mut self, _path: &Path) {
@@ -992,6 +1001,10 @@ impl<'a> WasmLd<'a> {
 }
 
 impl<'a> Linker for WasmLd<'a> {
+    fn cmd(&mut self) -> &mut Command {
+        &mut self.cmd
+    }
+
     fn link_dylib(&mut self, lib: Symbol) {
         self.cmd.arg("-l").sym_arg(lib);
     }
@@ -1029,10 +1042,6 @@ impl<'a> Linker for WasmLd<'a> {
     fn no_relro(&mut self) {}
 
     fn build_static_executable(&mut self) {}
-
-    fn args(&mut self, args: &[String]) {
-        self.cmd.args(args);
-    }
 
     fn link_rust_dylib(&mut self, lib: Symbol, _path: &Path) {
         self.cmd.arg("-l").sym_arg(lib);
@@ -1162,6 +1171,10 @@ pub struct PtxLinker<'a> {
 }
 
 impl<'a> Linker for PtxLinker<'a> {
+    fn cmd(&mut self) -> &mut Command {
+        &mut self.cmd
+    }
+
     fn link_rlib(&mut self, path: &Path) {
         self.cmd.arg("--rlib").arg(path);
     }
@@ -1180,10 +1193,6 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn add_object(&mut self, path: &Path) {
         self.cmd.arg("--bitcode").arg(path);
-    }
-
-    fn args(&mut self, args: &[String]) {
-        self.cmd.args(args);
     }
 
     fn optimize(&mut self) {
