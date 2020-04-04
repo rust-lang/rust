@@ -970,6 +970,9 @@ impl<T> AtomicPtr<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn store(&self, ptr: *mut T, order: Ordering) {
         // SAFETY: data races are prevented by atomic intrinsics.
+        // We transmute to an integer instead of casting to avoid losing pointer
+        // provenance -- in particular this helps Miri not lose track of the pointer
+        // when checking for memory leaks.
         unsafe {
             atomic_store(self.p.get() as *mut usize, mem::transmute(ptr), order);
         }

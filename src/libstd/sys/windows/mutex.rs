@@ -21,10 +21,10 @@
 
 use crate::cell::UnsafeCell;
 use crate::mem::{self, MaybeUninit};
-use crate::sync::atomic::{AtomicUsize, AtomicPtr, Ordering};
+use crate::ptr;
+use crate::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 use crate::sys::c;
 use crate::sys::compat;
-use crate::ptr;
 
 pub struct Mutex {
     lock: AtomicUsize,
