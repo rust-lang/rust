@@ -1,6 +1,11 @@
 error: unexpected closing delimiter: `}`
   --> $DIR/macro-mismatched-delim-paren-brace.rs:5:1
    |
+LL | fn main() {
+   |           - this opening brace...
+...
+LL |     }
+   |     - ...matches this closing brace
 LL | }
    | ^ unexpected closing delimiter
 

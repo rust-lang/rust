@@ -1,6 +1,6 @@
 use super::{StringReader, UnmatchedBrace};
 
-use rustc_ast::token::{self, Token};
+use rustc_ast::token::{self, Token, DelimToken};
 use rustc_ast::tokenstream::{
     DelimSpan,
     IsJoint::{self, *},
@@ -44,7 +44,7 @@ struct TokenTreesReader<'a> {
     /// Collect empty block spans that might have been auto-inserted by editors.
     last_delim_empty_block_spans: FxHashMap<token::DelimToken, Span>,
     /// Collect the spans of braces (Open, Close). Used only
-    /// for detecting if blocks are empty
+    /// for detecting if blocks are empty and only braces.
     matching_block_spans: Vec<(Span, Span)>,
 }
 
@@ -151,7 +151,13 @@ impl<'a> TokenTreesReader<'a> {
                             }
                         }
 
-                        self.matching_block_spans.push((open_brace_span, close_brace_span));
+                        match (open_brace, delim) {
+                            //only add braces
+                            (DelimToken::Brace, DelimToken::Brace) => {
+                                self.matching_block_spans.push((open_brace_span, close_brace_span));
+                            }
+                            _ => {}
+                        }
 
                         if self.open_braces.is_empty() {
                             // Clear up these spans to avoid suggesting them as we've found
@@ -232,18 +238,42 @@ impl<'a> TokenTreesReader<'a> {
                 let mut err =
                     self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, &msg);
 
-                if let Some(span) = self.last_delim_empty_block_spans.remove(&delim) {
                     // Braces are added at the end, so the last element is the biggest block
                     if let Some(parent) = self.matching_block_spans.last() {
-                        // Check if the (empty block) is in the last properly closed block
-                        if (parent.0.to(parent.1)).contains(span) {
+
+                        if let Some(span) = self.last_delim_empty_block_spans.remove(&delim) {
+                            // Check if the (empty block) is in the last properly closed block
+                            if (parent.0.to(parent.1)).contains(span) {
+                                err.span_label(
+                                    span,
+                                    "this block is empty, you might have not meant to close it",
+                                );
+                            }
+                            else {
+                                err.span_label(
+                                    parent.0,
+                                    "this opening brace...",
+                                );
+
+                                err.span_label(
+                                    parent.1,
+                                    "...matches this closing brace",
+                                );
+                            }
+                        }
+                        else {
                             err.span_label(
-                                span,
-                                "this block is empty, you might have not meant to close it",
+                                parent.0,
+                                "this opening brace...",
+                            );
+
+                            err.span_label(
+                                parent.1,
+                                "...matches this closing brace",
                             );
                         }
-                    }
                 }
+
                 err.span_label(self.token.span, "unexpected closing delimiter");
                 Err(err)
             }
