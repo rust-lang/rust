@@ -509,6 +509,9 @@ impl Build {
         if self.config.jemalloc {
             features.push_str("jemalloc");
         }
+        if self.config.rust_analyzer {
+            features.push_str("rust_analyzer");
+        }
         if self.config.llvm_enabled() {
             features.push_str(" llvm");
         }

@@ -974,4 +974,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "Link native libraries in the linker invocation."),
     src_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_src_file_hash, [TRACKED],
         "hash algorithm of source files in debug info (`md5`, or `sha1`)"),
+    parse_with_rust_analyzer: bool = (false, parse_bool, [UNTRACKED],
+        "Use rust_analyzer to parse Rust instead of the rustc parser"),
 }

@@ -1,0 +1,24 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_parse_ra"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+name = "rustc_parse_ra"
+path = "lib.rs"
+doctest = false
+
+[dependencies]
+bitflags = "1.0"
+log = "0.4"
+rustc_errors = { path = "../librustc_errors" }
+smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+rustc_session = { path = "../librustc_session" }
+rustc_span = { path = "../librustc_span" }
+rustc_ast = { path = "../librustc_ast" }
+rustc_ast_pretty = { path = "../librustc_ast_pretty" }
+rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_parse = { path = "../librustc_parse" }
+unicode-normalization = "0.1.11"
+ra_syntax = "*"

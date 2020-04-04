@@ -740,7 +740,7 @@ dependencies = [
  "crossbeam-utils 0.6.5",
  "lazy_static 1.4.0",
  "memoffset",
- "scopeguard",
+ "scopeguard 1.0.0",
 ]
 
 [[package]]
@@ -951,6 +951,12 @@ dependencies = [
  "libc",
  "rustc-std-workspace-core",
 ]
+
+[[package]]
+name = "drop_bomb"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69b26e475fd29098530e709294e94e661974c851aed42512793f120fed4e199f"
 
 [[package]]
 name = "dtoa"
@@ -1404,7 +1410,7 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3753954f7bd71f0e671afb8b5a992d1724cf43b7f95a563cd4a0bde94659ca8"
 dependencies = [
- "scopeguard",
+ "scopeguard 1.0.0",
  "winapi 0.3.8",
 ]
 
@@ -1866,11 +1872,21 @@ checksum = "ae91b68aebc4ddb91978b11a1b02ddd8602a05ec19002801c5666000e05e0f83"
 
 [[package]]
 name = "lock_api"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62ebf1391f6acad60e5c8b43706dde4582df75c06698ab44511d15016bc2442c"
+dependencies = [
+ "owning_ref",
+ "scopeguard 0.3.3",
+]
+
+[[package]]
+name = "lock_api"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8912e782533a93a167888781b836336a6ca5da6175c05944c86cf28c31104dc"
 dependencies = [
- "scopeguard",
+ "scopeguard 1.0.0",
 ]
 
 [[package]]
@@ -2346,6 +2362,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "owning_ref"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ff55baddef9e4ad00f88b6c743a2a8062d4c6ade126c2a528644b8e444d52ce"
+dependencies = [
+ "stable_deref_trait",
+]
+
+[[package]]
 name = "packed_simd"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2395,11 +2420,31 @@ dependencies = [
 
 [[package]]
 name = "parking_lot"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0802bff09003b291ba756dc7e79313e51cc31667e94afbe847def490424cde5"
+dependencies = [
+ "lock_api 0.1.5",
+ "parking_lot_core 0.3.1",
+]
+
+[[package]]
+name = "parking_lot"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab41b4aed082705d1056416ae4468b6ea99d52599ecf3169b00088d43113e337"
+dependencies = [
+ "lock_api 0.1.5",
+ "parking_lot_core 0.4.0",
+]
+
+[[package]]
+name = "parking_lot"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f842b1982eb6c2fe34036a4fbfb06dd185a3f5c8edfaacdf7d1ea10b07de6252"
 dependencies = [
- "lock_api",
+ "lock_api 0.3.1",
  "parking_lot_core 0.6.2",
  "rustc_version",
 ]
@@ -2410,8 +2455,34 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92e98c49ab0b7ce5b222f2cc9193fc4efe11c6d0bd4f648e374684a6857b1cfc"
 dependencies = [
- "lock_api",
+ "lock_api 0.3.1",
  "parking_lot_core 0.7.0",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad7f7e6ebdc79edff6fdcb87a55b620174f7a989e3eb31b65231f4af57f00b8c"
+dependencies = [
+ "libc",
+ "rand 0.5.6",
+ "rustc_version",
+ "smallvec 0.6.10",
+ "winapi 0.3.8",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94c8c7923936b28d546dfd14d4472eaf34c99b14e1c973a32b3e6d4eb04298c9"
+dependencies = [
+ "libc",
+ "rand 0.6.1",
+ "rustc_version",
+ "smallvec 0.6.10",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -2714,6 +2785,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ra_syntax"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be308e1907623f15bc874a4b2742b6a20c44c439f201638fa26564e664276ce9"
+dependencies = [
+ "drop_bomb",
+ "itertools 0.7.8",
+ "parking_lot 0.6.4",
+ "rowan",
+ "text_unit",
+ "unicode-xid 0.1.0",
+]
+
+[[package]]
 name = "racer"
 version = "2.1.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2734,6 +2819,19 @@ dependencies = [
  "rustc-ap-rustc_session",
  "rustc-ap-rustc_span",
  "rustc-ap-syntax",
+]
+
+[[package]]
+name = "rand"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c618c47cd3ebd209790115ab837de41425723956ad3ce2e6a7f09890947cacb9"
+dependencies = [
+ "cloudabi",
+ "fuchsia-cprng",
+ "libc",
+ "rand_core 0.3.0",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -3139,6 +3237,17 @@ checksum = "ce4b57b25b4330ed5ec14028fc02141e083ddafda327e7eb598dc0569c8c83c9"
 dependencies = [
  "log",
  "rls-span",
+]
+
+[[package]]
+name = "rowan"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c218b4430ab922850b71b14fa9bca224425097f935f6155c0b6a4b1f398a54f0"
+dependencies = [
+ "parking_lot 0.7.1",
+ "smol_str",
+ "text_unit",
 ]
 
 [[package]]
@@ -3849,6 +3958,7 @@ dependencies = [
  "rustc_mir",
  "rustc_mir_build",
  "rustc_parse",
+ "rustc_parse_ra",
  "rustc_passes",
  "rustc_plugin_impl",
  "rustc_privacy",
@@ -4039,6 +4149,24 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_lexer",
+ "rustc_session",
+ "rustc_span",
+ "smallvec 1.0.0",
+ "unicode-normalization",
+]
+
+[[package]]
+name = "rustc_parse_ra"
+version = "0.0.0"
+dependencies = [
+ "bitflags",
+ "log",
+ "ra_syntax",
+ "rustc_ast",
+ "rustc_ast_pretty",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_parse",
  "rustc_session",
  "rustc_span",
  "smallvec 1.0.0",
@@ -4445,6 +4573,12 @@ checksum = "1d51f5df5af43ab3f1360b429fa5e0152ac5ce8c0bd6485cae490332e96846a8"
 
 [[package]]
 name = "scopeguard"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94258f53601af11e6a49f722422f6e3425c52b06245a5cf9bc09908b174f5e27"
+
+[[package]]
+name = "scopeguard"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b42e15e59b18a828bbf5c58ea01debb36b9b096346de35d941dcb89009f24a0d"
@@ -4624,6 +4758,12 @@ name = "smallvec"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ecf3b85f68e8abaa7555aa5abdb1153079387e60b718283d732f03897fcfc86"
+
+[[package]]
+name = "smol_str"
+version = "0.1.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34836c9a295c62c2ce3514471117c5cb269891e8421b2aafdd910050576c4d8b"
 
 [[package]]
 name = "socket2"
@@ -4920,6 +5060,12 @@ dependencies = [
  "libc",
  "term 0.6.0",
 ]
+
+[[package]]
+name = "text_unit"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20431e104bfecc1a40872578dbc390e10290a0e9c35fffe3ce6f73c15a9dbfc2"
 
 [[package]]
 name = "textwrap"
