@@ -149,8 +149,11 @@ Instead most compilers, including `rustc`, build some sort of IR out of the
 source code which is easier to analyze. `rustc` has a few IRs, each optimized
 for different purposes:
 
+- Token stream: the lexer produces a stream of tokens directly from the source
+  code. This stream of tokens is easier for the parser to deal with than raw
+  text.
 - Abstract Syntax Tree (AST): the abstract syntax tree is built from the stream
-  of tokens produced by the lexer directly from the source code. It represents
+  of tokens produced by the lexer. It represents
   pretty much exactly what the user wrote. It helps to do some syntactic sanity
   checking (e.g. checking that a type is expected where the user wrote one).
 - High-level IR (HIR): This is a sort of desugared AST. It's still close
