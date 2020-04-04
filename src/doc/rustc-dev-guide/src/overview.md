@@ -279,11 +279,11 @@ but there are already some promising performance improvements.
 - Command line parsing
   - Guide: [The Rustc Driver and Interface](https://rustc-dev-guide.rust-lang.org/rustc-driver.html)
   - Driver definition: [`rustc_driver`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/)
-  - Main entry point: **TODO**
+  - Main entry point: [`rustc_session::config::build_session_options`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/config/fn.build_session_options.html)
 - Lexical Analysis: Lex the user program to a stream of tokens
   - Guide: [Lexing and Parsing](https://rustc-dev-guide.rust-lang.org/the-parser.html)
   - Lexer definition: [`librustc_lexer`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html)
-  - Main entry point: **TODO**
+  - Main entry point: [`rustc_lexer::tokenize`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/fn.tokenize.html)
 - Parsing: Parse the stream of tokens to an Abstract Syntax Tree (AST)
   - Guide: [Lexing and Parsing](https://rustc-dev-guide.rust-lang.org/the-parser.html)
   - Parser definition: [`librustc_parse`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html)
@@ -309,14 +309,13 @@ but there are already some promising performance improvements.
 - The Borrow Checker
   - Guide: [MIR Borrow Check](https://rustc-dev-guide.rust-lang.org/borrow_check.html)
   - Definition: [`rustc_mir/borrow_check`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/index.html)
-  - Main entry point: **TODO**
+  - Main entry point: [`mir_borrowck` query](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/fn.mir_borrowck.html)
 - MIR Optimizations
   - Guide: [MIR Optimizations](https://rustc-dev-guide.rust-lang.org/mir/optimizations.html)
   - Definition: [`rustc_mir/transform`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/index.html) **TODO: is this correct?**
-  - Main entry point: **TODO**
+  - Main entry point: [`optimized_mir` query](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/fn.optimized_mir.html)
 - Code Generation
   - Guide: [Code Generation](https://rustc-dev-guide.rust-lang.org/codegen.html)
   - Guide: [Generating LLVM IR](https://rustc-dev-guide.rust-lang.org/codegen.html#generating-llvm-ir) - **TODO: this is not available yet**
   - Generating Machine Code from LLVM IR with LLVM - **TODO: reference?**
-  - Main entry point MIR -> LLVM IR: **TODO**
-  - Main entry point LLVM IR -> Machine Code **TODO**
+  - Main entry point MIR -> Machine Code: [`rustc_codegen_ssa::base::codegen_crate`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_crate.html)
