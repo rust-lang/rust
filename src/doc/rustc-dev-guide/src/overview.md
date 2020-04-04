@@ -29,8 +29,6 @@ we'll talk about that later.
   - nameres (**TODO** chrissimpkins)
   - early linting (**TODO** chrissimpkins)
 
-- We then [_parse_ the stream of tokens][parser] to build an Abstract Syntax
-  Tree (AST).
 - We then take the AST and [convert it to High-Level Intermediate
   Representation (HIR)][hir]. This is a compiler-friendly representation of the
   AST.  This involves a lot of desugaring of things like loops and `async fn`.
@@ -159,8 +157,10 @@ for different purposes:
 - High-level IR (HIR): This is a sort of desugared AST. It's still close
   to what the user wrote syntactically, but it includes some implicit things
   such as some elided lifetimes, etc. This IR is amenable to type checking.
-- HAIR: This is an intermediate between HIR and MIR. This only exists to make
-  it easier to lower HIR to MIR.
+- HAIR: This is an intermediate between HIR and MIR. It is like the HIR but it
+  is fully typed and a bit more desugared (e.g. method calls and implicit
+  dereferences are made fully explicit). Moreover, it is easier to lower to MIR
+  than HIR.
 - Middle-level IR (MIR): This IR is basically a Control-Flow Graph (CFG). A CFG
   is a type of diagram that shows the basic blocks of a program and how control
   flow can go between them. Likewise, MIR also has a bunch of basic blocks with
