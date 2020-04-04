@@ -2339,43 +2339,41 @@ impl<'tcx> Const<'tcx> {
     /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
     /// unevaluated constant.
     pub fn eval(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> &Const<'tcx> {
-        let try_const_eval = |did, param_env: ParamEnv<'tcx>, substs, promoted| {
+        if let ConstKind::Unevaluated(did, substs, promoted) = self.val {
             let param_env_and_substs = param_env.with_reveal_all().and(substs);
 
-            // Avoid querying `tcx.const_eval(...)` with any inference vars.
-            if param_env_and_substs.needs_infer() {
-                return None;
-            }
+            // HACK(eddyb) this erases lifetimes even though `const_eval_resolve`
+            // also does later, but we want to do it before checking for
+            // inference variables.
+            let param_env_and_substs = tcx.erase_regions(&param_env_and_substs);
 
+            // HACK(eddyb) when the query key would contain inference variables,
+            // attempt using identity substs and `ParamEnv` instead, that will succeed
+            // when the expression doesn't depend on any parameters.
+            // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
+            // we can call `infcx.const_eval_resolve` which handles inference variables.
+            let param_env_and_substs = if param_env_and_substs.needs_infer() {
+                tcx.param_env(did).and(InternalSubsts::identity_for_item(tcx, did))
+            } else {
+                param_env_and_substs
+            };
+
+            // FIXME(eddyb) maybe the `const_eval_*` methods should take
+            // `ty::ParamEnvAnd<SubstsRef>` instead of having them separate.
             let (param_env, substs) = param_env_and_substs.into_parts();
-
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            tcx.const_eval_resolve(param_env, did, substs, promoted, None)
-                .ok()
-                .map(|val| Const::from_value(tcx, val, self.ty))
-        };
+            match tcx.const_eval_resolve(param_env, did, substs, promoted, None) {
+                // NOTE(eddyb) `val` contains no lifetimes/types/consts,
+                // and we use the original type, so nothing from `substs`
+                // (which may be identity substs, see above),
+                // can leak through `val` into the const we return.
+                Ok(val) => Const::from_value(tcx, val, self.ty),
 
-        match self.val {
-            ConstKind::Unevaluated(did, substs, promoted) => {
-                // HACK(eddyb) when substs contain inference variables,
-                // attempt using identity substs instead, that will succeed
-                // when the expression doesn't depend on any parameters.
-                // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
-                // we can call `infcx.const_eval_resolve` which handles inference variables.
-                if substs.needs_infer() {
-                    let identity_substs = InternalSubsts::identity_for_item(tcx, did);
-                    // The `ParamEnv` needs to match the `identity_substs`.
-                    let identity_param_env = tcx.param_env(did);
-                    match try_const_eval(did, identity_param_env, identity_substs, promoted) {
-                        Some(ct) => ct.subst(tcx, substs),
-                        None => self,
-                    }
-                } else {
-                    try_const_eval(did, param_env, substs, promoted).unwrap_or(self)
-                }
+                Err(_) => self,
             }
-            _ => self,
+        } else {
+            self
         }
     }
 
