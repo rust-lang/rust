@@ -14,6 +14,7 @@
 #[doc(hidden)]
 mod proc_macro;
 
+use proc_macro::bridge::client::TokenStream;
 use ra_proc_macro::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask};
 
 pub fn expand_task(_task: &ExpansionTask) -> Result<ExpansionResult, String> {
