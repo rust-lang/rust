@@ -33,7 +33,7 @@ use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::Index;
 use std::slice;
-use std::{iter, mem, option, u32};
+use std::{iter, mem, option};
 
 pub use self::cache::{BodyAndCache, ReadOnlyBodyAndCache};
 pub use self::query::*;

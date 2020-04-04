@@ -93,7 +93,6 @@ use std::path::Path;
 use std::process;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::u32;
 
 use measureme::{EventId, EventIdBuilder, SerializableString, StringId};
 use parking_lot::RwLock;

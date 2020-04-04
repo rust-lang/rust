@@ -42,7 +42,6 @@ use std::io;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::path::Path;
-use std::u32;
 
 pub use cstore_impl::{provide, provide_extern};
 

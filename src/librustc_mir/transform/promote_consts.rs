@@ -27,7 +27,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_target::spec::abi::Abi;
 
 use std::cell::Cell;
-use std::{cmp, iter, mem, usize};
+use std::{cmp, iter, mem};
 
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
 use crate::transform::check_consts::{is_lang_panic_fn, qualifs, ConstKind, Item};

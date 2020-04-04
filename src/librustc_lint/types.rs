@@ -21,7 +21,6 @@ use rustc_target::spec::abi::Abi;
 
 use log::debug;
 use std::cmp;
-use std::{f32, f64, i16, i32, i64, i8, u16, u32, u64, u8};
 
 declare_lint! {
     UNUSED_COMPARISONS,

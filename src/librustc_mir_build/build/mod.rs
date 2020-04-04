@@ -17,7 +17,6 @@ use rustc_span::symbol::kw;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
-use std::u32;
 
 use super::lints;
 

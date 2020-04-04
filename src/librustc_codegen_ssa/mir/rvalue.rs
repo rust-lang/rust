@@ -17,8 +17,6 @@ use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::sym;
 use rustc_target::abi::{Abi, Int, LayoutOf, Variants};
 
-use std::{i128, u128};
-
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_rvalue(
         &mut self,
