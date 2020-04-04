@@ -1077,48 +1077,42 @@ impl<'tcx> Generics {
         false
     }
 
+    pub fn param_at(&'tcx self, param_index: usize, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
+        if let Some(index) = param_index.checked_sub(self.parent_count) {
+            &self.params[index]
+        } else {
+            tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
+                .param_at(param_index, tcx)
+        }
+    }
+
     pub fn region_param(
         &'tcx self,
         param: &EarlyBoundRegion,
         tcx: TyCtxt<'tcx>,
     ) -> &'tcx GenericParamDef {
-        if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
-            let param = &self.params[index as usize];
-            match param.kind {
-                GenericParamDefKind::Lifetime => param,
-                _ => bug!("expected lifetime parameter, but found another generic parameter"),
-            }
-        } else {
-            tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
-                .region_param(param, tcx)
+        let param = self.param_at(param.index as usize, tcx);
+        match param.kind {
+            GenericParamDefKind::Lifetime => param,
+            _ => bug!("expected lifetime parameter, but found another generic parameter"),
         }
     }
 
     /// Returns the `GenericParamDef` associated with this `ParamTy`.
     pub fn type_param(&'tcx self, param: &ParamTy, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
-        if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
-            let param = &self.params[index as usize];
-            match param.kind {
-                GenericParamDefKind::Type { .. } => param,
-                _ => bug!("expected type parameter, but found another generic parameter"),
-            }
-        } else {
-            tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
-                .type_param(param, tcx)
+        let param = self.param_at(param.index as usize, tcx);
+        match param.kind {
+            GenericParamDefKind::Type { .. } => param,
+            _ => bug!("expected type parameter, but found another generic parameter"),
         }
     }
 
     /// Returns the `ConstParameterDef` associated with this `ParamConst`.
     pub fn const_param(&'tcx self, param: &ParamConst, tcx: TyCtxt<'tcx>) -> &GenericParamDef {
-        if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
-            let param = &self.params[index as usize];
-            match param.kind {
-                GenericParamDefKind::Const => param,
-                _ => bug!("expected const parameter, but found another generic parameter"),
-            }
-        } else {
-            tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
-                .const_param(param, tcx)
+        let param = self.param_at(param.index as usize, tcx);
+        match param.kind {
+            GenericParamDefKind::Const => param,
+            _ => bug!("expected const parameter, but found another generic parameter"),
         }
     }
 }

@@ -1,19 +1,26 @@
-error: defining opaque type use does not fully define opaque type: generic parameter `I` is specified as concrete type `u8`
-  --> $DIR/issue-60564.rs:20:5
+error: non-defining opaque type use in defining scope
+  --> $DIR/issue-60564.rs:19:34
    |
-LL | /     fn iter_bits(self, n: u8) -> Self::BitsIter {
-LL | |
-LL | |         (0u8..n)
-LL | |             .rev()
-LL | |             .map(move |shift| ((self >> T::from(shift)) & T::from(1)).try_into().unwrap())
-LL | |     }
-   | |_____^
-
-error: could not find defining uses
-  --> $DIR/issue-60564.rs:8:1
+LL |     fn iter_bits(self, n: u8) -> Self::BitsIter {
+   |                                  ^^^^^^^^^^^^^^
+   |
+note: used non-generic type `_` for generic parameter
+  --> $DIR/issue-60564.rs:8:22
    |
 LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                      ^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/issue-60564.rs:19:34
+   |
+LL |     fn iter_bits(self, n: u8) -> Self::BitsIter {
+   |                                  ^^^^^^^^^^^^^^
+   |
+note: used non-generic type `u8` for generic parameter
+  --> $DIR/issue-60564.rs:8:25
+   |
+LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
+   |                         ^
 
 error: aborting due to 2 previous errors
 
