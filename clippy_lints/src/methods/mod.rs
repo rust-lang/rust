@@ -336,7 +336,7 @@ declare_clippy_lint! {
     /// **Why is this bad?** Readability, this can be written more concisely as
     /// `_.ok()`.
     ///
-    /// **Known problems:**
+    /// **Known problems:** None.
     ///
     /// **Example:**
     /// ```rust
