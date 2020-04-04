@@ -165,9 +165,10 @@ for different purposes:
   is a type of diagram that shows the basic blocks of a program and how control
   flow can go between them. Likewise, MIR also has a bunch of basic blocks with
   simple typed statements inside them (e.g. assignment, simple computations,
-  dropping values, etc). MIR is used for borrow checking and a bunch of other
-  important dataflow based checks, such as checking for uninitialized values.
-  It is also used for a bunch of optimizations and for constant evaluation (via
+  etc) and control flow edges to other basic blocks (e.g., calls, dropping
+  values). MIR is used for borrow checking and other
+  important dataflow-based checks, such as checking for uninitialized values.
+  It is also used for a series of optimizations and for constant evaluation (via
   MIRI). Because MIR is still generic, we can do a lot of analyses here more
   efficiently than after monomorphization.
 - LLVM IR: This is the standard form of all input to the LLVM compiler. LLVM IR
