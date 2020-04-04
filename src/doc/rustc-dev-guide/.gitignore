@@ -1,1 +1,4 @@
 book
+
+# prevent accidentally changes
+book.toml
