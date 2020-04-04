@@ -279,13 +279,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.tcx.span = terminator.source_info.span;
         self.memory.tcx.span = terminator.source_info.span;
 
-        let old_stack = self.cur_frame();
-        let old_bb = self.frame().block;
-
         self.eval_terminator(terminator)?;
         if !self.stack.is_empty() {
-            // This should change *something*
-            assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
             if let Some(block) = self.frame().block {
                 info!("// executing {:?}", block);
             }

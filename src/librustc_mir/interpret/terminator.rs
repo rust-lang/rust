@@ -52,6 +52,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Call { ref func, ref args, destination, ref cleanup, .. } => {
+                let old_stack = self.cur_frame();
+                let old_bb = self.frame().block;
                 let func = self.eval_operand(func, None)?;
                 let (fn_val, abi) = match func.layout.ty.kind {
                     ty::FnPtr(sig) => {
@@ -72,6 +74,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     None => None,
                 };
                 self.eval_fn_call(fn_val, abi, &args[..], ret, *cleanup)?;
+                // Sanity-check that `eval_fn_call` either pushed a new frame or
+                // did a jump to another block.
+                assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
             }
 
             Drop { location, target, unwind } => {
