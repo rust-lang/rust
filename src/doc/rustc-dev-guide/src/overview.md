@@ -84,6 +84,7 @@ we'll talk about that later.
 
 [`librustc_lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
 [`librustc_driver`]: https://rustc-dev-guide.rust-lang.org/rustc-driver.html
+[`rustc_interface::Config`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Config.html
 [lex]: https://rustc-dev-guide.rust-lang.org/the-parser.html
 [`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.StringReader.html
 [`librustc_parse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
@@ -91,7 +92,7 @@ we'll talk about that later.
 [hir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html
 [type inference]: https://rustc-dev-guide.rust-lang.org/type-inference.html
 [mir]: https://rustc-dev-guide.rust-lang.org/mir/index.html
-[borrow checker]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
+[borrow checking]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 [mir-opt]: https://rustc-dev-guide.rust-lang.org/mir/optimizations.html
 [`simplify_try`]: https://github.com/rust-lang/rust/pull/66282
 [codegen]: https://rustc-dev-guide.rust-lang.org/codegen.html
