@@ -768,7 +768,7 @@ fn may_begin_with(token: &Token, name: Name) -> bool {
     /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
     fn may_be_ident(nt: &token::Nonterminal) -> bool {
         match *nt {
-            token::NtItem(_) | token::NtBlock(_) | token::NtVis(_) => false,
+            token::NtItem(_) | token::NtBlock(_) | token::NtVis(_) | token::NtLifetime(_) => false,
             _ => true,
         }
     }
