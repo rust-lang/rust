@@ -10,14 +10,11 @@ doctest = false
 
 [dependencies]
 ra_tt = { path = "../ra_tt" }
-ra_mbe = { path = "../ra_mbe" }
 ra_proc_macro = { path = "../ra_proc_macro" }
 
 serde_derive = "1.0.104"
 serde = "1.0.104"
 serde_json = "1.0.48"
-libloading = "0.5.2"
-goblin = "0.2.0"
 
 [dev-dependencies]
 cargo_metadata = "0.9.1"
