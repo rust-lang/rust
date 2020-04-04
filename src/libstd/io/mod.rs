@@ -1661,6 +1661,32 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> R
     }
 }
 
+fn read_while<R, P>(r: &mut R, buf: &mut Vec<u8>, mut predicate: P) -> Result<usize>
+where
+    R: BufRead,
+    P: FnMut(u8) -> bool,
+{
+    let mut len = 0;
+    loop {
+        let available = r.fill_buf()?;
+
+        if available.is_empty() {
+            return Ok(len);
+        }
+
+        let i = available.iter().position(|b| !predicate(*b));
+
+        let cutoff = i.unwrap_or(available.len());
+        len += cutoff;
+        buf.extend_from_slice(&available[..cutoff]);
+        r.consume(cutoff);
+
+        if i.is_some() {
+            return Ok(len);
+        }
+    }
+}
+
 /// A `BufRead` is a type of `Read`er which has an internal buffer, allowing it
 /// to perform extra ways of reading.
 ///
@@ -1833,6 +1859,54 @@ pub trait BufRead: Read {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> Result<usize> {
         read_until(self, byte, buf)
+    }
+
+    /// Read bytes based on a predicate.
+    ///
+    /// `read_while` takes a predicate as an argument.
+    /// It will call this on each byte, and copy it to the slice if the
+    /// predicate evaluates to `true`. Returns the amount of bytes read.
+    ///
+    /// # Errors
+    ///
+    /// If this function encounters an error of the kind
+    /// `ErrorKind::Interrupted` then the error is ignored and the operation
+    /// will continue.
+    ///
+    /// If any other read error is encountered then this function immediately
+    /// returns. Any bytes which have already been read will be appended to
+    /// `buf`.
+    ///
+    /// # Examples
+    ///
+    /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
+    /// this example, we use [`Cursor`] to read bytes in a byte slice until
+    /// we encounter a hyphen:
+    ///
+    /// ```
+    /// #![feature(buf_read_while)]
+    ///
+    /// use std::io::{self, BufRead, Read};
+    ///
+    /// let mut cursor = io::Cursor::new(b"lorem-ipsum");
+    /// let mut buf = vec![];
+    ///
+    /// cursor.read_while(&mut buf, |b| b != b'-')
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(buf, b"lorem");
+    ///
+    /// let mut buf = vec![];
+    /// cursor.read_to_end(&mut buf)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(buf, b"-ipsum");
+    /// ```
+    #[unstable(feature = "buf_read_while", issue = "none")]
+    fn read_while<P>(&mut self, buf: &mut Vec<u8>, predicate: P) -> Result<usize>
+    where
+        Self: Sized,
+        P: FnMut(u8) -> bool,
+    {
+        read_while(self, buf, predicate)
     }
 
     /// Read all bytes until a newline (the 0xA byte) is reached, and append
@@ -2446,6 +2520,27 @@ mod tests {
         v.truncate(0);
         assert_eq!(buf.read_until(b'3', &mut v).unwrap(), 0);
         assert_eq!(v, []);
+    }
+
+    #[test]
+    fn read_while() {
+        let mut s = Cursor::new("aaaaa");
+        let mut buf = Vec::new();
+        assert_eq!(s.read_while(&mut buf, |b| b == b'a').unwrap(), 5);
+        assert_eq!(&buf[..], &b"aaaaa"[..]);
+        assert_eq!(s.fill_buf().unwrap().len(), 0);
+
+        let mut s = Cursor::new("ab");
+        let mut buf = Vec::new();
+        assert_eq!(s.read_while(&mut buf, |b| b == b'a').unwrap(), 1);
+        assert_eq!(&buf[..], &b"a"[..]);
+        assert_eq!(s.fill_buf().unwrap().len(), 1);
+
+        let mut s = Cursor::new("ab");
+        let mut buf = Vec::new();
+        assert_eq!(s.read_while(&mut buf, |b| b == b'b').unwrap(), 0);
+        assert_eq!(&buf[..], &b""[..]);
+        assert_eq!(s.fill_buf().unwrap().len(), 2);
     }
 
     #[test]
