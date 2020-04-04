@@ -650,7 +650,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         allocs_to_print: &mut VecDeque<AllocId>,
         alloc: &Allocation<Tag, Extra>,
     ) {
-        for &(_, (_, target_id)) in alloc.relocations().iter() {
+        for &(_, target_id) in alloc.relocations().values() {
             if allocs_seen.insert(target_id) {
                 allocs_to_print.push_back(target_id);
             }
@@ -713,12 +713,31 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     pub fn leak_report(&self) -> usize {
-        let leaks: Vec<_> = self
-            .alloc_map
-            .filter_map_collect(|&id, &(kind, _)| if kind.may_leak() { None } else { Some(id) });
+        // Collect the set of allocations that are *reachable* from `Global` allocations.
+        let reachable = {
+            let mut reachable = FxHashSet::default();
+            let global_kind = M::GLOBAL_KIND.map(MemoryKind::Machine);
+            let mut todo: Vec<_> = self.alloc_map.filter_map_collect(move |&id, &(kind, _)| {
+                if Some(kind) == global_kind { Some(id) } else { None }
+            });
+            while let Some(id) = todo.pop() {
+                if reachable.insert(id) {
+                    if let Some((_, alloc)) = self.alloc_map.get(id) {
+                        // This is a new allocation, add its relocations to `todo`.
+                        todo.extend(alloc.relocations().values().map(|&(_, target_id)| target_id));
+                    }
+                }
+            }
+            reachable
+        };
+
+        // All allocations that are *not* `reachable` and *not* `may_leak` are considered leaking.
+        let leaks: Vec<_> = self.alloc_map.filter_map_collect(|&id, &(kind, _)| {
+            if kind.may_leak() || reachable.contains(&id) { None } else { Some(id) }
+        });
         let n = leaks.len();
         if n > 0 {
-            eprintln!("### LEAK REPORT ###");
+            eprintln!("The following memory was leaked:");
             self.dump_allocs(leaks);
         }
         n
