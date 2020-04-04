@@ -11,7 +11,7 @@ analysing a crate or emulating the compiler in-process (e.g. the RLS or rustdoc)
 
 For those using `rustc` as a library, the [`rustc_interface::run_compiler()`][i_rc]
 function is the main entrypoint to the compiler. It takes a configuration for the compiler
-and a closure that takes a [`Compiler`]. `run_compiler` creates a `Compiler` from the 
+and a closure that takes a [`Compiler`]. `run_compiler` creates a `Compiler` from the
 configuration and passes it to the closure. Inside the closure, you can use the `Compiler`
 to drive queries to compile a crate and get the results. This is what the `rustc_driver` does too.
 You can see a minimal example of how to use `rustc_interface` [here][example].
@@ -19,16 +19,13 @@ You can see a minimal example of how to use `rustc_interface` [here][example].
 You can see what queries are currently available through the rustdocs for [`Compiler`].
 You can see an example of how to use them by looking at the `rustc_driver` implementation,
 specifically the [`rustc_driver::run_compiler` function][rd_rc] (not to be confused with
-[`rustc_interface::run_compiler`][i_rc]). The `rustc_driver::run_compiler` function 
+[`rustc_interface::run_compiler`][i_rc]). The `rustc_driver::run_compiler` function
 takes a bunch of command-line args and some other configurations and
 drives the compilation to completion.
 
-`rustc_driver::run_compiler` also takes a [`Callbacks`][cb]. In the past, when
-the `rustc_driver::run_compiler` was the primary way to use the compiler as a
-library, these callbacks were used to have some custom code run after different
-phases of the compilation. If you read [Appendix A], you may notice the use of the
-types `CompilerCalls` and `CompileController`, which no longer exist. `Callbacks`
-replaces this functionality.
+`rustc_driver::run_compiler` also takes a [`Callbacks`][cb],
+a trait that allows for custom compiler configuration,
+as well as allowing some custom code run after different phases of the compilation.
 
 > **Warning:** By its very nature, the internal compiler APIs are always going
 > to be unstable. That said, we do try not to break things unnecessarily.

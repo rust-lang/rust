@@ -117,12 +117,11 @@
 
 ---
 
-[Appendix A: Stupid Stats](./appendix/stupid-stats.md)
-[Appendix B: Background material](./appendix/background.md)
-[Appendix C: Glossary](./appendix/glossary.md)
-[Appendix D: Code Index](./appendix/code-index.md)
-[Appendix E: Compiler Lecture Series](./appendix/compiler-lecture.md)
-[Appendix F: Bibliography](./appendix/bibliography.md)
+[Appendix A: Background material](./appendix/background.md)
+[Appendix B: Glossary](./appendix/glossary.md)
+[Appendix C: Code Index](./appendix/code-index.md)
+[Appendix D: Compiler Lecture Series](./appendix/compiler-lecture.md)
+[Appendix E: Bibliography](./appendix/bibliography.md)
 
 [Appendix Z: HumorRust](./appendix/humorust.md)
 
