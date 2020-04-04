@@ -240,7 +240,7 @@ mod tests {
         arm::*,
         simd::{i16x2, i8x4, u8x4},
     };
-    use std::{i32, mem::transmute};
+    use std::mem::transmute;
     use stdarch_test::simd_test;
 
     #[test]

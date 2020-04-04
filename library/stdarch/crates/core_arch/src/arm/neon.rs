@@ -1141,7 +1141,7 @@ pub unsafe fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t 
 #[cfg(test)]
 mod tests {
     use crate::core_arch::{arm::*, simd::*};
-    use std::{i16, i32, i8, mem::transmute, u16, u32, u8};
+    use std::mem::transmute;
     use stdarch_test::simd_test;
 
     #[simd_test(enable = "neon")]

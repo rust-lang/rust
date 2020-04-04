@@ -148,7 +148,7 @@ pub unsafe fn _mm_cvtsi64x_sd(a: __m128d, b: i64) -> __m128d {
 #[cfg(test)]
 mod tests {
     use crate::core_arch::arch::x86_64::*;
-    use std::{boxed, f64, i64};
+    use std::boxed;
     use stdarch_test::simd_test;
 
     #[simd_test(enable = "sse2")]

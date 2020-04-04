@@ -464,7 +464,7 @@ pub unsafe fn __usada8(a: int8x4_t, b: int8x4_t, c: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use crate::core_arch::simd::{i16x2, i8x4, u8x4};
-    use std::{i16, i8, mem::transmute};
+    use std::mem::transmute;
     use stdarch_test::simd_test;
 
     #[test]

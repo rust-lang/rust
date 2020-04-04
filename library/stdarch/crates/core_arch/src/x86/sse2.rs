@@ -5229,7 +5229,6 @@ mod tests {
 
     #[simd_test(enable = "sse2,mmx")]
     unsafe fn test_mm_cvttpd_pi32() {
-        use std::{f64, i32};
 
         let a = _mm_setr_pd(5., 0.);
         let r = _mm_cvttpd_pi32(a);
