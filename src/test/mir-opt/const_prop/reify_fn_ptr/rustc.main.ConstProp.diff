@@ -1,0 +1,32 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/reify_fn_ptr.rs:3:11: 3:11
+      let mut _1: *const fn();             // in scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:41
+      let mut _2: usize;                   // in scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:26
+      let mut _3: fn();                    // in scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:17
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:41
+          StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:26
+          StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:17
+          _3 = const main as fn() (Pointer(ReifyFnPointer)); // bb0[3]: scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:17
+                                           // ty::Const
+                                           // + ty: fn() {main}
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/reify_fn_ptr.rs:4:13: 4:17
+                                           // + literal: Const { ty: fn() {main}, val: Value(Scalar(<ZST>)) }
+          _2 = move _3 as usize (Misc);    // bb0[4]: scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:26
+          StorageDead(_3);                 // bb0[5]: scope 0 at $DIR/reify_fn_ptr.rs:4:25: 4:26
+          _1 = move _2 as *const fn() (Misc); // bb0[6]: scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:41
+          StorageDead(_2);                 // bb0[7]: scope 0 at $DIR/reify_fn_ptr.rs:4:40: 4:41
+          StorageDead(_1);                 // bb0[8]: scope 0 at $DIR/reify_fn_ptr.rs:4:41: 4:42
+          _0 = ();                         // bb0[9]: scope 0 at $DIR/reify_fn_ptr.rs:3:11: 5:2
+          return;                          // bb0[10]: scope 0 at $DIR/reify_fn_ptr.rs:5:2: 5:2
+      }
+  }
+  

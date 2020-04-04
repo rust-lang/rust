@@ -1,0 +1,31 @@
+// MIR for `test2` after Inline
+
+fn test2(_1: &dyn X) -> bool {
+    debug x => _1;                       // in scope 0 at $DIR/inline-trait-method_2.rs:4:10: 4:11
+    let mut _0: bool;                    // return place in scope 0 at $DIR/inline-trait-method_2.rs:4:24: 4:28
+    let mut _2: &dyn X;                  // in scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
+    let mut _3: &dyn X;                  // in scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
+    scope 1 {
+        debug x => _2;                   // in scope 1 at $DIR/inline-trait-method_2.rs:9:9: 9:10
+    }
+
+    bb0: {
+        StorageLive(_2);                 // bb0[0]: scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
+        StorageLive(_3);                 // bb0[1]: scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
+        _3 = &(*_1);                     // bb0[2]: scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
+        _2 = move _3 as &dyn X (Pointer(Unsize)); // bb0[3]: scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
+        StorageDead(_3);                 // bb0[4]: scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
+        _0 = const <dyn X as X>::y(move _2) -> bb1; // bb0[5]: scope 1 at $DIR/inline-trait-method_2.rs:10:5: 10:10
+                                         // ty::Const
+                                         // + ty: for<'r> fn(&'r dyn X) -> bool {<dyn X as X>::y}
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/inline-trait-method_2.rs:10:7: 10:8
+                                         // + literal: Const { ty: for<'r> fn(&'r dyn X) -> bool {<dyn X as X>::y}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        StorageDead(_2);                 // bb1[0]: scope 0 at $DIR/inline-trait-method_2.rs:5:11: 5:12
+        return;                          // bb1[1]: scope 0 at $DIR/inline-trait-method_2.rs:6:2: 6:2
+    }
+}

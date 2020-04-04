@@ -1,0 +1,81 @@
+// MIR for `bar` after Inline
+
+fn bar() -> bool {
+    let mut _0: bool;                    // return place in scope 0 at $DIR/inline-retag.rs:10:13: 10:17
+    let _1: for<'r, 's> fn(&'r i32, &'s i32) -> bool {foo}; // in scope 0 at $DIR/inline-retag.rs:11:9: 11:10
+    let mut _2: for<'r, 's> fn(&'r i32, &'s i32) -> bool {foo}; // in scope 0 at $DIR/inline-retag.rs:12:5: 12:6
+    let mut _3: &i32;                    // in scope 0 at $DIR/inline-retag.rs:12:7: 12:9
+    let _4: &i32;                        // in scope 0 at $DIR/inline-retag.rs:12:7: 12:9
+    let _5: i32;                         // in scope 0 at $DIR/inline-retag.rs:12:8: 12:9
+    let mut _6: &i32;                    // in scope 0 at $DIR/inline-retag.rs:12:11: 12:14
+    let _7: &i32;                        // in scope 0 at $DIR/inline-retag.rs:12:11: 12:14
+    let _8: i32;                         // in scope 0 at $DIR/inline-retag.rs:12:12: 12:14
+    scope 1 {
+        debug f => _1;                   // in scope 1 at $DIR/inline-retag.rs:11:9: 11:10
+        let mut _9: &i32;                // in scope 1 at $DIR/inline-retag.rs:12:11: 12:14
+        let mut _10: &i32;               // in scope 1 at $DIR/inline-retag.rs:12:7: 12:9
+        scope 2 {
+            debug x => _3;               // in scope 2 at $DIR/inline-retag.rs:16:8: 16:9
+            debug y => _6;               // in scope 2 at $DIR/inline-retag.rs:16:17: 16:18
+            let mut _11: i32;            // in scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+            let mut _12: i32;            // in scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/inline-retag.rs:11:9: 11:10
+        _1 = const foo;                  // bb0[1]: scope 0 at $DIR/inline-retag.rs:11:13: 11:16
+                                         // ty::Const
+                                         // + ty: for<'r, 's> fn(&'r i32, &'s i32) -> bool {foo}
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/inline-retag.rs:11:13: 11:16
+                                         // + literal: Const { ty: for<'r, 's> fn(&'r i32, &'s i32) -> bool {foo}, val: Value(Scalar(<ZST>)) }
+        StorageLive(_2);                 // bb0[2]: scope 1 at $DIR/inline-retag.rs:12:5: 12:6
+        _2 = _1;                         // bb0[3]: scope 1 at $DIR/inline-retag.rs:12:5: 12:6
+        StorageLive(_3);                 // bb0[4]: scope 1 at $DIR/inline-retag.rs:12:7: 12:9
+        StorageLive(_4);                 // bb0[5]: scope 1 at $DIR/inline-retag.rs:12:7: 12:9
+        _10 = const bar::promoted[1];    // bb0[6]: scope 1 at $DIR/inline-retag.rs:12:7: 12:9
+                                         // ty::Const
+                                         // + ty: &i32
+                                         // + val: Unevaluated(DefId(0:4 ~ inline_retag[317d]::bar[0]), [], Some(promoted[1]))
+                                         // mir::Constant
+                                         // + span: $DIR/inline-retag.rs:12:7: 12:9
+                                         // + literal: Const { ty: &i32, val: Unevaluated(DefId(0:4 ~ inline_retag[317d]::bar[0]), [], Some(promoted[1])) }
+        Retag(_10);                      // bb0[7]: scope 1 at $DIR/inline-retag.rs:12:7: 12:9
+        _4 = &(*_10);                    // bb0[8]: scope 1 at $DIR/inline-retag.rs:12:7: 12:9
+        Retag(_4);                       // bb0[9]: scope 1 at $DIR/inline-retag.rs:12:7: 12:9
+        _3 = &(*_4);                     // bb0[10]: scope 1 at $DIR/inline-retag.rs:12:7: 12:9
+        Retag(_3);                       // bb0[11]: scope 1 at $DIR/inline-retag.rs:12:7: 12:9
+        StorageLive(_6);                 // bb0[12]: scope 1 at $DIR/inline-retag.rs:12:11: 12:14
+        StorageLive(_7);                 // bb0[13]: scope 1 at $DIR/inline-retag.rs:12:11: 12:14
+        _9 = const bar::promoted[0];     // bb0[14]: scope 1 at $DIR/inline-retag.rs:12:11: 12:14
+                                         // ty::Const
+                                         // + ty: &i32
+                                         // + val: Unevaluated(DefId(0:4 ~ inline_retag[317d]::bar[0]), [], Some(promoted[0]))
+                                         // mir::Constant
+                                         // + span: $DIR/inline-retag.rs:12:11: 12:14
+                                         // + literal: Const { ty: &i32, val: Unevaluated(DefId(0:4 ~ inline_retag[317d]::bar[0]), [], Some(promoted[0])) }
+        Retag(_9);                       // bb0[15]: scope 1 at $DIR/inline-retag.rs:12:11: 12:14
+        _7 = &(*_9);                     // bb0[16]: scope 1 at $DIR/inline-retag.rs:12:11: 12:14
+        Retag(_7);                       // bb0[17]: scope 1 at $DIR/inline-retag.rs:12:11: 12:14
+        _6 = &(*_7);                     // bb0[18]: scope 1 at $DIR/inline-retag.rs:12:11: 12:14
+        Retag(_6);                       // bb0[19]: scope 1 at $DIR/inline-retag.rs:12:11: 12:14
+        Retag(_3);                       // bb0[20]: scope 2 at $DIR/inline-retag.rs:16:1: 18:2
+        Retag(_6);                       // bb0[21]: scope 2 at $DIR/inline-retag.rs:16:1: 18:2
+        StorageLive(_11);                // bb0[22]: scope 2 at $DIR/inline-retag.rs:17:5: 17:7
+        _11 = (*_3);                     // bb0[23]: scope 2 at $DIR/inline-retag.rs:17:5: 17:7
+        StorageLive(_12);                // bb0[24]: scope 2 at $DIR/inline-retag.rs:17:11: 17:13
+        _12 = (*_6);                     // bb0[25]: scope 2 at $DIR/inline-retag.rs:17:11: 17:13
+        _0 = Eq(move _11, move _12);     // bb0[26]: scope 2 at $DIR/inline-retag.rs:17:5: 17:13
+        StorageDead(_12);                // bb0[27]: scope 2 at $DIR/inline-retag.rs:17:12: 17:13
+        StorageDead(_11);                // bb0[28]: scope 2 at $DIR/inline-retag.rs:17:12: 17:13
+        StorageDead(_6);                 // bb0[29]: scope 1 at $DIR/inline-retag.rs:12:14: 12:15
+        StorageDead(_3);                 // bb0[30]: scope 1 at $DIR/inline-retag.rs:12:14: 12:15
+        StorageDead(_2);                 // bb0[31]: scope 1 at $DIR/inline-retag.rs:12:14: 12:15
+        StorageDead(_1);                 // bb0[32]: scope 0 at $DIR/inline-retag.rs:13:1: 13:2
+        StorageDead(_7);                 // bb0[33]: scope 0 at $DIR/inline-retag.rs:13:1: 13:2
+        StorageDead(_4);                 // bb0[34]: scope 0 at $DIR/inline-retag.rs:13:1: 13:2
+        return;                          // bb0[35]: scope 0 at $DIR/inline-retag.rs:13:2: 13:2
+    }
+}
