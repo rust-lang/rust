@@ -55,7 +55,7 @@ mod tests {
     #[test]
     fn test_addcarry_u32() {
         unsafe {
-            let a = u32::max_value();
+            let a = u32::MAX;
             let mut out = 0;
 
             let r = _addcarry_u32(0, a, 1, &mut out);
@@ -86,7 +86,7 @@ mod tests {
 
     #[simd_test(enable = "adx")]
     unsafe fn test_addcarryx_u32() {
-        let a = u32::max_value();
+        let a = u32::MAX;
         let mut out = 0;
 
         let r = _addcarryx_u32(0, a, 1, &mut out);
@@ -127,7 +127,7 @@ mod tests {
     #[test]
     fn test_subborrow_u32() {
         unsafe {
-            let a = u32::max_value();
+            let a = u32::MAX;
             let mut out = 0;
 
             let r = _subborrow_u32(0, 0, 1, &mut out);

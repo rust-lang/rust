@@ -98,12 +98,12 @@ impl Cache {
     /// Creates an uninitialized cache.
     #[allow(clippy::declare_interior_mutable_const)]
     const fn uninitialized() -> Self {
-        Cache(AtomicUsize::new(usize::max_value()))
+        Cache(AtomicUsize::new(usize::MAX))
     }
     /// Is the cache uninitialized?
     #[inline]
     pub(crate) fn is_uninitialized(&self) -> bool {
-        self.0.load(Ordering::SeqCst) == usize::max_value()
+        self.0.load(Ordering::SeqCst) == usize::MAX
     }
 
     /// Is the `bit` in the cache set?

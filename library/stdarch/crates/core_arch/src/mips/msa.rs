@@ -9319,10 +9319,10 @@ mod tests {
     unsafe fn test_msa_adds_a_b() {
         #[rustfmt::skip]
         let a = i8x16::new(
-            100, i8::max_value(), 100, i8::max_value(),
-            100, i8::max_value(), 100, i8::max_value(),
-            100, i8::max_value(), 100, i8::max_value(),
-            100, i8::max_value(), 100, i8::max_value()
+            100, i8::MAX, 100, i8::MAX,
+            100, i8::MAX, 100, i8::MAX,
+            100, i8::MAX, 100, i8::MAX,
+            100, i8::MAX, 100, i8::MAX
         );
         #[rustfmt::skip]
         let b = i8x16::new(
@@ -9349,15 +9349,15 @@ mod tests {
     unsafe fn test_msa_adds_a_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            100, i16::max_value(), 100, i16::max_value(), 
-            100, i16::max_value(), 100, i16::max_value()
+            100, i16::MAX, 100, i16::MAX, 
+            100, i16::MAX, 100, i16::MAX
         );
         #[rustfmt::skip]
         let b = i16x8::new(-4, -3, -2, -1, -4, -3, -2, -1);
         #[rustfmt::skip]
         let r = i16x8::new(
-            104, i16::max_value(), 102, i16::max_value(),
-            104, i16::max_value(), 102, i16::max_value()
+            104, i16::MAX, 102, i16::MAX,
+            104, i16::MAX, 102, i16::MAX
         );
 
         assert_eq!(
@@ -9369,11 +9369,11 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_adds_a_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(100, i32::max_value(), 100, i32::max_value());
+        let a = i32x4::new(100, i32::MAX, 100, i32::MAX);
         #[rustfmt::skip]
         let b = i32x4::new(-4, -3, -2, -1);
         #[rustfmt::skip]
-        let r = i32x4::new(104, i32::max_value(), 102, i32::max_value());
+        let r = i32x4::new(104, i32::MAX, 102, i32::MAX);
 
         assert_eq!(
             r,
@@ -9384,11 +9384,11 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_adds_a_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(100, i64::max_value());
+        let a = i64x2::new(100, i64::MAX);
         #[rustfmt::skip]
         let b = i64x2::new(-4, -3);
         #[rustfmt::skip]
-        let r = i64x2::new(104, i64::max_value());
+        let r = i64x2::new(104, i64::MAX);
 
         assert_eq!(
             r,
@@ -9400,10 +9400,10 @@ mod tests {
     unsafe fn test_msa_adds_s_b() {
         #[rustfmt::skip]
         let a = i8x16::new(
-            100, i8::min_value(), 100, i8::max_value(),
-            100, i8::min_value(), 100, i8::max_value(),
-            100, i8::min_value(), 100, i8::max_value(),
-            100, i8::min_value(), 100, i8::max_value()
+            100, i8::MIN, 100, i8::MAX,
+            100, i8::MIN, 100, i8::MAX,
+            100, i8::MIN, 100, i8::MAX,
+            100, i8::MIN, 100, i8::MAX
         );
         #[rustfmt::skip]
         let b = i8x16::new(
@@ -9414,10 +9414,10 @@ mod tests {
         );
         #[rustfmt::skip]
         let r = i8x16::new(
-            96, i8::min_value(), 98, i8::max_value(), 
-            96, i8::min_value(), 98, i8::max_value(), 
-            96, i8::min_value(), 98, i8::max_value(), 
-            96, i8::min_value(), 98, i8::max_value()
+            96, i8::MIN, 98, i8::MAX, 
+            96, i8::MIN, 98, i8::MAX, 
+            96, i8::MIN, 98, i8::MAX, 
+            96, i8::MIN, 98, i8::MAX
         );
 
         assert_eq!(
@@ -9430,15 +9430,15 @@ mod tests {
     unsafe fn test_msa_adds_s_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            100, i16::min_value(), 100, i16::max_value(), 
-            100, i16::min_value(), 100, i16::max_value()
+            100, i16::MIN, 100, i16::MAX, 
+            100, i16::MIN, 100, i16::MAX
         );
         #[rustfmt::skip]
         let b = i16x8::new(-4, -3, -2, 1, -4, -3, -2, 1);
         #[rustfmt::skip]
         let r = i16x8::new(
-            96, i16::min_value(), 98, i16::max_value(), 
-            96, i16::min_value(), 98, i16::max_value()
+            96, i16::MIN, 98, i16::MAX, 
+            96, i16::MIN, 98, i16::MAX
         );
 
         assert_eq!(
@@ -9450,11 +9450,11 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_adds_s_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(100, i32::max_value(), 100, i32::min_value());
+        let a = i32x4::new(100, i32::MAX, 100, i32::MIN);
         #[rustfmt::skip]
         let b = i32x4::new(-4, 3, -2, -1);
         #[rustfmt::skip]
-        let r = i32x4::new(96, i32::max_value(), 98, i32::min_value());
+        let r = i32x4::new(96, i32::MAX, 98, i32::MIN);
 
         assert_eq!(
             r,
@@ -9465,11 +9465,11 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_adds_s_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(100, i64::min_value());
+        let a = i64x2::new(100, i64::MIN);
         #[rustfmt::skip]
         let b = i64x2::new(-4, -3);
         #[rustfmt::skip]
-        let r = i64x2::new(96, i64::min_value());
+        let r = i64x2::new(96, i64::MIN);
 
         assert_eq!(
             r,
@@ -9481,10 +9481,10 @@ mod tests {
     unsafe fn test_msa_adds_u_b() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            100, u8::max_value(), 100, u8::max_value(),
-            100, u8::max_value(), 100, u8::max_value(),
-            100, u8::max_value(), 100, u8::max_value(),
-            100, u8::max_value(), 100, u8::max_value()
+            100, u8::MAX, 100, u8::MAX,
+            100, u8::MAX, 100, u8::MAX,
+            100, u8::MAX, 100, u8::MAX,
+            100, u8::MAX, 100, u8::MAX
         );
         #[rustfmt::skip]
         let b = u8x16::new(
@@ -9495,10 +9495,10 @@ mod tests {
         );
         #[rustfmt::skip]
         let r = u8x16::new(
-            104, u8::max_value(), 102, u8::max_value(), 
-            104, u8::max_value(), 102, u8::max_value(), 
-            104, u8::max_value(), 102, u8::max_value(), 
-            104, u8::max_value(), 102, u8::max_value()
+            104, u8::MAX, 102, u8::MAX, 
+            104, u8::MAX, 102, u8::MAX, 
+            104, u8::MAX, 102, u8::MAX, 
+            104, u8::MAX, 102, u8::MAX
         );
 
         assert_eq!(
@@ -9511,15 +9511,15 @@ mod tests {
     unsafe fn test_msa_adds_u_h() {
         #[rustfmt::skip]
         let a = u16x8::new(
-            100, u16::max_value(), 100, u16::max_value(), 
-            100, u16::max_value(), 100, u16::max_value()
+            100, u16::MAX, 100, u16::MAX, 
+            100, u16::MAX, 100, u16::MAX
         );
         #[rustfmt::skip]
         let b = u16x8::new(4, 3, 2, 1, 4, 3, 2, 1);
         #[rustfmt::skip]
         let r = u16x8::new(
-            104, u16::max_value(), 102, u16::max_value(), 
-            104, u16::max_value(), 102, u16::max_value()
+            104, u16::MAX, 102, u16::MAX, 
+            104, u16::MAX, 102, u16::MAX
         );
 
         assert_eq!(
@@ -9531,11 +9531,11 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_adds_u_w() {
         #[rustfmt::skip]
-        let a = u32x4::new(100, u32::max_value(), 100, u32::max_value());
+        let a = u32x4::new(100, u32::MAX, 100, u32::MAX);
         #[rustfmt::skip]
         let b = u32x4::new(4, 3, 2, 1);
         #[rustfmt::skip]
-        let r = u32x4::new(104, u32::max_value(), 102, u32::max_value());
+        let r = u32x4::new(104, u32::MAX, 102, u32::MAX);
 
         assert_eq!(
             r,
@@ -9546,11 +9546,11 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_adds_u_d() {
         #[rustfmt::skip]
-        let a = u64x2::new(100, u64::max_value());
+        let a = u64x2::new(100, u64::MAX);
         #[rustfmt::skip]
         let b = u64x2::new(4, 3);
         #[rustfmt::skip]
-        let r = u64x2::new(104, u64::max_value());
+        let r = u64x2::new(104, u64::MAX);
 
         assert_eq!(
             r,
@@ -9562,10 +9562,10 @@ mod tests {
     unsafe fn test_msa_addv_b() {
         #[rustfmt::skip]
         let a = i8x16::new(
-            100, i8::min_value(), 100, i8::max_value(),
-            100, i8::min_value(), 100, i8::max_value(),
-            100, i8::min_value(), 100, i8::max_value(),
-            100, i8::min_value(), 100, i8::max_value()
+            100, i8::MIN, 100, i8::MAX,
+            100, i8::MIN, 100, i8::MAX,
+            100, i8::MIN, 100, i8::MAX,
+            100, i8::MIN, 100, i8::MAX
         );
         #[rustfmt::skip]
         let b = i8x16::new(
@@ -9592,8 +9592,8 @@ mod tests {
     unsafe fn test_msa_addv_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            100, i16::min_value(), 100, i16::max_value(), 
-            100, i16::min_value(), 100, i16::max_value()
+            100, i16::MIN, 100, i16::MAX, 
+            100, i16::MIN, 100, i16::MAX
         );
         #[rustfmt::skip]
         let b = i16x8::new(-4, -3, -2, 1, -4, -3, -2, 1);
@@ -9609,7 +9609,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_addv_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(100, i32::max_value(), 100, i32::min_value());
+        let a = i32x4::new(100, i32::MAX, 100, i32::MIN);
         #[rustfmt::skip]
         let b = i32x4::new(-4, 3, -2, -1);
         #[rustfmt::skip]
@@ -9624,7 +9624,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_addv_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(100, i64::min_value());
+        let a = i64x2::new(100, i64::MIN);
         #[rustfmt::skip]
         let b = i64x2::new(-4, -3);
         #[rustfmt::skip]
@@ -9640,10 +9640,10 @@ mod tests {
     unsafe fn test_msa_addvi_b() {
         #[rustfmt::skip]
         let a = i8x16::new(
-            100, i8::max_value(), 100, i8::max_value(),
-            100, i8::max_value(), 100, i8::max_value(),
-            100, i8::max_value(), 100, i8::max_value(),
-            100, i8::max_value(), 100, i8::max_value()
+            100, i8::MAX, 100, i8::MAX,
+            100, i8::MAX, 100, i8::MAX,
+            100, i8::MAX, 100, i8::MAX,
+            100, i8::MAX, 100, i8::MAX
         );
         #[rustfmt::skip]
         let r = i8x16::new(
@@ -9660,8 +9660,8 @@ mod tests {
     unsafe fn test_msa_addvi_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            i16::max_value(), 3276, -100, -127, 
-            i16::max_value(), 3276, -100, -127
+            i16::MAX, 3276, -100, -127, 
+            i16::MAX, 3276, -100, -127
         );
         #[rustfmt::skip]
         let r = i16x8::new(
@@ -9675,7 +9675,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_addvi_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(100, i32::max_value(), 100, i32::min_value());
+        let a = i32x4::new(100, i32::MAX, 100, i32::MIN);
         #[rustfmt::skip]
         let r = i32x4::new(103, -2147483646, 103, -2147483645);
 
@@ -9685,7 +9685,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_addvi_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(100, i64::min_value());
+        let a = i64x2::new(100, i64::MIN);
         #[rustfmt::skip]
         let r = i64x2::new(117, -9223372036854775791);
 
@@ -9696,10 +9696,10 @@ mod tests {
     unsafe fn test_msa_and_v() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            100, u8::max_value(), 100, u8::max_value(),
-            100, u8::max_value(), 100, u8::max_value(),
-            100, u8::max_value(), 100, u8::max_value(),
-            100, u8::max_value(), 100, u8::max_value()
+            100, u8::MAX, 100, u8::MAX,
+            100, u8::MAX, 100, u8::MAX,
+            100, u8::MAX, 100, u8::MAX,
+            100, u8::MAX, 100, u8::MAX
     );
         #[rustfmt::skip]
         let b = u8x16::new(
@@ -9726,10 +9726,10 @@ mod tests {
     unsafe fn test_msa_andi_b() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            100, u8::max_value(), 100, u8::max_value(),
-            100, u8::max_value(), 100, u8::max_value(),
-            100, u8::max_value(), 100, u8::max_value(),
-            100, u8::max_value(), 100, u8::max_value()
+            100, u8::MAX, 100, u8::MAX,
+            100, u8::MAX, 100, u8::MAX,
+            100, u8::MAX, 100, u8::MAX,
+            100, u8::MAX, 100, u8::MAX
         );
         #[rustfmt::skip]
         let r = u8x16::new(
@@ -10437,10 +10437,10 @@ mod tests {
     unsafe fn test_msa_binsli_b() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1
         );
         #[rustfmt::skip]
         let b = u8x16::new(
@@ -10721,10 +10721,10 @@ mod tests {
     unsafe fn test_msa_bmnz_v() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1
         );
         #[rustfmt::skip]
         let b = u8x16::new(
@@ -10762,17 +10762,17 @@ mod tests {
     unsafe fn test_msa_bmnzi_b() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1
         );
         #[rustfmt::skip]
         let b = u8x16::new(
-            1, u8::max_value(), 155, 55,
-            1, u8::max_value(), 155, 55,
-            1, u8::max_value(), 155, 55,
-            1, u8::max_value(), 155, 55
+            1, u8::MAX, 155, 55,
+            1, u8::MAX, 155, 55,
+            1, u8::MAX, 155, 55,
+            1, u8::MAX, 155, 55
         );
         #[rustfmt::skip]
         let r = u8x16::new(
@@ -10792,10 +10792,10 @@ mod tests {
     unsafe fn test_msa_bmz_v() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1
         );
         #[rustfmt::skip]
         let b = u8x16::new(
@@ -10833,10 +10833,10 @@ mod tests {
     unsafe fn test_msa_bmzi_b() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1,
-            u8::max_value(), 155, 55, 1
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1,
+            u8::MAX, 155, 55, 1
         );
         #[rustfmt::skip]
         let b = u8x16::new(
@@ -10938,10 +10938,10 @@ mod tests {
     unsafe fn test_msa_bnegi_b() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            50, 100, 127, u8::max_value(),
-            50, 100, 127, u8::max_value(),
-            50, 100, 127, u8::max_value(),
-            50, 100, 127, u8::max_value()
+            50, 100, 127, u8::MAX,
+            50, 100, 127, u8::MAX,
+            50, 100, 127, u8::MAX,
+            50, 100, 127, u8::MAX
         );
         #[rustfmt::skip]
         let r = u8x16::new(
@@ -11518,17 +11518,17 @@ mod tests {
     unsafe fn test_msa_cle_u_b() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            u8::max_value(), 127, 55, 2,
-            u8::max_value(), 127, 55, 2,
-            u8::max_value(), 127, 55, 2,
-            u8::max_value(), 127, 55, 2
+            u8::MAX, 127, 55, 2,
+            u8::MAX, 127, 55, 2,
+            u8::MAX, 127, 55, 2,
+            u8::MAX, 127, 55, 2
         );
         #[rustfmt::skip]
         let b = u8x16::new(
-            u8::max_value(), 126, 55, 1,
-            u8::max_value(), 126, 55, 1,
-            u8::max_value(), 126, 55, 1,
-            u8::max_value(), 126, 55, 1
+            u8::MAX, 126, 55, 1,
+            u8::MAX, 126, 55, 1,
+            u8::MAX, 126, 55, 1,
+            u8::MAX, 126, 55, 1
         );
         #[rustfmt::skip]
         let r = i8x16::new(-1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0);
@@ -11543,13 +11543,13 @@ mod tests {
     unsafe fn test_msa_cle_u_h() {
         #[rustfmt::skip]
         let a = u16x8::new(
-            u16::max_value(), 155, 55, 2, 
-            u16::max_value(), 155, 55, 2
+            u16::MAX, 155, 55, 2, 
+            u16::MAX, 155, 55, 2
         );
         #[rustfmt::skip]
         let b = u16x8::new(
-            u16::max_value(), 155, 56, 1, 
-            u16::max_value(), 155, 56, 1
+            u16::MAX, 155, 56, 1, 
+            u16::MAX, 155, 56, 1
         );
         #[rustfmt::skip]
         let r = i16x8::new(-1, -1, -1, 0, -1, -1, -1, 0);
@@ -11563,9 +11563,9 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_cle_u_w() {
         #[rustfmt::skip]
-        let a = u32x4::new(u32::max_value(), 155, 55, 2);
+        let a = u32x4::new(u32::MAX, 155, 55, 2);
         #[rustfmt::skip]
-        let b = u32x4::new(u32::max_value(), 156, 55, 1);
+        let b = u32x4::new(u32::MAX, 156, 55, 1);
         #[rustfmt::skip]
         let r = i32x4::new(-1, -1, -1, 0);
 
@@ -11578,9 +11578,9 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_cle_u_d() {
         #[rustfmt::skip]
-        let a = u64x2::new(u64::max_value(), 155);
+        let a = u64x2::new(u64::MAX, 155);
         #[rustfmt::skip]
-        let b = u64x2::new(u64::max_value(), 156);
+        let b = u64x2::new(u64::MAX, 156);
         #[rustfmt::skip]
         let r = i64x2::new(-1, -1);
 
@@ -12041,7 +12041,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_copy_u_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(3, i64::max_value());
+        let a = i64x2::new(3, i64::MAX);
         #[rustfmt::skip]
         let r = 9223372036854775807 as u64;
 
@@ -14701,7 +14701,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_insert_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(3, i64::max_value());
+        let a = i64x2::new(3, i64::MAX);
         #[rustfmt::skip]
         let r = i64x2::new(3, 100);
 
@@ -14712,10 +14712,10 @@ mod tests {
     unsafe fn test_msa_insve_b() {
         #[rustfmt::skip]
         let a = i8x16::new(
-            -100, i8::max_value(), 4, i8::max_value(),
-            -100, i8::max_value(), 4, i8::max_value(),
-            -100, i8::max_value(), 4, i8::max_value(),
-            -100, i8::max_value(), 4, i8::max_value()
+            -100, i8::MAX, 4, i8::MAX,
+            -100, i8::MAX, 4, i8::MAX,
+            -100, i8::MAX, 4, i8::MAX,
+            -100, i8::MAX, 4, i8::MAX
         );
         #[rustfmt::skip]
         let b = i8x16::new(
@@ -14742,8 +14742,8 @@ mod tests {
     unsafe fn test_msa_insve_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            i16::max_value(), 3276, 100, 11,
-            i16::max_value(), 3276, 100, 11
+            i16::MAX, 3276, 100, 11,
+            i16::MAX, 3276, 100, 11
         );
         #[rustfmt::skip]
         let b = i16x8::new(
@@ -14780,7 +14780,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_insve_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(3, i64::max_value());
+        let a = i64x2::new(3, i64::MAX);
         #[rustfmt::skip]
         let b = i64x2::new(1, 2);
         #[rustfmt::skip]
@@ -14895,7 +14895,7 @@ mod tests {
     unsafe fn test_msa_madd_q_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            i16::max_value(), 1024, i16::min_value(), -1024,
+            i16::MAX, 1024, i16::MIN, -1024,
             1, 2, 3, 4
         );
         #[rustfmt::skip]
@@ -14905,7 +14905,7 @@ mod tests {
         );
         #[rustfmt::skip]
         let c = i16x8::new(
-            i16::max_value(), i16::max_value(), 1, -1,
+            i16::MAX, i16::MAX, 1, -1,
             33, 66, 99, 132
         );
         #[rustfmt::skip]
@@ -14924,7 +14924,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_madd_q_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(i32::max_value(), i32::min_value(), 1, 2);
+        let a = i32x4::new(i32::MAX, i32::MIN, 1, 2);
         #[rustfmt::skip]
         let b = i32x4::new(102401, 102401, 102401, 102401);
         #[rustfmt::skip]
@@ -14975,7 +14975,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_maddr_q_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(i32::max_value(), i32::min_value(), 1, 2);
+        let a = i32x4::new(i32::MAX, i32::MIN, 1, 2);
         #[rustfmt::skip]
         let b = i32x4::new(102401, 102401, 102401, 102401);
         #[rustfmt::skip]
@@ -16007,7 +16007,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_msubr_q_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(i32::max_value(), -2147483647, 1, 2);
+        let a = i32x4::new(i32::MAX, -2147483647, 1, 2);
         #[rustfmt::skip]
         let b = i32x4::new(10240, 10240, 10240, 10240);
         #[rustfmt::skip]
@@ -16154,8 +16154,8 @@ mod tests {
     unsafe fn test_msa_mul_q_w() {
         #[rustfmt::skip]
         let a = i32x4::new(
-            i32::max_value(), i32::max_value(),
-            i32::min_value(), i32::min_value()
+            i32::MAX, i32::MAX,
+            i32::MIN, i32::MIN
         );
         #[rustfmt::skip]
         let b = i32x4::new(30, 60, 30, 60);
@@ -16193,8 +16193,8 @@ mod tests {
     unsafe fn test_msa_mulr_q_w() {
         #[rustfmt::skip]
         let a = i32x4::new(
-            i32::max_value(), i32::max_value(),
-            i32::min_value(), i32::min_value()
+            i32::MAX, i32::MAX,
+            i32::MIN, i32::MIN
         );
         #[rustfmt::skip]
         let b = i32x4::new(30, 60, 30, 60);
@@ -16325,8 +16325,8 @@ mod tests {
     unsafe fn test_msa_nloc_w() {
         #[rustfmt::skip]
         let a = i32x4::new(
-            i32::min_value(), -1073741824,
-            1073741824, i32::max_value()
+            i32::MIN, -1073741824,
+            1073741824, i32::MAX
         );
         #[rustfmt::skip]
         let r = i32x4::new(1, 2, 0, 0);
@@ -16337,7 +16337,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_nloc_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(i64::min_value(), i64::max_value());
+        let a = i64x2::new(i64::MIN, i64::MAX);
         #[rustfmt::skip]
         let r = i64x2::new(1, 0);
 
@@ -16684,8 +16684,8 @@ mod tests {
     unsafe fn test_msa_pcnt_w() {
         #[rustfmt::skip]
         let a = i32x4::new(
-            i32::min_value(), -1073741824,
-            1073741824, i32::max_value()
+            i32::MIN, -1073741824,
+            1073741824, i32::MAX
         );
         #[rustfmt::skip]
         let r = i32x4::new(1, 2, 1, 31);
@@ -16707,10 +16707,10 @@ mod tests {
     unsafe fn test_msa_sat_s_b() {
         #[rustfmt::skip]
         let a = i8x16::new(
-            i8::max_value(), 105, 30, 1,
-            i8::max_value(), 105, 30, 1,
-            i8::max_value(), 105, 30, 1,
-            i8::max_value(), 105, 30, 1
+            i8::MAX, 105, 30, 1,
+            i8::MAX, 105, 30, 1,
+            i8::MAX, 105, 30, 1,
+            i8::MAX, 105, 30, 1
         );
         #[rustfmt::skip]
         let r = i8x16::new(
@@ -16727,8 +16727,8 @@ mod tests {
     unsafe fn test_msa_sat_s_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            i16::max_value(), 1155, 155, 1,
-            i16::max_value(), 1155, 155, 1
+            i16::MAX, 1155, 155, 1,
+            i16::MAX, 1155, 155, 1
         );
         #[rustfmt::skip]
         let r = i16x8::new(127, 127, 127, 1, 127, 127, 127, 1);
@@ -16739,7 +16739,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_sat_s_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(i32::max_value(), 111111155, i32::max_value(), 1);
+        let a = i32x4::new(i32::MAX, 111111155, i32::MAX, 1);
         #[rustfmt::skip]
         let r = i32x4::new(131071, 131071, 131071, 1);
 
@@ -16749,7 +16749,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_sat_s_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(i64::max_value(), 1);
+        let a = i64x2::new(i64::MAX, 1);
         #[rustfmt::skip]
         let r = i64x2::new(137438953471, 1);
 
@@ -16760,10 +16760,10 @@ mod tests {
     unsafe fn test_msa_sat_u_b() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            u8::max_value(), 105, 30, 1,
-            u8::max_value(), 105, 30, 1,
-            u8::max_value(), 105, 30, 1,
-            u8::max_value(), 105, 30, 1
+            u8::MAX, 105, 30, 1,
+            u8::MAX, 105, 30, 1,
+            u8::MAX, 105, 30, 1,
+            u8::MAX, 105, 30, 1
         );
         #[rustfmt::skip]
         let r = u8x16::new(
@@ -16780,8 +16780,8 @@ mod tests {
     unsafe fn test_msa_sat_u_h() {
         #[rustfmt::skip]
         let a = u16x8::new(
-            u16::max_value(), 1155, 155, 1,
-            u16::max_value(), 1155, 155, 1
+            u16::MAX, 1155, 155, 1,
+            u16::MAX, 1155, 155, 1
         );
         #[rustfmt::skip]
         let r = u16x8::new(255, 255, 155, 1, 255, 255, 155, 1);
@@ -16792,7 +16792,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_sat_u_w() {
         #[rustfmt::skip]
-        let a = u32x4::new(u32::max_value(), 111111155, u32::max_value(), 1);
+        let a = u32x4::new(u32::MAX, 111111155, u32::MAX, 1);
         #[rustfmt::skip]
         let r = u32x4::new(262143, 262143, 262143, 1);
 
@@ -16802,7 +16802,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_sat_u_d() {
         #[rustfmt::skip]
-        let a = u64x2::new(u64::max_value(), 1);
+        let a = u64x2::new(u64::MAX, 1);
         #[rustfmt::skip]
         let r = u64x2::new(274877906943, 1);
 
@@ -17293,7 +17293,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_sra_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(i32::min_value(), -1073741824, 1, 2);
+        let a = i32x4::new(i32::MIN, -1073741824, 1, 2);
         #[rustfmt::skip]
         let b = i32x4::new(16, 15, 16, 15);
         #[rustfmt::skip]
@@ -17308,7 +17308,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_sra_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(i64::min_value(), i64::max_value());
+        let a = i64x2::new(i64::MIN, i64::MAX);
         #[rustfmt::skip]
         let b = i64x2::new(32, 31);
         #[rustfmt::skip]
@@ -17324,10 +17324,10 @@ mod tests {
     unsafe fn test_msa_srai_b() {
         #[rustfmt::skip]
         let a = i8x16::new(
-            i8::max_value(), 125, 55, 1,
-            i8::max_value(), 125, 55, 1,
-            i8::max_value(), 125, 55, 1,
-            i8::max_value(), 125, 55, 1
+            i8::MAX, 125, 55, 1,
+            i8::MAX, 125, 55, 1,
+            i8::MAX, 125, 55, 1,
+            i8::MAX, 125, 55, 1
         );
         #[rustfmt::skip]
         let r = i8x16::new(
@@ -17344,8 +17344,8 @@ mod tests {
     unsafe fn test_msa_srai_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            i16::max_value(), 125, 55, 1, 
-            i16::max_value(), 125, 55, 1
+            i16::MAX, 125, 55, 1, 
+            i16::MAX, 125, 55, 1
         );
         #[rustfmt::skip]
         let r = i16x8::new(8191, 31, 13, 0, 8191, 31, 13, 0);
@@ -17356,7 +17356,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_srai_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(i32::max_value(), 125, 55, 1);
+        let a = i32x4::new(i32::MAX, 125, 55, 1);
         let r = i32x4::new(536870911, 31, 13, 0);
 
         assert_eq!(r, mem::transmute(__msa_srai_w(mem::transmute(a), 2)));
@@ -17365,7 +17365,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_srai_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(i64::max_value(), 55);
+        let a = i64x2::new(i64::MAX, 55);
         #[rustfmt::skip]
         let r = i64x2::new(2305843009213693951, 13);
 
@@ -17406,7 +17406,7 @@ mod tests {
     unsafe fn test_msa_srar_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            i16::min_value(), -16384, -8192, -4096,
+            i16::MIN, -16384, -8192, -4096,
             150, 50, 25, 15
         );
         #[rustfmt::skip]
@@ -17429,7 +17429,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_srar_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(i32::min_value(), -1073741824, 100, 50);
+        let a = i32x4::new(i32::MIN, -1073741824, 100, 50);
         #[rustfmt::skip]
         let b = i32x4::new(16, 15, 1, 2);
         #[rustfmt::skip]
@@ -17444,7 +17444,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_srar_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(i64::min_value(), i64::max_value());
+        let a = i64x2::new(i64::MIN, i64::MAX);
         #[rustfmt::skip]
         let b = i64x2::new(32, 31);
         #[rustfmt::skip]
@@ -17460,10 +17460,10 @@ mod tests {
     unsafe fn test_msa_srari_b() {
         #[rustfmt::skip]
         let a = i8x16::new(
-            125, i8::max_value(), 55, 1,
-            125, i8::max_value(), 55, 1,
-            125, i8::max_value(), 55, 1,
-            125, i8::max_value(), 55, 1
+            125, i8::MAX, 55, 1,
+            125, i8::MAX, 55, 1,
+            125, i8::MAX, 55, 1,
+            125, i8::MAX, 55, 1
         );
         #[rustfmt::skip]
         let r = i8x16::new(
@@ -17560,7 +17560,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_srl_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(i32::min_value(), -1073741824, 1, 2);
+        let a = i32x4::new(i32::MIN, -1073741824, 1, 2);
         #[rustfmt::skip]
         let b = i32x4::new(16, 15, 16, 15);
         #[rustfmt::skip]
@@ -17575,7 +17575,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_srl_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(i64::min_value(), i64::max_value());
+        let a = i64x2::new(i64::MIN, i64::MAX);
         #[rustfmt::skip]
         let b = i64x2::new(32, 31);
         #[rustfmt::skip]
@@ -17611,8 +17611,8 @@ mod tests {
     unsafe fn test_msa_srli_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            i16::max_value(), 3276, 100, 127,
-            i16::max_value(), 3276, 100, 127
+            i16::MAX, 3276, 100, 127,
+            i16::MAX, 3276, 100, 127
         );
         #[rustfmt::skip]
         let r = i16x8::new(
@@ -17626,7 +17626,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_srli_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(100, i32::max_value(), 100, i32::max_value());
+        let a = i32x4::new(100, i32::MAX, 100, i32::MAX);
         #[rustfmt::skip]
         let r = i32x4::new(25, 536870911, 25, 536870911);
 
@@ -17636,7 +17636,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_srli_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(100, i64::max_value());
+        let a = i64x2::new(100, i64::MAX);
         #[rustfmt::skip]
         let r = i64x2::new(50, 4611686018427387903);
 
@@ -17697,7 +17697,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_srlr_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(i32::min_value(), -1073741824, 1, 2);
+        let a = i32x4::new(i32::MIN, -1073741824, 1, 2);
         #[rustfmt::skip]
         let b = i32x4::new(16, 15, 16, 15);
         let r = i32x4::new(32768, 98304, 0, 0);
@@ -17711,7 +17711,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_srlr_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(i64::min_value(), i64::max_value());
+        let a = i64x2::new(i64::MIN, i64::MAX);
         #[rustfmt::skip]
         let b = i64x2::new(32, 31);
         #[rustfmt::skip]
@@ -17727,10 +17727,10 @@ mod tests {
     unsafe fn test_msa_srlri_b() {
         #[rustfmt::skip]
         let a = i8x16::new(
-            25, 50, 100, i8::max_value(),
-            25, 50, 100, i8::max_value(),
-            25, 50, 100, i8::max_value(),
-            25, 50, 100, i8::max_value()
+            25, 50, 100, i8::MAX,
+            25, 50, 100, i8::MAX,
+            25, 50, 100, i8::MAX,
+            25, 50, 100, i8::MAX
         );
         #[rustfmt::skip]
         let r = i8x16::new(
@@ -17747,8 +17747,8 @@ mod tests {
     unsafe fn test_msa_srlri_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            i16::max_value(), 3276, 100, 127,
-            i16::max_value(), 3276, 100, 127
+            i16::MAX, 3276, 100, 127,
+            i16::MAX, 3276, 100, 127
         );
         let r = i16x8::new(8192, 819, 25, 32, 8192, 819, 25, 32);
 
@@ -17758,7 +17758,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_srlri_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(100, 150, 200, i32::max_value());
+        let a = i32x4::new(100, 150, 200, i32::MAX);
         #[rustfmt::skip]
         let r = i32x4::new(25, 38, 50, 536870912);
 
@@ -17768,7 +17768,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_srlri_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(100, i64::max_value());
+        let a = i64x2::new(100, i64::MAX);
         #[rustfmt::skip]
         let r = i64x2::new(50, 4611686018427387904);
 
@@ -17839,10 +17839,10 @@ mod tests {
     unsafe fn test_msa_subs_s_b() {
         #[rustfmt::skip]
         let a = i8x16::new(
-            i8::min_value(), -2, -3, -4,
-            i8::min_value(), -2, -3, -4,
-            i8::min_value(), -2, -3, -4,
-            i8::min_value(), -2, -3, -4
+            i8::MIN, -2, -3, -4,
+            i8::MIN, -2, -3, -4,
+            i8::MIN, -2, -3, -4,
+            i8::MIN, -2, -3, -4
         );
         #[rustfmt::skip]
         let b = i8x16::new(
@@ -17853,10 +17853,10 @@ mod tests {
         );
         #[rustfmt::skip]
         let r = i8x16::new(
-            i8::min_value(), 5, -11, 5,
-            i8::min_value(), 5, -11, 5,
-            i8::min_value(), 5, -11, 5,
-            i8::min_value(), 5, -11, 5
+            i8::MIN, 5, -11, 5,
+            i8::MIN, 5, -11, 5,
+            i8::MIN, 5, -11, 5,
+            i8::MIN, 5, -11, 5
         );
 
         assert_eq!(
@@ -17869,15 +17869,15 @@ mod tests {
     unsafe fn test_msa_subs_s_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            i16::min_value(), -2, -3, -4,
-            i16::min_value(), -2, -3, -4
+            i16::MIN, -2, -3, -4,
+            i16::MIN, -2, -3, -4
         );
         #[rustfmt::skip]
         let b = i16x8::new(6, -7, 8, -9, 6, -7, 8, -9);
         #[rustfmt::skip]
         let r = i16x8::new(
-            i16::min_value(), 5, -11, 5,
-            i16::min_value(), 5, -11, 5
+            i16::MIN, 5, -11, 5,
+            i16::MIN, 5, -11, 5
         );
 
         assert_eq!(
@@ -17889,11 +17889,11 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_subs_s_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(i32::min_value(), -2, -3, -4);
+        let a = i32x4::new(i32::MIN, -2, -3, -4);
         #[rustfmt::skip]
         let b = i32x4::new(6, -7, 8, -9);
         #[rustfmt::skip]
-        let r = i32x4::new(i32::min_value(), 5, -11, 5);
+        let r = i32x4::new(i32::MIN, 5, -11, 5);
 
         assert_eq!(
             r,
@@ -17904,11 +17904,11 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_subs_s_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(i64::min_value(), -2);
+        let a = i64x2::new(i64::MIN, -2);
         #[rustfmt::skip]
         let b = i64x2::new(6, -7);
         #[rustfmt::skip]
-        let r = i64x2::new(i64::min_value(), 5);
+        let r = i64x2::new(i64::MIN, 5);
 
         assert_eq!(
             r,
@@ -17920,10 +17920,10 @@ mod tests {
     unsafe fn test_msa_subs_u_b() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            u8::max_value(), 2, 3, 4,
-            u8::max_value(), 2, 3, 4,
-            u8::max_value(), 2, 3, 4,
-            u8::max_value(), 2, 3, 4
+            u8::MAX, 2, 3, 4,
+            u8::MAX, 2, 3, 4,
+            u8::MAX, 2, 3, 4,
+            u8::MAX, 2, 3, 4
         );
         #[rustfmt::skip]
         let b = u8x16::new(
@@ -17950,8 +17950,8 @@ mod tests {
     unsafe fn test_msa_subs_u_h() {
         #[rustfmt::skip]
         let a = u16x8::new(
-            u16::max_value(), 2, 3, 4, 
-            u16::max_value(), 2, 3, 4
+            u16::MAX, 2, 3, 4, 
+            u16::MAX, 2, 3, 4
         );
         #[rustfmt::skip]
         let b = u16x8::new(6, 7, 8, 9, 6, 7, 8, 9);
@@ -17967,7 +17967,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_subs_u_w() {
         #[rustfmt::skip]
-        let a = u32x4::new(u32::max_value(), 2, 3, 4);
+        let a = u32x4::new(u32::MAX, 2, 3, 4);
         #[rustfmt::skip]
         let b = u32x4::new(6, 7, 8, 9);
         #[rustfmt::skip]
@@ -17982,7 +17982,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_subs_u_d() {
         #[rustfmt::skip]
-        let a = u64x2::new(u64::max_value(), 2);
+        let a = u64x2::new(u64::MAX, 2);
         #[rustfmt::skip]
         let b = u64x2::new(6, 7);
         #[rustfmt::skip]
@@ -17998,10 +17998,10 @@ mod tests {
     unsafe fn test_msa_subsus_u_b() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            u8::max_value(), 2, 3, 4,
-            u8::max_value(), 2, 3, 4,
-            u8::max_value(), 2, 3, 4,
-            u8::max_value(), 2, 3, 4
+            u8::MAX, 2, 3, 4,
+            u8::MAX, 2, 3, 4,
+            u8::MAX, 2, 3, 4,
+            u8::MAX, 2, 3, 4
         );
         #[rustfmt::skip]
         let b = i8x16::new(
@@ -18028,8 +18028,8 @@ mod tests {
     unsafe fn test_msa_subsus_u_h() {
         #[rustfmt::skip]
         let a = u16x8::new(
-            u16::max_value(), 2, 3, 4,
-            u16::max_value(), 2, 3, 4
+            u16::MAX, 2, 3, 4,
+            u16::MAX, 2, 3, 4
         );
         #[rustfmt::skip]
         let b = i16x8::new(-6, -7, -8, -9, -6, -7, -8, -9);
@@ -18045,7 +18045,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_subsus_u_w() {
         #[rustfmt::skip]
-        let a = u32x4::new(u32::max_value(), 2, 3, 4);
+        let a = u32x4::new(u32::MAX, 2, 3, 4);
         #[rustfmt::skip]
         let b = i32x4::new(-6, -7, -8, -9);
         #[rustfmt::skip]
@@ -18060,7 +18060,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_subsus_u_d() {
         #[rustfmt::skip]
-        let a = u64x2::new(u64::max_value(), 2);
+        let a = u64x2::new(u64::MAX, 2);
         #[rustfmt::skip]
         let b = i64x2::new(-6, -7);
         #[rustfmt::skip]
@@ -18076,17 +18076,17 @@ mod tests {
     unsafe fn test_msa_subsuu_s_b() {
         #[rustfmt::skip]
         let a = u8x16::new(
-            u8::max_value(), 2, 3, 4,
-            u8::max_value(), 2, 3, 4,
-            u8::max_value(), 2, 3, 4,
-            u8::max_value(), 2, 3, 4
+            u8::MAX, 2, 3, 4,
+            u8::MAX, 2, 3, 4,
+            u8::MAX, 2, 3, 4,
+            u8::MAX, 2, 3, 4
         );
         #[rustfmt::skip]
         let b = u8x16::new(
-            6, 7, 8, u8::max_value(),
-            6, 7, 8, u8::max_value(),
-            6, 7, 8, u8::max_value(),
-            6, 7, 8, u8::max_value()
+            6, 7, 8, u8::MAX,
+            6, 7, 8, u8::MAX,
+            6, 7, 8, u8::MAX,
+            6, 7, 8, u8::MAX
         );
         #[rustfmt::skip]
         let r = i8x16::new(
@@ -18106,8 +18106,8 @@ mod tests {
     unsafe fn test_msa_subsuu_s_h() {
         #[rustfmt::skip]
         let a = u16x8::new(
-            u16::max_value(), 2, 3, 
-            4, u16::max_value(), 2, 3, 4
+            u16::MAX, 2, 3, 
+            4, u16::MAX, 2, 3, 4
         );
         #[rustfmt::skip]
         let b = u16x8::new(6, 7, 8, 65535, 6, 7, 8, 65535);
@@ -18123,7 +18123,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_subsuu_s_w() {
         #[rustfmt::skip]
-        let a = u32x4::new(u32::max_value(), 2, 3, 4);
+        let a = u32x4::new(u32::MAX, 2, 3, 4);
         #[rustfmt::skip]
         let b = u32x4::new(6, 7, 8, 4294967295);
         #[rustfmt::skip]
@@ -18138,11 +18138,11 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_subsuu_s_d() {
         #[rustfmt::skip]
-        let a = u64x2::new(u64::max_value(), 2);
+        let a = u64x2::new(u64::MAX, 2);
         #[rustfmt::skip]
         let b = u64x2::new(6, 7);
         #[rustfmt::skip]
-        let r = i64x2::new(i64::max_value(), -5);
+        let r = i64x2::new(i64::MAX, -5);
 
         assert_eq!(
             r,
@@ -18154,10 +18154,10 @@ mod tests {
     unsafe fn test_msa_subv_b() {
         #[rustfmt::skip]
         let a = i8x16::new(
-            i8::min_value(), -2, -3, -4,
-            i8::min_value(), -2, -3, -4,
-            i8::min_value(), -2, -3, -4,
-            i8::min_value(), -2, -3, -4
+            i8::MIN, -2, -3, -4,
+            i8::MIN, -2, -3, -4,
+            i8::MIN, -2, -3, -4,
+            i8::MIN, -2, -3, -4
         );
         #[rustfmt::skip]
         let b = i8x16::new(
@@ -18184,8 +18184,8 @@ mod tests {
     unsafe fn test_msa_subv_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            i16::min_value(), -2, -3, -4,
-            i16::min_value(), -2, -3, -4
+            i16::MIN, -2, -3, -4,
+            i16::MIN, -2, -3, -4
         );
         #[rustfmt::skip]
         let b = i16x8::new(6, -7, 8, -9, 6, -7, 8, -9);
@@ -18201,7 +18201,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_subv_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(i32::min_value(), -2, -3, -4);
+        let a = i32x4::new(i32::MIN, -2, -3, -4);
         #[rustfmt::skip]
         let b = i32x4::new(6, -7, 8, -9);
         #[rustfmt::skip]
@@ -18216,7 +18216,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_subv_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(i64::max_value(), -2);
+        let a = i64x2::new(i64::MAX, -2);
         #[rustfmt::skip]
         let b = i64x2::new(6, -7);
         #[rustfmt::skip]
@@ -18232,10 +18232,10 @@ mod tests {
     unsafe fn test_msa_subvi_b() {
         #[rustfmt::skip]
         let a = i8x16::new(
-            100, i8::max_value(), 50, i8::min_value(),
-            100, i8::max_value(), 50, i8::min_value(),
-            100, i8::max_value(), 50, i8::min_value(),
-            100, i8::max_value(), 50, i8::min_value()
+            100, i8::MAX, 50, i8::MIN,
+            100, i8::MAX, 50, i8::MIN,
+            100, i8::MAX, 50, i8::MIN,
+            100, i8::MAX, 50, i8::MIN
         );
         #[rustfmt::skip]
         let r = i8x16::new(
@@ -18252,8 +18252,8 @@ mod tests {
     unsafe fn test_msa_subvi_h() {
         #[rustfmt::skip]
         let a = i16x8::new(
-            i16::max_value(), 3276, -100, i16::min_value(),
-            i16::max_value(), 3276, -100, i16::min_value()
+            i16::MAX, 3276, -100, i16::MIN,
+            i16::MAX, 3276, -100, i16::MIN
         );
         #[rustfmt::skip]
         let r = i16x8::new(
@@ -18267,7 +18267,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_subvi_w() {
         #[rustfmt::skip]
-        let a = i32x4::new(100, 150, 200, i32::max_value());
+        let a = i32x4::new(100, 150, 200, i32::MAX);
         #[rustfmt::skip]
         let r = i32x4::new(95, 145, 195, 2147483642);
 
@@ -18277,7 +18277,7 @@ mod tests {
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_subvi_d() {
         #[rustfmt::skip]
-        let a = i64x2::new(100, i64::max_value());
+        let a = i64x2::new(100, i64::MAX);
         #[rustfmt::skip]
         let r = i64x2::new(95, 9223372036854775802);
 

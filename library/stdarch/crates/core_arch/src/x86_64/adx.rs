@@ -55,7 +55,7 @@ mod tests {
     #[test]
     fn test_addcarry_u64() {
         unsafe {
-            let a = u64::max_value();
+            let a = u64::MAX;
             let mut out = 0;
 
             let r = _addcarry_u64(0, a, 1, &mut out);
@@ -86,7 +86,7 @@ mod tests {
 
     #[simd_test(enable = "adx")]
     unsafe fn test_addcarryx_u64() {
-        let a = u64::max_value();
+        let a = u64::MAX;
         let mut out = 0;
 
         let r = _addcarry_u64(0, a, 1, &mut out);
@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn test_subborrow_u64() {
         unsafe {
-            let a = u64::max_value();
+            let a = u64::MAX;
             let mut out = 0;
 
             let r = _subborrow_u64(0, 0, 1, &mut out);

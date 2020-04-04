@@ -2045,32 +2045,32 @@ mod tests {
     }
 
     test_vec_avg! { test_vec_avg_i32x4, i32x4,
-    [i32::min_value(), i32::max_value(), 1, -1],
+    [i32::MIN, i32::MAX, 1, -1],
     [-1, 1, 1, -1],
     [-1073741824, 1073741824, 1, -1] }
 
     test_vec_avg! { test_vec_avg_u32x4, u32x4,
-    [u32::max_value(), 0, 1, 2],
+    [u32::MAX, 0, 1, 2],
     [2, 1, 0, 0],
     [2147483649, 1, 1, 1] }
 
     test_vec_avg! { test_vec_avg_i16x8, i16x8,
-    [i16::min_value(), i16::max_value(), 1, -1, 0, 0, 0, 0],
+    [i16::MIN, i16::MAX, 1, -1, 0, 0, 0, 0],
     [-1, 1, 1, -1, 0, 0, 0, 0],
     [-16384, 16384, 1, -1, 0, 0, 0, 0] }
 
     test_vec_avg! { test_vec_avg_u16x8, u16x8,
-    [u16::max_value(), 0, 1, 2, 0, 0, 0, 0],
+    [u16::MAX, 0, 1, 2, 0, 0, 0, 0],
     [2, 1, 0, 0, 0, 0, 0, 0],
     [32769, 1, 1, 1, 0, 0, 0, 0] }
 
     test_vec_avg! { test_vec_avg_i8x16, i8x16,
-    [i8::min_value(), i8::max_value(), 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [i8::MIN, i8::MAX, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [-1, 1, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [-64, 64, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
 
     test_vec_avg! { test_vec_avg_u8x16, u8x16,
-    [u8::max_value(), 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [u8::MAX, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [129, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
 
@@ -2081,36 +2081,36 @@ mod tests {
     }
 
     test_vec_adds! { test_vec_adds_i32x4, i32x4,
-    [i32::min_value(), i32::max_value(), 1, -1],
+    [i32::MIN, i32::MAX, 1, -1],
     [-1, 1, 1, -1],
-    [i32::min_value(), i32::max_value(), 2, -2] }
+    [i32::MIN, i32::MAX, 2, -2] }
 
     test_vec_adds! { test_vec_adds_u32x4, u32x4,
-    [u32::max_value(), 0, 1, 2],
+    [u32::MAX, 0, 1, 2],
     [2, 1, 0, 0],
-    [u32::max_value(), 1, 1, 2] }
+    [u32::MAX, 1, 1, 2] }
 
     test_vec_adds! { test_vec_adds_i16x8, i16x8,
-    [i16::min_value(), i16::max_value(), 1, -1, 0, 0, 0, 0],
+    [i16::MIN, i16::MAX, 1, -1, 0, 0, 0, 0],
     [-1, 1, 1, -1, 0, 0, 0, 0],
-    [i16::min_value(), i16::max_value(), 2, -2, 0, 0, 0, 0] }
+    [i16::MIN, i16::MAX, 2, -2, 0, 0, 0, 0] }
 
     test_vec_adds! { test_vec_adds_u16x8, u16x8,
-    [u16::max_value(), 0, 1, 2, 0, 0, 0, 0],
+    [u16::MAX, 0, 1, 2, 0, 0, 0, 0],
     [2, 1, 0, 0, 0, 0, 0, 0],
-    [u16::max_value(), 1, 1, 2, 0, 0, 0, 0] }
+    [u16::MAX, 1, 1, 2, 0, 0, 0, 0] }
 
     test_vec_adds! { test_vec_adds_i8x16, i8x16,
-    [i8::min_value(), i8::max_value(), 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [i8::MIN, i8::MAX, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [-1, 1, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [i8::min_value(), i8::max_value(), 2, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
+    [i8::MIN, i8::MAX, 2, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
 
     test_vec_adds! { test_vec_adds_u8x16, u8x16,
-    [u8::max_value(), 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [u8::MAX, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [u8::max_value(), 1, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
+    [u8::MAX, 1, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
 
-    test_vec_2! { test_vec_addc, vec_addc, u32x4, [u32::max_value(), 0, 0, 0], [1, 1, 1, 1], [1, 0, 0, 0] }
+    test_vec_2! { test_vec_addc, vec_addc, u32x4, [u32::MAX, 0, 0, 0], [1, 1, 1, 1], [1, 0, 0, 0] }
 
     macro_rules! test_vec_abs {
         { $name: ident, $ty: ident, $a: expr, $d: expr } => {
@@ -2482,9 +2482,9 @@ mod tests {
         ));
         let b: vector_signed_short = transmute(i16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
         let c: vector_signed_short =
-            transmute(i16x8::new(0, 1, 2, 3, 4, 5, 6, i16::max_value() - 1));
+            transmute(i16x8::new(0, 1, 2, 3, 4, 5, 6, i16::MAX - 1));
 
-        let d = i16x8::new(0, 3, 6, 9, 12, 15, 18, i16::max_value());
+        let d = i16x8::new(0, 3, 6, 9, 12, 15, 18, i16::MAX);
 
         assert_eq!(d, transmute(vec_mradds(a, b, c)));
     }

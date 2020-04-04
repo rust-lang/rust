@@ -23,7 +23,7 @@ pub unsafe extern "C" fn page_alloc() -> *mut u8 {
     let ret = memory_grow(0, 1);
 
     // if we failed to allocate a page then return null
-    if ret == usize::max_value() {
+    if ret == usize::MAX {
         return ptr::null_mut();
     }
 
