@@ -121,6 +121,7 @@ use self::Ordering::*;
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::intrinsics;
+use crate::mem;
 
 use crate::hint::spin_loop;
 
@@ -970,7 +971,7 @@ impl<T> AtomicPtr<T> {
     pub fn store(&self, ptr: *mut T, order: Ordering) {
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe {
-            atomic_store(self.p.get() as *mut usize, ptr as usize, order);
+            atomic_store(self.p.get() as *mut usize, mem::transmute(ptr), order);
         }
     }
 
@@ -1003,7 +1004,7 @@ impl<T> AtomicPtr<T> {
     #[cfg(target_has_atomic = "ptr")]
     pub fn swap(&self, ptr: *mut T, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_swap(self.p.get() as *mut usize, ptr as usize, order) as *mut T }
+        unsafe { atomic_swap(self.p.get() as *mut usize, mem::transmute(ptr), order) as *mut T }
     }
 
     /// Stores a value into the pointer if the current value is the same as the `current` value.
@@ -1091,8 +1092,8 @@ impl<T> AtomicPtr<T> {
         unsafe {
             let res = atomic_compare_exchange(
                 self.p.get() as *mut usize,
-                current as usize,
-                new as usize,
+                mem::transmute(current),
+                mem::transmute(new),
                 success,
                 failure,
             );
@@ -1155,8 +1156,8 @@ impl<T> AtomicPtr<T> {
         unsafe {
             let res = atomic_compare_exchange_weak(
                 self.p.get() as *mut usize,
-                current as usize,
-                new as usize,
+                mem::transmute(current),
+                mem::transmute(new),
                 success,
                 failure,
             );
