@@ -222,7 +222,10 @@ LLVM-IR are query-fied. That is, lexing and parsing are done all at once for
 the whole program.
 
 One other thing to mention here is the all-important "typing context",
-[`TyCtxt`], which is a giant struct that is at the center of all things. All
+[`TyCtxt`], which is a giant struct that is at the center of all things.
+(Note that the name is mostly historic. This is _not_ a "typing context" in the
+sense of `Γ` or `Δ` from type theory. The name is retained because that's what
+the name of the struct is in the source code.) All
 queries are defined as methods on the [`TyCtxt`] type, and the in-memory query
 cache is stored there too. In the code, there is usually a variable called
 `tcx` which is a handle on the typing context. You will also see lifetimes with
