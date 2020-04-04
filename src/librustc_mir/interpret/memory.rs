@@ -9,6 +9,7 @@
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
+use std::fmt;
 use std::ptr;
 
 use rustc_ast::ast::Mutability;
@@ -42,6 +43,17 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
             MemoryKind::Vtable => true,
             MemoryKind::CallerLocation => true,
             MemoryKind::Machine(k) => k.may_leak(),
+        }
+    }
+}
+
+impl<T: fmt::Display> fmt::Display for MemoryKind<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MemoryKind::Stack => write!(f, "stack variable"),
+            MemoryKind::Vtable => write!(f, "vtable"),
+            MemoryKind::CallerLocation => write!(f, "caller location"),
+            MemoryKind::Machine(m) => write!(f, "{}", m),
         }
     }
 }
@@ -259,7 +271,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         if alloc_kind != kind {
             throw_ub_format!(
-                "deallocating `{:?}` memory using `{:?}` deallocation operation",
+                "deallocating {} memory using {} deallocation operation",
                 alloc_kind,
                 kind
             );
@@ -677,22 +689,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             match self.alloc_map.get(id) {
                 Some(&(kind, ref alloc)) => {
                     // normal alloc
-                    match kind {
-                        MemoryKind::Stack => eprint!(" (stack variable, "),
-                        MemoryKind::Vtable => eprint!(" (vtable, "),
-                        MemoryKind::CallerLocation => eprint!(" (caller_location, "),
-                        MemoryKind::Machine(m) if Some(m) == M::GLOBAL_KIND => {
-                            eprint!(" (global, ")
-                        }
-                        MemoryKind::Machine(m) => eprint!(" ({:?}, ", m),
-                    };
+                    eprint!(" ({}, ", kind);
                     write_allocation_track_relocs(self.tcx, &mut allocs_to_print, alloc);
                 }
                 None => {
                     // global alloc
                     match self.tcx.alloc_map.lock().get(id) {
                         Some(GlobalAlloc::Memory(alloc)) => {
-                            eprint!(" (global, ");
+                            eprint!(" (unchanged global, ");
                             write_allocation_track_relocs(self.tcx, &mut allocs_to_print, alloc);
                         }
                         Some(GlobalAlloc::Function(func)) => {
