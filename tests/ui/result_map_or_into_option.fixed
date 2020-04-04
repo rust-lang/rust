@@ -6,9 +6,7 @@ fn main() {
     let opt: Result<u32, &str> = Ok(1);
     let _ = opt.ok();
 
-    let rewrap = |s: u32| -> Option<u32> {
-        Some(s)
-    };
+    let rewrap = |s: u32| -> Option<u32> { Some(s) };
 
     // A non-Some `f` arg should not emit the lint
     let opt: Result<u32, &str> = Ok(1);

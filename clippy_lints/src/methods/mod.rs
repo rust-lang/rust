@@ -2573,42 +2573,48 @@ fn lint_map_or_none<'a, 'tcx>(
         false
     };
 
-    let mess = if is_option && default_arg_is_none {
-        let self_snippet = snippet(cx, map_or_args[0].span, "..");
-        let func_snippet = snippet(cx, map_or_args[2].span, "..");
-        let msg = "called `map_or(None, f)` on an `Option` value. This can be done more directly by calling \
-                   `and_then(f)` instead";
-        Some((
-            OPTION_MAP_OR_NONE,
-            msg,
-            "try using `and_then` instead",
-            format!("{0}.and_then({1})", self_snippet, func_snippet),
-        ))
-    } else if is_result && f_arg_is_some {
-        let msg = "called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling \
-                   `ok()` instead";
-        let self_snippet = snippet(cx, map_or_args[0].span, "..");
-        Some((
-            RESULT_MAP_OR_INTO_OPTION,
-            msg,
-            "try using `ok` instead",
-            format!("{0}.ok()", self_snippet),
-        ))
-    } else {
-        None
+    let (lint, msg, instead, hint) = {
+        if !default_arg_is_none {
+            // nothing to lint!
+            return;
+        }
+
+        if is_option {
+            let self_snippet = snippet(cx, map_or_args[0].span, "..");
+            let func_snippet = snippet(cx, map_or_args[2].span, "..");
+            let msg = "called `map_or(None, f)` on an `Option` value. This can be done more directly by calling \
+                       `and_then(f)` instead";
+            (
+                OPTION_MAP_OR_NONE,
+                msg,
+                "try using `and_then` instead",
+                format!("{0}.and_then({1})", self_snippet, func_snippet),
+            )
+        } else if f_arg_is_some {
+            let msg = "called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling \
+                       `ok()` instead";
+            let self_snippet = snippet(cx, map_or_args[0].span, "..");
+            (
+                RESULT_MAP_OR_INTO_OPTION,
+                msg,
+                "try using `ok` instead",
+                format!("{0}.ok()", self_snippet),
+            )
+        } else {
+            // nothing to lint!
+            return;
+        }
     };
 
-    if let Some((lint, msg, instead, hint)) = mess {
-        span_lint_and_sugg(
-            cx,
-            lint,
-            expr.span,
-            msg,
-            instead,
-            hint,
-            Applicability::MachineApplicable,
-        );
-    }
+    span_lint_and_sugg(
+        cx,
+        lint,
+        expr.span,
+        msg,
+        instead,
+        hint,
+        Applicability::MachineApplicable,
+    );
 }
 
 /// Lint use of `_.and_then(|x| Some(y))` for `Option`s
