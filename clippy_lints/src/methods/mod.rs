@@ -2559,10 +2559,7 @@ fn lint_map_or_none<'a, 'tcx>(
         return;
     }
 
-
-
     let (lint, msg, instead, hint) = {
-
         let default_arg_is_none = if let hir::ExprKind::Path(ref qpath) = map_or_args[1].kind {
             match_qpath(qpath, &paths::OPTION_NONE)
         } else {
