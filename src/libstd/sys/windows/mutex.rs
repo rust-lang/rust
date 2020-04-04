@@ -21,9 +21,10 @@
 
 use crate::cell::UnsafeCell;
 use crate::mem::{self, MaybeUninit};
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::atomic::{AtomicUsize, AtomicPtr, Ordering};
 use crate::sys::c;
 use crate::sys::compat;
+use crate::ptr;
 
 pub struct Mutex {
     lock: AtomicUsize,
@@ -112,12 +113,16 @@ impl Mutex {
         let re = box ReentrantMutex::uninitialized();
         re.init();
         let re = Box::into_raw(re);
-        match self.lock.compare_and_swap(0, re as usize, Ordering::SeqCst) {
-            0 => re,
-            n => {
-                Box::from_raw(re).destroy();
-                n as *mut _
-            }
+        // Get an `AtomicPtr` view of `self.lock`.
+        let lock_ptr = &*(&self.lock as *const AtomicUsize as *const AtomicPtr<ReentrantMutex>);
+        let old = lock_ptr.compare_and_swap(ptr::null_mut(), re, Ordering::SeqCst);
+        if old == ptr::null_mut() {
+            // Update successful.
+            re
+        } else {
+            // Someone else won the race, clean up our attempt and return their value.
+            Box::from_raw(re).destroy();
+            old
         }
     }
 
