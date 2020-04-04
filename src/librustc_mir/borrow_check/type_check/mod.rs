@@ -1760,6 +1760,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
         for (n, (fn_arg, op_arg)) in sig.inputs().iter().zip(args).enumerate() {
             let op_arg_ty = op_arg.ty(body, self.tcx());
+            let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if from_hir_call {
                 ConstraintCategory::CallArgument
             } else {
@@ -2402,6 +2403,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             };
             let operand_ty = operand.ty(body, tcx);
+            let operand_ty = self.normalize(operand_ty, location);
 
             if let Err(terr) = self.sub_types(
                 operand_ty,
