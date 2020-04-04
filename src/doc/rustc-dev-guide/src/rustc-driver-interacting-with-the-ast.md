@@ -4,6 +4,10 @@
 
 ## Getting the type of an expression
 
+NOTE: For the example to compile, you will need to first run the following:
+
+    rustup component add rustc-dev
+
 To get the type of an expression, use the `global_ctxt` to get a `TyCtxt`:
 
 ```rust
