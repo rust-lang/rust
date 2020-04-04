@@ -2559,25 +2559,26 @@ fn lint_map_or_none<'a, 'tcx>(
         return;
     }
 
-    let default_arg_is_none = if let hir::ExprKind::Path(ref qpath) = map_or_args[1].kind {
-        match_qpath(qpath, &paths::OPTION_NONE)
-    } else {
-        false
-    };
 
-    // This is really only needed if `is_result` holds. Computing it here
-    // makes `mess`'s assignment a bit easier, so just compute it here.
-    let f_arg_is_some = if let hir::ExprKind::Path(ref qpath) = map_or_args[2].kind {
-        match_qpath(qpath, &paths::OPTION_SOME)
-    } else {
-        false
-    };
 
     let (lint, msg, instead, hint) = {
+
+        let default_arg_is_none = if let hir::ExprKind::Path(ref qpath) = map_or_args[1].kind {
+            match_qpath(qpath, &paths::OPTION_NONE)
+        } else {
+            return;
+        };
+
         if !default_arg_is_none {
             // nothing to lint!
             return;
         }
+
+        let f_arg_is_some = if let hir::ExprKind::Path(ref qpath) = map_or_args[2].kind {
+            match_qpath(qpath, &paths::OPTION_SOME)
+        } else {
+            false
+        };
 
         if is_option {
             let self_snippet = snippet(cx, map_or_args[0].span, "..");
