@@ -1132,8 +1132,8 @@ dependencies = [
  "ra_parser",
  "ra_text_edit",
  "rowan",
+ "rustc-ap-rustc_lexer",
  "rustc-hash",
- "rustc_lexer",
  "serde",
  "smol_str",
  "stdx",
@@ -1336,6 +1336,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc-ap-rustc_lexer"
+version = "652.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a6a43c4d0889218c5e2ae68ffea239f303fc05ab1078c73f74e63feb87f7889"
+dependencies = [
+ "unicode-xid",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1346,15 +1355,6 @@ name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
-
-[[package]]
-name = "rustc_lexer"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c86aae0c77166108c01305ee1a36a1e77289d7dc6ca0a3cd91ff4992de2d16a5"
-dependencies = [
- "unicode-xid",
-]
 
 [[package]]
 name = "ryu"
