@@ -1,6 +1,5 @@
 #![cfg(not(target_arch = "wasm32"))]
 
-use std::i16;
 use std::str;
 
 use core::num::flt2dec::strategy::grisu::format_exact_opt;
