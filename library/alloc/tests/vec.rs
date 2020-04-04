@@ -819,6 +819,7 @@ fn test_from_iter_specialization_with_iterator_adapters() {
         .map(|i| i.0 + i.1)
         .zip(std::iter::repeat(1usize))
         .map(|(a, b)| a + b)
+        .map_while(Option::Some)
         .peekable()
         .skip(1)
         .map(|e| std::num::NonZeroUsize::new(e));

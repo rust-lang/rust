@@ -2191,6 +2191,27 @@ where
     }
 }
 
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<S: Iterator, B, I: Iterator, P> SourceIter for MapWhile<I, P>
+where
+    P: FnMut(I::Item) -> Option<B>,
+    I: SourceIter<Source = S>,
+{
+    type Source = S;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // Safety: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
+    }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<B, I: InPlaceIterable, P> InPlaceIterable for MapWhile<I, P> where
+    P: FnMut(I::Item) -> Option<B>
+{
+}
+
 /// An iterator that skips over `n` elements of `iter`.
 ///
 /// This `struct` is created by the [`skip`] method on [`Iterator`]. See its
