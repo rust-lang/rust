@@ -75,7 +75,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Drop { location, target, unwind } => {
-                // FIXME(CTFE): forbid drop in const eval
                 let place = self.eval_place(location)?;
                 let ty = place.layout.ty;
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
