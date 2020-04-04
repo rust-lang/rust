@@ -96,9 +96,6 @@
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use rustc::hir::map::Map;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, TyCtxt};
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
@@ -107,6 +104,9 @@ use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, Node};
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::sym;
 use rustc_span::Span;

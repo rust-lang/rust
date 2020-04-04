@@ -2,8 +2,8 @@ pub use super::*;
 
 use crate::dataflow::BottomValue;
 use crate::dataflow::{self, GenKill, Results, ResultsRefCursor};
-use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::*;
+use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
 use std::cell::RefCell;
 
 #[derive(Copy, Clone)]
@@ -56,7 +56,7 @@ impl dataflow::GenKillAnalysis<'tcx> for MaybeStorageLive {
         _block: BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        _return_place: &mir::Place<'tcx>,
+        _return_place: mir::Place<'tcx>,
     ) {
         // Nothing to do when a call returns successfully
     }
@@ -83,7 +83,7 @@ impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
     ) -> Self {
         MaybeRequiresStorage {
             body,
-            borrowed_locals: RefCell::new(ResultsRefCursor::new(*body, borrowed_locals)),
+            borrowed_locals: RefCell::new(ResultsRefCursor::new(&body, borrowed_locals)),
         }
     }
 }
@@ -231,7 +231,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
         _block: BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        return_place: &mir::Place<'tcx>,
+        return_place: mir::Place<'tcx>,
     ) {
         trans.gen(return_place.local);
     }
@@ -240,7 +240,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
         &self,
         trans: &mut BitSet<Self::Idx>,
         _resume_block: BasicBlock,
-        resume_place: &mir::Place<'tcx>,
+        resume_place: mir::Place<'tcx>,
     ) {
         trans.gen(resume_place.local);
     }
@@ -250,7 +250,7 @@ impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
     /// Kill locals that are fully moved and have not been borrowed.
     fn check_for_move(&self, trans: &mut impl GenKill<Local>, loc: Location) {
         let mut visitor = MoveVisitor { trans, borrowed_locals: &self.borrowed_locals };
-        visitor.visit_location(self.body, loc);
+        visitor.visit_location(&self.body, loc);
     }
 }
 

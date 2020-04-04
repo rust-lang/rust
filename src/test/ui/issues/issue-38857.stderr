@@ -1,11 +1,11 @@
 error[E0433]: failed to resolve: could not find `imp` in `sys`
-  --> $DIR/issue-38857.rs:7:23
+  --> $DIR/issue-38857.rs:2:23
    |
 LL |     let a = std::sys::imp::process::process_common::StdioPipes { ..panic!() };
    |                       ^^^ could not find `imp` in `sys`
 
 error[E0603]: module `sys` is private
-  --> $DIR/issue-38857.rs:7:18
+  --> $DIR/issue-38857.rs:2:18
    |
 LL |     let a = std::sys::imp::process::process_common::StdioPipes { ..panic!() };
    |                  ^^^ private module

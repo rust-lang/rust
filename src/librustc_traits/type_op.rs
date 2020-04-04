@@ -1,14 +1,14 @@
-use rustc::ty::query::Providers;
-use rustc::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
-use rustc::ty::{
-    FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable, Variance,
-};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
+use rustc_middle::ty::{
+    FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable, Variance,
+};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::infer::InferCtxtExt;

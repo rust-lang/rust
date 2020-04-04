@@ -12,14 +12,14 @@
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
 
-use rustc::mir::traversal::ReversePostorder;
-use rustc::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::*;
-use rustc::ty::cast::CastTy;
-use rustc::ty::subst::InternalSubsts;
-use rustc::ty::{self, List, TyCtxt, TypeFoldable};
 use rustc_ast::ast::LitKind;
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir::traversal::ReversePostorder;
+use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
+use rustc_middle::ty::cast::CastTy;
+use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::{self, List, TyCtxt, TypeFoldable};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -1064,16 +1064,15 @@ pub fn promote_candidates<'tcx>(
         match candidate {
             Candidate::Repeat(Location { block, statement_index })
             | Candidate::Ref(Location { block, statement_index }) => {
-                match &body[block].statements[statement_index].kind {
-                    StatementKind::Assign(box (place, _)) => {
-                        if let Some(local) = place.as_local() {
-                            if temps[local] == TempState::PromotedOut {
-                                // Already promoted.
-                                continue;
-                            }
+                if let StatementKind::Assign(box (place, _)) =
+                    &body[block].statements[statement_index].kind
+                {
+                    if let Some(local) = place.as_local() {
+                        if temps[local] == TempState::PromotedOut {
+                            // Already promoted.
+                            continue;
                         }
                     }
-                    _ => {}
                 }
             }
             Candidate::Argument { .. } => {}
@@ -1137,15 +1136,12 @@ pub fn promote_candidates<'tcx>(
             _ => true,
         });
         let terminator = block.terminator_mut();
-        match &terminator.kind {
-            TerminatorKind::Drop { location: place, target, .. } => {
-                if let Some(index) = place.as_local() {
-                    if promoted(index) {
-                        terminator.kind = TerminatorKind::Goto { target: *target };
-                    }
+        if let TerminatorKind::Drop { location: place, target, .. } = &terminator.kind {
+            if let Some(index) = place.as_local() {
+                if promoted(index) {
+                    terminator.kind = TerminatorKind::Goto { target: *target };
                 }
             }
-            _ => {}
         }
     }
 

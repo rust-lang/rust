@@ -577,7 +577,7 @@ pub struct Scalar {
     pub value: Primitive,
 
     /// Inclusive wrap-around range of valid values, that is, if
-    /// start > end, it represents `start..=max_value()`,
+    /// start > end, it represents `start..=MAX`,
     /// followed by `0..=end`.
     ///
     /// That is, for an i8 primitive, a range of `254..=2` means following
@@ -618,7 +618,7 @@ impl Scalar {
 
 /// Describes how the fields of a type are located in memory.
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub enum FieldPlacement {
+pub enum FieldsShape {
     /// All fields start at no offset. The `usize` is the field count.
     ///
     /// In the case of primitives the number of fields is `0`.
@@ -657,38 +657,38 @@ pub enum FieldPlacement {
     },
 }
 
-impl FieldPlacement {
+impl FieldsShape {
     pub fn count(&self) -> usize {
         match *self {
-            FieldPlacement::Union(count) => count,
-            FieldPlacement::Array { count, .. } => {
+            FieldsShape::Union(count) => count,
+            FieldsShape::Array { count, .. } => {
                 let usize_count = count as usize;
                 assert_eq!(usize_count as u64, count);
                 usize_count
             }
-            FieldPlacement::Arbitrary { ref offsets, .. } => offsets.len(),
+            FieldsShape::Arbitrary { ref offsets, .. } => offsets.len(),
         }
     }
 
     pub fn offset(&self, i: usize) -> Size {
         match *self {
-            FieldPlacement::Union(count) => {
+            FieldsShape::Union(count) => {
                 assert!(i < count, "tried to access field {} of union with {} fields", i, count);
                 Size::ZERO
             }
-            FieldPlacement::Array { stride, count } => {
+            FieldsShape::Array { stride, count } => {
                 let i = u64::try_from(i).unwrap();
                 assert!(i < count);
                 stride * i
             }
-            FieldPlacement::Arbitrary { ref offsets, .. } => offsets[i],
+            FieldsShape::Arbitrary { ref offsets, .. } => offsets[i],
         }
     }
 
     pub fn memory_index(&self, i: usize) -> usize {
         match *self {
-            FieldPlacement::Union(_) | FieldPlacement::Array { .. } => i,
-            FieldPlacement::Arbitrary { ref memory_index, .. } => {
+            FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
+            FieldsShape::Arbitrary { ref memory_index, .. } => {
                 let r = memory_index[i];
                 assert_eq!(r as usize as u32, r);
                 r as usize
@@ -704,7 +704,7 @@ impl FieldPlacement {
         let use_small = self.count() <= inverse_small.len();
 
         // We have to write this logic twice in order to keep the array small.
-        if let FieldPlacement::Arbitrary { ref memory_index, .. } = *self {
+        if let FieldsShape::Arbitrary { ref memory_index, .. } = *self {
             if use_small {
                 for i in 0..self.count() {
                     inverse_small[memory_index[i] as usize] = i as u8;
@@ -718,8 +718,8 @@ impl FieldPlacement {
         }
 
         (0..self.count()).map(move |i| match *self {
-            FieldPlacement::Union(_) | FieldPlacement::Array { .. } => i,
-            FieldPlacement::Arbitrary { .. } => {
+            FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
+            FieldsShape::Arbitrary { .. } => {
                 if use_small {
                     inverse_small[i] as usize
                 } else {
@@ -888,7 +888,7 @@ impl Niche {
 pub struct Layout {
     /// Says where the fields are located within the layout.
     /// Primitives and uninhabited enums appear as unions without fields.
-    pub fields: FieldPlacement,
+    pub fields: FieldsShape,
 
     /// Encodes information about multi-variant layouts.
     /// Even with `Multiple` variants, a layout still has its own fields! Those are then
@@ -923,7 +923,7 @@ impl Layout {
         let align = scalar.value.align(cx);
         Layout {
             variants: Variants::Single { index: VariantIdx::new(0) },
-            fields: FieldPlacement::Union(0),
+            fields: FieldsShape::Union(0),
             abi: Abi::Scalar(scalar),
             largest_niche,
             size,
@@ -939,14 +939,13 @@ impl Layout {
 /// to that obtained from `layout_of(ty)`, as we need to produce
 /// layouts for which Rust types do not exist, such as enum variants
 /// or synthetic fields of enums (i.e., discriminants) and fat pointers.
-// FIXME: rename to TyAndLayout.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct TyLayout<'a, Ty> {
+pub struct TyAndLayout<'a, Ty> {
     pub ty: Ty,
     pub layout: &'a Layout,
 }
 
-impl<'a, Ty> Deref for TyLayout<'a, Ty> {
+impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
     type Target = &'a Layout;
     fn deref(&self) -> &&'a Layout {
         &self.layout
@@ -956,15 +955,15 @@ impl<'a, Ty> Deref for TyLayout<'a, Ty> {
 /// Trait for context types that can compute layouts of things.
 pub trait LayoutOf {
     type Ty;
-    type TyLayout;
+    type TyAndLayout;
 
-    fn layout_of(&self, ty: Self::Ty) -> Self::TyLayout;
-    fn spanned_layout_of(&self, ty: Self::Ty, _span: Span) -> Self::TyLayout {
+    fn layout_of(&self, ty: Self::Ty) -> Self::TyAndLayout;
+    fn spanned_layout_of(&self, ty: Self::Ty, _span: Span) -> Self::TyAndLayout {
         self.layout_of(ty)
     }
 }
 
-/// The `TyLayout` above will always be a `MaybeResult<TyLayout<'_, Self>>`.
+/// The `TyAndLayout` above will always be a `MaybeResult<TyAndLayout<'_, Self>>`.
 /// We can't add the bound due to the lifetime, but this trait is still useful when
 /// writing code that's generic over the `LayoutOf` impl.
 pub trait MaybeResult<T> {
@@ -1018,30 +1017,30 @@ pub struct PointeeInfo {
     pub safe: Option<PointerKind>,
 }
 
-pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
+pub trait TyAndLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
     fn for_variant(
-        this: TyLayout<'a, Self>,
+        this: TyAndLayout<'a, Self>,
         cx: &C,
         variant_index: VariantIdx,
-    ) -> TyLayout<'a, Self>;
-    fn field(this: TyLayout<'a, Self>, cx: &C, i: usize) -> C::TyLayout;
-    fn pointee_info_at(this: TyLayout<'a, Self>, cx: &C, offset: Size) -> Option<PointeeInfo>;
+    ) -> TyAndLayout<'a, Self>;
+    fn field(this: TyAndLayout<'a, Self>, cx: &C, i: usize) -> C::TyAndLayout;
+    fn pointee_info_at(this: TyAndLayout<'a, Self>, cx: &C, offset: Size) -> Option<PointeeInfo>;
 }
 
-impl<'a, Ty> TyLayout<'a, Ty> {
+impl<'a, Ty> TyAndLayout<'a, Ty> {
     pub fn for_variant<C>(self, cx: &C, variant_index: VariantIdx) -> Self
     where
-        Ty: TyLayoutMethods<'a, C>,
+        Ty: TyAndLayoutMethods<'a, C>,
         C: LayoutOf<Ty = Ty>,
     {
         Ty::for_variant(self, cx, variant_index)
     }
 
-    /// Callers might want to use `C: LayoutOf<Ty=Ty, TyLayout: MaybeResult<Self>>`
+    /// Callers might want to use `C: LayoutOf<Ty=Ty, TyAndLayout: MaybeResult<Self>>`
     /// to allow recursion (see `might_permit_zero_init` below for an example).
-    pub fn field<C>(self, cx: &C, i: usize) -> C::TyLayout
+    pub fn field<C>(self, cx: &C, i: usize) -> C::TyAndLayout
     where
-        Ty: TyLayoutMethods<'a, C>,
+        Ty: TyAndLayoutMethods<'a, C>,
         C: LayoutOf<Ty = Ty>,
     {
         Ty::field(self, cx, i)
@@ -1049,14 +1048,14 @@ impl<'a, Ty> TyLayout<'a, Ty> {
 
     pub fn pointee_info_at<C>(self, cx: &C, offset: Size) -> Option<PointeeInfo>
     where
-        Ty: TyLayoutMethods<'a, C>,
+        Ty: TyAndLayoutMethods<'a, C>,
         C: LayoutOf<Ty = Ty>,
     {
         Ty::pointee_info_at(self, cx, offset)
     }
 }
 
-impl<'a, Ty> TyLayout<'a, Ty> {
+impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// Returns `true` if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         self.abi.is_unsized()
@@ -1083,8 +1082,8 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     pub fn might_permit_raw_init<C, E>(self, cx: &C, zero: bool) -> Result<bool, E>
     where
         Self: Copy,
-        Ty: TyLayoutMethods<'a, C>,
-        C: LayoutOf<Ty = Ty, TyLayout: MaybeResult<Self, Error = E>> + HasDataLayout,
+        Ty: TyAndLayoutMethods<'a, C>,
+        C: LayoutOf<Ty = Ty, TyAndLayout: MaybeResult<Self, Error = E>> + HasDataLayout,
     {
         let scalar_allows_raw_init = move |s: &Scalar| -> bool {
             if zero {

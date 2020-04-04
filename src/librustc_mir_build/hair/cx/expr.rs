@@ -3,14 +3,16 @@ use crate::hair::cx::to_ref::ToRef;
 use crate::hair::cx::Cx;
 use crate::hair::util::UserAnnotatedTyHelpers;
 use crate::hair::*;
-use rustc::mir::interpret::Scalar;
-use rustc::mir::BorrowKind;
-use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast};
-use rustc::ty::subst::{InternalSubsts, SubstsRef};
-use rustc::ty::{self, AdtKind, Ty};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_index::vec::Idx;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::BorrowKind;
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast,
+};
+use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
+use rustc_middle::ty::{self, AdtKind, Ty};
 use rustc_span::Span;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr<'tcx> {
@@ -478,7 +480,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                             ) => {
                                 let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
                                 let (d, o) = adt_def.discriminant_def_for_variant(idx);
-                                use rustc::ty::util::IntTypeExt;
+                                use rustc_middle::ty::util::IntTypeExt;
                                 let ty = adt_def.repr.discr_type();
                                 let ty = ty.to_ty(cx.tcx());
                                 Some((d, o, ty))
@@ -631,7 +633,7 @@ trait ToBorrowKind {
 
 impl ToBorrowKind for AutoBorrowMutability {
     fn to_borrow_kind(&self) -> BorrowKind {
-        use rustc::ty::adjustment::AllowTwoPhase;
+        use rustc_middle::ty::adjustment::AllowTwoPhase;
         match *self {
             AutoBorrowMutability::Mut { allow_two_phase_borrow } => BorrowKind::Mut {
                 allow_two_phase_borrow: match allow_two_phase_borrow {

@@ -13,9 +13,9 @@ mod private {
 /// Typically doesn’t need to be used directly.
 #[unstable(feature = "convert_float_to_int", issue = "67057")]
 pub trait FloatToInt<Int>: private::Sealed + Sized {
-    #[unstable(feature = "float_approx_unchecked_to", issue = "67058")]
+    #[unstable(feature = "convert_float_to_int", issue = "67057")]
     #[doc(hidden)]
-    unsafe fn approx_unchecked(self) -> Int;
+    unsafe fn to_int_unchecked(self) -> Int;
 }
 
 macro_rules! impl_float_to_int {
@@ -27,8 +27,15 @@ macro_rules! impl_float_to_int {
             impl FloatToInt<$Int> for $Float {
                 #[doc(hidden)]
                 #[inline]
-                unsafe fn approx_unchecked(self) -> $Int {
-                    crate::intrinsics::float_to_int_approx_unchecked(self)
+                unsafe fn to_int_unchecked(self) -> $Int {
+                    #[cfg(bootstrap)]
+                    {
+                        crate::intrinsics::float_to_int_approx_unchecked(self)
+                    }
+                    #[cfg(not(bootstrap))]
+                    {
+                        crate::intrinsics::float_to_int_unchecked(self)
+                    }
                 }
             }
         )+

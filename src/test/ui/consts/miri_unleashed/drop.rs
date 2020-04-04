@@ -1,8 +1,4 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
-// FIXME: missing sysroot spans (#53081)
-// ignore-i586-unknown-linux-gnu
-// ignore-i586-unknown-linux-musl
-// ignore-i686-unknown-linux-musl
 // error-pattern: calling non-const function `<std::vec::Vec<i32> as std::ops::Drop>::drop`
 #![deny(const_err)]
 

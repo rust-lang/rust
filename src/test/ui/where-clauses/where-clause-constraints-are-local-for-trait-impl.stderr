@@ -7,11 +7,10 @@ LL | fn require_copy<T: Copy>(x: T) {}
 LL |         require_copy(self.x);
    |                      ^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |
-help: consider restricting this type parameter with `T: std::marker::Copy`
-  --> $DIR/where-clause-constraints-are-local-for-trait-impl.rs:11:6
+help: consider restricting type parameter `T`
    |
-LL | impl<T> Foo<T> for Bar<T> {
-   |      ^
+LL | impl<T: std::marker::Copy> Foo<T> for Bar<T> {
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -5,14 +5,16 @@ use super::{
 use crate::infer::InferCtxt;
 use crate::traits::error_reporting::suggest_constraining_type_param;
 
-use rustc::ty::TypeckTables;
-use rustc::ty::{self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
+use rustc_middle::ty::TypeckTables;
+use rustc_middle::ty::{
+    self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
@@ -195,8 +197,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
-                | hir::Node::TraitItem(hir::TraitItem {
+                hir::Node::TraitItem(hir::TraitItem {
                     generics,
                     kind: hir::TraitItemKind::Fn(..),
                     ..
@@ -206,63 +207,31 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     kind: hir::ImplItemKind::Fn(..),
                     ..
                 })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(_, _, generics, _, _),
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Impl { generics, .. }, ..
-                }) if projection.is_some() => {
+                | hir::Node::Item(
+                    hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. }
+                    | hir::Item { kind: hir::ItemKind::Trait(_, _, generics, _, _), .. }
+                    | hir::Item { kind: hir::ItemKind::Impl { generics, .. }, .. },
+                ) if projection.is_some() => {
                     // Missing associated type bound.
                     suggest_restriction(&generics, "the associated type", err);
                     return;
                 }
 
-                hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Struct(_, generics),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Enum(_, generics), span, ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Union(_, generics),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(_, _, generics, ..),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Impl { generics, .. },
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Fn(_, generics, _),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::TyAlias(_, generics),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::TraitAlias(generics, _),
-                    span,
-                    ..
-                })
-                | hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
-                    span,
-                    ..
-                })
-                | hir::Node::TraitItem(hir::TraitItem { generics, span, .. })
-                | hir::Node::ImplItem(hir::ImplItem { generics, span, .. })
+                hir::Node::Item(
+                    hir::Item { kind: hir::ItemKind::Struct(_, generics), .. }
+                    | hir::Item { kind: hir::ItemKind::Enum(_, generics), .. }
+                    | hir::Item { kind: hir::ItemKind::Union(_, generics), .. }
+                    | hir::Item { kind: hir::ItemKind::Trait(_, _, generics, ..), .. }
+                    | hir::Item { kind: hir::ItemKind::Impl { generics, .. }, .. }
+                    | hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. }
+                    | hir::Item { kind: hir::ItemKind::TyAlias(_, generics), .. }
+                    | hir::Item { kind: hir::ItemKind::TraitAlias(generics, _), .. }
+                    | hir::Item {
+                        kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }), ..
+                    },
+                )
+                | hir::Node::TraitItem(hir::TraitItem { generics, .. })
+                | hir::Node::ImplItem(hir::ImplItem { generics, .. })
                     if param_ty =>
                 {
                     // Missing generic type parameter bound.
@@ -274,8 +243,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         &mut err,
                         &param_name,
                         &constraint,
-                        self.tcx.sess.source_map(),
-                        *span,
                         Some(trait_ref.def_id()),
                     ) {
                         return;
@@ -765,12 +732,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 true
             };
 
+        let sm = self.tcx.sess.source_map();
         let (snippet, last_ty) =
             if let (true, hir::TyKind::TraitObject(..), Ok(snippet), true, Some(last_ty)) = (
                 // Verify that we're dealing with a return `dyn Trait`
                 ret_ty.span.overlaps(span),
                 &ret_ty.kind,
-                self.tcx.sess.source_map().span_to_snippet(ret_ty.span),
+                sm.span_to_snippet(ret_ty.span),
                 // If any of the return types does not conform to the trait, then we can't
                 // suggest `impl Trait` nor trait objects, it is a type mismatch error.
                 all_returns_conform_to_trait,
@@ -808,26 +776,23 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             if is_object_safe {
                 // Suggest `-> Box<dyn Trait>` and `Box::new(returned_value)`.
                 // Get all the return values and collect their span and suggestion.
-                let mut suggestions = visitor
+                if let Some(mut suggestions) = visitor
                     .returns
                     .iter()
                     .map(|expr| {
-                        (
-                            expr.span,
-                            format!(
-                                "Box::new({})",
-                                self.tcx.sess.source_map().span_to_snippet(expr.span).unwrap()
-                            ),
-                        )
+                        let snip = sm.span_to_snippet(expr.span).ok()?;
+                        Some((expr.span, format!("Box::new({})", snip)))
                     })
-                    .collect::<Vec<_>>();
-                // Add the suggestion for the return type.
-                suggestions.push((ret_ty.span, format!("Box<dyn {}>", trait_obj)));
-                err.multipart_suggestion(
-                    "return a boxed trait object instead",
-                    suggestions,
-                    Applicability::MaybeIncorrect,
-                );
+                    .collect::<Option<Vec<_>>>()
+                {
+                    // Add the suggestion for the return type.
+                    suggestions.push((ret_ty.span, format!("Box<dyn {}>", trait_obj)));
+                    err.multipart_suggestion(
+                        "return a boxed trait object instead",
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             } else {
                 // This is currently not possible to trigger because E0038 takes precedence, but
                 // leave it in for completeness in case anything changes in an earlier stage.

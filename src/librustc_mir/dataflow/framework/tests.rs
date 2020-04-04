@@ -1,9 +1,9 @@
 //! A test for the logic that updates the state in a `ResultsCursor` during seek.
 
-use rustc::mir::{self, BasicBlock, Location};
-use rustc::ty;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir::{self, BasicBlock, Location};
+use rustc_middle::ty;
 use rustc_span::DUMMY_SP;
 
 use super::*;
@@ -223,7 +223,7 @@ impl Analysis<'tcx> for MockAnalysis<'tcx> {
         block: BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        _return_place: &mir::Place<'tcx>,
+        _return_place: mir::Place<'tcx>,
     ) {
         let location = self.body.terminator_loc(block);
         let idx = self.effect_at_target(SeekTarget::AfterAssumeCallReturns(location)).unwrap();

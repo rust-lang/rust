@@ -48,6 +48,7 @@ pub struct Config {
     pub ignore_git: bool,
     pub exclude: Vec<PathBuf>,
     pub rustc_error_format: Option<String>,
+    pub json_output: bool,
     pub test_compare_mode: bool,
     pub llvm_libunwind: bool,
 
@@ -415,6 +416,7 @@ impl Config {
         let mut config = Config::default_opts();
         config.exclude = flags.exclude;
         config.rustc_error_format = flags.rustc_error_format;
+        config.json_output = flags.json_output;
         config.on_fail = flags.on_fail;
         config.stage = flags.stage;
         config.jobs = flags.jobs.map(threads_from_config);

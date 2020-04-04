@@ -6,7 +6,7 @@
 #![recursion_limit = "256"]
 
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 #[macro_use]
 extern crate log;
 

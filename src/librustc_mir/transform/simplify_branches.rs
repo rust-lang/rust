@@ -1,8 +1,8 @@
 //! A pass that simplifies branches when their condition is known.
 
 use crate::transform::{MirPass, MirSource};
-use rustc::mir::*;
-use rustc::ty::TyCtxt;
+use rustc_middle::mir::*;
+use rustc_middle::ty::TyCtxt;
 
 use std::borrow::Cow;
 

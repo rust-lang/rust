@@ -1,21 +1,21 @@
 pub use crate::llvm::Type;
 
+use crate::abi::{FnAbiLlvmExt, LlvmType};
+use crate::common;
 use crate::context::CodegenCx;
 use crate::llvm;
 use crate::llvm::{Bool, False, True};
-use crate::value::Value;
-use rustc::bug;
-use rustc_codegen_ssa::traits::*;
-
-use crate::abi::{FnAbiLlvmExt, LlvmType};
-use crate::common;
 use crate::type_of::LayoutLlvmExt;
-use rustc::ty::layout::{self, Align, Size, TyLayout};
-use rustc::ty::Ty;
+use crate::value::Value;
 use rustc_ast::ast;
 use rustc_codegen_ssa::common::TypeKind;
+use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_middle::bug;
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::Ty;
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
+use rustc_target::abi::{Align, Integer, Size};
 
 use std::fmt;
 use std::ptr;
@@ -115,14 +115,14 @@ impl CodegenCx<'ll, 'tcx> {
 
     crate fn type_pointee_for_align(&self, align: Align) -> &'ll Type {
         // FIXME(eddyb) We could find a better approximation if ity.align < align.
-        let ity = layout::Integer::approximate_align(self, align);
+        let ity = Integer::approximate_align(self, align);
         self.type_from_integer(ity)
     }
 
     /// Return a LLVM type that has at most the required alignment,
     /// and exactly the required size, as a best-effort padding array.
     crate fn type_padding_filler(&self, size: Size, align: Align) -> &'ll Type {
-        let unit = layout::Integer::approximate_align(self, align);
+        let unit = Integer::approximate_align(self, align);
         let size = size.bytes();
         let unit_size = unit.size().bytes();
         assert_eq!(size % unit_size, 0);
@@ -250,24 +250,24 @@ impl Type {
 }
 
 impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn backend_type(&self, layout: TyLayout<'tcx>) -> &'ll Type {
+    fn backend_type(&self, layout: TyAndLayout<'tcx>) -> &'ll Type {
         layout.llvm_type(self)
     }
-    fn immediate_backend_type(&self, layout: TyLayout<'tcx>) -> &'ll Type {
+    fn immediate_backend_type(&self, layout: TyAndLayout<'tcx>) -> &'ll Type {
         layout.immediate_llvm_type(self)
     }
-    fn is_backend_immediate(&self, layout: TyLayout<'tcx>) -> bool {
+    fn is_backend_immediate(&self, layout: TyAndLayout<'tcx>) -> bool {
         layout.is_llvm_immediate()
     }
-    fn is_backend_scalar_pair(&self, layout: TyLayout<'tcx>) -> bool {
+    fn is_backend_scalar_pair(&self, layout: TyAndLayout<'tcx>) -> bool {
         layout.is_llvm_scalar_pair()
     }
-    fn backend_field_index(&self, layout: TyLayout<'tcx>, index: usize) -> u64 {
+    fn backend_field_index(&self, layout: TyAndLayout<'tcx>, index: usize) -> u64 {
         layout.llvm_field_index(index)
     }
     fn scalar_pair_element_backend_type(
         &self,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
         index: usize,
         immediate: bool,
     ) -> &'ll Type {

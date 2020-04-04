@@ -1849,6 +1849,21 @@ impl<'a, 'b> Pattern<'a> for &'b String {
     fn is_prefix_of(self, haystack: &'a str) -> bool {
         self[..].is_prefix_of(haystack)
     }
+
+    #[inline]
+    fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
+        self[..].strip_prefix_of(haystack)
+    }
+
+    #[inline]
+    fn is_suffix_of(self, haystack: &'a str) -> bool {
+        self[..].is_suffix_of(haystack)
+    }
+
+    #[inline]
+    fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str> {
+        self[..].strip_suffix_of(haystack)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

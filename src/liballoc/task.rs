@@ -12,10 +12,12 @@ use crate::sync::Arc;
 /// to the tasks that are executed on that executor.
 ///
 /// This trait is a memory-safe and ergonomic alternative to constructing a
-/// [`RawWaker`]. It supports the common executor design in which the data
-/// used to wake up a task is stored in an [`Arc`]. Some executors (especially
+/// [`RawWaker`]. It supports the common executor design in which the data used
+/// to wake up a task is stored in an [`Arc`][arc]. Some executors (especially
 /// those for embedded systems) cannot use this API, which is why [`RawWaker`]
 /// exists as an alternative for those systems.
+///
+/// [arc]: ../../std/sync/struct.Arc.html
 #[unstable(feature = "wake_trait", issue = "69912")]
 pub trait Wake {
     /// Wake this task.

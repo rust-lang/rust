@@ -1,8 +1,6 @@
 pub use crate::passes::BoxedResolver;
 use crate::util;
 
-use rustc::ty;
-use rustc::util::common::ErrorReported;
 use rustc_ast::ast::{self, MetaItemKind};
 use rustc_ast::token;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -10,7 +8,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::OnDrop;
 use rustc_errors::registry::Registry;
+use rustc_errors::ErrorReported;
 use rustc_lint::LintStore;
+use rustc_middle::ty;
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::config::{self, ErrorOutputType, Input, OutputFilenames};
 use rustc_session::early_error;

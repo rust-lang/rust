@@ -2,8 +2,6 @@ use std::cmp::Reverse;
 use std::ptr;
 
 use log::debug;
-use rustc::bug;
-use rustc::ty::{self, DefIdTree};
 use rustc_ast::ast::{self, Ident, Path};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast_pretty::pprust;
@@ -13,6 +11,8 @@ use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_middle::bug;
+use rustc_middle::ty::{self, DefIdTree};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;

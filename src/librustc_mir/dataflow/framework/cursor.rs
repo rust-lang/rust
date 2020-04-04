@@ -2,8 +2,8 @@
 
 use std::borrow::Borrow;
 
-use rustc::mir::{self, BasicBlock, Location, TerminatorKind};
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::{self, BasicBlock, Location, TerminatorKind};
 
 use super::{Analysis, Results};
 
@@ -135,14 +135,14 @@ where
                     target.block,
                     func,
                     args,
-                    return_place,
+                    *return_place,
                 );
             }
             TerminatorKind::Yield { resume, resume_arg, .. } => {
                 self.results.borrow().analysis.apply_yield_resume_effect(
                     &mut self.state,
                     *resume,
-                    resume_arg,
+                    *resume_arg,
                 );
             }
             _ => {}

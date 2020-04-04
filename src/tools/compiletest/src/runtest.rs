@@ -180,29 +180,25 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
 }
 
 fn print_diff(expected: &str, actual: &str, context_size: usize) {
-    write_diff(expected, actual, context_size, std::io::stdout());
-}
-
-fn write_diff(expected: &str, actual: &str, context_size: usize, mut dest: impl io::Write) {
     let diff_results = make_diff(expected, actual, context_size);
     for result in diff_results {
         let mut line_number = result.line_number;
         for line in result.lines {
             match line {
                 DiffLine::Expected(e) => {
-                    writeln!(dest, "-\t{}", e).unwrap();
+                    println!("-\t{}", e);
                     line_number += 1;
                 }
                 DiffLine::Context(c) => {
-                    writeln!(dest, "{}\t{}", line_number, c).unwrap();
+                    println!("{}\t{}", line_number, c);
                     line_number += 1;
                 }
                 DiffLine::Resulting(r) => {
-                    writeln!(dest, "+\t{}", r).unwrap();
+                    println!("+\t{}", r);
                 }
             }
         }
-        writeln!(dest).unwrap();
+        println!();
     }
 }
 
@@ -2517,7 +2513,7 @@ impl<'test> TestCx<'test> {
                     .filter(|s| !s.is_empty())
                     .map(|s| {
                         if cgu_has_crate_disambiguator {
-                            remove_crate_disambiguator_from_cgu(s)
+                            remove_crate_disambiguators_from_set_of_cgu_names(s)
                         } else {
                             s.to_string()
                         }
@@ -2566,6 +2562,16 @@ impl<'test> TestCx<'test> {
             new_name.replace_range(d1.start()..d1.end(), "");
 
             new_name
+        }
+
+        // The name of merged CGUs is constructed as the names of the original
+        // CGUs joined with "--". This function splits such composite CGU names
+        // and handles each component individually.
+        fn remove_crate_disambiguators_from_set_of_cgu_names(cgus: &str) -> String {
+            cgus.split("--")
+                .map(|cgu| remove_crate_disambiguator_from_cgu(cgu))
+                .collect::<Vec<_>>()
+                .join("--")
         }
     }
 

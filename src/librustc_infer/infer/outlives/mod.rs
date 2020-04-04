@@ -4,8 +4,8 @@ pub mod env;
 pub mod obligations;
 pub mod verify;
 
-use rustc::traits::query::OutlivesBound;
-use rustc::ty;
+use rustc_middle::traits::query::OutlivesBound;
+use rustc_middle::ty;
 
 pub fn explicit_outlives_bounds<'tcx>(
     param_env: ty::ParamEnv<'tcx>,

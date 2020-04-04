@@ -6,10 +6,10 @@ use crate::borrow_check::{
     region_infer::{Cause, RegionInferenceContext},
 };
 use crate::util::liveness::{self, DefUse};
-use rustc::mir::visit::{MirVisitable, PlaceContext, Visitor};
-use rustc::mir::{Body, Local, Location};
-use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::mir::visit::{MirVisitable, PlaceContext, Visitor};
+use rustc_middle::mir::{Body, Local, Location};
+use rustc_middle::ty::{RegionVid, TyCtxt};
 
 crate fn find<'tcx>(
     body: &Body<'tcx>,

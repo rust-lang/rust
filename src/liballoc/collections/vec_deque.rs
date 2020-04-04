@@ -959,6 +959,9 @@ impl<T> VecDeque<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
     ///
+    /// If [`make_contiguous`](#method.make_contiguous) was previously called, all elements
+    /// of the `VecDeque` will be in the first slice and the second slice will be empty.
+    ///
     /// # Examples
     ///
     /// ```
@@ -988,6 +991,9 @@ impl<T> VecDeque<T> {
 
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
+    ///
+    /// If [`make_contiguous`](#method.make_contiguous) was previously called, all elements
+    /// of the `VecDeque` will be in the first slice and the second slice will be empty.
     ///
     /// # Examples
     ///
@@ -2044,6 +2050,148 @@ impl<T> VecDeque<T> {
         }
     }
 
+    /// Rearranges the internal storage of this deque so it is one contiguous slice, which is then returned.
+    ///
+    /// This method does not allocate and does not change the order of the inserted elements.
+    /// As it returns a mutable slice, this can be used to sort or binary search a deque.
+    ///
+    /// Once the internal storage is contiguous, the [`as_slices`](#method.as_slices) and
+    /// [`as_mut_slices`](#method.as_mut_slices) methods will return the entire contents of the
+    /// `VecDeque` in a single slice.
+    ///
+    /// # Examples
+    ///
+    /// Sorting the content of a deque.
+    ///
+    /// ```
+    /// #![feature(deque_make_contiguous)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::with_capacity(15);
+    ///
+    /// buf.push_back(2);
+    /// buf.push_back(1);
+    /// buf.push_front(3);
+    ///
+    /// // sorting the deque
+    /// buf.make_contiguous().sort();
+    /// assert_eq!(buf.as_slices(), (&[1, 2, 3] as &[_], &[] as &[_]));
+    ///
+    /// // sorting it in reverse order
+    /// buf.make_contiguous().sort_by(|a, b| b.cmp(a));
+    /// assert_eq!(buf.as_slices(), (&[3, 2, 1] as &[_], &[] as &[_]));
+    /// ```
+    ///
+    /// Getting immutable access to the contiguous slice.
+    ///
+    /// ```rust
+    /// #![feature(deque_make_contiguous)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::new();
+    ///
+    /// buf.push_back(2);
+    /// buf.push_back(1);
+    /// buf.push_front(3);
+    ///
+    /// buf.make_contiguous();
+    /// if let (slice, &[]) = buf.as_slices() {
+    ///     // we can now be sure that `slice` contains all elements of the deque,
+    ///     // while still having immutable access to `buf`.
+    ///     assert_eq!(buf.len(), slice.len());
+    ///     assert_eq!(slice, &[3, 2, 1] as &[_]);
+    /// }
+    /// ```
+    #[unstable(feature = "deque_make_contiguous", issue = "none")]
+    pub fn make_contiguous(&mut self) -> &mut [T] {
+        if self.is_contiguous() {
+            let tail = self.tail;
+            let head = self.head;
+            return unsafe { &mut self.buffer_as_mut_slice()[tail..head] };
+        }
+
+        let buf = self.buf.ptr();
+        let cap = self.cap();
+        let len = self.len();
+
+        let free = self.tail - self.head;
+        let tail_len = cap - self.tail;
+
+        if free >= tail_len {
+            // there is enough free space to copy the tail in one go,
+            // this means that we first shift the head backwards, and then
+            // copy the tail to the correct position.
+            //
+            // from: DEFGH....ABC
+            // to:   ABCDEFGH....
+            unsafe {
+                ptr::copy(buf, buf.add(tail_len), self.head);
+                // ...DEFGH.ABC
+                ptr::copy_nonoverlapping(buf.add(self.tail), buf, tail_len);
+                // ABCDEFGH....
+
+                self.tail = 0;
+                self.head = len;
+            }
+        } else if free >= self.head {
+            // there is enough free space to copy the head in one go,
+            // this means that we first shift the tail forwards, and then
+            // copy the head to the correct position.
+            //
+            // from: FGH....ABCDE
+            // to:   ...ABCDEFGH.
+            unsafe {
+                ptr::copy(buf.add(self.tail), buf.add(self.head), tail_len);
+                // FGHABCDE....
+                ptr::copy_nonoverlapping(buf, buf.add(self.head + tail_len), self.head);
+                // ...ABCDEFGH.
+
+                self.tail = self.head;
+                self.head = self.tail + len;
+            }
+        } else {
+            // free is smaller than both head and tail,
+            // this means we have to slowly "swap" the tail and the head.
+            //
+            // from: EFGHI...ABCD or HIJK.ABCDEFG
+            // to:   ABCDEFGHI... or ABCDEFGHIJK.
+            let mut left_edge: usize = 0;
+            let mut right_edge: usize = self.tail;
+            unsafe {
+                // The general problem looks like this
+                // GHIJKLM...ABCDEF - before any swaps
+                // ABCDEFM...GHIJKL - after 1 pass of swaps
+                // ABCDEFGHIJM...KL - swap until the left edge reaches the temp store
+                //                  - then restart the algorithm with a new (smaller) store
+                // Sometimes the temp store is reached when the right edge is at the end
+                // of the buffer - this means we've hit the right order with fewer swaps!
+                // E.g
+                // EF..ABCD
+                // ABCDEF.. - after four only swaps we've finished
+                while left_edge < len && right_edge != cap {
+                    let mut right_offset = 0;
+                    for i in left_edge..right_edge {
+                        right_offset = (i - left_edge) % (cap - right_edge);
+                        let src: isize = (right_edge + right_offset) as isize;
+                        ptr::swap(buf.add(i), buf.offset(src));
+                    }
+                    let n_ops = right_edge - left_edge;
+                    left_edge += n_ops;
+                    right_edge += right_offset + 1;
+                }
+
+                self.tail = 0;
+                self.head = len;
+            }
+        }
+
+        let tail = self.tail;
+        let head = self.head;
+        unsafe { &mut self.buffer_as_mut_slice()[tail..head] }
+    }
+
     /// Rotates the double-ended queue `mid` places to the left.
     ///
     /// Equivalently,
@@ -2803,63 +2951,16 @@ impl<T> From<VecDeque<T>> for Vec<T> {
     /// assert_eq!(vec, [8, 9, 1, 2, 3, 4]);
     /// assert_eq!(vec.as_ptr(), ptr);
     /// ```
-    fn from(other: VecDeque<T>) -> Self {
+    fn from(mut other: VecDeque<T>) -> Self {
+        other.make_contiguous();
+
         unsafe {
             let buf = other.buf.ptr();
             let len = other.len();
-            let tail = other.tail;
-            let head = other.head;
             let cap = other.cap();
 
-            // Need to move the ring to the front of the buffer, as vec will expect this.
-            if other.is_contiguous() {
-                ptr::copy(buf.add(tail), buf, len);
-            } else {
-                if (tail - head) >= cmp::min(cap - tail, head) {
-                    // There is enough free space in the centre for the shortest block so we can
-                    // do this in at most three copy moves.
-                    if (cap - tail) > head {
-                        // right hand block is the long one; move that enough for the left
-                        ptr::copy(buf.add(tail), buf.add(tail - head), cap - tail);
-                        // copy left in the end
-                        ptr::copy(buf, buf.add(cap - head), head);
-                        // shift the new thing to the start
-                        ptr::copy(buf.add(tail - head), buf, len);
-                    } else {
-                        // left hand block is the long one, we can do it in two!
-                        ptr::copy(buf, buf.add(cap - tail), head);
-                        ptr::copy(buf.add(tail), buf, cap - tail);
-                    }
-                } else {
-                    // Need to use N swaps to move the ring
-                    // We can use the space at the end of the ring as a temp store
-
-                    let mut left_edge: usize = 0;
-                    let mut right_edge: usize = tail;
-
-                    // The general problem looks like this
-                    // GHIJKLM...ABCDEF - before any swaps
-                    // ABCDEFM...GHIJKL - after 1 pass of swaps
-                    // ABCDEFGHIJM...KL - swap until the left edge reaches the temp store
-                    //                  - then restart the algorithm with a new (smaller) store
-                    // Sometimes the temp store is reached when the right edge is at the end
-                    // of the buffer - this means we've hit the right order with fewer swaps!
-                    // E.g
-                    // EF..ABCD
-                    // ABCDEF.. - after four only swaps we've finished
-
-                    while left_edge < len && right_edge != cap {
-                        let mut right_offset = 0;
-                        for i in left_edge..right_edge {
-                            right_offset = (i - left_edge) % (cap - right_edge);
-                            let src: isize = (right_edge + right_offset) as isize;
-                            ptr::swap(buf.add(i), buf.offset(src));
-                        }
-                        let n_ops = right_edge - left_edge;
-                        left_edge += n_ops;
-                        right_edge += right_offset + 1;
-                    }
-                }
+            if other.head != 0 {
+                ptr::copy(buf.add(other.tail), buf, len);
             }
             let out = Vec::from_raw_parts(buf, len, cap);
             mem::forget(other);

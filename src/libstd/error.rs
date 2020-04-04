@@ -15,7 +15,7 @@
 
 use core::array;
 
-use crate::alloc::{AllocErr, CannotReallocInPlace, LayoutErr};
+use crate::alloc::{AllocErr, LayoutErr};
 use crate::any::TypeId;
 use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
@@ -408,13 +408,6 @@ impl Error for AllocErr {}
     issue = "32838"
 )]
 impl Error for LayoutErr {}
-
-#[unstable(
-    feature = "allocator_api",
-    reason = "the precise API and guarantees it provides may be tweaked.",
-    issue = "32838"
-)]
-impl Error for CannotReallocInPlace {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::ParseBoolError {

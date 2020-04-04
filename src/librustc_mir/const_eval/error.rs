@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt;
 
-use rustc::mir::AssertKind;
+use rustc_middle::mir::AssertKind;
 use rustc_span::Symbol;
 
 use super::InterpCx;
@@ -18,7 +18,7 @@ pub enum ConstEvalErrKind {
 }
 
 // The errors become `MachineStop` with plain strings when being raised.
-// `ConstEvalErr` (in `librustc/mir/interpret/error.rs`) knows to
+// `ConstEvalErr` (in `librustc_middle/mir/interpret/error.rs`) knows to
 // handle these.
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     fn into(self) -> InterpErrorInfo<'tcx> {
@@ -55,6 +55,6 @@ pub fn error_to_const_error<'mir, 'tcx, M: Machine<'mir, 'tcx>>(
     mut error: InterpErrorInfo<'tcx>,
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();
-    let stacktrace = ecx.generate_stacktrace(None);
+    let stacktrace = ecx.generate_stacktrace();
     ConstEvalErr { error: error.kind, stacktrace, span: ecx.tcx.span }
 }

@@ -1,5 +1,5 @@
 error: cannot find macro `printlx` in this scope
-  --> $DIR/macro-name-typo.rs:6:5
+  --> $DIR/macro-name-typo.rs:2:5
    |
 LL |     printlx!("oh noes!");
    |     ^^^^^^^ help: a macro with a similar name exists: `println`

@@ -9,7 +9,7 @@ name = "rustc_privacy"
 path = "lib.rs"
 
 [dependencies]
-rustc = { path = "../librustc" }
+rustc_middle = { path = "../librustc_middle" }
 rustc_attr = { path = "../librustc_attr" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_hir = { path = "../librustc_hir" }

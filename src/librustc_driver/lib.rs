@@ -18,23 +18,20 @@ extern crate lazy_static;
 
 pub extern crate rustc_plugin_impl as plugin;
 
-use rustc::middle::cstore::MetadataLoader;
-use rustc::ty::TyCtxt;
-use rustc::util::common::ErrorReported;
 use rustc_ast::ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
 use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::SeqCst;
-use rustc_errors::{
-    registry::{InvalidErrorCode, Registry},
-    PResult,
-};
+use rustc_errors::registry::{InvalidErrorCode, Registry};
+use rustc_errors::{ErrorReported, PResult};
 use rustc_feature::{find_gated_cfg, UnstableFeatures};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::util::{collect_crate_types, get_builtin_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
 use rustc_metadata::locator;
+use rustc_middle::middle::cstore::MetadataLoader;
+use rustc_middle::ty::TyCtxt;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_serialize::json::{self, ToJson};

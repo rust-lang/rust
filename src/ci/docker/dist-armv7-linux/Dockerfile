@@ -3,8 +3,8 @@ FROM ubuntu:16.04
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY dist-armv7-linux/crosstool-ng.sh /scripts/
-RUN sh /scripts/crosstool-ng.sh
+COPY scripts/crosstool-ng-1.24.sh /scripts/
+RUN sh /scripts/crosstool-ng-1.24.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh

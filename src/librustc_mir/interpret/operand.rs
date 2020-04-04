@@ -2,21 +2,21 @@
 //! All high-level functions to read from memory work on operands as sources.
 
 use std::convert::TryFrom;
+use std::fmt::Write;
 
-use super::{InterpCx, MPlaceTy, Machine, MemPlace, Place, PlaceTy};
-pub use rustc::mir::interpret::ScalarMaybeUndef;
-use rustc::mir::interpret::{
-    sign_extend, truncate, AllocId, ConstValue, GlobalId, InterpResult, Pointer, Scalar,
-};
-use rustc::ty::layout::{
-    self, HasDataLayout, IntegerExt, LayoutOf, PrimitiveExt, Size, TyLayout, VariantIdx,
-};
-use rustc::ty::print::{FmtPrinter, PrettyPrinter, Printer};
-use rustc::ty::Ty;
-use rustc::{mir, ty};
 use rustc_hir::def::Namespace;
 use rustc_macros::HashStable;
-use std::fmt::Write;
+use rustc_middle::ty::layout::{IntegerExt, PrimitiveExt, TyAndLayout};
+use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
+use rustc_middle::ty::Ty;
+use rustc_middle::{mir, ty};
+use rustc_target::abi::{Abi, DiscriminantKind, HasDataLayout, Integer, LayoutOf, Size};
+use rustc_target::abi::{VariantIdx, Variants};
+
+use super::{
+    from_known_layout, sign_extend, truncate, AllocId, ConstValue, GlobalId, InterpCx,
+    InterpResult, MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUndef,
+};
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
 ///
@@ -88,7 +88,7 @@ impl<'tcx, Tag> Immediate<Tag> {
 #[derive(Copy, Clone, Debug)]
 pub struct ImmTy<'tcx, Tag = ()> {
     pub(crate) imm: Immediate<Tag>,
-    pub layout: TyLayout<'tcx>,
+    pub layout: TyAndLayout<'tcx>,
 }
 
 impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
@@ -152,7 +152,7 @@ pub enum Operand<Tag = (), Id = AllocId> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct OpTy<'tcx, Tag = ()> {
     op: Operand<Tag>, // Keep this private; it helps enforce invariants.
-    pub layout: TyLayout<'tcx>,
+    pub layout: TyAndLayout<'tcx>,
 }
 
 impl<'tcx, Tag> ::std::ops::Deref for OpTy<'tcx, Tag> {
@@ -179,50 +179,27 @@ impl<'tcx, Tag> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
 
 impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     #[inline]
-    pub fn from_scalar(val: Scalar<Tag>, layout: TyLayout<'tcx>) -> Self {
+    pub fn from_scalar(val: Scalar<Tag>, layout: TyAndLayout<'tcx>) -> Self {
         ImmTy { imm: val.into(), layout }
     }
 
     #[inline]
-    pub fn try_from_uint(i: impl Into<u128>, layout: TyLayout<'tcx>) -> Option<Self> {
+    pub fn try_from_uint(i: impl Into<u128>, layout: TyAndLayout<'tcx>) -> Option<Self> {
         Some(Self::from_scalar(Scalar::try_from_uint(i, layout.size)?, layout))
     }
     #[inline]
-    pub fn from_uint(i: impl Into<u128>, layout: TyLayout<'tcx>) -> Self {
+    pub fn from_uint(i: impl Into<u128>, layout: TyAndLayout<'tcx>) -> Self {
         Self::from_scalar(Scalar::from_uint(i, layout.size), layout)
     }
 
     #[inline]
-    pub fn try_from_int(i: impl Into<i128>, layout: TyLayout<'tcx>) -> Option<Self> {
+    pub fn try_from_int(i: impl Into<i128>, layout: TyAndLayout<'tcx>) -> Option<Self> {
         Some(Self::from_scalar(Scalar::try_from_int(i, layout.size)?, layout))
     }
 
     #[inline]
-    pub fn from_int(i: impl Into<i128>, layout: TyLayout<'tcx>) -> Self {
+    pub fn from_int(i: impl Into<i128>, layout: TyAndLayout<'tcx>) -> Self {
         Self::from_scalar(Scalar::from_int(i, layout.size), layout)
-    }
-}
-
-// Use the existing layout if given (but sanity check in debug mode),
-// or compute the layout.
-#[inline(always)]
-pub(super) fn from_known_layout<'tcx>(
-    layout: Option<TyLayout<'tcx>>,
-    compute: impl FnOnce() -> InterpResult<'tcx, TyLayout<'tcx>>,
-) -> InterpResult<'tcx, TyLayout<'tcx>> {
-    match layout {
-        None => compute(),
-        Some(layout) => {
-            if cfg!(debug_assertions) {
-                let layout2 = compute()?;
-                assert_eq!(
-                    layout.layout, layout2.layout,
-                    "mismatch in layout of supposedly equal-layout types {:?} and {:?}",
-                    layout.ty, layout2.ty
-                );
-            }
-            Ok(layout)
-        }
     }
 }
 
@@ -266,7 +243,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         match mplace.layout.abi {
-            layout::Abi::Scalar(..) => {
+            Abi::Scalar(..) => {
                 let scalar = self.memory.get_raw(ptr.alloc_id)?.read_scalar(
                     self,
                     ptr,
@@ -274,7 +251,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )?;
                 Ok(Some(ImmTy { imm: scalar.into(), layout: mplace.layout }))
             }
-            layout::Abi::ScalarPair(ref a, ref b) => {
+            Abi::ScalarPair(ref a, ref b) => {
                 // We checked `ptr_align` above, so all fields will have the alignment they need.
                 // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
@@ -415,7 +392,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         base: OpTy<'tcx, M::PointerTag>,
         proj_elem: &mir::PlaceElem<'tcx>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        use rustc::mir::ProjectionElem::*;
+        use rustc_middle::mir::ProjectionElem::*;
         Ok(match *proj_elem {
             Field(field, _) => self.operand_field(base, field.index())?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
@@ -434,7 +411,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         frame: &super::Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local,
-        layout: Option<TyLayout<'tcx>>,
+        layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         assert_ne!(local, mir::RETURN_PLACE);
         let layout = self.layout_of_local(frame, local, layout)?;
@@ -464,8 +441,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     // avoid allocations.
     pub fn eval_place_to_op(
         &self,
-        place: &mir::Place<'tcx>,
-        layout: Option<TyLayout<'tcx>>,
+        place: mir::Place<'tcx>,
+        layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let base_op = match place.local {
             mir::RETURN_PLACE => throw_ub!(ReadFromReturnPlace),
@@ -493,12 +470,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn eval_operand(
         &self,
         mir_op: &mir::Operand<'tcx>,
-        layout: Option<TyLayout<'tcx>>,
+        layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        use rustc::mir::Operand::*;
+        use rustc_middle::mir::Operand::*;
         let op = match *mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location
-            Copy(ref place) | Move(ref place) => self.eval_place_to_op(place, layout)?,
+            Copy(place) | Move(place) => self.eval_place_to_op(place, layout)?,
 
             Constant(ref constant) => {
                 let val =
@@ -525,7 +502,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     crate fn eval_const_to_op(
         &self,
         val: &ty::Const<'tcx>,
-        layout: Option<TyLayout<'tcx>>,
+        layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let tag_scalar = |scalar| match scalar {
             Scalar::Ptr(ptr) => Scalar::Ptr(self.tag_global_base_pointer(ptr)),
@@ -587,7 +564,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("read_discriminant_value {:#?}", rval.layout);
 
         let (discr_layout, discr_kind, discr_index) = match rval.layout.variants {
-            layout::Variants::Single { index } => {
+            Variants::Single { index } => {
                 let discr_val = rval
                     .layout
                     .ty
@@ -595,12 +572,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     .map_or(u128::from(index.as_u32()), |discr| discr.val);
                 return Ok((discr_val, index));
             }
-            layout::Variants::Multiple {
-                discr: ref discr_layout,
-                ref discr_kind,
-                discr_index,
-                ..
-            } => (discr_layout, discr_kind, discr_index),
+            Variants::Multiple { discr: ref discr_layout, ref discr_kind, discr_index, .. } => {
+                (discr_layout, discr_kind, discr_index)
+            }
         };
 
         // read raw discriminant value
@@ -610,7 +584,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("discr value: {:?}", raw_discr);
         // post-process
         Ok(match *discr_kind {
-            layout::DiscriminantKind::Tag => {
+            DiscriminantKind::Tag => {
                 let bits_discr = raw_discr
                     .not_undef()
                     .and_then(|raw_discr| self.force_bits(raw_discr, discr_val.layout.size))
@@ -627,7 +601,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .expect("tagged layout corresponds to adt")
                         .repr
                         .discr_type();
-                    let size = layout::Integer::from_attr(self, discr_ty).size();
+                    let size = Integer::from_attr(self, discr_ty).size();
                     truncate(sexted, size)
                 } else {
                     bits_discr
@@ -648,11 +622,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 .ok_or_else(|| err_ub!(InvalidDiscriminant(raw_discr.erase_tag())))?;
                 (real_discr, index.0)
             }
-            layout::DiscriminantKind::Niche {
-                dataful_variant,
-                ref niche_variants,
-                niche_start,
-            } => {
+            DiscriminantKind::Niche { dataful_variant, ref niche_variants, niche_start } => {
                 let variants_start = niche_variants.start().as_u32();
                 let variants_end = niche_variants.end().as_u32();
                 let raw_discr = raw_discr

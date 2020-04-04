@@ -9,12 +9,6 @@ mod simplify;
 pub mod types;
 pub mod utils;
 
-use rustc::middle::lang_items;
-use rustc::middle::resolve_lifetime as rl;
-use rustc::middle::stability;
-use rustc::ty::fold::TypeFolder;
-use rustc::ty::subst::InternalSubsts;
-use rustc::ty::{self, AdtKind, Lift, Ty, TyCtxt};
 use rustc_ast::ast::{self, Ident};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -23,6 +17,11 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
+use rustc_middle::middle::resolve_lifetime as rl;
+use rustc_middle::middle::stability;
+use rustc_middle::ty::fold::TypeFolder;
+use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::{self, AdtKind, Lift, Ty, TyCtxt};
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym};
@@ -480,7 +479,7 @@ impl Clean<WherePredicate> for hir::WherePredicate<'_> {
 
 impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
-        use rustc::ty::Predicate;
+        use rustc_middle::ty::Predicate;
 
         match *self {
             Predicate::Trait(ref pred, _) => Some(pred.clean(cx)),
@@ -521,11 +520,8 @@ impl<'tcx> Clean<Option<WherePredicate>>
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
         let ty::OutlivesPredicate(ref a, ref b) = *self;
 
-        match (a, b) {
-            (ty::ReEmpty(_), ty::ReEmpty(_)) => {
-                return None;
-            }
-            _ => {}
+        if let (ty::ReEmpty(_), ty::ReEmpty(_)) = (a, b) {
+            return None;
         }
 
         Some(WherePredicate::RegionPredicate {
@@ -539,9 +535,8 @@ impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty:
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
         let ty::OutlivesPredicate(ref ty, ref lt) = *self;
 
-        match lt {
-            ty::ReEmpty(_) => return None,
-            _ => {}
+        if let ty::ReEmpty(_) = lt {
+            return None;
         }
 
         Some(WherePredicate::BoundPredicate {
@@ -2186,7 +2181,7 @@ impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
                 cx,
                 res,
                 self.name,
-                Some(rustc::ty::Attributes::Borrowed(self.attrs)),
+                Some(rustc_middle::ty::Attributes::Borrowed(self.attrs)),
                 &mut visited,
             ) {
                 return items;
@@ -2239,15 +2234,12 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
         } else {
             let name = self.name;
             if !please_inline {
-                match path.res {
-                    Res::Def(DefKind::Mod, did) => {
-                        if !did.is_local() && did.index == CRATE_DEF_INDEX {
-                            // if we're `pub use`ing an extern crate root, don't inline it unless we
-                            // were specifically asked for it
-                            denied = true;
-                        }
+                if let Res::Def(DefKind::Mod, did) = path.res {
+                    if !did.is_local() && did.index == CRATE_DEF_INDEX {
+                        // if we're `pub use`ing an extern crate root, don't inline it unless we
+                        // were specifically asked for it
+                        denied = true;
                     }
-                    _ => {}
                 }
             }
             if !denied {
@@ -2256,7 +2248,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                     cx,
                     path.res,
                     name,
-                    Some(rustc::ty::Attributes::Borrowed(self.attrs)),
+                    Some(rustc_middle::ty::Attributes::Borrowed(self.attrs)),
                     &mut visited,
                 ) {
                     return items;
@@ -2426,10 +2418,9 @@ impl From<GenericBound> for SimpleBound {
             GenericBound::TraitBound(t, mod_) => match t.trait_ {
                 Type::ResolvedPath { path, param_names, .. } => SimpleBound::TraitBound(
                     path.segments,
-                    param_names.map_or_else(
-                        || Vec::new(),
-                        |v| v.iter().map(|p| SimpleBound::from(p.clone())).collect(),
-                    ),
+                    param_names.map_or_else(Vec::new, |v| {
+                        v.iter().map(|p| SimpleBound::from(p.clone())).collect()
+                    }),
                     t.generic_params,
                     mod_,
                 ),

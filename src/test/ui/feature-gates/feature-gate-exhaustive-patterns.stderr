@@ -1,5 +1,5 @@
 error[E0005]: refutable pattern in local binding: `Err(_)` not covered
-  --> $DIR/feature-gate-exhaustive-patterns.rs:13:9
+  --> $DIR/feature-gate-exhaustive-patterns.rs:8:9
    |
 LL |     let Ok(_x) = foo();
    |         ^^^^^^ pattern `Err(_)` not covered

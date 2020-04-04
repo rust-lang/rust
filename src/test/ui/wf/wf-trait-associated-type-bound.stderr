@@ -7,11 +7,10 @@ LL | trait ExtraCopy<T:Copy> { }
 LL |     type Type1: ExtraCopy<T>;
    |                 ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |
-help: consider restricting this type parameter with `T: std::marker::Copy`
-  --> $DIR/wf-trait-associated-type-bound.rs:9:17
+help: consider restricting type parameter `T`
    |
-LL | trait SomeTrait<T> {
-   |                 ^
+LL | trait SomeTrait<T: std::marker::Copy> {
+   |                  ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

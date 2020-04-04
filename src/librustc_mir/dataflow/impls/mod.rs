@@ -2,11 +2,11 @@
 //! bitvectors attached to each basic block, represented via a
 //! zero-sized structure.
 
-use rustc::mir::{self, Body, Location};
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::{self, TyCtxt};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
+use rustc_middle::mir::{self, Body, Location};
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_target::abi::VariantIdx;
 
 use super::MoveDataParamEnv;
 
@@ -323,7 +323,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         _block: mir::BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        dest_place: &mir::Place<'tcx>,
+        dest_place: mir::Place<'tcx>,
     ) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 1 (initialized).
@@ -342,7 +342,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         &self,
         trans: &mut impl GenKill<Self::Idx>,
         _block: mir::BasicBlock,
-        enum_place: &mir::Place<'tcx>,
+        enum_place: mir::Place<'tcx>,
         _adt: &ty::AdtDef,
         variant: VariantIdx,
     ) {
@@ -425,7 +425,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         _block: mir::BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        dest_place: &mir::Place<'tcx>,
+        dest_place: mir::Place<'tcx>,
     ) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 0 (initialized).
@@ -494,7 +494,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
         _block: mir::BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        dest_place: &mir::Place<'tcx>,
+        dest_place: mir::Place<'tcx>,
     ) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 1 (initialized).
@@ -544,18 +544,15 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         );
         trans.gen_all(init_loc_map[location].iter().copied());
 
-        match stmt.kind {
-            mir::StatementKind::StorageDead(local) => {
-                // End inits for StorageDead, so that an immutable variable can
-                // be reinitialized on the next iteration of the loop.
-                let move_path_index = rev_lookup.find_local(local);
-                debug!(
-                    "stmt {:?} at loc {:?} clears the ever initialized status of {:?}",
-                    stmt, location, &init_path_map[move_path_index]
-                );
-                trans.kill_all(init_path_map[move_path_index].iter().copied());
-            }
-            _ => {}
+        if let mir::StatementKind::StorageDead(local) = stmt.kind {
+            // End inits for StorageDead, so that an immutable variable can
+            // be reinitialized on the next iteration of the loop.
+            let move_path_index = rev_lookup.find_local(local);
+            debug!(
+                "stmt {:?} at loc {:?} clears the ever initialized status of {:?}",
+                stmt, location, &init_path_map[move_path_index]
+            );
+            trans.kill_all(init_path_map[move_path_index].iter().copied());
         }
     }
 
@@ -588,7 +585,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         block: mir::BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        _dest_place: &mir::Place<'tcx>,
+        _dest_place: mir::Place<'tcx>,
     ) {
         let move_data = self.move_data();
         let init_loc_map = &move_data.init_loc_map;

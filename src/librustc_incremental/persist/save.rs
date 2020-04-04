@@ -1,7 +1,7 @@
-use rustc::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
-use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::join;
+use rustc_middle::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
+use rustc_middle::ty::TyCtxt;
 use rustc_serialize::opaque::Encoder;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_session::Session;

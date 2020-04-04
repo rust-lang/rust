@@ -1,8 +1,8 @@
-use rustc::mir::{BasicBlock, ConstraintCategory, Local, Location, ReadOnlyBodyAndCache};
-use rustc::ty::{Ty, TypeFoldable};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::HybridBitSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
+use rustc_middle::mir::{BasicBlock, ConstraintCategory, Local, Location, ReadOnlyBodyAndCache};
+use rustc_middle::ty::{Ty, TypeFoldable};
 use rustc_trait_selection::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::TypeOp;

@@ -5,10 +5,10 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
-use rustc::ty::query::Providers;
-use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 

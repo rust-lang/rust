@@ -4,18 +4,17 @@
 
 use std::convert::TryFrom;
 
-use rustc::mir::{
+use rustc_hir::def_id::DefId;
+use rustc_middle::mir::{
     self,
     interpret::{ConstValue, GlobalId, InterpResult, Scalar},
     BinOp,
 };
-use rustc::ty;
-use rustc::ty::layout::{LayoutOf, Primitive, Size};
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::TyCtxt;
-use rustc_hir::def_id::DefId;
+use rustc_middle::ty;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
+use rustc_target::abi::{Abi, LayoutOf as _, Primitive, Size};
 
 use super::{ImmTy, InterpCx, Machine, OpTy, PlaceTy};
 
@@ -78,7 +77,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `true` if emulation happened.
     pub fn emulate_intrinsic(
         &mut self,
-        span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
         ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
@@ -98,10 +96,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         // Keep the patterns in this match ordered the same as the list in
-        // `src/librustc/ty/constness.rs`
+        // `src/librustc_middle/ty/constness.rs`
         match intrinsic_name {
             sym::caller_location => {
-                let span = self.find_closest_untracked_caller_location().unwrap_or(span);
+                let span = self.find_closest_untracked_caller_location();
                 let location = self.alloc_caller_location_for_span(span);
                 self.write_scalar(location.ptr, dest)?;
             }
@@ -118,7 +116,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::needs_drop => self.tcx.types.bool,
                     sym::type_id => self.tcx.types.u64,
                     sym::type_name => self.tcx.mk_static_str(),
-                    _ => span_bug!(span, "Already checked for nullary intrinsics"),
+                    _ => bug!("already checked for nullary intrinsics"),
                 };
                 let val = self.const_eval(gid, ty)?;
                 self.copy_op(val, dest)?;
@@ -136,7 +134,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = self.read_scalar(args[0])?.not_undef()?;
                 let bits = self.force_bits(val, layout_of.size)?;
                 let kind = match layout_of.abi {
-                    ty::layout::Abi::Scalar(ref scalar) => scalar.value,
+                    Abi::Scalar(ref scalar) => scalar.value,
                     _ => bug!("{} called on invalid type {:?}", intrinsic_name, ty),
                 };
                 let (nonzero, intrinsic_name) = match intrinsic_name {

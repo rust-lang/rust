@@ -6,22 +6,24 @@
 // ignore-tidy-filelength
 
 use crate::collect::PlaceholderHirTyCollector;
-use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
-use crate::util::common::ErrorReported;
-use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
-use rustc::ty::{self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
-use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
+use rustc_hir::lang_items::SizedTraitLangItem;
 use rustc_hir::{Constness, GenericArg, GenericArgs};
+use rustc_middle::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
+use rustc_middle::ty::{
+    self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+};
+use rustc_middle::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, LATE_BOUND_LIFETIME_ARGUMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -1783,9 +1785,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ));
             }
         }
-
-        match (&potential_assoc_types[..], &trait_bounds) {
-            ([], [bound]) => match &bound.trait_ref.path.segments[..] {
+        if let ([], [bound]) = (&potential_assoc_types[..], &trait_bounds) {
+            match &bound.trait_ref.path.segments[..] {
                 // FIXME: `trait_ref.path.span` can point to a full path with multiple
                 // segments, even though `trait_ref.path.segments` is of length `1`. Work
                 // around that bug here, even though it should be fixed elsewhere.
@@ -1817,8 +1818,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         .collect();
                 }
                 _ => {}
-            },
-            _ => {}
+            }
         }
         names.sort();
         trait_bound_spans.sort();
@@ -2440,6 +2440,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             continue;
                         }
                         err_for_ct = true;
+                        has_err = true;
                         (ct.span, "const")
                     }
                 };

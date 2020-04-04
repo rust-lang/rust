@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `None` and `Some(_)` not covered
-  --> $DIR/E0004-2.rs:9:11
+  --> $DIR/E0004-2.rs:4:11
    |
 LL |     match x { }
    |           ^ patterns `None` and `Some(_)` not covered

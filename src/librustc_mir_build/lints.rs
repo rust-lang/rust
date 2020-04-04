@@ -1,10 +1,10 @@
-use rustc::hir::map::blocks::FnLikeNode;
-use rustc::mir::{self, Body, TerminatorKind};
-use rustc::ty::subst::InternalSubsts;
-use rustc::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::hir::map::blocks::FnLikeNode;
+use rustc_middle::mir::{self, Body, TerminatorKind};
+use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 
 crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId) {

@@ -10,11 +10,11 @@
 #![recursion_limit = "256"]
 
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 #[macro_use]
 extern crate log;
 
-use rustc::ty::query::Providers;
+use rustc_middle::ty::query::Providers;
 
 mod check_attr;
 mod check_const;

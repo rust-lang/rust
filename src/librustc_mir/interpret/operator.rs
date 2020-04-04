@@ -1,14 +1,11 @@
 use std::convert::TryFrom;
 
-use rustc::mir;
-use rustc::mir::interpret::{InterpResult, Scalar};
-use rustc::ty::{
-    self,
-    layout::{LayoutOf, TyLayout},
-    Ty,
-};
 use rustc_apfloat::Float;
 use rustc_ast::ast::FloatTy;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{InterpResult, Scalar};
+use rustc_middle::ty::{self, layout::TyAndLayout, Ty};
+use rustc_target::abi::LayoutOf;
 
 use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
 
@@ -55,7 +52,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         l: char,
         r: char,
     ) -> (Scalar<M::PointerTag>, bool, Ty<'tcx>) {
-        use rustc::mir::BinOp::*;
+        use rustc_middle::mir::BinOp::*;
 
         let res = match bin_op {
             Eq => l == r,
@@ -75,7 +72,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         l: bool,
         r: bool,
     ) -> (Scalar<M::PointerTag>, bool, Ty<'tcx>) {
-        use rustc::mir::BinOp::*;
+        use rustc_middle::mir::BinOp::*;
 
         let res = match bin_op {
             Eq => l == r,
@@ -99,7 +96,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         l: F,
         r: F,
     ) -> (Scalar<M::PointerTag>, bool, Ty<'tcx>) {
-        use rustc::mir::BinOp::*;
+        use rustc_middle::mir::BinOp::*;
 
         let (val, ty) = match bin_op {
             Eq => (Scalar::from_bool(l == r), self.tcx.types.bool),
@@ -123,11 +120,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         bin_op: mir::BinOp,
         // passing in raw bits
         l: u128,
-        left_layout: TyLayout<'tcx>,
+        left_layout: TyAndLayout<'tcx>,
         r: u128,
-        right_layout: TyLayout<'tcx>,
+        right_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
-        use rustc::mir::BinOp::*;
+        use rustc_middle::mir::BinOp::*;
 
         // Shift ops can have an RHS with a different numeric type.
         if bin_op == Shl || bin_op == Shr {
@@ -198,13 +195,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // We need a special check for overflowing remainder:
                 // "int_min % -1" overflows and returns 0, but after casting things to a larger int
                 // type it does *not* overflow nor give an unrepresentable result!
-                match bin_op {
-                    Rem => {
-                        if r == -1 && l == (1 << (size.bits() - 1)) {
-                            return Ok((Scalar::from_int(0, size), true, left_layout.ty));
-                        }
+                if bin_op == Rem {
+                    if r == -1 && l == (1 << (size.bits() - 1)) {
+                        return Ok((Scalar::from_int(0, size), true, left_layout.ty));
                     }
-                    _ => {}
                 }
                 let l = self.sign_extend(l, left_layout) as i128;
 
@@ -362,7 +356,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         un_op: mir::UnOp,
         val: ImmTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
-        use rustc::mir::UnOp::*;
+        use rustc_middle::mir::UnOp::*;
 
         let layout = val.layout;
         let val = val.to_scalar()?;

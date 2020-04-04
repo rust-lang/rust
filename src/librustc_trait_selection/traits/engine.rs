@@ -1,4 +1,4 @@
-use rustc::ty::TyCtxt;
+use rustc_middle::ty::TyCtxt;
 
 use super::FulfillmentContext;
 use super::TraitEngine;

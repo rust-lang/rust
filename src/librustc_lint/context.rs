@@ -18,11 +18,6 @@ use self::TargetLint::*;
 
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
-use rustc::lint::LintDiagnosticBuilder;
-use rustc::middle::privacy::AccessLevels;
-use rustc::middle::stability;
-use rustc::ty::layout::{LayoutError, LayoutOf, TyLayout};
-use rustc::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
@@ -31,10 +26,16 @@ use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_middle::lint::LintDiagnosticBuilder;
+use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::stability;
+use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
+use rustc_middle::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use rustc_session::lint::{add_elided_lifetime_in_path_suggestion, BuiltinLintDiagnostics};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
+use rustc_target::abi::LayoutOf;
 
 use std::slice;
 
@@ -787,9 +788,8 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                 let mut path = print_prefix(self)?;
 
                 // Skip `::{{constructor}}` on tuple/unit structs.
-                match disambiguated_data.data {
-                    DefPathData::Ctor => return Ok(path),
-                    _ => {}
+                if let DefPathData::Ctor = disambiguated_data.data {
+                    return Ok(path);
                 }
 
                 path.push(disambiguated_data.data.as_symbol());
@@ -811,9 +811,9 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
 
 impl<'a, 'tcx> LayoutOf for LateContext<'a, 'tcx> {
     type Ty = Ty<'tcx>;
-    type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
+    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.tcx.layout_of(self.param_env.and(ty))
     }
 }

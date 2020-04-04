@@ -183,25 +183,24 @@ fn main() {
 // fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i32> {
 //     debug x => _1;
 //     let mut _0: std::result::Result<u32, i32>;
-//     let mut _2: isize;
-//     let _3: i32;
-//     let _4: u32;
+//     let _2: i32;
+//     let _3: u32;
 //     scope 1 {
-//         debug y => _4;
+//         debug y => _3;
 //     }
 //     scope 2 {
-//         debug err => _3;
+//         debug err => _2;
 //         scope 3 {
 //             scope 7 {
-//                 debug t => _3;
+//                 debug t => _2;
 //             }
 //             scope 8 {
-//                 debug v => _3;
+//                 debug v => _2;
 //             }
 //         }
 //     }
 //     scope 4 {
-//         debug val => _4;
+//         debug val => _3;
 //         scope 5 {
 //         }
 //     }
@@ -209,7 +208,6 @@ fn main() {
 //         debug self => _1;
 //     }
 //     bb0: {
-//         _2 = discriminant(_1);
 //         _0 = move _1;
 //         return;
 //     }

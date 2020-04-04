@@ -5,10 +5,6 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use rustc::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
-use rustc::middle::privacy;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
@@ -18,6 +14,10 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirIdSet, Node};
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::middle::privacy;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config;
 use rustc_target::spec::abi::Abi;
 

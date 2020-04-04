@@ -1,10 +1,6 @@
 #![allow(non_snake_case)]
 
 use crate::{LateContext, LateLintPass, LintContext};
-use rustc::mir::interpret::{sign_extend, truncate};
-use rustc::ty::layout::{self, IntegerExt, LayoutOf, SizeSkeleton, VariantIdx};
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc_ast::ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
@@ -13,9 +9,14 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{is_range_literal, ExprKind, Node};
 use rustc_index::vec::Idx;
+use rustc_middle::mir::interpret::{sign_extend, truncate};
+use rustc_middle::ty::layout::{IntegerExt, SizeSkeleton};
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_target::abi::{DiscriminantKind, Integer, LayoutOf, VariantIdx, Variants};
 use rustc_target::spec::abi::Abi;
 
 use log::debug;
@@ -150,7 +151,7 @@ fn report_bin_hex_error(
     val: u128,
     negative: bool,
 ) {
-    let size = layout::Integer::from_attr(&cx.tcx, ty).size();
+    let size = Integer::from_attr(&cx.tcx, ty).size();
     cx.struct_span_lint(OVERFLOWING_LITERALS, expr.span, |lint| {
         let (t, actually) = match ty {
             attr::IntType::SignedInt(t) => {
@@ -919,7 +920,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
-        use crate::rustc::ty::TypeFoldable;
+        use rustc_middle::ty::TypeFoldable;
 
         struct ProhibitOpaqueTypes<'tcx> {
             ty: Option<Ty<'tcx>>,
@@ -1034,8 +1035,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                 | Err(ty::layout::LayoutError::SizeOverflow(_)) => return,
             };
             let (variants, tag) = match layout.variants {
-                layout::Variants::Multiple {
-                    discr_kind: layout::DiscriminantKind::Tag,
+                Variants::Multiple {
+                    discr_kind: DiscriminantKind::Tag,
                     ref discr,
                     ref variants,
                     ..

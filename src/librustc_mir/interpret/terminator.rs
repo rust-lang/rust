@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 
-use rustc::ty::layout::{self, LayoutOf, TyLayout};
-use rustc::ty::Instance;
-use rustc::{mir, ty};
-use rustc_span::source_map::Span;
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::Instance;
+use rustc_middle::{mir, ty};
+use rustc_target::abi::{self, LayoutOf as _};
 use rustc_target::spec::abi::Abi;
 
 use super::{
@@ -16,7 +16,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         terminator: &mir::Terminator<'tcx>,
     ) -> InterpResult<'tcx> {
-        use rustc::mir::TerminatorKind::*;
+        use rustc_middle::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
                 self.frame().return_place.map(|r| self.dump_place(*r));
@@ -30,7 +30,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 trace!("SwitchInt({:?})", *discr);
 
                 // Branch to the `otherwise` case by default, if no match is found.
-                assert!(targets.len() > 0);
+                assert!(!targets.is_empty());
                 let mut target_block = targets[targets.len() - 1];
 
                 for (index, &const_int) in values.iter().enumerate() {
@@ -51,7 +51,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.go_to_block(target_block);
             }
 
-            Call { ref func, ref args, ref destination, ref cleanup, .. } => {
+            Call { ref func, ref args, destination, ref cleanup, .. } => {
                 let func = self.eval_operand(func, None)?;
                 let (fn_val, abi) = match func.layout.ty.kind {
                     ty::FnPtr(sig) => {
@@ -68,27 +68,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 let args = self.eval_operands(args)?;
                 let ret = match destination {
-                    Some((dest, ret)) => Some((self.eval_place(dest)?, *ret)),
+                    Some((dest, ret)) => Some((self.eval_place(dest)?, ret)),
                     None => None,
                 };
-                self.eval_fn_call(
-                    fn_val,
-                    terminator.source_info.span,
-                    abi,
-                    &args[..],
-                    ret,
-                    *cleanup,
-                )?;
+                self.eval_fn_call(fn_val, abi, &args[..], ret, *cleanup)?;
             }
 
-            Drop { ref location, target, unwind } => {
+            Drop { location, target, unwind } => {
                 // FIXME(CTFE): forbid drop in const eval
                 let place = self.eval_place(location)?;
                 let ty = place.layout.ty;
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
                 let instance = Instance::resolve_drop_in_place(*self.tcx, ty);
-                self.drop_in_place(place, instance, terminator.source_info.span, target, unwind)?;
+                self.drop_in_place(place, instance, target, unwind)?;
             }
 
             Assert { ref cond, expected, ref msg, target, cleanup } => {
@@ -134,8 +127,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn check_argument_compat(
         rust_abi: bool,
-        caller: TyLayout<'tcx>,
-        callee: TyLayout<'tcx>,
+        caller: TyAndLayout<'tcx>,
+        callee: TyAndLayout<'tcx>,
     ) -> bool {
         if caller.ty == callee.ty {
             // No question
@@ -150,12 +143,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Different valid ranges are okay (once we enforce validity,
             // that will take care to make it UB to leave the range, just
             // like for transmute).
-            (layout::Abi::Scalar(ref caller), layout::Abi::Scalar(ref callee)) => {
+            (abi::Abi::Scalar(ref caller), abi::Abi::Scalar(ref callee)) => {
                 caller.value == callee.value
             }
             (
-                layout::Abi::ScalarPair(ref caller1, ref caller2),
-                layout::Abi::ScalarPair(ref callee1, ref callee2),
+                abi::Abi::ScalarPair(ref caller1, ref caller2),
+                abi::Abi::ScalarPair(ref callee1, ref callee2),
             ) => caller1.value == callee1.value && caller2.value == callee2.value,
             // Be conservative
             _ => false,
@@ -196,7 +189,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn eval_fn_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-        span: Span,
         caller_abi: Abi,
         args: &[OpTy<'tcx, M::PointerTag>],
         ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
@@ -242,7 +234,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
                 assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
-                M::call_intrinsic(self, span, instance, args, ret, unwind)
+                M::call_intrinsic(self, instance, args, ret, unwind)
             }
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)
@@ -252,14 +244,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
-                let body = match M::find_mir_or_eval_fn(self, span, instance, args, ret, unwind)? {
+                let body = match M::find_mir_or_eval_fn(self, instance, args, ret, unwind)? {
                     Some(body) => body,
                     None => return Ok(()),
                 };
 
                 self.push_stack_frame(
                     instance,
-                    span,
                     body,
                     ret.map(|p| p.0),
                     StackPopCleanup::Goto { ret: ret.map(|p| p.1), unwind },
@@ -328,7 +319,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // `pass_argument` would be the loop body. It takes care to
                     // not advance `caller_iter` for ZSTs.
                     for local in body.args_iter() {
-                        let dest = self.eval_place(&mir::Place::from(local))?;
+                        let dest = self.eval_place(mir::Place::from(local))?;
                         if Some(local) == body.spread_arg {
                             // Must be a tuple
                             for i in 0..dest.layout.fields.count() {
@@ -346,7 +337,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     // Don't forget to check the return type!
                     if let Some((caller_ret, _)) = ret {
-                        let callee_ret = self.eval_place(&mir::Place::return_place())?;
+                        let callee_ret = self.eval_place(mir::Place::return_place())?;
                         if !Self::check_argument_compat(
                             rust_abi,
                             caller_ret.layout,
@@ -407,7 +398,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     OpTy::from(ImmTy { layout: this_receiver_ptr, imm: receiver_place.ptr.into() });
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(drop_fn, span, caller_abi, &args, ret, unwind)
+                self.eval_fn_call(drop_fn, caller_abi, &args, ret, unwind)
             }
         }
     }
@@ -416,7 +407,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         place: PlaceTy<'tcx, M::PointerTag>,
         instance: ty::Instance<'tcx>,
-        span: Span,
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
@@ -444,7 +434,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         self.eval_fn_call(
             FnVal::Instance(instance),
-            span,
             Abi::Rust,
             &[arg.into()],
             Some((dest.into(), target)),

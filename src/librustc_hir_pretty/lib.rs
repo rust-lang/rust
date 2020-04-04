@@ -2036,13 +2036,10 @@ impl<'a> State<'a> {
             }
             GenericParamKind::Type { ref default, .. } => {
                 self.print_bounds(":", param.bounds);
-                match default {
-                    Some(default) => {
-                        self.s.space();
-                        self.word_space("=");
-                        self.print_type(&default)
-                    }
-                    _ => {}
+                if let Some(default) = default {
+                    self.s.space();
+                    self.word_space("=");
+                    self.print_type(&default)
                 }
             }
             GenericParamKind::Const { ref ty } => {
@@ -2145,9 +2142,8 @@ impl<'a> State<'a> {
         }
         self.end();
 
-        match decl.output {
-            hir::FnRetTy::Return(ref output) => self.maybe_print_comment(output.span.lo()),
-            _ => {}
+        if let hir::FnRetTy::Return(ref output) = decl.output {
+            self.maybe_print_comment(output.span.lo())
         }
     }
 
@@ -2222,12 +2218,9 @@ impl<'a> State<'a> {
     }
 
     pub fn print_extern_opt_abi(&mut self, opt_abi: Option<Abi>) {
-        match opt_abi {
-            Some(abi) => {
-                self.word_nbsp("extern");
-                self.word_nbsp(abi.to_string())
-            }
-            None => {}
+        if let Some(abi) = opt_abi {
+            self.word_nbsp("extern");
+            self.word_nbsp(abi.to_string())
         }
     }
 

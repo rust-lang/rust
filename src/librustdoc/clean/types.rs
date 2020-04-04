@@ -8,9 +8,6 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
 
-use rustc::middle::lang_items;
-use rustc::middle::stability;
-use rustc::ty::layout::VariantIdx;
 use rustc_ast::ast::{self, AttrStyle, Ident};
 use rustc_ast::attr;
 use rustc_ast::util::comments::strip_doc_comment_decoration;
@@ -18,12 +15,15 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::lang_items;
 use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
+use rustc_middle::middle::stability;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, FileName};
+use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::cfg::Cfg;

@@ -21,7 +21,7 @@ use crate::flags::Subcommand;
 use crate::native;
 use crate::tool::{self, SourceType, Tool};
 use crate::toolstate::ToolState;
-use crate::util::{self, dylib_path, dylib_path_var};
+use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var};
 use crate::Crate as CargoCrate;
 use crate::{envify, DocTests, GitRepo, Mode};
 
@@ -1176,6 +1176,15 @@ impl Step for Compiletest {
             }
             if !builder.is_rust_llvm(target) {
                 cmd.arg("--system-llvm");
+            }
+
+            // Tests that use compiler libraries may inherit the `-lLLVM` link
+            // requirement, but the `-L` library path is not propagated across
+            // separate compilations. We can add LLVM's library path to the
+            // platform-specific environment variable as a workaround.
+            if !builder.config.dry_run && suite.ends_with("fulldeps") {
+                let llvm_libdir = output(Command::new(&llvm_config).arg("--libdir"));
+                add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cmd);
             }
 
             // Only pass correct values for these flags for the `run-make` suite as it

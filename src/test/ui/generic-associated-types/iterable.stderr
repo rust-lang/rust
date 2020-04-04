@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `for<'a> <<std::vec::Vec<T> as Iterable>::Iter<'a> as std::iter::Iterator>::Item == <std::vec::Vec<T> as Iterable>::Item<'a>`
-  --> $DIR/iterable.rs:20:5
+  --> $DIR/iterable.rs:15:5
    |
 LL | impl<T> Iterable for Vec<T> {
    | --------------------------- in this `impl` item
@@ -17,7 +17,7 @@ LL |     type Item;
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0271]: type mismatch resolving `for<'a> <<[T] as Iterable>::Iter<'a> as std::iter::Iterator>::Item == <[T] as Iterable>::Item<'a>`
-  --> $DIR/iterable.rs:32:5
+  --> $DIR/iterable.rs:27:5
    |
 LL | impl<T> Iterable for [T] {
    | ------------------------ in this `impl` item
@@ -35,7 +35,7 @@ LL |     type Item;
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0271]: type mismatch resolving `for<'a> <<std::vec::Vec<T> as Iterable>::Iter<'a> as std::iter::Iterator>::Item == <std::vec::Vec<T> as Iterable>::Item<'a>`
-  --> $DIR/iterable.rs:24:30
+  --> $DIR/iterable.rs:19:30
    |
 LL | trait Iterable {
    | -------------- required by `Iterable`
@@ -49,7 +49,7 @@ LL |     fn iter<'a>(&'a self) -> Self::Iter<'a> {
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0271]: type mismatch resolving `for<'a> <<[T] as Iterable>::Iter<'a> as std::iter::Iterator>::Item == <[T] as Iterable>::Item<'a>`
-  --> $DIR/iterable.rs:36:30
+  --> $DIR/iterable.rs:31:30
    |
 LL | trait Iterable {
    | -------------- required by `Iterable`

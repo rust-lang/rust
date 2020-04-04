@@ -1,13 +1,13 @@
 //! The various pretty-printing routines.
 
-use rustc::hir::map as hir_map;
-use rustc::ty::{self, TyCtxt};
-use rustc::util::common::ErrorReported;
 use rustc_ast::ast;
 use rustc_ast_pretty::pprust;
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir_pretty as pprust_hir;
+use rustc_middle::hir::map as hir_map;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
 use rustc_session::config::{Input, PpMode, PpSourceMode};
 use rustc_session::Session;
@@ -177,9 +177,8 @@ impl<'hir> PrinterSupport for IdentifiedAnnotation<'hir> {
 
 impl<'hir> pprust::PpAnn for IdentifiedAnnotation<'hir> {
     fn pre(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) {
-        match node {
-            pprust::AnnNode::Expr(_) => s.popen(),
-            _ => {}
+        if let pprust::AnnNode::Expr(_) = node {
+            s.popen();
         }
     }
     fn post(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) {
@@ -232,9 +231,8 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
         }
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
-        match node {
-            pprust_hir::AnnNode::Expr(_) => s.popen(),
-            _ => {}
+        if let pprust_hir::AnnNode::Expr(_) = node {
+            s.popen();
         }
     }
     fn post(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
@@ -339,21 +337,17 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
         self.tables.set(old_tables);
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
-        match node {
-            pprust_hir::AnnNode::Expr(_) => s.popen(),
-            _ => {}
+        if let pprust_hir::AnnNode::Expr(_) = node {
+            s.popen();
         }
     }
     fn post(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
-        match node {
-            pprust_hir::AnnNode::Expr(expr) => {
-                s.s.space();
-                s.s.word("as");
-                s.s.space();
-                s.s.word(self.tables.get().expr_ty(expr).to_string());
-                s.pclose();
-            }
-            _ => {}
+        if let pprust_hir::AnnNode::Expr(expr) = node {
+            s.s.space();
+            s.s.word("as");
+            s.s.space();
+            s.s.word(self.tables.get().expr_ty(expr).to_string());
+            s.pclose();
         }
     }
 }

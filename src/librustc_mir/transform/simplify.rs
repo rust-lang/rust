@@ -28,11 +28,11 @@
 //! return.
 
 use crate::transform::{MirPass, MirSource};
-use rustc::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::*;
-use rustc::ty::{self, TyCtxt};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, TyCtxt};
 use std::borrow::Cow;
 
 pub struct SimplifyCfg {
@@ -309,7 +309,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
         let locals = {
             let read_only_cache = read_only!(body);
             let mut marker = DeclMarker { locals: BitSet::new_empty(body.local_decls.len()), body };
-            marker.visit_body(read_only_cache);
+            marker.visit_body(&read_only_cache);
             // Return pointer and arguments are always live
             marker.locals.insert(RETURN_PLACE);
             for arg in body.args_iter() {
@@ -368,18 +368,22 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
             if location.statement_index != block.statements.len() {
                 let stmt = &block.statements[location.statement_index];
 
-                if let StatementKind::Assign(box (p, Rvalue::Use(Operand::Constant(c)))) =
-                    &stmt.kind
-                {
-                    match c.literal.val {
-                        // Keep assignments from unevaluated constants around, since the evaluation
-                        // may report errors, even if the use of the constant is dead code.
-                        ty::ConstKind::Unevaluated(..) => {}
-                        _ => {
-                            if !p.is_indirect() {
-                                trace!("skipping store of const value {:?} to {:?}", c, p);
-                                return;
+                if let StatementKind::Assign(box (dest, rvalue)) = &stmt.kind {
+                    if !dest.is_indirect() && dest.local == *local {
+                        if let Rvalue::Use(Operand::Constant(c)) = rvalue {
+                            match c.literal.val {
+                                // Keep assignments from unevaluated constants around, since the
+                                // evaluation may report errors, even if the use of the constant
+                                // is dead code.
+                                ty::ConstKind::Unevaluated(..) => {}
+                                _ => {
+                                    trace!("skipping store of const value {:?} to {:?}", c, dest);
+                                    return;
+                                }
                             }
+                        } else if let Rvalue::Discriminant(d) = rvalue {
+                            trace!("skipping store of discriminant value {:?} to {:?}", d, dest);
+                            return;
                         }
                     }
                 }

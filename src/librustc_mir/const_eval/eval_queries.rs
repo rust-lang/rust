@@ -5,12 +5,13 @@ use crate::interpret::{
     InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RawConst, RefTracking, Scalar,
     ScalarMaybeUndef, StackPopCleanup,
 };
-use rustc::mir;
-use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
-use rustc::traits::Reveal;
-use rustc::ty::{self, layout, layout::LayoutOf, subst::Subst, TyCtxt};
 use rustc_hir::def::DefKind;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{ConstEvalErr, ErrorHandled};
+use rustc_middle::traits::Reveal;
+use rustc_middle::ty::{self, subst::Subst, TyCtxt};
 use rustc_span::source_map::Span;
+use rustc_target::abi::{Abi, LayoutOf};
 use std::convert::TryInto;
 
 pub fn note_on_undefined_behavior_error() -> &'static str {
@@ -46,7 +47,6 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 
     ecx.push_stack_frame(
         cid.instance,
-        body.span,
         body,
         Some(ret.into()),
         StackPopCleanup::None { cleanup: false },
@@ -106,8 +106,8 @@ pub(super) fn op_to_const<'tcx>(
     // the usual cases of extracting e.g. a `usize`, without there being a real use case for the
     // `Undef` situation.
     let try_as_immediate = match op.layout.abi {
-        layout::Abi::Scalar(..) => true,
-        layout::Abi::ScalarPair(..) => match op.layout.ty.kind {
+        Abi::Scalar(..) => true,
+        Abi::ScalarPair(..) => match op.layout.ty.kind {
             ty::Ref(_, inner, _) => match inner.kind {
                 ty::Slice(elem) => elem == ecx.tcx.types.u8,
                 ty::Str => true,
@@ -173,7 +173,7 @@ fn validate_and_turn_into_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: RawConst<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
-) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
+) -> ::rustc_middle::mir::interpret::ConstEvalResult<'tcx> {
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);
@@ -223,7 +223,7 @@ fn validate_and_turn_into_const<'tcx>(
 pub fn const_eval_validated_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
-) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
+) -> ::rustc_middle::mir::interpret::ConstEvalResult<'tcx> {
     // see comment in const_eval_raw_provider for what we're doing here
     if key.param_env.reveal == Reveal::All {
         let mut key = key;
@@ -257,7 +257,7 @@ pub fn const_eval_validated_provider<'tcx>(
 pub fn const_eval_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
-) -> ::rustc::mir::interpret::ConstEvalRawResult<'tcx> {
+) -> ::rustc_middle::mir::interpret::ConstEvalRawResult<'tcx> {
     // Because the constant is computed twice (once per value of `Reveal`), we are at risk of
     // reporting the same error twice here. To resolve this, we check whether we can evaluate the
     // constant in the more restrictive `Reveal::UserFacing`, which most likely already was
@@ -307,7 +307,7 @@ pub fn const_eval_raw_provider<'tcx>(
     );
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
-    res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, *body))
+    res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body))
         .and_then(|place| {
             Ok(RawConst { alloc_id: place.ptr.assert_ptr().alloc_id, ty: place.layout.ty })
         })

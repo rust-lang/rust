@@ -1,15 +1,15 @@
 //! The entry point of the NLL borrow checker.
 
-use rustc::mir::{
-    BasicBlock, Body, BodyAndCache, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind,
-    Location, Promoted, ReadOnlyBodyAndCache,
-};
-use rustc::ty::{self, RegionKind, RegionVid};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::mir::{
+    BasicBlock, Body, BodyAndCache, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind,
+    Location, Promoted, ReadOnlyBodyAndCache,
+};
+use rustc_middle::ty::{self, RegionKind, RegionVid};
 use rustc_span::symbol::sym;
 use std::env;
 use std::fmt::Debug;
@@ -317,7 +317,7 @@ pub(super) fn dump_mir_results<'a, 'tcx>(
     regioncx: &RegionInferenceContext<'_>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
 ) {
-    if !mir_util::dump_enabled(infcx.tcx, "nll", source) {
+    if !mir_util::dump_enabled(infcx.tcx, "nll", source.def_id()) {
         return;
     }
 

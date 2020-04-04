@@ -1,10 +1,10 @@
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use rustc::hir::map::Map;
-use rustc::middle::resolve_lifetime as rl;
-use rustc::ty::{self, Region, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
+use rustc_middle::hir::map::Map;
+use rustc_middle::middle::resolve_lifetime as rl;
+use rustc_middle::ty::{self, Region, TyCtxt};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// This function calls the `visit_ty` method for the parameters

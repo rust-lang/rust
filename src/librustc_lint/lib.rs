@@ -19,7 +19,7 @@
 //! example) requires more effort. See `emit_lint` and `GatherNodeLevels`
 //! in `context.rs`.
 //!
-//! Some code also exists in `rustc_session::lint`, `rustc::lint`.
+//! Some code also exists in `rustc_session::lint`, `rustc_middle::lint`.
 //!
 //! ## Note
 //!
@@ -35,7 +35,7 @@
 #![recursion_limit = "256"]
 
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_session;
 
@@ -53,11 +53,11 @@ mod redundant_semicolon;
 mod types;
 mod unused;
 
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
 use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
     BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
     INTRA_DOC_LINK_RESOLUTION_FAILURE, MISSING_DOC_CODE_EXAMPLES, PRIVATE_DOC_TESTS,
@@ -104,6 +104,7 @@ macro_rules! early_lint_passes {
             $args,
             [
                 UnusedParens: UnusedParens,
+                UnusedBraces: UnusedBraces,
                 UnusedImportBraces: UnusedImportBraces,
                 UnsafeCode: UnsafeCode,
                 AnonymousParameters: AnonymousParameters,
@@ -275,6 +276,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         UNUSED_FEATURES,
         UNUSED_LABELS,
         UNUSED_PARENS,
+        UNUSED_BRACES,
         REDUNDANT_SEMICOLONS
     );
 

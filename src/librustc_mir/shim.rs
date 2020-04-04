@@ -1,10 +1,10 @@
-use rustc::mir::*;
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::query::Providers;
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir::*;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_target::abi::VariantIdx;
 
 use rustc_index::vec::{Idx, IndexVec};
 
@@ -230,7 +230,7 @@ fn build_drop_shim<'tcx>(
             elaborate_drops::elaborate_drop(
                 &mut elaborator,
                 source_info,
-                &dropee,
+                dropee,
                 (),
                 return_block,
                 elaborate_drops::Unwind::To(resume_block),

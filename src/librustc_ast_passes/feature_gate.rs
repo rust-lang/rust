@@ -516,27 +516,25 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
-        match param.kind {
-            GenericParamKind::Const { .. } => gate_feature_post!(
+        if let GenericParamKind::Const { .. } = param.kind {
+            gate_feature_post!(
                 &self,
                 const_generics,
                 param.ident.span,
                 "const generics are unstable"
-            ),
-            _ => {}
+            )
         }
         visit::walk_generic_param(self, param)
     }
 
     fn visit_assoc_ty_constraint(&mut self, constraint: &'a AssocTyConstraint) {
-        match constraint.kind {
-            AssocTyConstraintKind::Bound { .. } => gate_feature_post!(
+        if let AssocTyConstraintKind::Bound { .. } = constraint.kind {
+            gate_feature_post!(
                 &self,
                 associated_type_bounds,
                 constraint.span,
                 "associated type bounds are unstable"
-            ),
-            _ => {}
+            )
         }
         visit::walk_assoc_ty_constraint(self, constraint)
     }

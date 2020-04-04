@@ -1,13 +1,14 @@
-use rustc::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
-use rustc::ty::query::Providers;
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::Idx;
+use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{sym, Span};
+use rustc_target::abi::{Pointer, VariantIdx};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
 
 fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: DefId) {

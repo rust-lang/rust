@@ -2,9 +2,9 @@ extern crate getopts;
 
 use crate::interface::parse_cfgspecs;
 
-use rustc::middle::cstore;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
+use rustc_middle::middle::cstore;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
 use rustc_session::config::{ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
@@ -561,6 +561,8 @@ fn test_debugging_options_tracking_hash() {
     opts.debugging_opts.dump_mir_dir = String::from("abc");
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
     opts.debugging_opts.dump_mir_graphviz = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+    opts.debugging_opts.dump_mir_dataflow = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     // Make sure changing a [TRACKED] option changes the hash

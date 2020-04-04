@@ -174,7 +174,7 @@ NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroI128 NonZeroIsize }
 /// let zero = Wrapping(0u32);
 /// let one = Wrapping(1u32);
 ///
-/// assert_eq!(std::u32::MAX, (zero - one).0);
+/// assert_eq!(u32::MAX, (zero - one).0);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
@@ -4376,7 +4376,7 @@ impl u8 {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> u8 {
-        // Unset the fith bit if this is a lowercase letter
+        // Unset the fifth bit if this is a lowercase letter
         *self & !((self.is_ascii_lowercase() as u8) << 5)
     }
 
@@ -4399,7 +4399,7 @@ impl u8 {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> u8 {
-        // Set the fith bit if this is an uppercase letter
+        // Set the fifth bit if this is an uppercase letter
         *self | ((self.is_ascii_uppercase() as u8) << 5)
     }
 

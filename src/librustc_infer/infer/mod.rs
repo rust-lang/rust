@@ -8,21 +8,6 @@ pub use self::ValuePairs::*;
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 
-use rustc::infer::canonical::{Canonical, CanonicalVarValues};
-use rustc::infer::unify_key::{ConstVarValue, ConstVariableValue};
-use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
-use rustc::middle::free_region::RegionRelations;
-use rustc::middle::region;
-use rustc::mir;
-use rustc::mir::interpret::ConstEvalResult;
-use rustc::traits::select;
-use rustc::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
-use rustc::ty::fold::{TypeFoldable, TypeFolder};
-use rustc::ty::relate::RelateResult;
-use rustc::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
-pub use rustc::ty::IntVarValue;
-use rustc::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
-use rustc::ty::{ConstVid, FloatVid, IntVid, TyVid};
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
@@ -30,6 +15,21 @@ use rustc_data_structures::unify as ut;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
+use rustc_middle::middle::free_region::RegionRelations;
+use rustc_middle::middle::region;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::ConstEvalResult;
+use rustc_middle::traits::select;
+use rustc_middle::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::relate::RelateResult;
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
+pub use rustc_middle::ty::IntVarValue;
+use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
+use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
 use rustc_session::config::BorrowckMode;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -65,7 +65,7 @@ mod sub;
 pub mod type_variable;
 
 use crate::infer::canonical::OriginalQueryValues;
-pub use rustc::infer::unify_key;
+pub use rustc_middle::infer::unify_key;
 
 #[must_use]
 #[derive(Debug)]
@@ -672,8 +672,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn type_is_unconstrained_numeric(&'a self, ty: Ty<'_>) -> UnconstrainedNumeric {
-        use rustc::ty::error::UnconstrainedNumeric::Neither;
-        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
+        use rustc_middle::ty::error::UnconstrainedNumeric::Neither;
+        use rustc_middle::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
         match ty.kind {
             ty::Infer(ty::IntVar(vid)) => {
                 if self.inner.borrow_mut().int_unification_table.probe_value(vid).is_some() {

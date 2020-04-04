@@ -1,18 +1,16 @@
 use std::convert::TryFrom;
 
-use rustc::ty::adjustment::PointerCast;
-use rustc::ty::layout::{self, Size, TyLayout};
-use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
-use rustc_ast::ast::FloatTy;
-use rustc_span::symbol::sym;
-use rustc_target::abi::LayoutOf;
-
-use rustc::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
-use rustc::mir::CastKind;
+use super::{FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::{Float, FloatConvert};
-
-use super::{FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy};
+use rustc_ast::ast::FloatTy;
+use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
+use rustc_middle::mir::CastKind;
+use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{self, Ty, TypeAndMut, TypeFoldable};
+use rustc_span::symbol::sym;
+use rustc_target::abi::{LayoutOf, Size, Variants};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn cast(
@@ -21,7 +19,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         kind: CastKind,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        use rustc::mir::CastKind::*;
+        use rustc_middle::mir::CastKind::*;
         match kind {
             Pointer(PointerCast::Unsize) => {
                 self.unsize_into(src, dest)?;
@@ -102,9 +100,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn cast_immediate(
         &self,
         src: ImmTy<'tcx, M::PointerTag>,
-        dest_layout: TyLayout<'tcx>,
+        dest_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
-        use rustc::ty::TyKind::*;
+        use rustc_middle::ty::TyKind::*;
         trace!("Casting {:?}: {:?} to {:?}", *src, src.layout.ty, dest_layout.ty);
 
         match src.layout.ty.kind {
@@ -134,7 +132,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // Handle cast from a univariant (ZST) enum.
         match src.layout.variants {
-            layout::Variants::Single { index } => {
+            Variants::Single { index } => {
                 if let Some(discr) = src.layout.ty.discriminant_for_variant(*self.tcx, index) {
                     assert!(src.layout.is_zst());
                     let discr_layout = self.layout_of(discr.ty)?;
@@ -143,7 +141,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .into());
                 }
             }
-            layout::Variants::Multiple { .. } => {}
+            Variants::Multiple { .. } => {}
         }
 
         // Handle casting the metadata away from a fat pointer.
@@ -183,14 +181,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn cast_from_int_like(
         &self,
         v: u128, // raw bits
-        src_layout: TyLayout<'tcx>,
-        dest_layout: TyLayout<'tcx>,
+        src_layout: TyAndLayout<'tcx>,
+        dest_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         // Let's make sure v is sign-extended *if* it has a signed type.
         let signed = src_layout.abi.is_signed();
         let v = if signed { self.sign_extend(v, src_layout) } else { v };
         trace!("cast_from_int: {}, {}, {}", v, src_layout.ty, dest_layout.ty);
-        use rustc::ty::TyKind::*;
+        use rustc_middle::ty::TyKind::*;
         match dest_layout.ty.kind {
             Int(_) | Uint(_) | RawPtr(_) => {
                 let v = self.truncate(v, dest_layout);
@@ -224,7 +222,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     where
         F: Float + Into<Scalar<M::PointerTag>> + FloatConvert<Single> + FloatConvert<Double>,
     {
-        use rustc::ty::TyKind::*;
+        use rustc_middle::ty::TyKind::*;
         match dest_ty.kind {
             // float -> uint
             Uint(t) => {

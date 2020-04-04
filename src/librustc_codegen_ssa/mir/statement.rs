@@ -1,5 +1,5 @@
-use rustc::mir;
 use rustc_errors::struct_span_err;
+use rustc_middle::mir;
 
 use super::FunctionCx;
 use super::LocalRef;

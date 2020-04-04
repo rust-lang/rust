@@ -1,9 +1,10 @@
 //! Visitor for a run-time value with a given layout: Traverse enums, structs and other compound
 //! types until we arrive at the leaves, with custom handling for primitive types.
 
-use rustc::mir::interpret::InterpResult;
-use rustc::ty;
-use rustc::ty::layout::{self, TyLayout, VariantIdx};
+use rustc_middle::mir::interpret::InterpResult;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_target::abi::{FieldsShape, VariantIdx, Variants};
 
 use super::{InterpCx, MPlaceTy, Machine, OpTy};
 
@@ -12,7 +13,7 @@ use super::{InterpCx, MPlaceTy, Machine, OpTy};
 // that's just more convenient to work with (avoids repeating all the `Machine` bounds).
 pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
     /// Gets this value's layout.
-    fn layout(&self) -> TyLayout<'tcx>;
+    fn layout(&self) -> TyAndLayout<'tcx>;
 
     /// Makes this into an `OpTy`.
     fn to_op(self, ecx: &InterpCx<'mir, 'tcx, M>) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
@@ -36,7 +37,7 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
 // Places in general are not due to `place_field` having to do `force_allocation`.
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::PointerTag> {
     #[inline(always)]
-    fn layout(&self) -> TyLayout<'tcx> {
+    fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
     }
 
@@ -74,7 +75,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for MPlaceTy<'tcx, M::PointerTag> {
     #[inline(always)]
-    fn layout(&self) -> TyLayout<'tcx> {
+    fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
     }
 
@@ -207,10 +208,10 @@ macro_rules! make_value_visitor {
 
                 // Visit the fields of this value.
                 match v.layout().fields {
-                    layout::FieldPlacement::Union(fields) => {
+                    FieldsShape::Union(fields) => {
                         self.visit_union(v, fields)?;
                     },
-                    layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
+                    FieldsShape::Arbitrary { ref offsets, .. } => {
                         // FIXME: We collect in a vec because otherwise there are lifetime
                         // errors: Projecting to a field needs access to `ecx`.
                         let fields: Vec<InterpResult<'tcx, Self::V>> =
@@ -220,7 +221,7 @@ macro_rules! make_value_visitor {
                             .collect();
                         self.visit_aggregate(v, fields.into_iter())?;
                     },
-                    layout::FieldPlacement::Array { .. } => {
+                    FieldsShape::Array { .. } => {
                         // Let's get an mplace first.
                         let mplace = v.to_op(self.ecx())?.assert_mem_place(self.ecx());
                         // Now we can go over all the fields.
@@ -237,7 +238,7 @@ macro_rules! make_value_visitor {
                 match v.layout().variants {
                     // If this is a multi-variant layout, find the right variant and proceed
                     // with *its* fields.
-                    layout::Variants::Multiple { .. } => {
+                    Variants::Multiple { .. } => {
                         let op = v.to_op(self.ecx())?;
                         let idx = self.ecx().read_discriminant(op)?.1;
                         let inner = v.project_downcast(self.ecx(), idx)?;
@@ -246,7 +247,7 @@ macro_rules! make_value_visitor {
                         self.visit_variant(v, idx, inner)
                     }
                     // For single-variant layouts, we already did anything there is to do.
-                    layout::Variants::Single { .. } => Ok(())
+                    Variants::Single { .. } => Ok(())
                 }
             }
         }

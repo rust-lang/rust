@@ -1,18 +1,12 @@
-use rustc::ty::layout::HasDataLayout;
-use rustc::ty::layout::HasParamEnv;
-use rustc::ty::layout::HasTyCtxt;
-use rustc::ty::layout::LayoutOf;
-use rustc::ty::layout::TargetDataLayout;
-use rustc::ty::layout::TyLayout;
-use rustc::ty::ParamEnv;
-use rustc::ty::Ty;
-use rustc::ty::TyCtxt;
 use rustc_ast::ast::Attribute;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::ItemKind;
+use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::sym;
+use rustc_target::abi::{HasDataLayout, LayoutOf, TargetDataLayout};
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if tcx.features().rustc_attrs {
@@ -118,9 +112,9 @@ struct UnwrapLayoutCx<'tcx> {
 
 impl LayoutOf for UnwrapLayoutCx<'tcx> {
     type Ty = Ty<'tcx>;
-    type TyLayout = TyLayout<'tcx>;
+    type TyAndLayout = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.tcx.layout_of(self.param_env.and(ty)).unwrap()
     }
 }

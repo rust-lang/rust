@@ -7,12 +7,12 @@ pub use self::ConsumeMode::*;
 // Export these here so that Clippy can use them.
 pub use mc::{Place, PlaceBase, Projection};
 
-use rustc::ty::{self, adjustment, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::PatKind;
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::ty::{self, adjustment, TyCtxt};
 
 use crate::mem_categorization as mc;
 use rustc_span::Span;

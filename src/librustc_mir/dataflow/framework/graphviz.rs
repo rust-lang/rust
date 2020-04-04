@@ -3,10 +3,10 @@
 use std::cell::RefCell;
 use std::{io, ops, str};
 
-use rustc::mir::{self, BasicBlock, Body, Location};
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::{self, BasicBlock, Body, Location};
 
 use super::{Analysis, GenKillSet, Results, ResultsRefCursor};
 use crate::util::graphviz_safe_def_name;
@@ -229,26 +229,22 @@ where
         }
 
         // Write any changes caused by terminator-specific effects
-        match terminator.kind {
-            mir::TerminatorKind::Call { destination: Some(_), .. } => {
-                let num_state_columns = self.num_state_columns();
-                self.write_row(w, "", "(on successful return)", |this, w, fmt| {
-                    write!(
-                        w,
-                        r#"<td balign="left" colspan="{colspan}" {fmt} align="left">"#,
-                        colspan = num_state_columns,
-                        fmt = fmt,
-                    )?;
+        if let mir::TerminatorKind::Call { destination: Some(_), .. } = terminator.kind {
+            let num_state_columns = self.num_state_columns();
+            self.write_row(w, "", "(on successful return)", |this, w, fmt| {
+                write!(
+                    w,
+                    r#"<td balign="left" colspan="{colspan}" {fmt} align="left">"#,
+                    colspan = num_state_columns,
+                    fmt = fmt,
+                )?;
 
-                    let state_on_unwind = this.results.get().clone();
-                    this.results.seek_after_assume_success(terminator_loc);
-                    write_diff(w, this.results.analysis(), &state_on_unwind, this.results.get())?;
+                let state_on_unwind = this.results.get().clone();
+                this.results.seek_after_assume_success(terminator_loc);
+                write_diff(w, this.results.analysis(), &state_on_unwind, this.results.get())?;
 
-                    write!(w, "</td>")
-                })?;
-            }
-
-            _ => {}
+                write!(w, "</td>")
+            })?;
         };
 
         write!(w, "</table>")

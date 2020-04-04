@@ -3,9 +3,6 @@
 use crate::locator::{CrateLocator, CratePaths};
 use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
 
-use rustc::middle::cstore::DepKind;
-use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn};
-use rustc::ty::TyCtxt;
 use rustc_ast::expand::allocator::{global_allocator_spans, AllocatorKind};
 use rustc_ast::{ast, attr};
 use rustc_data_structures::svh::Svh;
@@ -15,6 +12,11 @@ use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
+use rustc_middle::middle::cstore::DepKind;
+use rustc_middle::middle::cstore::{
+    CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn,
+};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::config;
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;

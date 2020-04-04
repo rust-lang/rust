@@ -1,13 +1,12 @@
 use crate::traits::*;
-use rustc::mir;
-use rustc::ty;
-use rustc::ty::layout::{LayoutOf, Size};
 use rustc_hir::def_id::CrateNum;
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir;
+use rustc_middle::ty;
 use rustc_session::config::DebugInfo;
-
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
+use rustc_target::abi::{LayoutOf, Size};
 
 use super::operand::OperandValue;
 use super::place::PlaceRef;

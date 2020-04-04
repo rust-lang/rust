@@ -1,14 +1,14 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc::middle::lang_items;
-use rustc::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::*;
-use rustc::ty::cast::CastTy;
-use rustc::ty::{self, Instance, InstanceDef, TyCtxt};
 use rustc_errors::struct_span_err;
+use rustc_hir::lang_items;
 use rustc_hir::{def_id::DefId, HirId};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
+use rustc_middle::ty::cast::CastTy;
+use rustc_middle::ty::{self, Instance, InstanceDef, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -183,7 +183,7 @@ impl Validator<'a, 'mir, 'tcx> {
             self.check_op_spanned(ops::Loop, body.span);
         }
 
-        self.visit_body(body);
+        self.visit_body(&body);
 
         // Ensure that the end result is `Sync` in a non-thread local `static`.
         let should_check_for_sync =
@@ -260,7 +260,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
         // Special-case reborrows to be more like a copy of a reference.
         match *rvalue {
-            Rvalue::Ref(_, kind, ref place) => {
+            Rvalue::Ref(_, kind, place) => {
                 if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, *self.body, place) {
                     let ctx = match kind {
                         BorrowKind::Shared => {
@@ -281,7 +281,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                     return;
                 }
             }
-            Rvalue::AddressOf(mutbl, ref place) => {
+            Rvalue::AddressOf(mutbl, place) => {
                 if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, *self.body, place) {
                     let ctx = match mutbl {
                         Mutability::Not => {
@@ -645,7 +645,7 @@ fn check_return_ty_is_sync(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, hir_id: HirId) 
 fn place_as_reborrow(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    place: &'a Place<'tcx>,
+    place: Place<'tcx>,
 ) -> Option<&'a [PlaceElem<'tcx>]> {
     place.projection.split_last().and_then(|(outermost, inner)| {
         if outermost != &ProjectionElem::Deref {

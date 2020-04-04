@@ -86,7 +86,7 @@ llvm_asm!("xor %eax, %eax" ::: "eax");
 
 Input and output operands follow the same format: `:
 "constraints1"(expr1), "constraints2"(expr2), ..."`. Output operand
-expressions must be mutable lvalues, or not yet assigned:
+expressions must be mutable place, or not yet assigned:
 
 ```rust
 # #![feature(llvm_asm)]

@@ -1,6 +1,7 @@
-use rustc::ty::{self, Region, RegionVid, TypeFoldable};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_hir::lang_items;
+use rustc_middle::ty::{self, Region, RegionVid, TypeFoldable};
 use rustc_trait_selection::traits::auto_trait::{self, AutoTraitResult};
 
 use std::fmt::Debug;
@@ -497,11 +498,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     // of the type.
                     // Therefore, we make sure that we never add a ?Sized
                     // bound for projections
-                    match &ty {
-                        &Type::QPath { .. } => {
-                            has_sized.insert(ty.clone());
-                        }
-                        _ => {}
+                    if let Type::QPath { .. } = ty {
+                        has_sized.insert(ty.clone());
                     }
 
                     if bounds.is_empty() {

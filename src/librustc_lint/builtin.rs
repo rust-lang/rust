@@ -1,9 +1,8 @@
 //! Lints in the Rust compiler.
 //!
 //! This contains lints which can feasibly be implemented as their own
-//! AST visitor. Also see `rustc::lint::builtin`, which contains the
-//! definitions of lints that are emitted directly inside the main
-//! compiler.
+//! AST visitor. Also see `rustc_session::lint::builtin`, which contains the
+//! definitions of lints that are emitted directly inside the main compiler.
 //!
 //! To add a new lint to rustc, declare it here using `declare_lint!()`.
 //! Then add code to emit the new lint in the appropriate circumstances.
@@ -11,7 +10,7 @@
 //! new `LintPass`, or using `Session::add_lint` elsewhere in the
 //! compiler. Only do the latter if the check can't be written cleanly as a
 //! `LintPass` (also, note that such lints will need to be defined in
-//! `rustc::lint::builtin`, not here).
+//! `rustc_session::lint::builtin`, not here).
 //!
 //! If you define a new `EarlyLintPass`, you will also need to add it to the
 //! `add_early_builtin!` or `add_early_builtin_with_new!` invocation in
@@ -22,8 +21,6 @@
 //! `late_lint_methods!` invocation in `lib.rs`.
 
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc::lint::LintDiagnosticBuilder;
-use rustc::ty::{self, layout::VariantIdx, Ty, TyCtxt};
 use rustc_ast::ast::{self, Expr};
 use rustc_ast::attr::{self, HasAttrs};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
@@ -38,11 +35,14 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{GenericParamKind, PatKind};
 use rustc_hir::{HirIdSet, Node};
+use rustc_middle::lint::LintDiagnosticBuilder;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
+use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::misc::can_type_implement_copy;
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
@@ -50,7 +50,7 @@ use crate::nonstandard_style::{method_context, MethodLateContext};
 use log::debug;
 use std::fmt::Write;
 
-// hardwired lints from librustc
+// hardwired lints from librustc_middle
 pub use rustc_session::lint::builtin::*;
 
 declare_lint! {
@@ -646,41 +646,35 @@ declare_lint_pass!(
 
 impl EarlyLintPass for AnonymousParameters {
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
-        match it.kind {
-            ast::AssocItemKind::Fn(_, ref sig, _, _) => {
-                for arg in sig.decl.inputs.iter() {
-                    match arg.pat.kind {
-                        ast::PatKind::Ident(_, ident, None) => {
-                            if ident.name == kw::Invalid {
-                                cx.struct_span_lint(ANONYMOUS_PARAMETERS, arg.pat.span, |lint| {
-                                    let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
+        if let ast::AssocItemKind::Fn(_, ref sig, _, _) = it.kind {
+            for arg in sig.decl.inputs.iter() {
+                if let ast::PatKind::Ident(_, ident, None) = arg.pat.kind {
+                    if ident.name == kw::Invalid {
+                        cx.struct_span_lint(ANONYMOUS_PARAMETERS, arg.pat.span, |lint| {
+                            let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
 
-                                    let (ty_snip, appl) = if let Ok(ref snip) = ty_snip {
-                                        (snip.as_str(), Applicability::MachineApplicable)
-                                    } else {
-                                        ("<type>", Applicability::HasPlaceholders)
-                                    };
+                            let (ty_snip, appl) = if let Ok(ref snip) = ty_snip {
+                                (snip.as_str(), Applicability::MachineApplicable)
+                            } else {
+                                ("<type>", Applicability::HasPlaceholders)
+                            };
 
-                                    lint.build(
-                                        "anonymous parameters are deprecated and will be \
+                            lint.build(
+                                "anonymous parameters are deprecated and will be \
                                      removed in the next edition.",
-                                    )
-                                    .span_suggestion(
-                                        arg.pat.span,
-                                        "try naming the parameter or explicitly \
+                            )
+                            .span_suggestion(
+                                arg.pat.span,
+                                "try naming the parameter or explicitly \
                                             ignoring it",
-                                        format!("_: {}", ty_snip),
-                                        appl,
-                                    )
-                                    .emit();
-                                })
-                            }
-                        }
-                        _ => (),
+                                format!("_: {}", ty_snip),
+                                appl,
+                            )
+                            .emit();
+                        })
                     }
                 }
             }
-            _ => (),
         }
     }
 }
@@ -888,18 +882,14 @@ declare_lint_pass!(MutableTransmutes => [MUTABLE_TRANSMUTES]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
         use rustc_target::spec::abi::Abi::RustIntrinsic;
-
-        match get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (&ty1.kind, &ty2.kind)) {
-            Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) => {
-                if to_mt == hir::Mutability::Mut && from_mt == hir::Mutability::Not {
-                    let msg = "mutating transmuted &mut T from &T may cause undefined behavior, \
+        if let Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) =
+            get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (&ty1.kind, &ty2.kind))
+        {
+            if to_mt == hir::Mutability::Mut && from_mt == hir::Mutability::Not {
+                let msg = "mutating transmuted &mut T from &T may cause undefined behavior, \
                                consider instead using an UnsafeCell";
-                    cx.struct_span_lint(MUTABLE_TRANSMUTES, expr.span, |lint| {
-                        lint.build(msg).emit()
-                    });
-                }
+                cx.struct_span_lint(MUTABLE_TRANSMUTES, expr.span, |lint| lint.build(msg).emit());
             }
-            _ => (),
         }
 
         fn get_transmute_from_to<'a, 'tcx>(
@@ -1207,8 +1197,8 @@ declare_lint_pass!(
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'tcx>) {
-        use rustc::ty::fold::TypeFoldable;
-        use rustc::ty::Predicate::*;
+        use rustc_middle::ty::fold::TypeFoldable;
+        use rustc_middle::ty::Predicate::*;
 
         if cx.tcx.features().trivial_bounds {
             let def_id = cx.tcx.hir().local_def_id(item.hir_id);
@@ -1558,7 +1548,7 @@ impl ExplicitOutlivesRequirements {
         inferred_outlives: &[ty::Region<'tcx>],
         infer_static: bool,
     ) -> Vec<(usize, Span)> {
-        use rustc::middle::resolve_lifetime::Region;
+        use rustc_middle::middle::resolve_lifetime::Region;
 
         bounds
             .iter()
@@ -1641,7 +1631,7 @@ impl ExplicitOutlivesRequirements {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
-        use rustc::middle::resolve_lifetime::Region;
+        use rustc_middle::middle::resolve_lifetime::Region;
 
         let infer_static = cx.tcx.features().infer_static_outlives_requirements;
         let def_id = cx.tcx.hir().local_def_id(item.hir_id);
@@ -1926,7 +1916,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             ty: Ty<'tcx>,
             init: InitKind,
         ) -> Option<InitError> {
-            use rustc::ty::TyKind::*;
+            use rustc_middle::ty::TyKind::*;
             match ty.kind {
                 // Primitive types that don't like 0 as a value.
                 Ref(..) => Some(("references must be non-null".to_string(), None)),

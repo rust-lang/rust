@@ -4,12 +4,12 @@ use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCause};
 
-use rustc::ty::adjustment::AllowTwoPhase;
-use rustc::ty::{self, AssocItem, Ty};
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Node};
+use rustc_middle::ty::adjustment::AllowTwoPhase;
+use rustc_middle::ty::{self, AssocItem, Ty};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 

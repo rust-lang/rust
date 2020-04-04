@@ -6,9 +6,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
-use rustc::middle::region::*;
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -16,6 +13,9 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Arm, Block, Expr, Local, Node, Pat, PatKind, Stmt};
 use rustc_index::vec::Idx;
+use rustc_middle::middle::region::*;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map;
 use rustc_span::Span;
 
@@ -27,8 +27,8 @@ pub struct Context {
     /// of the innermost fn body. Each fn forms its own disjoint tree
     /// in the region hierarchy. These fn bodies are themselves
     /// arranged into a tree. See the "Modeling closures" section of
-    /// the README in `infer::region_constraints` for more
-    /// details.
+    /// the README in `rustc_trait_selection::infer::region_constraints`
+    /// for more details.
     root_id: Option<hir::ItemLocalId>,
 
     /// The scope that contains any new variables declared, plus its depth in

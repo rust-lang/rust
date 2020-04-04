@@ -235,16 +235,17 @@ use rustc_index::vec::Idx;
 use super::{compare_const_vals, PatternFoldable, PatternFolder};
 use super::{FieldPat, Pat, PatKind, PatRange};
 
-use rustc::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
-use rustc::mir::Field;
-use rustc::ty::layout::{Integer, IntegerExt, Size, VariantIdx};
-use rustc::ty::{self, Const, Ty, TyCtxt, TypeFoldable, VariantDef};
-use rustc::util::common::ErrorReported;
 use rustc_attr::{SignedInt, UnsignedInt};
+use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, RangeEnd};
+use rustc_middle::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
+use rustc_middle::mir::Field;
+use rustc_middle::ty::layout::IntegerExt;
+use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeFoldable, VariantDef};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi::{Integer, Size, VariantIdx};
 
 use arena::TypedArena;
 
@@ -1974,15 +1975,12 @@ fn slice_pat_covered_by_const<'tcx>(
         .zip(prefix)
         .chain(data[data.len() - suffix.len()..].iter().zip(suffix))
     {
-        match pat.kind {
-            box PatKind::Constant { value } => {
-                let b = value.eval_bits(tcx, param_env, pat.ty);
-                assert_eq!(b as u8 as u128, b);
-                if b as u8 != *ch {
-                    return Ok(false);
-                }
+        if let box PatKind::Constant { value } = pat.kind {
+            let b = value.eval_bits(tcx, param_env, pat.ty);
+            assert_eq!(b as u8 as u128, b);
+            if b as u8 != *ch {
+                return Ok(false);
             }
-            _ => {}
         }
     }
 
@@ -2197,8 +2195,8 @@ fn split_grouped_constructors<'p, 'tcx>(
                 let head_ctors =
                     matrix.heads().filter_map(|pat| pat_constructor(tcx, param_env, pat));
                 for ctor in head_ctors {
-                    match ctor {
-                        Slice(slice) => match slice.pattern_kind() {
+                    if let Slice(slice) = ctor {
+                        match slice.pattern_kind() {
                             FixedLen(len) => {
                                 max_fixed_len = cmp::max(max_fixed_len, len);
                             }
@@ -2206,8 +2204,7 @@ fn split_grouped_constructors<'p, 'tcx>(
                                 max_prefix_len = cmp::max(max_prefix_len, prefix);
                                 max_suffix_len = cmp::max(max_suffix_len, suffix);
                             }
-                        },
-                        _ => {}
+                        }
                     }
                 }
 

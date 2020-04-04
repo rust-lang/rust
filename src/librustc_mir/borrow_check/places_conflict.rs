@@ -1,9 +1,9 @@
 use crate::borrow_check::ArtificialField;
 use crate::borrow_check::Overlap;
 use crate::borrow_check::{AccessDepth, Deep, Shallow};
-use rustc::mir::{Body, BorrowKind, Local, Place, PlaceElem, PlaceRef, ProjectionElem};
-use rustc::ty::{self, TyCtxt};
 use rustc_hir as hir;
+use rustc_middle::mir::{Body, BorrowKind, Local, Place, PlaceElem, PlaceRef, ProjectionElem};
+use rustc_middle::ty::{self, TyCtxt};
 use std::cmp::max;
 
 /// When checking if a place conflicts with another place, this enum is used to influence decisions
@@ -24,8 +24,8 @@ crate enum PlaceConflictBias {
 crate fn places_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    borrow_place: &Place<'tcx>,
-    access_place: &Place<'tcx>,
+    borrow_place: Place<'tcx>,
+    access_place: Place<'tcx>,
     bias: PlaceConflictBias,
 ) -> bool {
     borrow_conflicts_with_place(
@@ -46,7 +46,7 @@ crate fn places_conflict<'tcx>(
 pub(super) fn borrow_conflicts_with_place<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    borrow_place: &Place<'tcx>,
+    borrow_place: Place<'tcx>,
     borrow_kind: BorrowKind,
     access_place: PlaceRef<'tcx>,
     access: AccessDepth,
@@ -71,7 +71,7 @@ pub(super) fn borrow_conflicts_with_place<'tcx>(
 fn place_components_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    borrow_place: &Place<'tcx>,
+    borrow_place: Place<'tcx>,
     borrow_kind: BorrowKind,
     access_place: PlaceRef<'tcx>,
     access: AccessDepth,

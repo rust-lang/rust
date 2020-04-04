@@ -354,20 +354,19 @@ fn generic_extension<'cx>(
                 mbe::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
                 _ => continue,
             };
-            match parse_tt(&mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())), lhs_tt) {
-                Success(_) => {
-                    if comma_span.is_dummy() {
-                        err.note("you might be missing a comma");
-                    } else {
-                        err.span_suggestion_short(
-                            comma_span,
-                            "missing comma here",
-                            ", ".to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                    }
+            if let Success(_) =
+                parse_tt(&mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())), lhs_tt)
+            {
+                if comma_span.is_dummy() {
+                    err.note("you might be missing a comma");
+                } else {
+                    err.span_suggestion_short(
+                        comma_span,
+                        "missing comma here",
+                        ", ".to_string(),
+                        Applicability::MachineApplicable,
+                    );
                 }
-                _ => {}
             }
         }
     }

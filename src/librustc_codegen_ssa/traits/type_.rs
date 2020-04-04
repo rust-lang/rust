@@ -3,10 +3,11 @@ use super::Backend;
 use super::HasCodegen;
 use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
-use rustc::ty::layout::{self, TyLayout};
-use rustc::ty::{self, Ty};
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
+use rustc_target::abi::Integer;
 
 // This depends on `Backend` and not `BackendTypes`, because consumers will probably want to use
 // `LayoutOf` or `HasTyCtxt`. This way, they don't have to add a constraint on it themselves.
@@ -53,8 +54,8 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
         }
     }
 
-    fn type_from_integer(&self, i: layout::Integer) -> Self::Type {
-        use rustc::ty::layout::Integer::*;
+    fn type_from_integer(&self, i: Integer) -> Self::Type {
+        use Integer::*;
         match i {
             I8 => self.type_i8(),
             I16 => self.type_i16(),
@@ -94,17 +95,17 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
 impl<T> DerivedTypeMethods<'tcx> for T where Self: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {}
 
 pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
-    fn backend_type(&self, layout: TyLayout<'tcx>) -> Self::Type;
+    fn backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
     fn cast_backend_type(&self, ty: &CastTarget) -> Self::Type;
     fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Self::Type;
     fn reg_backend_type(&self, ty: &Reg) -> Self::Type;
-    fn immediate_backend_type(&self, layout: TyLayout<'tcx>) -> Self::Type;
-    fn is_backend_immediate(&self, layout: TyLayout<'tcx>) -> bool;
-    fn is_backend_scalar_pair(&self, layout: TyLayout<'tcx>) -> bool;
-    fn backend_field_index(&self, layout: TyLayout<'tcx>, index: usize) -> u64;
+    fn immediate_backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
+    fn is_backend_immediate(&self, layout: TyAndLayout<'tcx>) -> bool;
+    fn is_backend_scalar_pair(&self, layout: TyAndLayout<'tcx>) -> bool;
+    fn backend_field_index(&self, layout: TyAndLayout<'tcx>, index: usize) -> u64;
     fn scalar_pair_element_backend_type(
         &self,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
         index: usize,
         immediate: bool,
     ) -> Self::Type;

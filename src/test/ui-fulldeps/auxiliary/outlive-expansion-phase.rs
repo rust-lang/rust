@@ -3,7 +3,7 @@
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
 
-extern crate rustc;
+extern crate rustc_middle;
 extern crate rustc_driver;
 
 use std::any::Any;

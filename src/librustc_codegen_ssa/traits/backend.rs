@@ -2,18 +2,19 @@ use super::write::WriteBackendMethods;
 use super::CodegenObject;
 use crate::ModuleCodegen;
 
-use rustc::dep_graph::DepGraph;
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc::ty::layout::{HasTyCtxt, LayoutOf, TyLayout};
-use rustc::ty::query::Providers;
-use rustc::ty::{Ty, TyCtxt};
-use rustc::util::common::ErrorReported;
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_errors::ErrorReported;
+use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
+use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::{
     config::{self, OutputFilenames, PrintRequest},
     Session,
 };
 use rustc_span::symbol::Symbol;
+use rustc_target::abi::LayoutOf;
 
 pub use rustc_data_structures::sync::MetadataRef;
 
@@ -35,12 +36,12 @@ pub trait BackendTypes {
 }
 
 pub trait Backend<'tcx>:
-    Sized + BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
+    Sized + BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
 {
 }
 
 impl<'tcx, T> Backend<'tcx> for T where
-    Self: BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
+    Self: BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
 {
 }
 

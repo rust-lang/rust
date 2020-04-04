@@ -22,7 +22,7 @@ tempfile = "3.1"
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
-rustc = { path = "../librustc" }
+rustc_middle = { path = "../librustc_middle" }
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_attr = { path = "../librustc_attr" }
 rustc_symbol_mangling = { path = "../librustc_symbol_mangling" }

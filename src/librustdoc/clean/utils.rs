@@ -9,13 +9,13 @@ use crate::clean::{
 use crate::core::DocContext;
 
 use itertools::Itertools;
-use rustc::mir::interpret::{sign_extend, ConstValue, Scalar};
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc::ty::{self, DefIdTree, Ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::mir::interpret::{sign_extend, ConstValue, Scalar};
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::{self, DefIdTree, Ty};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 
@@ -121,7 +121,7 @@ pub fn external_generic_args(
     let args: Vec<_> = substs
         .iter()
         .filter_map(|kind| match kind.unpack() {
-            GenericArgKind::Lifetime(lt) => lt.clean(cx).map(|lt| GenericArg::Lifetime(lt)),
+            GenericArgKind::Lifetime(lt) => lt.clean(cx).map(GenericArg::Lifetime),
             GenericArgKind::Type(_) if skip_self => {
                 skip_self = false;
                 None
@@ -198,27 +198,24 @@ pub fn get_real_types(
         }) {
             let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
             for bound in bounds.iter() {
-                match *bound {
-                    GenericBound::TraitBound(ref poly_trait, _) => {
-                        for x in poly_trait.generic_params.iter() {
-                            if !x.is_type() {
-                                continue;
-                            }
-                            if let Some(ty) = x.get_type() {
-                                let adds = get_real_types(generics, &ty, cx, recurse + 1);
-                                if !adds.is_empty() {
-                                    res.extend(adds);
-                                } else if !ty.is_full_generic() {
-                                    if let Some(did) = ty.def_id() {
-                                        if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
-                                            res.insert((ty, kind));
-                                        }
+                if let GenericBound::TraitBound(ref poly_trait, _) = *bound {
+                    for x in poly_trait.generic_params.iter() {
+                        if !x.is_type() {
+                            continue;
+                        }
+                        if let Some(ty) = x.get_type() {
+                            let adds = get_real_types(generics, &ty, cx, recurse + 1);
+                            if !adds.is_empty() {
+                                res.extend(adds);
+                            } else if !ty.is_full_generic() {
+                                if let Some(did) = ty.def_id() {
+                                    if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
+                                        res.insert((ty, kind));
                                     }
                                 }
                             }
                         }
                     }
-                    _ => {}
                 }
             }
         }

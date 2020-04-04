@@ -1,8 +1,8 @@
 //! This module contains files for saving intermediate work-products.
 
 use crate::persist::fs::*;
-use rustc::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
 use rustc_fs_util::link_or_copy;
+use rustc_middle::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
 use rustc_session::Session;
 use std::fs as std_fs;
 use std::path::PathBuf;

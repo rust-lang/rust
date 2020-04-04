@@ -1,11 +1,11 @@
 use crate::infer::InferCtxt;
 use crate::opaque_types::required_region_bounds;
 use crate::traits::{self, AssocTypeBoundData};
-use rustc::middle::lang_items;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::lang_items;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 
@@ -737,17 +737,14 @@ fn get_generic_bound_spans(
 }
 
 fn is_self_path(kind: &hir::TyKind<'_>) -> bool {
-    match kind {
-        hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
-            let mut s = path.segments.iter();
-            if let (Some(segment), None) = (s.next(), s.next()) {
-                if segment.ident.name == kw::SelfUpper {
-                    // `type(Self)`
-                    return true;
-                }
+    if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = kind {
+        let mut s = path.segments.iter();
+        if let (Some(segment), None) = (s.next(), s.next()) {
+            if segment.ident.name == kw::SelfUpper {
+                // `type(Self)`
+                return true;
             }
         }
-        _ => {}
     }
     false
 }

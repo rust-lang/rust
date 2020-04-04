@@ -1,9 +1,9 @@
-use rustc::hir::map as hir_map;
-use rustc::ty::subst::Subst;
-use rustc::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_middle::hir::map as hir_map;
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_session::CrateDisambiguator;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -163,6 +163,16 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
         "unexpected parent of trait or impl item or item not found: {:?}",
         parent_item.kind
     )
+}
+
+fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let item = tcx.hir().expect_item(hir_id);
+    if let hir::ItemKind::Impl { defaultness, .. } = item.kind {
+        defaultness
+    } else {
+        bug!("`impl_defaultness` called on {:?}", item);
+    }
 }
 
 /// Calculates the `Sized` constraint.
@@ -371,6 +381,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         crate_hash,
         instance_def_size_estimate,
         issue33140_self_ty,
+        impl_defaultness,
         ..*providers
     };
 }

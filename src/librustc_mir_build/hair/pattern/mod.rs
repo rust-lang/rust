@@ -8,14 +8,6 @@ pub(crate) use self::check_match::check_match;
 
 use crate::hair::util::UserAnnotatedTyHelpers;
 
-use rustc::mir::interpret::{get_slice_bytes, sign_extend, ConstValue, ErrorHandled};
-use rustc::mir::interpret::{LitToConstError, LitToConstInput};
-use rustc::mir::UserTypeProjection;
-use rustc::mir::{BorrowKind, Field, Mutability};
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::subst::{GenericArg, SubstsRef};
-use rustc::ty::{self, AdtDef, DefIdTree, Region, Ty, TyCtxt, UserType};
-use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
 use rustc_ast::ast;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -23,7 +15,17 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::vec::Idx;
+use rustc_middle::mir::interpret::{get_slice_bytes, sign_extend, ConstValue, ErrorHandled};
+use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::mir::UserTypeProjection;
+use rustc_middle::mir::{BorrowKind, Field, Mutability};
+use rustc_middle::ty::subst::{GenericArg, SubstsRef};
+use rustc_middle::ty::{self, AdtDef, DefIdTree, Region, Ty, TyCtxt, UserType};
+use rustc_middle::ty::{
+    CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
+};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi::VariantIdx;
 
 use std::cmp::Ordering;
 use std::fmt;
@@ -1044,9 +1046,9 @@ crate fn compare_const_vals<'tcx>(
                 l.partial_cmp(&r)
             }
             ty::Int(ity) => {
-                use rustc::ty::layout::{Integer, IntegerExt};
                 use rustc_attr::SignedInt;
-                let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
+                use rustc_middle::ty::layout::IntegerExt;
+                let size = rustc_target::abi::Integer::from_attr(&tcx, SignedInt(ity)).size();
                 let a = sign_extend(a, size);
                 let b = sign_extend(b, size);
                 Some((a as i128).cmp(&(b as i128)))
@@ -1056,18 +1058,15 @@ crate fn compare_const_vals<'tcx>(
     }
 
     if let ty::Str = ty.kind {
-        match (a.val, b.val) {
-            (
-                ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
-                ty::ConstKind::Value(b_val @ ConstValue::Slice { .. }),
-            ) => {
-                let a_bytes = get_slice_bytes(&tcx, a_val);
-                let b_bytes = get_slice_bytes(&tcx, b_val);
-                return from_bool(a_bytes == b_bytes);
-            }
-            _ => (),
+        if let (
+            ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
+            ty::ConstKind::Value(b_val @ ConstValue::Slice { .. }),
+        ) = (a.val, b.val)
+        {
+            let a_bytes = get_slice_bytes(&tcx, a_val);
+            let b_bytes = get_slice_bytes(&tcx, b_val);
+            return from_bool(a_bytes == b_bytes);
         }
     }
-
     fallback()
 }

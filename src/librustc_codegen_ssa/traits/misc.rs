@@ -1,7 +1,7 @@
 use super::BackendTypes;
-use rustc::mir::mono::CodegenUnit;
-use rustc::ty::{self, Instance, Ty};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::mir::mono::CodegenUnit;
+use rustc_middle::ty::{self, Instance, Ty};
 use rustc_session::Session;
 use std::cell::RefCell;
 use std::sync::Arc;

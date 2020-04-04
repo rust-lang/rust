@@ -1,11 +1,11 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use rustc::ty::{self, TyCtxt};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_trait_selection::traits;
 
 pub fn check(tcx: TyCtxt<'_>) {

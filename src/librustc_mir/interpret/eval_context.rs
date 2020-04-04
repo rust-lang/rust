@@ -2,22 +2,23 @@ use std::cell::Cell;
 use std::fmt::Write;
 use std::mem;
 
-use rustc::ich::StableHashingContext;
-use rustc::mir;
-use rustc::mir::interpret::{
-    sign_extend, truncate, AllocId, FrameInfo, GlobalId, InterpResult, Pointer, Scalar,
-};
-use rustc::ty::layout::{self, Align, HasDataLayout, LayoutOf, Size, TyLayout};
-use rustc::ty::query::TyCtxtAt;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
-use rustc_span::source_map::{self, Span, DUMMY_SP};
+use rustc_middle::ich::StableHashingContext;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{
+    sign_extend, truncate, AllocId, FrameInfo, GlobalId, InterpResult, Pointer, Scalar,
+};
+use rustc_middle::ty::layout::{self, TyAndLayout};
+use rustc_middle::ty::query::TyCtxtAt;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_span::source_map::DUMMY_SP;
+use rustc_target::abi::{Abi, Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
     Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
@@ -56,9 +57,6 @@ pub struct Frame<'mir, 'tcx, Tag = (), Extra = ()> {
 
     /// The def_id and substs of the current function.
     pub instance: ty::Instance<'tcx>,
-
-    /// The span of the call site.
-    pub span: source_map::Span,
 
     /// Extra data for the machine.
     pub extra: Extra,
@@ -114,7 +112,7 @@ pub struct LocalState<'tcx, Tag = (), Id = AllocId> {
     pub value: LocalValue<Tag, Id>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
     #[stable_hasher(ignore)]
-    pub layout: Cell<Option<TyLayout<'tcx>>>,
+    pub layout: Cell<Option<TyAndLayout<'tcx>>>,
 }
 
 /// Current value of a local variable
@@ -176,7 +174,7 @@ impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpCx<'mir, 'tcx, M> {
     #[inline]
-    fn data_layout(&self) -> &layout::TargetDataLayout {
+    fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }
@@ -202,13 +200,60 @@ where
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
-    type TyLayout = InterpResult<'tcx, TyLayout<'tcx>>;
+    type TyAndLayout = InterpResult<'tcx, TyAndLayout<'tcx>>;
 
     #[inline]
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.tcx
             .layout_of(self.param_env.and(ty))
             .map_err(|layout| err_inval!(Layout(layout)).into())
+    }
+}
+
+/// Test if it is valid for a MIR assignment to assign `src`-typed place to `dest`-typed value.
+/// This test should be symmetric, as it is primarily about layout compatibility.
+pub(super) fn mir_assign_valid_types<'tcx>(
+    src: TyAndLayout<'tcx>,
+    dest: TyAndLayout<'tcx>,
+) -> bool {
+    if src.ty == dest.ty {
+        // Equal types, all is good.
+        return true;
+    }
+    // Type-changing assignments can happen for (at least) two reasons:
+    // - `&mut T` -> `&T` gets optimized from a reborrow to a mere assignment.
+    // - Subtyping is used. While all normal lifetimes are erased, higher-ranked lifetime
+    //   bounds are still around and can lead to type differences.
+    // There is no good way to check the latter, so we compare layouts instead -- but only
+    // for values with `Scalar`/`ScalarPair` abi.
+    // FIXME: Do something more accurate, type-based.
+    match &src.abi {
+        Abi::Scalar(..) | Abi::ScalarPair(..) => src.layout == dest.layout,
+        _ => false,
+    }
+}
+
+/// Use the already known layout if given (but sanity check in debug mode),
+/// or compute the layout.
+#[cfg_attr(not(debug_assertions), inline(always))]
+pub(super) fn from_known_layout<'tcx>(
+    known_layout: Option<TyAndLayout<'tcx>>,
+    compute: impl FnOnce() -> InterpResult<'tcx, TyAndLayout<'tcx>>,
+) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
+    match known_layout {
+        None => compute(),
+        Some(known_layout) => {
+            if cfg!(debug_assertions) {
+                let check_layout = compute()?;
+                assert!(
+                    mir_assign_valid_types(check_layout, known_layout),
+                    "expected type differs from actual type.\nexpected: {:?}\nactual: {:?}",
+                    known_layout.ty,
+                    check_layout.ty,
+                );
+            }
+            Ok(known_layout)
+        }
     }
 }
 
@@ -284,13 +329,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn sign_extend(&self, value: u128, ty: TyLayout<'_>) -> u128 {
+    pub fn sign_extend(&self, value: u128, ty: TyAndLayout<'_>) -> u128 {
         assert!(ty.abi.is_signed());
         sign_extend(value, ty.size)
     }
 
     #[inline(always)]
-    pub fn truncate(&self, value: u128, ty: TyLayout<'_>) -> u128 {
+    pub fn truncate(&self, value: u128, ty: TyAndLayout<'_>) -> u128 {
         truncate(value, ty.size)
     }
 
@@ -373,13 +418,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local,
-        layout: Option<TyLayout<'tcx>>,
-    ) -> InterpResult<'tcx, TyLayout<'tcx>> {
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         // `const_prop` runs into this with an invalid (empty) frame, so we
         // have to support that case (mostly by skipping all caching).
         match frame.locals.get(local).and_then(|state| state.layout.get()) {
             None => {
-                let layout = crate::interpret::operand::from_known_layout(layout, || {
+                let layout = from_known_layout(layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
                     let local_ty =
                         self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty);
@@ -401,7 +446,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub(super) fn size_and_align_of(
         &self,
         metadata: MemPlaceMeta<M::PointerTag>,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         if !layout.is_unsized() {
             return Ok(Some((layout.size, layout.align.abi)));
@@ -502,7 +547,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn push_stack_frame(
         &mut self,
         instance: ty::Instance<'tcx>,
-        span: Span,
         body: &'mir mir::Body<'tcx>,
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
@@ -522,7 +566,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // empty local array, we fill it in below, after we are inside the stack frame and
             // all methods actually know about the frame
             locals: IndexVec::new(),
-            span,
             instance,
             stmt: 0,
             extra,
@@ -541,10 +584,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // statics and constants don't have `Storage*` statements, no need to look for them
                 Some(DefKind::Static) | Some(DefKind::Const) | Some(DefKind::AssocConst) => {}
                 _ => {
-                    trace!("push_stack_frame: {:?}: num_bbs: {}", span, body.basic_blocks().len());
                     for block in body.basic_blocks() {
                         for stmt in block.statements.iter() {
-                            use rustc::mir::StatementKind::{StorageDead, StorageLive};
+                            use rustc_middle::mir::StatementKind::{StorageDead, StorageLive};
                             match stmt.kind {
                                 StorageLive(local) | StorageDead(local) => {
                                     locals[local].value = LocalValue::Dead;
@@ -859,33 +901,21 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> Vec<FrameInfo<'tcx>> {
-        let mut last_span = None;
+    pub fn generate_stacktrace(&self) -> Vec<FrameInfo<'tcx>> {
         let mut frames = Vec::new();
         for frame in self.stack().iter().rev() {
-            // make sure we don't emit frames that are duplicates of the previous
-            if explicit_span == Some(frame.span) {
-                last_span = Some(frame.span);
-                continue;
-            }
-            if let Some(last) = last_span {
-                if last == frame.span {
-                    continue;
-                }
-            } else {
-                last_span = Some(frame.span);
-            }
-
-            let lint_root = frame.current_source_info().and_then(|source_info| {
+            let source_info = frame.current_source_info();
+            let lint_root = source_info.and_then(|source_info| {
                 match &frame.body.source_scopes[source_info.scope].local_data {
                     mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
                     mir::ClearCrossCrate::Clear => None,
                 }
             });
+            let span = source_info.map_or(DUMMY_SP, |source_info| source_info.span);
 
-            frames.push(FrameInfo { call_site: frame.span, instance: frame.instance, lint_root });
+            frames.push(FrameInfo { span, instance: frame.instance, lint_root });
         }
-        trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
+        trace!("generate stacktrace: {:#?}", frames);
         frames
     }
 }
@@ -899,7 +929,6 @@ where
     fn hash_stable(&self, hcx: &mut StableHashingContext<'ctx>, hasher: &mut StableHasher) {
         self.body.hash_stable(hcx, hasher);
         self.instance.hash_stable(hcx, hasher);
-        self.span.hash_stable(hcx, hasher);
         self.return_to_block.hash_stable(hcx, hasher);
         self.return_place.as_ref().map(|r| &**r).hash_stable(hcx, hasher);
         self.locals.hash_stable(hcx, hasher);
