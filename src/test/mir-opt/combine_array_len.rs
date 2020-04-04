@@ -1,3 +1,4 @@
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR rustc.norm2.InstCombine.diff
 
 fn norm2(x: [f32; 2]) -> f32 {

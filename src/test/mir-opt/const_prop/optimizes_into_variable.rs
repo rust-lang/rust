@@ -5,6 +5,7 @@ struct Point {
     y: u32,
 }
 
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR rustc.main.ConstProp.diff
 // EMIT_MIR rustc.main.SimplifyLocals.after.mir
 fn main() {

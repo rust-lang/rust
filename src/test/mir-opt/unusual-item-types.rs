@@ -1,6 +1,8 @@
 // Test that we don't ICE when trying to dump MIR for unusual item types and
 // that we don't create filenames containing `<` and `>`
 
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
+
 struct A;
 
 // EMIT_MIR rustc.{{impl}}-ASSOCIATED_CONSTANT.mir_map.0.mir

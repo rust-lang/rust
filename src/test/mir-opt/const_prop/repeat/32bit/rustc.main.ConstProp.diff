@@ -1,0 +1,88 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/repeat.rs:5:11: 5:11
+      let _1: u32 as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at $DIR/repeat.rs:6:9: 6:10
+      let mut _2: u32;                     // in scope 0 at $DIR/repeat.rs:6:18: 6:28
+      let mut _3: [u32; 8];                // in scope 0 at $DIR/repeat.rs:6:18: 6:25
+      let _4: usize;                       // in scope 0 at $DIR/repeat.rs:6:26: 6:27
+      let mut _5: usize;                   // in scope 0 at $DIR/repeat.rs:6:18: 6:28
+      let mut _6: bool;                    // in scope 0 at $DIR/repeat.rs:6:18: 6:28
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/repeat.rs:6:9: 6:10
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/repeat.rs:6:9: 6:10
+          StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/repeat.rs:6:18: 6:28
+          StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/repeat.rs:6:18: 6:25
+          _3 = [const 42u32; 8];           // bb0[3]: scope 0 at $DIR/repeat.rs:6:18: 6:25
+                                           // ty::Const
+                                           // + ty: u32
+                                           // + val: Value(Scalar(0x0000002a))
+                                           // mir::Constant
+                                           // + span: $DIR/repeat.rs:6:19: 6:21
+                                           // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
+          StorageLive(_4);                 // bb0[4]: scope 0 at $DIR/repeat.rs:6:26: 6:27
+          _4 = const 2usize;               // bb0[5]: scope 0 at $DIR/repeat.rs:6:26: 6:27
+                                           // ty::Const
+                                           // + ty: usize
+                                           // + val: Value(Scalar(0x00000002))
+                                           // mir::Constant
+                                           // + span: $DIR/repeat.rs:6:26: 6:27
+                                           // + literal: Const { ty: usize, val: Value(Scalar(0x00000002)) }
+          _5 = const 8usize;               // bb0[6]: scope 0 at $DIR/repeat.rs:6:18: 6:28
+                                           // ty::Const
+                                           // + ty: usize
+                                           // + val: Value(Scalar(0x00000008))
+                                           // mir::Constant
+                                           // + span: $DIR/repeat.rs:6:18: 6:28
+                                           // + literal: Const { ty: usize, val: Value(Scalar(0x00000008)) }
+-         _6 = Lt(_4, _5);                 // bb0[7]: scope 0 at $DIR/repeat.rs:6:18: 6:28
+-         assert(move _6, "index out of bounds: the len is move _5 but the index is _4") -> bb1; // bb0[8]: scope 0 at $DIR/repeat.rs:6:18: 6:28
++         _6 = const true;                 // bb0[7]: scope 0 at $DIR/repeat.rs:6:18: 6:28
++                                          // ty::Const
++                                          // + ty: bool
++                                          // + val: Value(Scalar(0x01))
++                                          // mir::Constant
++                                          // + span: $DIR/repeat.rs:6:18: 6:28
++                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
++         assert(const true, "index out of bounds: the len is move _5 but the index is _4") -> bb1; // bb0[8]: scope 0 at $DIR/repeat.rs:6:18: 6:28
++                                          // ty::Const
++                                          // + ty: bool
++                                          // + val: Value(Scalar(0x01))
++                                          // mir::Constant
++                                          // + span: $DIR/repeat.rs:6:18: 6:28
++                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+      }
+  
+      bb1: {
+-         _2 = _3[_4];                     // bb1[0]: scope 0 at $DIR/repeat.rs:6:18: 6:28
+-         _1 = Add(move _2, const 0u32);   // bb1[1]: scope 0 at $DIR/repeat.rs:6:18: 6:32
++         _2 = const 42u32;                // bb1[0]: scope 0 at $DIR/repeat.rs:6:18: 6:28
+                                           // ty::Const
+                                           // + ty: u32
+-                                          // + val: Value(Scalar(0x00000000))
++                                          // + val: Value(Scalar(0x0000002a))
+                                           // mir::Constant
+-                                          // + span: $DIR/repeat.rs:6:31: 6:32
+-                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
++                                          // + span: $DIR/repeat.rs:6:18: 6:28
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
++         _1 = const 42u32;                // bb1[1]: scope 0 at $DIR/repeat.rs:6:18: 6:32
++                                          // ty::Const
++                                          // + ty: u32
++                                          // + val: Value(Scalar(0x0000002a))
++                                          // mir::Constant
++                                          // + span: $DIR/repeat.rs:6:18: 6:32
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
+          StorageDead(_2);                 // bb1[2]: scope 0 at $DIR/repeat.rs:6:31: 6:32
+          StorageDead(_4);                 // bb1[3]: scope 0 at $DIR/repeat.rs:6:32: 6:33
+          StorageDead(_3);                 // bb1[4]: scope 0 at $DIR/repeat.rs:6:32: 6:33
+          _0 = ();                         // bb1[5]: scope 0 at $DIR/repeat.rs:5:11: 7:2
+          StorageDead(_1);                 // bb1[6]: scope 0 at $DIR/repeat.rs:7:1: 7:2
+          return;                          // bb1[7]: scope 0 at $DIR/repeat.rs:7:2: 7:2
+      }
+  }
+  

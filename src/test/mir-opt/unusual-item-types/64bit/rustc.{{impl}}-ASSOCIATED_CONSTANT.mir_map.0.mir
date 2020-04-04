@@ -1,0 +1,20 @@
+// MIR for `<impl at $DIR/unusual-item-types.rs:9:1: 11:2>::ASSOCIATED_CONSTANT` 0 mir_map
+
+const <impl at $DIR/unusual-item-types.rs:9:1: 11:2>::ASSOCIATED_CONSTANT: i32 = {
+    let mut _0: i32;                     // return place in scope 0 at $DIR/unusual-item-types.rs:10:32: 10:35
+
+    bb0: {
+        _0 = const 2i32;                 // bb0[0]: scope 0 at $DIR/unusual-item-types.rs:10:38: 10:39
+                                         // ty::Const
+                                         // + ty: i32
+                                         // + val: Value(Scalar(0x00000002))
+                                         // mir::Constant
+                                         // + span: $DIR/unusual-item-types.rs:10:38: 10:39
+                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000002)) }
+        return;                          // bb0[1]: scope 0 at $DIR/unusual-item-types.rs:10:5: 10:40
+    }
+
+    bb1 (cleanup): {
+        resume;                          // bb1[0]: scope 0 at $DIR/unusual-item-types.rs:10:5: 10:40
+    }
+}
