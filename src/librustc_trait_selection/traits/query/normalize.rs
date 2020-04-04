@@ -59,11 +59,22 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             anon_depth: 0,
         };
 
-        let value1 = value.fold_with(&mut normalizer);
+        let result = value.fold_with(&mut normalizer);
+        debug!(
+            "normalize::<{}>: result={:?} with {} obligations",
+            ::std::any::type_name::<T>(),
+            result,
+            normalizer.obligations.len(),
+        );
+        debug!(
+            "normalize::<{}>: obligations={:?}",
+            ::std::any::type_name::<T>(),
+            normalizer.obligations,
+        );
         if normalizer.error {
             Err(NoSolution)
         } else {
-            Ok(Normalized { value: value1, obligations: normalizer.obligations })
+            Ok(Normalized { value: result, obligations: normalizer.obligations })
         }
     }
 }
