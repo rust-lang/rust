@@ -19,11 +19,25 @@ we'll talk about that later.
 
 **TODO: someone else should confirm this vvv**
 
-- The compile process begins when a user writes a Rust source program in text and invokes the `rustc` compiler on it. The work that the compiler needs to perform is defined by command-line options. For example, it is possible to enable nightly features (`-Z` flags), perform `check`-only builds, or emit LLVM-IR rather than executable machine code. The `rustc` executable call may be indirect through the use of `cargo`.
-- Command line argument parsing occurs in the [`librustc_driver`]. This crate defines the compile configuration that is requested by the user and passes it to the rest of the compilation process as a [`rustc_interface::Config`].
-- The raw Rust source text is analyzed by a low-level lexer located in [`librustc_lexer`]. At this stage, the source text is turned into a stream of atomic source code units known as _tokens_. (**TODO**: chrissimpkins - Maybe discuss Unicode handling during this stage?)
-- The token stream passes through a higher-level lexer located in [`librustc_parse`] to prepare for the next stage of the compile process. The [`StringReader`] struct is used at this stage to perform a set of validations and turn strings into interned symbols.
-- (**TODO**: chrissimpkins - Expand info on parser) We then [_parse_ the stream of tokens][parser] to build an Abstract Syntax Tree (AST).
+- The compile process begins when a user writes a Rust source program in text
+  and invokes the `rustc` compiler on it. The work that the compiler needs to
+  perform is defined by command-line options. For example, it is possible to
+  enable nightly features (`-Z` flags), perform `check`-only builds, or emit
+  LLVM-IR rather than executable machine code. The `rustc` executable call may
+  be indirect through the use of `cargo`.
+- Command line argument parsing occurs in the [`librustc_driver`]. This crate
+  defines the compile configuration that is requested by the user and passes it
+  to the rest of the compilation process as a [`rustc_interface::Config`].
+- The raw Rust source text is analyzed by a low-level lexer located in
+  [`librustc_lexer`]. At this stage, the source text is turned into a stream of
+  atomic source code units known as _tokens_. (**TODO**: chrissimpkins - Maybe
+  discuss Unicode handling during this stage?)
+- The token stream passes through a higher-level lexer located in
+  [`librustc_parse`] to prepare for the next stage of the compile process. The
+  [`StringReader`] struct is used at this stage to perform a set of validations
+  and turn strings into interned symbols.
+- (**TODO**: chrissimpkins - Expand info on parser) We then [_parse_ the stream
+  of tokens][parser] to build an Abstract Syntax Tree (AST).
   - macro expansion (**TODO** chrissimpkins)
   - ast validation (**TODO** chrissimpkins)
   - nameres (**TODO** chrissimpkins)
