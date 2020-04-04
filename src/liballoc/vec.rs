@@ -66,7 +66,7 @@ use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume};
 use core::iter::{FromIterator, FusedIterator, TrustedLen};
 use core::marker::PhantomData;
-use core::mem;
+use core::mem::{self, ManuallyDrop};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Index, IndexMut, RangeBounds};
 use core::ptr::{self, NonNull};
@@ -392,7 +392,7 @@ impl<T> Vec<T> {
     /// ```
     #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
     pub fn into_raw_parts(self) -> (*mut T, usize, usize) {
-        let mut me = mem::ManuallyDrop::new(self);
+        let mut me = ManuallyDrop::new(self);
         (me.as_mut_ptr(), me.len(), me.capacity())
     }
 
@@ -678,9 +678,9 @@ impl<T> Vec<T> {
     pub fn into_boxed_slice(mut self) -> Box<[T]> {
         unsafe {
             self.shrink_to_fit();
-            let buf = ptr::read(&self.buf);
-            let len = self.len();
-            mem::forget(self);
+            let me = ManuallyDrop::new(self);
+            let buf = ptr::read(&me.buf);
+            let len = me.len();
             buf.into_box(len).assume_init()
         }
     }
@@ -1949,16 +1949,16 @@ impl<T> IntoIterator for Vec<T> {
     /// }
     /// ```
     #[inline]
-    fn into_iter(mut self) -> IntoIter<T> {
+    fn into_iter(self) -> IntoIter<T> {
         unsafe {
-            let begin = self.as_mut_ptr();
+            let mut me = ManuallyDrop::new(self);
+            let begin = me.as_mut_ptr();
             let end = if mem::size_of::<T>() == 0 {
-                arith_offset(begin as *const i8, self.len() as isize) as *const T
+                arith_offset(begin as *const i8, me.len() as isize) as *const T
             } else {
-                begin.add(self.len()) as *const T
+                begin.add(me.len()) as *const T
             };
-            let cap = self.buf.capacity();
-            mem::forget(self);
+            let cap = me.buf.capacity();
             IntoIter {
                 buf: NonNull::new_unchecked(begin),
                 phantom: PhantomData,
@@ -2081,9 +2081,8 @@ impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
         // has not been advanced at all.
         if iterator.buf.as_ptr() as *const _ == iterator.ptr {
             unsafe {
-                let vec = Vec::from_raw_parts(iterator.buf.as_ptr(), iterator.len(), iterator.cap);
-                mem::forget(iterator);
-                vec
+                let it = ManuallyDrop::new(iterator);
+                Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap)
             }
         } else {
             let mut vector = Vec::new();

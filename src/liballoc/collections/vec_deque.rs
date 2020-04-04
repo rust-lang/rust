@@ -12,7 +12,7 @@ use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{once, repeat_with, FromIterator, FusedIterator};
-use core::mem::{self, replace};
+use core::mem::{self, replace, ManuallyDrop};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{Index, IndexMut, RangeBounds, Try};
 use core::ptr::{self, NonNull};
@@ -2898,12 +2898,12 @@ impl<T> From<Vec<T>> for VecDeque<T> {
     /// This avoids reallocating where possible, but the conditions for that are
     /// strict, and subject to change, and so shouldn't be relied upon unless the
     /// `Vec<T>` came from `From<VecDeque<T>>` and hasn't been reallocated.
-    fn from(mut other: Vec<T>) -> Self {
+    fn from(other: Vec<T>) -> Self {
         unsafe {
+            let mut other = ManuallyDrop::new(other);
             let other_buf = other.as_mut_ptr();
             let mut buf = RawVec::from_raw_parts(other_buf, other.capacity());
             let len = other.len();
-            mem::forget(other);
 
             // We need to extend the buf if it's not a power of two, too small
             // or doesn't have at least one free space
@@ -2955,6 +2955,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
         other.make_contiguous();
 
         unsafe {
+            let other = ManuallyDrop::new(other);
             let buf = other.buf.ptr();
             let len = other.len();
             let cap = other.cap();
@@ -2962,9 +2963,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
             if other.head != 0 {
                 ptr::copy(buf.add(other.tail), buf, len);
             }
-            let out = Vec::from_raw_parts(buf, len, cap);
-            mem::forget(other);
-            out
+            Vec::from_raw_parts(buf, len, cap)
         }
     }
 }
