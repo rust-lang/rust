@@ -22,10 +22,33 @@ mod dylib;
 use proc_macro::bridge::client::TokenStream;
 use ra_proc_macro::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask};
 
-pub fn expand_task(_task: &ExpansionTask) -> Result<ExpansionResult, String> {
-    unimplemented!()
+pub fn expand_task(task: &ExpansionTask) -> Result<ExpansionResult, String> {
+    let expander = dylib::Expander::new(&task.lib)
+        .expect(&format!("Cannot expand with provided libraries: ${:?}", &task.lib));
+
+    match expander.expand(&task.macro_name, &task.macro_body, task.attributes.as_ref()) {
+        Ok(expansion) => Ok(ExpansionResult { expansion }),
+        Err(msg) => {
+            let reason = format!(
+                "Cannot perform expansion for {}: error {:?}!",
+                &task.macro_name,
+                msg.as_str()
+            );
+            Err(reason)
+        }
+    }
 }
 
-pub fn list_macros(_task: &ListMacrosTask) -> Result<ListMacrosResult, String> {
-    unimplemented!()
+pub fn list_macros(task: &ListMacrosTask) -> Result<ListMacrosResult, String> {
+    let expander = dylib::Expander::new(&task.lib)
+        .expect(&format!("Cannot expand with provided libraries: ${:?}", &task.lib));
+
+    match expander.list_macros() {
+        Ok(macros) => Ok(ListMacrosResult { macros }),
+        Err(msg) => {
+            let reason =
+                format!("Cannot perform expansion for {:?}: error {:?}!", &task.lib, msg.as_str());
+            Err(reason)
+        }
+    }
 }
