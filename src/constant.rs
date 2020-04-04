@@ -1,18 +1,12 @@
-use std::borrow::Cow;
-
 use rustc_span::DUMMY_SP;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, InterpResult, Scalar,
+    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, Pointer, Scalar,
 };
 use rustc_middle::ty::{Const, ConstKind};
 use rustc_target::abi::Align;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_mir::interpret::{
-    ImmTy, InterpCx, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
-    StackPopCleanup, StackPopJump,
-};
 
 use cranelift_codegen::ir::GlobalValue;
 use cranelift_module::*;
@@ -84,6 +78,7 @@ pub(crate) fn trans_const_value<'tcx>(
 ) -> CValue<'tcx> {
     let ty = fx.monomorphize(&const_.ty);
     let layout = fx.layout_of(ty);
+    assert!(!layout.is_unsized(), "sized const value");
 
     if layout.is_zst() {
         return CValue::by_ref(
@@ -99,7 +94,15 @@ pub(crate) fn trans_const_value<'tcx>(
     match const_val {
         ConstValue::Scalar(x) => {
             if fx.clif_type(layout.ty).is_none() {
-                return trans_const_place(fx, const_).to_cvalue(fx);
+                let (size, align) = (layout.size, layout.align.pref);
+                let mut alloc = Allocation::from_bytes(
+                    std::iter::repeat(0).take(size.bytes_usize()).collect::<Vec<u8>>(),
+                    align,
+                );
+                let ptr = Pointer::new(AllocId(!0), Size::ZERO); // The alloc id is never used
+                alloc.write_scalar(fx, ptr, x.into(), size).unwrap();
+                let alloc = fx.tcx.intern_const_alloc(alloc);
+                return CValue::by_ref(pointer_for_allocation(fx, alloc), layout);
             }
 
             match x {
@@ -140,68 +143,35 @@ pub(crate) fn trans_const_value<'tcx>(
             }
         }
         ConstValue::ByRef { alloc, offset } => {
-            let alloc_id = fx.tcx.alloc_map.lock().create_memory_alloc(alloc);
-            fx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
-            let data_id = data_id_for_alloc_id(fx.module, alloc_id, alloc.align);
-            let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-            let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
-            assert!(!layout.is_unsized(), "unsized ConstValue::ByRef not supported");
             CValue::by_ref(
-                crate::pointer::Pointer::new(global_ptr)
+                pointer_for_allocation(fx, alloc)
                     .offset_i64(fx, i64::try_from(offset.bytes()).unwrap()),
                 layout,
             )
         }
-        ConstValue::Slice { data: _, start: _, end: _ } => {
-            trans_const_place(fx, const_).to_cvalue(fx)
+        ConstValue::Slice { data, start, end } => {
+            let ptr = pointer_for_allocation(fx, data)
+                .offset_i64(fx, i64::try_from(start).unwrap())
+                .get_addr(fx);
+            let len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(end.checked_sub(start).unwrap()).unwrap());
+            CValue::by_val_pair(ptr, len, layout)
         }
     }
 }
 
-fn trans_const_place<'tcx>(
+fn pointer_for_allocation<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    const_: &'tcx Const<'tcx>,
-) -> CPlace<'tcx> {
-    // Adapted from https://github.com/rust-lang/rust/pull/53671/files#diff-e0b58bb6712edaa8595ad7237542c958L551
-    let result = || -> InterpResult<'tcx, &'tcx Allocation> {
-        let mut ecx = InterpCx::new(
-            fx.tcx.at(DUMMY_SP),
-            ty::ParamEnv::reveal_all(),
-            TransPlaceInterpreter,
-            (),
-        );
-        ecx.push_stack_frame(
-            fx.instance,
-            fx.mir,
-            None,
-            StackPopCleanup::None { cleanup: false },
-        )
-        .unwrap();
-        let op = ecx.eval_operand(
-            &Operand::Constant(Box::new(Constant {
-                span: DUMMY_SP,
-                user_ty: None,
-                literal: const_,
-            })),
-            None,
-        )?;
-        let ptr = ecx.allocate(op.layout, MemoryKind::Stack);
-        ecx.copy_op(op, ptr.into())?;
-        let alloc = ecx
-            .memory
-            .get_raw(ptr.to_ref().to_scalar()?.assert_ptr().alloc_id)?;
-        Ok(fx.tcx.intern_const_alloc(alloc.clone()))
-    };
-    let alloc = result().expect("unable to convert ConstKind to Allocation");
-
-    //println!("const value: {:?} allocation: {:?}", value, alloc);
+    alloc: &'tcx Allocation,
+) -> crate::pointer::Pointer {
     let alloc_id = fx.tcx.alloc_map.lock().create_memory_alloc(alloc);
     fx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
     let data_id = data_id_for_alloc_id(fx.module, alloc_id, alloc.align);
+
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     fx.add_comment(local_data_id, format!("{:?}", alloc_id));
-    cplace_for_dataid(fx, fx.layout_of(const_.ty), local_data_id)
+    let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
+    crate::pointer::Pointer::new(global_ptr)
 }
 
 fn data_id_for_alloc_id<B: Backend>(
@@ -286,13 +256,14 @@ fn cplace_for_dataid<'tcx>(
 }
 
 fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mut ConstantCx) {
-    let memory = Memory::<TransPlaceInterpreter>::new(tcx.at(DUMMY_SP), ());
-
     while let Some(todo_item) = cx.todo.pop() {
         let (data_id, alloc) = match todo_item {
             TodoItem::Alloc(alloc_id) => {
                 //println!("alloc_id {}", alloc_id);
-                let alloc = memory.get_raw(alloc_id).unwrap();
+                let alloc = match tcx.alloc_map.lock().get(alloc_id).unwrap() {
+                    GlobalAlloc::Memory(alloc) => alloc,
+                    GlobalAlloc::Function(_) | GlobalAlloc::Static(_) => unreachable!(),
+                };
                 let data_id = data_id_for_alloc_id(module, alloc_id, alloc.align);
                 (data_id, alloc)
             }
@@ -386,105 +357,6 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
     }
 
     assert!(cx.todo.is_empty(), "{:?}", cx.todo);
-}
-
-struct TransPlaceInterpreter;
-
-impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
-    type MemoryKind = !;
-    type ExtraFnVal = !;
-    type PointerTag = ();
-    type AllocExtra = ();
-    type MemoryExtra = ();
-    type FrameExtra = ();
-    type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation<()>)>;
-
-    const CHECK_ALIGN: bool = true;
-    const GLOBAL_KIND: Option<!> = None;
-
-    fn enforce_validity(_: &InterpCx<'mir, 'tcx, Self>) -> bool {
-        false
-    }
-
-    fn before_terminator(_: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        panic!();
-    }
-
-    fn find_mir_or_eval_fn(
-        _: &mut InterpCx<'mir, 'tcx, Self>,
-        _: Instance<'tcx>,
-        _: &[OpTy<'tcx>],
-        _: Option<(PlaceTy<'tcx>, BasicBlock)>,
-        _: Option<BasicBlock>,
-    ) -> InterpResult<'tcx, Option<&'mir Body<'tcx>>> {
-        panic!();
-    }
-
-    fn call_intrinsic(
-        _: &mut InterpCx<'mir, 'tcx, Self>,
-        _: Instance<'tcx>,
-        _: &[OpTy<'tcx>],
-        _: Option<(PlaceTy<'tcx>, BasicBlock)>,
-        _: Option<BasicBlock>,
-    ) -> InterpResult<'tcx> {
-        panic!();
-    }
-
-    fn binary_ptr_op(
-        _: &InterpCx<'mir, 'tcx, Self>,
-        _: mir::BinOp,
-        _: ImmTy<'tcx>,
-        _: ImmTy<'tcx>,
-    ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
-        panic!();
-    }
-
-    fn ptr_to_int(_: &Memory<'mir, 'tcx, Self>, _: Pointer<()>) -> InterpResult<'tcx, u64> {
-        panic!();
-    }
-
-    fn box_alloc(_: &mut InterpCx<'mir, 'tcx, Self>, _: PlaceTy<'tcx>) -> InterpResult<'tcx> {
-        panic!();
-    }
-
-    fn init_allocation_extra<'b>(
-        _: &(),
-        _: AllocId,
-        alloc: Cow<'b, Allocation>,
-        _: Option<MemoryKind<!>>,
-    ) -> (Cow<'b, Allocation<(), ()>>, ()) {
-        (alloc, ())
-    }
-
-    fn tag_global_base_pointer(_: &(), _: AllocId) -> Self::PointerTag {
-        ()
-    }
-
-    fn call_extra_fn(
-        _: &mut InterpCx<'mir, 'tcx, Self>,
-        _: !,
-        _: &[OpTy<'tcx, ()>],
-        _: Option<(PlaceTy<'tcx, ()>, BasicBlock)>,
-        _: Option<BasicBlock>,
-    ) -> InterpResult<'tcx> {
-        unreachable!();
-    }
-
-    fn stack_push(_: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        Ok(())
-    }
-
-    fn stack_pop(_: &mut InterpCx<'mir, 'tcx, Self>, _: (), _: bool) -> InterpResult<'tcx, StackPopJump> {
-        Ok(StackPopJump::Normal)
-    }
-
-    fn assert_panic(
-        _: &mut InterpCx<'mir, 'tcx, Self>,
-        _: &mir::AssertKind<Operand<'tcx>>,
-        _: Option<BasicBlock>,
-    ) -> InterpResult<'tcx> {
-        unreachable!()
-    }
 }
 
 pub(crate) fn mir_operand_get_const_val<'tcx>(
