@@ -204,7 +204,7 @@ def update_latest(
                 old = status[os]
                 new = s.get(tool, old)
                 status[os] = new
-                maintainers = ' '.join('@'+name for name in MAINTAINERS.get(tool, ())
+                maintainers = ' '.join('@'+name for name in MAINTAINERS.get(tool, ()))
                 # comparing the strings, but they are ordered appropriately:
                 # "test-pass" > "test-fail" > "build-fail"
                 if new > old:
