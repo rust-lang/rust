@@ -246,7 +246,7 @@ impl<'a> TokenTreesReader<'a> {
                             if (parent.0.to(parent.1)).contains(span) {
                                 err.span_label(
                                     span,
-                                    "this block is empty, you might have not meant to close it",
+                                    "block is empty, you might have not meant to close it",
                                 );
                             }
                             else {
