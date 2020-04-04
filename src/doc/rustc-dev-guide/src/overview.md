@@ -68,18 +68,18 @@ we'll talk about that later.
     binary. **TODO: reference for this section?**
 
 [`librustc_lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
-[`librustc_driver`]: https://rust-lang.github.io/rustc-guide/rustc-driver.html
-[lex]: https://rust-lang.github.io/rustc-guide/the-parser.html
+[`librustc_driver`]: https://rustc-dev-guide.rust-lang.org/rustc-driver.html
+[lex]: https://rustc-dev-guide.rust-lang.org/the-parser.html
 [`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.StringReader.html
 [`librustc_parse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parser/index.html
 [hir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html
-[type inference]: https://rust-lang.github.io/rustc-guide/type-inference.html
-[mir]: https://rust-lang.github.io/rustc-guide/mir/index.html
-[borrow checker]: https://rust-lang.github.io/rustc-guide/borrow_check.html
-[mir-opt]: https://rust-lang.github.io/rustc-guide/mir/optimizations.html
+[type inference]: https://rustc-dev-guide.rust-lang.org/type-inference.html
+[mir]: https://rustc-dev-guide.rust-lang.org/mir/index.html
+[borrow checker]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
+[mir-opt]: https://rustc-dev-guide.rust-lang.org/mir/optimizations.html
 [`simplify_try`]: https://github.com/rust-lang/rust/pull/66282
-[codegen]: https://rust-lang.github.io/rustc-guide/codegen.html
+[codegen]: https://rustc-dev-guide.rust-lang.org/codegen.html
 
 ## How it does it
 
@@ -277,46 +277,46 @@ but there are already some promising performance improvements.
 # References
 
 - Command line parsing
-  - Guide: [The Rustc Driver and Interface](https://rust-lang.github.io/rustc-guide/rustc-driver.html)
+  - Guide: [The Rustc Driver and Interface](https://rustc-dev-guide.rust-lang.org/rustc-driver.html)
   - Driver definition: [`rustc_driver`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/)
   - Main entry point: **TODO**
 - Lexical Analysis: Lex the user program to a stream of tokens
-  - Guide: [Lexing and Parsing](https://rust-lang.github.io/rustc-guide/the-parser.html)
+  - Guide: [Lexing and Parsing](https://rustc-dev-guide.rust-lang.org/the-parser.html)
   - Lexer definition: [`librustc_lexer`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html)
   - Main entry point: **TODO**
 - Parsing: Parse the stream of tokens to an Abstract Syntax Tree (AST)
-  - Guide: [Lexing and Parsing](https://rust-lang.github.io/rustc-guide/the-parser.html)
+  - Guide: [Lexing and Parsing](https://rustc-dev-guide.rust-lang.org/the-parser.html)
   - Parser definition: [`librustc_parse`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html)
   - Main entry point: **TODO**
   - AST definition: [`librustc_ast`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html)
 - The High Level Intermediate Representation (HIR)
-  - Guide: [The HIR](https://rust-lang.github.io/rustc-guide/hir.html)
-  - Guide: [Identifiers in the HIR](https://rust-lang.github.io/rustc-guide/hir.html#identifiers-in-the-hir)
-  - Guide: [The HIR Map](https://rust-lang.github.io/rustc-guide/hir.html#the-hir-map)
-  - Guide: [Lowering AST to HIR](https://rust-lang.github.io/rustc-guide/lowering.html)
+  - Guide: [The HIR](https://rustc-dev-guide.rust-lang.org/hir.html)
+  - Guide: [Identifiers in the HIR](https://rustc-dev-guide.rust-lang.org/hir.html#identifiers-in-the-hir)
+  - Guide: [The HIR Map](https://rustc-dev-guide.rust-lang.org/hir.html#the-hir-map)
+  - Guide: [Lowering AST to HIR](https://rustc-dev-guide.rust-lang.org/lowering.html)
   - How to view HIR representation for your code `cargo rustc -- -Zunpretty=hir-tree`
   - Rustc HIR definition: [`rustc_hir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html)
   - Main entry point: **TODO**
 - Type Inference
-  - Guide: [Type Inference](https://rust-lang.github.io/rustc-guide/type-inference.html)
-  - Guide: [The ty Module: Representing Types](https://rust-lang.github.io/rustc-guide/ty.html) (semantics)
+  - Guide: [Type Inference](https://rustc-dev-guide.rust-lang.org/type-inference.html)
+  - Guide: [The ty Module: Representing Types](https://rustc-dev-guide.rust-lang.org/ty.html) (semantics)
   - Main entry point: **TODO**
 - The Mid Level Intermediate Representation (MIR)
-  - Guide: [The MIR (Mid level IR)](https://rust-lang.github.io/rustc-guide/mir/index.html)
+  - Guide: [The MIR (Mid level IR)](https://rustc-dev-guide.rust-lang.org/mir/index.html)
   - Definition: [`librustc/mir`](https://github.com/rust-lang/rust/tree/master/src/librustc/mir)
   - Definition of source that manipulates the MIR: [`librustc_mir`](https://github.com/rust-lang/rust/tree/master/src/librustc_mir)
   - Main entry point: **TODO**
 - The Borrow Checker
-  - Guide: [MIR Borrow Check](https://rust-lang.github.io/rustc-guide/borrow_check.html)
+  - Guide: [MIR Borrow Check](https://rustc-dev-guide.rust-lang.org/borrow_check.html)
   - Definition: [`rustc_mir/borrow_check`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/index.html)
   - Main entry point: **TODO**
 - MIR Optimizations
-  - Guide: [MIR Optimizations](https://rust-lang.github.io/rustc-guide/mir/optimizations.html)
+  - Guide: [MIR Optimizations](https://rustc-dev-guide.rust-lang.org/mir/optimizations.html)
   - Definition: [`rustc_mir/transform`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/index.html) **TODO: is this correct?**
   - Main entry point: **TODO**
 - Code Generation
-  - Guide: [Code Generation](https://rust-lang.github.io/rustc-guide/codegen.html)
-  - Guide: [Generating LLVM IR](https://rust-lang.github.io/rustc-guide/codegen.html#generating-llvm-ir) - **TODO: this is not available yet**
+  - Guide: [Code Generation](https://rustc-dev-guide.rust-lang.org/codegen.html)
+  - Guide: [Generating LLVM IR](https://rustc-dev-guide.rust-lang.org/codegen.html#generating-llvm-ir) - **TODO: this is not available yet**
   - Generating Machine Code from LLVM IR with LLVM - **TODO: reference?**
   - Main entry point MIR -> LLVM IR: **TODO**
   - Main entry point LLVM IR -> Machine Code **TODO**
