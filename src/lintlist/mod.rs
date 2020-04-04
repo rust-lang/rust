@@ -1824,6 +1824,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "result_map_or_into_option",
+        group: "style",
+        desc: "using `Result.map_or(None, Some)`, which is more succinctly expressed as `ok()`",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "result_map_unit_fn",
         group: "complexity",
         desc: "using `result.map(f)`, where `f` is a function or closure that returns `()`",
