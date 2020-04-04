@@ -77,9 +77,6 @@ fn main() {
     test(None, |_old_val| { debug_assert!(false); loop {} });
     test(None, |_old_val| { unsafe { (1 as *const i32).read() }; loop {} }); // trigger debug-assertion in libstd
 
-    // Cleanup: reset to default hook.
-    drop(std::panic::take_hook());
-
     eprintln!("Success!"); // Make sure we get this in stderr
 }
 
