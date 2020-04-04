@@ -306,47 +306,72 @@ pub struct SimplifyLocals;
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         trace!("running SimplifyLocals on {:?}", source);
-        let locals = {
-            let read_only_cache = read_only!(body);
-            let mut marker = DeclMarker { locals: BitSet::new_empty(body.local_decls.len()), body };
-            marker.visit_body(&read_only_cache);
-            // Return pointer and arguments are always live
-            marker.locals.insert(RETURN_PLACE);
-            for arg in body.args_iter() {
-                marker.locals.insert(arg);
-            }
 
-            marker.locals
+        let mut used_locals = {
+            let read_only_cache = read_only!(body);
+            let mut marker = DeclMarker::new(body);
+            marker.visit_body(&read_only_cache);
+
+            marker.local_counts
         };
 
-        let map = make_local_map(&mut body.local_decls, locals);
-        // Update references to all vars and tmps now
-        LocalUpdater { map, tcx }.visit_body(body);
-        body.local_decls.shrink_to_fit();
+        let arg_count = body.arg_count;
+
+        loop {
+            let mut remove_statements = RemoveStatements::new(&mut used_locals, arg_count, tcx);
+            remove_statements.visit_body(body);
+
+            if !remove_statements.modified {
+                break;
+            }
+        }
+
+        let map = make_local_map(&mut body.local_decls, used_locals, arg_count);
+
+        // Only bother running the `LocalUpdater` if we actually found locals to remove.
+        if map.iter().any(Option::is_none) {
+            // Update references to all vars and tmps now
+            let mut updater = LocalUpdater { map, tcx };
+            updater.visit_body(body);
+
+            body.local_decls.shrink_to_fit();
+        }
     }
 }
 
 /// Construct the mapping while swapping out unused stuff out from the `vec`.
 fn make_local_map<V>(
-    vec: &mut IndexVec<Local, V>,
-    mask: BitSet<Local>,
+    local_decls: &mut IndexVec<Local, V>,
+    used_locals: IndexVec<Local, usize>,
+    arg_count: usize,
 ) -> IndexVec<Local, Option<Local>> {
-    let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, &*vec);
+    let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, &*local_decls);
     let mut used = Local::new(0);
-    for alive_index in mask.iter() {
+    for (alive_index, count) in used_locals.iter_enumerated() {
+        // The `RETURN_PLACE` and arguments are always live.
+        if alive_index.as_usize() > arg_count && *count == 0 {
+            continue;
+        }
+
         map[alive_index] = Some(used);
         if alive_index != used {
-            vec.swap(alive_index, used);
+            local_decls.swap(alive_index, used);
         }
         used.increment_by(1);
     }
-    vec.truncate(used.index());
+    local_decls.truncate(used.index());
     map
 }
 
 struct DeclMarker<'a, 'tcx> {
-    pub locals: BitSet<Local>,
+    pub local_counts: IndexVec<Local, usize>,
     pub body: &'a Body<'tcx>,
+}
+
+impl<'a, 'tcx> DeclMarker<'a, 'tcx> {
+    pub fn new(body: &'a Body<'tcx>) -> Self {
+        Self { local_counts: IndexVec::from_elem(0, &body.local_decls), body }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
@@ -408,7 +433,96 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
             }
         }
 
-        self.locals.insert(*local);
+        self.local_counts[*local] += 1;
+    }
+}
+
+struct StatementDeclMarker<'a, 'tcx> {
+    used_locals: IndexVec<Local, usize>,
+    statement: &'a Statement<'tcx>,
+}
+
+impl<'a, 'tcx> StatementDeclMarker<'a, 'tcx> {
+    pub fn new(local_count: usize, statement: &'a Statement<'tcx>) -> Self {
+        Self { used_locals: IndexVec::from_elem_n(0, local_count), statement }
+    }
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for StatementDeclMarker<'a, 'tcx> {
+    fn visit_local(&mut self, local: &Local, context: PlaceContext, _location: Location) {
+        // Skip the lvalue for assignments
+        if let StatementKind::Assign(box (p, _)) = self.statement.kind {
+            if p.local == *local && context.is_place_assignment() {
+                return;
+            }
+        }
+
+        self.used_locals[*local] += 1;
+    }
+}
+
+struct RemoveStatements<'a, 'tcx> {
+    used_locals: &'a mut IndexVec<Local, usize>,
+    arg_count: usize,
+    tcx: TyCtxt<'tcx>,
+    modified: bool,
+}
+
+impl<'a, 'tcx> RemoveStatements<'a, 'tcx> {
+    fn new(
+        used_locals: &'a mut IndexVec<Local, usize>,
+        arg_count: usize,
+        tcx: TyCtxt<'tcx>,
+    ) -> Self {
+        Self { used_locals, arg_count, tcx, modified: false }
+    }
+
+    fn keep_local(&self, l: Local) -> bool {
+        trace!("keep_local({:?}): count: {:?}", l, self.used_locals[l]);
+        l.as_usize() <= self.arg_count || self.used_locals[l] != 0
+    }
+}
+
+impl<'a, 'tcx> MutVisitor<'tcx> for RemoveStatements<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
+        // Remove unnecessary StorageLive and StorageDead annotations.
+        let mut i = 0usize;
+        data.statements.retain(|stmt| {
+            let keep = match &stmt.kind {
+                StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
+                    self.keep_local(*l)
+                }
+                StatementKind::Assign(box (place, _)) => self.keep_local(place.local),
+                _ => true,
+            };
+
+            if !keep {
+                trace!("removing statement {:?}", stmt);
+                self.modified = true;
+
+                let mut visitor = StatementDeclMarker::new(self.used_locals.len(), stmt);
+                visitor.visit_statement(stmt, Location { block, statement_index: i });
+
+                for (local, count) in visitor.used_locals.iter_enumerated() {
+                    let used_count = &mut self.used_locals[local];
+
+                    // If this is the local we're removing...
+                    if *used_count != 0 {
+                        *used_count -= count;
+                    }
+                }
+            }
+
+            i += 1;
+
+            keep
+        });
+
+        self.super_basic_block_data(block, data);
     }
 }
 
@@ -420,16 +534,6 @@ struct LocalUpdater<'tcx> {
 impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
-    }
-
-    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
-        // Remove unnecessary StorageLive and StorageDead annotations.
-        data.statements.retain(|stmt| match &stmt.kind {
-            StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => self.map[*l].is_some(),
-            StatementKind::Assign(box (place, _)) => self.map[place.local].is_some(),
-            _ => true,
-        });
-        self.super_basic_block_data(block, data);
     }
 
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
