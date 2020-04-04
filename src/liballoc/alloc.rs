@@ -4,7 +4,6 @@
 
 use core::intrinsics::{self, min_align_of_val, size_of_val};
 use core::ptr::{NonNull, Unique};
-use core::usize;
 
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]

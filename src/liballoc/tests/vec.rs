@@ -3,7 +3,6 @@ use std::collections::TryReserveError::*;
 use std::mem::size_of;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::vec::{Drain, IntoIter};
-use std::{isize, usize};
 
 struct DropCounter<'a> {
     count: &'a mut u32,

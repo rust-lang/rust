@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::collections::TryReserveError::*;
 use std::mem::size_of;
-use std::{isize, usize};
 
 pub trait IntoCow<'a, B: ?Sized>
 where
