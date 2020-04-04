@@ -2294,7 +2294,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "unreadable_literal",
-        group: "style",
+        group: "pedantic",
         desc: "long integer literal without underscores",
         deprecation: None,
         module: "literal_representation",
