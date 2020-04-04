@@ -10,8 +10,8 @@ doctest = false
 
 [dependencies]
 ra_tt = { path = "../ra_tt" }
+ra_mbe = { path = "../ra_mbe" }
 ra_proc_macro = { path = "../ra_proc_macro" }
-
 
 [dev-dependencies]
 cargo_metadata = "0.9.1"

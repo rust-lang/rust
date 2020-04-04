@@ -14,6 +14,9 @@
 #[doc(hidden)]
 mod proc_macro;
 
+#[doc(hidden)]
+mod rustc_server;
+
 use proc_macro::bridge::client::TokenStream;
 use ra_proc_macro::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask};
 
