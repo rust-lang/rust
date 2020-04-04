@@ -190,8 +190,8 @@ redundant work as possible to produce the new binary.
 In `rustc`, all the major steps above are organized as a bunch of queries that
 call each other. For example, there is a query to ask for the type of something
 and another to ask for the optimized MIR of a function. These
-queries can call each other and are all tracked through the query system, and
-the results of the queries are cached on disk so that we can tell which
+queries can call each other and are all tracked through the query system.
+The results of the queries are cached on disk so that we can tell which
 queries' results changed from the last compilation and only redo those. This is
 how incremental compilation works.
 
