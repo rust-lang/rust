@@ -721,7 +721,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub NEW_RET_NO_SELF,
-    style,
+    pedantic,
     "not returning `Self` in a `new` method"
 }
 
