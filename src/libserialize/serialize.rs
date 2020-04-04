@@ -706,6 +706,30 @@ impl<T: Decodable> Decodable for Vec<T> {
     }
 }
 
+impl Encodable for [u8; 20] {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_seq(self.len(), |s| {
+            for (i, e) in self.iter().enumerate() {
+                s.emit_seq_elt(i, |s| e.encode(s))?
+            }
+            Ok(())
+        })
+    }
+}
+
+impl Decodable for [u8; 20] {
+    fn decode<D: Decoder>(d: &mut D) -> Result<[u8; 20], D::Error> {
+        d.read_seq(|d, len| {
+            assert!(len == 20);
+            let mut v = [0u8; 20];
+            for i in 0..len {
+                v[i] = d.read_seq_elt(i, |d| Decodable::decode(d))?;
+            }
+            Ok(v)
+        })
+    }
+}
+
 impl<'a, T: Encodable> Encodable for Cow<'a, [T]>
 where
     [T]: ToOwned<Owned = Vec<T>>,

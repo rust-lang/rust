@@ -9,20 +9,6 @@ help: consider further restricting this bound
 LL | fn foo_desugared<T: TraitWithAssoc + TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
    |                                    ^^^^^^^^^^^^^^^^
 
-error: defining opaque type use does not fully define opaque type: generic parameter `V` is specified as concrete type `<T as TraitWithAssoc>::Assoc`
-  --> $DIR/bound_reduction2.rs:18:1
-   |
-LL | / fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
-LL | |     ()
-LL | | }
-   | |_^
-
-error: could not find defining uses
-  --> $DIR/bound_reduction2.rs:10:1
-   |
-LL | type Foo<V> = impl Trait<V>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0277`.

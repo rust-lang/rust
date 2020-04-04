@@ -640,6 +640,25 @@ static DICompileUnit::DebugEmissionKind fromRust(LLVMRustDebugEmissionKind Kind)
   }
 }
 
+enum class LLVMRustChecksumKind {
+  None,
+  MD5,
+  SHA1,
+};
+
+static Optional<DIFile::ChecksumKind> fromRust(LLVMRustChecksumKind Kind) {
+  switch (Kind) {
+  case LLVMRustChecksumKind::None:
+    return None;
+  case LLVMRustChecksumKind::MD5:
+    return DIFile::ChecksumKind::CSK_MD5;
+  case LLVMRustChecksumKind::SHA1:
+    return DIFile::ChecksumKind::CSK_SHA1;
+  default:
+    report_fatal_error("bad ChecksumKind.");
+  }
+}
+
 extern "C" uint32_t LLVMRustDebugMetadataVersion() {
   return DEBUG_METADATA_VERSION;
 }
@@ -686,9 +705,15 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFile(
     LLVMRustDIBuilderRef Builder,
     const char *Filename, size_t FilenameLen,
-    const char *Directory, size_t DirectoryLen) {
+    const char *Directory, size_t DirectoryLen, LLVMRustChecksumKind CSKind,
+    const char *Checksum, size_t ChecksumLen) {
+  Optional<DIFile::ChecksumKind> llvmCSKind = fromRust(CSKind);
+  Optional<DIFile::ChecksumInfo<StringRef>> CSInfo{};
+  if (llvmCSKind)
+    CSInfo.emplace(*llvmCSKind, StringRef{Checksum, ChecksumLen});
   return wrap(Builder->createFile(StringRef(Filename, FilenameLen),
-                                  StringRef(Directory, DirectoryLen)));
+                                  StringRef(Directory, DirectoryLen),
+                                  CSInfo));
 }
 
 extern "C" LLVMMetadataRef

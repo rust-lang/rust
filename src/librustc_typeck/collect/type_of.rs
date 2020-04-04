@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{struct_span_err, Applicability, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -7,7 +7,7 @@ use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
+use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_session::parse::feature_err;
@@ -369,13 +369,8 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     struct ConstraintLocator<'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        // (first found type span, actual type, mapping from the opaque type's generic
-        // parameters to the concrete type's generic parameters)
-        //
-        // The mapping is an index for each use site of a generic parameter in the concrete type
-        //
-        // The indices index into the generic parameters on the opaque type.
-        found: Option<(Span, Ty<'tcx>, Vec<usize>)>,
+        // (first found type span, actual type)
+        found: Option<(Span, Ty<'tcx>)>,
     }
 
     impl ConstraintLocator<'_> {
@@ -407,83 +402,51 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
                 // FIXME(oli-obk): trace the actual span from inference to improve errors.
                 let span = self.tcx.def_span(def_id);
-                // used to quickly look up the position of a generic parameter
-                let mut index_map: FxHashMap<ty::ParamTy, usize> = FxHashMap::default();
-                // Skipping binder is ok, since we only use this to find generic parameters and
-                // their positions.
-                for (idx, subst) in substs.iter().enumerate() {
-                    if let GenericArgKind::Type(ty) = subst.unpack() {
-                        if let ty::Param(p) = ty.kind {
-                            if index_map.insert(p, idx).is_some() {
-                                // There was already an entry for `p`, meaning a generic parameter
-                                // was used twice.
-                                self.tcx.sess.span_err(
-                                    span,
-                                    &format!(
-                                        "defining opaque type use restricts opaque \
-                                         type by using the generic parameter `{}` twice",
-                                        p,
-                                    ),
-                                );
-                                return;
-                            }
-                        } else {
+
+                // HACK(eddyb) this check shouldn't be needed, as `wfcheck`
+                // performs the same checks, in theory, but I've kept it here
+                // using `delay_span_bug`, just in case `wfcheck` slips up.
+                let opaque_generics = self.tcx.generics_of(self.def_id);
+                let mut used_params: FxHashSet<_> = FxHashSet::default();
+                for (i, arg) in substs.iter().enumerate() {
+                    let arg_is_param = match arg.unpack() {
+                        GenericArgKind::Type(ty) => matches!(ty.kind, ty::Param(_)),
+                        GenericArgKind::Lifetime(lt) => {
+                            matches!(lt, ty::ReEarlyBound(_) | ty::ReFree(_))
+                        }
+                        GenericArgKind::Const(ct) => matches!(ct.val, ty::ConstKind::Param(_)),
+                    };
+
+                    if arg_is_param {
+                        if !used_params.insert(arg) {
+                            // There was already an entry for `arg`, meaning a generic parameter
+                            // was used twice.
                             self.tcx.sess.delay_span_bug(
                                 span,
                                 &format!(
-                                    "non-defining opaque ty use in defining scope: {:?}, {:?}",
-                                    concrete_type, substs,
+                                    "defining opaque type use restricts opaque \
+                                     type by using the generic parameter `{}` twice",
+                                    arg,
                                 ),
                             );
                         }
-                    }
-                }
-                // Compute the index within the opaque type for each generic parameter used in
-                // the concrete type.
-                let indices = concrete_type
-                    .subst(self.tcx, substs)
-                    .walk()
-                    .filter_map(|t| match &t.kind {
-                        ty::Param(p) => Some(*index_map.get(p).unwrap()),
-                        _ => None,
-                    })
-                    .collect();
-                let is_param = |ty: Ty<'_>| match ty.kind {
-                    ty::Param(_) => true,
-                    _ => false,
-                };
-                let bad_substs: Vec<_> = substs
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(i, k)| {
-                        if let GenericArgKind::Type(ty) = k.unpack() { Some((i, ty)) } else { None }
-                    })
-                    .filter(|(_, ty)| !is_param(ty))
-                    .collect();
-                if !bad_substs.is_empty() {
-                    let identity_substs = InternalSubsts::identity_for_item(self.tcx, self.def_id);
-                    for (i, bad_subst) in bad_substs {
-                        self.tcx.sess.span_err(
+                    } else {
+                        let param = opaque_generics.param_at(i, self.tcx);
+                        self.tcx.sess.delay_span_bug(
                             span,
                             &format!(
                                 "defining opaque type use does not fully define opaque type: \
-                            generic parameter `{}` is specified as concrete type `{}`",
-                                identity_substs.type_at(i),
-                                bad_subst
+                                 generic parameter `{}` is specified as concrete {} `{}`",
+                                param.name,
+                                param.kind.descr(),
+                                arg,
                             ),
                         );
                     }
-                } else if let Some((prev_span, prev_ty, ref prev_indices)) = self.found {
-                    let mut ty = concrete_type.walk().fuse();
-                    let mut p_ty = prev_ty.walk().fuse();
-                    let iter_eq = (&mut ty).zip(&mut p_ty).all(|(t, p)| match (&t.kind, &p.kind) {
-                        // Type parameters are equal to any other type parameter for the purpose of
-                        // concrete type equality, as it is possible to obtain the same type just
-                        // by passing matching parameters to a function.
-                        (ty::Param(_), ty::Param(_)) => true,
-                        _ => t == p,
-                    });
-                    if !iter_eq || ty.next().is_some() || p_ty.next().is_some() {
+                }
+
+                if let Some((prev_span, prev_ty)) = self.found {
+                    if *concrete_type != prev_ty {
                         debug!("find_opaque_ty_constraints: span={:?}", span);
                         // Found different concrete types for the opaque type.
                         let mut err = self.tcx.sess.struct_span_err(
@@ -496,34 +459,9 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         );
                         err.span_note(prev_span, "previous use here");
                         err.emit();
-                    } else if indices != *prev_indices {
-                        // Found "same" concrete types, but the generic parameter order differs.
-                        let mut err = self.tcx.sess.struct_span_err(
-                            span,
-                            "concrete type's generic parameters differ from previous defining use",
-                        );
-                        use std::fmt::Write;
-                        let mut s = String::new();
-                        write!(s, "expected [").unwrap();
-                        let list = |s: &mut String, indices: &Vec<usize>| {
-                            let mut indices = indices.iter().cloned();
-                            if let Some(first) = indices.next() {
-                                write!(s, "`{}`", substs[first]).unwrap();
-                                for i in indices {
-                                    write!(s, ", `{}`", substs[i]).unwrap();
-                                }
-                            }
-                        };
-                        list(&mut s, prev_indices);
-                        write!(s, "], got [").unwrap();
-                        list(&mut s, &indices);
-                        write!(s, "]").unwrap();
-                        err.span_label(span, s);
-                        err.span_note(prev_span, "previous use here");
-                        err.emit();
                     }
                 } else {
-                    self.found = Some((span, concrete_type, indices));
+                    self.found = Some((span, concrete_type));
                 }
             } else {
                 debug!(
@@ -606,7 +544,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     }
 
     match locator.found {
-        Some((_, ty, _)) => ty,
+        Some((_, ty)) => ty,
         None => {
             let span = tcx.def_span(def_id);
             tcx.sess.span_err(span, "could not find defining uses");
