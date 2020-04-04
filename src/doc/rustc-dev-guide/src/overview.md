@@ -40,6 +40,9 @@ we'll talk about that later.
 - **TODO: Maybe some other things are done here? I think initial type checking
   happens here? And trait solving?**
 - The HIR is then [lowered to Mid-Level Intermediate Representation (MIR)][mir].
+  - Along the way, we construct the HAIR, which is an even more desugared HIR.
+    HAIR is used for pattern and exhaustiveness checking. It is also more
+    convenient to convert into MIR than HIR is.
 - The MIR is used for [borrow checking].
 - **TODO: const eval fits in somewhere here I think**
 - We (want to) do [many optimizations on the MIR][mir-opt] because it is still
