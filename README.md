@@ -100,6 +100,17 @@ fn does_not_work_on_miri() {
 }
 ```
 
+An exhaustive list of what `miri` does not support is not available, as this could be
+an unbounded set with FFI and more. However `miri` will explicitly tell you when it finds
+something unsupported with an error, containing a message such as:
+
+```
+error: unsupported operation: can't call foreign function: mach_timebase_info
+    ...
+    = help: this is likely not a bug in the program; it indicates that the program \
+            performed an operation that the interpreter does not support
+```
+
 ### Running Miri on CI
 
 To run Miri on CI, make sure that you handle the case where the latest nightly
