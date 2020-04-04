@@ -70,7 +70,7 @@ an AST expression). `match_def_path()` in Clippy's `utils` module can also be us
 [`T-AST`]: https://github.com/rust-lang/rust-clippy/labels/T-AST
 [`T-middle`]: https://github.com/rust-lang/rust-clippy/labels/T-middle
 [`E-medium`]: https://github.com/rust-lang/rust-clippy/labels/E-medium
-[`ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty
+[`ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty
 [nodes in the AST docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/
 [deep-nesting]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/mem_forget.rs#L29-L43
 [if_chain]: https://docs.rs/if_chain/*/if_chain
