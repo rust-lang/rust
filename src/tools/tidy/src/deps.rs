@@ -359,7 +359,7 @@ fn check_crate_duplicate(metadata: &Metadata, bad: &mut bool) {
         // to accidentally sneak into our dependency graph, in order to ensure we keep our CI times
         // under control.
         "cargo",
-        "rustc-ap-syntax",
+        "rustc-ap-rustc_ast",
     ];
 
     for &name in FORBIDDEN_TO_HAVE_DUPLICATES {
