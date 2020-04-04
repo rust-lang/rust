@@ -315,6 +315,10 @@ bootstrapping compiler will support them.
   - Parser definition: [`librustc_parse`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html)
   - Main entry point: **TODO**
   - AST definition: [`librustc_ast`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html)
+  - Expansion: **TODO**
+  - Name Resolution: **TODO**
+  - Feature gating: **TODO**
+  - Early linting: **TODO**
 - The High Level Intermediate Representation (HIR)
   - Guide: [The HIR](https://rustc-dev-guide.rust-lang.org/hir.html)
   - Guide: [Identifiers in the HIR](https://rustc-dev-guide.rust-lang.org/hir.html#identifiers-in-the-hir)
@@ -323,6 +327,7 @@ bootstrapping compiler will support them.
   - How to view HIR representation for your code `cargo rustc -- -Zunpretty=hir-tree`
   - Rustc HIR definition: [`rustc_hir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html)
   - Main entry point: **TODO**
+  - Late linting: **TODO**
 - Type Inference
   - Guide: [Type Inference](https://rustc-dev-guide.rust-lang.org/type-inference.html)
   - Guide: [The ty Module: Representing Types](https://rustc-dev-guide.rust-lang.org/ty.html) (semantics)
