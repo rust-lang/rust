@@ -177,6 +177,8 @@ async function bootstrapServer(config: Config, state: PersistentState): Promise<
         );
     }
 
+    log.debug("Using server binary at", path);
+
     const res = spawnSync(path, ["--version"], { encoding: 'utf8' });
     log.debug("Checked binary availability via --version", res);
     log.debug(res, "--version output:", res.output);
