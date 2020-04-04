@@ -40,7 +40,7 @@ MAINTAINERS = {
         'ryankurte', 'thejpster', 'therealprof',
     },
     'edition-guide': {'ehuss', 'Centril', 'steveklabnik'},
-    'rustc-guide': {'mark-i-m', 'spastorino', 'amanjeev', 'JohnTitor'},
+    'rustc-dev-guide': {'mark-i-m', 'spastorino', 'amanjeev', 'JohnTitor'},
 }
 
 REPOS = {
@@ -54,7 +54,7 @@ REPOS = {
     'rust-by-example': 'https://github.com/rust-lang/rust-by-example',
     'embedded-book': 'https://github.com/rust-embedded/book',
     'edition-guide': 'https://github.com/rust-lang/edition-guide',
-    'rustc-guide': 'https://github.com/rust-lang/rustc-guide',
+    'rustc-dev-guide': 'https://github.com/rust-lang/rustc-dev-guide',
 }
 
 
@@ -202,7 +202,7 @@ def update_latest(
                 old = status[os]
                 new = s.get(tool, old)
                 status[os] = new
-                maintainers = ' '.join('@'+name for name in MAINTAINERS[tool])
+                maintainers = ' '.join('@'+name for name in MAINTAINERS.get(tool, ()))
                 # comparing the strings, but they are ordered appropriately:
                 # "test-pass" > "test-fail" > "build-fail"
                 if new > old:

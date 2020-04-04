@@ -1532,7 +1532,7 @@ impl Step for RustcGuide {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/doc/rustc-guide")
+        run.path("src/doc/rustc-dev-guide")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1540,14 +1540,14 @@ impl Step for RustcGuide {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let src = builder.src.join("src/doc/rustc-guide");
+        let src = builder.src.join("src/doc/rustc-dev-guide");
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
         let toolstate = if try_run(builder, rustbook_cmd.arg("linkcheck").arg(&src)) {
             ToolState::TestPass
         } else {
             ToolState::TestFail
         };
-        builder.save_toolstate("rustc-guide", toolstate);
+        builder.save_toolstate("rustc-dev-guide", toolstate);
     }
 }
 
