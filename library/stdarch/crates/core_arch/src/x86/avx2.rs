@@ -4046,14 +4046,14 @@ mod tests {
     unsafe fn test_mm256_abs_epi32() {
         #[rustfmt::skip]
         let a = _mm256_setr_epi32(
-            0, 1, -1, std::i32::MAX,
-            std::i32::MIN, 100, -100, -32,
+            0, 1, -1, i32::MAX,
+            i32::MIN, 100, -100, -32,
         );
         let r = _mm256_abs_epi32(a);
         #[rustfmt::skip]
         let e = _mm256_setr_epi32(
-            0, 1, 1, std::i32::MAX,
-            std::i32::MAX.wrapping_add(1), 100, 100, 32,
+            0, 1, 1, i32::MAX,
+            i32::MAX.wrapping_add(1), 100, 100, 32,
         );
         assert_eq_m256i(r, e);
     }
@@ -4063,13 +4063,13 @@ mod tests {
         #[rustfmt::skip]
         let a = _mm256_setr_epi16(
             0,  1, -1, 2, -2, 3, -3, 4,
-            -4, 5, -5, std::i16::MAX, std::i16::MIN, 100, -100, -32,
+            -4, 5, -5, i16::MAX, i16::MIN, 100, -100, -32,
         );
         let r = _mm256_abs_epi16(a);
         #[rustfmt::skip]
         let e = _mm256_setr_epi16(
             0, 1, 1, 2, 2, 3, 3, 4,
-            4, 5, 5, std::i16::MAX, std::i16::MAX.wrapping_add(1), 100, 100, 32,
+            4, 5, 5, i16::MAX, i16::MAX.wrapping_add(1), 100, 100, 32,
         );
         assert_eq_m256i(r, e);
     }
@@ -4079,17 +4079,17 @@ mod tests {
         #[rustfmt::skip]
         let a = _mm256_setr_epi8(
             0, 1, -1, 2, -2, 3, -3, 4,
-            -4, 5, -5, std::i8::MAX, std::i8::MIN, 100, -100, -32,
+            -4, 5, -5, i8::MAX, i8::MIN, 100, -100, -32,
             0, 1, -1, 2, -2, 3, -3, 4,
-            -4, 5, -5, std::i8::MAX, std::i8::MIN, 100, -100, -32,
+            -4, 5, -5, i8::MAX, i8::MIN, 100, -100, -32,
         );
         let r = _mm256_abs_epi8(a);
         #[rustfmt::skip]
         let e = _mm256_setr_epi8(
             0, 1, 1, 2, 2, 3, 3, 4,
-            4, 5, 5, std::i8::MAX, std::i8::MAX.wrapping_add(1), 100, 100, 32,
+            4, 5, 5, i8::MAX, i8::MAX.wrapping_add(1), 100, 100, 32,
             0, 1, 1, 2, 2, 3, 3, 4,
-            4, 5, 5, std::i8::MAX, std::i8::MAX.wrapping_add(1), 100, 100, 32,
+            4, 5, 5, i8::MAX, i8::MAX.wrapping_add(1), 100, 100, 32,
         );
         assert_eq_m256i(r, e);
     }

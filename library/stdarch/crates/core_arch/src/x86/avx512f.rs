@@ -105,26 +105,26 @@ mod tests {
     unsafe fn test_mm512_abs_epi32() {
         #[rustfmt::skip]
         let a = _mm512_setr_epi32(
-            0, 1, -1, std::i32::MAX,
-            std::i32::MIN, 100, -100, -32,
-            0, 1, -1, std::i32::MAX,
-            std::i32::MIN, 100, -100, -32,
+            0, 1, -1, i32::MAX,
+            i32::MIN, 100, -100, -32,
+            0, 1, -1, i32::MAX,
+            i32::MIN, 100, -100, -32,
         );
         let r = _mm512_abs_epi32(a);
         let e = _mm512_setr_epi32(
             0,
             1,
             1,
-            std::i32::MAX,
-            std::i32::MAX.wrapping_add(1),
+            i32::MAX,
+            i32::MAX.wrapping_add(1),
             100,
             100,
             32,
             0,
             1,
             1,
-            std::i32::MAX,
-            std::i32::MAX.wrapping_add(1),
+            i32::MAX,
+            i32::MAX.wrapping_add(1),
             100,
             100,
             32,
@@ -136,10 +136,10 @@ mod tests {
     unsafe fn test_mm512_mask_abs_epi32() {
         #[rustfmt::skip]
         let a = _mm512_setr_epi32(
-            0, 1, -1, std::i32::MAX,
-            std::i32::MIN, 100, -100, -32,
-            0, 1, -1, std::i32::MAX,
-            std::i32::MIN, 100, -100, -32,
+            0, 1, -1, i32::MAX,
+            i32::MIN, 100, -100, -32,
+            0, 1, -1, i32::MAX,
+            i32::MIN, 100, -100, -32,
         );
         let r = _mm512_mask_abs_epi32(a, 0, a);
         assert_eq_m512i(r, a);
@@ -148,16 +148,16 @@ mod tests {
             0,
             1,
             1,
-            std::i32::MAX,
-            std::i32::MAX.wrapping_add(1),
+            i32::MAX,
+            i32::MAX.wrapping_add(1),
             100,
             100,
             32,
             0,
             1,
             -1,
-            std::i32::MAX,
-            std::i32::MIN,
+            i32::MAX,
+            i32::MIN,
             100,
             -100,
             -32,
@@ -169,10 +169,10 @@ mod tests {
     unsafe fn test_mm512_maskz_abs_epi32() {
         #[rustfmt::skip]
         let a = _mm512_setr_epi32(
-            0, 1, -1, std::i32::MAX,
-            std::i32::MIN, 100, -100, -32,
-            0, 1, -1, std::i32::MAX,
-            std::i32::MIN, 100, -100, -32,
+            0, 1, -1, i32::MAX,
+            i32::MIN, 100, -100, -32,
+            0, 1, -1, i32::MAX,
+            i32::MIN, 100, -100, -32,
         );
         let r = _mm512_maskz_abs_epi32(0, a);
         assert_eq_m512i(r, _mm512_setzero_si512());
@@ -181,8 +181,8 @@ mod tests {
             0,
             1,
             1,
-            std::i32::MAX,
-            std::i32::MAX.wrapping_add(1),
+            i32::MAX,
+            i32::MAX.wrapping_add(1),
             100,
             100,
             32,
