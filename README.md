@@ -87,8 +87,8 @@ miri run -- -Zmiri-disable-validation` runs the program without validation of
 basic type invariants and without checking the aliasing of references.
 
 When compiling code via `cargo miri`, the `miri` config flag is set.  You can
-use this to ignore test cases that will fail under Miri because they do things
-Miri does not support:
+use this to ignore test cases that fail under Miri because they do things Miri
+does not support:
 
 ```rust
 #[test]
@@ -100,12 +100,11 @@ fn does_not_work_on_miri() {
 }
 ```
 
-An exhaustive list of what `miri` does not support is not available, as this could be
-an unbounded set with FFI and more. However `miri` will explicitly tell you when it finds
-something unsupported with an error, containing a message such as:
+There is no way to list all the infinite things Miri cannot do, but the
+interpreter will explicitly tell you when it finds something unsupported:
 
 ```
-error: unsupported operation: can't call foreign function: mach_timebase_info
+error: unsupported operation: Miri does not support threading
     ...
     = help: this is likely not a bug in the program; it indicates that the program \
             performed an operation that the interpreter does not support
