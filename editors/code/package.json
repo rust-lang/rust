@@ -211,10 +211,12 @@
                 },
                 "rust-analyzer.notifications.workspaceLoaded": {
                     "type": "boolean",
+                    "default": true,
                     "markdownDescription": "Whether to show `workspace loaded` message."
                 },
                 "rust-analyzer.notifications.cargoTomlNotFound": {
                     "type": "boolean",
+                    "default": true,
                     "markdownDescription": "Whether to show `can't find Cargo.toml` error message"
                 },
                 "rust-analyzer.cargo.noDefaultFeatures": {
@@ -253,6 +255,7 @@
                     "items": {
                         "type": "string"
                     },
+                    "default": [],
                     "markdownDescription": "Advanced option, fully override the command rust-analyzer uses for formatting."
                 },
                 "rust-analyzer.checkOnSave.enable": {
@@ -278,6 +281,7 @@
                     "items": {
                         "type": "string"
                     },
+                    "default": [],
                     "markdownDescription": "Advanced option, fully override the command rust-analyzer uses for checking. The command should include `--message=format=json` or similar option."
                 },
                 "rust-analyzer.checkOnSave.allTargets": {
@@ -327,6 +331,7 @@
                 },
                 "rust-analyzer.callInfo.full": {
                     "type": "boolean",
+                    "default": true,
                     "description": "Show function name and docs in parameter hints"
                 },
                 "rust-analyzer.highlighting.semanticTokens": {
