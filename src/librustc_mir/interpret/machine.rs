@@ -51,7 +51,7 @@ pub trait AllocMap<K: Hash + Eq, V> {
     where
         K: Borrow<Q>;
 
-    /// Returns data based the keys and values in the map.
+    /// Returns data based on the keys and values in the map.
     fn filter_map_collect<T>(&self, f: impl FnMut(&K, &V) -> Option<T>) -> Vec<T>;
 
     /// Returns a reference to entry `k`. If no such entry exists, call

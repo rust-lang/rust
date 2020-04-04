@@ -646,14 +646,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
     fn dump_alloc_helper<Tag, Extra>(
         &self,
-        allocs_seen: &mut FxHashSet<AllocId>,
         allocs_to_print: &mut VecDeque<AllocId>,
         alloc: &Allocation<Tag, Extra>,
     ) {
         for &(_, target_id) in alloc.relocations().values() {
-            if allocs_seen.insert(target_id) {
-                allocs_to_print.push_back(target_id);
-            }
+            allocs_to_print.push_back(target_id);
         }
         crate::util::pretty::write_allocation(self.tcx.tcx, alloc, &mut std::io::stderr(), "")
             .unwrap();
@@ -666,9 +663,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         allocs.sort();
         allocs.dedup();
         let mut allocs_to_print = VecDeque::from(allocs);
-        let mut allocs_seen = FxHashSet::default();
+        // `allocs_printed` contains all allocations that we have already printed.
+        let mut allocs_printed = FxHashSet::default();
 
         while let Some(id) = allocs_to_print.pop_front() {
+            if !allocs_printed.insert(id) {
+                // Already printed, so skip this.
+                continue;
+            }
             eprint!("Alloc {:<5}: ", id);
             fn msg<Tag, Extra>(alloc: &Allocation<Tag, Extra>, extra: &str) {
                 eprintln!(
@@ -688,14 +690,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                         MemoryKind::CallerLocation => msg(alloc, " (caller_location)"),
                         MemoryKind::Machine(m) => msg(alloc, &format!(" ({:?})", m)),
                     };
-                    self.dump_alloc_helper(&mut allocs_seen, &mut allocs_to_print, alloc);
+                    self.dump_alloc_helper(&mut allocs_to_print, alloc);
                 }
                 Err(()) => {
                     // global alloc?
                     match self.tcx.alloc_map.lock().get(id) {
                         Some(GlobalAlloc::Memory(alloc)) => {
                             msg(alloc, " (immutable)");
-                            self.dump_alloc_helper(&mut allocs_seen, &mut allocs_to_print, alloc);
+                            self.dump_alloc_helper(&mut allocs_to_print, alloc);
                         }
                         Some(GlobalAlloc::Function(func)) => {
                             eprintln!("{}", func);
@@ -722,8 +724,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             });
             while let Some(id) = todo.pop() {
                 if reachable.insert(id) {
+                    // This is a new allocation, add its relocations to `todo`.
                     if let Some((_, alloc)) = self.alloc_map.get(id) {
-                        // This is a new allocation, add its relocations to `todo`.
                         todo.extend(alloc.relocations().values().map(|&(_, target_id)| target_id));
                     }
                 }
