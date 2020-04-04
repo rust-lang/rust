@@ -1,6 +1,6 @@
 use super::{StringReader, UnmatchedBrace};
 
-use rustc_ast::token::{self, Token, DelimToken};
+use rustc_ast::token::{self, DelimToken, Token};
 use rustc_ast::tokenstream::{
     DelimSpan,
     IsJoint::{self, *},
@@ -238,40 +238,25 @@ impl<'a> TokenTreesReader<'a> {
                 let mut err =
                     self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, &msg);
 
-                    // Braces are added at the end, so the last element is the biggest block
-                    if let Some(parent) = self.matching_block_spans.last() {
-
-                        if let Some(span) = self.last_delim_empty_block_spans.remove(&delim) {
-                            // Check if the (empty block) is in the last properly closed block
-                            if (parent.0.to(parent.1)).contains(span) {
-                                err.span_label(
-                                    span,
-                                    "block is empty, you might have not meant to close it",
-                                );
-                            }
-                            else {
-                                err.span_label(
-                                    parent.0,
-                                    "this opening brace...",
-                                );
-
-                                err.span_label(
-                                    parent.1,
-                                    "...matches this closing brace",
-                                );
-                            }
-                        }
-                        else {
+                // Braces are added at the end, so the last element is the biggest block
+                if let Some(parent) = self.matching_block_spans.last() {
+                    if let Some(span) = self.last_delim_empty_block_spans.remove(&delim) {
+                        // Check if the (empty block) is in the last properly closed block
+                        if (parent.0.to(parent.1)).contains(span) {
                             err.span_label(
-                                parent.0,
-                                "this opening brace...",
+                                span,
+                                "block is empty, you might have not meant to close it",
                             );
+                        } else {
+                            err.span_label(parent.0, "this opening brace...");
 
-                            err.span_label(
-                                parent.1,
-                                "...matches this closing brace",
-                            );
+                            err.span_label(parent.1, "...matches this closing brace");
                         }
+                    } else {
+                        err.span_label(parent.0, "this opening brace...");
+
+                        err.span_label(parent.1, "...matches this closing brace");
+                    }
                 }
 
                 err.span_label(self.token.span, "unexpected closing delimiter");
