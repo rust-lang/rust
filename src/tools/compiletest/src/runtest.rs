@@ -2810,7 +2810,9 @@ impl<'test> TestCx<'test> {
             let res = self.cmd2procres(
                 Command::new(&nodejs)
                     .arg(root.join("src/tools/rustdoc-js/tester.js"))
+                    .arg("--doc-folder")
                     .arg(out_dir.parent().expect("no parent"))
+                    .arg("--test-file")
                     .arg(self.testpaths.file.with_extension("js")),
             );
             if !res.status.success() {
