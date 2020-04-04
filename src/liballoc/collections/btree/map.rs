@@ -653,11 +653,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.first_key_value(), Some((&1, &"b")));
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn first_key_value<T: ?Sized>(&self) -> Option<(&K, &V)>
-    where
-        T: Ord,
-        K: Borrow<T>,
-    {
+    pub fn first_key_value(&self) -> Option<(&K, &V)> {
         let front = self.root.as_ref()?.as_ref().first_leaf_edge();
         front.right_kv().ok().map(Handle::into_kv)
     }
@@ -682,21 +678,14 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// }
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn first_entry<T: ?Sized>(&mut self) -> Option<OccupiedEntry<'_, K, V>>
-    where
-        T: Ord,
-        K: Borrow<T>,
-    {
+    pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>> {
         let front = self.root.as_mut()?.as_mut().first_leaf_edge();
-        if let Ok(kv) = front.right_kv() {
-            Some(OccupiedEntry {
-                handle: kv.forget_node_type(),
-                length: &mut self.length,
-                _marker: PhantomData,
-            })
-        } else {
-            None
-        }
+        let kv = front.right_kv().ok()?;
+        Some(OccupiedEntry {
+            handle: kv.forget_node_type(),
+            length: &mut self.length,
+            _marker: PhantomData,
+        })
     }
 
     /// Returns the last key-value pair in the map.
@@ -716,11 +705,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.last_key_value(), Some((&2, &"a")));
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn last_key_value<T: ?Sized>(&self) -> Option<(&K, &V)>
-    where
-        T: Ord,
-        K: Borrow<T>,
-    {
+    pub fn last_key_value(&self) -> Option<(&K, &V)> {
         let back = self.root.as_ref()?.as_ref().last_leaf_edge();
         back.left_kv().ok().map(Handle::into_kv)
     }
@@ -745,21 +730,14 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// }
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn last_entry<T: ?Sized>(&mut self) -> Option<OccupiedEntry<'_, K, V>>
-    where
-        T: Ord,
-        K: Borrow<T>,
-    {
+    pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>> {
         let back = self.root.as_mut()?.as_mut().last_leaf_edge();
-        if let Ok(kv) = back.left_kv() {
-            Some(OccupiedEntry {
-                handle: kv.forget_node_type(),
-                length: &mut self.length,
-                _marker: PhantomData,
-            })
-        } else {
-            None
-        }
+        let kv = back.left_kv().ok()?;
+        Some(OccupiedEntry {
+            handle: kv.forget_node_type(),
+            length: &mut self.length,
+            _marker: PhantomData,
+        })
     }
 
     /// Returns `true` if the map contains a value for the specified key.
