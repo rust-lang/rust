@@ -32,7 +32,6 @@ use std::collections::hash_map::Entry;
 use std::default::Default;
 use std::hash::Hash;
 use std::rc::Rc;
-use std::u32;
 use std::{mem, vec};
 
 use crate::core::{self, DocContext, ImplTraitParam};
