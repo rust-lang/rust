@@ -179,11 +179,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutexattr_init(&mut self, attr_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let attr = this.read_scalar(attr_op)?.not_undef()?;
-        if this.is_null(attr)? {
-            return this.eval_libc_i32("EINVAL");
-        }
-
         let default_kind = this.eval_libc("PTHREAD_MUTEX_DEFAULT")?;
         mutexattr_set_kind(this, attr_op, default_kind)?;
 
@@ -196,11 +191,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         kind_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        let attr = this.read_scalar(attr_op)?.not_undef()?;
-        if this.is_null(attr)? {
-            return this.eval_libc_i32("EINVAL");
-        }
 
         let kind = this.read_scalar(kind_op)?.not_undef()?;
         if kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")?
@@ -219,11 +209,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutexattr_destroy(&mut self, attr_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let attr = this.read_scalar(attr_op)?.not_undef()?;
-        if this.is_null(attr)? {
-            return this.eval_libc_i32("EINVAL");
-        }
-
         mutexattr_set_kind(this, attr_op, ScalarMaybeUndef::Undef)?;
 
         Ok(0)
@@ -235,11 +220,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         attr_op: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        let mutex = this.read_scalar(mutex_op)?.not_undef()?;
-        if this.is_null(mutex)? {
-            return this.eval_libc_i32("EINVAL");
-        }
 
         let attr = this.read_scalar(attr_op)?.not_undef()?;
         let kind = if this.is_null(attr)? {
@@ -256,11 +236,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn pthread_mutex_lock(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        let mutex = this.read_scalar(mutex_op)?.not_undef()?;
-        if this.is_null(mutex)? {
-            return this.eval_libc_i32("EINVAL");
-        }
 
         let kind = mutex_get_kind(this, mutex_op)?.not_undef()?;
         let locked_count = mutex_get_locked_count(this, mutex_op)?.to_u32()?;
@@ -295,11 +270,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_trylock(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let mutex = this.read_scalar(mutex_op)?.not_undef()?;
-        if this.is_null(mutex)? {
-            return this.eval_libc_i32("EINVAL");
-        }
-
         let kind = mutex_get_kind(this, mutex_op)?.not_undef()?;
         let locked_count = mutex_get_locked_count(this, mutex_op)?.to_u32()?;
 
@@ -327,11 +297,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn pthread_mutex_unlock(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        let mutex = this.read_scalar(mutex_op)?.not_undef()?;
-        if this.is_null(mutex)? {
-            return this.eval_libc_i32("EINVAL");
-        }
 
         let kind = mutex_get_kind(this, mutex_op)?.not_undef()?;
         let locked_count = mutex_get_locked_count(this, mutex_op)?.to_u32()?;
@@ -371,11 +336,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_destroy(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let mutex = this.read_scalar(mutex_op)?.not_undef()?;
-        if this.is_null(mutex)? {
-            return this.eval_libc_i32("EINVAL");
-        }
-
         if mutex_get_locked_count(this, mutex_op)?.to_u32()? != 0 {
             return this.eval_libc_i32("EBUSY");
         }
@@ -388,11 +348,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn pthread_rwlock_rdlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
-        if this.is_null(rwlock)? {
-            return this.eval_libc_i32("EINVAL");
-        }
 
         let readers = rwlock_get_readers(this, rwlock_op)?.to_u32()?;
         let writers = rwlock_get_writers(this, rwlock_op)?.to_u32()?;
@@ -414,11 +369,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_tryrdlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
-        if this.is_null(rwlock)? {
-            return this.eval_libc_i32("EINVAL");
-        }
-
         let readers = rwlock_get_readers(this, rwlock_op)?.to_u32()?;
         let writers = rwlock_get_writers(this, rwlock_op)?.to_u32()?;
         if writers != 0 {
@@ -436,11 +386,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn pthread_rwlock_wrlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
-        if this.is_null(rwlock)? {
-            return this.eval_libc_i32("EINVAL");
-        }
 
         let readers = rwlock_get_readers(this, rwlock_op)?.to_u32()?;
         let writers = rwlock_get_writers(this, rwlock_op)?.to_u32()?;
@@ -461,11 +406,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_rwlock_trywrlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
-        if this.is_null(rwlock)? {
-            return this.eval_libc_i32("EINVAL");
-        }
-
         let readers = rwlock_get_readers(this, rwlock_op)?.to_u32()?;
         let writers = rwlock_get_writers(this, rwlock_op)?.to_u32()?;
         if readers != 0 || writers != 0 {
@@ -478,11 +418,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn pthread_rwlock_unlock(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
-        if this.is_null(rwlock)? {
-            return this.eval_libc_i32("EINVAL");
-        }
 
         let readers = rwlock_get_readers(this, rwlock_op)?.to_u32()?;
         let writers = rwlock_get_writers(this, rwlock_op)?.to_u32()?;
@@ -499,11 +434,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn pthread_rwlock_destroy(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-
-        let rwlock = this.read_scalar(rwlock_op)?.not_undef()?;
-        if this.is_null(rwlock)? {
-            return this.eval_libc_i32("EINVAL");
-        }
 
         if rwlock_get_readers(this, rwlock_op)?.to_u32()? != 0 {
             return this.eval_libc_i32("EBUSY");
