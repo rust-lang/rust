@@ -1255,6 +1255,87 @@ fn add_post_link_args(cmd: &mut dyn Linker, sess: &'a Session, flavor: LinkerFla
     }
 }
 
+/// Add object files containing code from the current crate.
+fn add_local_crate_regular_objects(cmd: &mut dyn Linker, codegen_results: &CodegenResults) {
+    for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
+        cmd.add_object(obj);
+    }
+}
+
+/// Add object files for allocator code linked once for the whole crate tree.
+fn add_local_crate_allocator_objects(cmd: &mut dyn Linker, codegen_results: &CodegenResults) {
+    let obj = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref());
+    if let Some(obj) = obj {
+        cmd.add_object(obj);
+    }
+}
+
+/// Add object files containing metadata for the current crate.
+fn add_local_crate_metadata_objects(
+    cmd: &mut dyn Linker,
+    crate_type: config::CrateType,
+    codegen_results: &CodegenResults,
+) {
+    // When linking a dynamic library, we put the metadata into a section of the
+    // executable. This metadata is in a separate object file from the main
+    // object file, so we link that in here.
+    if crate_type == config::CrateType::Dylib || crate_type == config::CrateType::ProcMacro {
+        let obj = codegen_results.metadata_module.as_ref().and_then(|m| m.object.as_ref());
+        if let Some(obj) = obj {
+            cmd.add_object(obj);
+        }
+    }
+}
+
+/// Link native libraries corresponding to the current crate and all libraries corresponding to
+/// all its dependency crates.
+/// FIXME: Consider combining this with the functions above adding object files for the local crate.
+fn link_local_crate_native_libs_and_dependent_crate_libs<'a, B: ArchiveBuilder<'a>>(
+    cmd: &mut dyn Linker,
+    sess: &'a Session,
+    crate_type: config::CrateType,
+    codegen_results: &CodegenResults,
+    tmpdir: &Path,
+) {
+    // Take careful note of the ordering of the arguments we pass to the linker
+    // here. Linkers will assume that things on the left depend on things to the
+    // right. Things on the right cannot depend on things on the left. This is
+    // all formally implemented in terms of resolving symbols (libs on the right
+    // resolve unknown symbols of libs on the left, but not vice versa).
+    //
+    // For this reason, we have organized the arguments we pass to the linker as
+    // such:
+    //
+    // 1. The local object that LLVM just generated
+    // 2. Local native libraries
+    // 3. Upstream rust libraries
+    // 4. Upstream native libraries
+    //
+    // The rationale behind this ordering is that those items lower down in the
+    // list can't depend on items higher up in the list. For example nothing can
+    // depend on what we just generated (e.g., that'd be a circular dependency).
+    // Upstream rust libraries are not allowed to depend on our local native
+    // libraries as that would violate the structure of the DAG, in that
+    // scenario they are required to link to them as well in a shared fashion.
+    //
+    // Note that upstream rust libraries may contain native dependencies as
+    // well, but they also can't depend on what we just started to add to the
+    // link line. And finally upstream native libraries can't depend on anything
+    // in this DAG so far because they're only dylibs and dylibs can only depend
+    // on other dylibs (e.g., other native deps).
+    //
+    // If -Zlink-native-libraries=false is set, then the assumption is that an
+    // external build system already has the native dependencies defined, and it
+    // will provide them to the linker itself.
+    if sess.opts.debugging_opts.link_native_libraries.unwrap_or(true) {
+        add_local_native_libraries(cmd, sess, codegen_results);
+    }
+    add_upstream_rust_crates::<B>(cmd, sess, codegen_results, crate_type, tmpdir);
+    if sess.opts.debugging_opts.link_native_libraries.unwrap_or(true) {
+        add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
+    }
+}
+
 /// Add sysroot and other globally set directories to the directory search list.
 fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &'a Session) {
     // The default library location, we need this to find the runtime.
@@ -1269,6 +1350,95 @@ fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &'a Session) {
     }
 
     cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
+}
+
+/// Add options requesting executables to be position-independent or not position-independent.
+fn add_position_independent_executable_args(
+    cmd: &mut dyn Linker,
+    sess: &'a Session,
+    flavor: LinkerFlavor,
+    crate_type: config::CrateType,
+    codegen_results: &CodegenResults,
+) {
+    if crate_type != config::CrateType::Executable {
+        return;
+    }
+
+    let mut position_independent_executable = false;
+    if sess.target.target.options.position_independent_executables {
+        let attr_link_args = &*codegen_results.crate_info.link_args;
+        let mut user_defined_link_args = sess.opts.cg.link_args.iter().chain(attr_link_args);
+        if is_pic(sess)
+            && !sess.crt_static(Some(crate_type))
+            && !user_defined_link_args.any(|x| x == "-static")
+        {
+            position_independent_executable = true;
+        }
+    }
+
+    if position_independent_executable {
+        cmd.position_independent_executable();
+    } else {
+        // recent versions of gcc can be configured to generate position
+        // independent executables by default. We have to pass -no-pie to
+        // explicitly turn that off. Not applicable to ld.
+        if sess.target.target.options.linker_is_gnu && flavor != LinkerFlavor::Ld {
+            cmd.no_position_independent_executable();
+        }
+    }
+}
+
+/// Add options making relocation sections in the produced ELF files read-only
+/// and suppressing lazy binding.
+fn add_relro_args(cmd: &mut dyn Linker, sess: &'a Session) {
+    let relro_level = match sess.opts.debugging_opts.relro_level {
+        Some(level) => level,
+        None => sess.target.target.options.relro_level,
+    };
+    match relro_level {
+        RelroLevel::Full => {
+            cmd.full_relro();
+        }
+        RelroLevel::Partial => {
+            cmd.partial_relro();
+        }
+        RelroLevel::Off => {
+            cmd.no_relro();
+        }
+        RelroLevel::None => {}
+    }
+}
+
+/// Add library search paths used at runtime by dynamic linkers.
+fn add_rpath_args(
+    cmd: &mut dyn Linker,
+    sess: &'a Session,
+    codegen_results: &CodegenResults,
+    out_filename: &Path,
+) {
+    // FIXME (#2397): At some point we want to rpath our guesses as to
+    // where extern libraries might live, based on the
+    // addl_lib_search_paths
+    if sess.opts.cg.rpath {
+        let target_triple = sess.opts.target_triple.triple();
+        let mut get_install_prefix_lib_path = || {
+            let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
+            let tlib = filesearch::relative_target_lib_path(&sess.sysroot, target_triple);
+            let mut path = PathBuf::from(install_prefix);
+            path.push(&tlib);
+
+            path
+        };
+        let mut rpath_config = RPathConfig {
+            used_crates: &codegen_results.crate_info.used_crates_dynamic,
+            out_filename: out_filename.to_path_buf(),
+            has_rpath: sess.target.target.options.has_rpath,
+            is_like_osx: sess.target.target.options.is_like_osx,
+            linker_is_gnu: sess.target.target.options.linker_is_gnu,
+            get_install_prefix_lib_path: &mut get_install_prefix_lib_path,
+        };
+        cmd.args(&rpath::get_rpath_flags(&mut rpath_config));
+    }
 }
 
 /// Produce the linker command line containing linker path and arguments.
@@ -1332,9 +1502,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     add_library_search_dirs(cmd, sess);
 
     // OBJECT-FILES-YES
-    for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
-        cmd.add_object(obj);
-    }
+    add_local_crate_regular_objects(cmd, codegen_results);
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     cmd.output_filename(out_filename);
@@ -1353,21 +1521,10 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     cmd.export_symbols(tmpdir, crate_type);
 
     // OBJECT-FILES-YES
-    // When linking a dynamic library, we put the metadata into a section of the
-    // executable. This metadata is in a separate object file from the main
-    // object file, so we link that in here.
-    if crate_type == config::CrateType::Dylib || crate_type == config::CrateType::ProcMacro {
-        let obj = codegen_results.metadata_module.as_ref().and_then(|m| m.object.as_ref());
-        if let Some(obj) = obj {
-            cmd.add_object(obj);
-        }
-    }
+    add_local_crate_metadata_objects(cmd, crate_type, codegen_results);
 
     // OBJECT-FILES-YES
-    let obj = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref());
-    if let Some(obj) = obj {
-        cmd.add_object(obj);
-    }
+    add_local_crate_allocator_objects(cmd, codegen_results);
 
     // OBJECT-FILES-NO, AUDIT-ORDER
     // FIXME: Order dependent, applies to the following objects. Where should it be placed?
@@ -1379,53 +1536,10 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     }
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
-    if crate_type == config::CrateType::Executable {
-        let mut position_independent_executable = false;
-
-        if sess.target.target.options.position_independent_executables {
-            if is_pic(sess)
-                && !sess.crt_static(Some(crate_type))
-                && !sess
-                    .opts
-                    .cg
-                    .link_args
-                    .iter()
-                    .chain(&*codegen_results.crate_info.link_args)
-                    .any(|x| x == "-static")
-            {
-                position_independent_executable = true;
-            }
-        }
-
-        if position_independent_executable {
-            cmd.position_independent_executable();
-        } else {
-            // recent versions of gcc can be configured to generate position
-            // independent executables by default. We have to pass -no-pie to
-            // explicitly turn that off. Not applicable to ld.
-            if sess.target.target.options.linker_is_gnu && flavor != LinkerFlavor::Ld {
-                cmd.no_position_independent_executable();
-            }
-        }
-    }
+    add_position_independent_executable_args(cmd, sess, flavor, crate_type, codegen_results);
 
     // OBJECT-FILES-NO, AUDIT-ORDER
-    let relro_level = match sess.opts.debugging_opts.relro_level {
-        Some(level) => level,
-        None => sess.target.target.options.relro_level,
-    };
-    match relro_level {
-        RelroLevel::Full => {
-            cmd.full_relro();
-        }
-        RelroLevel::Partial => {
-            cmd.partial_relro();
-        }
-        RelroLevel::Off => {
-            cmd.no_relro();
-        }
-        RelroLevel::None => {}
-    }
+    add_relro_args(cmd, sess);
 
     // OBJECT-FILES-NO, AUDIT-ORDER
     // Pass optimization flags down to the linker.
@@ -1450,43 +1564,13 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     }
 
     // OBJECT-FILES-YES
-    // Take careful note of the ordering of the arguments we pass to the linker
-    // here. Linkers will assume that things on the left depend on things to the
-    // right. Things on the right cannot depend on things on the left. This is
-    // all formally implemented in terms of resolving symbols (libs on the right
-    // resolve unknown symbols of libs on the left, but not vice versa).
-    //
-    // For this reason, we have organized the arguments we pass to the linker as
-    // such:
-    //
-    // 1. The local object that LLVM just generated
-    // 2. Local native libraries
-    // 3. Upstream rust libraries
-    // 4. Upstream native libraries
-    //
-    // The rationale behind this ordering is that those items lower down in the
-    // list can't depend on items higher up in the list. For example nothing can
-    // depend on what we just generated (e.g., that'd be a circular dependency).
-    // Upstream rust libraries are not allowed to depend on our local native
-    // libraries as that would violate the structure of the DAG, in that
-    // scenario they are required to link to them as well in a shared fashion.
-    //
-    // Note that upstream rust libraries may contain native dependencies as
-    // well, but they also can't depend on what we just started to add to the
-    // link line. And finally upstream native libraries can't depend on anything
-    // in this DAG so far because they're only dylibs and dylibs can only depend
-    // on other dylibs (e.g., other native deps).
-    //
-    // If -Zlink-native-libraries=false is set, then the assumption is that an
-    // external build system already has the native dependencies defined, and it
-    // will provide them to the linker itself.
-    if sess.opts.debugging_opts.link_native_libraries.unwrap_or(true) {
-        add_local_native_libraries(cmd, sess, codegen_results);
-    }
-    add_upstream_rust_crates::<B>(cmd, sess, codegen_results, crate_type, tmpdir);
-    if sess.opts.debugging_opts.link_native_libraries.unwrap_or(true) {
-        add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
-    }
+    link_local_crate_native_libs_and_dependent_crate_libs::<B>(
+        cmd,
+        sess,
+        crate_type,
+        codegen_results,
+        tmpdir,
+    );
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     // Tell the linker what we're doing.
@@ -1508,29 +1592,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     }
 
     // OBJECT-FILES-NO, AUDIT-ORDER
-    // FIXME (#2397): At some point we want to rpath our guesses as to
-    // where extern libraries might live, based on the
-    // addl_lib_search_paths
-    if sess.opts.cg.rpath {
-        let target_triple = sess.opts.target_triple.triple();
-        let mut get_install_prefix_lib_path = || {
-            let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
-            let tlib = filesearch::relative_target_lib_path(&sess.sysroot, target_triple);
-            let mut path = PathBuf::from(install_prefix);
-            path.push(&tlib);
-
-            path
-        };
-        let mut rpath_config = RPathConfig {
-            used_crates: &codegen_results.crate_info.used_crates_dynamic,
-            out_filename: out_filename.to_path_buf(),
-            has_rpath: sess.target.target.options.has_rpath,
-            is_like_osx: sess.target.target.options.is_like_osx,
-            linker_is_gnu: sess.target.target.options.linker_is_gnu,
-            get_install_prefix_lib_path: &mut get_install_prefix_lib_path,
-        };
-        cmd.args(&rpath::get_rpath_flags(&mut rpath_config));
-    }
+    add_rpath_args(cmd, sess, codegen_results, out_filename);
 
     // OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
     add_user_defined_link_args(cmd, sess, codegen_results);
