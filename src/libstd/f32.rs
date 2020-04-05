@@ -112,8 +112,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 3.6_f32;
     /// let y = -3.6_f32;
     /// let abs_difference_x = (x.fract() - 0.6).abs();
@@ -135,8 +133,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 3.5_f32;
     /// let y = -3.5_f32;
     ///
@@ -164,8 +160,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 3.5_f32;
     ///
     /// assert_eq!(f.signum(), 1.0);
@@ -190,8 +184,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 3.5_f32;
     ///
     /// assert_eq!(f.copysign(0.42), 3.5_f32);
@@ -217,8 +209,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let m = 10.0_f32;
     /// let x = 4.0_f32;
     /// let b = 60.0_f32;
@@ -301,8 +291,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 2.0_f32;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
     ///
@@ -320,8 +308,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 2.0_f32;
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
     ///
@@ -341,8 +327,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let positive = 4.0_f32;
     /// let negative = -4.0_f32;
     ///
@@ -363,8 +347,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let one = 1.0f32;
     /// // e^1
     /// let e = one.exp();
@@ -386,8 +368,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 2.0f32;
     ///
     /// // 2^2 - 4 == 0
@@ -407,8 +387,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let one = 1.0f32;
     /// // e^1
     /// let e = one.exp();
@@ -434,8 +412,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let five = 5.0f32;
     ///
     /// // log5(5) - 1 == 0
@@ -455,8 +431,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let two = 2.0f32;
     ///
     /// // log2(2) - 1 == 0
@@ -479,8 +453,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let ten = 10.0f32;
     ///
     /// // log10(10) - 1 == 0
@@ -503,8 +475,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 3.0f32;
     /// let y = -3.0f32;
     ///
@@ -536,8 +506,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 8.0f32;
     ///
     /// // x^(1/3) - 2 == 0
@@ -558,8 +526,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 2.0f32;
     /// let y = 3.0f32;
     ///
@@ -686,8 +652,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 1.0f32;
     ///
     /// // atan(tan(1))
@@ -766,8 +730,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 6.0f32;
     ///
     /// // e^(ln(6)) - 1
@@ -881,8 +843,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 1.0f32;
     /// let f = x.sinh().asinh();
     ///
@@ -906,8 +866,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 1.0f32;
     /// let f = x.cosh().acosh();
     ///
