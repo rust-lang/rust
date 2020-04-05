@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use rustc_data_structures::fx::FxHashMap;
 
 use gimli::write::{Address, AttributeValue, EndianVec, Result, Sections, Writer};
 use gimli::{RunTimeEndian, SectionId};
@@ -20,7 +20,7 @@ impl DebugContext<'_> {
         let mut sections = Sections::new(WriterRelocate::new(self));
         self.dwarf.write(&mut sections).unwrap();
 
-        let mut section_map = HashMap::new();
+        let mut section_map = FxHashMap::default();
         let _: Result<()> = sections.for_each_mut(|id, section| {
             if !section.writer.slice().is_empty() {
                 let section_id = product.add_debug_section(id, section.writer.take());

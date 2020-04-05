@@ -9,9 +9,11 @@
 //! `stack_store` instruction incorrectly, or incorrectly use a previously stored value as the value
 //! being loaded by a `stack_load`.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::fmt;
 use std::ops::Not;
+
+use rustc_data_structures::fx::FxHashSet;
 
 use cranelift_codegen::cursor::{Cursor, FuncCursor};
 use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
@@ -43,9 +45,9 @@ impl Ord for OrdStackSlot {
 
 #[derive(Debug, Default)]
 struct StackSlotUsage {
-    stack_addr: HashSet<Inst>,
-    stack_load: HashSet<Inst>,
-    stack_store: HashSet<Inst>,
+    stack_addr: FxHashSet<Inst>,
+    stack_load: FxHashSet<Inst>,
+    stack_store: FxHashSet<Inst>,
 }
 
 impl StackSlotUsage {
@@ -284,7 +286,7 @@ fn combine_stack_addr_with_load_store(func: &mut Function) {
 
 fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
     // FIXME incrementally rebuild on each call?
-    let mut stack_addr_load_insts_users = HashMap::<Inst, HashSet<Inst>>::new();
+    let mut stack_addr_load_insts_users = FxHashMap::<Inst, FxHashSet<Inst>>::default();
 
     let mut cursor = FuncCursor::new(&mut opt_ctx.ctx.func);
     while let Some(_block) = cursor.next_block() {
@@ -293,7 +295,7 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
                 if let ValueDef::Result(arg_origin, 0) = cursor.func.dfg.value_def(arg) {
                     match cursor.func.dfg[arg_origin].opcode() {
                         Opcode::StackAddr | Opcode::StackLoad => {
-                            stack_addr_load_insts_users.entry(arg_origin).or_insert_with(HashSet::new).insert(inst);
+                            stack_addr_load_insts_users.entry(arg_origin).or_insert_with(FxHashSet::default).insert(inst);
                         }
                         _ => {}
                     }

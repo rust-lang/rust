@@ -67,7 +67,6 @@ mod value_and_place;
 mod vtable;
 
 mod prelude {
-    pub(crate) use std::collections::HashMap;
     pub(crate) use std::convert::{TryFrom, TryInto};
 
     pub(crate) use rustc_ast::ast::{FloatTy, IntTy, UintTy};
@@ -132,7 +131,7 @@ pub(crate) struct CodegenCx<'clif, 'tcx, B: Backend + 'static> {
     module: &'clif mut Module<B>,
     constants_cx: ConstantCx,
     cached_context: Context,
-    vtables: HashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
+    vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
     debug_context: Option<&'clif mut DebugContext<'tcx>>,
 }
 
@@ -147,7 +146,7 @@ impl<'clif, 'tcx, B: Backend + 'static> CodegenCx<'clif, 'tcx, B> {
             module,
             constants_cx: ConstantCx::default(),
             cached_context: Context::new(),
-            vtables: HashMap::new(),
+            vtables: FxHashMap::default(),
             debug_context,
         }
     }

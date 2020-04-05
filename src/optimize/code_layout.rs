@@ -14,7 +14,7 @@ pub(super) fn optimize_function(ctx: &mut Context, cold_blocks: &EntitySet<Block
     // FIXME Move the block in place instead of remove and append once
     // bytecodealliance/cranelift#1339 is implemented.
 
-    let mut block_insts = HashMap::new();
+    let mut block_insts = FxHashMap::default();
     for block in cold_blocks.keys().filter(|&block| cold_blocks.contains(block)) {
         let insts = ctx.func.layout.block_insts(block).collect::<Vec<_>>();
         for &inst in &insts {

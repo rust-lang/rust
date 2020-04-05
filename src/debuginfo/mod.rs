@@ -33,7 +33,7 @@ pub(crate) struct DebugContext<'tcx> {
     dwarf: DwarfUnit,
     unit_range_list: RangeList,
 
-    types: HashMap<Ty<'tcx>, UnitEntryId>,
+    types: FxHashMap<Ty<'tcx>, UnitEntryId>,
 }
 
 impl<'tcx> DebugContext<'tcx> {
@@ -97,7 +97,7 @@ impl<'tcx> DebugContext<'tcx> {
             dwarf,
             unit_range_list: RangeList(Vec::new()),
 
-            types: HashMap::new(),
+            types: FxHashMap::default(),
         }
     }
 
@@ -255,7 +255,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         context: &Context,
         isa: &dyn TargetIsa,
         source_info_set: &indexmap::IndexSet<SourceInfo>,
-        local_map: HashMap<mir::Local, CPlace<'tcx>>,
+        local_map: FxHashMap<mir::Local, CPlace<'tcx>>,
     ) {
         let end = self.create_debug_lines(context, isa, source_info_set);
 
@@ -302,8 +302,9 @@ fn place_location<'a, 'tcx>(
     func_debug_ctx: &mut FunctionDebugContext<'a, 'tcx>,
     isa: &dyn TargetIsa,
     context: &Context,
-    local_map: &HashMap<mir::Local, CPlace<'tcx>>,
-    value_labels_ranges: &HashMap<ValueLabel, Vec<ValueLocRange>>,
+    local_map: &FxHashMap<mir::Local, CPlace<'tcx>>,
+    #[allow(rustc::default_hash_types)]
+    value_labels_ranges: &std::collections::HashMap<ValueLabel, Vec<ValueLocRange>>,
     place: Place<'tcx>,
 ) -> AttributeValue {
     assert!(place.projection.is_empty()); // FIXME implement them

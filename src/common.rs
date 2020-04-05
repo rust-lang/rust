@@ -265,7 +265,7 @@ pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
 
     pub(crate) bcx: FunctionBuilder<'clif>,
     pub(crate) block_map: IndexVec<BasicBlock, Block>,
-    pub(crate) local_map: HashMap<Local, CPlace<'tcx>>,
+    pub(crate) local_map: FxHashMap<Local, CPlace<'tcx>>,
 
     /// When `#[track_caller]` is used, the implicit caller location is stored in this variable.
     pub(crate) caller_location: Option<CValue<'tcx>>,
@@ -275,7 +275,7 @@ pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
 
     pub(crate) clif_comments: crate::pretty_clif::CommentWriter,
     pub(crate) constants_cx: &'clif mut crate::constant::ConstantCx,
-    pub(crate) vtables: &'clif mut HashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
+    pub(crate) vtables: &'clif mut FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
 
     pub(crate) source_info_set: indexmap::IndexSet<SourceInfo>,
 }

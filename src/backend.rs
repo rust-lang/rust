@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use std::convert::TryFrom;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_session::Session;
 
 use cranelift_module::{FuncId, Module};
@@ -44,7 +44,7 @@ pub(crate) trait WriteDebugInfo {
     fn add_debug_section(&mut self, name: SectionId, data: Vec<u8>) -> Self::SectionId;
     fn add_debug_reloc(
         &mut self,
-        section_map: &HashMap<SectionId, Self::SectionId>,
+        section_map: &FxHashMap<SectionId, Self::SectionId>,
         symbol_map: &indexmap::IndexMap<FuncId, String>,
         from: &Self::SectionId,
         reloc: &DebugReloc,
@@ -74,7 +74,7 @@ impl WriteDebugInfo for ObjectProduct {
 
     fn add_debug_reloc(
         &mut self,
-        section_map: &HashMap<SectionId, Self::SectionId>,
+        section_map: &FxHashMap<SectionId, Self::SectionId>,
         symbol_map: &indexmap::IndexMap<FuncId, String>,
         from: &Self::SectionId,
         reloc: &DebugReloc,

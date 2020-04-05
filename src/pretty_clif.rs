@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt;
 
 use cranelift_codegen::{
@@ -66,7 +65,7 @@ use crate::prelude::*;
 #[derive(Debug)]
 pub(crate) struct CommentWriter {
     global_comments: Vec<String>,
-    entity_comments: HashMap<AnyEntity, String>,
+    entity_comments: FxHashMap<AnyEntity, String>,
 }
 
 impl CommentWriter {
@@ -90,7 +89,7 @@ impl CommentWriter {
 
         CommentWriter {
             global_comments,
-            entity_comments: HashMap::new(),
+            entity_comments: FxHashMap::default(),
         }
     }
 }

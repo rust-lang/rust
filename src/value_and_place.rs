@@ -202,14 +202,14 @@ impl<'tcx> CValue<'tcx> {
         let clif_ty = fx.clif_type(layout.ty).unwrap();
 
         match layout.ty.kind {
-            ty::TyKind::Bool => {
+            ty::Bool => {
                 assert!(const_val == 0 || const_val == 1, "Invalid bool 0x{:032X}", const_val);
             }
             _ => {}
         }
 
         let val = match layout.ty.kind {
-            ty::TyKind::Uint(UintTy::U128) | ty::TyKind::Int(IntTy::I128) => {
+            ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
                 let lsb = fx.bcx.ins().iconst(types::I64, const_val as u64 as i64);
                 let msb = fx
                     .bcx
@@ -217,21 +217,21 @@ impl<'tcx> CValue<'tcx> {
                     .iconst(types::I64, (const_val >> 64) as u64 as i64);
                 fx.bcx.ins().iconcat(lsb, msb)
             }
-            ty::TyKind::Bool | ty::TyKind::Char | ty::TyKind::Uint(_) | ty::TyKind::Ref(..)
-            | ty::TyKind::RawPtr(..) => {
+            ty::Bool | ty::Char | ty::Uint(_) | ty::Ref(..)
+            | ty::RawPtr(..) => {
                 fx
                     .bcx
                     .ins()
                     .iconst(clif_ty, u64::try_from(const_val).expect("uint") as i64)
             }
-            ty::TyKind::Int(_) => {
+            ty::Int(_) => {
                 let const_val = rustc_middle::mir::interpret::sign_extend(const_val, layout.size);
                 fx.bcx.ins().iconst(clif_ty, i64::try_from(const_val as i128).unwrap())
             }
-            ty::TyKind::Float(FloatTy::F32) => {
+            ty::Float(FloatTy::F32) => {
                 fx.bcx.ins().f32const(Ieee32::with_bits(u32::try_from(const_val).unwrap()))
             }
-            ty::TyKind::Float(FloatTy::F64) => {
+            ty::Float(FloatTy::F64) => {
                 fx.bcx.ins().f64const(Ieee64::with_bits(u64::try_from(const_val).unwrap()))
             }
             _ => panic!(

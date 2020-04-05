@@ -47,7 +47,7 @@ pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
 
         bcx,
         block_map,
-        local_map: HashMap::new(),
+        local_map: FxHashMap::default(),
         caller_location: None, // set by `codegen_fn_prelude`
         cold_blocks: EntitySet::new(),
 
