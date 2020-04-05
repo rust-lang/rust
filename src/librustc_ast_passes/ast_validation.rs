@@ -6,6 +6,7 @@
 // This pass is supposed to perform only simple checks not requiring name resolution
 // or type checking or some other kind of complex analysis.
 
+use itertools::{Either, Itertools};
 use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::expand::is_proc_macro_attr;
@@ -640,7 +641,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn suggest_correct_generic_order(&self, data: &AngleBracketedArgs) -> String {
+    fn correct_generic_order_suggestion(&self, data: &AngleBracketedArgs) -> String {
         // Lifetimes always come first.
         let lt_sugg = data.args.iter().filter_map(|arg| match arg {
             AngleBracketedArg::Arg(lt @ GenericArg::Lifetime(_)) => {
@@ -649,11 +650,12 @@ impl<'a> AstValidator<'a> {
             _ => None,
         });
         let args_sugg = data.args.iter().filter_map(|a| match a {
-            AngleBracketedArg::Arg(GenericArg::Lifetime(_)) => None,
+            AngleBracketedArg::Arg(GenericArg::Lifetime(_)) | AngleBracketedArg::Constraint(_) => {
+                None
+            }
             AngleBracketedArg::Arg(arg) => Some(pprust::to_string(|s| s.print_generic_arg(arg))),
-            AngleBracketedArg::Constraint(_) => None,
         });
-        // Cosntraints always come last.
+        // Constraints always come last.
         let constraint_sugg = data.args.iter().filter_map(|a| match a {
             AngleBracketedArg::Arg(_) => None,
             AngleBracketedArg::Constraint(c) => {
@@ -673,22 +675,11 @@ impl<'a> AstValidator<'a> {
             return;
         }
         // Find all generic argument coming after the first constraint...
-        let constraint_spans = data
-            .args
-            .iter()
-            .filter_map(|arg| match arg {
-                AngleBracketedArg::Constraint(c) => Some(c.span),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        let arg_spans = data
-            .args
-            .iter()
-            .filter_map(|arg| match arg {
-                AngleBracketedArg::Arg(a) => Some(a.span()),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
+        let (constraint_spans, arg_spans): (Vec<Span>, Vec<Span>) =
+            data.args.iter().partition_map(|arg| match arg {
+                AngleBracketedArg::Constraint(c) => Either::Left(c.span),
+                AngleBracketedArg::Arg(a) => Either::Right(a.span()),
+            });
         let args_len = arg_spans.len();
         let constraint_len = constraint_spans.len();
         // ...and then error:
@@ -706,7 +697,7 @@ impl<'a> AstValidator<'a> {
                     pluralize!(constraint_len),
                     pluralize!(args_len)
                 ),
-                self.suggest_correct_generic_order(&data),
+                self.correct_generic_order_suggestion(&data),
                 Applicability::MachineApplicable,
             )
             .emit();
