@@ -58,13 +58,21 @@ To tag an issue as appropriate for an ICE-breaker group, you give
 team. For example:
 
 ```text
+@rustbot ping icebreakers-llvm
+@rustbot ping icebreakers-cleanup-crew
+```
+
+To make these commands shorter and easier to remember, there are aliases,
+defined in the [`triagebot.toml`] file. For example:
+
+```text
 @rustbot ping llvm
 @rustbot ping cleanup
 ```
 
-These are aliases that are easier to remember than the full invocation.
-They are declared in the [`triagebot.toml`] file and might be subject to
-changes.
+Keep in mind that these aliases are meant to make humans' life easier.
+They might be subject to change. If you need to ensure that a command
+will always be valid, prefer the full invocations over the aliases.
 
 **Note though that this should only be done by compiler team members
 or contributors, and is typically done as part of compiler team
