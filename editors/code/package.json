@@ -512,7 +512,7 @@
                 "description": "Style for compile-time constants"
             },
             {
-                "id": "control",
+                "id": "controlFlow",
                 "description": "Style for control flow keywords"
             },
             {
@@ -545,9 +545,6 @@
                     ],
                     "keyword.unsafe": [
                         "keyword.other.unsafe"
-                    ],
-                    "keyword.control": [
-                        "keyword.control"
                     ],
                     "variable.constant": [
                         "entity.name.constant"

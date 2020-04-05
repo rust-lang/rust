@@ -232,7 +232,7 @@ fn highlight_element(
                 | T![loop]
                 | T![match]
                 | T![return]
-                | T![while] => h | HighlightModifier::Control,
+                | T![while] => h | HighlightModifier::ControlFlow,
                 T![unsafe] => h | HighlightModifier::Unsafe,
                 _ => h,
             }

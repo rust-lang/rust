@@ -12,7 +12,7 @@ pub(crate) const TYPE_ALIAS: SemanticTokenType = SemanticTokenType::new("typeAli
 pub(crate) const UNION: SemanticTokenType = SemanticTokenType::new("union");
 
 pub(crate) const CONSTANT: SemanticTokenModifier = SemanticTokenModifier::new("constant");
-pub(crate) const CONTROL: SemanticTokenModifier = SemanticTokenModifier::new("control");
+pub(crate) const CONTROL_FLOW: SemanticTokenModifier = SemanticTokenModifier::new("controlFlow");
 pub(crate) const MUTABLE: SemanticTokenModifier = SemanticTokenModifier::new("mutable");
 pub(crate) const UNSAFE: SemanticTokenModifier = SemanticTokenModifier::new("unsafe");
 
@@ -56,7 +56,7 @@ pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
     CONSTANT,
     MUTABLE,
     UNSAFE,
-    CONTROL,
+    CONTROL_FLOW,
 ];
 
 #[derive(Default)]
