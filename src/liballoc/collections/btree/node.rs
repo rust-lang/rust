@@ -723,6 +723,11 @@ impl<Node, Type> Handle<Node, Type> {
     pub fn into_node(self) -> Node {
         self.node
     }
+
+    /// Returns the position of this handle in the node.
+    pub fn idx(&self) -> usize {
+        self.idx
+    }
 }
 
 impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::KV> {
