@@ -7,7 +7,7 @@ LL | trait Foo: Sized {
 LL |     where &'a T : Foo,
    |                   ^^^ cannot infer type for reference `&'a T`
    |
-   = note: cannot resolve `&'a T: Foo`
+   = note: cannot satisfy `&'a T: Foo`
 
 error: aborting due to previous error
 

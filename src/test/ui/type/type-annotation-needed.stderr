@@ -7,7 +7,7 @@ LL | fn foo<T: Into<String>>(x: i32) {}
 LL |     foo(42);
    |     ^^^ cannot infer type for type parameter `T` declared on the function `foo`
    |
-   = note: cannot resolve `_: std::convert::Into<std::string::String>`
+   = note: cannot satisfy `_: std::convert::Into<std::string::String>`
 help: consider specifying the type argument in the function call
    |
 LL |     foo::<T>(42);
