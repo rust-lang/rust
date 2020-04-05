@@ -15,8 +15,10 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_span::Span;
+use std::convert::{TryFrom, TryInto};
 use std::hash::Hash;
 use std::intrinsics;
+use std::marker::DiscriminantKind;
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
@@ -60,6 +62,7 @@ where
     E: TyEncoder,
     M: for<'b> Fn(&'b mut E) -> &'b mut FxHashMap<T, usize>,
     T: EncodableWithShorthand,
+    <T::Variant as DiscriminantKind>::Discriminant: Ord + TryFrom<usize>,
 {
     let existing_shorthand = cache(encoder).get(value).cloned();
     if let Some(shorthand) = existing_shorthand {
@@ -75,7 +78,8 @@ where
     // The shorthand encoding uses the same usize as the
     // discriminant, with an offset so they can't conflict.
     let discriminant = intrinsics::discriminant_value(variant);
-    assert!(discriminant < SHORTHAND_OFFSET as u64);
+    assert!(discriminant < SHORTHAND_OFFSET.try_into().ok().unwrap());
+
     let shorthand = start + SHORTHAND_OFFSET;
 
     // Get the number of bits that leb128 could fit
