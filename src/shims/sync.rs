@@ -263,7 +263,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 None => this.eval_libc_i32("EAGAIN"),
             }
         } else {
-            this.eval_libc_i32("EINVAL")
+            throw_ub_format!("called pthread_mutex_lock on an unsupported type of mutex");
         }
     }
 
@@ -291,7 +291,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 None => this.eval_libc_i32("EAGAIN"),
             }
         } else {
-            this.eval_libc_i32("EINVAL")
+            throw_ub_format!("called pthread_mutex_trylock on an unsupported type of mutex");
         }
     }
 
@@ -306,9 +306,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 mutex_set_locked_count(this, mutex_op, Scalar::from_u32(0))?;
                 Ok(0)
             } else {
-                throw_ub_format!(
-                    "Attempted to unlock a PTHREAD_MUTEX_NORMAL mutex that was not locked"
-                );
+                throw_ub_format!("unlocked a PTHREAD_MUTEX_NORMAL mutex that was not locked");
             }
         } else if kind == this.eval_libc("PTHREAD_MUTEX_ERRORCHECK")? {
             if locked_count != 0 {
@@ -329,7 +327,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
         } else {
-            this.eval_libc_i32("EINVAL")
+            throw_ub_format!("called pthread_mutex_unlock on an unsupported type of mutex");
         }
     }
 
@@ -337,7 +335,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         if mutex_get_locked_count(this, mutex_op)?.to_u32()? != 0 {
-            return this.eval_libc_i32("EBUSY");
+            throw_ub_format!("destroyed a locked mutex");
         }
 
         mutex_set_kind(this, mutex_op, ScalarMaybeUndef::Undef)?;
@@ -422,18 +420,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             rwlock_set_writers(this, rwlock_op, Scalar::from_u32(0))?;
             Ok(0)
         } else {
-            this.eval_libc_i32("EPERM")
+            throw_ub_format!("unlocked an rwlock that was not locked");
         }
     }
 
     fn pthread_rwlock_destroy(&mut self, rwlock_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if rwlock_get_readers(this, rwlock_op)?.to_u32()? != 0 {
-            return this.eval_libc_i32("EBUSY");
-        }
-        if rwlock_get_writers(this, rwlock_op)?.to_u32()? != 0 {
-            return this.eval_libc_i32("EBUSY");
+        if rwlock_get_readers(this, rwlock_op)?.to_u32()? != 0
+            || rwlock_get_writers(this, rwlock_op)?.to_u32()? != 0
+        {
+            throw_ub_format!("destroyed a locked rwlock");
         }
 
         rwlock_set_readers(this, rwlock_op, ScalarMaybeUndef::Undef)?;
