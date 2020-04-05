@@ -20,8 +20,9 @@ fn assert_ptr_target_min_size<'mir, 'tcx: 'mir>(
 
 // pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.
 
-// Our chosen memory layout: store an i32 in the first four bytes equal to the
-// corresponding libc mutex kind constant (i.e. PTHREAD_MUTEX_NORMAL)
+// Our chosen memory layout for emulation (does not have to match the platform layout!):
+// store an i32 in the first four bytes equal to the corresponding libc mutex kind constant
+// (e.g. PTHREAD_MUTEX_NORMAL).
 
 fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
@@ -48,7 +49,7 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
 
 // pthread_mutex_t is between 24 and 48 bytes, depending on the platform.
 
-// Our chosen memory layout:
+// Our chosen memory layout for the emulated mutex (does not have to match the platform layout!):
 // bytes 0-3: reserved for signature on macOS
 // (need to avoid this because it is set by static initializer macros)
 // bytes 4-7: count of how many times this mutex has been locked, as a u32
@@ -117,7 +118,7 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
 
 // pthread_rwlock_t is between 32 and 56 bytes, depending on the platform.
 
-// Our chosen memory layout:
+// Our chosen memory layout for the emulated rwlock (does not have to match the platform layout!):
 // bytes 0-3: reserved for signature on macOS
 // (need to avoid this because it is set by static initializer macros)
 // bytes 4-7: reader count, as a u32

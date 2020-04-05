@@ -1,7 +1,7 @@
 use std::fmt::{Display, Error, Formatter};
 
 // This test case exercises std::sys_common::remutex::ReentrantMutex
-// by calling println!() from inside fmt
+// by calling println!() from inside fmt.
 
 struct InterruptingCow;
 

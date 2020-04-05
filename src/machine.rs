@@ -217,6 +217,8 @@ pub struct Evaluator<'tcx> {
     pub(crate) time_anchor: Instant,
 
     /// Cached `TyLayout`s for primitive data types that are commonly used inside Miri.
+    /// FIXME: Search through the rest of the codebase for more layout_of() calls that
+    /// could be cached here.
     primitive_layouts: PrimitiveLayouts<'tcx>,
 }
 

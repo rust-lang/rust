@@ -233,6 +233,64 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
+            // Synchronization primitives
+            "pthread_mutexattr_init" => {
+                let result = this.pthread_mutexattr_init(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_mutexattr_settype" => {
+                let result = this.pthread_mutexattr_settype(args[0], args[1])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_mutexattr_destroy" => {
+                let result = this.pthread_mutexattr_destroy(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_mutex_init" => {
+                let result = this.pthread_mutex_init(args[0], args[1])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_mutex_lock" => {
+                let result = this.pthread_mutex_lock(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_mutex_trylock" => {
+                let result = this.pthread_mutex_trylock(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_mutex_unlock" => {
+                let result = this.pthread_mutex_unlock(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_mutex_destroy" => {
+                let result = this.pthread_mutex_destroy(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_rwlock_rdlock" => {
+                let result = this.pthread_rwlock_rdlock(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_rwlock_tryrdlock" => {
+                let result = this.pthread_rwlock_tryrdlock(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_rwlock_wrlock" => {
+                let result = this.pthread_rwlock_wrlock(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_rwlock_trywrlock" => {
+                let result = this.pthread_rwlock_trywrlock(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_rwlock_unlock" => {
+                let result = this.pthread_rwlock_unlock(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_rwlock_destroy" => {
+                let result = this.pthread_rwlock_destroy(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+
             // Better error for attempts to create a thread
             "pthread_create" => {
                 throw_unsup_format!("Miri does not support threading");
@@ -268,76 +326,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "pthread_cond_destroy" if this.frame().instance.to_string().starts_with("std::sys::unix::")
             => {
                 this.write_null(dest)?;
-            }
-
-            "pthread_mutexattr_init" => {
-                let result = this.pthread_mutexattr_init(args[0])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            "pthread_mutexattr_settype" => {
-                let result = this.pthread_mutexattr_settype(args[0], args[1])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            "pthread_mutexattr_destroy" => {
-                let result = this.pthread_mutexattr_destroy(args[0])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            "pthread_mutex_init" => {
-                let result = this.pthread_mutex_init(args[0], args[1])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            "pthread_mutex_lock" => {
-                let result = this.pthread_mutex_lock(args[0])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            "pthread_mutex_trylock" => {
-                let result = this.pthread_mutex_trylock(args[0])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            "pthread_mutex_unlock" => {
-                let result = this.pthread_mutex_unlock(args[0])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            "pthread_mutex_destroy" => {
-                let result = this.pthread_mutex_destroy(args[0])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            "pthread_rwlock_rdlock" => {
-                let result = this.pthread_rwlock_rdlock(args[0])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            "pthread_rwlock_tryrdlock" => {
-                let result = this.pthread_rwlock_tryrdlock(args[0])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            "pthread_rwlock_wrlock" => {
-                let result = this.pthread_rwlock_wrlock(args[0])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            "pthread_rwlock_trywrlock" => {
-                let result = this.pthread_rwlock_trywrlock(args[0])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            "pthread_rwlock_unlock" => {
-                let result = this.pthread_rwlock_unlock(args[0])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            "pthread_rwlock_destroy" => {
-                let result = this.pthread_rwlock_destroy(args[0])?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
             | "signal"
