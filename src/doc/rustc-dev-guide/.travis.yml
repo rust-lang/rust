@@ -10,7 +10,7 @@ before_install:
 - MAX_LINE_LENGTH=100 bash ci/check_line_lengths.sh src/**/*.md
 install:
 - source ~/.cargo/env || true
-- cargo install mdbook --version 0.3.4
+- cargo install mdbook --version 0.3.7
 - cargo install mdbook-linkcheck --version 0.5.0
 script:
 - mdbook build
