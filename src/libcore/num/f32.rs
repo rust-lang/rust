@@ -394,9 +394,7 @@ impl f32 {
     /// Converts radians to degrees.
     ///
     /// ```
-    /// use std::f32::consts;
-    ///
-    /// let angle = consts::PI;
+    /// let angle = std::f32::consts::PI;
     ///
     /// let abs_difference = (angle.to_degrees() - 180.0).abs();
     ///
@@ -413,11 +411,9 @@ impl f32 {
     /// Converts degrees to radians.
     ///
     /// ```
-    /// use std::f32::consts;
-    ///
     /// let angle = 180.0f32;
     ///
-    /// let abs_difference = (angle.to_radians() - consts::PI).abs();
+    /// let abs_difference = (angle.to_radians() - std::f32::consts::PI).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
