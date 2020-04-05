@@ -29,8 +29,8 @@ use crate::{
         all_super_traits, associated_type_by_name_including_super_traits, generics, make_mut_slice,
         variant_data,
     },
-    Binders, FnSig, GenericPredicate, PolyFnSig, ProjectionPredicate, ProjectionTy, Substs,
-    TraitEnvironment, TraitRef, Ty, TypeCtor,
+    Binders, BoundVar, DebruijnIndex, FnSig, GenericPredicate, PolyFnSig, ProjectionPredicate,
+    ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
 };
 
 #[derive(Debug)]
@@ -131,7 +131,7 @@ impl Ty {
                 Ty::apply(TypeCtor::FnPtr { num_args: sig.len() as u16 - 1 }, sig)
             }
             TypeRef::DynTrait(bounds) => {
-                let self_ty = Ty::Bound(0);
+                let self_ty = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0));
                 let predicates = bounds
                     .iter()
                     .flat_map(|b| GenericPredicate::from_type_bound(ctx, b, self_ty.clone()))
@@ -141,7 +141,7 @@ impl Ty {
             TypeRef::ImplTrait(bounds) => {
                 match ctx.impl_trait_mode {
                     ImplTraitLoweringMode::Opaque => {
-                        let self_ty = Ty::Bound(0);
+                        let self_ty = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0));
                         let predicates = bounds
                             .iter()
                             .flat_map(|b| {
@@ -177,12 +177,10 @@ impl Ty {
                             } else {
                                 (0, 0, 0, 0)
                             };
-                        Ty::Bound(
-                            idx as u32
-                                + parent_params as u32
-                                + self_params as u32
-                                + list_params as u32,
-                        )
+                        Ty::Bound(BoundVar::new(
+                            DebruijnIndex::INNERMOST,
+                            idx as usize + parent_params + self_params + list_params,
+                        ))
                     }
                     ImplTraitLoweringMode::Disallowed => {
                         // FIXME: report error
@@ -249,7 +247,11 @@ impl Ty {
         let ty = match resolution {
             TypeNs::TraitId(trait_) => {
                 // if this is a bare dyn Trait, we'll directly put the required ^0 for the self type in there
-                let self_ty = if remaining_segments.len() == 0 { Some(Ty::Bound(0)) } else { None };
+                let self_ty = if remaining_segments.len() == 0 {
+                    Some(Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0)))
+                } else {
+                    None
+                };
                 let trait_ref =
                     TraitRef::from_resolved_path(ctx, trait_, resolved_segment, self_ty);
                 let ty = if remaining_segments.len() == 1 {
@@ -289,7 +291,7 @@ impl Ty {
                     TypeParamLoweringMode::Placeholder => Ty::Placeholder(param_id),
                     TypeParamLoweringMode::Variable => {
                         let idx = generics.param_idx(param_id).expect("matching generics");
-                        Ty::Bound(idx)
+                        Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, idx))
                     }
                 }
             }
@@ -558,7 +560,7 @@ impl GenericPredicate {
                     TypeParamLoweringMode::Placeholder => Ty::Placeholder(param_id),
                     TypeParamLoweringMode::Variable => {
                         let idx = generics.param_idx(param_id).expect("matching generics");
-                        Ty::Bound(idx)
+                        Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, idx))
                     }
                 }
             }

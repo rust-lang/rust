@@ -7,7 +7,9 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use test_utils::tested_by;
 
 use super::{InferenceContext, Obligation};
-use crate::{Canonical, InEnvironment, InferTy, Substs, Ty, TypeCtor, TypeWalk};
+use crate::{
+    BoundVar, Canonical, DebruijnIndex, InEnvironment, InferTy, Substs, Ty, TypeCtor, TypeWalk,
+};
 
 impl<'a> InferenceContext<'a> {
     pub(super) fn canonicalizer<'b>(&'b mut self) -> Canonicalizer<'a, 'b>
@@ -47,7 +49,7 @@ where
         })
     }
 
-    fn do_canonicalize<T: TypeWalk>(&mut self, t: T, binders: usize) -> T {
+    fn do_canonicalize<T: TypeWalk>(&mut self, t: T, binders: DebruijnIndex) -> T {
         t.fold_binders(
             &mut |ty, binders| match ty {
                 Ty::Infer(tv) => {
@@ -72,7 +74,7 @@ where
                             InferTy::MaybeNeverTypeVar(_) => InferTy::MaybeNeverTypeVar(root),
                         };
                         let position = self.add(free_var);
-                        Ty::Bound((position + binders) as u32)
+                        Ty::Bound(BoundVar::new(binders, position))
                     }
                 }
                 _ => ty,
@@ -89,7 +91,7 @@ where
     }
 
     pub(crate) fn canonicalize_ty(mut self, ty: Ty) -> Canonicalized<Ty> {
-        let result = self.do_canonicalize(ty, 0);
+        let result = self.do_canonicalize(ty, DebruijnIndex::INNERMOST);
         self.into_canonicalized(result)
     }
 
@@ -98,8 +100,12 @@ where
         obligation: InEnvironment<Obligation>,
     ) -> Canonicalized<InEnvironment<Obligation>> {
         let result = match obligation.value {
-            Obligation::Trait(tr) => Obligation::Trait(self.do_canonicalize(tr, 0)),
-            Obligation::Projection(pr) => Obligation::Projection(self.do_canonicalize(pr, 0)),
+            Obligation::Trait(tr) => {
+                Obligation::Trait(self.do_canonicalize(tr, DebruijnIndex::INNERMOST))
+            }
+            Obligation::Projection(pr) => {
+                Obligation::Projection(self.do_canonicalize(pr, DebruijnIndex::INNERMOST))
+            }
         };
         self.into_canonicalized(InEnvironment {
             value: result,
@@ -112,13 +118,13 @@ impl<T> Canonicalized<T> {
     pub fn decanonicalize_ty(&self, mut ty: Ty) -> Ty {
         ty.walk_mut_binders(
             &mut |ty, binders| {
-                if let &mut Ty::Bound(idx) = ty {
-                    if idx as usize >= binders && (idx as usize - binders) < self.free_vars.len() {
-                        *ty = Ty::Infer(self.free_vars[idx as usize - binders]);
+                if let &mut Ty::Bound(bound) = ty {
+                    if bound.debruijn >= binders {
+                        *ty = Ty::Infer(self.free_vars[bound.index]);
                     }
                 }
             },
-            0,
+            DebruijnIndex::INNERMOST,
         );
         ty
     }
@@ -150,7 +156,7 @@ pub fn unify(ty1: &Canonical<Ty>, ty2: &Canonical<Ty>) -> Option<Substs> {
     // (kind of hacky)
     for (i, var) in vars.iter().enumerate() {
         if &*table.resolve_ty_shallow(var) == var {
-            table.unify(var, &Ty::Bound(i as u32));
+            table.unify(var, &Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, i)));
         }
     }
     Some(

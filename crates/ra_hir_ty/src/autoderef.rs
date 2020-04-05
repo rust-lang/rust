@@ -14,7 +14,7 @@ use crate::{
     db::HirDatabase,
     traits::{InEnvironment, Solution},
     utils::generics,
-    Canonical, Substs, Ty, TypeWalk,
+    BoundVar, Canonical, DebruijnIndex, Substs, Ty,
 };
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
@@ -61,14 +61,13 @@ fn deref_by_trait(
         return None;
     }
 
-    // FIXME make the Canonical handling nicer
+    // FIXME make the Canonical / bound var handling nicer
 
-    let parameters = Substs::build_for_generics(&generic_params)
-        .push(ty.value.value.clone().shift_bound_vars(1))
-        .build();
+    let parameters =
+        Substs::build_for_generics(&generic_params).push(ty.value.value.clone()).build();
 
     let projection = super::traits::ProjectionPredicate {
-        ty: Ty::Bound(0),
+        ty: Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, ty.value.num_vars)),
         projection_ty: super::ProjectionTy { associated_ty: target, parameters },
     };
 
@@ -93,12 +92,16 @@ fn deref_by_trait(
             // we have `impl<T> Deref for Foo<T> { Target = T }`, that should be
             // the case.
             for i in 1..vars.0.num_vars {
-                if vars.0.value[i] != Ty::Bound((i - 1) as u32) {
+                if vars.0.value[i - 1] != Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, i - 1))
+                {
                     warn!("complex solution for derefing {:?}: {:?}, ignoring", ty.value, solution);
                     return None;
                 }
             }
-            Some(Canonical { value: vars.0.value[0].clone(), num_vars: vars.0.num_vars })
+            Some(Canonical {
+                value: vars.0.value[vars.0.value.len() - 1].clone(),
+                num_vars: vars.0.num_vars,
+            })
         }
         Solution::Ambig(_) => {
             info!("Ambiguous solution for derefing {:?}: {:?}", ty.value, solution);

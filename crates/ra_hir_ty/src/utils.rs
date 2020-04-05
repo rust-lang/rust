@@ -201,11 +201,11 @@ impl Generics {
         (parent, self_params, list_params, impl_trait_params)
     }
 
-    pub(crate) fn param_idx(&self, param: TypeParamId) -> Option<u32> {
+    pub(crate) fn param_idx(&self, param: TypeParamId) -> Option<usize> {
         Some(self.find_param(param)?.0)
     }
 
-    fn find_param(&self, param: TypeParamId) -> Option<(u32, &TypeParamData)> {
+    fn find_param(&self, param: TypeParamId) -> Option<(usize, &TypeParamData)> {
         if param.parent == self.def {
             let (idx, (_local_id, data)) = self
                 .params
@@ -215,7 +215,7 @@ impl Generics {
                 .find(|(_, (idx, _))| *idx == param.local_id)
                 .unwrap();
             let (_total, parent_len, _child) = self.len_split();
-            Some(((parent_len + idx) as u32, data))
+            Some((parent_len + idx, data))
         } else {
             self.parent_generics.as_ref().and_then(|g| g.find_param(param))
         }

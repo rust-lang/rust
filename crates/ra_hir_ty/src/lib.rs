@@ -64,6 +64,8 @@ pub use lower::{
 };
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
+pub use chalk_ir::{BoundVar, DebruijnIndex};
+
 /// A type constructor or type name: this might be something like the primitive
 /// type `bool`, a struct like `Vec`, or things like function pointers or
 /// tuples.
@@ -265,7 +267,11 @@ impl TypeWalk for ProjectionTy {
         self.parameters.walk(f);
     }
 
-    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
+    fn walk_mut_binders(
+        &mut self,
+        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
+        binders: DebruijnIndex,
+    ) {
         self.parameters.walk_mut_binders(f, binders);
     }
 }
@@ -299,7 +305,7 @@ pub enum Ty {
     /// parameters get turned into variables; during trait resolution, inference
     /// variables get turned into bound variables and back; and in `Dyn` the
     /// `Self` type is represented with a bound variable as well.
-    Bound(u32),
+    Bound(BoundVar),
 
     /// A type variable used during type checking.
     Infer(InferTy),
@@ -337,7 +343,11 @@ impl TypeWalk for Substs {
         }
     }
 
-    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
+    fn walk_mut_binders(
+        &mut self,
+        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
+        binders: DebruijnIndex,
+    ) {
         for t in make_mut_slice(&mut self.0) {
             t.walk_mut_binders(f, binders);
         }
@@ -381,7 +391,13 @@ impl Substs {
 
     /// Return Substs that replace each parameter by a bound variable.
     pub(crate) fn bound_vars(generic_params: &Generics) -> Substs {
-        Substs(generic_params.iter().enumerate().map(|(idx, _)| Ty::Bound(idx as u32)).collect())
+        Substs(
+            generic_params
+                .iter()
+                .enumerate()
+                .map(|(idx, _)| Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, idx)))
+                .collect(),
+        )
     }
 
     pub fn build_for_def(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> SubstsBuilder {
@@ -425,8 +441,8 @@ impl SubstsBuilder {
         self.param_count - self.vec.len()
     }
 
-    pub fn fill_with_bound_vars(self, starting_from: u32) -> Self {
-        self.fill((starting_from..).map(Ty::Bound))
+    pub fn fill_with_bound_vars(self, debruijn: DebruijnIndex, starting_from: usize) -> Self {
+        self.fill((starting_from..).map(|idx| Ty::Bound(BoundVar::new(debruijn, idx))))
     }
 
     pub fn fill_with_unknown(self) -> Self {
@@ -507,7 +523,11 @@ impl TypeWalk for TraitRef {
         self.substs.walk(f);
     }
 
-    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
+    fn walk_mut_binders(
+        &mut self,
+        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
+        binders: DebruijnIndex,
+    ) {
         self.substs.walk_mut_binders(f, binders);
     }
 }
@@ -558,7 +578,11 @@ impl TypeWalk for GenericPredicate {
         }
     }
 
-    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
+    fn walk_mut_binders(
+        &mut self,
+        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
+        binders: DebruijnIndex,
+    ) {
         match self {
             GenericPredicate::Implemented(trait_ref) => trait_ref.walk_mut_binders(f, binders),
             GenericPredicate::Projection(projection_pred) => {
@@ -616,7 +640,11 @@ impl TypeWalk for FnSig {
         }
     }
 
-    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
+    fn walk_mut_binders(
+        &mut self,
+        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
+        binders: DebruijnIndex,
+    ) {
         for t in make_mut_slice(&mut self.params_and_return) {
             t.walk_mut_binders(f, binders);
         }
@@ -755,7 +783,7 @@ impl Ty {
 pub trait TypeWalk {
     fn walk(&self, f: &mut impl FnMut(&Ty));
     fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        self.walk_mut_binders(&mut |ty, _binders| f(ty), 0);
+        self.walk_mut_binders(&mut |ty, _binders| f(ty), DebruijnIndex::INNERMOST);
     }
     /// Walk the type, counting entered binders.
     ///
@@ -767,9 +795,17 @@ pub trait TypeWalk {
     /// that. Currently, the only thing that introduces bound variables on our
     /// side are `Ty::Dyn` and `Ty::Opaque`, which each introduce a bound
     /// variable for the self type.
-    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize);
+    fn walk_mut_binders(
+        &mut self,
+        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
+        binders: DebruijnIndex,
+    );
 
-    fn fold_binders(mut self, f: &mut impl FnMut(Ty, usize) -> Ty, binders: usize) -> Self
+    fn fold_binders(
+        mut self,
+        f: &mut impl FnMut(Ty, DebruijnIndex) -> Ty,
+        binders: DebruijnIndex,
+    ) -> Self
     where
         Self: Sized,
     {
@@ -795,40 +831,43 @@ pub trait TypeWalk {
     }
 
     /// Substitutes `Ty::Bound` vars with the given substitution.
-    fn subst_bound_vars(mut self, substs: &Substs) -> Self
+    fn subst_bound_vars(self, substs: &Substs) -> Self
+    where
+        Self: Sized,
+    {
+        self.subst_bound_vars_at_depth(substs, DebruijnIndex::INNERMOST)
+    }
+
+    /// Substitutes `Ty::Bound` vars with the given substitution.
+    fn subst_bound_vars_at_depth(mut self, substs: &Substs, depth: DebruijnIndex) -> Self
     where
         Self: Sized,
     {
         self.walk_mut_binders(
             &mut |ty, binders| {
-                if let &mut Ty::Bound(idx) = ty {
-                    if idx as usize >= binders && (idx as usize - binders) < substs.len() {
-                        *ty = substs.0[idx as usize - binders].clone();
-                    } else if idx as usize >= binders + substs.len() {
-                        // shift free binders
-                        *ty = Ty::Bound(idx - substs.len() as u32);
+                if let &mut Ty::Bound(bound) = ty {
+                    if bound.debruijn >= binders {
+                        *ty = substs.0[bound.index].clone();
                     }
                 }
             },
-            0,
+            depth,
         );
         self
     }
-
-    /// Shifts up `Ty::Bound` vars by `n`.
-    fn shift_bound_vars(self, n: i32) -> Self
+    // /// Shifts up debruijn indices of `Ty::Bound` vars by `n`.
+    fn shift_bound_vars(self, n: DebruijnIndex) -> Self
     where
         Self: Sized,
     {
         self.fold_binders(
             &mut |ty, binders| match ty {
-                Ty::Bound(idx) if idx as usize >= binders => {
-                    assert!(idx as i32 >= -n);
-                    Ty::Bound((idx as i32 + n) as u32)
+                Ty::Bound(bound) if bound.debruijn >= binders => {
+                    Ty::Bound(bound.shifted_in_from(n))
                 }
                 ty => ty,
             },
-            0,
+            DebruijnIndex::INNERMOST,
         )
     }
 }
@@ -856,7 +895,11 @@ impl TypeWalk for Ty {
         f(self);
     }
 
-    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
+    fn walk_mut_binders(
+        &mut self,
+        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
+        binders: DebruijnIndex,
+    ) {
         match self {
             Ty::Apply(a_ty) => {
                 a_ty.parameters.walk_mut_binders(f, binders);
@@ -866,7 +909,7 @@ impl TypeWalk for Ty {
             }
             Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
                 for p in make_mut_slice(predicates) {
-                    p.walk_mut_binders(f, binders + 1);
+                    p.walk_mut_binders(f, binders.shifted_in());
                 }
             }
             Ty::Placeholder { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}

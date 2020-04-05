@@ -3,7 +3,10 @@ use std::{fmt, sync::Arc};
 
 use log::debug;
 
-use chalk_ir::{cast::Cast, Goal, GoalData, Parameter, PlaceholderIndex, TypeName, UniverseIndex};
+use chalk_ir::{
+    cast::Cast, fold::shift::Shift, Goal, GoalData, Parameter, PlaceholderIndex, TypeName,
+    UniverseIndex,
+};
 
 use hir_def::{AssocContainerId, AssocItemId, GenericDefId, HasModule, Lookup, TypeAliasId};
 use ra_db::{
@@ -235,7 +238,7 @@ impl ToChalk for Ty {
                 }
                 .to_ty::<Interner>(&Interner)
             }
-            Ty::Bound(idx) => chalk_ir::TyData::BoundVar(idx as usize).intern(&Interner),
+            Ty::Bound(idx) => chalk_ir::TyData::BoundVar(idx).intern(&Interner),
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
             Ty::Dyn(predicates) => {
                 let where_clauses = predicates
@@ -277,7 +280,7 @@ impl ToChalk for Ty {
                 Ty::Projection(ProjectionTy { associated_ty, parameters })
             }
             chalk_ir::TyData::Function(_) => unimplemented!(),
-            chalk_ir::TyData::BoundVar(idx) => Ty::Bound(idx as u32),
+            chalk_ir::TyData::BoundVar(idx) => Ty::Bound(idx),
             chalk_ir::TyData::InferenceVar(_iv) => Ty::Unknown,
             chalk_ir::TyData::Dyn(where_clauses) => {
                 assert_eq!(where_clauses.bounds.binders.len(), 1);
@@ -407,15 +410,15 @@ impl ToChalk for GenericPredicate {
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::QuantifiedWhereClause<Interner> {
         match self {
             GenericPredicate::Implemented(trait_ref) => {
-                make_binders(chalk_ir::WhereClause::Implemented(trait_ref.to_chalk(db)), 0)
+                let chalk_trait_ref = trait_ref.to_chalk(db);
+                let chalk_trait_ref = chalk_trait_ref.shifted_in(&Interner);
+                make_binders(chalk_ir::WhereClause::Implemented(chalk_trait_ref), 0)
             }
-            GenericPredicate::Projection(projection_pred) => make_binders(
-                chalk_ir::WhereClause::AliasEq(chalk_ir::AliasEq {
-                    alias: projection_pred.projection_ty.to_chalk(db),
-                    ty: projection_pred.ty.to_chalk(db),
-                }),
-                0,
-            ),
+            GenericPredicate::Projection(projection_pred) => {
+                let ty = projection_pred.ty.to_chalk(db).shifted_in(&Interner);
+                let alias = projection_pred.projection_ty.to_chalk(db).shifted_in(&Interner);
+                make_binders(chalk_ir::WhereClause::AliasEq(chalk_ir::AliasEq { alias, ty }), 0)
+            }
             GenericPredicate::Error => panic!("tried passing GenericPredicate::Error to Chalk"),
         }
     }
@@ -579,7 +582,8 @@ impl ToChalk for builtin::BuiltinImplAssocTyValueData {
     type Chalk = AssociatedTyValue;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> AssociatedTyValue {
-        let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: self.value.to_chalk(db) };
+        let ty = self.value.to_chalk(db);
+        let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty };
 
         chalk_rust_ir::AssociatedTyValue {
             associated_ty_id: self.assoc_ty_id.to_chalk(db),
@@ -738,11 +742,13 @@ pub(crate) fn trait_datum_query(
     let associated_ty_ids =
         trait_data.associated_types().map(|type_alias| type_alias.to_chalk(db)).collect();
     let trait_datum_bound = chalk_rust_ir::TraitDatumBound { where_clauses };
+    let well_known = None; // FIXME set this (depending on lang items)
     let trait_datum = TraitDatum {
         id: trait_id,
         binders: make_binders(trait_datum_bound, bound_vars.len()),
         flags,
         associated_ty_ids,
+        well_known,
     };
     Arc::new(trait_datum)
 }

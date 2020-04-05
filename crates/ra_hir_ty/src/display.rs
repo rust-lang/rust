@@ -303,7 +303,7 @@ impl HirDisplay for Ty {
                     }
                 }
             }
-            Ty::Bound(idx) => write!(f, "?{}", idx)?,
+            Ty::Bound(idx) => write!(f, "?{}.{}", idx.debruijn.depth(), idx.index)?,
             Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
                 match self {
                     Ty::Dyn(_) => write!(f, "dyn ")?,
