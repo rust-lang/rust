@@ -102,7 +102,7 @@ pub fn report_error<'tcx, 'mir>(
 
     e.print_backtrace();
     let msg = e.to_string();
-    report_msg(ecx, &format!("{}: {}", title, msg), msg, &helps, true)
+    report_msg(ecx, &format!("{}: {}", title, msg), msg, helps, true)
 }
 
 /// Report an error or note (depending on the `error` argument) at the current frame's current statement.
@@ -111,7 +111,7 @@ fn report_msg<'tcx, 'mir>(
     ecx: &InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
     title: &str,
     span_msg: String,
-    helps: &[String],
+    mut helps: Vec<String>,
     error: bool,
 ) -> Option<i64> {
     let span = if let Some(frame) = ecx.stack().last() {
@@ -125,8 +125,12 @@ fn report_msg<'tcx, 'mir>(
         ecx.tcx.sess.diagnostic().span_note_diag(span, title)
     };
     err.span_label(span, span_msg);
-    for help in helps {
-        err.help(help);
+    if !helps.is_empty() {
+        // Add visual separator before backtrace.
+        helps.last_mut().unwrap().push_str("\n");
+        for help in helps {
+            err.help(&help);
+        }
     }
     // Add backtrace
     let frames = ecx.generate_stacktrace();
@@ -178,7 +182,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     CreatedAlloc(AllocId(id)) =>
                         format!("created allocation with id {}", id),
                 };
-                report_msg(this, "tracking was triggered", msg, &[], false);
+                report_msg(this, "tracking was triggered", msg, vec![], false);
             }
         });
     }
