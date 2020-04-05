@@ -339,13 +339,16 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
-    /// # Bad
-    /// let r: Result<u32, &str> = Ok(1);
-    /// assert_eq!(Some(1), r.map_or(None, Some));
     ///
-    /// # Good
-    /// let r: Result<u32, &str> = Ok(1);
+    /// Bad:
+    /// ```rust
+    /// # let r: Result<u32, &str> = Ok(1);
+    /// assert_eq!(Some(1), r.map_or(None, Some));
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// # let r: Result<u32, &str> = Ok(1);
     /// assert_eq!(Some(1), r.ok());
     /// ```
     pub RESULT_MAP_OR_INTO_OPTION,
