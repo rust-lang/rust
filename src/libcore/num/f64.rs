@@ -407,9 +407,7 @@ impl f64 {
     /// Converts radians to degrees.
     ///
     /// ```
-    /// use std::f64::consts;
-    ///
-    /// let angle = consts::PI;
+    /// let angle = std::f64::consts::PI;
     ///
     /// let abs_difference = (angle.to_degrees() - 180.0).abs();
     ///
@@ -427,11 +425,9 @@ impl f64 {
     /// Converts degrees to radians.
     ///
     /// ```
-    /// use std::f64::consts;
-    ///
     /// let angle = 180.0_f64;
     ///
-    /// let abs_difference = (angle.to_radians() - consts::PI).abs();
+    /// let abs_difference = (angle.to_radians() - std::f64::consts::PI).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
