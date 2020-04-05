@@ -136,7 +136,6 @@ pub fn diagnostics_registry() -> Registry {
 }
 
 // Parse args and run the compiler. This is the primary entry point for rustc.
-// See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
 pub fn run_compiler(
     at_args: &[String],
