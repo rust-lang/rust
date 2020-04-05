@@ -297,7 +297,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub(crate) fn set_span(&mut self, span: Span) {
+    pub fn set_span(&mut self, span: Span) {
         self.tcx.span = span;
         self.memory.tcx.span = span;
     }
