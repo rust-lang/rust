@@ -905,58 +905,38 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // The size computations below assume that the padding is minimum.
                     // This is the case when fields are re-ordered.
                     let struct_reordering_opt = !def.repr.inhibit_struct_field_reordering_opt();
-                    if struct_reordering_opt {
-                        let mut extend_niche_range = |d| {
-                            niche_variants =
-                                *niche_variants.start().min(&d)..=*niche_variants.end().max(&d);
-                        };
 
-                        // Find the largest and second largest variant.
-                        for (v, fields) in variants.iter_enumerated() {
-                            if absent(fields) {
-                                continue;
-                            }
-                            let mut size = Size::ZERO;
-                            for &f in fields {
-                                align = align.max(f.align);
-                                size += f.size;
-                            }
-                            if size > max_size {
-                                second_max_size = max_size;
-                                max_size = size;
-                                if let Some(d) = dataful_variant {
-                                    extend_niche_range(d);
-                                }
-                                dataful_variant = Some(v);
-                            } else if size == max_size {
-                                if let Some(d) = dataful_variant {
-                                    extend_niche_range(d);
-                                }
-                                dataful_variant = None;
-                                extend_niche_range(v);
-                            } else {
-                                second_max_size = second_max_size.max(size);
-                                extend_niche_range(v);
-                            }
+                    let mut extend_niche_range = |d| {
+                        niche_variants =
+                            *niche_variants.start().min(&d)..=*niche_variants.end().max(&d);
+                    };
+
+                    // Find the largest and second largest variant.
+                    for (v, fields) in variants.iter_enumerated() {
+                        if absent(fields) {
+                            continue;
                         }
-                    } else {
-                        // Find one non-ZST variant.
-                        'variants: for (v, fields) in variants.iter_enumerated() {
-                            if absent(fields) {
-                                continue 'variants;
+                        let mut size = Size::ZERO;
+                        for &f in fields {
+                            align = align.max(f.align);
+                            size += f.size;
+                        }
+                        if size > max_size {
+                            second_max_size = max_size;
+                            max_size = size;
+                            if let Some(d) = dataful_variant {
+                                extend_niche_range(d);
                             }
-                            for f in fields {
-                                if !f.is_zst() {
-                                    if dataful_variant.is_none() {
-                                        dataful_variant = Some(v);
-                                        continue 'variants;
-                                    } else {
-                                        dataful_variant = None;
-                                        break 'variants;
-                                    }
-                                }
-                                niche_variants = *niche_variants.start().min(&v)..=v
+                            dataful_variant = Some(v);
+                        } else if size == max_size {
+                            if let Some(d) = dataful_variant {
+                                extend_niche_range(d);
                             }
+                            dataful_variant = None;
+                            extend_niche_range(v);
+                        } else {
+                            second_max_size = second_max_size.max(size);
+                            extend_niche_range(v);
                         }
                     }
 
@@ -992,6 +972,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                     {
                                         return None;
                                     }
+                                } else if second_max_size > Size::ZERO {
+                                    return None;
                                 }
                                 Some((field_index, niche, niche.reserve(self, count)?))
                             });
@@ -999,7 +981,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         if let Some((field_index, niche, (niche_start, niche_scalar))) =
                             niche_candidate
                         {
-                            let mut align = dl.aggregate_align;
                             let prefix = niche.offset + niche.scalar.value.size(dl);
                             let st = variants
                                 .iter_enumerated()
@@ -1019,8 +1000,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                     )?;
                                     st.variants = Variants::Single { index: j };
 
-                                    align = align.max(st.align);
-
+                                    debug_assert_eq!(align, align.max(st.align));
                                     Ok(st)
                                 })
                                 .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
