@@ -1,7 +1,6 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
-use rustc_data_structures::AtomicRef;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::DropInPlaceFnLangItem;
@@ -289,7 +288,9 @@ impl<'tcx> Instance<'tcx> {
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
-        (*RESOLVE_INSTANCE)(tcx, param_env, def_id, substs)
+        // All regions in the result of this query are erased, so it's
+        // fine to erase all of the input regions.
+        tcx.resolve_instance((tcx.erase_regions(&param_env), def_id, tcx.erase_regions(&substs)))
     }
 
     pub fn resolve_for_fn_ptr(
@@ -440,21 +441,3 @@ fn needs_fn_once_adapter_shim(
         (ty::ClosureKind::FnMut, _) | (ty::ClosureKind::FnOnce, _) => Err(()),
     }
 }
-
-fn resolve_instance_default(
-    _tcx: TyCtxt<'tcx>,
-    _param_env: ty::ParamEnv<'tcx>,
-    _def_id: DefId,
-    _substs: SubstsRef<'tcx>,
-) -> Option<Instance<'tcx>> {
-    unimplemented!()
-}
-
-pub static RESOLVE_INSTANCE: AtomicRef<
-    for<'tcx> fn(
-        TyCtxt<'tcx>,
-        ty::ParamEnv<'tcx>,
-        DefId,
-        SubstsRef<'tcx>,
-    ) -> Option<Instance<'tcx>>,
-> = AtomicRef::new(&(resolve_instance_default as _));

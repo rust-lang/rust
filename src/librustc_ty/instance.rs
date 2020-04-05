@@ -11,9 +11,7 @@ use log::debug;
 
 pub fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    def_id: DefId,
-    substs: SubstsRef<'tcx>,
+    (param_env, def_id, substs): (ty::ParamEnv<'tcx>, DefId, SubstsRef<'tcx>),
 ) -> Option<Instance<'tcx>> {
     debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
     let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
@@ -198,4 +196,8 @@ fn resolve_associated_item<'tcx>(
         }
         traits::VtableAutoImpl(..) | traits::VtableParam(..) | traits::VtableTraitAlias(..) => None,
     }
+}
+
+pub fn provide(providers: &mut ty::query::Providers<'_>) {
+    *providers = ty::query::Providers { resolve_instance, ..*providers };
 }
