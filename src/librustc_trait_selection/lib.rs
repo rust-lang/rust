@@ -17,6 +17,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(or_patterns)]
 #![feature(str_strip)]
+#![feature(option_zip)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

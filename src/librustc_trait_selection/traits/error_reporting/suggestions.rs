@@ -27,7 +27,7 @@ pub trait InferCtxtExt<'tcx> {
     fn suggest_restricting_param_bound(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        trait_ref: &ty::PolyTraitRef<'_>,
+        trait_ref: ty::PolyTraitRef<'_>,
         body_id: hir::HirId,
     );
 
@@ -168,103 +168,96 @@ fn suggest_restriction(
     err: &mut DiagnosticBuilder<'_>,
     fn_sig: Option<&hir::FnSig<'_>>,
     projection: Option<&ty::ProjectionTy<'_>>,
-    trait_ref: &ty::PolyTraitRef<'_>,
+    trait_ref: ty::PolyTraitRef<'_>,
 ) {
     let span = generics.where_clause.span_for_predicates_or_empty_place();
-    if !span.from_expansion() && span.desugaring_kind().is_none() {
-        // Given `fn foo(t: impl Trait)` where `Trait` requires assoc type `A`...
-        if let Some((name, fn_sig)) = fn_sig.and_then(|sig| {
-            projection.and_then(|p| {
-                // Shenanigans to get the `Trait` from the `impl Trait`.
-                match p.self_ty().kind {
-                    ty::Param(param) => {
-                        // `fn foo(t: impl Trait)`
-                        //                 ^^^^^ get this string
-                        param
-                            .name
-                            .as_str()
-                            .strip_prefix("impl")
-                            .map(|s| (s.trim_start().to_string(), sig))
-                    }
-                    _ => None,
-                }
-            })
-        }) {
-            // We know we have an `impl Trait` that doesn't satisfy a required projection.
+    if span.from_expansion() || span.desugaring_kind().is_some() {
+        return;
+    }
+    // Given `fn foo(t: impl Trait)` where `Trait` requires assoc type `A`...
+    if let Some((name, fn_sig)) =
+        fn_sig.zip(projection).and_then(|(sig, p)| match p.self_ty().kind {
+            // Shenanigans to get the `Trait` from the `impl Trait`.
+            ty::Param(param) => {
+                // `fn foo(t: impl Trait)`
+                //                 ^^^^^ get this string
+                param.name.as_str().strip_prefix("impl").map(|s| (s.trim_start().to_string(), sig))
+            }
+            _ => None,
+        })
+    {
+        // We know we have an `impl Trait` that doesn't satisfy a required projection.
 
-            // Find all of the ocurrences of `impl Trait` for `Trait` in the function arguments'
-            // types. There should be at least one, but there might be *more* than one. In that
-            // case we could just ignore it and try to identify which one needs the restriction,
-            // but instead we choose to suggest replacing all instances of `impl Trait` with `T`
-            // where `T: Trait`.
-            let mut ty_spans = vec![];
-            let impl_name = format!("impl {}", name);
-            for input in fn_sig.decl.inputs {
-                if let hir::TyKind::Path(hir::QPath::Resolved(
-                    None,
-                    hir::Path { segments: [segment], .. },
-                )) = input.kind
-                {
-                    if segment.ident.as_str() == impl_name.as_str() {
-                        // `fn foo(t: impl Trait)`
-                        //            ^^^^^^^^^^ get this to suggest
-                        //                       `T` instead
+        // Find all of the ocurrences of `impl Trait` for `Trait` in the function arguments'
+        // types. There should be at least one, but there might be *more* than one. In that
+        // case we could just ignore it and try to identify which one needs the restriction,
+        // but instead we choose to suggest replacing all instances of `impl Trait` with `T`
+        // where `T: Trait`.
+        let mut ty_spans = vec![];
+        let impl_name = format!("impl {}", name);
+        for input in fn_sig.decl.inputs {
+            if let hir::TyKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { segments: [segment], .. },
+            )) = input.kind
+            {
+                if segment.ident.as_str() == impl_name.as_str() {
+                    // `fn foo(t: impl Trait)`
+                    //            ^^^^^^^^^^ get this to suggest
+                    //                       `T` instead
 
-                        // There might be more than one `impl Trait`.
-                        ty_spans.push(input.span);
-                    }
+                    // There might be more than one `impl Trait`.
+                    ty_spans.push(input.span);
                 }
             }
-
-            // The type param `T: Trait` we will suggest to introduce.
-            let type_param = format!("{}: {}", "T", name);
-
-            // FIXME: modify the `trait_ref` instead of string shenanigans.
-            // Turn `<impl Trait as Foo>::Bar: Qux` into `<T as Foo>::Bar: Qux`.
-            let pred = trait_ref.without_const().to_predicate().to_string();
-            let pred = pred.replace(&impl_name, "T");
-            let mut sugg = vec![
-                match generics
-                    .params
-                    .iter()
-                    .filter(|p| match p.kind {
-                        hir::GenericParamKind::Type {
-                            synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                            ..
-                        } => false,
-                        _ => true,
-                    })
-                    .last()
-                {
-                    // `fn foo(t: impl Trait)`
-                    //        ^ suggest `<T: Trait>` here
-                    None => (generics.span, format!("<{}>", type_param)),
-                    // `fn foo<A>(t: impl Trait)`
-                    //        ^^^ suggest `<A, T: Trait>` here
-                    Some(param) => (param.span.shrink_to_hi(), format!(", {}", type_param)),
-                },
-                // `fn foo(t: impl Trait)`
-                //                       ^ suggest `where <T as Trait>::A: Bound`
-                predicate_constraint(generics, pred),
-            ];
-            sugg.extend(ty_spans.into_iter().map(|s| (s, "T".to_string())));
-
-            // Suggest `fn foo<T: Trait>(t: T) where <T as Trait>::A: Bound`.
-            err.multipart_suggestion(
-                "introduce a type parameter with a trait bound instead of using \
-                    `impl Trait`",
-                sugg,
-                Applicability::MaybeIncorrect,
-            );
-        } else {
-            // Trivial case: `T` needs an extra bound: `T: Bound`.
-            let (sp, s) = predicate_constraint(
-                generics,
-                trait_ref.without_const().to_predicate().to_string(),
-            );
-            let appl = Applicability::MachineApplicable;
-            err.span_suggestion(sp, &format!("consider further restricting {}", msg), s, appl);
         }
+
+        // The type param `T: Trait` we will suggest to introduce.
+        let type_param = format!("{}: {}", "T", name);
+
+        // FIXME: modify the `trait_ref` instead of string shenanigans.
+        // Turn `<impl Trait as Foo>::Bar: Qux` into `<T as Foo>::Bar: Qux`.
+        let pred = trait_ref.without_const().to_predicate().to_string();
+        let pred = pred.replace(&impl_name, "T");
+        let mut sugg = vec![
+            match generics
+                .params
+                .iter()
+                .filter(|p| match p.kind {
+                    hir::GenericParamKind::Type {
+                        synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                        ..
+                    } => false,
+                    _ => true,
+                })
+                .last()
+            {
+                // `fn foo(t: impl Trait)`
+                //        ^ suggest `<T: Trait>` here
+                None => (generics.span, format!("<{}>", type_param)),
+                // `fn foo<A>(t: impl Trait)`
+                //        ^^^ suggest `<A, T: Trait>` here
+                Some(param) => (param.span.shrink_to_hi(), format!(", {}", type_param)),
+            },
+            // `fn foo(t: impl Trait)`
+            //                       ^ suggest `where <T as Trait>::A: Bound`
+            predicate_constraint(generics, pred),
+        ];
+        sugg.extend(ty_spans.into_iter().map(|s| (s, "T".to_string())));
+
+        // Suggest `fn foo<T: Trait>(t: T) where <T as Trait>::A: Bound`.
+        err.multipart_suggestion(
+            "introduce a type parameter with a trait bound instead of using \
+                    `impl Trait`",
+            sugg,
+            Applicability::MaybeIncorrect,
+        );
+    } else {
+        // Trivial case: `T` needs an extra bound: `T: Bound`.
+        let (sp, s) =
+            predicate_constraint(generics, trait_ref.without_const().to_predicate().to_string());
+        let appl = Applicability::MachineApplicable;
+        err.span_suggestion(sp, &format!("consider further restricting {}", msg), s, appl);
     }
 }
 
@@ -272,7 +265,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     fn suggest_restricting_param_bound(
         &self,
         mut err: &mut DiagnosticBuilder<'_>,
-        trait_ref: &ty::PolyTraitRef<'_>,
+        trait_ref: ty::PolyTraitRef<'_>,
         body_id: hir::HirId,
     ) {
         let self_ty = trait_ref.self_ty();
