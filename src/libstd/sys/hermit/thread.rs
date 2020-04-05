@@ -5,6 +5,7 @@ use crate::fmt;
 use crate::io;
 use crate::mem;
 use crate::sys::hermit::abi;
+use crate::sys::hermit::fast_thread_local::run_dtors;
 use crate::time::Duration;
 use core::u32;
 
@@ -70,6 +71,9 @@ impl Thread {
             unsafe {
                 // Finally, let's run some code.
                 Box::from_raw(main as *mut Box<dyn FnOnce()>)();
+
+                // run all destructors
+                run_dtors();
             }
         }
     }
