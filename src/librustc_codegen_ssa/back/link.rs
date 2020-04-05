@@ -193,6 +193,7 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> Comman
                     _ => None,
                 };
                 if let Some(ref a) = arch {
+                    // FIXME: Move this to `fn linker_with_args`.
                     let mut arg = OsString::from("/LIBPATH:");
                     arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a.to_string()));
                     cmd.arg(&arg);
@@ -1254,9 +1255,29 @@ fn add_post_link_args(cmd: &mut dyn Linker, sess: &'a Session, flavor: LinkerFla
     }
 }
 
+/// Add sysroot and other globally set directories to the directory search list.
+fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &'a Session) {
+    // The default library location, we need this to find the runtime.
+    // The location of crates will be determined as needed.
+    let lib_path = sess.target_filesearch(PathKind::All).get_lib_path();
+
+    // prefer system mingw-w64 libs, see get_crt_libs_path comment for more details
+    if cfg!(windows) && sess.target.target.llvm_target.contains("windows-gnu") {
+        if let Some(compiler_libs_path) = get_crt_libs_path(sess) {
+            cmd.include_path(&compiler_libs_path);
+        }
+    }
+
+    cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
+}
+
 /// Produce the linker command line containing linker path and arguments.
 /// `NO-OPT-OUT` marks the arguments that cannot be removed from the command line
 /// by the user without creating a custom target specification.
+/// `OBJECT-FILES` specify whether the arguments can add object files.
+/// `CUSTOMIZATION-POINT` means that arbitrary arguments defined by the user
+/// or by the target spec can be inserted here.
+/// `AUDIT-ORDER` - need to figure out whether the option is order-dependent or not.
 fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     path: &Path,
     flavor: LinkerFlavor,
@@ -1273,9 +1294,10 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     assert!(base_cmd.get_args().is_empty() || sess.target.target.target_vendor == "uwp");
     let cmd = &mut *codegen_results.linker_info.to_linker(base_cmd, &sess, flavor, target_cpu);
 
-    // NO-OPT-OUT
+    // NO-OPT-OUT, OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
     add_pre_link_args(cmd, sess, flavor, crate_type);
 
+    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     if sess.target.target.options.is_like_fuchsia {
         let prefix = match sess.opts.debugging_opts.sanitizer {
             Some(Sanitizer::Address) => "asan/",
@@ -1284,9 +1306,10 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         cmd.arg(format!("--dynamic-linker={}ld.so.1", prefix));
     }
 
-    // NO-OPT-OUT
+    // NO-OPT-OUT, OBJECT-FILES-YES
     add_pre_link_objects(cmd, sess, crate_type);
 
+    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     if sess.target.target.options.is_like_emscripten {
         cmd.arg("-s");
         cmd.arg(if sess.panic_strategy() == PanicStrategy::Abort {
@@ -1296,43 +1319,40 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         });
     }
 
+    // OBJECT-FILES-YES, AUDIT-ORDER
     link_sanitizer_runtime(sess, crate_type, cmd);
 
+    // OBJECT-FILES-NO, AUDIT-ORDER
     // Linker plugins should be specified early in the list of arguments
+    // FIXME: How "early" exactly?
     cmd.linker_plugin_lto();
 
-    // The default library location, we need this to find the runtime.
-    // The location of crates will be determined as needed.
-    let lib_path = sess.target_filesearch(PathKind::All).get_lib_path();
+    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
+    // FIXME: Order-dependent, at least relatively to other args adding searh directories.
+    add_library_search_dirs(cmd, sess);
 
-    // target descriptor
-    let t = &sess.target.target;
-
-    // prefer system mingw-w64 libs, see get_crt_libs_path comment for more details
-    if cfg!(windows) && sess.target.target.llvm_target.contains("windows-gnu") {
-        if let Some(compiler_libs_path) = get_crt_libs_path(sess) {
-            cmd.include_path(&compiler_libs_path);
-        }
-    }
-
-    cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
-
+    // OBJECT-FILES-YES
     for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
         cmd.add_object(obj);
     }
+
+    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     cmd.output_filename(out_filename);
 
+    // OBJECT-FILES-NO, AUDIT-ORDER
     if crate_type == config::CrateType::Executable && sess.target.target.options.is_like_windows {
         if let Some(ref s) = codegen_results.windows_subsystem {
             cmd.subsystem(s);
         }
     }
 
+    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     // If we're building something like a dynamic library then some platforms
     // need to make sure that all symbols are exported correctly from the
     // dynamic library.
     cmd.export_symbols(tmpdir, crate_type);
 
+    // OBJECT-FILES-YES
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
     // object file, so we link that in here.
@@ -1343,11 +1363,14 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         }
     }
 
+    // OBJECT-FILES-YES
     let obj = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref());
     if let Some(obj) = obj {
         cmd.add_object(obj);
     }
 
+    // OBJECT-FILES-NO, AUDIT-ORDER
+    // FIXME: Order dependent, applies to the following objects. Where should it be placed?
     // Try to strip as much out of the generated object by removing unused
     // sections if possible. See more comments in linker.rs
     if !sess.opts.cg.link_dead_code {
@@ -1355,10 +1378,11 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         cmd.gc_sections(keep_metadata);
     }
 
+    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     if crate_type == config::CrateType::Executable {
         let mut position_independent_executable = false;
 
-        if t.options.position_independent_executables {
+        if sess.target.target.options.position_independent_executables {
             if is_pic(sess)
                 && !sess.crt_static(Some(crate_type))
                 && !sess
@@ -1385,9 +1409,10 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         }
     }
 
+    // OBJECT-FILES-NO, AUDIT-ORDER
     let relro_level = match sess.opts.debugging_opts.relro_level {
         Some(level) => level,
-        None => t.options.relro_level,
+        None => sess.target.target.options.relro_level,
     };
     match relro_level {
         RelroLevel::Full => {
@@ -1402,12 +1427,15 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         RelroLevel::None => {}
     }
 
+    // OBJECT-FILES-NO, AUDIT-ORDER
     // Pass optimization flags down to the linker.
     cmd.optimize();
 
+    // OBJECT-FILES-NO, AUDIT-ORDER
     // Pass debuginfo flags down to the linker.
     cmd.debuginfo();
 
+    // OBJECT-FILES-NO, AUDIT-ORDER
     // We want to, by default, prevent the compiler from accidentally leaking in
     // any system libraries, so we may explicitly ask linkers to not link to any
     // libraries by default. Note that this does not happen for windows because
@@ -1415,10 +1443,13 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // figure out which subset we wanted.
     //
     // This is all naturally configurable via the standard methods as well.
-    if !sess.opts.cg.default_linker_libraries.unwrap_or(false) && t.options.no_default_libraries {
+    if !sess.opts.cg.default_linker_libraries.unwrap_or(false)
+        && sess.target.target.options.no_default_libraries
+    {
         cmd.no_default_libraries();
     }
 
+    // OBJECT-FILES-YES
     // Take careful note of the ordering of the arguments we pass to the linker
     // here. Linkers will assume that things on the left depend on things to the
     // right. Things on the right cannot depend on things on the left. This is
@@ -1456,6 +1487,8 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     if sess.opts.debugging_opts.link_native_libraries.unwrap_or(true) {
         add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
     }
+
+    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     // Tell the linker what we're doing.
     if crate_type != config::CrateType::Executable {
         cmd.build_dylib(out_filename);
@@ -1464,14 +1497,17 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         cmd.build_static_executable();
     }
 
+    // OBJECT-FILES-NO, AUDIT-ORDER
     if sess.opts.cg.profile_generate.enabled() {
         cmd.pgo_gen();
     }
 
+    // OBJECT-FILES-NO, AUDIT-ORDER
     if sess.opts.debugging_opts.control_flow_guard != CFGuard::Disabled {
         cmd.control_flow_guard();
     }
 
+    // OBJECT-FILES-NO, AUDIT-ORDER
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the
     // addl_lib_search_paths
@@ -1496,17 +1532,19 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         cmd.args(&rpath::get_rpath_flags(&mut rpath_config));
     }
 
+    // OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
     add_user_defined_link_args(cmd, sess, codegen_results);
 
+    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     cmd.finalize();
 
-    // NO-OPT-OUT
+    // NO-OPT-OUT, OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
     add_late_link_args(cmd, sess, flavor, crate_type, codegen_results);
 
-    // NO-OPT-OUT
+    // NO-OPT-OUT, OBJECT-FILES-YES
     add_post_link_objects(cmd, sess, crate_type);
 
-    // NO-OPT-OUT
+    // NO-OPT-OUT, OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
     add_post_link_args(cmd, sess, flavor);
 
     cmd.take_cmd()
