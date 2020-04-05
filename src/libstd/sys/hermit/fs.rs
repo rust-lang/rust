@@ -6,6 +6,7 @@ use crate::io::{IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
 use crate::sys::cvt;
 use crate::sys::hermit::abi;
+use crate::sys::hermit::abi::{O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
 use crate::sys::hermit::fd::FileDesc;
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, Void};
@@ -17,14 +18,6 @@ pub use crate::sys_common::fs::copy;
 fn cstr(path: &Path) -> io::Result<CString> {
     Ok(CString::new(path.as_os_str().as_bytes())?)
 }
-//const O_ACCMODE: i32 = 00000003;
-const O_RDONLY: i32 = 00000000;
-const O_WRONLY: i32 = 00000001;
-const O_RDWR: i32 = 00000002;
-const O_CREAT: i32 = 00000100;
-const O_EXCL: i32 = 00000200;
-const O_TRUNC: i32 = 00001000;
-const O_APPEND: i32 = 00002000;
 
 #[derive(Debug)]
 pub struct File(FileDesc);

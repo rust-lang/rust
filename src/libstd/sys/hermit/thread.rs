@@ -1,35 +1,12 @@
 #![allow(dead_code)]
 
 use crate::ffi::CStr;
-use crate::fmt;
 use crate::io;
 use crate::mem;
 use crate::sys::hermit::abi;
 use crate::time::Duration;
 
 pub type Tid = abi::Tid;
-
-/// Priority of a task
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
-pub struct Priority(u8);
-
-impl Priority {
-    pub const fn into(self) -> u8 {
-        self.0
-    }
-
-    pub const fn from(x: u8) -> Self {
-        Priority(x)
-    }
-}
-
-impl fmt::Display for Priority {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-pub const NORMAL_PRIO: Priority = Priority::from(2);
 
 pub struct Thread {
     tid: Tid,
@@ -51,8 +28,8 @@ impl Thread {
         let ret = abi::spawn(
             &mut tid as *mut Tid,
             thread_start,
-            p as usize,
-            Priority::into(NORMAL_PRIO),
+            &*p as *const _ as *const u8 as usize,
+            abi::Priority::into(abi::NORMAL_PRIO),
             core_id,
         );
 
