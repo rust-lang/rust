@@ -1178,9 +1178,11 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
                 match parent_node {
                     // HACK(eddyb) this provides the correct generics for repeat
-                    // expressions' count (i.e. `N` in `[x; N]`), as they shouldn't
-                    // be able to cause query cycle errors.
+                    // expressions' count (i.e. `N` in `[x; N]`), and explicit
+                    // `enum` discriminants (i.e. `D` in `enum Foo { Bar = D }`),
+                    // as they shouldn't be able to cause query cycle errors.
                     Node::Expr(&Expr { kind: ExprKind::Repeat(_, ref constant), .. })
+                    | Node::Variant(Variant { disr_expr: Some(ref constant), .. })
                         if constant.hir_id == hir_id =>
                     {
                         Some(parent_def_id.to_def_id())
