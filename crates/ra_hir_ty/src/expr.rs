@@ -93,7 +93,16 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 // of the match expression. If we had a InvalidMatchArmPattern
                 // diagnostic or similar we could raise that in an else
                 // block here.
-                if pat_ty == match_expr_ty {
+                //
+                // When comparing the types, we also have to consider that rustc
+                // will automatically de-reference the match expression type if
+                // necessary.
+                if pat_ty == match_expr_ty
+                    || match_expr_ty
+                        .as_reference()
+                        .map(|(match_expr_ty, _)| match_expr_ty == pat_ty)
+                        .unwrap_or(false)
+                {
                     // If we had a NotUsefulMatchArm diagnostic, we could
                     // check the usefulness of each pattern as we added it
                     // to the matrix here.

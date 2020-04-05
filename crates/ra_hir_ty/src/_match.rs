@@ -866,6 +866,41 @@ mod tests {
     }
 
     #[test]
+    fn enum_ref_missing_arms() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match &Either::B {
+                    Either::A => {},
+                }
+            }
+        ";
+
+        check_diagnostic_with_no_fix(content);
+    }
+
+    #[test]
+    fn enum_ref_no_diagnostic() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match &Either::B {
+                    Either::A => {},
+                    Either::B => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
     fn enum_containing_bool_no_arms() {
         let content = r"
             enum Either {
