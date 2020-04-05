@@ -13,21 +13,20 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &ReadOnlyBodyAndCache<'_, 'tcx>, d
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get(hir_id)) {
-        check_fn_for_unconditional_recursion(tcx, fn_like_node.kind(), body, def_id);
+        if let FnKind::Closure(_) = fn_like_node.kind() {
+            // closures can't recur, so they don't matter.
+            return;
+        }
+
+        check_fn_for_unconditional_recursion(tcx, body, def_id);
     }
 }
 
 fn check_fn_for_unconditional_recursion<'tcx>(
     tcx: TyCtxt<'tcx>,
-    fn_kind: FnKind<'_>,
     body: &ReadOnlyBodyAndCache<'_, 'tcx>,
     def_id: DefId,
 ) {
-    if let FnKind::Closure(_) = fn_kind {
-        // closures can't recur, so they don't matter.
-        return;
-    }
-
     let self_calls = find_blocks_calling_self(tcx, &body, def_id);
     let mut results = IndexVec::from_elem_n(vec![], body.basic_blocks().len());
     let mut queue: VecDeque<_> = self_calls.iter().collect();
