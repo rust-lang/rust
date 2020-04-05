@@ -25,4 +25,5 @@ pub fn provide(providers: &mut Providers<'_>) {
     common_traits::provide(providers);
     needs_drop::provide(providers);
     ty::provide(providers);
+    instance::provide(providers);
 }
