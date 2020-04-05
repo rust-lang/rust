@@ -43,7 +43,6 @@ pub fn opts() -> TargetOptions {
         exe_suffix: ".exe".to_string(),
         staticlib_prefix: "lib".to_string(),
         staticlib_suffix: ".a".to_string(),
-        no_default_libraries: true,
         target_family: Some("windows".to_string()),
         is_like_windows: true,
         allows_weak_linkage: false,
