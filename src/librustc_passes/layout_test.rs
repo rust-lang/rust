@@ -27,7 +27,8 @@ impl ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
             ItemKind::TyAlias(..)
             | ItemKind::Enum(..)
             | ItemKind::Struct(..)
-            | ItemKind::Union(..) => {
+            | ItemKind::Union(..)
+            | ItemKind::OpaqueTy(..) => {
                 for attr in self.tcx.get_attrs(item_def_id).iter() {
                     if attr.check_name(sym::rustc_layout) {
                         self.dump_layout_of(item_def_id, item, attr);
@@ -84,7 +85,7 @@ impl LayoutTest<'tcx> {
                         sym::debug => {
                             self.tcx.sess.span_err(
                                 item.span,
-                                &format!("layout debugging: {:#?}", *ty_layout),
+                                &format!("layout debugging for type {:?}: {:#?}", ty, *ty_layout),
                             );
                         }
 
