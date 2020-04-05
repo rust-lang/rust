@@ -521,7 +521,7 @@ fn test() -> &mut &f64 {
     [88; 89) 'a': u32
     [92; 108) 'unknow...nction': {unknown}
     [92; 110) 'unknow...tion()': u32
-    [116; 125) 'takes_u32': fn takes_u32(u32) -> ()
+    [116; 125) 'takes_u32': fn takes_u32(u32)
     [116; 128) 'takes_u32(a)': ()
     [126; 127) 'a': u32
     [138; 139) 'b': i32
@@ -1749,9 +1749,9 @@ fn main() {
     [67; 91) 'Vtable...| {} }': Vtable
     [84; 89) '|| {}': || -> ()
     [87; 89) '{}': ()
-    [101; 102) 'm': fn() -> ()
+    [101; 102) 'm': fn()
     [105; 111) 'vtable': Vtable
-    [105; 118) 'vtable.method': fn() -> ()
+    [105; 118) 'vtable.method': fn()
     "###
     );
 }
