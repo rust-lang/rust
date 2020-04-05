@@ -1,5 +1,5 @@
 // normalize-stderr-test "pref: Align \{\n *pow2: [1-3],\n *\}" -> "pref: $$PREF_ALIGN"
-#![feature(never_type, rustc_attrs)]
+#![feature(never_type, rustc_attrs, type_alias_impl_trait)]
 #![crate_type = "lib"]
 
 #[rustc_layout(debug)]
@@ -13,3 +13,10 @@ union U { f1: (i32, i32), f3: i32 } //~ ERROR: layout debugging
 
 #[rustc_layout(debug)]
 type Test = Result<i32, i32>; //~ ERROR: layout debugging
+
+#[rustc_layout(debug)]
+type T = impl std::fmt::Debug; //~ ERROR: layout debugging
+
+fn f() -> T {
+    0i32
+}

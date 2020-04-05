@@ -315,5 +315,37 @@ error: layout debugging: Layout {
 LL | type Test = Result<i32, i32>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: layout debugging: Layout {
+    fields: Union(
+        0,
+    ),
+    variants: Single {
+        index: 0,
+    },
+    abi: Scalar(
+        Scalar {
+            value: Int(
+                I32,
+                true,
+            ),
+            valid_range: 0..=4294967295,
+        },
+    ),
+    largest_niche: None,
+    align: AbiAndPrefAlign {
+        abi: Align {
+            pow2: 2,
+        },
+        pref: $PREF_ALIGN,
+    },
+    size: Size {
+        raw: 4,
+    },
+}
+  --> $DIR/debug.rs:18:1
+   |
+LL | type T = impl std::fmt::Debug;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 
