@@ -521,14 +521,16 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Applies a function to the contained value (if any),
-    /// or returns the provided default (if not).
+    /// Applies a function to the contained value (if [`Ok`]),
+    /// or returns the provided default (if [`Err`]).
     ///
     /// Arguments passed to `map_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`map_or_else`],
     /// which is lazily evaluated.
     ///
     /// [`map_or_else`]: #method.map_or_else
+    /// [`Ok`]: enum.Result.html#variant.Ok
+    /// [`Err`]: enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
