@@ -30,6 +30,7 @@
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
+#![feature(iter_order_by)]
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(or_patterns)]
@@ -154,6 +155,7 @@ macro_rules! late_lint_passes {
                 // and change this to a module lint pass
                 MissingDebugImplementations: MissingDebugImplementations::default(),
                 ArrayIntoIter: ArrayIntoIter,
+                ClashingExternDecl: ClashingExternDecl::new(),
             ]
         );
     };
