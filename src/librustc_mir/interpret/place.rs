@@ -867,12 +867,14 @@ where
     ) -> InterpResult<'tcx> {
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
-        assert!(
-            mir_assign_valid_types(self.tcx.tcx, src.layout, dest.layout),
-            "type mismatch when copying!\nsrc: {:?},\ndest: {:?}",
-            src.layout.ty,
-            dest.layout.ty,
-        );
+        if !mir_assign_valid_types(self.tcx.tcx, src.layout, dest.layout) {
+            span_bug!(
+                self.tcx.span,
+                "type mismatch when copying!\nsrc: {:?},\ndest: {:?}",
+                src.layout.ty,
+                dest.layout.ty,
+            );
+        }
 
         // Let us see if the layout is simple so we take a shortcut, avoid force_allocation.
         let src = match self.try_read_immediate(src)? {
