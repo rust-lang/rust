@@ -1,13 +1,15 @@
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_index::bit_set::BitSet;
+use rustc_index::vec::IndexVec;
 use rustc_middle::hir::map::blocks::FnLikeNode;
-use rustc_middle::mir::{self, Body, TerminatorKind};
+use rustc_middle::mir::{BasicBlock, Body, ReadOnlyBodyAndCache, TerminatorKind, START_BLOCK};
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
+use std::collections::VecDeque;
 
-crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId) {
+crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &ReadOnlyBodyAndCache<'_, 'tcx>, def_id: DefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get(hir_id)) {
@@ -18,7 +20,7 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId) {
 fn check_fn_for_unconditional_recursion<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_kind: FnKind<'_>,
-    body: &Body<'tcx>,
+    body: &ReadOnlyBodyAndCache<'_, 'tcx>,
     def_id: DefId,
 ) {
     if let FnKind::Closure(_) = fn_kind {
@@ -26,40 +28,99 @@ fn check_fn_for_unconditional_recursion<'tcx>(
         return;
     }
 
-    //FIXME(#54444) rewrite this lint to use the dataflow framework
+    let self_calls = find_blocks_calling_self(tcx, &body, def_id);
+    let mut results = IndexVec::from_elem_n(vec![], body.basic_blocks().len());
+    let mut queue: VecDeque<_> = self_calls.iter().collect();
 
-    // Walk through this function (say `f`) looking to see if
-    // every possible path references itself, i.e., the function is
-    // called recursively unconditionally. This is done by trying
-    // to find a path from the entry node to the exit node that
-    // *doesn't* call `f` by traversing from the entry while
-    // pretending that calls of `f` are sinks (i.e., ignoring any
-    // exit edges from them).
-    //
-    // NB. this has an edge case with non-returning statements,
-    // like `loop {}` or `panic!()`: control flow never reaches
-    // the exit node through these, so one can have a function
-    // that never actually calls itself but is still picked up by
-    // this lint:
-    //
-    //     fn f(cond: bool) {
-    //         if !cond { panic!() } // could come from `assert!(cond)`
-    //         f(false)
-    //     }
-    //
-    // In general, functions of that form may be able to call
-    // itself a finite number of times and then diverge. The lint
-    // considers this to be an error for two reasons, (a) it is
-    // easier to implement, and (b) it seems rare to actually want
-    // to have behaviour like the above, rather than
-    // e.g., accidentally recursing after an assert.
+    while let Some(bb) = queue.pop_front() {
+        if !results[bb].is_empty() {
+            // Already propagated.
+            continue;
+        }
 
-    let basic_blocks = body.basic_blocks();
-    let mut reachable_without_self_call_queue = vec![mir::START_BLOCK];
-    let mut reached_exit_without_self_call = false;
-    let mut self_call_locations = vec![];
-    let mut visited = BitSet::new_empty(basic_blocks.len());
+        let locations = if self_calls.contains(bb) {
+            // `bb` *is* a self-call.
+            vec![bb]
+        } else {
+            // If *all* successors of `bb` lead to a self-call, emit notes at all of their
+            // locations.
 
+            // Converging successors without unwind paths.
+            let terminator = body[bb].terminator();
+            let relevant_successors = match &terminator.kind {
+                TerminatorKind::Call { destination: Some((_, dest)), .. } => {
+                    Some(dest).into_iter().chain(&[])
+                }
+                TerminatorKind::Call { destination: None, .. } => None.into_iter().chain(&[]),
+                TerminatorKind::SwitchInt { targets, .. } => None.into_iter().chain(targets),
+                TerminatorKind::Goto { target }
+                | TerminatorKind::Drop { target, .. }
+                | TerminatorKind::DropAndReplace { target, .. }
+                | TerminatorKind::Assert { target, .. } => Some(target).into_iter().chain(&[]),
+                TerminatorKind::Yield { .. } | TerminatorKind::GeneratorDrop => {
+                    None.into_iter().chain(&[])
+                }
+                TerminatorKind::FalseEdges { real_target, .. }
+                | TerminatorKind::FalseUnwind { real_target, .. } => {
+                    Some(real_target).into_iter().chain(&[])
+                }
+                TerminatorKind::Resume
+                | TerminatorKind::Abort
+                | TerminatorKind::Return
+                | TerminatorKind::Unreachable => {
+                    unreachable!("unexpected terminator {:?}", terminator.kind)
+                }
+            };
+
+            let all_are_self_calls =
+                relevant_successors.clone().all(|&succ| !results[succ].is_empty());
+
+            if all_are_self_calls {
+                relevant_successors.flat_map(|&succ| results[succ].iter().copied()).collect()
+            } else {
+                vec![]
+            }
+        };
+
+        if !locations.is_empty() {
+            // This is a newly confirmed-to-always-reach-self-call block.
+            results[bb] = locations;
+
+            // Propagate backwards through the CFG.
+            debug!("propagate loc={:?} in {:?} -> {:?}", results[bb], bb, body.predecessors()[bb]);
+            queue.extend(body.predecessors()[bb].iter().copied());
+        }
+    }
+
+    debug!("unconditional recursion results: {:?}", results);
+
+    let self_call_locations = &mut results[START_BLOCK];
+    self_call_locations.sort();
+    self_call_locations.dedup();
+
+    if !self_call_locations.is_empty() {
+        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let sp = tcx.sess.source_map().guess_head_span(tcx.hir().span(hir_id));
+        tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION, hir_id, sp, |lint| {
+            let mut db = lint.build("function cannot return without recursing");
+            db.span_label(sp, "cannot return without recursing");
+            // offer some help to the programmer.
+            for bb in self_call_locations {
+                let span = body.basic_blocks()[*bb].terminator().source_info.span;
+                db.span_label(span, "recursive call site");
+            }
+            db.help("a `loop` may express intention better if this is on purpose");
+            db.emit();
+        });
+    }
+}
+
+/// Finds blocks with `Call` terminators that would end up calling back into the same method.
+fn find_blocks_calling_self<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    def_id: DefId,
+) -> BitSet<BasicBlock> {
     let param_env = tcx.param_env(def_id);
     let trait_substs_count = match tcx.opt_associated_item(def_id) {
         Some(AssocItem { container: AssocItemContainer::TraitContainer(trait_def_id), .. }) => {
@@ -69,70 +130,31 @@ fn check_fn_for_unconditional_recursion<'tcx>(
     };
     let caller_substs = &InternalSubsts::identity_for_item(tcx, def_id)[..trait_substs_count];
 
-    while let Some(bb) = reachable_without_self_call_queue.pop() {
-        if !visited.insert(bb) {
-            //already done
-            continue;
-        }
+    let mut self_calls = BitSet::new_empty(body.basic_blocks().len());
 
-        let block = &basic_blocks[bb];
+    for (bb, data) in body.basic_blocks().iter_enumerated() {
+        if let TerminatorKind::Call { func, .. } = &data.terminator().kind {
+            let func_ty = func.ty(body, tcx);
 
-        if let Some(ref terminator) = block.terminator {
-            match terminator.kind {
-                TerminatorKind::Call { ref func, .. } => {
-                    let func_ty = func.ty(body, tcx);
+            if let ty::FnDef(fn_def_id, substs) = func_ty.kind {
+                let (call_fn_id, call_substs) =
+                    if let Some(instance) = Instance::resolve(tcx, param_env, fn_def_id, substs) {
+                        (instance.def_id(), instance.substs)
+                    } else {
+                        (fn_def_id, substs)
+                    };
 
-                    if let ty::FnDef(fn_def_id, substs) = func_ty.kind {
-                        let (call_fn_id, call_substs) = if let Some(instance) =
-                            Instance::resolve(tcx, param_env, fn_def_id, substs)
-                        {
-                            (instance.def_id(), instance.substs)
-                        } else {
-                            (fn_def_id, substs)
-                        };
+                // FIXME(#57965): Make this work across function boundaries
 
-                        let is_self_call = call_fn_id == def_id
-                            && &call_substs[..caller_substs.len()] == caller_substs;
+                let is_self_call =
+                    call_fn_id == def_id && &call_substs[..caller_substs.len()] == caller_substs;
 
-                        if is_self_call {
-                            self_call_locations.push(terminator.source_info);
-
-                            //this is a self call so we shouldn't explore
-                            //further down this path
-                            continue;
-                        }
-                    }
+                if is_self_call {
+                    self_calls.insert(bb);
                 }
-                TerminatorKind::Abort | TerminatorKind::Return => {
-                    //found a path!
-                    reached_exit_without_self_call = true;
-                    break;
-                }
-                _ => {}
-            }
-
-            for successor in terminator.successors() {
-                reachable_without_self_call_queue.push(*successor);
             }
         }
     }
 
-    // Check the number of self calls because a function that
-    // doesn't return (e.g., calls a `-> !` function or `loop { /*
-    // no break */ }`) shouldn't be linted unless it actually
-    // recurs.
-    if !reached_exit_without_self_call && !self_call_locations.is_empty() {
-        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-        let sp = tcx.sess.source_map().guess_head_span(tcx.hir().span(hir_id));
-        tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION, hir_id, sp, |lint| {
-            let mut db = lint.build("function cannot return without recursing");
-            db.span_label(sp, "cannot return without recursing");
-            // offer some help to the programmer.
-            for location in &self_call_locations {
-                db.span_label(location.span, "recursive call site");
-            }
-            db.help("a `loop` may express intention better if this is on purpose");
-            db.emit();
-        });
-    }
+    self_calls
 }
