@@ -296,9 +296,17 @@ macro_rules! options {
         use std::path::PathBuf;
         use std::str::FromStr;
 
+        // Sometimes different options need to build a common structure.
+        // That structure can kept in one of the options' fields, the others become dummy.
+        macro_rules! redirect_field {
+            ($cg:ident.link_arg) => { $cg.link_args };
+            ($cg:ident.pre_link_arg) => { $cg.pre_link_args };
+            ($cg:ident.$field:ident) => { $cg.$field };
+        }
+
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
-                $parse(&mut cg.$opt, v)
+                $parse(&mut redirect_field!(cg.$opt), v)
             }
         )*
 
@@ -643,9 +651,9 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "this option is deprecated and does nothing"),
     linker: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "system linker to link outputs with"),
-    link_arg: Vec<String> = (vec![], parse_string_push, [UNTRACKED],
+    link_arg: (/* redirected to link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to append to the linker invocation (can be used several times)"),
-    link_args: Option<Vec<String>> = (None, parse_opt_list, [UNTRACKED],
+    link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
         "extra arguments to append to the linker invocation (space separated)"),
     link_dead_code: bool = (false, parse_bool, [UNTRACKED],
         "don't let linker strip dead code (turning it on can be used for code coverage)"),
@@ -876,9 +884,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "make rustc print the total optimization fuel used by a crate"),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable"),
-    pre_link_arg: Vec<String> = (vec![], parse_string_push, [UNTRACKED],
+    pre_link_arg: (/* redirected to pre_link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to prepend the linker invocation (can be used several times)"),
-    pre_link_args: Option<Vec<String>> = (None, parse_opt_list, [UNTRACKED],
+    pre_link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
         "extra arguments to prepend to the linker invocation (space separated)"),
     profile: bool = (false, parse_bool, [TRACKED],
                      "insert profiling code"),

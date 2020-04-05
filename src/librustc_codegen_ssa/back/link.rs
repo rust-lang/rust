@@ -505,10 +505,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
             cmd.args(args);
         }
     }
-    if let Some(ref args) = sess.opts.debugging_opts.pre_link_args {
-        cmd.args(args);
-    }
-    cmd.args(&sess.opts.debugging_opts.pre_link_arg);
+    cmd.args(&sess.opts.debugging_opts.pre_link_args);
 
     if sess.target.target.options.is_like_fuchsia {
         let prefix = match sess.opts.debugging_opts.sanitizer {
@@ -1302,18 +1299,17 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
         cmd.gc_sections(keep_metadata);
     }
 
-    let used_link_args = &codegen_results.crate_info.link_args;
+    let attr_link_args = codegen_results.crate_info.link_args.iter();
+    let user_link_args: Vec<_> =
+        sess.opts.cg.link_args.iter().chain(attr_link_args).cloned().collect();
 
     if crate_type == config::CrateType::Executable {
         let mut position_independent_executable = false;
 
         if t.options.position_independent_executables {
-            let empty_vec = Vec::new();
-            let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
-            let more_args = &sess.opts.cg.link_arg;
-            let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
-
-            if is_pic(sess) && !sess.crt_static(Some(crate_type)) && !args.any(|x| *x == "-static")
+            if is_pic(sess)
+                && !sess.crt_static(Some(crate_type))
+                && !user_link_args.iter().any(|x| x == "-static")
             {
                 position_independent_executable = true;
             }
@@ -1444,11 +1440,7 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
 
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
-    if let Some(ref args) = sess.opts.cg.link_args {
-        cmd.args(args);
-    }
-    cmd.args(&sess.opts.cg.link_arg);
-    cmd.args(&used_link_args);
+    cmd.args(&user_link_args);
 }
 
 // # Native library linking

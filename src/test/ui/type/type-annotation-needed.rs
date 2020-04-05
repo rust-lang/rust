@@ -6,5 +6,5 @@ fn main() {
     foo(42);
     //~^ ERROR type annotations needed
     //~| NOTE cannot infer type
-    //~| NOTE cannot resolve
+    //~| NOTE cannot satisfy
 }
