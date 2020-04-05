@@ -135,7 +135,7 @@ crate fn placeholder_type_error(
     if placeholder_types.is_empty() {
         return;
     }
-    let type_name = generics.next_type_param_name();
+    let type_name = generics.next_type_param_name(None);
 
     let mut sugg: Vec<_> =
         placeholder_types.iter().map(|sp| (*sp, (*type_name).to_string())).collect();

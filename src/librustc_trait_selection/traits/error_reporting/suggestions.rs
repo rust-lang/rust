@@ -211,14 +211,14 @@ fn suggest_restriction(
             }
         }
 
-        let type_param_name = generics.params.next_type_param_name();
+        let type_param_name = generics.params.next_type_param_name(Some(&name));
         // The type param `T: Trait` we will suggest to introduce.
         let type_param = format!("{}: {}", type_param_name, name);
 
         // FIXME: modify the `trait_ref` instead of string shenanigans.
         // Turn `<impl Trait as Foo>::Bar: Qux` into `<T as Foo>::Bar: Qux`.
         let pred = trait_ref.without_const().to_predicate().to_string();
-        let pred = pred.replace(&impl_name, type_param_name);
+        let pred = pred.replace(&impl_name, &type_param_name);
         let mut sugg = vec![
             match generics
                 .params
