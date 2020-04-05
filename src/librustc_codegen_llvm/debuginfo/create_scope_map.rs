@@ -76,7 +76,7 @@ fn make_mir_scope(
     }
 
     let loc = cx.lookup_debug_loc(scope_data.span.lo());
-    let file_metadata = file_metadata(cx, &loc.file.name, debug_context.defining_crate);
+    let file_metadata = file_metadata(cx, &loc.file, debug_context.defining_crate);
 
     let scope_metadata = unsafe {
         Some(llvm::LLVMRustDIBuilderCreateLexicalBlock(
