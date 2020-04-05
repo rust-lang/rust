@@ -92,7 +92,7 @@ fn clif_sig_from_fn_sig<'tcx>(
         }
         abi => abi,
     };
-    let (call_conv, inputs, output): (CallConv, Vec<Ty>, Ty) = match abi {
+    let (call_conv, inputs, output): (CallConv, Vec<Ty<'tcx>>, Ty<'tcx>) = match abi {
         Abi::Rust => (CallConv::triple_default(triple), sig.inputs().to_vec(), sig.output()),
         Abi::C => (CallConv::triple_default(triple), sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
@@ -101,7 +101,7 @@ fn clif_sig_from_fn_sig<'tcx>(
                 ty::Tuple(ref tupled_arguments) => tupled_arguments,
                 _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
             };
-            let mut inputs: Vec<Ty> = vec![sig.inputs()[0]];
+            let mut inputs: Vec<Ty<'tcx>> = vec![sig.inputs()[0]];
             inputs.extend(extra_args.types());
             (CallConv::triple_default(triple), inputs, sig.output())
         }
@@ -288,7 +288,11 @@ fn local_place<'tcx>(
     fx.local_map[&local]
 }
 
-pub(crate) fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_block: Block, should_codegen_locals: bool) {
+pub(crate) fn codegen_fn_prelude<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    start_block: Block,
+    should_codegen_locals: bool,
+) {
     let ssa_analyzed = crate::analyze::analyze(fx);
 
     #[cfg(debug_assertions)]
@@ -332,7 +336,7 @@ pub(crate) fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, star
                 (local, ArgKind::Normal(param), arg_ty)
             }
         })
-        .collect::<Vec<(Local, ArgKind, Ty)>>();
+        .collect::<Vec<(Local, ArgKind<'tcx>, Ty<'tcx>)>>();
 
     assert!(fx.caller_location.is_none());
     if fx.instance.def.requires_caller_location(fx.tcx) {

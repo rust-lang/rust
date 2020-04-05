@@ -14,7 +14,7 @@ pub(crate) fn can_return_to_ssa_var<'tcx>(tcx: TyCtxt<'tcx>, dest_layout: TyAndL
 }
 
 pub(super) fn codegen_return_param(
-    fx: &mut FunctionCx<impl Backend>,
+    fx: &mut FunctionCx<'_, '_, impl Backend>,
     ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,
     start_block: Block,
 ) {
@@ -101,7 +101,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
     (call_inst, meta)
 }
 
-pub(crate) fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
+pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, impl Backend>) {
     match get_pass_mode(fx.tcx, return_layout(fx)) {
         PassMode::NoPass | PassMode::ByRef { sized: true } => {
             fx.bcx.ins().return_(&[]);

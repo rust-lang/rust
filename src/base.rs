@@ -209,7 +209,7 @@ pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     context.clear();
 }
 
-pub(crate) fn verify_func(tcx: TyCtxt, writer: &crate::pretty_clif::CommentWriter, func: &Function) {
+pub(crate) fn verify_func(tcx: TyCtxt<'_>, writer: &crate::pretty_clif::CommentWriter, func: &Function) {
     tcx.sess.time("verify clif ir", || {
         let flags = settings::Flags::new(settings::builder());
         match ::cranelift_codegen::verify_function(&func, &flags) {

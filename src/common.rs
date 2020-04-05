@@ -10,7 +10,7 @@ pub(crate) fn mir_var(loc: Local) -> Variable {
     Variable::with_u32(loc.index() as u32)
 }
 
-pub(crate) fn pointer_ty(tcx: TyCtxt) -> types::Type {
+pub(crate) fn pointer_ty(tcx: TyCtxt<'_>) -> types::Type {
     match tcx.data_layout.pointer_size.bits() {
         16 => types::I16,
         32 => types::I32,
@@ -19,7 +19,7 @@ pub(crate) fn pointer_ty(tcx: TyCtxt) -> types::Type {
     }
 }
 
-pub(crate) fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
+pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
     match scalar.value {
         Primitive::Int(int, _sign) => match int {
             Integer::I8 => types::I8,

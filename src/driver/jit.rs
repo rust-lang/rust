@@ -128,7 +128,7 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
             } else {
                 &name
             };
-            let symbol: libloading::Symbol<*const u8> =
+            let symbol: libloading::Symbol<'_, *const u8> =
                 unsafe { lib.get(dlsym_name.as_bytes()) }.unwrap();
             Some((name, *symbol))
         }));

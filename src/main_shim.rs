@@ -65,7 +65,7 @@ pub(crate) fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<im
         ctx.func = Function::with_name_signature(ExternalName::user(0, 0), cmain_sig.clone());
         {
             let mut func_ctx = FunctionBuilderContext::new();
-            let mut bcx: FunctionBuilder = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
+            let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
 
             let block = bcx.create_block();
             bcx.switch_to_block(block);

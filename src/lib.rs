@@ -1,13 +1,13 @@
 #![feature(rustc_private, decl_macro, type_alias_impl_trait, associated_type_bounds, never_type)]
 #![allow(intra_doc_link_resolution_failure)]
+#![warn(rust_2018_idioms)]
+#![warn(unused_lifetimes)]
 
 extern crate flate2;
 extern crate libc;
-extern crate tempfile;
 extern crate rustc_middle;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
-extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_fs_util;
 extern crate rustc_hir;
@@ -19,6 +19,10 @@ extern crate rustc_span;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 extern crate rustc_ast;
+
+// This prevents duplicating functions and statics that are already part of the host rustc process.
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
 
 use std::any::Any;
 
@@ -166,7 +170,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         Box::new(crate::metadata::CraneliftMetadataLoader)
     }
 
-    fn provide(&self, providers: &mut Providers) {
+    fn provide(&self, providers: &mut Providers<'_>) {
         providers.target_features_whitelist = |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             if tcx.sess.opts.actually_rustdoc {
@@ -187,7 +191,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             }
         };
     }
-    fn provide_extern(&self, _providers: &mut Providers) {}
+    fn provide_extern(&self, _providers: &mut Providers<'_>) {}
 
     fn codegen_crate<'tcx>(
         &self,

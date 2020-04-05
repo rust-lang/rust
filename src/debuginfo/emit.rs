@@ -61,7 +61,7 @@ struct WriterRelocate {
 }
 
 impl WriterRelocate {
-    fn new(ctx: &DebugContext) -> Self {
+    fn new(ctx: &DebugContext<'_>) -> Self {
         WriterRelocate {
             relocs: Vec::new(),
             writer: EndianVec::new(ctx.endian),

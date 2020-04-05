@@ -12,7 +12,7 @@ fn codegen_field<'tcx>(
     let field_offset = layout.fields.offset(field.index());
     let field_layout = layout.field(&*fx, field.index());
 
-    let simple = |fx: &mut FunctionCx<_>| {
+    let simple = |fx: &mut FunctionCx<'_, '_, _>| {
         (
             base.offset_i64(fx, i64::try_from(field_offset.bytes()).unwrap()),
             field_layout,
@@ -93,7 +93,7 @@ impl<'tcx> CValue<'tcx> {
     }
 
     // FIXME remove
-    pub(crate) fn force_stack<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> (Pointer, Option<Value>) {
+    pub(crate) fn force_stack(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> (Pointer, Option<Value>) {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(ptr, meta) => (ptr, meta),
@@ -113,7 +113,7 @@ impl<'tcx> CValue<'tcx> {
     }
 
     /// Load a value with layout.abi of scalar
-    pub(crate) fn load_scalar<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Value {
+    pub(crate) fn load_scalar(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Value {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(ptr, None) => {
@@ -134,7 +134,7 @@ impl<'tcx> CValue<'tcx> {
     }
 
     /// Load a value pair with layout.abi of scalar pair
-    pub(crate) fn load_scalar_pair<'a>(
+    pub(crate) fn load_scalar_pair(
         self,
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     ) -> (Value, Value) {
@@ -158,7 +158,7 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    pub(crate) fn value_field<'a>(
+    pub(crate) fn value_field(
         self,
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         field: mir::Field,
@@ -187,7 +187,7 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    pub(crate) fn unsize_value<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
+    pub(crate) fn unsize_value(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
         crate::unsize::coerce_unsized_into(fx, self, dest);
     }
 

@@ -31,7 +31,7 @@ fn emit_module<B: Backend>(
     name: String,
     kind: ModuleKind,
     mut module: Module<B>,
-    debug: Option<DebugContext>,
+    debug: Option<DebugContext<'_>>,
 ) -> ModuleCodegenResult
     where B::Product: Emit + WriteDebugInfo,
 {
@@ -72,7 +72,7 @@ fn emit_module<B: Backend>(
 
 fn reuse_workproduct_for_cgu(
     tcx: TyCtxt<'_>,
-    cgu: &CodegenUnit,
+    cgu: &CodegenUnit<'_>,
     work_products: &mut FxHashMap<WorkProductId, WorkProduct>,
 ) -> CompiledModule {
     let incr_comp_session_dir = tcx.sess.incr_comp_session_dir();

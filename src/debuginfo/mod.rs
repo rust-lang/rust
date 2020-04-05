@@ -15,7 +15,7 @@ use gimli::{Encoding, Format, LineEncoding, RunTimeEndian, X86_64};
 
 pub(crate) use emit::{DebugReloc, DebugRelocName};
 
-fn target_endian(tcx: TyCtxt) -> RunTimeEndian {
+fn target_endian(tcx: TyCtxt<'_>) -> RunTimeEndian {
     use rustc_target::abi::Endian;
 
     match tcx.data_layout.endian {

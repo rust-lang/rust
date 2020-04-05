@@ -166,7 +166,7 @@ fn build_vtable<'tcx>(
     data_id
 }
 
-fn write_usize(tcx: TyCtxt, buf: &mut [u8], idx: usize, num: u64) {
+fn write_usize(tcx: TyCtxt<'_>, buf: &mut [u8], idx: usize, num: u64) {
     use byteorder::{BigEndian, LittleEndian, WriteBytesExt};
 
     let usize_size = tcx

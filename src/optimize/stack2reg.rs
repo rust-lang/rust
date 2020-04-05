@@ -24,7 +24,7 @@ use crate::prelude::*;
 struct OrdStackSlot(StackSlot);
 
 impl fmt::Debug for OrdStackSlot {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
     }
 }
@@ -282,7 +282,7 @@ fn combine_stack_addr_with_load_store(func: &mut Function) {
     }
 }
 
-fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext) {
+fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
     // FIXME incrementally rebuild on each call?
     let mut stack_addr_load_insts_users = HashMap::<Inst, HashSet<Inst>>::new();
 

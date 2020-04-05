@@ -691,7 +691,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
         bswap, <T> (v arg) {
             // FIXME(CraneStation/cranelift#794) add bswap instruction to cranelift
-            fn swap(bcx: &mut FunctionBuilder, v: Value) -> Value {
+            fn swap(bcx: &mut FunctionBuilder<'_>, v: Value) -> Value {
                 match bcx.func.dfg.value_type(v) {
                     types::I8 => v,
 
