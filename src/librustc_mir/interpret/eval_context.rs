@@ -18,7 +18,7 @@ use rustc_middle::ty::query::TyCtxtAt;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map::DUMMY_SP;
-use rustc_target::abi::{Abi, Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
+use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
     Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
@@ -223,12 +223,17 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     // Type-changing assignments can happen for (at least) two reasons:
     // - `&mut T` -> `&T` gets optimized from a reborrow to a mere assignment.
     // - Subtyping is used. While all normal lifetimes are erased, higher-ranked lifetime
-    //   bounds are still around and can lead to type differences.
-    // There is no good way to check the latter, so we compare layouts instead -- but only
-    // for values with `Scalar`/`ScalarPair` abi.
-    // FIXME: Do something more accurate, type-based.
-    match &src.abi {
-        Abi::Scalar(..) | Abi::ScalarPair(..) => src.layout == dest.layout,
+    //   bounds on function pointers are still around and can lead to type differences.
+    match (&src.ty.kind, &dest.ty.kind) {
+        (ty::Ref(_, src_pointee, _), ty::Ref(_, dest_pointee, _)) => {
+            // After optimizations, there can be assignments that change reference mutability.
+            // This does not affect reference layout, so that is fine.
+            src_pointee == dest_pointee
+        }
+        (ty::FnPtr(_), ty::FnPtr(_)) => {
+            // All function pointers have equal layout, and thus can be assigned.
+            true
+        }
         _ => false,
     }
 }
