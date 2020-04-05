@@ -180,30 +180,19 @@ If not specified, overflow checks are enabled if
 
 ## no-prepopulate-passes
 
-This flag controls whether the pass manager uses a pre-populated list of
-passes. It takes one of the following values:
-
-* `y`, `yes`, `on`, or no value: use an empty list of passes.
-* `n`, `no`, or `off`: use a pre-populated list of passes (the default).
+This flag tells the pass manager to use an empty list of passes, instead of the
+usual pre-populated list of passes.
 
 ## no-vectorize-loops
 
-This flag controls whether `rustc` will attempt to [vectorize
-loops](https://llvm.org/docs/Vectorizers.html#the-loop-vectorizer). It takes
-one of the following values:
-
-* `y`, `yes`, `on`, or no value: disable loop vectorization.
-* `n`, `no`, or `off`: enable loop vectorization (the default).
+This flag disables [loop
+vectorization](https://llvm.org/docs/Vectorizers.html#the-loop-vectorizer).
 
 ## no-vectorize-slp
 
-This flag controls whether `rustc` will attempt to vectorize code using
+This flag disables vectorization using
 [superword-level
 parallelism](https://llvm.org/docs/Vectorizers.html#the-slp-vectorizer).
-It takes one of the following values:
-
-* `y`, `yes`, `on`, or no value: disable SLP vectorization.
-* `n`, `no`, or `off`: enable SLP vectorization (the default).
 
 ## soft-float
 
@@ -309,7 +298,7 @@ This flag controls the optimization level.
 * `2`: some optimizations.
 * `3`: all optimizations.
 * `s`: optimize for binary size.
-* `z`: optimize for binary size, but also turn off loop vectorization..
+* `z`: optimize for binary size, but also turn off loop vectorization.
 
 Note: The [`-O` flag][option-o-optimize] is an alias for `-C opt-level=2`.
 
