@@ -1729,3 +1729,29 @@ fn foo() -> u32 {
     "###
     );
 }
+
+#[test]
+fn fn_pointer_return() {
+    assert_snapshot!(
+        infer(r#"
+struct Vtable {
+    method: fn(),
+}
+
+fn main() {
+    let vtable = Vtable { method: || {} };
+    let m = vtable.method;
+}
+"#),
+        @r###"
+    [48; 121) '{     ...hod; }': ()
+    [58; 64) 'vtable': Vtable
+    [67; 91) 'Vtable...| {} }': Vtable
+    [84; 89) '|| {}': || -> ()
+    [87; 89) '{}': ()
+    [101; 102) 'm': fn() -> ()
+    [105; 111) 'vtable': Vtable
+    [105; 118) 'vtable.method': fn() -> ()
+    "###
+    );
+}

@@ -93,7 +93,11 @@ impl TypeRef {
             }
             ast::TypeRef::PlaceholderType(_inner) => TypeRef::Placeholder,
             ast::TypeRef::FnPointerType(inner) => {
-                let ret_ty = TypeRef::from_ast_opt(inner.ret_type().and_then(|rt| rt.type_ref()));
+                let ret_ty = inner
+                    .ret_type()
+                    .and_then(|rt| rt.type_ref())
+                    .map(TypeRef::from_ast)
+                    .unwrap_or_else(|| TypeRef::Tuple(Vec::new()));
                 let mut params = if let Some(pl) = inner.param_list() {
                     pl.params().map(|p| p.ascribed_type()).map(TypeRef::from_ast_opt).collect()
                 } else {
