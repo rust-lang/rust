@@ -2,7 +2,7 @@
 //! for match arms.
 //!
 //! It is modeled on the rustc module `librustc_mir_build::hair::pattern::_match`, which
-//! contains very detailed documentation about the match checking algorithm.
+//! contains very detailed documentation about the algorithms used here.
 use std::sync::Arc;
 
 use smallvec::{smallvec, SmallVec};
@@ -15,6 +15,14 @@ use crate::{
 use hir_def::{adt::VariantData, EnumVariantId, VariantId};
 
 #[derive(Debug, Clone, Copy)]
+/// Either a pattern from the source code being analyzed, represented as
+/// as `PatId`, or a `Wild` pattern which is created as an intermediate
+/// step in the match checking algorithm and thus is not backed by a
+/// real `PatId`.
+///
+/// Note that it is totally valid for the `PatId` variant to contain
+/// a `PatId` which resolves to a `Wild` pattern, if that wild pattern
+/// exists in the source code being analyzed.
 enum PatIdOrWild {
     PatId(PatId),
     Wild,
@@ -44,11 +52,22 @@ impl From<PatId> for PatIdOrWild {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MatchCheckNotImplemented;
+
+/// The return type of `is_useful` is either an indication of usefulness
+/// of the match arm, or an error in the case the match statement
+/// is made up of types for which exhaustiveness checking is currently
+/// not completely implemented.
+///
+/// The `std::result::Result` type is used here rather than a custom enum
+/// to allow the use of `?`.
 pub type MatchCheckResult<T> = Result<T, MatchCheckNotImplemented>;
 
-type PatStackInner = SmallVec<[PatIdOrWild; 2]>;
 #[derive(Debug)]
+/// A row in a Matrix.
+///
+/// This type is modeled from the struct of the same name in `rustc`.
 pub(crate) struct PatStack(PatStackInner);
+type PatStackInner = SmallVec<[PatIdOrWild; 2]>;
 
 impl PatStack {
     pub(crate) fn from_pattern(pat_id: PatId) -> PatStack {
@@ -94,7 +113,9 @@ impl PatStack {
         PatStack::from_vec(patterns)
     }
 
-    // Computes `D(self)`.
+    /// Computes `D(self)`.
+    ///
+    /// See the module docs and the associated documentation in rustc for details.
     fn specialize_wildcard(&self, cx: &MatchCheckCtx) -> Option<PatStack> {
         if matches!(self.head().as_pat(cx), Pat::Wild) {
             Some(self.to_tail())
@@ -103,7 +124,9 @@ impl PatStack {
         }
     }
 
-    // Computes `S(constructor, self)`.
+    /// Computes `S(constructor, self)`.
+    ///
+    /// See the module docs and the associated documentation in rustc for details.
     fn specialize_constructor(
         &self,
         cx: &MatchCheckCtx,
@@ -146,6 +169,11 @@ impl PatStack {
         Ok(result)
     }
 
+    /// A special case of `specialize_constructor` where the head of the pattern stack
+    /// is a Wild pattern.
+    ///
+    /// Replaces the Wild pattern at the head of the pattern stack with N Wild patterns
+    /// (N >= 0), where N is the arity of the given constructor.
     fn expand_wildcard(
         &self,
         cx: &MatchCheckCtx,
@@ -183,6 +211,9 @@ impl PatStack {
 }
 
 #[derive(Debug)]
+/// A collection of PatStack.
+///
+/// This type is modeled from the struct of the same name in `rustc`.
 pub(crate) struct Matrix(Vec<PatStack>);
 
 impl Matrix {
@@ -191,8 +222,8 @@ impl Matrix {
     }
 
     pub(crate) fn push(&mut self, cx: &MatchCheckCtx, row: PatStack) {
-        // if the pattern is an or pattern it should be expanded
         if let Some(Pat::Or(pat_ids)) = row.get_head().map(|pat_id| pat_id.as_pat(cx)) {
+            // Or patterns are expanded here
             for pat_id in pat_ids {
                 self.0.push(PatStack::from_pattern(pat_id));
             }
@@ -209,12 +240,16 @@ impl Matrix {
         self.0.iter().map(|p| p.head()).collect()
     }
 
-    // Computes `D(self)`.
+    /// Computes `D(self)` for each contained PatStack.
+    ///
+    /// See the module docs and the associated documentation in rustc for details.
     fn specialize_wildcard(&self, cx: &MatchCheckCtx) -> Self {
         Self::collect(cx, self.0.iter().filter_map(|r| r.specialize_wildcard(cx)))
     }
 
-    // Computes `S(constructor, self)`.
+    /// Computes `S(constructor, self)` for each contained PatStack.
+    ///
+    /// See the module docs and the associated documentation in rustc for details.
     fn specialize_constructor(
         &self,
         cx: &MatchCheckCtx,
@@ -243,6 +278,11 @@ impl Matrix {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+/// An indication of the usefulness of a given match arm, where
+/// usefulness is defined as matching some patterns which were
+/// not matched by an prior match arms.
+///
+/// We may eventually need an `Unknown` variant here.
 pub enum Usefulness {
     Useful,
     NotUseful,
@@ -257,6 +297,11 @@ pub struct MatchCheckCtx<'a> {
 /// Given a set of patterns `matrix`, and pattern to consider `v`, determines
 /// whether `v` is useful. A pattern is useful if it covers cases which were
 /// not previously covered.
+///
+/// When calling this function externally (that is, not the recursive calls) it
+/// expected that you have already type checked the match arms. All patterns in
+/// matrix should be the same type as v, as well as they should all be the same
+/// type as the match expression.
 pub(crate) fn is_useful(
     cx: &MatchCheckCtx,
     matrix: &Matrix,
@@ -311,8 +356,9 @@ pub(crate) fn is_useful(
         // We assume here that the first constructor is the "correct" type. Since we
         // only care about the "type" of the constructor (i.e. if it is a bool we
         // don't care about the value), this assumption should be valid as long as
-        // the match statement is well formed. But potentially a better way to handle
-        // this is to use the match expressions type.
+        // the match statement is well formed. We currently uphold this invariant by
+        // filtering match arms before calling `is_useful`, only passing in match arms
+        // whose type matches the type of the match expression.
         match &used_constructors.first() {
             Some(constructor) if all_constructors_covered(&cx, constructor, &used_constructors) => {
                 // If all constructors are covered, then we need to consider whether
@@ -380,23 +426,25 @@ pub(crate) fn is_useful(
 }
 
 #[derive(Debug)]
+/// Similar to TypeCtor, but includes additional information about the specific
+/// value being instantiated. For example, TypeCtor::Bool doesn't contain the
+/// boolean value.
 enum Constructor {
     Bool(bool),
     Tuple { arity: usize },
     Enum(EnumVariantId),
 }
 
+/// Returns the constructor for the given pattern. Should only return None
+/// in the case of a Wild pattern.
 fn pat_constructor(cx: &MatchCheckCtx, pat: PatIdOrWild) -> MatchCheckResult<Option<Constructor>> {
     let res = match pat.as_pat(cx) {
         Pat::Wild => None,
         Pat::Tuple(pats) => Some(Constructor::Tuple { arity: pats.len() }),
-        Pat::Lit(lit_expr) => {
-            // for now we only support bool literals
-            match cx.body.exprs[lit_expr] {
-                Expr::Literal(Literal::Bool(val)) => Some(Constructor::Bool(val)),
-                _ => return Err(MatchCheckNotImplemented),
-            }
-        }
+        Pat::Lit(lit_expr) => match cx.body.exprs[lit_expr] {
+            Expr::Literal(Literal::Bool(val)) => Some(Constructor::Bool(val)),
+            _ => return Err(MatchCheckNotImplemented),
+        },
         Pat::TupleStruct { .. } | Pat::Path(_) => {
             let pat_id = pat.as_id().expect("we already know this pattern is not a wild");
             let variant_id =
