@@ -517,20 +517,8 @@ pub use std_detect::detect;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{
-    // Stable
-    assert_eq,
-    assert_ne,
-    debug_assert,
-    debug_assert_eq,
-    debug_assert_ne,
-    // Unstable
-    matches,
-    r#try,
-    todo,
-    unimplemented,
-    unreachable,
-    write,
-    writeln,
+    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, r#try, todo,
+    unimplemented, unreachable, write, writeln,
 };
 
 // Re-export built-in macros defined through libcore.
