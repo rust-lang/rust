@@ -3,7 +3,6 @@ use std::collections::{vec_deque::Drain, VecDeque};
 use std::fmt::Debug;
 use std::mem::size_of;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::{isize, usize};
 
 use crate::hash;
 

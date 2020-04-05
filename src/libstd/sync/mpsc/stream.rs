@@ -11,7 +11,6 @@ use self::Message::*;
 pub use self::UpgradeResult::*;
 
 use core::cmp;
-use core::isize;
 
 use crate::cell::UnsafeCell;
 use crate::ptr;

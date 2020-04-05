@@ -112,10 +112,10 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 use std::collections::VecDeque;
+use std::fmt;
 use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
-use std::{fmt, u32};
 
 #[derive(Copy, Clone, PartialEq)]
 struct Variable(u32);
