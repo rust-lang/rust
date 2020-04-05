@@ -2728,8 +2728,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
         let mut at_leaf = true;
         while cur_node.len() < node::MIN_LEN {
             match handle_underfull_node(cur_node) {
-                AtRoot(_) => break,
-                EmptyParent(_) => unreachable!(),
+                AtRoot => break,
                 Merged(edge, merged_with_left, offset) => {
                     // If we merged with our right sibling then our tracked
                     // position has not changed. However if we merged with our
@@ -2740,7 +2739,6 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
                             Leaf(leaf) => leaf,
                             Internal(_) => unreachable!(),
                         };
-                        debug_assert!(idx <= node.len());
                         pos = unsafe { Handle::new_edge(node, idx) };
                     }
 
@@ -2754,7 +2752,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
                         at_leaf = false;
                     }
                 }
-                Stole(_, stole_from_left) => {
+                Stole(stole_from_left) => {
                     // Adjust the tracked position if we stole from a left sibling
                     if stole_from_left && at_leaf {
                         // SAFETY: This is safe since we just added an element to our node.
@@ -2781,10 +2779,9 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
 }
 
 enum UnderflowResult<'a, K, V> {
-    AtRoot(NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>),
-    EmptyParent(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
+    AtRoot,
     Merged(Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::Edge>, bool, usize),
-    Stole(NodeRef<marker::Mut<'a>, K, V, marker::Internal>, bool),
+    Stole(bool),
 }
 
 fn handle_underfull_node<K, V>(
@@ -2792,17 +2789,15 @@ fn handle_underfull_node<K, V>(
 ) -> UnderflowResult<'_, K, V> {
     let parent = match node.ascend() {
         Ok(parent) => parent,
-        Err(root) => return AtRoot(root),
+        Err(_) => return AtRoot,
     };
 
     let (is_left, mut handle) = match parent.left_kv() {
         Ok(left) => (true, left),
-        Err(parent) => match parent.right_kv() {
-            Ok(right) => (false, right),
-            Err(parent) => {
-                return EmptyParent(parent.into_node());
-            }
-        },
+        Err(parent) => {
+            let right = unsafe { unwrap_unchecked(parent.right_kv().ok()) };
+            (false, right)
+        }
     };
 
     if handle.can_merge() {
@@ -2814,7 +2809,7 @@ fn handle_underfull_node<K, V>(
         } else {
             handle.steal_right();
         }
-        Stole(handle.into_node(), is_left)
+        Stole(is_left)
     }
 }
 
