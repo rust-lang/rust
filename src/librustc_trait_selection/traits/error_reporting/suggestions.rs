@@ -22,7 +22,8 @@ use std::fmt;
 use super::InferCtxtPrivExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 
-crate trait InferCtxtExt<'tcx> {
+// public for clippy
+pub trait InferCtxtExt<'tcx> {
     fn suggest_restricting_param_bound(
         &self,
         err: &mut DiagnosticBuilder<'_>,
