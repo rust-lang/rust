@@ -352,9 +352,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let readers = rwlock_get_readers(this, rwlock_op)?.to_u32()?;
         let writers = rwlock_get_writers(this, rwlock_op)?.to_u32()?;
         if writers != 0 {
-            throw_unsup_format!(
-                "Deadlock due to read-locking a pthreads read-write lock while it is already write-locked"
-            );
+            throw_machine_stop!(TerminationInfo::Deadlock);
         } else {
             match readers.checked_add(1) {
                 Some(new_readers) => {
@@ -390,13 +388,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let readers = rwlock_get_readers(this, rwlock_op)?.to_u32()?;
         let writers = rwlock_get_writers(this, rwlock_op)?.to_u32()?;
         if readers != 0 {
-            throw_unsup_format!(
-                "Deadlock due to write-locking a pthreads read-write lock while it is already read-locked"
-            );
+            throw_machine_stop!(TerminationInfo::Deadlock);
         } else if writers != 0 {
-            throw_unsup_format!(
-                "Deadlock due to write-locking a pthreads read-write lock while it is already write-locked"
-            );
+            throw_machine_stop!(TerminationInfo::Deadlock);
         } else {
             rwlock_set_writers(this, rwlock_op, Scalar::from_u32(1))?;
             Ok(0)
