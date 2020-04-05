@@ -1377,7 +1377,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
                 let mut err = self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0283);
-                err.note(&format!("cannot resolve `{}`", predicate));
+                err.note(&format!("cannot satisfy `{}`", predicate));
                 if let ObligationCauseCode::ItemObligation(def_id) = obligation.cause.code {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 } else if let (
@@ -1407,7 +1407,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                         // LL |     const fn const_val<T: Sized>() -> usize {
                         //    |              --------- - required by this bound in `Tt::const_val`
                         //    |
-                        //    = note: cannot resolve `_: Tt`
+                        //    = note: cannot satisfy `_: Tt`
 
                         err.span_suggestion_verbose(
                             span.shrink_to_hi(),
@@ -1457,7 +1457,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
                 let mut err = self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0284);
-                err.note(&format!("cannot resolve `{}`", predicate));
+                err.note(&format!("cannot satisfy `{}`", predicate));
                 err
             }
 
@@ -1469,10 +1469,10 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     self.tcx.sess,
                     span,
                     E0284,
-                    "type annotations needed: cannot resolve `{}`",
+                    "type annotations needed: cannot satisfy `{}`",
                     predicate,
                 );
-                err.span_label(span, &format!("cannot resolve `{}`", predicate));
+                err.span_label(span, &format!("cannot satisfy `{}`", predicate));
                 err
             }
         };

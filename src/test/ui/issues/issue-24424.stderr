@@ -7,7 +7,7 @@ LL |
 LL | impl <'l0, 'l1, T0> Trait1<'l0, T0> for bool where T0 : Trait0<'l0>, T0 : Trait0<'l1> {}
    |                                                         ^^^^^^^^^^^ cannot infer type for type parameter `T0`
    |
-   = note: cannot resolve `T0: Trait0<'l0>`
+   = note: cannot satisfy `T0: Trait0<'l0>`
 
 error: aborting due to previous error
 

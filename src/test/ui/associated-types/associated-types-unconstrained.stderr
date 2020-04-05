@@ -4,7 +4,7 @@ error[E0284]: type annotations needed
 LL |     let x: isize = Foo::bar();
    |                    ^^^^^^^^ cannot infer type
    |
-   = note: cannot resolve `<_ as Foo>::A == _`
+   = note: cannot satisfy `<_ as Foo>::A == _`
 
 error: aborting due to previous error
 
