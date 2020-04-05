@@ -689,6 +689,30 @@ impl<K: Ord, V> BTreeMap<K, V> {
         })
     }
 
+    /// Removes and returns the first element in the map.
+    /// The key of this element is the minimum key that was in the map.
+    ///
+    /// # Examples
+    ///
+    /// Draining elements in ascending order, while keeping a usable map each iteration.
+    ///
+    /// ```
+    /// #![feature(map_first_last)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1, "a");
+    /// map.insert(2, "b");
+    /// while let Some((key, _val)) = map.pop_first() {
+    ///     assert!(map.iter().all(|(k, _v)| *k > key));
+    /// }
+    /// assert!(map.is_empty());
+    /// ```
+    #[unstable(feature = "map_first_last", issue = "62924")]
+    pub fn pop_first(&mut self) -> Option<(K, V)> {
+        self.first_entry().map(|entry| entry.remove_entry())
+    }
+
     /// Returns the last key-value pair in the map.
     /// The key in this pair is the maximum key in the map.
     ///
@@ -740,6 +764,30 @@ impl<K: Ord, V> BTreeMap<K, V> {
             length: &mut self.length,
             _marker: PhantomData,
         })
+    }
+
+    /// Removes and returns the last element in the map.
+    /// The key of this element is the maximum key that was in the map.
+    ///
+    /// # Examples
+    ///
+    /// Draining elements in descending order, while keeping a usable map each iteration.
+    ///
+    /// ```
+    /// #![feature(map_first_last)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1, "a");
+    /// map.insert(2, "b");
+    /// while let Some((key, _val)) = map.pop_last() {
+    ///     assert!(map.iter().all(|(k, _v)| *k < key));
+    /// }
+    /// assert!(map.is_empty());
+    /// ```
+    #[unstable(feature = "map_first_last", issue = "62924")]
+    pub fn pop_last(&mut self) -> Option<(K, V)> {
+        self.last_entry().map(|entry| entry.remove_entry())
     }
 
     /// Returns `true` if the map contains a value for the specified key.
