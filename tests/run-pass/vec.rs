@@ -123,6 +123,7 @@ fn main() {
     // (one is a real pointer, one an integer pointer).
     assert_eq!((200..-5).step_by(1).collect::<Vec<isize>>(), []);
 
+    // liballoc has a more extensive test of this, but let's at least do a smoke test here.
     vec_push_ptr_stable();
     vec_extend_ptr_stable();
     vec_truncate_ptr_stable();
