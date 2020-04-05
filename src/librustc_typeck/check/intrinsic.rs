@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
 
 use std::iter;
