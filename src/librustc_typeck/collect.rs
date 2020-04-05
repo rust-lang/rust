@@ -29,7 +29,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::weak_lang_items;
-use rustc_hir::{GenericParamKind, Node, Unsafety};
+use rustc_hir::{GenericParamKind, NextTypeParamName, Node, Unsafety};
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -135,20 +135,7 @@ crate fn placeholder_type_error(
     if placeholder_types.is_empty() {
         return;
     }
-    // This is the whitelist of possible parameter names that we might suggest.
-    let possible_names = ["T", "K", "L", "A", "B", "C"];
-    let used_names = generics
-        .iter()
-        .filter_map(|p| match p.name {
-            hir::ParamName::Plain(ident) => Some(ident.name),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-
-    let type_name = possible_names
-        .iter()
-        .find(|n| !used_names.contains(&Symbol::intern(n)))
-        .unwrap_or(&"ParamName");
+    let type_name = generics.next_type_param_name();
 
     let mut sugg: Vec<_> =
         placeholder_types.iter().map(|sp| (*sp, (*type_name).to_string())).collect();

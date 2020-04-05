@@ -24,11 +24,18 @@ fn baz(t: impl std::fmt::Debug, constraints: impl Iterator) {
     }
 }
 
-fn bat<T: std::fmt::Debug>(t: T, constraints: impl Iterator) {
+fn bat<K, T: std::fmt::Debug>(t: T, constraints: impl Iterator, _: K) {
     for constraint in constraints {
         qux(t);
         qux(constraint);
 //~^ ERROR `<impl Iterator as std::iter::Iterator>::Item` doesn't implement `std::fmt::Debug`
+    }
+}
+
+fn bak(constraints: impl  Iterator + std::fmt::Debug) {
+    for constraint in constraints {
+        qux(constraint);
+//~^ ERROR `<impl Iterator + std::fmt::Debug as std::iter::Iterator>::Item` doesn't implement
     }
 }
 
