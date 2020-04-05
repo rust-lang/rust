@@ -56,7 +56,7 @@ impl FileHandler {
         let new_fd = candidate_new_fd.unwrap_or_else(|| {
             // find_map ran out of BTreeMap entries before finding a free fd, use one plus the
             // maximum fd in the map
-            self.handles.last_entry().map(|entry| entry.key().checked_add(1).unwrap()).unwrap_or(min_fd)
+            self.handles.last_key_value().map(|(fd, _)| fd.checked_add(1).unwrap()).unwrap_or(min_fd)
         });
 
         self.handles.insert(new_fd, file_handle).unwrap_none();
