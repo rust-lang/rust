@@ -411,6 +411,23 @@ fn check_type_defn<'tcx, F>(
                     ObligationCauseCode::MiscObligation,
                 )
             }
+
+            // Explicit `enum` discriminant values must const-evaluate successfully.
+            if let Some(discr_def_id) = variant.explicit_discr {
+                let discr_substs =
+                    InternalSubsts::identity_for_item(fcx.tcx, discr_def_id.to_def_id());
+
+                let cause = traits::ObligationCause::new(
+                    fcx.tcx.def_span(discr_def_id),
+                    fcx.body_id,
+                    traits::MiscObligation,
+                );
+                fcx.register_predicate(traits::Obligation::new(
+                    cause,
+                    fcx.param_env,
+                    ty::Predicate::ConstEvaluatable(discr_def_id.to_def_id(), discr_substs),
+                ));
+            }
         }
 
         check_where_clauses(tcx, fcx, item.span, def_id.to_def_id(), None);
@@ -1287,8 +1304,14 @@ impl ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // ADT
 
+// FIXME(eddyb) replace this with getting fields/discriminants through `ty::AdtDef`.
 struct AdtVariant<'tcx> {
+    /// Types of fields in the variant, that must be well-formed.
     fields: Vec<AdtField<'tcx>>,
+
+    /// Explicit discriminant of this variant (e.g. `A = 123`),
+    /// that must evaluate to a constant value.
+    explicit_discr: Option<LocalDefId>,
 }
 
 struct AdtField<'tcx> {
@@ -1297,6 +1320,7 @@ struct AdtField<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    // FIXME(eddyb) replace this with getting fields through `ty::AdtDef`.
     fn non_enum_variant(&self, struct_def: &hir::VariantData<'_>) -> AdtVariant<'tcx> {
         let fields = struct_def
             .fields()
@@ -1309,11 +1333,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 AdtField { ty: field_ty, span: field.span }
             })
             .collect();
-        AdtVariant { fields }
+        AdtVariant { fields, explicit_discr: None }
     }
 
     fn enum_variants(&self, enum_def: &hir::EnumDef<'_>) -> Vec<AdtVariant<'tcx>> {
-        enum_def.variants.iter().map(|variant| self.non_enum_variant(&variant.data)).collect()
+        enum_def
+            .variants
+            .iter()
+            .map(|variant| AdtVariant {
+                fields: self.non_enum_variant(&variant.data).fields,
+                explicit_discr: variant
+                    .disr_expr
+                    .map(|explicit_discr| self.tcx.hir().local_def_id(explicit_discr.hir_id)),
+            })
+            .collect()
     }
 
     fn impl_implied_bounds(&self, impl_def_id: DefId, span: Span) -> Vec<Ty<'tcx>> {
