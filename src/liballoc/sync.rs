@@ -23,7 +23,6 @@ use core::ptr::{self, NonNull};
 use core::slice::{self, from_raw_parts_mut};
 use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
-use core::{isize, usize};
 
 use crate::alloc::{box_free, handle_alloc_error, AllocInit, AllocRef, Global, Layout};
 use crate::boxed::Box;

@@ -17,7 +17,6 @@ use rustc_serialize::{Decodable, Encodable};
 use std::collections::BTreeMap;
 use std::io::prelude::*;
 use std::string;
-use std::{f32, f64, i64, u64};
 use Animal::*;
 
 #[derive(RustcDecodable, Eq, PartialEq, Debug)]

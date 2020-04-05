@@ -90,7 +90,6 @@ use core::borrow::{Borrow, BorrowMut};
 use core::cmp::Ordering::{self, Less};
 use core::mem::{self, size_of};
 use core::ptr;
-use core::{u16, u32, u8};
 
 use crate::borrow::ToOwned;
 use crate::boxed::Box;

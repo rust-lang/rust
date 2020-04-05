@@ -1780,18 +1780,12 @@ where
     where
         F: FnMut(&K, &mut V) -> bool,
     {
-        while let Some(kv) = unsafe { self.next_kv() } {
-            let (k, v) = unsafe { ptr::read(&kv) }.into_kv_mut();
+        while let Some(mut kv) = unsafe { self.next_kv() } {
+            let (k, v) = kv.kv_mut();
             if pred(k, v) {
                 *self.length -= 1;
                 let (k, v, leaf_edge_location) = kv.remove_kv_tracking();
-                // `remove_kv_tracking` has either preserved or invalidated `self.cur_leaf_edge`
-                if let Some(node) = leaf_edge_location {
-                    match search::search_tree(node, &k) {
-                        search::SearchResult::Found(_) => unreachable!(),
-                        search::SearchResult::GoDown(leaf) => self.cur_leaf_edge = Some(leaf),
-                    }
-                };
+                self.cur_leaf_edge = Some(leaf_edge_location);
                 return Some((k, v));
             }
             self.cur_leaf_edge = Some(kv.next_leaf_edge());
@@ -2698,28 +2692,26 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
     /// Removes a key/value-pair from the map, and returns that pair, as well as
-    /// the whereabouts of the leaf edge corresponding to that former pair:
-    /// if None is returned, the leaf edge is still the left leaf edge of the KV handle;
-    /// if a node is returned, it heads the subtree where the leaf edge may be found.
+    /// the leaf edge corresponding to that former pair.
     fn remove_kv_tracking(
         self,
-    ) -> (K, V, Option<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>>) {
-        let mut levels_down_handled: isize;
-        let (small_leaf, old_key, old_val) = match self.force() {
+    ) -> (K, V, Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
+        let (mut pos, old_key, old_val, was_internal) = match self.force() {
             Leaf(leaf) => {
-                levels_down_handled = 1; // handled at same level, but affects only the right side
                 let (hole, old_key, old_val) = leaf.remove();
-                (hole.into_node(), old_key, old_val)
+                (hole, old_key, old_val, false)
             }
             Internal(mut internal) => {
                 // Replace the location freed in the internal node with the next KV,
                 // and remove that next KV from its leaf.
-                levels_down_handled = unsafe { ptr::read(&internal).into_node().height() } as isize;
 
                 let key_loc = internal.kv_mut().0 as *mut K;
                 let val_loc = internal.kv_mut().1 as *mut V;
 
-                let to_remove = internal.right_edge().descend().first_leaf_edge().right_kv().ok();
+                // Deleting from the left side is typically faster since we can
+                // just pop an element from the end of the KV array without
+                // needing to shift the other values.
+                let to_remove = internal.left_edge().descend().last_leaf_edge().left_kv().ok();
                 let to_remove = unsafe { unwrap_unchecked(to_remove) };
 
                 let (hole, key, val) = to_remove.remove();
@@ -2727,50 +2719,69 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
                 let old_key = unsafe { mem::replace(&mut *key_loc, key) };
                 let old_val = unsafe { mem::replace(&mut *val_loc, val) };
 
-                (hole.into_node(), old_key, old_val)
+                (hole, old_key, old_val, true)
             }
         };
 
         // Handle underflow
-        let mut cur_node = small_leaf.forget_type();
+        let mut cur_node = unsafe { ptr::read(&pos).into_node().forget_type() };
+        let mut at_leaf = true;
         while cur_node.len() < node::MIN_LEN {
             match handle_underfull_node(cur_node) {
-                AtRoot(root) => {
-                    cur_node = root;
-                    break;
-                }
-                EmptyParent(_) => unreachable!(),
-                Merged(parent) => {
-                    levels_down_handled -= 1;
+                AtRoot => break,
+                Merged(edge, merged_with_left, offset) => {
+                    // If we merged with our right sibling then our tracked
+                    // position has not changed. However if we merged with our
+                    // left sibling then our tracked position is now dangling.
+                    if at_leaf && merged_with_left {
+                        let idx = pos.idx() + offset;
+                        let node = match unsafe { ptr::read(&edge).descend().force() } {
+                            Leaf(leaf) => leaf,
+                            Internal(_) => unreachable!(),
+                        };
+                        pos = unsafe { Handle::new_edge(node, idx) };
+                    }
+
+                    let parent = edge.into_node();
                     if parent.len() == 0 {
                         // We must be at the root
-                        let root = parent.into_root_mut();
-                        root.pop_level();
-                        cur_node = root.as_mut();
+                        parent.into_root_mut().pop_level();
                         break;
                     } else {
                         cur_node = parent.forget_type();
+                        at_leaf = false;
                     }
                 }
-                Stole(internal_node) => {
-                    levels_down_handled -= 1;
-                    cur_node = internal_node.forget_type();
+                Stole(stole_from_left) => {
+                    // Adjust the tracked position if we stole from a left sibling
+                    if stole_from_left && at_leaf {
+                        // SAFETY: This is safe since we just added an element to our node.
+                        unsafe {
+                            pos.next_unchecked();
+                        }
+                    }
+
                     // This internal node might be underfull, but only if it's the root.
                     break;
                 }
             }
         }
 
-        let leaf_edge_location = if levels_down_handled > 0 { None } else { Some(cur_node) };
-        (old_key, old_val, leaf_edge_location)
+        // If we deleted from an internal node then we need to compensate for
+        // the earlier swap and adjust the tracked position to point to the
+        // next element.
+        if was_internal {
+            pos = unsafe { unwrap_unchecked(pos.next_kv().ok()).next_leaf_edge() };
+        }
+
+        (old_key, old_val, pos)
     }
 }
 
 enum UnderflowResult<'a, K, V> {
-    AtRoot(NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>),
-    EmptyParent(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
-    Merged(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
-    Stole(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
+    AtRoot,
+    Merged(Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::Edge>, bool, usize),
+    Stole(bool),
 }
 
 fn handle_underfull_node<K, V>(
@@ -2778,28 +2789,27 @@ fn handle_underfull_node<K, V>(
 ) -> UnderflowResult<'_, K, V> {
     let parent = match node.ascend() {
         Ok(parent) => parent,
-        Err(root) => return AtRoot(root),
+        Err(_) => return AtRoot,
     };
 
     let (is_left, mut handle) = match parent.left_kv() {
         Ok(left) => (true, left),
-        Err(parent) => match parent.right_kv() {
-            Ok(right) => (false, right),
-            Err(parent) => {
-                return EmptyParent(parent.into_node());
-            }
-        },
+        Err(parent) => {
+            let right = unsafe { unwrap_unchecked(parent.right_kv().ok()) };
+            (false, right)
+        }
     };
 
     if handle.can_merge() {
-        Merged(handle.merge().into_node())
+        let offset = if is_left { handle.reborrow().left_edge().descend().len() + 1 } else { 0 };
+        Merged(handle.merge(), is_left, offset)
     } else {
         if is_left {
             handle.steal_left();
         } else {
             handle.steal_right();
         }
-        Stole(handle.into_node())
+        Stole(is_left)
     }
 }
 

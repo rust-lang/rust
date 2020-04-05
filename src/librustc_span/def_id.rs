@@ -7,7 +7,6 @@ use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decoder, Encoder};
 use std::borrow::Borrow;
 use std::fmt;
-use std::{u32, u64};
 
 rustc_index::newtype_index! {
     pub struct CrateId {

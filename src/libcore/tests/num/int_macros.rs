@@ -2,7 +2,6 @@ macro_rules! int_module {
     ($T:ident, $T_i:ident) => {
         #[cfg(test)]
         mod tests {
-            use core::isize;
             use core::mem;
             use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
             use core::$T_i::*;

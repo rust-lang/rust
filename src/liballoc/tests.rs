@@ -3,8 +3,6 @@
 use core::any::Any;
 use core::clone::Clone;
 use core::convert::TryInto;
-use core::f64;
-use core::i64;
 use core::ops::Deref;
 use core::result::Result::{Err, Ok};
 

@@ -1,6 +1,5 @@
 use super::super::*;
 use core::num::flt2dec::strategy::grisu::*;
-use std::{f64, i16};
 use test::Bencher;
 
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {

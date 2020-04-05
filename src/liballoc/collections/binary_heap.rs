@@ -20,7 +20,6 @@
 //! ```
 //! use std::cmp::Ordering;
 //! use std::collections::BinaryHeap;
-//! use std::usize;
 //!
 //! #[derive(Copy, Clone, Eq, PartialEq)]
 //! struct State {

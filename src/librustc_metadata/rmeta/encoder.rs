@@ -39,7 +39,6 @@ use rustc_target::abi::VariantIdx;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
-use std::u32;
 
 struct EncodeContext<'tcx> {
     opaque: opaque::Encoder,

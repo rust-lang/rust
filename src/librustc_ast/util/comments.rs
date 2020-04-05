@@ -5,7 +5,6 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, CharPos, FileName, Pos};
 
 use log::debug;
-use std::usize;
 
 #[cfg(test)]
 mod tests;

@@ -8,7 +8,6 @@ use rustc_data_structures::unify as ut;
 use std::cmp;
 use std::marker::PhantomData;
 use std::ops::Range;
-use std::u32;
 
 pub struct TypeVariableTable<'tcx> {
     values: sv::SnapshotVec<Delegate>,
