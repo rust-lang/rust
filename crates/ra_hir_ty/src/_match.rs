@@ -42,6 +42,10 @@ impl From<PatId> for PatIdOrWild {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MatchCheckNotImplemented;
+pub type MatchCheckResult<T> = Result<T, MatchCheckNotImplemented>;
+
 type PatStackInner = SmallVec<[PatIdOrWild; 2]>;
 #[derive(Debug)]
 pub(crate) struct PatStack(PatStackInner);
@@ -104,42 +108,49 @@ impl PatStack {
         &self,
         cx: &MatchCheckCtx,
         constructor: &Constructor,
-    ) -> Option<PatStack> {
-        match (self.head().as_pat(cx), constructor) {
+    ) -> MatchCheckResult<Option<PatStack>> {
+        let result = match (self.head().as_pat(cx), constructor) {
             (Pat::Tuple(ref pat_ids), Constructor::Tuple { arity }) => {
                 if pat_ids.len() != *arity {
-                    return None;
+                    None
+                } else {
+                    Some(self.replace_head_with(pat_ids))
                 }
-
-                Some(self.replace_head_with(pat_ids))
             }
             (Pat::Lit(_), Constructor::Bool(_)) => {
                 // for now we only support bool literals
                 Some(self.to_tail())
             }
-            (Pat::Wild, constructor) => Some(self.expand_wildcard(cx, constructor)),
+            (Pat::Wild, constructor) => Some(self.expand_wildcard(cx, constructor)?),
             (Pat::Path(_), Constructor::Enum(constructor)) => {
+                // enums with no associated data become `Pat::Path`
                 let pat_id = self.head().as_id().expect("we know this isn't a wild");
                 if !enum_variant_matches(cx, pat_id, *constructor) {
-                    return None;
+                    None
+                } else {
+                    Some(self.to_tail())
                 }
-                // enums with no associated data become `Pat::Path`
-                Some(self.to_tail())
             }
             (Pat::TupleStruct { args: ref pat_ids, .. }, Constructor::Enum(constructor)) => {
                 let pat_id = self.head().as_id().expect("we know this isn't a wild");
                 if !enum_variant_matches(cx, pat_id, *constructor) {
-                    return None;
+                    None
+                } else {
+                    Some(self.replace_head_with(pat_ids))
                 }
-
-                Some(self.replace_head_with(pat_ids))
             }
             (Pat::Or(_), _) => unreachable!("we desugar or patterns so this should never happen"),
-            (a, b) => unimplemented!("{:?}, {:?}", a, b),
-        }
+            (_, _) => return Err(MatchCheckNotImplemented),
+        };
+
+        Ok(result)
     }
 
-    fn expand_wildcard(&self, cx: &MatchCheckCtx, constructor: &Constructor) -> PatStack {
+    fn expand_wildcard(
+        &self,
+        cx: &MatchCheckCtx,
+        constructor: &Constructor,
+    ) -> MatchCheckResult<PatStack> {
         assert_eq!(
             Pat::Wild,
             self.head().as_pat(cx),
@@ -154,7 +165,7 @@ impl PatStack {
                 match cx.db.enum_data(e.parent).variants[e.local_id].variant_data.as_ref() {
                     VariantData::Tuple(struct_field_data) => struct_field_data.len(),
                     VariantData::Unit => 0,
-                    x => unimplemented!("{:?}", x),
+                    _ => return Err(MatchCheckNotImplemented),
                 }
             }
         };
@@ -167,7 +178,7 @@ impl PatStack {
             patterns.push(*pat);
         }
 
-        PatStack::from_vec(patterns)
+        Ok(PatStack::from_vec(patterns))
     }
 }
 
@@ -204,8 +215,19 @@ impl Matrix {
     }
 
     // Computes `S(constructor, self)`.
-    fn specialize_constructor(&self, cx: &MatchCheckCtx, constructor: &Constructor) -> Self {
-        Self::collect(cx, self.0.iter().filter_map(|r| r.specialize_constructor(cx, constructor)))
+    fn specialize_constructor(
+        &self,
+        cx: &MatchCheckCtx,
+        constructor: &Constructor,
+    ) -> MatchCheckResult<Self> {
+        let mut new_matrix = Matrix::empty();
+        for pat in &self.0 {
+            if let Some(pat) = pat.specialize_constructor(cx, constructor)? {
+                new_matrix.push(cx, pat);
+            }
+        }
+
+        Ok(new_matrix)
     }
 
     fn collect<T: IntoIterator<Item = PatStack>>(cx: &MatchCheckCtx, iter: T) -> Self {
@@ -239,37 +261,56 @@ pub struct MatchCheckCtx<'a> {
 // don't think we can make that assumption here. How should that be handled?
 //
 // Perhaps check that validity before passing the patterns into this method?
-pub(crate) fn is_useful(cx: &MatchCheckCtx, matrix: &Matrix, v: &PatStack) -> Usefulness {
-    dbg!(matrix);
-    dbg!(v);
+pub(crate) fn is_useful(
+    cx: &MatchCheckCtx,
+    matrix: &Matrix,
+    v: &PatStack,
+) -> MatchCheckResult<Usefulness> {
     if v.is_empty() {
-        if matrix.is_empty() {
-            return Usefulness::Useful;
-        } else {
-            return Usefulness::NotUseful;
-        }
+        let result = if matrix.is_empty() { Usefulness::Useful } else { Usefulness::NotUseful };
+
+        return Ok(result);
     }
 
     if let Pat::Or(pat_ids) = v.head().as_pat(cx) {
+        let mut found_unimplemented = false;
         let any_useful = pat_ids.iter().any(|&pat_id| {
             let v = PatStack::from_pattern(pat_id);
 
-            is_useful(cx, matrix, &v) == Usefulness::Useful
+            match is_useful(cx, matrix, &v) {
+                Ok(Usefulness::Useful) => true,
+                Ok(Usefulness::NotUseful) => false,
+                _ => {
+                    found_unimplemented = true;
+                    false
+                }
+            }
         });
 
-        return if any_useful { Usefulness::Useful } else { Usefulness::NotUseful };
+        return if any_useful {
+            Ok(Usefulness::Useful)
+        } else if found_unimplemented {
+            Err(MatchCheckNotImplemented)
+        } else {
+            Ok(Usefulness::NotUseful)
+        };
     }
 
-    if let Some(constructor) = pat_constructor(cx, v.head()) {
-        let matrix = matrix.specialize_constructor(&cx, &constructor);
-        let v = v.specialize_constructor(&cx, &constructor).expect("todo handle this case");
+    if let Some(constructor) = pat_constructor(cx, v.head())? {
+        let matrix = matrix.specialize_constructor(&cx, &constructor)?;
+        let v = v
+            .specialize_constructor(&cx, &constructor)?
+            .expect("we know this can't fail because we get the constructor from `v.head()` above");
 
         is_useful(&cx, &matrix, &v)
     } else {
-        dbg!("expanding wildcard");
         // expanding wildcard
-        let used_constructors: Vec<Constructor> =
-            matrix.heads().iter().filter_map(|&p| pat_constructor(cx, p)).collect();
+        let mut used_constructors: Vec<Constructor> = vec![];
+        for pat in matrix.heads() {
+            if let Some(constructor) = pat_constructor(cx, pat)? {
+                used_constructors.push(constructor);
+            }
+        }
 
         // We assume here that the first constructor is the "correct" type. Since we
         // only care about the "type" of the constructor (i.e. if it is a bool we
@@ -278,7 +319,6 @@ pub(crate) fn is_useful(cx: &MatchCheckCtx, matrix: &Matrix, v: &PatStack) -> Us
         // this is to use the match expressions type.
         match &used_constructors.first() {
             Some(constructor) if all_constructors_covered(&cx, constructor, &used_constructors) => {
-                dbg!("all constructors are covered");
                 // If all constructors are covered, then we need to consider whether
                 // any values are covered by this wildcard.
                 //
@@ -286,43 +326,48 @@ pub(crate) fn is_useful(cx: &MatchCheckCtx, matrix: &Matrix, v: &PatStack) -> Us
                 // constructors are covered (`Some`/`None`), so we need
                 // to perform specialization to see that our wildcard will cover
                 // the `Some(false)` case.
-                let constructor =
-                    matrix.heads().iter().filter_map(|&pat| pat_constructor(cx, pat)).next();
+                let mut constructor = None;
+                for pat in matrix.heads() {
+                    if let Some(c) = pat_constructor(cx, pat)? {
+                        constructor = Some(c);
+                        break;
+                    }
+                }
 
                 if let Some(constructor) = constructor {
-                    dbg!("found constructor {:?}, specializing..", &constructor);
                     if let Constructor::Enum(e) = constructor {
                         // For enums we handle each variant as a distinct constructor, so
                         // here we create a constructor for each variant and then check
                         // usefulness after specializing for that constructor.
-                        let any_useful = cx
-                            .db
-                            .enum_data(e.parent)
-                            .variants
-                            .iter()
-                            .map(|(local_id, _)| {
+                        let mut found_unimplemented = false;
+                        for constructor in
+                            cx.db.enum_data(e.parent).variants.iter().map(|(local_id, _)| {
                                 Constructor::Enum(EnumVariantId { parent: e.parent, local_id })
                             })
-                            .any(|constructor| {
-                                let matrix = matrix.specialize_constructor(&cx, &constructor);
-                                let v = v.expand_wildcard(&cx, &constructor);
+                        {
+                            let matrix = matrix.specialize_constructor(&cx, &constructor)?;
+                            let v = v.expand_wildcard(&cx, &constructor)?;
 
-                                is_useful(&cx, &matrix, &v) == Usefulness::Useful
-                            });
+                            match is_useful(&cx, &matrix, &v) {
+                                Ok(Usefulness::Useful) => return Ok(Usefulness::Useful),
+                                Ok(Usefulness::NotUseful) => continue,
+                                _ => found_unimplemented = true,
+                            };
+                        }
 
-                        if any_useful {
-                            Usefulness::Useful
+                        if found_unimplemented {
+                            Err(MatchCheckNotImplemented)
                         } else {
-                            Usefulness::NotUseful
+                            Ok(Usefulness::NotUseful)
                         }
                     } else {
-                        let matrix = matrix.specialize_constructor(&cx, &constructor);
-                        let v = v.expand_wildcard(&cx, &constructor);
+                        let matrix = matrix.specialize_constructor(&cx, &constructor)?;
+                        let v = v.expand_wildcard(&cx, &constructor)?;
 
                         is_useful(&cx, &matrix, &v)
                     }
                 } else {
-                    Usefulness::NotUseful
+                    Ok(Usefulness::NotUseful)
                 }
             }
             _ => {
@@ -345,30 +390,32 @@ enum Constructor {
     Enum(EnumVariantId),
 }
 
-fn pat_constructor(cx: &MatchCheckCtx, pat: PatIdOrWild) -> Option<Constructor> {
-    match pat.as_pat(cx) {
+fn pat_constructor(cx: &MatchCheckCtx, pat: PatIdOrWild) -> MatchCheckResult<Option<Constructor>> {
+    let res = match pat.as_pat(cx) {
         Pat::Wild => None,
         Pat::Tuple(pats) => Some(Constructor::Tuple { arity: pats.len() }),
         Pat::Lit(lit_expr) => {
             // for now we only support bool literals
             match cx.body.exprs[lit_expr] {
                 Expr::Literal(Literal::Bool(val)) => Some(Constructor::Bool(val)),
-                _ => unimplemented!(),
+                _ => return Err(MatchCheckNotImplemented),
             }
         }
         Pat::TupleStruct { .. } | Pat::Path(_) => {
             let pat_id = pat.as_id().expect("we already know this pattern is not a wild");
             let variant_id =
-                cx.infer.variant_resolution_for_pat(pat_id).unwrap_or_else(|| unimplemented!());
+                cx.infer.variant_resolution_for_pat(pat_id).ok_or(MatchCheckNotImplemented)?;
             match variant_id {
                 VariantId::EnumVariantId(enum_variant_id) => {
                     Some(Constructor::Enum(enum_variant_id))
                 }
-                _ => unimplemented!(),
+                _ => return Err(MatchCheckNotImplemented),
             }
         }
-        x => unimplemented!("{:?} not yet implemented", x),
-    }
+        _ => return Err(MatchCheckNotImplemented),
+    };
+
+    Ok(res)
 }
 
 fn all_constructors_covered(
@@ -604,6 +651,34 @@ mod tests {
                 match (false, true) {
                     (true, true) => {},
                     (true, false) => {},
+                    (false, true) => {},
+                    (false, false) => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_binding_missing_arms() {
+        let content = r"
+            fn test_fn() {
+                match (false, true) {
+                    (true, _x) => {},
+                }
+            }
+        ";
+
+        check_diagnostic_with_no_fix(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_binding_no_diagnostic() {
+        let content = r"
+            fn test_fn() {
+                match (false, true) {
+                    (true, _x) => {},
                     (false, true) => {},
                     (false, false) => {},
                 }
@@ -939,6 +1014,76 @@ mod false_negatives {
         // This is a false negative.
         // We don't currently check that the match arms actually
         // match the type of the match expression.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn mismatched_types_with_different_arity() {
+        let content = r"
+            fn test_fn() {
+                match (true, false) {
+                    (true, false, true) => (),
+                    (true) => (),
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // We don't currently check that the match arms actually
+        // match the type of the match expression. This test
+        // checks to ensure we don't panic when the code we are
+        // checking is malformed in such a way that the arity of the
+        // constructors doesn't match.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn integers() {
+        let content = r"
+            fn test_fn() {
+                match 5 {
+                    10 => (),
+                    11..20 => (),
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // We don't currently check integer exhaustiveness.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_record() {
+        let content = r"
+            enum Either {
+                A { foo: u32 },
+                B,
+            }
+            fn test_fn() {
+                match Either::B {
+                    Either::A { foo: 5 } => (),
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // We don't currently handle enum record types.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_not_in_scope() {
+        let content = r"
+            fn test_fn() {
+                match Foo::Bar {
+                    Foo::Baz => (),
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // The enum is not in scope so we don't perform exhaustiveness checking.
         check_no_diagnostic(content);
     }
 }

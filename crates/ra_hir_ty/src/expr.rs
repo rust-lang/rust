@@ -90,9 +90,12 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
 
         match is_useful(&cx, &seen, &PatStack::from_wild()) {
-            Usefulness::Useful => (),
+            Ok(Usefulness::Useful) => (),
             // if a wildcard pattern is not useful, then all patterns are covered
-            Usefulness::NotUseful => return,
+            Ok(Usefulness::NotUseful) => return,
+            // this path is for unimplemented checks, so we err on the side of not
+            // reporting any errors
+            _ => return,
         }
 
         if let Ok(source_ptr) = source_map.expr_syntax(id) {
