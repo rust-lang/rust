@@ -249,7 +249,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let def_id = instance.def_id();
         let containing_scope = get_containing_scope(self, instance);
         let loc = self.lookup_debug_loc(span.lo());
-        let file_metadata = file_metadata(self, &loc.file.name, def_id.krate);
+        let file_metadata = file_metadata(self, &loc.file, def_id.krate);
 
         let function_type_metadata = unsafe {
             let fn_signature = get_function_signature(self, fn_abi);
@@ -536,7 +536,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         span: Span,
     ) -> &'ll DIVariable {
         let loc = self.lookup_debug_loc(span.lo());
-        let file_metadata = file_metadata(self, &loc.file.name, dbg_context.defining_crate);
+        let file_metadata = file_metadata(self, &loc.file, dbg_context.defining_crate);
 
         let type_metadata = type_metadata(self, variable_type, span);
 
