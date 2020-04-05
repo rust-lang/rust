@@ -1189,6 +1189,74 @@ fn add_post_link_objects(cmd: &mut dyn Linker, sess: &'a Session, crate_type: co
     }
 }
 
+/// Add arbitrary "pre-link" args defined by the target spec or from command line.
+/// FIXME: Determine where exactly these args need to be inserted.
+fn add_pre_link_args(
+    cmd: &mut dyn Linker,
+    sess: &'a Session,
+    flavor: LinkerFlavor,
+    crate_type: config::CrateType,
+) {
+    if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
+        cmd.args(args);
+    }
+    if let Some(args) = sess.target.target.options.pre_link_args_crt.get(&flavor) {
+        if sess.crt_static(Some(crate_type)) {
+            cmd.args(args);
+        }
+    }
+    cmd.args(&sess.opts.debugging_opts.pre_link_args);
+}
+
+/// Add arbitrary "user defined" args defined from command line and by `#[link_args]` attributes.
+/// FIXME: Determine where exactly these args need to be inserted.
+fn add_user_defined_link_args(
+    cmd: &mut dyn Linker,
+    sess: &'a Session,
+    codegen_results: &CodegenResults,
+) {
+    cmd.args(&sess.opts.cg.link_args);
+    cmd.args(&*codegen_results.crate_info.link_args);
+}
+
+/// Add arbitrary "late link" args defined by the target spec.
+/// FIXME: Determine where exactly these args need to be inserted.
+fn add_late_link_args(
+    cmd: &mut dyn Linker,
+    sess: &'a Session,
+    flavor: LinkerFlavor,
+    crate_type: config::CrateType,
+    codegen_results: &CodegenResults,
+) {
+    if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
+        cmd.args(args);
+    }
+    let any_dynamic_crate = crate_type == config::CrateType::Dylib
+        || codegen_results.crate_info.dependency_formats.iter().any(|(ty, list)| {
+            *ty == crate_type && list.iter().any(|&linkage| linkage == Linkage::Dynamic)
+        });
+    if any_dynamic_crate {
+        if let Some(args) = sess.target.target.options.late_link_args_dynamic.get(&flavor) {
+            cmd.args(args);
+        }
+    } else {
+        if let Some(args) = sess.target.target.options.late_link_args_static.get(&flavor) {
+            cmd.args(args);
+        }
+    }
+}
+
+/// Add arbitrary "post-link" args defined by the target spec.
+/// FIXME: Determine where exactly these args need to be inserted.
+fn add_post_link_args(cmd: &mut dyn Linker, sess: &'a Session, flavor: LinkerFlavor) {
+    if let Some(args) = sess.target.target.options.post_link_args.get(&flavor) {
+        cmd.args(args);
+    }
+}
+
+/// Produce the linker command line containing linker path and arguments.
+/// `NO-OPT-OUT` marks the arguments that cannot be removed from the command line
+/// by the user without creating a custom target specification.
 fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     path: &Path,
     flavor: LinkerFlavor,
@@ -1205,15 +1273,8 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     assert!(base_cmd.get_args().is_empty() || sess.target.target.target_vendor == "uwp");
     let cmd = &mut *codegen_results.linker_info.to_linker(base_cmd, &sess, flavor, target_cpu);
 
-    if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
-        cmd.args(args);
-    }
-    if let Some(args) = sess.target.target.options.pre_link_args_crt.get(&flavor) {
-        if sess.crt_static(Some(crate_type)) {
-            cmd.args(args);
-        }
-    }
-    cmd.args(&sess.opts.debugging_opts.pre_link_args);
+    // NO-OPT-OUT
+    add_pre_link_args(cmd, sess, flavor, crate_type);
 
     if sess.target.target.options.is_like_fuchsia {
         let prefix = match sess.opts.debugging_opts.sanitizer {
@@ -1294,16 +1355,19 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         cmd.gc_sections(keep_metadata);
     }
 
-    let attr_link_args = codegen_results.crate_info.link_args.iter();
-    let user_link_args = sess.opts.cg.link_args.iter().chain(attr_link_args);
-
     if crate_type == config::CrateType::Executable {
         let mut position_independent_executable = false;
 
         if t.options.position_independent_executables {
             if is_pic(sess)
                 && !sess.crt_static(Some(crate_type))
-                && !user_link_args.clone().any(|x| x == "-static")
+                && !sess
+                    .opts
+                    .cg
+                    .link_args
+                    .iter()
+                    .chain(&*codegen_results.crate_info.link_args)
+                    .any(|x| x == "-static")
             {
                 position_independent_executable = true;
             }
@@ -1432,35 +1496,18 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         cmd.args(&rpath::get_rpath_flags(&mut rpath_config));
     }
 
-    // Finally add all the linker arguments provided on the command line along
-    // with any #[link_args] attributes found inside the crate
-    cmd.args(user_link_args);
+    add_user_defined_link_args(cmd, sess, codegen_results);
 
     cmd.finalize();
 
-    if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
-        cmd.args(args);
-    }
-    let any_dynamic_crate = crate_type == config::CrateType::Dylib
-        || codegen_results.crate_info.dependency_formats.iter().any(|(ty, list)| {
-            *ty == crate_type && list.iter().any(|&linkage| linkage == Linkage::Dynamic)
-        });
-    if any_dynamic_crate {
-        if let Some(args) = sess.target.target.options.late_link_args_dynamic.get(&flavor) {
-            cmd.args(args);
-        }
-    } else {
-        if let Some(args) = sess.target.target.options.late_link_args_static.get(&flavor) {
-            cmd.args(args);
-        }
-    }
+    // NO-OPT-OUT
+    add_late_link_args(cmd, sess, flavor, crate_type, codegen_results);
 
     // NO-OPT-OUT
     add_post_link_objects(cmd, sess, crate_type);
 
-    if let Some(args) = sess.target.target.options.post_link_args.get(&flavor) {
-        cmd.args(args);
-    }
+    // NO-OPT-OUT
+    add_post_link_args(cmd, sess, flavor);
 
     cmd.take_cmd()
 }
