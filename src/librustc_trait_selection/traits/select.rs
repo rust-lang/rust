@@ -24,12 +24,13 @@ use super::{ObjectCastObligation, Obligation};
 use super::{ObligationCause, PredicateObligation, TraitObligation};
 use super::{OutputTypeParameterMismatch, Overflow, SelectionError, Unimplemented};
 use super::{
-    VtableAutoImpl, VtableBuiltin, VtableClosure, VtableFnPointer, VtableGenerator, VtableImpl,
-    VtableObject, VtableParam, VtableTraitAlias,
+    VtableAutoImpl, VtableBuiltin, VtableClosure, VtableDiscriminantKind, VtableFnPointer,
+    VtableGenerator, VtableImpl, VtableObject, VtableParam, VtableTraitAlias,
 };
 use super::{
-    VtableAutoImplData, VtableBuiltinData, VtableClosureData, VtableFnPointerData,
-    VtableGeneratorData, VtableImplData, VtableObjectData, VtableTraitAliasData,
+    VtableAutoImplData, VtableBuiltinData, VtableClosureData, VtableDiscriminantKindData,
+    VtableFnPointerData, VtableGeneratorData, VtableImplData, VtableObjectData,
+    VtableTraitAliasData,
 };
 
 use crate::infer::{CombinedSnapshot, InferCtxt, InferOk, PlaceholderMap, TypeFreshener};
@@ -1382,6 +1383,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // For other types, we'll use the builtin rules.
             let copy_conditions = self.copy_clone_conditions(obligation);
             self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates)?;
+        } else if lang_items.discriminant_kind_trait() == Some(def_id) {
+            // `DiscriminantKind` is automatically implemented for every type.
+            candidates.vec.push(DiscriminantKindCandidate);
         } else if lang_items.sized_trait() == Some(def_id) {
             // Sized is never implementable by end-users, it is
             // always automatically computed.
@@ -1995,11 +1999,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let is_global =
             |cand: &ty::PolyTraitRef<'_>| cand.is_global() && !cand.has_late_bound_regions();
 
+        // (*) Prefer `BuiltinCandidate { has_nested: false }` and `DiscriminantKindCandidate`
+        // to anything else.
+        //
+        // This is a fix for #53123 and prevents winnowing from accidentally extending the
+        // lifetime of a variable.
         match other.candidate {
-            // Prefer `BuiltinCandidate { has_nested: false }` to anything else.
-            // This is a fix for #53123 and prevents winnowing from accidentally extending the
-            // lifetime of a variable.
-            BuiltinCandidate { has_nested: false } => true,
+            // (*)
+            BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate => true,
             ParamCandidate(ref cand) => match victim.candidate {
                 AutoImplCandidate(..) => {
                     bug!(
@@ -2007,10 +2014,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                          when there are other valid candidates"
                     );
                 }
-                // Prefer `BuiltinCandidate { has_nested: false }` to anything else.
-                // This is a fix for #53123 and prevents winnowing from accidentally extending the
-                // lifetime of a variable.
-                BuiltinCandidate { has_nested: false } => false,
+                // (*)
+                BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate => false,
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
@@ -2038,10 +2043,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                          when there are other valid candidates"
                     );
                 }
-                // Prefer `BuiltinCandidate { has_nested: false }` to anything else.
-                // This is a fix for #53123 and prevents winnowing from accidentally extending the
-                // lifetime of a variable.
-                BuiltinCandidate { has_nested: false } => false,
+                // (*)
+                BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate => false,
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
@@ -2485,6 +2488,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let data = self.confirm_fn_pointer_candidate(obligation)?;
                 Ok(VtableFnPointer(data))
             }
+
+            DiscriminantKindCandidate => Ok(VtableDiscriminantKind(VtableDiscriminantKindData)),
 
             TraitAliasCandidate(alias_def_id) => {
                 let data = self.confirm_trait_alias_candidate(obligation, alias_def_id);

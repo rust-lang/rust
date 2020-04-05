@@ -132,6 +132,9 @@ pub enum SelectionCandidate<'tcx> {
     /// types generated for a fn pointer type (e.g., `fn(int) -> int`)
     FnPointerCandidate,
 
+    /// Builtin implementation of `DiscriminantKind`.
+    DiscriminantKindCandidate,
+
     TraitAliasCandidate(DefId),
 
     ObjectCandidate,
