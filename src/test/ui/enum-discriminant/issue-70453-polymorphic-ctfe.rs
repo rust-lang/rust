@@ -13,5 +13,5 @@ enum MyWeirdOption<T> {
 
 fn main() {
     assert_eq!(discriminant_value(&MyWeirdOption::<()>::None), 0);
-    assert_eq!(discriminant_value(&MyWeirdOption::Some(())), core::mem::size_of::<usize>() as u64);
+    assert_eq!(discriminant_value(&MyWeirdOption::Some(())), core::mem::size_of::<usize>());
 }
