@@ -155,7 +155,11 @@ impl HirDisplay for ApplicationTy {
                 let sig = FnSig::from_fn_ptr_substs(&self.parameters);
                 write!(f, "fn(")?;
                 f.write_joined(sig.params(), ", ")?;
-                write!(f, ") -> {}", sig.ret().display(f.db))?;
+                write!(f, ")")?;
+                let ret = sig.ret();
+                if *ret != Ty::unit() {
+                    write!(f, " -> {}", ret.display(f.db))?;
+                }
             }
             TypeCtor::FnDef(def) => {
                 let sig = f.db.callable_item_signature(def).subst(&self.parameters);
@@ -180,7 +184,11 @@ impl HirDisplay for ApplicationTy {
                 }
                 write!(f, "(")?;
                 f.write_joined(sig.params(), ", ")?;
-                write!(f, ") -> {}", sig.ret().display(f.db))?;
+                write!(f, ")")?;
+                let ret = sig.ret();
+                if *ret != Ty::unit() {
+                    write!(f, " -> {}", ret.display(f.db))?;
+                }
             }
             TypeCtor::Adt(def_id) => {
                 let name = match def_id {
@@ -242,16 +250,16 @@ impl HirDisplay for ApplicationTy {
                 let sig = self.parameters[0]
                     .callable_sig(f.db)
                     .expect("first closure parameter should contain signature");
-                let return_type_hint = sig.ret().display(f.db);
                 if sig.params().is_empty() {
-                    write!(f, "|| -> {}", return_type_hint)?;
+                    write!(f, "||")?;
                 } else if f.omit_verbose_types() {
-                    write!(f, "|{}| -> {}", TYPE_HINT_TRUNCATION, return_type_hint)?;
+                    write!(f, "|{}|", TYPE_HINT_TRUNCATION)?;
                 } else {
                     write!(f, "|")?;
                     f.write_joined(sig.params(), ", ")?;
-                    write!(f, "| -> {}", return_type_hint)?;
+                    write!(f, "|")?;
                 };
+                write!(f, " -> {}", sig.ret().display(f.db))?;
             }
         }
         Ok(())

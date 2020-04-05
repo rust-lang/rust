@@ -407,16 +407,16 @@ fn test() {
     [30; 31) 'x': &Foo
     [39; 41) '{}': ()
     [52; 133) '{     ...oo); }': ()
-    [58; 71) 'takes_ref_foo': fn takes_ref_foo(&Foo) -> ()
+    [58; 71) 'takes_ref_foo': fn takes_ref_foo(&Foo)
     [58; 77) 'takes_...(&Foo)': ()
     [72; 76) '&Foo': &Foo
     [73; 76) 'Foo': Foo
-    [83; 96) 'takes_ref_foo': fn takes_ref_foo(&Foo) -> ()
+    [83; 96) 'takes_ref_foo': fn takes_ref_foo(&Foo)
     [83; 103) 'takes_...&&Foo)': ()
     [97; 102) '&&Foo': &&Foo
     [98; 102) '&Foo': &Foo
     [99; 102) 'Foo': Foo
-    [109; 122) 'takes_ref_foo': fn takes_ref_foo(&Foo) -> ()
+    [109; 122) 'takes_ref_foo': fn takes_ref_foo(&Foo)
     [109; 130) 'takes_...&&Foo)': ()
     [123; 129) '&&&Foo': &&&Foo
     [124; 129) '&&Foo': &&Foo
@@ -484,7 +484,7 @@ fn test() {
     [171; 178) 'loop {}': !
     [176; 178) '{}': ()
     [191; 236) '{     ... }); }': ()
-    [197; 210) 'takes_ref_str': fn takes_ref_str(&str) -> ()
+    [197; 210) 'takes_ref_str': fn takes_ref_str(&str)
     [197; 233) 'takes_...g() })': ()
     [211; 232) '&{ ret...ng() }': &String
     [212; 232) '{ retu...ng() }': String
