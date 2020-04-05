@@ -203,8 +203,7 @@ fn suggest_restriction(
             {
                 if segment.ident.as_str() == impl_name.as_str() {
                     // `fn foo(t: impl Trait)`
-                    //            ^^^^^^^^^^ get this to suggest
-                    //                       `T` instead
+                    //            ^^^^^^^^^^ get this to suggest `T` instead
 
                     // There might be more than one `impl Trait`.
                     ty_spans.push(input.span);
@@ -237,7 +236,10 @@ fn suggest_restriction(
                 None => (generics.span, format!("<{}>", type_param)),
                 // `fn foo<A>(t: impl Trait)`
                 //        ^^^ suggest `<A, T: Trait>` here
-                Some(param) => (param.span.shrink_to_hi(), format!(", {}", type_param)),
+                Some(param) => (
+                    param.bounds_span().unwrap_or(param.span).shrink_to_hi(),
+                    format!(", {}", type_param),
+                ),
             },
             // `fn foo(t: impl Trait)`
             //                       ^ suggest `where <T as Trait>::A: Bound`
@@ -247,8 +249,7 @@ fn suggest_restriction(
 
         // Suggest `fn foo<T: Trait>(t: T) where <T as Trait>::A: Bound`.
         err.multipart_suggestion(
-            "introduce a type parameter with a trait bound instead of using \
-                    `impl Trait`",
+            "introduce a type parameter with a trait bound instead of using `impl Trait`",
             sugg,
             Applicability::MaybeIncorrect,
         );

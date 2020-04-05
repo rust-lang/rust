@@ -43,6 +43,21 @@ help: introduce a type parameter with a trait bound instead of using `impl Trait
 LL | fn baz<T: Iterator>(t: impl std::fmt::Debug, constraints: T) where <T as std::iter::Iterator>::Item: std::fmt::Debug  {
    |       ^^^^^^^^^^^^^                                       ^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error[E0277]: `<impl Iterator as std::iter::Iterator>::Item` doesn't implement `std::fmt::Debug`
+  --> $DIR/impl-trait-with-missing-bounds.rs:30:13
+   |
+LL |         qux(constraint);
+   |             ^^^^^^^^^^ `<impl Iterator as std::iter::Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+...
+LL | fn qux(_: impl std::fmt::Debug) {}
+   |    ---         --------------- required by this bound in `qux`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `<impl Iterator as std::iter::Iterator>::Item`
+help: introduce a type parameter with a trait bound instead of using `impl Trait`
+   |
+LL | fn bat<T: std::fmt::Debug, T: Iterator>(t: T, constraints: T) where <T as std::iter::Iterator>::Item: std::fmt::Debug  {
+   |                          ^^^^^^^^^^^^^                     ^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

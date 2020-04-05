@@ -24,6 +24,14 @@ fn baz(t: impl std::fmt::Debug, constraints: impl Iterator) {
     }
 }
 
+fn bat<T: std::fmt::Debug>(t: T, constraints: impl Iterator) {
+    for constraint in constraints {
+        qux(t);
+        qux(constraint);
+//~^ ERROR `<impl Iterator as std::iter::Iterator>::Item` doesn't implement `std::fmt::Debug`
+    }
+}
+
 fn qux(_: impl std::fmt::Debug) {}
 
 fn main() {}
