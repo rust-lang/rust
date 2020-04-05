@@ -987,7 +987,7 @@ fn get_crt_libs_path(sess: &Session) -> Option<PathBuf> {
     }
 }
 
-pub fn get_file_path(sess: &Session, name: &str) -> PathBuf {
+fn get_object_file_path(sess: &Session, name: &str) -> PathBuf {
     // prefer system {,dll}crt2.o libs, see get_crt_libs_path comment for more details
     if sess.target.target.llvm_target.contains("windows-gnu") {
         if let Some(compiler_libs_path) = get_crt_libs_path(sess) {
@@ -1159,6 +1159,36 @@ pub fn exec_linker(
     }
 }
 
+/// Add begin object files defined by the target spec.
+fn add_pre_link_objects(cmd: &mut dyn Linker, sess: &'a Session, crate_type: config::CrateType) {
+    let pre_link_objects = if crate_type == config::CrateType::Executable {
+        &sess.target.target.options.pre_link_objects_exe
+    } else {
+        &sess.target.target.options.pre_link_objects_dll
+    };
+    for obj in pre_link_objects {
+        cmd.add_object(&get_object_file_path(sess, obj));
+    }
+
+    if crate_type == config::CrateType::Executable && sess.crt_static(Some(crate_type)) {
+        for obj in &sess.target.target.options.pre_link_objects_exe_crt {
+            cmd.add_object(&get_object_file_path(sess, obj));
+        }
+    }
+}
+
+/// Add end object files defined by the target spec.
+fn add_post_link_objects(cmd: &mut dyn Linker, sess: &'a Session, crate_type: config::CrateType) {
+    for obj in &sess.target.target.options.post_link_objects {
+        cmd.add_object(&get_object_file_path(sess, obj));
+    }
+    if sess.crt_static(Some(crate_type)) {
+        for obj in &sess.target.target.options.post_link_objects_crt {
+            cmd.add_object(&get_object_file_path(sess, obj));
+        }
+    }
+}
+
 fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     path: &Path,
     flavor: LinkerFlavor,
@@ -1193,20 +1223,8 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         cmd.arg(format!("--dynamic-linker={}ld.so.1", prefix));
     }
 
-    let pre_link_objects = if crate_type == config::CrateType::Executable {
-        &sess.target.target.options.pre_link_objects_exe
-    } else {
-        &sess.target.target.options.pre_link_objects_dll
-    };
-    for obj in pre_link_objects {
-        cmd.arg(get_file_path(sess, obj));
-    }
-
-    if crate_type == config::CrateType::Executable && sess.crt_static(Some(crate_type)) {
-        for obj in &sess.target.target.options.pre_link_objects_exe_crt {
-            cmd.arg(get_file_path(sess, obj));
-        }
-    }
+    // NO-OPT-OUT
+    add_pre_link_objects(cmd, sess, crate_type);
 
     if sess.target.target.options.is_like_emscripten {
         cmd.arg("-s");
@@ -1436,14 +1454,10 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
             cmd.args(args);
         }
     }
-    for obj in &sess.target.target.options.post_link_objects {
-        cmd.arg(get_file_path(sess, obj));
-    }
-    if sess.crt_static(Some(crate_type)) {
-        for obj in &sess.target.target.options.post_link_objects_crt {
-            cmd.arg(get_file_path(sess, obj));
-        }
-    }
+
+    // NO-OPT-OUT
+    add_post_link_objects(cmd, sess, crate_type);
+
     if let Some(args) = sess.target.target.options.post_link_args.get(&flavor) {
         cmd.args(args);
     }
