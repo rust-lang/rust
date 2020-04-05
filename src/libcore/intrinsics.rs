@@ -54,6 +54,8 @@
 )]
 #![allow(missing_docs)]
 
+#[cfg(not(bootstrap))]
+use crate::marker::DiscriminantKind;
 use crate::mem;
 
 #[stable(feature = "drop_in_place", since = "1.8.0")]
@@ -1912,6 +1914,10 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is
     /// [`std::mem::discriminant`](../../std/mem/fn.discriminant.html)
     #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
+    #[cfg(not(bootstrap))]
+    pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
+    #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
+    #[cfg(bootstrap)]
     pub fn discriminant_value<T>(v: &T) -> u64;
 
     /// Rust's "try catch" construct which invokes the function pointer `try_fn`
