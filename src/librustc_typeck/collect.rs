@@ -29,7 +29,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::weak_lang_items;
-use rustc_hir::{GenericParamKind, NextTypeParamName, Node, Unsafety};
+use rustc_hir::{GenericParamKind, Node, Unsafety};
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -45,6 +45,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
+use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 
 mod type_of;
 
