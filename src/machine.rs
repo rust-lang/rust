@@ -10,11 +10,18 @@ use std::time::Instant;
 use log::trace;
 use rand::rngs::StdRng;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::{mir, ty::{self, layout::TyAndLayout}};
-use rustc_target::abi::{LayoutOf, Size};
 use rustc_ast::attr;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::{
+    mir,
+    ty::{
+        self,
+        layout::{LayoutCx, LayoutError, TyAndLayout},
+        TyCtxt,
+    },
+};
 use rustc_span::symbol::{sym, Symbol};
+use rustc_target::abi::{LayoutOf, Size};
 
 use crate::*;
 
@@ -146,36 +153,18 @@ impl MemoryExtra {
     }
 }
 
-/// Cached layouts of primitive types
-#[derive(Default)]
-struct PrimitiveLayouts<'tcx> {
-    i32: RefCell<Option<TyAndLayout<'tcx>>>,
-    u32: RefCell<Option<TyAndLayout<'tcx>>>,
+/// Precomputed layouts of primitive types
+pub(crate) struct PrimitiveLayouts<'tcx> {
+    pub(crate) i32: TyAndLayout<'tcx>,
+    pub(crate) u32: TyAndLayout<'tcx>,
 }
 
 impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
-    fn i32(&self, ecx: &MiriEvalContext<'mir, 'tcx>) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-        {
-            let layout_ref = self.i32.borrow();
-            if layout_ref.is_some() {
-                return Ok(layout_ref.unwrap());
-            }
-        }
-        let layout = ecx.layout_of(ecx.tcx.types.i32)?;
-        *self.i32.borrow_mut() = Some(layout);
-        Ok(layout)
-    }
-
-    fn u32(&self, ecx: &MiriEvalContext<'mir, 'tcx>) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-        {
-            let layout_ref = self.u32.borrow();
-            if layout_ref.is_some() {
-                return Ok(layout_ref.unwrap());
-            }
-        }
-        let layout = ecx.layout_of(ecx.tcx.types.u32)?;
-        *self.u32.borrow_mut() = Some(layout);
-        Ok(layout)
+    fn new(layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, LayoutError<'tcx>> {
+        Ok(Self {
+            i32: layout_cx.layout_of(layout_cx.tcx.types.i32)?,
+            u32: layout_cx.layout_of(layout_cx.tcx.types.u32)?,
+        })
     }
 }
 
@@ -216,14 +205,20 @@ pub struct Evaluator<'tcx> {
     /// The "time anchor" for this machine's monotone clock (for `Instant` simulation).
     pub(crate) time_anchor: Instant,
 
-    /// Cached `TyLayout`s for primitive data types that are commonly used inside Miri.
+    /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
     /// FIXME: Search through the rest of the codebase for more layout_of() calls that
-    /// could be cached here.
-    primitive_layouts: PrimitiveLayouts<'tcx>,
+    /// could be stored here.
+    pub(crate) layouts: PrimitiveLayouts<'tcx>,
 }
 
 impl<'tcx> Evaluator<'tcx> {
-    pub(crate) fn new(communicate: bool, validate: bool) -> Self {
+    pub(crate) fn new(
+        communicate: bool,
+        validate: bool,
+        layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+    ) -> Self {
+        let layouts = PrimitiveLayouts::new(layout_cx)
+            .expect("Couldn't get layouts of primitive types");
         Evaluator {
             // `env_vars` could be initialized properly here if `Memory` were available before
             // calling this method.
@@ -239,7 +234,7 @@ impl<'tcx> Evaluator<'tcx> {
             dir_handler: Default::default(),
             panic_payload: None,
             time_anchor: Instant::now(),
-            primitive_layouts: PrimitiveLayouts::default(),
+            layouts,
         }
     }
 }
@@ -260,20 +255,6 @@ impl<'mir, 'tcx> MiriEvalContextExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> 
     #[inline(always)]
     fn eval_context_mut(&mut self) -> &mut MiriEvalContext<'mir, 'tcx> {
         self
-    }
-}
-
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> {}
-/// Provides convenience methods for use elsewhere
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
-    fn i32_layout(&self) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-        let this = self.eval_context_ref();
-        this.machine.primitive_layouts.i32(this)
-    }
-
-    fn u32_layout(&self) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-        let this = self.eval_context_ref();
-        this.machine.primitive_layouts.u32(this)
     }
 }
 

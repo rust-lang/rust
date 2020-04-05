@@ -51,9 +51,8 @@ pub use crate::diagnostics::{
 pub use crate::eval::{create_ecx, eval_main, MiriConfig};
 pub use crate::helpers::EvalContextExt as HelpersEvalContextExt;
 pub use crate::machine::{
-    AllocExtra, EvalContextExt as MachineEvalContextExt, Evaluator, FrameData, MemoryExtra,
-    MiriEvalContext, MiriEvalContextExt, MiriMemoryKind, NUM_CPUS, PAGE_SIZE, STACK_ADDR,
-    STACK_SIZE,
+    AllocExtra, Evaluator, FrameData, MemoryExtra, MiriEvalContext, MiriEvalContextExt,
+    MiriMemoryKind, NUM_CPUS, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
