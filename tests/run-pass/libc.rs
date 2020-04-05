@@ -78,6 +78,23 @@ fn test_mutex_libc_init_normal() {
     }
 }
 
+fn test_mutex_libc_init_errorcheck() {
+    unsafe {
+        let mut mutexattr: libc::pthread_mutexattr_t = std::mem::zeroed();
+        assert_eq!(libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, libc::PTHREAD_MUTEX_ERRORCHECK), 0);
+        let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
+        assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mutexattr as *const _), 0);
+        assert_eq!(libc::pthread_mutex_lock(&mut mutex as *mut _), 0);
+        assert_eq!(libc::pthread_mutex_trylock(&mut mutex as *mut _), libc::EBUSY);
+        assert_eq!(libc::pthread_mutex_lock(&mut mutex as *mut _), libc::EDEADLK);
+        assert_eq!(libc::pthread_mutex_unlock(&mut mutex as *mut _), 0);
+        assert_eq!(libc::pthread_mutex_trylock(&mut mutex as *mut _), 0);
+        assert_eq!(libc::pthread_mutex_unlock(&mut mutex as *mut _), 0);
+        assert_eq!(libc::pthread_mutex_unlock(&mut mutex as *mut _), libc::EPERM);
+        assert_eq!(libc::pthread_mutex_destroy(&mut mutex as *mut _), 0);
+    }
+}
+
 // Only linux provides PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP,
 // libc for macOS just has the default PTHREAD_MUTEX_INITIALIZER.
 #[cfg(target_os = "linux")]
@@ -126,6 +143,7 @@ fn main() {
 
     test_mutex_libc_init_recursive();
     test_mutex_libc_init_normal();
+    test_mutex_libc_init_errorcheck();
     test_rwlock_libc_static_initializer();
 
     #[cfg(target_os = "linux")]
