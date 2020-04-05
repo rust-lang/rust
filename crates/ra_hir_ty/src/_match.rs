@@ -250,17 +250,13 @@ pub enum Usefulness {
 
 pub struct MatchCheckCtx<'a> {
     pub body: Arc<Body>,
-    pub match_expr: &'a Expr,
     pub infer: Arc<InferenceResult>,
     pub db: &'a dyn HirDatabase,
 }
 
-// see src/librustc_mir_build/hair/pattern/_match.rs
-// It seems the rustc version of this method is able to assume that all the match arm
-// patterns are valid (they are valid given a particular match expression), but I
-// don't think we can make that assumption here. How should that be handled?
-//
-// Perhaps check that validity before passing the patterns into this method?
+/// Given a set of patterns `matrix`, and pattern to consider `v`, determines
+/// whether `v` is useful. A pattern is useful if it covers cases which were
+/// not previously covered.
 pub(crate) fn is_useful(
     cx: &MatchCheckCtx,
     matrix: &Matrix,
@@ -515,6 +511,19 @@ mod tests {
         ";
 
         check_diagnostic_with_no_fix(content);
+    }
+
+    #[test]
+    fn empty_tuple_wild() {
+        let content = r"
+            fn test_fn() {
+                match () {
+                    _ => {}
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
     }
 
     #[test]
@@ -976,21 +985,6 @@ mod tests {
 
         check_no_diagnostic(content);
     }
-}
-
-#[cfg(test)]
-mod false_negatives {
-    //! The implementation of match checking here is a work in progress. As we roll this out, we
-    //! prefer false negatives to false positives (ideally there would be no false positives). This
-    //! test module should document known false negatives. Eventually we will have a complete
-    //! implementation of match checking and this module will be empty.
-    //!
-    //! The reasons for documenting known false negatives:
-    //!
-    //!   1. It acts as a backlog of work that can be done to improve the behavior of the system.
-    //!   2. It ensures the code doesn't panic when handling these cases.
-
-    use super::tests::*;
 
     #[test]
     fn mismatched_types() {
@@ -1011,10 +1005,8 @@ mod false_negatives {
             }
         ";
 
-        // This is a false negative.
-        // We don't currently check that the match arms actually
-        // match the type of the match expression.
-        check_no_diagnostic(content);
+        // Match arms with the incorrect type are filtered out.
+        check_diagnostic_with_no_fix(content);
     }
 
     #[test]
@@ -1028,14 +1020,24 @@ mod false_negatives {
             }
         ";
 
-        // This is a false negative.
-        // We don't currently check that the match arms actually
-        // match the type of the match expression. This test
-        // checks to ensure we don't panic when the code we are
-        // checking is malformed in such a way that the arity of the
-        // constructors doesn't match.
-        check_no_diagnostic(content);
+        // Match arms with the incorrect type are filtered out.
+        check_diagnostic_with_no_fix(content);
     }
+}
+
+#[cfg(test)]
+mod false_negatives {
+    //! The implementation of match checking here is a work in progress. As we roll this out, we
+    //! prefer false negatives to false positives (ideally there would be no false positives). This
+    //! test module should document known false negatives. Eventually we will have a complete
+    //! implementation of match checking and this module will be empty.
+    //!
+    //! The reasons for documenting known false negatives:
+    //!
+    //!   1. It acts as a backlog of work that can be done to improve the behavior of the system.
+    //!   2. It ensures the code doesn't panic when handling these cases.
+
+    use super::tests::*;
 
     #[test]
     fn integers() {

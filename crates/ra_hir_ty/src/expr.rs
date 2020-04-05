@@ -67,7 +67,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
     fn validate_match(
         &mut self,
         id: ExprId,
-        expr: ExprId,
+        match_expr: ExprId,
         arms: &[MatchArm],
         db: &dyn HirDatabase,
         infer: Arc<InferenceResult>,
@@ -75,18 +75,32 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let (body, source_map): (Arc<Body>, Arc<BodySourceMap>) =
             db.body_with_source_map(self.func.into());
 
-        let match_expr: &hir_def::expr::Expr = &body[expr];
+        let match_expr_ty = match infer.type_of_expr.get(match_expr) {
+            Some(ty) => ty,
+            // If we can't resolve the type of the match expression
+            // we cannot perform exhaustiveness checks.
+            None => return,
+        };
 
-        let cx = MatchCheckCtx { body: body.clone(), match_expr, infer, db };
+        let cx = MatchCheckCtx { body, infer: infer.clone(), db };
         let pats = arms.iter().map(|arm| arm.pat);
 
         let mut seen = Matrix::empty();
         for pat in pats {
-            // If we had a NotUsefulMatchArm diagnostic, we could
-            // check the usefulness of each pattern as we added it
-            // to the matrix here.
-            let v = PatStack::from_pattern(pat);
-            seen.push(&cx, v);
+            // We skip any patterns whose type we cannot resolve.
+            if let Some(pat_ty) = infer.type_of_pat.get(pat) {
+                // We only include patterns whose type matches the type
+                // of the match expression. If we had a InvalidMatchArmPattern
+                // diagnostic or similar we could raise that in an else
+                // block here.
+                if pat_ty == match_expr_ty {
+                    // If we had a NotUsefulMatchArm diagnostic, we could
+                    // check the usefulness of each pattern as we added it
+                    // to the matrix here.
+                    let v = PatStack::from_pattern(pat);
+                    seen.push(&cx, v);
+                }
+            }
         }
 
         match is_useful(&cx, &seen, &PatStack::from_wild()) {
