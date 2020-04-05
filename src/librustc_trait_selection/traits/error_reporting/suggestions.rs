@@ -10,7 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::Node;
+use rustc_hir::{NextTypeParamName, Node};
 use rustc_middle::ty::TypeckTables;
 use rustc_middle::ty::{
     self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
@@ -211,13 +211,14 @@ fn suggest_restriction(
             }
         }
 
+        let type_param_name = generics.params.next_type_param_name();
         // The type param `T: Trait` we will suggest to introduce.
-        let type_param = format!("{}: {}", "T", name);
+        let type_param = format!("{}: {}", type_param_name, name);
 
         // FIXME: modify the `trait_ref` instead of string shenanigans.
         // Turn `<impl Trait as Foo>::Bar: Qux` into `<T as Foo>::Bar: Qux`.
         let pred = trait_ref.without_const().to_predicate().to_string();
-        let pred = pred.replace(&impl_name, "T");
+        let pred = pred.replace(&impl_name, type_param_name);
         let mut sugg = vec![
             match generics
                 .params
@@ -245,7 +246,7 @@ fn suggest_restriction(
             //                       ^ suggest `where <T as Trait>::A: Bound`
             predicate_constraint(generics, pred),
         ];
-        sugg.extend(ty_spans.into_iter().map(|s| (s, "T".to_string())));
+        sugg.extend(ty_spans.into_iter().map(|s| (s, type_param_name.to_string())));
 
         // Suggest `fn foo<T: Trait>(t: T) where <T as Trait>::A: Bound`.
         err.multipart_suggestion(
