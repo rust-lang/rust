@@ -437,32 +437,6 @@ impl GenericParam<'hir> {
     }
 }
 
-pub trait NextTypeParamName {
-    fn next_type_param_name(&self, name: Option<&str>) -> String;
-}
-
-impl NextTypeParamName for &[GenericParam<'_>] {
-    fn next_type_param_name(&self, name: Option<&str>) -> String {
-        // This is the whitelist of possible parameter names that we might suggest.
-        let name = name.and_then(|n| n.chars().next()).map(|c| c.to_string().to_uppercase());
-        let name = name.as_ref().map(|s| s.as_str());
-        let possible_names = [name.unwrap_or("T"), "T", "U", "V", "X", "Y", "Z", "A", "B", "C"];
-        let used_names = self
-            .iter()
-            .filter_map(|p| match p.name {
-                ParamName::Plain(ident) => Some(ident.name),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-
-        possible_names
-            .iter()
-            .find(|n| !used_names.contains(&Symbol::intern(n)))
-            .unwrap_or(&"ParamName")
-            .to_string()
-    }
-}
-
 #[derive(Default)]
 pub struct GenericParamCount {
     pub lifetimes: usize,

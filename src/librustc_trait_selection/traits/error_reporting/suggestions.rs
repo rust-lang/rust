@@ -10,12 +10,12 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{NextTypeParamName, Node};
+use rustc_hir::Node;
 use rustc_middle::ty::TypeckTables;
 use rustc_middle::ty::{
     self, AdtKind, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 
@@ -249,6 +249,8 @@ fn suggest_restriction(
         sugg.extend(ty_spans.into_iter().map(|s| (s, type_param_name.to_string())));
 
         // Suggest `fn foo<T: Trait>(t: T) where <T as Trait>::A: Bound`.
+        // FIXME: once `#![feature(associated_type_bounds)]` is stabilized, we should suggest
+        // `fn foo(t: impl Trait<A: Bound>)` instead.
         err.multipart_suggestion(
             "introduce a type parameter with a trait bound instead of using `impl Trait`",
             sugg,
@@ -1700,5 +1702,31 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
             }
         }
         hir::intravisit::walk_body(self, body);
+    }
+}
+
+pub trait NextTypeParamName {
+    fn next_type_param_name(&self, name: Option<&str>) -> String;
+}
+
+impl NextTypeParamName for &[hir::GenericParam<'_>] {
+    fn next_type_param_name(&self, name: Option<&str>) -> String {
+        // This is the whitelist of possible parameter names that we might suggest.
+        let name = name.and_then(|n| n.chars().next()).map(|c| c.to_string().to_uppercase());
+        let name = name.as_ref().map(|s| s.as_str());
+        let possible_names = [name.unwrap_or("T"), "T", "U", "V", "X", "Y", "Z", "A", "B", "C"];
+        let used_names = self
+            .iter()
+            .filter_map(|p| match p.name {
+                hir::ParamName::Plain(ident) => Some(ident.name),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        possible_names
+            .iter()
+            .find(|n| !used_names.contains(&Symbol::intern(n)))
+            .unwrap_or(&"ParamName")
+            .to_string()
     }
 }
