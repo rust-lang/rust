@@ -2393,7 +2393,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 /// this does not necessarily mean that they are "==" in Rust -- in
 /// particular one must be wary of `NaN`!
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Constant<'tcx> {
     pub span: Span,
 
