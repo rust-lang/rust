@@ -64,6 +64,7 @@ fn check_fn_for_unconditional_recursion<'tcx>(
                 | TerminatorKind::Abort
                 | TerminatorKind::Return
                 | TerminatorKind::Unreachable => {
+                    // We propagate backwards, so these should never be encountered here.
                     unreachable!("unexpected terminator {:?}", terminator.kind)
                 }
             };
@@ -118,13 +119,15 @@ fn find_blocks_calling_self<'tcx>(
     def_id: DefId,
 ) -> BitSet<BasicBlock> {
     let param_env = tcx.param_env(def_id);
+
+    // If this is trait/impl method, extract the trait's substs.
     let trait_substs_count = match tcx.opt_associated_item(def_id) {
         Some(AssocItem { container: AssocItemContainer::TraitContainer(trait_def_id), .. }) => {
             tcx.generics_of(trait_def_id).count()
         }
         _ => 0,
     };
-    let caller_substs = &InternalSubsts::identity_for_item(tcx, def_id)[..trait_substs_count];
+    let trait_substs = &InternalSubsts::identity_for_item(tcx, def_id)[..trait_substs_count];
 
     let mut self_calls = BitSet::new_empty(body.basic_blocks().len());
 
@@ -142,8 +145,12 @@ fn find_blocks_calling_self<'tcx>(
 
                 // FIXME(#57965): Make this work across function boundaries
 
+                // If this is a trait fn, the substs on the trait have to match, or we might be
+                // calling into an entirely different method (for example, a call from the default
+                // method in the trait to `<A as Trait<B>>::method`, where `A` and/or `B` are
+                // specific types).
                 let is_self_call =
-                    call_fn_id == def_id && &call_substs[..caller_substs.len()] == caller_substs;
+                    call_fn_id == def_id && &call_substs[..trait_substs.len()] == trait_substs;
 
                 if is_self_call {
                     self_calls.insert(bb);
