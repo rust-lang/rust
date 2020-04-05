@@ -47,21 +47,18 @@ fn check_fn_for_unconditional_recursion<'tcx>(
             // Converging successors without unwind paths.
             let terminator = body[bb].terminator();
             let relevant_successors = match &terminator.kind {
-                TerminatorKind::Call { destination: Some((_, dest)), .. } => {
-                    Some(dest).into_iter().chain(&[])
-                }
-                TerminatorKind::Call { destination: None, .. } => None.into_iter().chain(&[]),
+                TerminatorKind::Call { destination: None, .. }
+                | TerminatorKind::Yield { .. }
+                | TerminatorKind::GeneratorDrop => None.into_iter().chain(&[]),
                 TerminatorKind::SwitchInt { targets, .. } => None.into_iter().chain(targets),
                 TerminatorKind::Goto { target }
                 | TerminatorKind::Drop { target, .. }
                 | TerminatorKind::DropAndReplace { target, .. }
-                | TerminatorKind::Assert { target, .. } => Some(target).into_iter().chain(&[]),
-                TerminatorKind::Yield { .. } | TerminatorKind::GeneratorDrop => {
-                    None.into_iter().chain(&[])
-                }
-                TerminatorKind::FalseEdges { real_target, .. }
-                | TerminatorKind::FalseUnwind { real_target, .. } => {
-                    Some(real_target).into_iter().chain(&[])
+                | TerminatorKind::Assert { target, .. }
+                | TerminatorKind::FalseEdges { real_target: target, .. }
+                | TerminatorKind::FalseUnwind { real_target: target, .. }
+                | TerminatorKind::Call { destination: Some((_, target)), .. } => {
+                    Some(target).into_iter().chain(&[])
                 }
                 TerminatorKind::Resume
                 | TerminatorKind::Abort
