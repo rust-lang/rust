@@ -104,6 +104,14 @@ fn vec_truncate_ptr_stable() {
     let _val = *v0;
 }
 
+fn push_str_ptr_stable() {
+    let mut buf = String::with_capacity(11);
+    buf.push_str("hello");
+    let hello: &str = unsafe { &*(buf.as_str() as *const _) }; // laundering the lifetime -- we take care that `buf` does not reallocate, so that's okay.
+    buf.push_str(" world");
+    assert_eq!(format!("{}", hello), "hello");
+}
+
 fn main() {
     assert_eq!(vec_reallocate().len(), 5);
 
@@ -127,4 +135,5 @@ fn main() {
     vec_push_ptr_stable();
     vec_extend_ptr_stable();
     vec_truncate_ptr_stable();
+    push_str_ptr_stable();
 }
