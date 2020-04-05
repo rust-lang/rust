@@ -469,8 +469,8 @@ impl<T: ?Sized> Box<T> {
     #[inline]
     #[doc(hidden)]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
+        let b = mem::ManuallyDrop::new(b);
         let mut unique = b.0;
-        mem::forget(b);
         // Box is kind-of a library type, but recognized as a "unique pointer" by
         // Stacked Borrows.  This function here corresponds to "reborrowing to
         // a raw pointer", but there is no actual reborrow here -- so
