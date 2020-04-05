@@ -24,7 +24,7 @@ fn baz(t: impl std::fmt::Debug, constraints: impl Iterator) {
     }
 }
 
-fn bat<K, T: std::fmt::Debug>(t: T, constraints: impl Iterator, _: K) {
+fn bat<I, T: std::fmt::Debug>(t: T, constraints: impl Iterator, _: I) {
     for constraint in constraints {
         qux(t);
         qux(constraint);
