@@ -4,9 +4,10 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{FromIterator, FusedIterator, Peekable};
 use core::marker::PhantomData;
+use core::mem::{self, ManuallyDrop};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{Index, RangeBounds};
-use core::{fmt, mem, ptr};
+use core::{fmt, ptr};
 
 use super::node::{self, marker, ForceResult::*, Handle, InsertResult::*, NodeRef};
 use super::search::{self, SearchResult::*};
@@ -190,9 +191,9 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
                             // We can't destructure subtree directly
                             // because BTreeMap implements Drop
                             let (subroot, sublength) = unsafe {
+                                let subtree = ManuallyDrop::new(subtree);
                                 let root = ptr::read(&subtree.root);
                                 let length = subtree.length;
-                                mem::forget(subtree);
                                 (root, length)
                             };
 
@@ -1515,15 +1516,14 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
     type IntoIter = IntoIter<K, V>;
 
     fn into_iter(self) -> IntoIter<K, V> {
-        if self.root.is_none() {
-            mem::forget(self);
+        let me = ManuallyDrop::new(self);
+        if me.root.is_none() {
             return IntoIter { front: None, back: None, length: 0 };
         }
 
-        let root1 = unsafe { unwrap_unchecked(ptr::read(&self.root)).into_ref() };
-        let root2 = unsafe { unwrap_unchecked(ptr::read(&self.root)).into_ref() };
-        let len = self.length;
-        mem::forget(self);
+        let root1 = unsafe { unwrap_unchecked(ptr::read(&me.root)).into_ref() };
+        let root2 = unsafe { unwrap_unchecked(ptr::read(&me.root)).into_ref() };
+        let len = me.length;
 
         IntoIter {
             front: Some(root1.first_leaf_edge()),

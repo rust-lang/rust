@@ -15,7 +15,6 @@ pub fn opts() -> TargetOptions {
         has_elf_tls: true,
         linker_is_gnu: true,
         pre_link_args,
-        no_default_libraries: true,
         panic_strategy: PanicStrategy::Abort,
         position_independent_executables: true,
         relocation_model: "static".to_string(),

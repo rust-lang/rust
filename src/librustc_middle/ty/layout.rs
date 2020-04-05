@@ -285,11 +285,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
-        let mut optimize = !repr.inhibit_struct_field_reordering_opt();
-        if let StructKind::Prefixed(_, align) = kind {
-            optimize &= align.bytes() == 1;
-        }
-
+        let optimize = !repr.inhibit_struct_field_reordering_opt();
         if optimize {
             let end =
                 if let StructKind::MaybeUnsized = kind { fields.len() - 1 } else { fields.len() };
@@ -307,6 +303,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     });
                 }
                 StructKind::Prefixed(..) => {
+                    // Sort in ascending alignment so that the layout stay optimal
+                    // regardless of the prefix
                     optimizing.sort_by_key(|&x| field_align(&fields[x as usize]));
                 }
             }
