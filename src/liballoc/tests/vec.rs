@@ -1351,17 +1351,26 @@ fn test_try_reserve_exact() {
 }
 
 #[test]
-fn test_stable_push_pop() {
+fn test_stable_pointers() {
+    /// Pull an element from the iterator, then drop it.
+    /// Useful to cover both the `next` and `drop` paths of an iterator.
+    fn next_then_drop<I: Iterator>(mut i: I) {
+        i.next().unwrap();
+        drop(i);
+    }
+
     // Test that, if we reserved enough space, adding and removing elements does not
     // invalidate references into the vector (such as `v0`).  This test also
     // runs in Miri, which would detect such problems.
-    let mut v = Vec::with_capacity(10);
+    let mut v = Vec::with_capacity(128);
     v.push(13);
 
-    // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
-    let v0 = unsafe { &*(&v[0] as *const _) };
-
+    // Laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
+    let v0 = &mut v[0];
+    let v0 = unsafe { &mut *(v0 as *mut _) };
     // Now do a bunch of things and occasionally use `v0` again to assert it is still valid.
+
+    // Pushing/inserting and popping/removing
     v.push(1);
     v.push(2);
     v.insert(1, 1);
@@ -1369,6 +1378,58 @@ fn test_stable_push_pop() {
     v.remove(1);
     v.pop().unwrap();
     assert_eq!(*v0, 13);
+    v.push(1);
+    v.swap_remove(1);
+    assert_eq!(v.len(), 2);
+    v.swap_remove(1); // swap_remove the last element
+    assert_eq!(*v0, 13);
+
+    // Appending
+    v.append(&mut vec![27, 19]);
+    assert_eq!(*v0, 13);
+
+    // Extending
+    v.extend_from_slice(&[1, 2]);
+    v.extend(&[1, 2]); // `slice::Iter` (with `T: Copy`) specialization
+    v.extend(vec![2, 3]); // `vec::IntoIter` specialization
+    v.extend(std::iter::once(3)); // `TrustedLen` specialization
+    v.extend(std::iter::empty::<i32>()); // `TrustedLen` specialization with empty iterator
+    v.extend(std::iter::once(3).filter(|_| true)); // base case
+    v.extend(std::iter::once(&3)); // `cloned` specialization
+    assert_eq!(*v0, 13);
+
+    // Truncation
+    v.truncate(2);
+    assert_eq!(*v0, 13);
+
+    // Resizing
+    v.resize_with(v.len() + 10, || 42);
+    assert_eq!(*v0, 13);
+    v.resize_with(2, || panic!());
+    assert_eq!(*v0, 13);
+
+    // No-op reservation
+    v.reserve(32);
+    v.reserve_exact(32);
+    assert_eq!(*v0, 13);
+
+    // Partial draining
+    v.resize_with(10, || 42);
+    next_then_drop(v.drain(5..));
+    assert_eq!(*v0, 13);
+
+    // Splicing
+    v.resize_with(10, || 42);
+    next_then_drop(v.splice(5.., vec![1, 2, 3, 4, 5])); // empty tail after range
+    assert_eq!(*v0, 13);
+    next_then_drop(v.splice(5..8, vec![1])); // replacement is smaller than original range
+    assert_eq!(*v0, 13);
+    next_then_drop(v.splice(5..6, vec![1; 10].into_iter().filter(|_| true))); // lower bound not exact
+    assert_eq!(*v0, 13);
+
+    // Smoke test that would fire even outside Miri if an actual relocation happened.
+    *v0 -= 13;
+    assert_eq!(v[0], 0);
 }
 
 // https://github.com/rust-lang/rust/pull/49496 introduced specialization based on:

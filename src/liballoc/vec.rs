@@ -740,7 +740,8 @@ impl<T> Vec<T> {
             if len > self.len {
                 return;
             }
-            let s = self.get_unchecked_mut(len..) as *mut _;
+            let remaining_len = self.len - len;
+            let s = slice::from_raw_parts_mut(self.as_mut_ptr().add(len), remaining_len);
             self.len = len;
             ptr::drop_in_place(s);
         }
@@ -963,13 +964,15 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: usize) -> T {
+        let len = self.len();
+        assert!(index < len);
         unsafe {
             // We replace self[index] with the last element. Note that if the
-            // bounds check on hole succeeds there must be a last element (which
+            // bounds check above succeeds there must be a last element (which
             // can be self[index] itself).
-            let hole: *mut T = &mut self[index];
-            let last = ptr::read(self.get_unchecked(self.len - 1));
-            self.len -= 1;
+            let last = ptr::read(self.as_ptr().add(len - 1));
+            let hole: *mut T = self.as_mut_ptr().add(index);
+            self.set_len(len - 1);
             ptr::replace(hole, last)
         }
     }
@@ -1200,7 +1203,7 @@ impl<T> Vec<T> {
         } else {
             unsafe {
                 self.len -= 1;
-                Some(ptr::read(self.get_unchecked(self.len())))
+                Some(ptr::read(self.as_ptr().add(self.len())))
             }
         }
     }
@@ -2020,7 +2023,7 @@ where
                 let (lower, _) = iterator.size_hint();
                 let mut vector = Vec::with_capacity(lower.saturating_add(1));
                 unsafe {
-                    ptr::write(vector.get_unchecked_mut(0), element);
+                    ptr::write(vector.as_mut_ptr(), element);
                     vector.set_len(1);
                 }
                 vector
@@ -2122,8 +2125,9 @@ where
         self.reserve(slice.len());
         unsafe {
             let len = self.len();
+            let dst_slice = slice::from_raw_parts_mut(self.as_mut_ptr().add(len), slice.len());
+            dst_slice.copy_from_slice(slice);
             self.set_len(len + slice.len());
-            self.get_unchecked_mut(len..).copy_from_slice(slice);
         }
     }
 }
@@ -2144,7 +2148,7 @@ impl<T> Vec<T> {
                 self.reserve(lower.saturating_add(1));
             }
             unsafe {
-                ptr::write(self.get_unchecked_mut(len), element);
+                ptr::write(self.as_mut_ptr().add(len), element);
                 // NB can't overflow since we would have had to alloc the address space
                 self.set_len(len + 1);
             }
