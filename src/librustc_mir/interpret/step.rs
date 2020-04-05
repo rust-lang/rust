@@ -78,14 +78,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
+        self.set_span(stmt.source_info.span);
 
         use rustc_middle::mir::StatementKind::*;
 
         // Some statements (e.g., box) push new stack frames.
         // We have to record the stack frame number *before* executing the statement.
         let frame_idx = self.cur_frame();
-        self.tcx.span = stmt.source_info.span;
-        self.memory.tcx.span = stmt.source_info.span;
 
         match &stmt.kind {
             Assign(box (place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
@@ -276,8 +275,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", terminator.kind);
-        self.tcx.span = terminator.source_info.span;
-        self.memory.tcx.span = terminator.source_info.span;
+        self.set_span(terminator.source_info.span);
 
         self.eval_terminator(terminator)?;
         if !self.stack.is_empty() {

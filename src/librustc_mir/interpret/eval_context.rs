@@ -17,7 +17,7 @@ use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
     self, fold::BottomUpFolder, query::TyCtxtAt, subst::SubstsRef, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::source_map::DUMMY_SP;
+use rustc_span::{source_map::DUMMY_SP, Span};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
@@ -294,6 +294,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             stack: Vec::new(),
             vtables: FxHashMap::default(),
         }
+    }
+
+    #[inline(always)]
+    pub(crate) fn set_span(&mut self, span: Span) {
+        self.tcx.span = span;
+        self.memory.tcx.span = span;
     }
 
     #[inline(always)]
