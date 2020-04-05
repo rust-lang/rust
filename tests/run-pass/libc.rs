@@ -15,7 +15,7 @@ fn tmp() -> PathBuf {
 #[cfg(not(target_os = "macos"))]
 fn test_posix_fadvise() {
     use std::convert::TryInto;
-    use std::fs::{File, remove_file};
+    use std::fs::{remove_file, File};
     use std::io::Write;
     use std::os::unix::io::AsRawFd;
 
@@ -66,6 +66,7 @@ fn test_mutex_libc_init_recursive() {
 fn test_mutex_libc_init_normal() {
     unsafe {
         let mut mutexattr: libc::pthread_mutexattr_t = std::mem::zeroed();
+        assert_eq!(libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, 0x12345678), libc::EINVAL);
         assert_eq!(libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, libc::PTHREAD_MUTEX_NORMAL), 0);
         let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
         assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mutexattr as *const _), 0);
@@ -129,6 +130,11 @@ fn test_rwlock_libc_static_initializer() {
         assert_eq!(libc::pthread_rwlock_unlock(rw.get()), 0);
 
         assert_eq!(libc::pthread_rwlock_wrlock(rw.get()), 0);
+        assert_eq!(libc::pthread_rwlock_tryrdlock(rw.get()), libc::EBUSY);
+        assert_eq!(libc::pthread_rwlock_trywrlock(rw.get()), libc::EBUSY);
+        assert_eq!(libc::pthread_rwlock_unlock(rw.get()), 0);
+
+        assert_eq!(libc::pthread_rwlock_trywrlock(rw.get()), 0);
         assert_eq!(libc::pthread_rwlock_tryrdlock(rw.get()), libc::EBUSY);
         assert_eq!(libc::pthread_rwlock_trywrlock(rw.get()), libc::EBUSY);
         assert_eq!(libc::pthread_rwlock_unlock(rw.get()), 0);
