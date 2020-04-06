@@ -208,12 +208,12 @@ impl SourceToDefCtx<'_, '_> {
         for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
             let res: GenericDefId = match_ast! {
                 match (container.value) {
-                    ast::FnDef(it) => { self.fn_to_def(container.with_value(it))?.into() },
-                    ast::StructDef(it) => { self.struct_to_def(container.with_value(it))?.into() },
-                    ast::EnumDef(it) => { self.enum_to_def(container.with_value(it))?.into() },
-                    ast::TraitDef(it) => { self.trait_to_def(container.with_value(it))?.into() },
-                    ast::TypeAliasDef(it) => { self.type_alias_to_def(container.with_value(it))?.into() },
-                    ast::ImplDef(it) => { self.impl_to_def(container.with_value(it))?.into() },
+                    ast::FnDef(it) => self.fn_to_def(container.with_value(it))?.into(),
+                    ast::StructDef(it) => self.struct_to_def(container.with_value(it))?.into(),
+                    ast::EnumDef(it) => self.enum_to_def(container.with_value(it))?.into(),
+                    ast::TraitDef(it) => self.trait_to_def(container.with_value(it))?.into(),
+                    ast::TypeAliasDef(it) => self.type_alias_to_def(container.with_value(it))?.into(),
+                    ast::ImplDef(it) => self.impl_to_def(container.with_value(it))?.into(),
                     _ => continue,
                 }
             };
@@ -226,9 +226,9 @@ impl SourceToDefCtx<'_, '_> {
         for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
             let res: DefWithBodyId = match_ast! {
                 match (container.value) {
-                    ast::ConstDef(it) => { self.const_to_def(container.with_value(it))?.into() },
-                    ast::StaticDef(it) => { self.static_to_def(container.with_value(it))?.into() },
-                    ast::FnDef(it) => { self.fn_to_def(container.with_value(it))?.into() },
+                    ast::ConstDef(it) => self.const_to_def(container.with_value(it))?.into(),
+                    ast::StaticDef(it) => self.static_to_def(container.with_value(it))?.into(),
+                    ast::FnDef(it) => self.fn_to_def(container.with_value(it))?.into(),
                     _ => continue,
                 }
             };
