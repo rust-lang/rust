@@ -1094,7 +1094,7 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
 pub struct DrainFilter<'a, T, F>
 where
-    T: 'a + Ord,
+    T: 'a,
     F: 'a + FnMut(&T) -> bool,
 {
     pred: F,
@@ -1102,10 +1102,9 @@ where
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<'a, T, F> Drop for DrainFilter<'a, T, F>
+impl<T, F> Drop for DrainFilter<'_, T, F>
 where
-    T: 'a + Ord,
-    F: 'a + FnMut(&T) -> bool,
+    F: FnMut(&T) -> bool,
 {
     fn drop(&mut self) {
         self.for_each(drop);
@@ -1113,10 +1112,10 @@ where
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<'a, T, F> fmt::Debug for DrainFilter<'a, T, F>
+impl<T, F> fmt::Debug for DrainFilter<'_, T, F>
 where
-    T: 'a + Ord + fmt::Debug,
-    F: 'a + FnMut(&T) -> bool,
+    T: fmt::Debug,
+    F: FnMut(&T) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("DrainFilter").field(&self.inner.peek().map(|(k, _)| k)).finish()
@@ -1124,10 +1123,9 @@ where
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<'a, 'f, T, F> Iterator for DrainFilter<'a, T, F>
+impl<'a, T, F> Iterator for DrainFilter<'_, T, F>
 where
-    T: 'a + Ord,
-    F: 'a + 'f + FnMut(&T) -> bool,
+    F: 'a + FnMut(&T) -> bool,
 {
     type Item = T;
 
@@ -1143,12 +1141,7 @@ where
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<'a, T, F> FusedIterator for DrainFilter<'a, T, F>
-where
-    T: 'a + Ord,
-    F: 'a + FnMut(&T) -> bool,
-{
-}
+impl<T, F> FusedIterator for DrainFilter<'_, T, F> where F: FnMut(&T) -> bool {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BTreeSet<T> {
