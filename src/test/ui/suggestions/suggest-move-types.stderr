@@ -15,9 +15,8 @@ error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:33:43
    |
 LL | struct Al<'a, T, M: OneWithLifetime<A=(), T, 'a>> {
-   |                                     ----  ^  ^^ generic argument
-   |                                     |     |
-   |                                     |     generic argument
+   |                                     ----  ^  ^^ generic arguments
+   |                                     |
    |                                     constraint
    |
 help: move the constraint after the generic arguments
@@ -29,13 +28,9 @@ error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:40:46
    |
 LL | struct B<T, U, V, M: Three<A=(), B=(), C=(), T, U, V>> {
-   |                            ----  ----  ----  ^  ^  ^ generic argument
-   |                            |     |     |     |  |
-   |                            |     |     |     |  generic argument
-   |                            |     |     |     generic argument
-   |                            |     |     constraint
-   |                            |     constraint
-   |                            constraint
+   |                            ----  ----  ----  ^  ^  ^ generic arguments
+   |                            |
+   |                            constraints
    |
 help: move the constraints after the generic arguments
    |
@@ -46,16 +41,9 @@ error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:48:71
    |
 LL | struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<A=(), B=(), C=(), T, U, V, 'a, 'b, 'c>> {
-   |                                                     ----  ----  ----  ^  ^  ^  ^^  ^^  ^^ generic argument
-   |                                                     |     |     |     |  |  |  |   |
-   |                                                     |     |     |     |  |  |  |   generic argument
-   |                                                     |     |     |     |  |  |  generic argument
-   |                                                     |     |     |     |  |  generic argument
-   |                                                     |     |     |     |  generic argument
-   |                                                     |     |     |     generic argument
-   |                                                     |     |     constraint
-   |                                                     |     constraint
-   |                                                     constraint
+   |                                                     ----  ----  ----  ^  ^  ^  ^^  ^^  ^^ generic arguments
+   |                                                     |
+   |                                                     constraints
    |
 help: move the constraints after the generic arguments
    |
@@ -66,13 +54,9 @@ error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:57:28
    |
 LL | struct C<T, U, V, M: Three<T, A=(), B=(), C=(), U, V>> {
-   |                            ^  ----  ----  ----  ^  ^ generic argument
-   |                            |  |     |     |     |
-   |                            |  |     |     |     generic argument
-   |                            |  |     |     constraint
-   |                            |  |     constraint
-   |                            |  constraint
-   |                            generic argument
+   |                            ^  ----  ----  ----  ^  ^ generic arguments
+   |                               |
+   |                               constraints
    |
 help: move the constraints after the generic arguments
    |
@@ -83,16 +67,9 @@ error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:65:53
    |
 LL | struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), C=(), U, 'b, V, 'c>> {
-   |                                                     ^  ^^  ----  ----  ----  ^  ^^  ^  ^^ generic argument
-   |                                                     |  |   |     |     |     |  |   |
-   |                                                     |  |   |     |     |     |  |   generic argument
-   |                                                     |  |   |     |     |     |  generic argument
-   |                                                     |  |   |     |     |     generic argument
-   |                                                     |  |   |     |     constraint
-   |                                                     |  |   |     constraint
-   |                                                     |  |   constraint
-   |                                                     |  generic argument
-   |                                                     generic argument
+   |                                                     ^  ^^  ----  ----  ----  ^  ^^  ^  ^^ generic arguments
+   |                                                            |
+   |                                                            constraints
    |
 help: move the constraints after the generic arguments
    |
@@ -103,13 +80,9 @@ error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:74:28
    |
 LL | struct D<T, U, V, M: Three<T, A=(), B=(), U, C=(), V>> {
-   |                            ^  ----  ----  ^  ----  ^ generic argument
-   |                            |  |     |     |  |
-   |                            |  |     |     |  constraint
-   |                            |  |     |     generic argument
-   |                            |  |     constraint
-   |                            |  constraint
-   |                            generic argument
+   |                            ^  ----  ----  ^  ----  ^ generic arguments
+   |                               |
+   |                               constraints
    |
 help: move the constraints after the generic arguments
    |
@@ -120,16 +93,9 @@ error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:82:53
    |
 LL | struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), U, 'b, C=(), V, 'c>> {
-   |                                                     ^  ^^  ----  ----  ^  ^^  ----  ^  ^^ generic argument
-   |                                                     |  |   |     |     |  |   |     |
-   |                                                     |  |   |     |     |  |   |     generic argument
-   |                                                     |  |   |     |     |  |   constraint
-   |                                                     |  |   |     |     |  generic argument
-   |                                                     |  |   |     |     generic argument
-   |                                                     |  |   |     constraint
-   |                                                     |  |   constraint
-   |                                                     |  generic argument
-   |                                                     generic argument
+   |                                                     ^  ^^  ----  ----  ^  ^^  ----  ^  ^^ generic arguments
+   |                                                            |
+   |                                                            constraints
    |
 help: move the constraints after the generic arguments
    |

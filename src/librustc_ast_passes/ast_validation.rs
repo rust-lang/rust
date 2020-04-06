@@ -688,8 +688,13 @@ impl<'a> AstValidator<'a> {
                 arg_spans.clone(),
                 "generic arguments must come before the first constraint",
             )
-            .span_labels(constraint_spans, "constraint")
-            .span_labels(arg_spans, "generic argument")
+            .span_label(constraint_spans[0], &format!("constraint{}", pluralize!(constraint_len)))
+            .span_label(
+                *arg_spans.iter().last().unwrap(),
+                &format!("generic argument{}", pluralize!(args_len)),
+            )
+            .span_labels(constraint_spans, "")
+            .span_labels(arg_spans, "")
             .span_suggestion_verbose(
                 data.span,
                 &format!(
