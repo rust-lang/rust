@@ -47,6 +47,8 @@ pub enum ThreadState {
 /// A thread.
 pub struct Thread<'mir, 'tcx> {
     state: ThreadState,
+    /// Name of the thread.
+    thread_name: Option<Vec<u8>>,
     /// The virtual call stack.
     stack: Vec<Frame<'mir, 'tcx, Tag, FrameData<'tcx>>>,
     /// Is the thread detached?
@@ -78,7 +80,7 @@ impl<'mir, 'tcx> std::fmt::Debug for Thread<'mir, 'tcx> {
 
 impl<'mir, 'tcx> Default for Thread<'mir, 'tcx> {
     fn default() -> Self {
-        Self { state: ThreadState::Enabled, stack: Vec::new(), detached: false }
+        Self { state: ThreadState::Enabled, thread_name: None, stack: Vec::new(), detached: false }
     }
 }
 
@@ -117,15 +119,19 @@ impl<'mir, 'tcx: 'mir> ThreadSet<'mir, 'tcx> {
         new_thread_id
     }
     /// Set an active thread and return the id of the thread that was active before.
-    fn set_active_thread(&mut self, id: ThreadId) -> ThreadId {
+    fn set_active_thread_id(&mut self, id: ThreadId) -> ThreadId {
         let active_thread_id = self.active_thread;
         self.active_thread = id;
         assert!(self.active_thread.index() < self.threads.len());
         active_thread_id
     }
     /// Get the id of the currently active thread.
-    fn get_active_thread(&self) -> ThreadId {
+    fn get_active_thread_id(&self) -> ThreadId {
         self.active_thread
+    }
+    /// Get the borrow of the currently active thread.
+    fn active_thread_mut(&mut self) -> &mut Thread<'mir, 'tcx> {
+        &mut self.threads[self.active_thread]
     }
     /// Mark the thread as detached, which means that no other thread will try
     /// to join it and the thread is responsible for cleaning up.
@@ -151,6 +157,10 @@ impl<'mir, 'tcx: 'mir> ThreadSet<'mir, 'tcx> {
                 joined_thread_id
             );
         }
+    }
+    /// Set the name of the active thread.
+    fn set_thread_name(&mut self, new_thread_name: Vec<u8>) {
+        self.active_thread_mut().thread_name = Some(new_thread_name);
     }
     /// Get ids of all threads ever allocated.
     fn get_all_thread_ids_with_states(&self) -> Vec<(ThreadId, ThreadState)> {
@@ -266,11 +276,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn set_active_thread(&mut self, thread_id: ThreadId) -> InterpResult<'tcx, ThreadId> {
         let this = self.eval_context_mut();
         this.memory.extra.tls.set_active_thread(thread_id);
-        Ok(this.machine.threads.set_active_thread(thread_id))
+        Ok(this.machine.threads.set_active_thread_id(thread_id))
     }
     fn get_active_thread(&self) -> InterpResult<'tcx, ThreadId> {
         let this = self.eval_context_ref();
-        Ok(this.machine.threads.get_active_thread())
+        Ok(this.machine.threads.get_active_thread_id())
     }
     fn active_thread_stack(&self) -> &[Frame<'mir, 'tcx, Tag, FrameData<'tcx>>] {
         let this = self.eval_context_ref();
@@ -279,6 +289,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn active_thread_stack_mut(&mut self) -> &mut Vec<Frame<'mir, 'tcx, Tag, FrameData<'tcx>>> {
         let this = self.eval_context_mut();
         this.machine.threads.active_thread_stack_mut()
+    }
+    fn set_active_thread_name(&mut self, new_thread_name: Vec<u8>) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+        Ok(this.machine.threads.set_thread_name(new_thread_name))
     }
     fn get_all_thread_ids_with_states(&mut self) -> Vec<(ThreadId, ThreadState)> {
         let this = self.eval_context_mut();
@@ -291,7 +305,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         // Find the next thread to run.
         if this.machine.threads.schedule()? {
-            let active_thread = this.machine.threads.get_active_thread();
+            let active_thread = this.machine.threads.get_active_thread_id();
             this.memory.extra.tls.set_active_thread(active_thread);
             Ok(true)
         } else {

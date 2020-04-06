@@ -329,6 +329,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.pthread_detach(args[0])?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "prctl" => {
+                assert_eq!(args.len(), 5);
+                let result = this.prctl(args[0], args[1], args[2], args[3], args[4])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
 
             "pthread_attr_getguardsize" => {
                 assert_eq!(args.len(), 2);
@@ -342,14 +347,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .ty;
                 let guard_size_layout = this.layout_of(guard_size_type)?;
                 this.write_scalar(Scalar::from_uint(crate::PAGE_SIZE, guard_size_layout.size), guard_size.into())?;
-
-                // Return success (`0`).
-                this.write_null(dest)?;
-            }
-
-            "prctl" => {
-                let option = this.read_scalar(args[0])?.not_undef()?.to_i32()?;
-                assert_eq!(option, 0xf, "Miri supports only PR_SET_NAME");
 
                 // Return success (`0`).
                 this.write_null(dest)?;
