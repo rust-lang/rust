@@ -134,16 +134,25 @@ fn test_ranges() {
 
 #[test]
 fn test_flattening() {
-    let (analysis, file_id) = single_file(r#"#[cfg(feature = "foo")]"#);
+    let (analysis, file_id) = single_file(
+        r##"
+fn fixture(ra_fixture: &str) {}
 
-    let highlights = analysis.highlight(file_id).unwrap();
+fn main() {
+    fixture(r#"
+        trait Foo {
+            fn foo() {
+                println!("2 + 2 = {}", 4);
+            }
+        }"#
+    );
+}"##
+        .trim(),
+    );
 
-    // The source code snippet contains 2 nested highlights:
-    // 1) Attribute spanning the whole string
-    // 2) The string "foo"
-    // The resulting flattening splits the attribute range:
-    assert_eq!(highlights.len(), 3);
-    assert_eq!(&highlights[0].highlight.to_string(), "attribute");
-    assert_eq!(&highlights[1].highlight.to_string(), "string_literal");
-    assert_eq!(&highlights[2].highlight.to_string(), "attribute");
+    let dst_file = project_dir().join("crates/ra_ide/src/snapshots/highlight_injection.html");
+    let actual_html = &analysis.highlight_as_html(file_id, false).unwrap();
+    let expected_html = &read_text(&dst_file);
+    fs::write(dst_file, &actual_html).unwrap();
+    assert_eq_text!(expected_html, actual_html);
 }

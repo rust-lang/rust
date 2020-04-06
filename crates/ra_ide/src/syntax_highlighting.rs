@@ -174,7 +174,13 @@ pub(crate) fn highlight(
     }
 
     assert_eq!(res.len(), 1, "after DFS traversal, the stack should only contain a single element");
-    res.pop().unwrap()
+    let res = res.pop().unwrap();
+    // Check that ranges are sorted and disjoint
+    assert!(res
+        .iter()
+        .zip(res.iter().skip(1))
+        .all(|(left, right)| left.range.end() <= right.range.start()));
+    res
 }
 
 fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {
