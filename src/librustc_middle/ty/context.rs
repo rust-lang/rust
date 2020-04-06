@@ -2065,10 +2065,6 @@ macro_rules! direct_interners {
     }
 }
 
-pub fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
-    x.has_type_flags(ty::TypeFlags::KEEP_IN_LOCAL_TCX)
-}
-
 direct_interners!(
     region: mk_region(RegionKind),
     goal: mk_goal(GoalKind<'tcx>),

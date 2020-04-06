@@ -72,7 +72,7 @@ pub use crate::ty::diagnostics::*;
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
 
-pub use self::context::{keep_local, tls, FreeRegionInfo, TyCtxt};
+pub use self::context::{tls, FreeRegionInfo, TyCtxt};
 pub use self::context::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, ResolvedOpaqueTy,
     UserType, UserTypeAnnotationIndex,
