@@ -20,7 +20,7 @@ use ra_vfs::LineEndings;
 
 use crate::{
     req,
-    semantic_tokens::{self, ModifierSet, CONSTANT, CONTROL, MUTABLE, UNSAFE},
+    semantic_tokens::{self, ModifierSet, CONSTANT, CONTROL_FLOW, MUTABLE, UNSAFE},
     world::WorldSnapshot,
     Result,
 };
@@ -378,7 +378,7 @@ impl Conv for Highlight {
         for modifier in self.modifiers.iter() {
             let modifier = match modifier {
                 HighlightModifier::Definition => SemanticTokenModifier::DECLARATION,
-                HighlightModifier::Control => CONTROL,
+                HighlightModifier::ControlFlow => CONTROL_FLOW,
                 HighlightModifier::Mutable => MUTABLE,
                 HighlightModifier::Unsafe => UNSAFE,
             };

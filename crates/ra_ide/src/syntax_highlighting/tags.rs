@@ -44,7 +44,7 @@ pub enum HighlightTag {
 #[repr(u8)]
 pub enum HighlightModifier {
     /// Used with keywords like `if` and `break`.
-    Control = 0,
+    ControlFlow = 0,
     /// `foo` in `fn foo(x: i32)` is a definition, `foo` in `foo(90 + 2)` is
     /// not.
     Definition,
@@ -91,7 +91,7 @@ impl fmt::Display for HighlightTag {
 
 impl HighlightModifier {
     const ALL: &'static [HighlightModifier] = &[
-        HighlightModifier::Control,
+        HighlightModifier::ControlFlow,
         HighlightModifier::Definition,
         HighlightModifier::Mutable,
         HighlightModifier::Unsafe,
@@ -99,7 +99,7 @@ impl HighlightModifier {
 
     fn as_str(self) -> &'static str {
         match self {
-            HighlightModifier::Control => "control",
+            HighlightModifier::ControlFlow => "control",
             HighlightModifier::Definition => "declaration",
             HighlightModifier::Mutable => "mutable",
             HighlightModifier::Unsafe => "unsafe",
