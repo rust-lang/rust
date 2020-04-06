@@ -44,11 +44,8 @@ jobs:
   rust:
     name: Rust
     runs-on: ${{ matrix.os }}
-    # Related upstream issue:
-    # https://github.com/nagisa/rust_libloading/issues/61#issuecomment-607941377
-    # 
-    # env:
-    #  CC: deny_c
+    env:
+     CC: deny_c
 
     strategy:
       fail-fast: false
