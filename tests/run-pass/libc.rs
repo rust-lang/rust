@@ -12,7 +12,7 @@ fn tmp() -> PathBuf {
     std::env::var("MIRI_TEMP").map(PathBuf::from).unwrap_or_else(|_| std::env::temp_dir())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "linux")]
 fn test_posix_fadvise() {
     use std::convert::TryInto;
     use std::fs::{remove_file, File};
@@ -144,7 +144,7 @@ fn test_rwlock_libc_static_initializer() {
 }
 
 fn main() {
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "linux")]
     test_posix_fadvise();
 
     test_mutex_libc_init_recursive();
