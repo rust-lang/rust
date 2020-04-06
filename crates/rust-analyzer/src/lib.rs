@@ -13,17 +13,8 @@
 pub mod cli;
 
 #[allow(unused)]
-macro_rules! println {
-    ($($tt:tt)*) => {
-        compile_error!("stdout is locked, use eprintln")
-    };
-}
-
-#[allow(unused)]
-macro_rules! print {
-    ($($tt:tt)*) => {
-        compile_error!("stdout is locked, use eprint")
-    };
+macro_rules! eprintln {
+    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
 }
 
 mod vfs_glob;

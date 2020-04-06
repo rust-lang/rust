@@ -2,6 +2,21 @@
 
 use std::{cell::Cell, fmt};
 
+#[inline(always)]
+pub fn is_ci() -> bool {
+    option_env!("CI").is_some()
+}
+
+#[macro_export]
+macro_rules! eprintln {
+    ($($tt:tt)*) => {{
+        if $crate::is_ci() {
+            panic!("Forgot to remove debug-print?")
+        }
+        std::eprintln!($($tt)*)
+    }}
+}
+
 /// Appends formatted string to a `String`.
 #[macro_export]
 macro_rules! format_to {

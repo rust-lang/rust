@@ -9,6 +9,7 @@ use hir_def::{
     AsMacroCall, TraitId,
 };
 use hir_expand::ExpansionInfo;
+use itertools::Itertools;
 use ra_db::{FileId, FileRange};
 use ra_prof::profile;
 use ra_syntax::{
@@ -135,7 +136,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         node: &SyntaxNode,
         offset: TextUnit,
     ) -> impl Iterator<Item = SyntaxNode> + '_ {
-        use itertools::Itertools;
         node.token_at_offset(offset)
             .map(|token| self.ancestors_with_macros(token.parent()))
             .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
