@@ -9,6 +9,7 @@ use crate::fmt;
 use crate::intrinsics;
 use crate::mem;
 use crate::str::FromStr;
+use crate::cmp::Ordering;
 
 // Used because the `?` operator is not allowed in a const context.
 macro_rules! try_opt {
@@ -112,7 +113,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
 
             impl PartialEq<$Int> for $Ty {
                 fn eq(&self, rhs: &$Int) -> bool {
-                    self.0 == rhs
+                    self.0 == *rhs
                 }
             }
 
