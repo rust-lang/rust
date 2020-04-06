@@ -198,7 +198,7 @@ use std::num::FpCategory as Fp;
 use std::ops::Index;
 use std::str::FromStr;
 use std::string;
-use std::{char, f64, fmt, str};
+use std::{char, fmt, str};
 
 use crate::Encodable;
 
