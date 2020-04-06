@@ -207,7 +207,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 throw_unsup_format!("Miri does not support threading");
             }
 
-            // Incomplete shims that we "stub out" just to get pre-main initialziation code to work.
+            // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "GetProcessHeap" if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
                 // Just fake a HANDLE

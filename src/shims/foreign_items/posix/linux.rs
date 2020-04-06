@@ -113,7 +113,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(-1), dest)?;
             }
 
-            // Incomplete shims that we "stub out" just to get pre-main initialziation code to work.
+            // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "pthread_getattr_np" if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
                 this.write_null(dest)?;
