@@ -2161,6 +2161,117 @@ assert_eq!((-a).rem_euclid(-b), 1);
         }
 
         doc_comment! {
+            concat!("Returns the logarithm of the number with respect to an arbitrary base.
+
+Returns `None` if the number is zero, or if the base is zero or one.
+
+This method may not be optimized owing to implementation details;
+`self.checked_log2()` can produce results more efficiently for base 2, and
+`self.checked_log10()` can produce results more efficiently for base 10.
+
+# Examples
+
+```
+#![feature(int_log)]
+
+let five = 5", stringify!($SelfT), ";
+
+// log5(5) == 1
+let result = five.checked_log(5);
+
+assert_eq!(result, Some(1));
+```"),
+            #[unstable(feature = "int_log", issue = "70887")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub fn checked_log(self, base: Self) -> Option<Self> {
+                // SAFETY: We check the input to this is always positive
+                let logb2 = |x: Self| unsafe { intrinsics::ctlz_nonzero(1 as Self) - intrinsics::ctlz_nonzero(x) };
+
+                if self <= 0 || base <= 1 {
+                    None
+                } else {
+                    let mut n = 0;
+                    let mut r = self;
+
+                    // Optimization for 128 bit wide integers.
+                    if mem::size_of::<Self>() * 8 == 128 {
+                        let b = logb2(self) / (logb2(base) + 1);
+                        n += b;
+                        r /= base.pow(b as u32);
+                    }
+
+                    while r >= base {
+                        r /= base;
+                        n += 1;
+                    }
+                    Some(n)
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!("Returns the base 2 logarithm of the number.
+
+Returns `None` if the number is lower than 1.
+
+# Examples
+
+```
+#![feature(int_log)]
+
+let two = 2", stringify!($SelfT), ";
+
+// checked_log2(2) == 1
+let result = two.checked_log2();
+
+assert_eq!(result, Some(1));
+```"),
+            #[unstable(feature = "int_log", issue = "70887")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub fn checked_log2(self) -> Option<Self> {
+                if self <= 0 {
+                    None
+                } else {
+                    // SAFETY: We just checked that this number is positive
+                    let log = unsafe { intrinsics::ctlz_nonzero(1 as Self) - intrinsics::ctlz_nonzero(self) };
+                    Some(log)
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!("Returns the base 10 logarithm of the number.
+
+Returns `None` if the number is lower than 1.
+
+# Examples
+
+```
+#![feature(int_log)]
+
+let ten = 10", stringify!($SelfT), ";
+
+// checked_log10(10) == 1
+let result = ten.checked_log10();
+
+assert_eq!(result, Some(1));
+```"),
+            #[unstable(feature = "int_log", issue = "70887")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub fn checked_log10(self) -> Option<Self> {
+                self.checked_log(10)
+            }
+        }
+
+
+
+        doc_comment! {
             concat!("Computes the absolute value of `self`.
 
 # Overflow behavior
@@ -4166,6 +4277,115 @@ assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer 
             #[rustc_inherit_overflow_checks]
             pub const fn rem_euclid(self, rhs: Self) -> Self {
                 self % rhs
+            }
+        }
+
+        doc_comment! {
+            concat!("Returns the logarithm of the number with respect to an arbitrary base.
+
+Returns `None` if the number is negative or zero, or if the base is negative, zero, or one.
+
+This method may not be optimized owing to implementation details;
+`self.checked_log2()` can produce results more efficiently for base 2, and
+`self.checked_log10()` can produce results more efficiently for base 10.
+
+# Examples
+
+```
+#![feature(int_log)]
+
+let five = 5", stringify!($SelfT), ";
+
+// log5(5) == 1
+let result = five.checked_log(5);
+
+assert_eq!(result, Some(1));
+```"),
+            #[unstable(feature = "int_log", issue = "70887")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub fn checked_log(self, base: Self) -> Option<Self> {
+                // SAFETY: We check the input to this is always positive.
+                let logb2 = |x: Self| unsafe { intrinsics::ctlz_nonzero(1 as Self) - intrinsics::ctlz_nonzero(x) };
+
+                if self <= 0 || base <= 1 {
+                    None
+                } else {
+                    let mut n = 0;
+                    let mut r = self;
+
+                    // Optimization for 128 bit wide integers.
+                    if mem::size_of::<Self>() * 8 == 128 {
+                        let b = logb2(self) / (logb2(base) + 1);
+                        n += b;
+                        r /= base.pow(b as u32);
+                    }
+
+                    while r >= base {
+                        r /= base;
+                        n += 1;
+                    }
+                    Some(n)
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!("Returns the base 2 logarithm of the number.
+
+Returns `None` if the number is lower than 1.
+
+# Examples
+
+```
+#![feature(int_log)]
+
+let two = 2", stringify!($SelfT), ";
+
+// checked_log2(2) == 1
+let result = two.checked_log2();
+
+assert_eq!(result, Some(1));
+```"),
+            #[unstable(feature = "int_log", issue = "70887")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub fn checked_log2(self) -> Option<Self> {
+                if self <= 0 {
+                    None
+                } else {
+                    // SAFETY: We just checked that this number is positive
+                    let log = unsafe { intrinsics::ctlz_nonzero(1 as Self) - intrinsics::ctlz_nonzero(self) };
+                    Some(log)
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!("Returns the base 10 logarithm of the number.
+
+Returns `None` if the number is lower than 1.
+
+# Examples
+
+```
+#![feature(int_log)]
+
+let ten = 10", stringify!($SelfT), ";
+
+// checked_log10(10) == 1
+let result = ten.checked_log10();
+
+assert_eq!(result, Some(1));
+```"),
+            #[unstable(feature = "int_log", issue = "70887")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub fn checked_log10(self) -> Option<Self> {
+                self.checked_log(10)
             }
         }
 
