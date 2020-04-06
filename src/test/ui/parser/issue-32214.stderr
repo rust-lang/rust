@@ -4,7 +4,12 @@ error: generic arguments must come before the first constraint
 LL | pub fn test<W, I: Trait<Item=(), W> >() {}
    |                         -------  ^ generic argument
    |                         |
-   |                         the first constraint is provided here
+   |                         constraint
+   |
+help: move the constraint after the generic argument
+   |
+LL | pub fn test<W, I: Trait<W, Item = ()> >() {}
+   |                        ^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

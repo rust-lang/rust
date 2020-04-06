@@ -47,9 +47,6 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "hermit")] {
         #[path = "hermit.rs"]
         mod real_imp;
-    } else if #[cfg(all(target_env = "msvc", target_arch = "aarch64"))] {
-        #[path = "dummy.rs"]
-        mod real_imp;
     } else if #[cfg(target_env = "msvc")] {
         #[path = "seh.rs"]
         mod real_imp;

@@ -3564,6 +3564,7 @@ dependencies = [
 name = "rustc_ast_passes"
 version = "0.0.0"
 dependencies = [
+ "itertools 0.8.0",
  "log",
  "rustc_ast",
  "rustc_ast_pretty",

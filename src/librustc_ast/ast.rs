@@ -300,8 +300,8 @@ pub enum GenericBound {
 impl GenericBound {
     pub fn span(&self) -> Span {
         match self {
-            &GenericBound::Trait(ref t, ..) => t.span,
-            &GenericBound::Outlives(ref l) => l.ident.span,
+            GenericBound::Trait(ref t, ..) => t.span,
+            GenericBound::Outlives(ref l) => l.ident.span,
         }
     }
 }

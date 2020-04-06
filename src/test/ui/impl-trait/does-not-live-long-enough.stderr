@@ -14,7 +14,7 @@ LL |     }
 help: you can add a bound to the opaque type to make it last less than `'static` and match `'a`
    |
 LL |     fn started_with<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item=&'a str> + 'a {
-   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                                                   ^^^^
 
 error: aborting due to previous error
 
