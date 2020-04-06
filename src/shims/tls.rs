@@ -9,7 +9,7 @@ use rustc_middle::ty;
 use rustc_target::abi::{Size, HasDataLayout};
 
 use crate::{HelpersEvalContextExt, ThreadsEvalContextExt, InterpResult, MPlaceTy, Scalar, StackPopCleanup, Tag};
-use crate::machine::ThreadId;
+use crate::machine::{ThreadId, ThreadState};
 
 pub type TlsKey = u128;
 
@@ -174,7 +174,7 @@ impl<'tcx> TlsData<'tcx> {
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    /// Run TLS destructors for the currently active thread.
+    /// Run TLS destructors for all threads.
     fn run_tls_dtors(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         assert!(!this.machine.tls.dtors_running, "running TLS dtors twice");
@@ -223,7 +223,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Now run the "keyed" destructors.
-        for thread_id in this.get_all_thread_ids() {
+        for (thread_id, thread_state) in this.get_all_thread_ids_with_states() {
+            assert!(thread_state == ThreadState::Terminated,
+                    "TLS destructors should be executed after all threads terminated.");
             this.set_active_thread(thread_id)?;
             let mut dtor = this.machine.tls.fetch_tls_dtor(None, thread_id);
             while let Some((instance, thread_id, ptr, key)) = dtor {

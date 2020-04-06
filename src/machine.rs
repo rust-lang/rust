@@ -27,7 +27,7 @@ use rustc_target::abi::{LayoutOf, Size};
 
 use crate::*;
 
-pub use crate::threads::{ThreadId, ThreadSet, ThreadLocalStorage};
+pub use crate::threads::{ThreadId, ThreadSet, ThreadState, ThreadLocalStorage};
 
 // Some global facts about the emulated machine.
 pub const PAGE_SIZE: u64 = 4 * 1024; // FIXME: adjust to target architecture

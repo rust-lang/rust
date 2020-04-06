@@ -97,10 +97,7 @@ impl<'mir, 'tcx> Default for ThreadSet<'mir, 'tcx> {
     fn default() -> Self {
         let mut threads = IndexVec::new();
         threads.push(Default::default());
-        Self {
-            active_thread: ThreadId::new(0),
-            threads: threads,
-        }
+        Self { active_thread: ThreadId::new(0), threads: threads }
     }
 }
 
@@ -156,8 +153,8 @@ impl<'mir, 'tcx: 'mir> ThreadSet<'mir, 'tcx> {
         }
     }
     /// Get ids of all threads ever allocated.
-    fn get_all_thread_ids(&mut self) -> Vec<ThreadId> {
-        (0..self.threads.len()).map(ThreadId::new).collect()
+    fn get_all_thread_ids_with_states(&self) -> Vec<(ThreadId, ThreadState)> {
+        self.threads.iter_enumerated().map(|(id, thread)| (id, thread.state)).collect()
     }
     /// Decide which thread to run next.
     ///
@@ -283,9 +280,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.machine.threads.active_thread_stack_mut()
     }
-    fn get_all_thread_ids(&mut self) -> Vec<ThreadId> {
+    fn get_all_thread_ids_with_states(&mut self) -> Vec<(ThreadId, ThreadState)> {
         let this = self.eval_context_mut();
-        this.machine.threads.get_all_thread_ids()
+        this.machine.threads.get_all_thread_ids_with_states()
     }
     /// Decide which thread to run next.
     ///
