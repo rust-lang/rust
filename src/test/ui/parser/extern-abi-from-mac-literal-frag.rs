@@ -1,3 +1,4 @@
+#![allow(clashing_extern_decl)]
 // check-pass
 
 // In this test we check that the parser accepts an ABI string when it
