@@ -1399,7 +1399,7 @@ pub trait Write {
     /// modify the slice to keep track of the bytes already written.
     ///
     /// Once this function returns, the contents of `bufs` are unspecified, as
-    /// this depends on how many calls to write_vectored were necessary. It is
+    /// this depends on how many calls to `write_vectored` were necessary. It is
     /// best to understand this function as taking ownership of `bufs` and to
     /// not use `bufs` afterwards. The underlying buffers, to which the
     /// `IoSlice`s point (but not the `IoSlice`s themselves), are unchanged and
