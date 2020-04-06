@@ -14,6 +14,7 @@ use rand::rngs::StdRng;
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::{
+    middle::codegen_fn_attrs::CodegenFnAttrFlags,
     mir,
     ty::{
         self,
@@ -21,7 +22,7 @@ use rustc_middle::{
         TyCtxt,
     },
 };
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{def_id::DefId, symbol::{sym, Symbol}};
 use rustc_target::abi::{LayoutOf, Size};
 
 use crate::*;
@@ -459,8 +460,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     fn canonical_alloc_id(mem: &Memory<'mir, 'tcx, Self>, id: AllocId) -> AllocId {
         let tcx = mem.tcx;
         let alloc = tcx.alloc_map.lock().get(id);
+        fn is_thread_local<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+            tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
+        }
         match alloc {
             Some(GlobalAlloc::Static(def_id)) if tcx.is_foreign_item(def_id) => {
+                if is_thread_local(*tcx, def_id) {
+                    unimplemented!("Foreign thread local statics are not supported yet.");
+                }
                 // Figure out if this is an extern static, and if yes, which one.
                 let attrs = tcx.get_attrs(def_id);
                 let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
@@ -476,7 +483,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                     id
                 }
             },
-            Some(GlobalAlloc::Static(def_id)) if tcx.has_attr(def_id, sym::thread_local) => {
+            Some(GlobalAlloc::Static(def_id)) if is_thread_local(*tcx, def_id) => {
                 // We have a thread local, so we need to get a unique allocation id for it.
                 mem.extra.tls.get_or_register_allocation(*tcx, id)
             },
