@@ -28,7 +28,12 @@ fn check_fn_for_unconditional_recursion<'tcx>(
     def_id: DefId,
 ) {
     let self_calls = find_blocks_calling_self(tcx, &body, def_id);
+
+    // Stores a list of `Span`s for every basic block. Those are the spans of `Call` terminators
+    // where we know that one of them will definitely be reached.
     let mut results = IndexVec::from_elem_n(vec![], body.basic_blocks().len());
+
+    // We start the analysis at the self calls and work backwards.
     let mut queue: VecDeque<_> = self_calls.iter().collect();
 
     while let Some(bb) = queue.pop_front() {
@@ -39,6 +44,8 @@ fn check_fn_for_unconditional_recursion<'tcx>(
 
         let locations = if self_calls.contains(bb) {
             // `bb` *is* a self-call.
+            // We don't look at successors here because they are irrelevant here and we don't want
+            // to lint them (eg. `f(); f()` should only lint the first call).
             vec![bb]
         } else {
             // If *all* successors of `bb` lead to a self-call, emit notes at all of their
@@ -69,12 +76,16 @@ fn check_fn_for_unconditional_recursion<'tcx>(
                 }
             };
 
+            // If all our successors are known to lead to self-calls, then we do too.
             let all_are_self_calls =
                 relevant_successors.clone().all(|&succ| !results[succ].is_empty());
 
             if all_are_self_calls {
+                // We'll definitely lead to a self-call. Merge all call locations of the successors
+                // for linting them later.
                 relevant_successors.flat_map(|&succ| results[succ].iter().copied()).collect()
             } else {
+                // At least 1 successor does not always lead to a self-call, so we also don't.
                 vec![]
             }
         };
