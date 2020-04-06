@@ -110,6 +110,18 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 }
             }
 
+            impl PartialEq<$Int> for $Ty {
+                fn eq(&self, rhs: &$Int) -> bool {
+                    self.0 == rhs
+                }
+            }
+
+            impl PartialOrd<$Int> for $Ty {
+                fn partial_cmp(&self, rhs: &$Int) -> Option<Ordering> {
+                    Some(self.0.cmp(rhs))
+                }
+            }
+
             impl_nonzero_fmt! {
                 #[$stability] (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
             }
