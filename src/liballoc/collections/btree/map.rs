@@ -663,8 +663,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// # Examples
     ///
-    /// Contrived way to `clear` a map:
-    ///
     /// ```
     /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
@@ -672,10 +670,13 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// let mut map = BTreeMap::new();
     /// map.insert(1, "a");
     /// map.insert(2, "b");
-    /// while let Some(entry) = map.first_entry() {
-    ///     let (key, val) = entry.remove_entry();
-    ///     assert!(!map.contains_key(&key));
+    /// if let Some(mut entry) = map.first_entry() {
+    ///     if *entry.key() > 0 {
+    ///         entry.insert("first");
+    ///     }
     /// }
+    /// assert_eq!(*map.get(&1).unwrap(), "first");
+    /// assert_eq!(*map.get(&2).unwrap(), "b");
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
     pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>> {
@@ -715,8 +716,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// # Examples
     ///
-    /// Contrived way to `clear` a map:
-    ///
     /// ```
     /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
@@ -724,10 +723,13 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// let mut map = BTreeMap::new();
     /// map.insert(1, "a");
     /// map.insert(2, "b");
-    /// while let Some(entry) = map.last_entry() {
-    ///     let (key, val) = entry.remove_entry();
-    ///     assert!(!map.contains_key(&key));
+    /// if let Some(mut entry) = map.last_entry() {
+    ///     if *entry.key() > 0 {
+    ///         entry.insert("last");
+    ///     }
     /// }
+    /// assert_eq!(*map.get(&1).unwrap(), "a");
+    /// assert_eq!(*map.get(&2).unwrap(), "last");
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
     pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>> {
