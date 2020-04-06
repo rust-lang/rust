@@ -2404,7 +2404,7 @@ impl<'tcx> Const<'tcx> {
             let param_env_and_substs = param_env.with_reveal_all().and(substs);
 
             // Avoid querying `tcx.const_eval(...)` with any e.g. inference vars.
-            if param_env_and_substs.has_local_value() {
+            if param_env_and_substs.needs_infer() {
                 return None;
             }
 
@@ -2424,7 +2424,7 @@ impl<'tcx> Const<'tcx> {
                 // when the expression doesn't depend on any parameters.
                 // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
                 // we can call `infcx.const_eval_resolve` which handles inference variables.
-                if substs.has_local_value() {
+                if substs.needs_infer() {
                     let identity_substs = InternalSubsts::identity_for_item(tcx, did);
                     // The `ParamEnv` needs to match the `identity_substs`.
                     let identity_param_env = tcx.param_env(did);

@@ -995,15 +995,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 self.definitions[upper_bound].external_name.unwrap_or(r)
             } else {
                 // In the case of a failure, use a `ReVar` result. This will
-                // cause the `has_local_value` later on to return `None`.
+                // cause the `needs_infer` later on to return `None`.
                 r
             }
         });
 
         debug!("try_promote_type_test_subject: folded ty = {:?}", ty);
 
-        // `has_local_value` will only be true if we failed to promote some region.
-        if ty.has_local_value() {
+        // `needs_infer` will only be true if we failed to promote some region.
+        if ty.needs_infer() {
             return None;
         }
 

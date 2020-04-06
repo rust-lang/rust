@@ -820,7 +820,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if self.can_use_global_caches(param_env) {
-            if !trait_ref.has_local_value() {
+            if !trait_ref.needs_infer() {
                 debug!(
                     "insert_evaluation_cache(trait_ref={:?}, candidate={:?}) global",
                     trait_ref, result,
@@ -1181,7 +1181,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // If there are any e.g. inference variables in the `ParamEnv`, then we
         // always use a cache local to this particular scope. Otherwise, we
         // switch to a global cache.
-        if param_env.has_local_value() {
+        if param_env.needs_infer() {
             return false;
         }
 
@@ -1271,8 +1271,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if self.can_use_global_caches(param_env) {
             if let Err(Overflow) = candidate {
                 // Don't cache overflow globally; we only produce this in certain modes.
-            } else if !trait_ref.has_local_value() {
-                if !candidate.has_local_value() {
+            } else if !trait_ref.needs_infer() {
+                if !candidate.needs_infer() {
                     debug!(
                         "insert_candidate_cache(trait_ref={:?}, candidate={:?}) global",
                         trait_ref, candidate,
