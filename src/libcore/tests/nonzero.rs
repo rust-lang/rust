@@ -141,3 +141,26 @@ fn test_from_str() {
         Some(IntErrorKind::Overflow)
     );
 }
+
+#[test]
+fn test_compare_regular_int() {
+    let nonzero = NonZeroI32::new(125).unwrap();
+
+    assert_eq!(nonzero, 125);
+    assert_ne!(nonzero, 0);
+    assert_ne!(nonzero, -125);
+
+    assert!(nonzero == 125);
+    assert!(nonzero != 0);
+    assert!(nonzero != -125);
+
+    assert!(nonzero < 200);
+    assert!(nonzero <= 125);
+    assert!(nonzero <= 200);
+
+    assert!(nonzero > 0);
+    assert!(nonzero > -200);
+    assert!(nonzero >= 125);
+    assert!(nonzero >= 0);
+    assert!(nonzero >= -100);
+}
