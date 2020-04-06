@@ -81,6 +81,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         Ok(0)
     }
+    fn pthread_self(&mut self, dest: PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let thread_id = this.get_active_thread()?;
+        this.write_scalar(Scalar::from_uint(thread_id.index() as u128, dest.layout.size), dest)
+    }
     fn prctl(
         &mut self,
         option: OpTy<'tcx, Tag>,

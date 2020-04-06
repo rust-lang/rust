@@ -329,6 +329,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.pthread_detach(args[0])?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "pthread_self" => {
+                assert_eq!(args.len(), 0);
+                this.pthread_self(dest)?;
+            }
             "prctl" => {
                 assert_eq!(args.len(), 5);
                 let result = this.prctl(args[0], args[1], args[2], args[3], args[4])?;
@@ -356,7 +360,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // These shims are enabled only when the caller is in the standard library.
             | "pthread_attr_init"
             | "pthread_attr_destroy"
-            | "pthread_self"
             | "pthread_attr_setstacksize"
             | "pthread_condattr_init"
             | "pthread_condattr_setclock"
