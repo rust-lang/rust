@@ -346,7 +346,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         tcx.sess,
                         hir_ty.span,
                         E0741,
-                        "the types of const generic parameters must derive `PartialEq` and `Eq`",
+                        "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as the \
+                         type of a const parameter",
+                        ty,
                     )
                     .span_label(
                         hir_ty.span,
