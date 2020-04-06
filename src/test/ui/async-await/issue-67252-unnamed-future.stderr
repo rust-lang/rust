@@ -2,7 +2,7 @@ error: future cannot be sent between threads safely
   --> $DIR/issue-67252-unnamed-future.rs:18:5
    |
 LL | fn spawn<T: Send>(_: T) {}
-   |    -----    ---- required by this bound in `spawn`
+   |             ---- required by this bound in `spawn`
 ...
 LL |     spawn(async {
    |     ^^^^^ future is not `Send`

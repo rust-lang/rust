@@ -948,7 +948,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ///   --> $DIR/issue-64130-2-send.rs:21:5
     ///    |
     /// LL | fn is_send<T: Send>(t: T) { }
-    ///    |    -------    ---- required by this bound in `is_send`
+    ///    |               ---- required by this bound in `is_send`
     /// ...
     /// LL |     is_send(bar());
     ///    |     ^^^^^^^ future returned by `bar` is not send
@@ -1356,7 +1356,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let item_name = tcx.def_path_str(item_def_id);
                 let msg = format!("required by this bound in `{}`", item_name);
                 if let Some(ident) = tcx.opt_item_name(item_def_id) {
-                    if !ident.span.overlaps(span) {
+                    let sm = self.tcx.sess.source_map();
+                    let same_line =
+                        match (sm.lookup_line(ident.span.hi()), sm.lookup_line(span.lo())) {
+                            (Ok(l), Ok(r)) => l.line == r.line,
+                            _ => true,
+                        };
+                    if !ident.span.overlaps(span) && !same_line {
                         err.span_label(ident.span, "");
                     }
                 }

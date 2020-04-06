@@ -2,7 +2,7 @@ error[E0277]: `(dyn Dummy + 'a)` cannot be shared between threads safely
   --> $DIR/kindck-send-object1.rs:10:5
    |
 LL | fn assert_send<T:Send+'static>() { }
-   |    -----------   ---- required by this bound in `assert_send`
+   |                  ---- required by this bound in `assert_send`
 ...
 LL |     assert_send::<&'a dyn Dummy>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be shared between threads safely
@@ -14,7 +14,7 @@ error[E0277]: `(dyn Dummy + 'a)` cannot be sent between threads safely
   --> $DIR/kindck-send-object1.rs:29:5
    |
 LL | fn assert_send<T:Send+'static>() { }
-   |    -----------   ---- required by this bound in `assert_send`
+   |                  ---- required by this bound in `assert_send`
 ...
 LL |     assert_send::<Box<dyn Dummy + 'a>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be sent between threads safely
