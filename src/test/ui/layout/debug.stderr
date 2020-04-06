@@ -1,4 +1,4 @@
-error: layout debugging for type E: Layout {
+error: layout_of(E) = Layout {
     fields: Arbitrary {
         offsets: [
             Size {
@@ -110,7 +110,7 @@ error: layout debugging for type E: Layout {
 LL | enum E { Foo, Bar(!, i32, i32) }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: layout debugging for type S: Layout {
+error: layout_of(S) = Layout {
     fields: Arbitrary {
         offsets: [
             Size {
@@ -164,7 +164,7 @@ error: layout debugging for type S: Layout {
 LL | struct S { f1: i32, f2: (), f3: i32 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: layout debugging for type U: Layout {
+error: layout_of(U) = Layout {
     fields: Union(
         2,
     ),
@@ -190,7 +190,7 @@ error: layout debugging for type U: Layout {
 LL | union U { f1: (i32, i32), f3: i32 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: layout debugging for type std::result::Result<i32, i32>: Layout {
+error: layout_of(std::result::Result<i32, i32>) = Layout {
     fields: Arbitrary {
         offsets: [
             Size {
@@ -315,7 +315,7 @@ error: layout debugging for type std::result::Result<i32, i32>: Layout {
 LL | type Test = Result<i32, i32>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: layout debugging for type i32: Layout {
+error: layout_of(i32) = Layout {
     fields: Union(
         0,
     ),
