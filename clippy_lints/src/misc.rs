@@ -57,10 +57,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// # use core::f32::NAN;
     /// # let x = 1.0;
     ///
-    /// if x == NAN { }
+    /// if x == f32::NAN { }
     /// ```
     pub CMP_NAN,
     correctness,
@@ -457,7 +456,7 @@ fn check_nan(cx: &LateContext<'_, '_>, expr: &Expr<'_>, cmp_expr: &Expr<'_>) {
                     cx,
                     CMP_NAN,
                     cmp_expr.span,
-                    "doomed comparison with `NAN`, use `std::{f32,f64}::is_nan()` instead",
+                    "doomed comparison with `NAN`, use `{f32,f64}::is_nan()` instead",
                 );
             }
         }
