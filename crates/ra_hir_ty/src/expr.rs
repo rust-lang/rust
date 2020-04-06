@@ -125,9 +125,12 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             if let Some(expr) = source_ptr.value.left() {
                 let root = source_ptr.file_syntax(db.upcast());
                 if let ast::Expr::MatchExpr(match_expr) = expr.to_node(&root) {
-                    if let Some(arms) = match_expr.match_arm_list() {
+                    if let (Some(match_expr), Some(arms)) =
+                        (match_expr.expr(), match_expr.match_arm_list())
+                    {
                         self.sink.push(MissingMatchArms {
                             file: source_ptr.file_id,
+                            match_expr: AstPtr::new(&match_expr),
                             arms: AstPtr::new(&arms),
                         })
                     }

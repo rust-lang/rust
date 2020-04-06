@@ -545,7 +545,7 @@ mod tests {
 
         assert_snapshot!(
             check_diagnostic_message(content),
-            @"\"{\\n                }\": Missing match arm\n"
+            @"\"()\": Missing match arm\n"
         );
     }
 

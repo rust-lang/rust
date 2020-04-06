@@ -65,6 +65,7 @@ impl AstDiagnostic for MissingFields {
 #[derive(Debug)]
 pub struct MissingMatchArms {
     pub file: HirFileId,
+    pub match_expr: AstPtr<ast::Expr>,
     pub arms: AstPtr<ast::MatchArmList>,
 }
 
@@ -73,7 +74,7 @@ impl Diagnostic for MissingMatchArms {
         String::from("Missing match arm")
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.arms.into() }
+        InFile { file_id: self.file, value: self.match_expr.into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
