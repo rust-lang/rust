@@ -608,7 +608,7 @@ unsafe impl<#[may_dangle] T, A: AllocRef> Drop for RawVec<T, A> {
 
 #[inline]
 fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
-    if mem::size_of::<usize>() < 8 && alloc_size > core::isize::MAX as usize {
+    if mem::size_of::<usize>() < 8 && alloc_size > isize::MAX as usize {
         Err(CapacityOverflow)
     } else {
         Ok(())
