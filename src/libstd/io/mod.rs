@@ -1377,7 +1377,7 @@ pub trait Write {
         Ok(())
     }
 
-    /// Attempts to write an multiple buffers into this writer.
+    /// Attempts to write multiple buffers into this writer.
     ///
     /// This method will continuously call [`write_vectored`] until there is no
     /// more data to be written or an error of non-[`ErrorKind::Interrupted`]
@@ -1393,16 +1393,17 @@ pub trait Write {
     ///
     /// # Notes
     ///
-    /// Different to `io::Write::write_vectored` this takes a *mutable*
-    /// reference to a slice of `IoSlice`s, not a non-mutable reference, because
-    /// we need to modify the slice to keep track of the bytes already written.
     ///
-    /// Once this function returns the contents of `bufs` is unspecified, as we
-    /// don't know what the contents of `bufs` will be as that depends on how
-    /// many writes we needed to do. We advice to see this function as taking
-    /// ownership of `bufs` and don't use the variable after the future returns.
-    /// The underlying buffers, to which `IoSlice` points (not the `IoSlice`
-    /// itself), are unchanged and can be reused.
+    /// Unlike `io::Write::write_vectored`, this takes a *mutable* reference to
+    /// a slice of `IoSlice`s, not an immutable one. That's because we need to
+    /// modify the slice to keep track of the bytes already written.
+    ///
+    /// Once this function returns, the contents of `bufs` are unspecified, as
+    /// this depends on how many calls to write_vectored were necessary. It is
+    /// best to understand this function as taking ownership of `bufs` and to
+    /// not use `bufs` afterwards. The underlying buffers, to which the
+    /// `IoSlice`s point (but not the `IoSlice`s themselves), are unchanged and
+    /// can be reused.
     ///
     /// # Examples
     ///
@@ -1432,7 +1433,7 @@ pub trait Write {
                 Ok(0) => {
                     return Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"));
                 }
-                Ok(n) => bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), n),
+                Ok(n) => bufs = IoSlice::advance(mem::take(&mut bufs), n),
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
             }
@@ -2956,11 +2957,16 @@ mod tests {
             (vec![IoSlice::new(&[1, 2, 3, 4])], &[1, 2, 3, 4]),
             (vec![IoSlice::new(&[1, 2, 3, 4, 5])], &[1, 2, 3, 4, 5]),
             (vec![IoSlice::new(&[1]), IoSlice::new(&[2])], &[1, 2]),
+            (vec![IoSlice::new(&[1]), IoSlice::new(&[2, 2])], &[1, 2, 2]),
             (vec![IoSlice::new(&[1, 1]), IoSlice::new(&[2, 2])], &[1, 1, 2, 2]),
+            (vec![IoSlice::new(&[1, 1]), IoSlice::new(&[2, 2, 2])], &[1, 1, 2, 2, 2]),
+            (vec![IoSlice::new(&[1, 1]), IoSlice::new(&[2, 2, 2])], &[1, 1, 2, 2, 2]),
             (vec![IoSlice::new(&[1, 1, 1]), IoSlice::new(&[2, 2, 2])], &[1, 1, 1, 2, 2, 2]),
+            (vec![IoSlice::new(&[1, 1, 1]), IoSlice::new(&[2, 2, 2, 2])], &[1, 1, 1, 2, 2, 2, 2]),
             (vec![IoSlice::new(&[1, 1, 1, 1]), IoSlice::new(&[2, 2, 2, 2])], &[1, 1, 1, 1, 2, 2, 2, 2]),
             (vec![IoSlice::new(&[1]), IoSlice::new(&[2]), IoSlice::new(&[3])], &[1, 2, 3]),
             (vec![IoSlice::new(&[1, 1]), IoSlice::new(&[2, 2]), IoSlice::new(&[3, 3])], &[1, 1, 2, 2, 3, 3]),
+            (vec![IoSlice::new(&[1]), IoSlice::new(&[2, 2]), IoSlice::new(&[3, 3, 3])], &[1, 2, 2, 3, 3, 3]),
             (vec![IoSlice::new(&[1, 1, 1]), IoSlice::new(&[2, 2, 2]), IoSlice::new(&[3, 3, 3])], &[1, 1, 1, 2, 2, 2, 3, 3, 3]),
         ];
 
