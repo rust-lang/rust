@@ -5,6 +5,7 @@ pub mod fs;
 pub mod intrinsics;
 pub mod os_str;
 pub mod panic;
+pub mod sync;
 pub mod time;
 pub mod tls;
 

@@ -1,18 +1,52 @@
-// Just instantiate some data structures to make sure we got all their foreign items covered.
-// Requires full MIR on Windows.
+#![feature(rustc_private)]
 
-use std::sync;
+use std::sync::{Mutex, TryLockError};
 
 fn main() {
-    let m = sync::Mutex::new(0);
-    drop(m.lock());
-    drop(m);
-
+    test_mutex_stdlib();
     #[cfg(not(target_os = "windows"))] // TODO: implement RwLock on Windows
     {
-        let rw = sync::RwLock::new(0);
-        drop(rw.read());
-        drop(rw.write());
-        drop(rw);
+        test_rwlock_stdlib();
+    }
+}
+
+fn test_mutex_stdlib() {
+    let m = Mutex::new(0);
+    {
+        let _guard = m.lock();
+        assert!(m.try_lock().unwrap_err().would_block());
+    }
+    drop(m.try_lock().unwrap());
+    drop(m);
+}
+
+#[cfg(not(target_os = "windows"))]
+fn test_rwlock_stdlib() {
+    use std::sync::RwLock;
+    let rw = RwLock::new(0);
+    {
+        let _read_guard = rw.read().unwrap();
+        drop(rw.read().unwrap());
+        drop(rw.try_read().unwrap());
+        assert!(rw.try_write().unwrap_err().would_block());
+    }
+
+    {
+        let _write_guard = rw.write().unwrap();
+        assert!(rw.try_read().unwrap_err().would_block());
+        assert!(rw.try_write().unwrap_err().would_block());
+    }
+}
+
+trait TryLockErrorExt<T> {
+    fn would_block(&self) -> bool;
+}
+
+impl<T> TryLockErrorExt<T> for TryLockError<T> {
+    fn would_block(&self) -> bool {
+        match self {
+            TryLockError::WouldBlock => true,
+            TryLockError::Poisoned(_) => false,
+        }
     }
 }

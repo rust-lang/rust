@@ -88,7 +88,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(stack_size, dest)?;
             }
 
-            // Incomplete shims that we "stub out" just to get pre-main initialziation code to work.
+            // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "mmap" if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
                 // This is a horrible hack, but since the guard page mechanism calls mmap and expects a particular return value, we just give it that value.

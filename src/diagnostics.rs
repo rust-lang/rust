@@ -12,7 +12,8 @@ pub enum TerminationInfo {
     Exit(i64),
     Abort(Option<String>),
     UnsupportedInIsolation(String),
-    ExperimentalUb { msg: String, url: String }
+    ExperimentalUb { msg: String, url: String },
+    Deadlock,
 }
 
 impl fmt::Debug for TerminationInfo {
@@ -29,6 +30,8 @@ impl fmt::Debug for TerminationInfo {
                 write!(f, "{}", msg),
             ExperimentalUb { msg, .. } =>
                 write!(f, "{}", msg),
+            Deadlock =>
+                write!(f, "the evaluated program deadlocked"),
         }
     }
 }
@@ -60,6 +63,7 @@ pub fn report_error<'tcx, 'mir>(
                     "unsupported operation",
                 ExperimentalUb { .. } =>
                     "Undefined Behavior",
+                Deadlock => "deadlock",
             };
             let helps = match info {
                 UnsupportedInIsolation(_) =>

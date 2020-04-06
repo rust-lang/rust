@@ -1,14 +1,14 @@
 //! Main evaluator loop and setting up the initial stack frame.
 
-use std::ffi::OsStr;
 use std::convert::TryFrom;
+use std::ffi::OsStr;
 
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
-use rustc_target::abi::LayoutOf;
-use rustc_middle::ty::{self, TyCtxt};
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::{self, layout::LayoutCx, TyCtxt};
+use rustc_target::abi::LayoutOf;
 
 use crate::*;
 
@@ -60,10 +60,13 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     main_id: DefId,
     config: MiriConfig,
 ) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, Evaluator<'tcx>>, MPlaceTy<'tcx, Tag>)> {
+    let tcx_at = tcx.at(rustc_span::source_map::DUMMY_SP);
+    let param_env = ty::ParamEnv::reveal_all();
+    let layout_cx = LayoutCx { tcx, param_env };
     let mut ecx = InterpCx::new(
-        tcx.at(rustc_span::source_map::DUMMY_SP),
-        ty::ParamEnv::reveal_all(),
-        Evaluator::new(config.communicate, config.validate),
+        tcx_at,
+        param_env,
+        Evaluator::new(config.communicate, config.validate, layout_cx),
         MemoryExtra::new(
             StdRng::seed_from_u64(config.seed.unwrap_or(0)),
             config.stacked_borrows,
