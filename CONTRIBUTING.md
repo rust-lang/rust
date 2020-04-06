@@ -28,6 +28,15 @@ install that exact version of rustc as a toolchain:
 
 [`rustup-toolchain-install-master`]: https://github.com/kennytm/rustup-toolchain-install-master
 
+Now building Miri is just one command away:
+
+```
+./miri build
+```
+
+Run `./miri` without arguments to see the other commands our build tool
+supports.
+
 ### Fixing Miri when rustc changes
 
 Miri is heavily tied to rustc internals, so it is very common that rustc changes
