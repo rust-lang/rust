@@ -261,6 +261,7 @@
 
 use crate::cmp;
 use crate::fmt;
+use crate::mem;
 use crate::memchr;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
@@ -1376,6 +1377,70 @@ pub trait Write {
         Ok(())
     }
 
+    /// Attempts to write multiple buffers into this writer.
+    ///
+    /// This method will continuously call [`write_vectored`] until there is no
+    /// more data to be written or an error of non-[`ErrorKind::Interrupted`]
+    /// kind is returned. This method will not return until all buffers have
+    /// been successfully written or such an error occurs. The first error that
+    /// is not of [`ErrorKind::Interrupted`] kind generated from this method
+    /// will be returned.
+    ///
+    /// If the buffer contains no data, this will never call [`write_vectored`].
+    ///
+    /// [`write_vectored`]: #method.write_vectored
+    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
+    ///
+    /// # Notes
+    ///
+    ///
+    /// Unlike `io::Write::write_vectored`, this takes a *mutable* reference to
+    /// a slice of `IoSlice`s, not an immutable one. That's because we need to
+    /// modify the slice to keep track of the bytes already written.
+    ///
+    /// Once this function returns, the contents of `bufs` are unspecified, as
+    /// this depends on how many calls to `write_vectored` were necessary. It is
+    /// best to understand this function as taking ownership of `bufs` and to
+    /// not use `bufs` afterwards. The underlying buffers, to which the
+    /// `IoSlice`s point (but not the `IoSlice`s themselves), are unchanged and
+    /// can be reused.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(write_all_vectored)]
+    /// # fn main() -> std::io::Result<()> {
+    ///
+    /// use std::io::{Write, IoSlice};
+    ///
+    /// let mut writer = Vec::new();
+    /// let bufs = &mut [
+    ///     IoSlice::new(&[1]),
+    ///     IoSlice::new(&[2, 3]),
+    ///     IoSlice::new(&[4, 5, 6]),
+    /// ];
+    ///
+    /// writer.write_all_vectored(bufs)?;
+    /// // Note: the contents of `bufs` is now undefined, see the Notes section.
+    ///
+    /// assert_eq!(writer, &[1, 2, 3, 4, 5, 6]);
+    /// # Ok(()) }
+    /// ```
+    #[unstable(feature = "write_all_vectored", issue = "70436")]
+    fn write_all_vectored(&mut self, mut bufs: &mut [IoSlice<'_>]) -> Result<()> {
+        while !bufs.is_empty() {
+            match self.write_vectored(bufs) {
+                Ok(0) => {
+                    return Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"));
+                }
+                Ok(n) => bufs = IoSlice::advance(mem::take(&mut bufs), n),
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
+    }
+
     /// Writes a formatted string into this writer, returning any error
     /// encountered.
     ///
@@ -2423,7 +2488,7 @@ impl<B: BufRead> Iterator for Lines<B> {
 #[cfg(test)]
 mod tests {
     use super::{repeat, Cursor, SeekFrom};
-    use crate::cmp;
+    use crate::cmp::{self, min};
     use crate::io::prelude::*;
     use crate::io::{self, IoSlice, IoSliceMut};
     use crate::ops::Deref;
@@ -2811,5 +2876,108 @@ mod tests {
         // Going beyond the total length should be ok.
         bufs = IoSlice::advance(bufs, 9);
         assert!(bufs.is_empty());
+    }
+
+    /// Create a new writer that reads from at most `n_bufs` and reads
+    /// `per_call` bytes (in total) per call to write.
+    fn test_writer(n_bufs: usize, per_call: usize) -> TestWriter {
+        TestWriter { n_bufs, per_call, written: Vec::new() }
+    }
+
+    struct TestWriter {
+        n_bufs: usize,
+        per_call: usize,
+        written: Vec<u8>,
+    }
+
+    impl Write for TestWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.write_vectored(&[IoSlice::new(buf)])
+        }
+
+        fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+            let mut left = self.per_call;
+            let mut written = 0;
+            for buf in bufs.iter().take(self.n_bufs) {
+                let n = min(left, buf.len());
+                self.written.extend_from_slice(&buf[0..n]);
+                left -= n;
+                written += n;
+            }
+            Ok(written)
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_writer_read_from_one_buf() {
+        let mut writer = test_writer(1, 2);
+
+        assert_eq!(writer.write(&[]).unwrap(), 0);
+        assert_eq!(writer.write_vectored(&[]).unwrap(), 0);
+
+        // Read at most 2 bytes.
+        assert_eq!(writer.write(&[1, 1, 1]).unwrap(), 2);
+        let bufs = &[IoSlice::new(&[2, 2, 2])];
+        assert_eq!(writer.write_vectored(bufs).unwrap(), 2);
+
+        // Only read from first buf.
+        let bufs = &[IoSlice::new(&[3]), IoSlice::new(&[4, 4])];
+        assert_eq!(writer.write_vectored(bufs).unwrap(), 1);
+
+        assert_eq!(writer.written, &[1, 1, 2, 2, 3]);
+    }
+
+    #[test]
+    fn test_writer_read_from_multiple_bufs() {
+        let mut writer = test_writer(3, 3);
+
+        // Read at most 3 bytes from two buffers.
+        let bufs = &[IoSlice::new(&[1]), IoSlice::new(&[2, 2, 2])];
+        assert_eq!(writer.write_vectored(bufs).unwrap(), 3);
+
+        // Read at most 3 bytes from three buffers.
+        let bufs = &[IoSlice::new(&[3]), IoSlice::new(&[4]), IoSlice::new(&[5, 5])];
+        assert_eq!(writer.write_vectored(bufs).unwrap(), 3);
+
+        assert_eq!(writer.written, &[1, 2, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn test_write_all_vectored() {
+        #[rustfmt::skip] // Becomes unreadable otherwise.
+        let tests: Vec<(_, &'static [u8])> = vec![
+            (vec![], &[]),
+            (vec![IoSlice::new(&[1])], &[1]),
+            (vec![IoSlice::new(&[1, 2])], &[1, 2]),
+            (vec![IoSlice::new(&[1, 2, 3])], &[1, 2, 3]),
+            (vec![IoSlice::new(&[1, 2, 3, 4])], &[1, 2, 3, 4]),
+            (vec![IoSlice::new(&[1, 2, 3, 4, 5])], &[1, 2, 3, 4, 5]),
+            (vec![IoSlice::new(&[1]), IoSlice::new(&[2])], &[1, 2]),
+            (vec![IoSlice::new(&[1]), IoSlice::new(&[2, 2])], &[1, 2, 2]),
+            (vec![IoSlice::new(&[1, 1]), IoSlice::new(&[2, 2])], &[1, 1, 2, 2]),
+            (vec![IoSlice::new(&[1, 1]), IoSlice::new(&[2, 2, 2])], &[1, 1, 2, 2, 2]),
+            (vec![IoSlice::new(&[1, 1]), IoSlice::new(&[2, 2, 2])], &[1, 1, 2, 2, 2]),
+            (vec![IoSlice::new(&[1, 1, 1]), IoSlice::new(&[2, 2, 2])], &[1, 1, 1, 2, 2, 2]),
+            (vec![IoSlice::new(&[1, 1, 1]), IoSlice::new(&[2, 2, 2, 2])], &[1, 1, 1, 2, 2, 2, 2]),
+            (vec![IoSlice::new(&[1, 1, 1, 1]), IoSlice::new(&[2, 2, 2, 2])], &[1, 1, 1, 1, 2, 2, 2, 2]),
+            (vec![IoSlice::new(&[1]), IoSlice::new(&[2]), IoSlice::new(&[3])], &[1, 2, 3]),
+            (vec![IoSlice::new(&[1, 1]), IoSlice::new(&[2, 2]), IoSlice::new(&[3, 3])], &[1, 1, 2, 2, 3, 3]),
+            (vec![IoSlice::new(&[1]), IoSlice::new(&[2, 2]), IoSlice::new(&[3, 3, 3])], &[1, 2, 2, 3, 3, 3]),
+            (vec![IoSlice::new(&[1, 1, 1]), IoSlice::new(&[2, 2, 2]), IoSlice::new(&[3, 3, 3])], &[1, 1, 1, 2, 2, 2, 3, 3, 3]),
+        ];
+
+        let writer_configs = &[(1, 1), (1, 2), (1, 3), (2, 2), (2, 3), (3, 3)];
+
+        for (n_bufs, per_call) in writer_configs.iter().copied() {
+            for (mut input, wanted) in tests.clone().into_iter() {
+                let mut writer = test_writer(n_bufs, per_call);
+                assert!(writer.write_all_vectored(&mut *input).is_ok());
+                assert_eq!(&*writer.written, &*wanted);
+            }
+        }
     }
 }
