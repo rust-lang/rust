@@ -1,4 +1,4 @@
-# MIR construction
+# HAIR and MIR construction
 
 The lowering of [HIR] to [MIR] occurs for the following (probably incomplete)
 list of items:
