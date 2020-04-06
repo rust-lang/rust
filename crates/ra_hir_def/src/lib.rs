@@ -7,6 +7,11 @@
 //! Note that `hir_def` is a work in progress, so not all of the above is
 //! actually true.
 
+#[allow(unused)]
+macro_rules! eprintln {
+    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
+}
+
 pub mod db;
 
 pub mod attr;
