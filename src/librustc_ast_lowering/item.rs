@@ -165,19 +165,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::MacroDef(..) => SmallVec::new(),
             ItemKind::Fn(..) | ItemKind::Impl { of_trait: None, .. } => smallvec![i.id],
-            ItemKind::Static(ref ty, ..) => {
+            ItemKind::Static(ref ty, ..) | ItemKind::Const(_, ref ty, ..) => {
                 let mut ids = smallvec![i.id];
                 if self.sess.features_untracked().impl_trait_in_bindings {
-                    let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
-                    visitor.visit_ty(ty);
-                }
-                ids
-            }
-            ItemKind::Const(_, ref ty, ..) => {
-                let mut ids = smallvec![i.id];
-                if self.sess.features_untracked().impl_trait_in_bindings {
-                    let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
-                    visitor.visit_ty(ty);
+                    ImplTraitTypeIdVisitor { ids: &mut ids }.visit_ty(ty);
                 }
                 ids
             }
