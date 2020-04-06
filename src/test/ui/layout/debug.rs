@@ -3,19 +3,19 @@
 #![crate_type = "lib"]
 
 #[rustc_layout(debug)]
-enum E { Foo, Bar(!, i32, i32) } //~ ERROR: layout debugging
+enum E { Foo, Bar(!, i32, i32) } //~ ERROR: layout_of
 
 #[rustc_layout(debug)]
-struct S { f1: i32, f2: (), f3: i32 } //~ ERROR: layout debugging
+struct S { f1: i32, f2: (), f3: i32 } //~ ERROR: layout_of
 
 #[rustc_layout(debug)]
-union U { f1: (i32, i32), f3: i32 } //~ ERROR: layout debugging
+union U { f1: (i32, i32), f3: i32 } //~ ERROR: layout_of
 
 #[rustc_layout(debug)]
-type Test = Result<i32, i32>; //~ ERROR: layout debugging
+type Test = Result<i32, i32>; //~ ERROR: layout_of
 
 #[rustc_layout(debug)]
-type T = impl std::fmt::Debug; //~ ERROR: layout debugging
+type T = impl std::fmt::Debug; //~ ERROR: layout_of
 
 fn f() -> T {
     0i32
