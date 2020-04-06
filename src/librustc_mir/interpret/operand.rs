@@ -529,7 +529,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Value(val_val) => val_val,
         };
         // Other cases need layout.
-        let layout = from_known_layout(self.tcx.tcx, layout, || self.layout_of(val.ty))?;
+        let layout = from_known_layout(self.tcx, layout, || self.layout_of(val.ty))?;
         let op = match val_val {
             ConstValue::ByRef { alloc, offset } => {
                 let id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);

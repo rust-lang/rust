@@ -17,7 +17,7 @@ use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
     self, fold::BottomUpFolder, query::TyCtxtAt, subst::SubstsRef, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::source_map::DUMMY_SP;
+use rustc_span::{source_map::DUMMY_SP, Span};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
@@ -256,7 +256,7 @@ pub(super) fn mir_assign_valid_types<'tcx>(
 /// or compute the layout.
 #[cfg_attr(not(debug_assertions), inline(always))]
 pub(super) fn from_known_layout<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    tcx: TyCtxtAt<'tcx>,
     known_layout: Option<TyAndLayout<'tcx>>,
     compute: impl FnOnce() -> InterpResult<'tcx, TyAndLayout<'tcx>>,
 ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
@@ -265,12 +265,14 @@ pub(super) fn from_known_layout<'tcx>(
         Some(known_layout) => {
             if cfg!(debug_assertions) {
                 let check_layout = compute()?;
-                assert!(
-                    mir_assign_valid_types(tcx, check_layout, known_layout),
-                    "expected type differs from actual type.\nexpected: {:?}\nactual: {:?}",
-                    known_layout.ty,
-                    check_layout.ty,
-                );
+                if !mir_assign_valid_types(tcx.tcx, check_layout, known_layout) {
+                    span_bug!(
+                        tcx.span,
+                        "expected type differs from actual type.\nexpected: {:?}\nactual: {:?}",
+                        known_layout.ty,
+                        check_layout.ty,
+                    );
+                }
             }
             Ok(known_layout)
         }
@@ -292,6 +294,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             stack: Vec::new(),
             vtables: FxHashMap::default(),
         }
+    }
+
+    #[inline(always)]
+    pub fn set_span(&mut self, span: Span) {
+        self.tcx.span = span;
+        self.memory.tcx.span = span;
     }
 
     #[inline(always)]
@@ -444,7 +452,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // have to support that case (mostly by skipping all caching).
         match frame.locals.get(local).and_then(|state| state.layout.get()) {
             None => {
-                let layout = from_known_layout(self.tcx.tcx, layout, || {
+                let layout = from_known_layout(self.tcx, layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
                     let local_ty =
                         self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty);

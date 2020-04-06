@@ -52,6 +52,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Call { ref func, ref args, destination, ref cleanup, .. } => {
+                let old_stack = self.cur_frame();
+                let old_bb = self.frame().block;
                 let func = self.eval_operand(func, None)?;
                 let (fn_val, abi) = match func.layout.ty.kind {
                     ty::FnPtr(sig) => {
@@ -64,7 +66,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let sig = func.layout.ty.fn_sig(*self.tcx);
                         (FnVal::Instance(self.resolve(def_id, substs)?), sig.abi())
                     }
-                    _ => bug!("invalid callee of type {:?}", func.layout.ty),
+                    _ => span_bug!(
+                        terminator.source_info.span,
+                        "invalid callee of type {:?}",
+                        func.layout.ty
+                    ),
                 };
                 let args = self.eval_operands(args)?;
                 let ret = match destination {
@@ -72,6 +78,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     None => None,
                 };
                 self.eval_fn_call(fn_val, abi, &args[..], ret, *cleanup)?;
+                // Sanity-check that `eval_fn_call` either pushed a new frame or
+                // did a jump to another block.
+                if self.cur_frame() == old_stack && self.frame().block == old_bb {
+                    span_bug!(terminator.source_info.span, "evaluating this call made no progress");
+                }
             }
 
             Drop { location, target, unwind } => {
@@ -116,9 +127,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | FalseEdges { .. }
             | FalseUnwind { .. }
             | Yield { .. }
-            | GeneratorDrop => {
-                bug!("{:#?} should have been eliminated by MIR pass", terminator.kind)
-            }
+            | GeneratorDrop => span_bug!(
+                terminator.source_info.span,
+                "{:#?} should have been eliminated by MIR pass",
+                terminator.kind
+            ),
         }
 
         Ok(())

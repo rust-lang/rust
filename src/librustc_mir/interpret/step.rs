@@ -78,14 +78,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
+        self.set_span(stmt.source_info.span);
 
         use rustc_middle::mir::StatementKind::*;
 
         // Some statements (e.g., box) push new stack frames.
         // We have to record the stack frame number *before* executing the statement.
         let frame_idx = self.cur_frame();
-        self.tcx.span = stmt.source_info.span;
-        self.memory.tcx.span = stmt.source_info.span;
 
         match &stmt.kind {
             Assign(box (place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
@@ -276,16 +275,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", terminator.kind);
-        self.tcx.span = terminator.source_info.span;
-        self.memory.tcx.span = terminator.source_info.span;
-
-        let old_stack = self.cur_frame();
-        let old_bb = self.frame().block;
+        self.set_span(terminator.source_info.span);
 
         self.eval_terminator(terminator)?;
         if !self.stack.is_empty() {
-            // This should change *something*
-            assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
             if let Some(block) = self.frame().block {
                 info!("// executing {:?}", block);
             }

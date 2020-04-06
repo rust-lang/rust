@@ -425,8 +425,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn eval_constant(&mut self, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
-        self.ecx.tcx.span = c.span;
-
         // FIXME we need to revisit this for #67176
         if c.needs_subst() {
             return None;
@@ -435,6 +433,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         match self.ecx.eval_const_to_op(c.literal, None) {
             Ok(op) => Some(op),
             Err(error) => {
+                // Make sure errors point at the constant.
+                self.ecx.set_span(c.span);
                 let err = error_to_const_error(&self.ecx, error);
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal.val {
@@ -820,6 +820,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         trace!("visit_statement: {:?}", statement);
         let source_info = statement.source_info;
+        self.ecx.set_span(source_info.span);
         self.source_info = Some(source_info);
         if let StatementKind::Assign(box (place, ref mut rval)) = statement.kind {
             let place_ty: Ty<'tcx> = place.ty(&self.local_decls, self.tcx).ty;
@@ -870,6 +871,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
 
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
         let source_info = terminator.source_info;
+        self.ecx.set_span(source_info.span);
         self.source_info = Some(source_info);
         self.super_terminator(terminator, location);
         match &mut terminator.kind {
