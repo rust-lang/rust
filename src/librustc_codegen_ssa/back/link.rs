@@ -154,7 +154,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
 // toolchain
-pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> Command {
+fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> Command {
     let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
@@ -285,11 +285,7 @@ pub fn each_linked_rlib(
 /// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
 /// directory being searched for `extern crate` (observing an incomplete file).
 /// The returned path is the temporary file containing the complete metadata.
-pub fn emit_metadata<'a>(
-    sess: &'a Session,
-    metadata: &EncodedMetadata,
-    tmpdir: &TempDir,
-) -> PathBuf {
+pub fn emit_metadata(sess: &Session, metadata: &EncodedMetadata, tmpdir: &TempDir) -> PathBuf {
     let out_filename = tmpdir.path().join(METADATA_FILENAME);
     let result = fs::write(&out_filename, &metadata.raw_data);
 
@@ -744,7 +740,7 @@ pub fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool
         && (info.compiler_builtins == Some(cnum) || info.is_no_builtins.contains(&cnum))
 }
 
-pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
+fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
     fn infer_from(
         sess: &Session,
         linker: Option<PathBuf>,
@@ -832,7 +828,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 /// Returns a boolean indicating whether we should preserve the object files on
 /// the filesystem for their debug information. This is often useful with
 /// split-dwarf like schemes.
-pub fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
+fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
     // If the objects don't have debuginfo there's nothing to preserve.
     if sess.opts.debuginfo == config::DebugInfo::None {
         return false;
@@ -886,7 +882,7 @@ enum RlibFlavor {
     StaticlibBase,
 }
 
-pub fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLibrary]) {
+fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLibrary]) {
     let lib_args: Vec<_> = all_native_libs
         .iter()
         .filter(|l| relevant_lib(sess, l))
@@ -1012,7 +1008,7 @@ fn get_object_file_path(sess: &Session, name: &str) -> PathBuf {
     PathBuf::from(name)
 }
 
-pub fn exec_linker(
+fn exec_linker(
     sess: &Session,
     cmd: &Command,
     out_filename: &Path,
@@ -1161,7 +1157,7 @@ pub fn exec_linker(
 }
 
 /// Add begin object files defined by the target spec.
-fn add_pre_link_objects(cmd: &mut dyn Linker, sess: &'a Session, crate_type: config::CrateType) {
+fn add_pre_link_objects(cmd: &mut dyn Linker, sess: &Session, crate_type: config::CrateType) {
     let pre_link_objects = if crate_type == config::CrateType::Executable {
         &sess.target.target.options.pre_link_objects_exe
     } else {
@@ -1179,7 +1175,7 @@ fn add_pre_link_objects(cmd: &mut dyn Linker, sess: &'a Session, crate_type: con
 }
 
 /// Add end object files defined by the target spec.
-fn add_post_link_objects(cmd: &mut dyn Linker, sess: &'a Session, crate_type: config::CrateType) {
+fn add_post_link_objects(cmd: &mut dyn Linker, sess: &Session, crate_type: config::CrateType) {
     for obj in &sess.target.target.options.post_link_objects {
         cmd.add_object(&get_object_file_path(sess, obj));
     }
@@ -1194,7 +1190,7 @@ fn add_post_link_objects(cmd: &mut dyn Linker, sess: &'a Session, crate_type: co
 /// FIXME: Determine where exactly these args need to be inserted.
 fn add_pre_link_args(
     cmd: &mut dyn Linker,
-    sess: &'a Session,
+    sess: &Session,
     flavor: LinkerFlavor,
     crate_type: config::CrateType,
 ) {
@@ -1213,7 +1209,7 @@ fn add_pre_link_args(
 /// FIXME: Determine where exactly these args need to be inserted.
 fn add_user_defined_link_args(
     cmd: &mut dyn Linker,
-    sess: &'a Session,
+    sess: &Session,
     codegen_results: &CodegenResults,
 ) {
     cmd.args(&sess.opts.cg.link_args);
@@ -1224,7 +1220,7 @@ fn add_user_defined_link_args(
 /// FIXME: Determine where exactly these args need to be inserted.
 fn add_late_link_args(
     cmd: &mut dyn Linker,
-    sess: &'a Session,
+    sess: &Session,
     flavor: LinkerFlavor,
     crate_type: config::CrateType,
     codegen_results: &CodegenResults,
@@ -1249,7 +1245,7 @@ fn add_late_link_args(
 
 /// Add arbitrary "post-link" args defined by the target spec.
 /// FIXME: Determine where exactly these args need to be inserted.
-fn add_post_link_args(cmd: &mut dyn Linker, sess: &'a Session, flavor: LinkerFlavor) {
+fn add_post_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     if let Some(args) = sess.target.target.options.post_link_args.get(&flavor) {
         cmd.args(args);
     }
@@ -1264,8 +1260,7 @@ fn add_local_crate_regular_objects(cmd: &mut dyn Linker, codegen_results: &Codeg
 
 /// Add object files for allocator code linked once for the whole crate tree.
 fn add_local_crate_allocator_objects(cmd: &mut dyn Linker, codegen_results: &CodegenResults) {
-    let obj = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref());
-    if let Some(obj) = obj {
+    if let Some(obj) = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref()) {
         cmd.add_object(obj);
     }
 }
@@ -1280,8 +1275,8 @@ fn add_local_crate_metadata_objects(
     // executable. This metadata is in a separate object file from the main
     // object file, so we link that in here.
     if crate_type == config::CrateType::Dylib || crate_type == config::CrateType::ProcMacro {
-        let obj = codegen_results.metadata_module.as_ref().and_then(|m| m.object.as_ref());
-        if let Some(obj) = obj {
+        if let Some(obj) = codegen_results.metadata_module.as_ref().and_then(|m| m.object.as_ref())
+        {
             cmd.add_object(obj);
         }
     }
@@ -1337,25 +1332,24 @@ fn link_local_crate_native_libs_and_dependent_crate_libs<'a, B: ArchiveBuilder<'
 }
 
 /// Add sysroot and other globally set directories to the directory search list.
-fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &'a Session) {
-    // The default library location, we need this to find the runtime.
-    // The location of crates will be determined as needed.
-    let lib_path = sess.target_filesearch(PathKind::All).get_lib_path();
-
-    // prefer system mingw-w64 libs, see get_crt_libs_path comment for more details
+fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session) {
+    // Prefer system mingw-w64 libs, see get_crt_libs_path comment for more details.
     if cfg!(windows) && sess.target.target.llvm_target.contains("windows-gnu") {
         if let Some(compiler_libs_path) = get_crt_libs_path(sess) {
             cmd.include_path(&compiler_libs_path);
         }
     }
 
+    // The default library location, we need this to find the runtime.
+    // The location of crates will be determined as needed.
+    let lib_path = sess.target_filesearch(PathKind::All).get_lib_path();
     cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
 }
 
 /// Add options requesting executables to be position-independent or not position-independent.
 fn add_position_independent_executable_args(
     cmd: &mut dyn Linker,
-    sess: &'a Session,
+    sess: &Session,
     flavor: LinkerFlavor,
     crate_type: config::CrateType,
     codegen_results: &CodegenResults,
@@ -1364,7 +1358,6 @@ fn add_position_independent_executable_args(
         return;
     }
 
-    let mut position_independent_executable = false;
     if sess.target.target.options.position_independent_executables {
         let attr_link_args = &*codegen_results.crate_info.link_args;
         let mut user_defined_link_args = sess.opts.cg.link_args.iter().chain(attr_link_args);
@@ -1372,39 +1365,26 @@ fn add_position_independent_executable_args(
             && !sess.crt_static(Some(crate_type))
             && !user_defined_link_args.any(|x| x == "-static")
         {
-            position_independent_executable = true;
+            cmd.position_independent_executable();
+            return;
         }
     }
 
-    if position_independent_executable {
-        cmd.position_independent_executable();
-    } else {
-        // recent versions of gcc can be configured to generate position
-        // independent executables by default. We have to pass -no-pie to
-        // explicitly turn that off. Not applicable to ld.
-        if sess.target.target.options.linker_is_gnu && flavor != LinkerFlavor::Ld {
-            cmd.no_position_independent_executable();
-        }
+    // Recent versions of gcc can be configured to generate position
+    // independent executables by default. We have to pass -no-pie to
+    // explicitly turn that off. Not applicable to ld.
+    if sess.target.target.options.linker_is_gnu && flavor != LinkerFlavor::Ld {
+        cmd.no_position_independent_executable();
     }
 }
 
 /// Add options making relocation sections in the produced ELF files read-only
 /// and suppressing lazy binding.
-fn add_relro_args(cmd: &mut dyn Linker, sess: &'a Session) {
-    let relro_level = match sess.opts.debugging_opts.relro_level {
-        Some(level) => level,
-        None => sess.target.target.options.relro_level,
-    };
-    match relro_level {
-        RelroLevel::Full => {
-            cmd.full_relro();
-        }
-        RelroLevel::Partial => {
-            cmd.partial_relro();
-        }
-        RelroLevel::Off => {
-            cmd.no_relro();
-        }
+fn add_relro_args(cmd: &mut dyn Linker, sess: &Session) {
+    match sess.opts.debugging_opts.relro_level.unwrap_or(sess.target.target.options.relro_level) {
+        RelroLevel::Full => cmd.full_relro(),
+        RelroLevel::Partial => cmd.partial_relro(),
+        RelroLevel::Off => cmd.no_relro(),
         RelroLevel::None => {}
     }
 }
@@ -1412,7 +1392,7 @@ fn add_relro_args(cmd: &mut dyn Linker, sess: &'a Session) {
 /// Add library search paths used at runtime by dynamic linkers.
 fn add_rpath_args(
     cmd: &mut dyn Linker,
-    sess: &'a Session,
+    sess: &Session,
     codegen_results: &CodegenResults,
     out_filename: &Path,
 ) {
@@ -1623,7 +1603,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
 // Also note that the native libraries linked here are only the ones located
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
-pub fn add_local_native_libraries(
+fn add_local_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
     codegen_results: &CodegenResults,
@@ -1953,7 +1933,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
 // generic function calls a native function, then the generic function must
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
-pub fn add_upstream_native_libraries(
+fn add_upstream_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
     codegen_results: &CodegenResults,
@@ -2010,14 +1990,14 @@ pub fn add_upstream_native_libraries(
     }
 }
 
-pub fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
+fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
     match lib.cfg {
         Some(ref cfg) => rustc_attr::cfg_matches(cfg, &sess.parse_sess, None),
         None => true,
     }
 }
 
-pub fn are_upstream_rust_objects_already_included(sess: &Session) -> bool {
+fn are_upstream_rust_objects_already_included(sess: &Session) -> bool {
     match sess.lto() {
         config::Lto::Fat => true,
         config::Lto::Thin => {
