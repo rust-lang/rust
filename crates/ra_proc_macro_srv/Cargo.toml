@@ -12,10 +12,9 @@ doctest = false
 ra_tt = { path = "../ra_tt" }
 ra_proc_macro = { path = "../ra_proc_macro" }
 
-serde_derive = "1.0.104"
-serde = "1.0.104"
-serde_json = "1.0.48"
 
 [dev-dependencies]
 cargo_metadata = "0.9.1"
 difference = "2.0.0"
+# used as proc macro test target
+serde_derive = "=1.0.104"

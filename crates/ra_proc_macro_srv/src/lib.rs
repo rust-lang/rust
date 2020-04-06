@@ -10,6 +10,11 @@
 //! * By **copying** the whole rustc `lib_proc_macro` code, we are able to build this with `stable`
 //!   rustc rather than `unstable`. (Although in gerenal ABI compatibility is still an issue)
 
+#[allow(dead_code)]
+#[doc(hidden)]
+mod proc_macro;
+
+use proc_macro::bridge::client::TokenStream;
 use ra_proc_macro::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask};
 
 pub fn expand_task(_task: &ExpansionTask) -> Result<ExpansionResult, String> {
