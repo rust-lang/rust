@@ -117,7 +117,7 @@ mod imp {
     }
 }
 
-#[cfg(any(target_arch = "x86_64", target_arch = "arm"))]
+#[cfg(not(target_arch = "x86"))]
 #[macro_use]
 mod imp {
     pub type ptr_t = u32;
