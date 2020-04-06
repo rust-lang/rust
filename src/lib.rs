@@ -42,6 +42,7 @@ pub use crate::shims::intrinsics::EvalContextExt as IntrinsicsEvalContextExt;
 pub use crate::shims::os_str::EvalContextExt as OsStrEvalContextExt;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as PanicEvalContextExt};
 pub use crate::shims::sync::{EvalContextExt as SyncEvalContextExt};
+pub use crate::shims::threads::EvalContextExt as ThreadShimsEvalContextExt;
 pub use crate::shims::time::EvalContextExt as TimeEvalContextExt;
 pub use crate::shims::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 pub use crate::shims::EvalContextExt as ShimsEvalContextExt;

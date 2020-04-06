@@ -6,7 +6,6 @@ use std::convert::TryFrom;
 use log::trace;
 
 use crate::*;
-use rustc_index::vec::Idx;
 use rustc_middle::mir;
 use rustc_target::abi::{Align, LayoutOf, Size};
 
@@ -316,66 +315,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Threading
             "pthread_create" => {
-                println!("WARNING: The thread support is experimental. \
-                          For example, Miri does not detect data races yet.");
                 assert_eq!(args.len(), 4);
-                let func = args[2];
-                let fn_ptr = this.read_scalar(func)?.not_undef()?;
-                let fn_val = this.memory.get_fn(fn_ptr)?;
-                let instance = match fn_val {
-                    rustc_mir::interpret::FnVal::Instance(instance) => instance,
-                    _ => unreachable!(),
-                };
-                let thread_info_place = this.deref_operand(args[0])?;
-                let thread_info_type = args[0].layout.ty
-                    .builtin_deref(true)
-                    .ok_or_else(|| err_ub_format!(
-                        "wrong signature used for `pthread_create`: first argument must be a raw pointer."
-                    ))?
-                    .ty;
-                let thread_info_layout = this.layout_of(thread_info_type)?;
-                let func_arg = match *args[3] {
-                    rustc_mir::interpret::Operand::Immediate(immediate) => immediate,
-                    _ => unreachable!(),
-                };
-                let func_args = [func_arg];
-                let ret_place =
-                    this.allocate(this.layout_of(this.tcx.types.usize)?, MiriMemoryKind::Machine.into());
-                let new_thread_id = this.create_thread()?;
-                let old_thread_id = this.set_active_thread(new_thread_id)?;
-                this.call_function(
-                    instance,
-                    &func_args[..],
-                    Some(ret_place.into()),
-                    StackPopCleanup::None { cleanup: true },
-                )?;
-                this.set_active_thread(old_thread_id)?;
-                this.write_scalar(
-                    Scalar::from_uint(new_thread_id.index() as u128, thread_info_layout.size),
-                    thread_info_place.into(),
-                )?;
-
-                // Return success (`0`).
-                this.write_null(dest)?;
+                let result = this.pthread_create(args[0], args[1], args[2], args[3])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "pthread_join" => {
                 assert_eq!(args.len(), 2);
-                assert!(
-                    this.is_null(this.read_scalar(args[1])?.not_undef()?)?,
-                    "Miri supports pthread_join only with retval==NULL"
-                );
-                let thread = this.read_scalar(args[0])?.not_undef()?.to_machine_usize(this)?;
-                this.join_thread(thread.into())?;
-
-                // Return success (`0`).
-                this.write_null(dest)?;
+                let result = this.pthread_join(args[0], args[1])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "pthread_detach" => {
-                let thread = this.read_scalar(args[0])?.not_undef()?.to_machine_usize(this)?;
-                this.detach_thread(thread.into())?;
-
-                // Return success (`0`).
-                this.write_null(dest)?;
+                assert_eq!(args.len(), 1);
+                let result = this.pthread_detach(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
             "pthread_attr_getguardsize" => {

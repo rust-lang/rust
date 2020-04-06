@@ -91,9 +91,6 @@ pub struct ThreadSet<'mir, 'tcx> {
     ///
     /// Note that this vector also contains terminated threads.
     threads: IndexVec<ThreadId, Thread<'mir, 'tcx>>,
-
-    /// List of threads that just terminated. TODO: Cleanup.
-    terminated_threads: Vec<ThreadId>,
 }
 
 impl<'mir, 'tcx> Default for ThreadSet<'mir, 'tcx> {
@@ -103,7 +100,6 @@ impl<'mir, 'tcx> Default for ThreadSet<'mir, 'tcx> {
         Self {
             active_thread: ThreadId::new(0),
             threads: threads,
-            terminated_threads: Default::default(),
         }
     }
 }
