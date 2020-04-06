@@ -42,7 +42,7 @@ features = ["write"] # We don't need read support
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cranelift-simplejit = { git = "https://github.com/bytecodealliance/wasmtime/" }
-libloading = "0.5.1"
+libloading = "0.6.0"
 
 [profile.dev]
 # By compiling dependencies with optimizations, performing tests gets much faster.
