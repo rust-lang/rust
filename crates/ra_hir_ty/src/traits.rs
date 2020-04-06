@@ -148,7 +148,7 @@ pub(crate) fn trait_solve_query(
         Obligation::Trait(it) => db.trait_data(it.trait_).name.to_string(),
         Obligation::Projection(_) => "projection".to_string(),
     });
-    eprintln!("trait_solve_query({})", goal.value.value.display(db));
+    log::info!("trait_solve_query({})", goal.value.value.display(db));
 
     if let Obligation::Projection(pred) = &goal.value.value {
         if let Ty::Bound(_) = &pred.projection_ty.parameters[0] {
