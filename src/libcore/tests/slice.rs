@@ -1709,7 +1709,7 @@ fn test_is_sorted() {
     assert!(![1, 3, 2].is_sorted());
     assert!([0].is_sorted());
     assert!(empty.is_sorted());
-    assert!(![0.0, 1.0, std::f32::NAN].is_sorted());
+    assert!(![0.0, 1.0, f32::NAN].is_sorted());
     assert!([-2, -1, 0, 3].is_sorted());
     assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
     assert!(!["c", "bb", "aaa"].is_sorted());
