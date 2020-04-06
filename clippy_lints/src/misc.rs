@@ -370,30 +370,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                         }
                     }
                     let is_comparing_arrays = is_array(cx, left) || is_array(cx, right);
-                    let (lint, msg) = if is_named_constant(cx, left) || is_named_constant(cx, right) {
-                        (
-                            FLOAT_CMP_CONST,
-                            if is_comparing_arrays {
-                                "strict comparison of `f32` or `f64` constant arrays"
-                            } else {
-                                "strict comparison of `f32` or `f64` constant"
-                            },
-                        )
-                    } else {
-                        (
-                            FLOAT_CMP,
-                            if is_comparing_arrays {
-                                "strict comparison of `f32` or `f64` arrays"
-                            } else {
-                                "strict comparison of `f32` or `f64`"
-                            },
-                        )
-                    };
+                    let (lint, msg) = get_lint_and_message(
+                        is_named_constant(cx, left) || is_named_constant(cx, right),
+                        is_comparing_arrays,
+                    );
                     span_lint_and_then(cx, lint, expr.span, msg, |db| {
                         let lhs = Sugg::hir(cx, left, "..");
                         let rhs = Sugg::hir(cx, right, "..");
 
-                        if !is_comparing_arrays {
+                        if is_comparing_arrays {
+                            db.note("`std::f32::EPSILON` and `std::f64::EPSILON` are available.");
+                        } else {
                             db.span_suggestion(
                                 expr.span,
                                 "consider comparing them within some error",
@@ -405,8 +392,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                                 Applicability::HasPlaceholders, // snippet
                             );
                             db.span_note(expr.span, "`f32::EPSILON` and `f64::EPSILON` are available.");
-                        } else {
-                            db.note("`f32::EPSILON` and `f64::EPSILON` are available.");
                         }
                     });
                 } else if op == BinOpKind::Rem && is_integer_const(cx, right, 1) {
@@ -456,6 +441,31 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                 ),
             );
         }
+    }
+}
+
+fn get_lint_and_message(
+    is_comparing_constants: bool,
+    is_comparing_arrays: bool,
+) -> (&'static rustc_lint::Lint, &'static str) {
+    if is_comparing_constants {
+        (
+            FLOAT_CMP_CONST,
+            if is_comparing_arrays {
+                "strict comparison of `f32` or `f64` constant arrays"
+            } else {
+                "strict comparison of `f32` or `f64` constant"
+            },
+        )
+    } else {
+        (
+            FLOAT_CMP,
+            if is_comparing_arrays {
+                "strict comparison of `f32` or `f64` arrays"
+            } else {
+                "strict comparison of `f32` or `f64`"
+            },
+        )
     }
 }
 
