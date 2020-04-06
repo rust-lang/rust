@@ -1108,14 +1108,14 @@ mod slice_index {
 
             // note: using 0 specifically ensures that the result of overflowing is 0..0,
             //       so that `get` doesn't simply return None for the wrong reason.
-            bad: data[0 ..= ::std::usize::MAX];
+            bad: data[0 ..= usize::MAX];
             message: "maximum usize";
         }
 
         in mod rangetoinclusive_overflow {
             data: [0, 1];
 
-            bad: data[..= ::std::usize::MAX];
+            bad: data[..= usize::MAX];
             message: "maximum usize";
         }
     } // panic_cases!
