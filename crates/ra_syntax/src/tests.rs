@@ -3,7 +3,7 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-use test_utils::{collect_tests, dir_tests, project_dir, read_text};
+use test_utils::{collect_rust_files, dir_tests, project_dir, read_text};
 
 use crate::{fuzz, tokenize, SourceFile, SyntaxError, TextRange, TextUnit, Token};
 
@@ -13,12 +13,12 @@ fn lexer_tests() {
     // * Add tests for unicode escapes in byte-character and [raw]-byte-string literals
     // * Add tests for unescape errors
 
-    dir_tests(&test_data_dir(), &["lexer/ok"], |text, path| {
+    dir_tests(&test_data_dir(), &["lexer/ok"], "txt", |text, path| {
         let (tokens, errors) = tokenize(text);
         assert_errors_are_absent(&errors, path);
         dump_tokens_and_errors(&tokens, &errors, text)
     });
-    dir_tests(&test_data_dir(), &["lexer/err"], |text, path| {
+    dir_tests(&test_data_dir(), &["lexer/err"], "txt", |text, path| {
         let (tokens, errors) = tokenize(text);
         assert_errors_are_present(&errors, path);
         dump_tokens_and_errors(&tokens, &errors, text)
@@ -40,13 +40,13 @@ fn main() {
 
 #[test]
 fn parser_tests() {
-    dir_tests(&test_data_dir(), &["parser/inline/ok", "parser/ok"], |text, path| {
+    dir_tests(&test_data_dir(), &["parser/inline/ok", "parser/ok"], "rast", |text, path| {
         let parse = SourceFile::parse(text);
         let errors = parse.errors();
         assert_errors_are_absent(&errors, path);
         parse.debug_dump()
     });
-    dir_tests(&test_data_dir(), &["parser/err", "parser/inline/err"], |text, path| {
+    dir_tests(&test_data_dir(), &["parser/err", "parser/inline/err"], "rast", |text, path| {
         let parse = SourceFile::parse(text);
         let errors = parse.errors();
         assert_errors_are_present(&errors, path);
@@ -56,14 +56,14 @@ fn parser_tests() {
 
 #[test]
 fn parser_fuzz_tests() {
-    for (_, text) in collect_tests(&test_data_dir(), &["parser/fuzz-failures"]) {
+    for (_, text) in collect_rust_files(&test_data_dir(), &["parser/fuzz-failures"]) {
         fuzz::check_parser(&text)
     }
 }
 
 #[test]
 fn reparse_fuzz_tests() {
-    for (_, text) in collect_tests(&test_data_dir(), &["reparse/fuzz-failures"]) {
+    for (_, text) in collect_rust_files(&test_data_dir(), &["reparse/fuzz-failures"]) {
         let check = fuzz::CheckReparse::from_data(text.as_bytes()).unwrap();
         println!("{:?}", check);
         check.run();
