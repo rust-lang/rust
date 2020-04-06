@@ -114,7 +114,7 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 [[package]]
 name = "chalk-derive"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=177d71340acc7a7204a33115fc63075d86452179#177d71340acc7a7204a33115fc63075d86452179"
+source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -124,7 +124,7 @@ dependencies = [
 [[package]]
 name = "chalk-engine"
 version = "0.9.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=177d71340acc7a7204a33115fc63075d86452179#177d71340acc7a7204a33115fc63075d86452179"
+source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
 dependencies = [
  "chalk-macros",
  "rustc-hash",
@@ -133,7 +133,7 @@ dependencies = [
 [[package]]
 name = "chalk-ir"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=177d71340acc7a7204a33115fc63075d86452179#177d71340acc7a7204a33115fc63075d86452179"
+source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
 dependencies = [
  "chalk-derive",
  "chalk-engine",
@@ -143,7 +143,7 @@ dependencies = [
 [[package]]
 name = "chalk-macros"
 version = "0.1.1"
-source = "git+https://github.com/rust-lang/chalk.git?rev=177d71340acc7a7204a33115fc63075d86452179#177d71340acc7a7204a33115fc63075d86452179"
+source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
 dependencies = [
  "lazy_static",
 ]
@@ -151,7 +151,7 @@ dependencies = [
 [[package]]
 name = "chalk-rust-ir"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=177d71340acc7a7204a33115fc63075d86452179#177d71340acc7a7204a33115fc63075d86452179"
+source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
 dependencies = [
  "chalk-derive",
  "chalk-engine",
@@ -162,7 +162,7 @@ dependencies = [
 [[package]]
 name = "chalk-solve"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=177d71340acc7a7204a33115fc63075d86452179#177d71340acc7a7204a33115fc63075d86452179"
+source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
 dependencies = [
  "chalk-derive",
  "chalk-engine",
@@ -170,7 +170,7 @@ dependencies = [
  "chalk-macros",
  "chalk-rust-ir",
  "ena",
- "itertools 0.8.2",
+ "itertools",
  "petgraph",
  "rustc-hash",
 ]
@@ -503,15 +503,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2b3ea6ff95e175473f8ffe6a7eb7c00d054240321b84c57051175fe3c1e075e"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "itertools"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f56a2d0bc861f9165be4eb3442afd3c236d8a98afd426f65d92324ae1091a484"
-dependencies = [
- "either",
 ]
 
 [[package]]
@@ -873,7 +864,7 @@ name = "ra_assists"
 version = "0.1.0"
 dependencies = [
  "either",
- "itertools 0.9.0",
+ "itertools",
  "ra_db",
  "ra_fmt",
  "ra_hir",
@@ -927,7 +918,7 @@ dependencies = [
 name = "ra_fmt"
 version = "0.1.0"
 dependencies = [
- "itertools 0.9.0",
+ "itertools",
  "ra_syntax",
 ]
 
@@ -937,7 +928,7 @@ version = "0.1.0"
 dependencies = [
  "arrayvec",
  "either",
- "itertools 0.9.0",
+ "itertools",
  "log",
  "ra_db",
  "ra_hir_def",
@@ -1015,7 +1006,7 @@ dependencies = [
  "either",
  "indexmap",
  "insta",
- "itertools 0.9.0",
+ "itertools",
  "log",
  "ra_assists",
  "ra_cfg",
@@ -1127,7 +1118,7 @@ name = "ra_syntax"
 version = "0.1.0"
 dependencies = [
  "arrayvec",
- "itertools 0.9.0",
+ "itertools",
  "once_cell",
  "ra_parser",
  "ra_text_edit",
@@ -1305,7 +1296,7 @@ dependencies = [
  "crossbeam-channel",
  "env_logger",
  "globset",
- "itertools 0.9.0",
+ "itertools",
  "jod-thread",
  "log",
  "lsp-server",

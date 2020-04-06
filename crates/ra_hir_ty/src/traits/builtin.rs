@@ -8,7 +8,8 @@ use super::{AssocTyValue, Impl, UnsizeToSuperTraitObjectData};
 use crate::{
     db::HirDatabase,
     utils::{all_super_traits, generics},
-    ApplicationTy, Binders, GenericPredicate, Substs, TraitRef, Ty, TypeCtor,
+    ApplicationTy, Binders, BoundVar, DebruijnIndex, GenericPredicate, Substs, TraitRef, Ty,
+    TypeCtor, TypeWalk,
 };
 
 pub(super) struct BuiltinImplData {
@@ -164,11 +165,15 @@ fn closure_fn_trait_impl_datum(
 
     let arg_ty = Ty::apply(
         TypeCtor::Tuple { cardinality: num_args },
-        Substs::builder(num_args as usize).fill_with_bound_vars(0).build(),
+        Substs::builder(num_args as usize)
+            .fill_with_bound_vars(DebruijnIndex::INNERMOST, 0)
+            .build(),
     );
     let sig_ty = Ty::apply(
         TypeCtor::FnPtr { num_args },
-        Substs::builder(num_args as usize + 1).fill_with_bound_vars(0).build(),
+        Substs::builder(num_args as usize + 1)
+            .fill_with_bound_vars(DebruijnIndex::INNERMOST, 0)
+            .build(),
     );
 
     let self_ty = Ty::apply_one(TypeCtor::Closure { def: data.def, expr: data.expr }, sig_ty);
@@ -203,7 +208,7 @@ fn closure_fn_trait_output_assoc_ty_value(
         }
     };
 
-    let output_ty = Ty::Bound(num_args.into());
+    let output_ty = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, num_args.into()));
 
     let fn_once_trait =
         get_fn_trait(db, krate, super::FnTrait::FnOnce).expect("assoc ty value should not exist");
@@ -241,7 +246,7 @@ fn array_unsize_impl_datum(db: &dyn HirDatabase, krate: CrateId) -> BuiltinImplD
         // the existence of the Unsize trait has been checked before
         .expect("Unsize trait missing");
 
-    let var = Ty::Bound(0);
+    let var = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0));
     let substs = Substs::builder(2)
         .push(Ty::apply_one(TypeCtor::Array, var.clone()))
         .push(Ty::apply_one(TypeCtor::Slice, var))
@@ -270,19 +275,18 @@ fn trait_object_unsize_impl_datum(
         // the existence of the Unsize trait has been checked before
         .expect("Unsize trait missing");
 
-    let self_ty = Ty::Bound(0);
+    let self_ty = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0));
 
     let target_substs = Substs::build_for_def(db, trait_)
-        .push(Ty::Bound(0))
-        // starting from ^2 because we want to start with ^1 outside of the
-        // `dyn`, which is ^2 inside
-        .fill_with_bound_vars(2)
+        .push(Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0)))
+        .fill_with_bound_vars(DebruijnIndex::ONE, 1)
         .build();
     let num_vars = target_substs.len();
     let target_trait_ref = TraitRef { trait_, substs: target_substs };
     let target_bounds = vec![GenericPredicate::Implemented(target_trait_ref)];
 
-    let self_substs = Substs::build_for_def(db, trait_).fill_with_bound_vars(0).build();
+    let self_substs =
+        Substs::build_for_def(db, trait_).fill_with_bound_vars(DebruijnIndex::INNERMOST, 0).build();
     let self_trait_ref = TraitRef { trait_, substs: self_substs };
     let where_clauses = vec![GenericPredicate::Implemented(self_trait_ref)];
 
@@ -305,24 +309,26 @@ fn super_trait_object_unsize_impl_datum(
         // the existence of the Unsize trait has been checked before
         .expect("Unsize trait missing");
 
-    let self_substs = Substs::build_for_def(db, data.trait_).fill_with_bound_vars(0).build();
+    let self_substs = Substs::build_for_def(db, data.trait_)
+        .fill_with_bound_vars(DebruijnIndex::INNERMOST, 0)
+        .build();
+    let self_trait_ref = TraitRef { trait_: data.trait_, substs: self_substs.clone() };
 
     let num_vars = self_substs.len() - 1;
-
-    let self_trait_ref = TraitRef { trait_: data.trait_, substs: self_substs.clone() };
-    let self_bounds = vec![GenericPredicate::Implemented(self_trait_ref.clone())];
 
     // we need to go from our trait to the super trait, substituting type parameters
     let path = crate::utils::find_super_trait_path(db.upcast(), data.trait_, data.super_trait);
 
-    let mut current_trait_ref = self_trait_ref;
+    let mut current_trait_ref = self_trait_ref.clone();
     for t in path.into_iter().skip(1) {
         let bounds = db.generic_predicates(current_trait_ref.trait_.into());
         let super_trait_ref = bounds
             .iter()
             .find_map(|b| match &b.value {
                 GenericPredicate::Implemented(tr)
-                    if tr.trait_ == t && tr.substs[0] == Ty::Bound(0) =>
+                    if tr.trait_ == t
+                        && tr.substs[0]
+                            == Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0)) =>
                 {
                     Some(Binders { value: tr, num_binders: b.num_binders })
                 }
@@ -332,7 +338,18 @@ fn super_trait_object_unsize_impl_datum(
         current_trait_ref = super_trait_ref.cloned().subst(&current_trait_ref.substs);
     }
 
-    let super_bounds = vec![GenericPredicate::Implemented(current_trait_ref)];
+    // We need to renumber the variables a bit now: from ^0.0, ^0.1, ^0.2, ...
+    // to ^0.0, ^1.0, ^1.1. The reason for this is that the first variable comes
+    // from the dyn Trait binder, while the other variables come from the impl.
+    let new_substs = Substs::builder(num_vars + 1)
+        .push(Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0)))
+        .fill_with_bound_vars(DebruijnIndex::ONE, 0)
+        .build();
+
+    let self_bounds =
+        vec![GenericPredicate::Implemented(self_trait_ref.subst_bound_vars(&new_substs))];
+    let super_bounds =
+        vec![GenericPredicate::Implemented(current_trait_ref.subst_bound_vars(&new_substs))];
 
     let substs = Substs::builder(2)
         .push(Ty::Dyn(self_bounds.into()))

@@ -20,7 +20,8 @@ use crate::{
     db::HirDatabase,
     primitive::{FloatBitness, Uncertain},
     utils::all_super_traits,
-    ApplicationTy, Canonical, InEnvironment, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
+    ApplicationTy, Canonical, DebruijnIndex, InEnvironment, TraitEnvironment, TraitRef, Ty,
+    TypeCtor, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -507,8 +508,9 @@ pub(crate) fn inherent_impl_substs(
 ) -> Option<Substs> {
     // we create a var for each type parameter of the impl; we need to keep in
     // mind here that `self_ty` might have vars of its own
-    let vars =
-        Substs::build_for_def(db, impl_id).fill_with_bound_vars(self_ty.num_vars as u32).build();
+    let vars = Substs::build_for_def(db, impl_id)
+        .fill_with_bound_vars(DebruijnIndex::INNERMOST, self_ty.num_vars)
+        .build();
     let self_ty_with_vars = db.impl_self_ty(impl_id).subst(&vars);
     let self_ty_with_vars =
         Canonical { num_vars: vars.len() + self_ty.num_vars, value: self_ty_with_vars };
@@ -526,8 +528,8 @@ pub(crate) fn inherent_impl_substs(
 fn fallback_bound_vars(s: Substs, num_vars_to_keep: usize) -> Substs {
     s.fold_binders(
         &mut |ty, binders| {
-            if let Ty::Bound(idx) = &ty {
-                if *idx >= binders as u32 {
+            if let Ty::Bound(bound) = &ty {
+                if bound.index >= num_vars_to_keep && bound.debruijn >= binders {
                     Ty::Unknown
                 } else {
                     ty
@@ -536,7 +538,7 @@ fn fallback_bound_vars(s: Substs, num_vars_to_keep: usize) -> Substs {
                 ty
             }
         },
-        num_vars_to_keep,
+        DebruijnIndex::INNERMOST,
     )
 }
 
@@ -586,7 +588,7 @@ fn generic_implements_goal(
     let num_vars = self_ty.num_vars;
     let substs = super::Substs::build_for_def(db, trait_)
         .push(self_ty.value)
-        .fill_with_bound_vars(num_vars as u32)
+        .fill_with_bound_vars(DebruijnIndex::INNERMOST, num_vars)
         .build();
     let num_vars = substs.len() - 1 + self_ty.num_vars;
     let trait_ref = TraitRef { trait_, substs };
