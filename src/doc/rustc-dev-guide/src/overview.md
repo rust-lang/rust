@@ -28,8 +28,8 @@ we'll talk about that later.
   to the rest of the compilation process as a [`rustc_interface::Config`].
 - The raw Rust source text is analyzed by a low-level lexer located in
   [`librustc_lexer`]. At this stage, the source text is turned into a stream of
-  atomic source code units known as _tokens_. (**TODO**: chrissimpkins - Maybe
-  discuss Unicode handling during this stage?)
+  atomic source code units known as _tokens_.  The lexer supports the Unicode
+  character encoding.
 - The token stream passes through a higher-level lexer located in
   [`librustc_parse`] to prepare for the next stage of the compile process. The
   [`StringReader`] struct is used at this stage to perform a set of validations
