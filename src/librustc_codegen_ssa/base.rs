@@ -39,7 +39,7 @@ use rustc_middle::middle::cstore::{self, LinkagePreference};
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::traits::Vtable;
-use rustc_middle::ty::layout::{self, HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
@@ -167,7 +167,7 @@ pub fn unsized_info<'tcx, 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 // Find the offset of the supertrait's vtable within the subtrait (parent) vtable.
                 let trait_ref = target_trait_ref.with_self_ty(tcx, source);
                 let vtable = tcx.codegen_fulfill_obligation((ty::ParamEnv::reveal_all(), trait_ref))
-                    .unwrap_or_else(|| bug!("unsized_info: no vtable found"));
+                    .unwrap_or_else(|| bug!("unsized_info: vtable not found"));
                 let offset = match vtable {
                     Vtable::VtableObject(ref data) => data.vtable_base,
                     // HACK(alexreg): slightly dubious solution to ICE in
@@ -434,7 +434,7 @@ pub fn from_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn to_immediate<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     val: Bx::Value,
-    layout: layout::TyAndLayout<'_>,
+    layout: TyAndLayout<'_>,
 ) -> Bx::Value {
     if let Abi::Scalar(ref scalar) = layout.abi {
         return to_immediate_scalar(bx, val, scalar);
