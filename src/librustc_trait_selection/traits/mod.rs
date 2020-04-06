@@ -259,7 +259,7 @@ fn do_normalize_predicates<'tcx>(
                 return Err(ErrorReported);
             }
         };
-        if predicates.has_local_value() {
+        if predicates.needs_infer() {
             // FIXME: shouldn't we, you know, actually report an error here? or an ICE?
             Err(ErrorReported)
         } else {

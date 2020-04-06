@@ -40,7 +40,7 @@ impl TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if ty.has_local_value() { ty.super_fold_with(self) } else { self.tcx.erase_regions_ty(ty) }
+        if ty.needs_infer() { ty.super_fold_with(self) } else { self.tcx.erase_regions_ty(ty) }
     }
 
     fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
