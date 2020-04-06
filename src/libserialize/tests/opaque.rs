@@ -53,7 +53,7 @@ fn test_unit() {
 #[test]
 fn test_u8() {
     let mut vec = vec![];
-    for i in ::std::u8::MIN..::std::u8::MAX {
+    for i in u8::MIN..u8::MAX {
         vec.push(i);
     }
     check_round_trip(vec);
@@ -61,30 +61,30 @@ fn test_u8() {
 
 #[test]
 fn test_u16() {
-    for i in ::std::u16::MIN..::std::u16::MAX {
+    for i in u16::MIN..u16::MAX {
         check_round_trip(vec![1, 2, 3, i, i, i]);
     }
 }
 
 #[test]
 fn test_u32() {
-    check_round_trip(vec![1, 2, 3, ::std::u32::MIN, 0, 1, ::std::u32::MAX, 2, 1]);
+    check_round_trip(vec![1, 2, 3, u32::MIN, 0, 1, u32::MAX, 2, 1]);
 }
 
 #[test]
 fn test_u64() {
-    check_round_trip(vec![1, 2, 3, ::std::u64::MIN, 0, 1, ::std::u64::MAX, 2, 1]);
+    check_round_trip(vec![1, 2, 3, u64::MIN, 0, 1, u64::MAX, 2, 1]);
 }
 
 #[test]
 fn test_usize() {
-    check_round_trip(vec![1, 2, 3, ::std::usize::MIN, 0, 1, ::std::usize::MAX, 2, 1]);
+    check_round_trip(vec![1, 2, 3, usize::MIN, 0, 1, usize::MAX, 2, 1]);
 }
 
 #[test]
 fn test_i8() {
     let mut vec = vec![];
-    for i in ::std::i8::MIN..::std::i8::MAX {
+    for i in i8::MIN..i8::MAX {
         vec.push(i);
     }
     check_round_trip(vec);
@@ -92,24 +92,24 @@ fn test_i8() {
 
 #[test]
 fn test_i16() {
-    for i in ::std::i16::MIN..::std::i16::MAX {
+    for i in i16::MIN..i16::MAX {
         check_round_trip(vec![-1, 2, -3, i, i, i, 2]);
     }
 }
 
 #[test]
 fn test_i32() {
-    check_round_trip(vec![-1, 2, -3, ::std::i32::MIN, 0, 1, ::std::i32::MAX, 2, 1]);
+    check_round_trip(vec![-1, 2, -3, i32::MIN, 0, 1, i32::MAX, 2, 1]);
 }
 
 #[test]
 fn test_i64() {
-    check_round_trip(vec![-1, 2, -3, ::std::i64::MIN, 0, 1, ::std::i64::MAX, 2, 1]);
+    check_round_trip(vec![-1, 2, -3, i64::MIN, 0, 1, i64::MAX, 2, 1]);
 }
 
 #[test]
 fn test_isize() {
-    check_round_trip(vec![-1, 2, -3, ::std::isize::MIN, 0, 1, ::std::isize::MAX, 2, 1]);
+    check_round_trip(vec![-1, 2, -3, isize::MIN, 0, 1, isize::MAX, 2, 1]);
 }
 
 #[test]
