@@ -389,8 +389,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                                 ),
                                 Applicability::HasPlaceholders, // snippet
                             );
+                            db.span_note(expr.span, "`f32::EPSILON` and `f64::EPSILON` are available.");
+                        } else {
+                            db.note("`f32::EPSILON` and `f64::EPSILON` are available.");
                         }
-                        db.span_note(expr.span, "`f32::EPSILON` and `f64::EPSILON` are available.");
                     });
                 } else if op == BinOpKind::Rem && is_integer_const(cx, right, 1) {
                     span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
