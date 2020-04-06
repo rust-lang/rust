@@ -731,6 +731,14 @@ pub fn validate_candidates(
             // and `#[rustc_args_required_const]` arguments here.
 
             let is_promotable = validator.validate_candidate(candidate).is_ok();
+
+            if validator.explicit && !is_promotable {
+                ccx.tcx.sess.delay_span_bug(
+                    ccx.body.span,
+                    "Explicit promotion requested, but failed to promote",
+                );
+            }
+
             match candidate {
                 Candidate::Argument { bb, index } if !is_promotable => {
                     let span = ccx.body[bb].terminator().source_info.span;
