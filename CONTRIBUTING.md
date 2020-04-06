@@ -69,7 +69,7 @@ driver on a particular file by doing
 ./miri run tests/run-pass/hello.rs --target i686-unknown-linux-gnu
 ```
 
-and you can (cross-)run the test suite using:
+and you can (cross-)run the entire test suite using:
 
 ```
 ./miri test
