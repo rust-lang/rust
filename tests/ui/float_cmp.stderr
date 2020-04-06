@@ -5,11 +5,7 @@ LL |     ONE as f64 != 2.0;
    |     ^^^^^^^^^^^^^^^^^ help: consider comparing them within some error: `(ONE as f64 - 2.0).abs() > error`
    |
    = note: `-D clippy::float-cmp` implied by `-D warnings`
-note: `f32::EPSILON` and `f64::EPSILON` are available.
-  --> $DIR/float_cmp.rs:65:5
-   |
-LL |     ONE as f64 != 2.0;
-   |     ^^^^^^^^^^^^^^^^^
+   = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error`
 
 error: strict comparison of `f32` or `f64`
   --> $DIR/float_cmp.rs:70:5
@@ -17,11 +13,7 @@ error: strict comparison of `f32` or `f64`
 LL |     x == 1.0;
    |     ^^^^^^^^ help: consider comparing them within some error: `(x - 1.0).abs() < error`
    |
-note: `f32::EPSILON` and `f64::EPSILON` are available.
-  --> $DIR/float_cmp.rs:70:5
-   |
-LL |     x == 1.0;
-   |     ^^^^^^^^
+   = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error`
 
 error: strict comparison of `f32` or `f64`
   --> $DIR/float_cmp.rs:73:5
@@ -29,11 +21,7 @@ error: strict comparison of `f32` or `f64`
 LL |     twice(x) != twice(ONE as f64);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some error: `(twice(x) - twice(ONE as f64)).abs() > error`
    |
-note: `f32::EPSILON` and `f64::EPSILON` are available.
-  --> $DIR/float_cmp.rs:73:5
-   |
-LL |     twice(x) != twice(ONE as f64);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error`
 
 error: strict comparison of `f32` or `f64`
   --> $DIR/float_cmp.rs:93:5
@@ -41,11 +29,7 @@ error: strict comparison of `f32` or `f64`
 LL |     NON_ZERO_ARRAY[i] == NON_ZERO_ARRAY[j];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some error: `(NON_ZERO_ARRAY[i] - NON_ZERO_ARRAY[j]).abs() < error`
    |
-note: `f32::EPSILON` and `f64::EPSILON` are available.
-  --> $DIR/float_cmp.rs:93:5
-   |
-LL |     NON_ZERO_ARRAY[i] == NON_ZERO_ARRAY[j];
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error`
 
 error: strict comparison of `f32` or `f64` arrays
   --> $DIR/float_cmp.rs:98:5
@@ -53,7 +37,7 @@ error: strict comparison of `f32` or `f64` arrays
 LL |     a1 == a2;
    |     ^^^^^^^^
    |
-   = note: `f32::EPSILON` and `f64::EPSILON` are available.
+   = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error`
 
 error: strict comparison of `f32` or `f64`
   --> $DIR/float_cmp.rs:99:5
@@ -61,11 +45,7 @@ error: strict comparison of `f32` or `f64`
 LL |     a1[0] == a2[0];
    |     ^^^^^^^^^^^^^^ help: consider comparing them within some error: `(a1[0] - a2[0]).abs() < error`
    |
-note: `f32::EPSILON` and `f64::EPSILON` are available.
-  --> $DIR/float_cmp.rs:99:5
-   |
-LL |     a1[0] == a2[0];
-   |     ^^^^^^^^^^^^^^
+   = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error`
 
 error: aborting due to 6 previous errors
 

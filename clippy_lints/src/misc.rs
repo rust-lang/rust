@@ -378,9 +378,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                         let lhs = Sugg::hir(cx, left, "..");
                         let rhs = Sugg::hir(cx, right, "..");
 
-                        if is_comparing_arrays {
-                            db.note("`std::f32::EPSILON` and `std::f64::EPSILON` are available.");
-                        } else {
+                        if !is_comparing_arrays {
                             db.span_suggestion(
                                 expr.span,
                                 "consider comparing them within some error",
@@ -391,8 +389,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                                 ),
                                 Applicability::HasPlaceholders, // snippet
                             );
-                            db.span_note(expr.span, "`f32::EPSILON` and `f64::EPSILON` are available.");
                         }
+                        db.note("`f32::EPSILON` and `f64::EPSILON` are available for the `error`");
                     });
                 } else if op == BinOpKind::Rem && is_integer_const(cx, right, 1) {
                     span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
