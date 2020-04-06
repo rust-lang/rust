@@ -22,7 +22,7 @@ use std::fmt;
 use super::InferCtxtPrivExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 
-// public for clippy
+// This trait is public to expose the diagnostics methods to clippy.
 pub trait InferCtxtExt<'tcx> {
     fn suggest_restricting_param_bound(
         &self,
