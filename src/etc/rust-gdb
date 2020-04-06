@@ -2,8 +2,16 @@
 # Exit if anything fails
 set -e
 
+# Prefer rustc in the same directory as this script
+DIR="$(dirname "$0")"
+if [ -x "$DIR/rustc" ]; then
+  RUSTC="$DIR/rustc"
+else
+  RUSTC="rustc"
+fi
+
 # Find out where the pretty printer Python module is
-RUSTC_SYSROOT=`rustc --print=sysroot`
+RUSTC_SYSROOT="$("$RUSTC" --print=sysroot)"
 GDB_PYTHON_MODULE_DIRECTORY="$RUSTC_SYSROOT/lib/rustlib/etc"
 
 # Run GDB with the additional arguments that load the pretty printers
