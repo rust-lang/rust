@@ -860,7 +860,8 @@ pub trait TypeWalk {
         );
         self
     }
-    // /// Shifts up debruijn indices of `Ty::Bound` vars by `n`.
+
+    /// Shifts up debruijn indices of `Ty::Bound` vars by `n`.
     fn shift_bound_vars(self, n: DebruijnIndex) -> Self
     where
         Self: Sized,
