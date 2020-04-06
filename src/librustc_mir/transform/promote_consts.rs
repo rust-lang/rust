@@ -207,14 +207,26 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
             Rvalue::Ref(..) => {
                 self.candidates.push(Candidate::Ref(location));
             }
-            Rvalue::Repeat(elem, _)
+            Rvalue::Repeat(elem, n)
                 if self.ccx.tcx.features().const_in_array_repeat_expressions =>
             {
-                if !elem.ty(&self.ccx.body.local_decls, self.ccx.tcx).is_copy_modulo_regions(
+                let is_copy = elem.ty(&self.ccx.body.local_decls, self.ccx.tcx).is_copy_modulo_regions(
                     self.ccx.tcx,
                     self.ccx.param_env,
                     self.span,
-                ) {
+                );
+                let n = n.try_eval_usize(self.ccx.tcx, self.ccx.param_env);
+                let length_requires_copy_or_promotion = match n {
+                    // Unevaluable (e.g. too generic) -> assume > 1.
+                    None => true,
+                    // A single element does not need copying, we can just use the given element.
+                    // Zero elements don't even need that one element.
+                    Some(0..=1) => false,
+                    // All other lengths require copying (or promotion-"copying" by creating a
+                    // a constant and using that many times).
+                    Some(_) => true,
+                };
+                if !is_copy && length_requires_copy_or_promotion {
                     self.candidates.push(Candidate::Repeat(location));
                 }
             }
@@ -741,6 +753,14 @@ pub fn validate_candidates(
             // and `#[rustc_args_required_const]` arguments here.
 
             let is_promotable = validator.validate_candidate(candidate).is_ok();
+
+            if validator.explicit && !is_promotable {
+                ccx.tcx.sess.delay_span_bug(
+                    ccx.body.span,
+                    "Explicit promotion requested, but failed to promote",
+                );
+            }
+
             match candidate {
                 Candidate::Argument { bb, index } if !is_promotable => {
                     let span = ccx.body[bb].terminator().source_info.span;
