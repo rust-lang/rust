@@ -964,8 +964,16 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: usize) -> T {
+        #[cold]
+        #[inline(never)]
+        fn assert_failed(index: usize, len: usize) -> ! {
+            panic!("swap_remove index (is {}) should be < len (is {})", index, len);
+        }
+
         let len = self.len();
-        assert!(index < len);
+        if !(index < len) {
+            assert_failed(index, len);
+        }
         unsafe {
             // We replace self[index] with the last element. Note that if the
             // bounds check above succeeds there must be a last element (which
@@ -995,8 +1003,16 @@ impl<T> Vec<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, index: usize, element: T) {
+        #[cold]
+        #[inline(never)]
+        fn assert_failed(index: usize, len: usize) -> ! {
+            panic!("insertion index (is {}) should be <= len (is {})", index, len);
+        }
+
         let len = self.len();
-        assert!(index <= len);
+        if !(index <= len) {
+            assert_failed(index, len);
+        }
 
         // space for the new element
         if len == self.buf.capacity() {
@@ -1035,8 +1051,16 @@ impl<T> Vec<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, index: usize) -> T {
+        #[cold]
+        #[inline(never)]
+        fn assert_failed(index: usize, len: usize) -> ! {
+            panic!("removal index (is {}) should be < len (is {})", index, len);
+        }
+
         let len = self.len();
-        assert!(index < len);
+        if !(index < len) {
+            assert_failed(index, len);
+        }
         unsafe {
             // infallible
             let ret;
@@ -1294,8 +1318,25 @@ impl<T> Vec<T> {
             Excluded(&n) => n,
             Unbounded => len,
         };
-        assert!(start <= end);
-        assert!(end <= len);
+
+        #[cold]
+        #[inline(never)]
+        fn start_assert_failed(start: usize, end: usize) -> ! {
+            panic!("start drain index (is {}) should be <= end drain index (is {})", start, end);
+        }
+
+        #[cold]
+        #[inline(never)]
+        fn end_assert_failed(end: usize, len: usize) -> ! {
+            panic!("end drain index (is {}) should be <= len (is {})", end, len);
+        }
+
+        if !(start <= end) {
+            start_assert_failed(start, end);
+        }
+        if !(end <= len) {
+            end_assert_failed(end, len);
+        }
 
         unsafe {
             // set self.vec length's to start, to be safe in case Drain is leaked
@@ -1385,7 +1426,15 @@ impl<T> Vec<T> {
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
     pub fn split_off(&mut self, at: usize) -> Self {
-        assert!(at <= self.len(), "`at` out of bounds");
+        #[cold]
+        #[inline(never)]
+        fn assert_failed(at: usize, len: usize) -> ! {
+            panic!("`at` split index (is {}) should be <= len (is {})", at, len);
+        }
+
+        if !(at <= self.len()) {
+            assert_failed(at, self.len());
+        }
 
         let other_len = self.len - at;
         let mut other = Vec::with_capacity(other_len);
