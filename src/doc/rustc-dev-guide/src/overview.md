@@ -328,7 +328,10 @@ bootstrapping compiler will support them.
 - Parsing: Parse the stream of tokens to an Abstract Syntax Tree (AST)
   - Guide: [Lexing and Parsing](https://rustc-dev-guide.rust-lang.org/the-parser.html)
   - Parser definition: [`librustc_parse`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html)
-  - Main entry point: **TODO**
+  - Main entry points:
+    - [Entry point for first file in crate](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/passes/fn.parse.html)
+    - [Entry point for outline module parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/module/fn.parse_external_mod.html)
+    - [Entry point for macro fragments](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/fn.parse_nt.html)
   - AST definition: [`librustc_ast`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html)
   - Expansion: **TODO**
   - Name Resolution: **TODO**
