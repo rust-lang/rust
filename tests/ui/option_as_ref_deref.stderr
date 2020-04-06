@@ -88,5 +88,17 @@ error: called `.as_mut().map(DerefMut::deref_mut)` (or with one of deref aliases
 LL |     let _ = opt.clone().as_mut().map(|x| x.deref_mut()).map(|x| x.len());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using as_deref_mut instead: `opt.clone().as_deref_mut()`
 
-error: aborting due to 14 previous errors
+error: called `.as_ref().map(Deref::deref)` (or with one of deref aliases) on an Option value. This can be done more directly by calling `opt.as_deref()` instead
+  --> $DIR/option_as_ref_deref.rs:42:13
+   |
+LL |     let _ = opt.as_ref().map(|x| &**x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using as_deref instead: `opt.as_deref()`
+
+error: called `.as_mut().map(DerefMut::deref_mut)` (or with one of deref aliases) on an Option value. This can be done more directly by calling `opt.as_deref_mut()` instead
+  --> $DIR/option_as_ref_deref.rs:43:13
+   |
+LL |     let _ = opt.as_mut().map(|x| &mut **x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using as_deref_mut instead: `opt.as_deref_mut()`
+
+error: aborting due to 16 previous errors
 

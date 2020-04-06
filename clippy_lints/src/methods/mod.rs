@@ -3159,6 +3159,8 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
     map_args: &[hir::Expr<'_>],
     is_mut: bool,
 ) {
+    let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
+
     let option_ty = cx.tables.expr_ty(&as_ref_args[0]);
     if !match_type(cx, option_ty, &paths::OPTION) {
         return;
@@ -3181,23 +3183,40 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
         hir::ExprKind::Closure(_, _, body_id, _, _) => {
             let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);
-            if_chain! {
-                if let hir::ExprKind::MethodCall(_, _, args) = &closure_expr.kind;
-                if args.len() == 1;
-                if let hir::ExprKind::Path(qpath) = &args[0].kind;
-                if let hir::def::Res::Local(local_id) = cx.tables.qpath_res(qpath, args[0].hir_id);
-                if closure_body.params[0].pat.hir_id == local_id;
-                let adj = cx.tables.expr_adjustments(&args[0]).iter().map(|x| &x.kind).collect::<Box<[_]>>();
-                if let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj;
-                then {
-                    let method_did = cx.tables.type_dependent_def_id(closure_expr.hir_id).unwrap();
-                    deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
-                } else {
-                    false
-                }
+
+            match &closure_expr.kind {
+                hir::ExprKind::MethodCall(_, _, args) => {
+                    if_chain! {
+                        if args.len() == 1;
+                        if let hir::ExprKind::Path(qpath) = &args[0].kind;
+                        if let hir::def::Res::Local(local_id) = cx.tables.qpath_res(qpath, args[0].hir_id);
+                        if closure_body.params[0].pat.hir_id == local_id;
+                        let adj = cx.tables.expr_adjustments(&args[0]).iter().map(|x| &x.kind).collect::<Box<[_]>>();
+                        if let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj;
+                        then {
+                            let method_did = cx.tables.type_dependent_def_id(closure_expr.hir_id).unwrap();
+                            deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
+                        } else {
+                            false
+                        }
+                    }
+                },
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, m, ref inner) if same_mutability(m) => {
+                    if_chain! {
+                        if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner1) = inner.kind;
+                        if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner2) = inner1.kind;
+                        if let hir::ExprKind::Path(ref qpath) = inner2.kind;
+                        if let hir::def::Res::Local(local_id) = cx.tables.qpath_res(qpath, inner2.hir_id);
+                        then {
+                            closure_body.params[0].pat.hir_id == local_id
+                        } else {
+                            false
+                        }
+                    }
+                },
+                _ => false,
             }
         },
-
         _ => false,
     };
 
