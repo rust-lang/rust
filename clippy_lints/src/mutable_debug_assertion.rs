@@ -53,7 +53,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DebugAssertWithMutCall {
 }
 
 //HACK(hellow554): remove this when #4694 is implemented
-#[allow(clippy::cognitive_complexity)]
 fn extract_call<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) -> Option<Span> {
     if_chain! {
         if let ExprKind::Block(ref block, _) = e.kind;

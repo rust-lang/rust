@@ -22,7 +22,7 @@ declare_clippy_lint! {
     ///
     /// **Example:** No. You'll see it when you get the warning.
     pub COGNITIVE_COMPLEXITY,
-    complexity,
+    nursery,
     "functions that should be split up into multiple functions"
 }
 

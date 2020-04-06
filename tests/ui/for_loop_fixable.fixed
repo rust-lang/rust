@@ -28,7 +28,6 @@ impl Unrelated {
     clippy::linkedlist,
     clippy::shadow_unrelated,
     clippy::unnecessary_mut_passed,
-    clippy::cognitive_complexity,
     clippy::similar_names
 )]
 #[allow(clippy::many_single_char_names, unused_variables)]

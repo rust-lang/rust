@@ -250,7 +250,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "cognitive_complexity",
-        group: "complexity",
+        group: "nursery",
         desc: "functions that should be split up into multiple functions",
         deprecation: None,
         module: "cognitive_complexity",
