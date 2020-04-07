@@ -1335,6 +1335,20 @@ mod tests {
     }
 
     #[test]
+    fn malformed_match_arm_tuple_missing_pattern() {
+        let content = r"
+            fn test_fn() {
+                match (0) {
+                    () => (),
+                }
+            }
+        ";
+
+        // Match arms with the incorrect type are filtered out.
+        check_diagnostic(content);
+    }
+
+    #[test]
     fn malformed_match_arm_tuple_enum_missing_pattern() {
         let content = r"
             enum Either {
