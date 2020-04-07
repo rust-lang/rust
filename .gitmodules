@@ -39,8 +39,8 @@
 	url = https://github.com/rust-lang/edition-guide.git
 [submodule "src/llvm-project"]
 	path = src/llvm-project
-	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/9.0-2019-12-19
+	url = https://github.com/mabezdev/llvm-project.git
+	branch = xtensa_release_9.0.1_with_rust_patches
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
 	url = https://github.com/rust-embedded/book.git
