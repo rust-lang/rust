@@ -18,8 +18,8 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
     for node in ctx.token.parent().ancestors() {
         match_ast! {
             match node {
-                ast::SourceFile(it) => { process(it, &mut params) },
-                ast::ItemList(it) => { process(it, &mut params) },
+                ast::SourceFile(it) => process(it, &mut params),
+                ast::ItemList(it) => process(it, &mut params),
                 _ => (),
             }
         }

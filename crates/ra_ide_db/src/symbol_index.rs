@@ -354,14 +354,14 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
     }
     match_ast! {
         match node {
-            ast::FnDef(it) => { decl(it) },
-            ast::StructDef(it) => { decl(it) },
-            ast::EnumDef(it) => { decl(it) },
-            ast::TraitDef(it) => { decl(it) },
-            ast::Module(it) => { decl(it) },
-            ast::TypeAliasDef(it) => { decl(it) },
-            ast::ConstDef(it) => { decl(it) },
-            ast::StaticDef(it) => { decl(it) },
+            ast::FnDef(it) => decl(it),
+            ast::StructDef(it) => decl(it),
+            ast::EnumDef(it) => decl(it),
+            ast::TraitDef(it) => decl(it),
+            ast::Module(it) => decl(it),
+            ast::TypeAliasDef(it) => decl(it),
+            ast::ConstDef(it) => decl(it),
+            ast::StaticDef(it) => decl(it),
             ast::MacroCall(it) => {
                 if it.is_macro_rules().is_some() {
                     decl(it)

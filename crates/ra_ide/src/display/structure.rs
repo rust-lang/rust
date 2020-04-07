@@ -117,18 +117,18 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
 
                 decl_with_detail(it, Some(detail))
             },
-            ast::StructDef(it) => { decl(it) },
-            ast::EnumDef(it) => { decl(it) },
-            ast::EnumVariant(it) => { decl(it) },
-            ast::TraitDef(it) => { decl(it) },
-            ast::Module(it) => { decl(it) },
+            ast::StructDef(it) => decl(it),
+            ast::EnumDef(it) => decl(it),
+            ast::EnumVariant(it) => decl(it),
+            ast::TraitDef(it) => decl(it),
+            ast::Module(it) => decl(it),
             ast::TypeAliasDef(it) => {
                 let ty = it.type_ref();
                 decl_with_type_ref(it, ty)
             },
-            ast::RecordFieldDef(it) => { decl_with_ascription(it) },
-            ast::ConstDef(it) => { decl_with_ascription(it) },
-            ast::StaticDef(it) => { decl_with_ascription(it) },
+            ast::RecordFieldDef(it) => decl_with_ascription(it),
+            ast::ConstDef(it) => decl_with_ascription(it),
+            ast::StaticDef(it) => decl_with_ascription(it),
             ast::ImplDef(it) => {
                 let target_type = it.target_type()?;
                 let target_trait = it.target_trait();
