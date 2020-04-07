@@ -62,12 +62,15 @@ where
     #[inline]
     #[rustc_inherit_overflow_checks]
     fn count(self) -> usize {
-        match self {
-            Chain { a: Some(a), b: Some(b) } => a.count() + b.count(),
-            Chain { a: Some(a), b: None } => a.count(),
-            Chain { a: None, b: Some(b) } => b.count(),
-            Chain { a: None, b: None } => 0,
-        }
+        let a_count = match self.a {
+            Some(a) => a.count(),
+            None => 0,
+        };
+        let b_count = match self.b {
+            Some(b) => b.count(),
+            None => 0,
+        };
+        a_count + b_count
     }
 
     fn try_fold<Acc, F, R>(&mut self, mut acc: Acc, mut f: F) -> R
