@@ -1243,7 +1243,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                 trait_ref,
                 // NOTE: This isn't really right, but the actual type doesn't matter here. It's
                 // just required by `ty::TraitRef`.
-                self.tcx.types.trait_object_dummy_self,
+                self.tcx.types.never,
             );
 
             for (trait_predicate, _, _) in bounds.trait_bounds {
