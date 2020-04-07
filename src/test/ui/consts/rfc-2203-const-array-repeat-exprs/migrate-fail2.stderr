@@ -1,0 +1,27 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/migrate-fail2.rs:10:29
+   |
+LL | const fn bad_bar() -> Bar { panic!() }
+   |                             ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/migrate-fail2.rs:10:29
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant expression failed
+  --> $DIR/migrate-fail2.rs:14:25
+   |
+LL |     let arr: [Bar; 2] = [bad_bar(); 2];
+   |                         ^---------^^^^
+   |                          |
+   |                          referenced constant has errors
+
+error: erroneous constant used
+  --> $DIR/migrate-fail2.rs:14:25
+   |
+LL |     let arr: [Bar; 2] = [bad_bar(); 2];
+   |                         ^^^^^^^^^^^^^^ referenced constant has errors
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
