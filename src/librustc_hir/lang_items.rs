@@ -127,6 +127,7 @@ language_item_table! {
 //  Variant name,                Name,                 Method name,             Target;
     BoolImplItem,                "bool",               bool_impl,               Target::Impl;
     CharImplItem,                "char",               char_impl,               Target::Impl;
+    StrItem,                     "str",                str_type,                Target::Struct;
     StrImplItem,                 "str_impl",           str_impl,                Target::Impl;
     SliceImplItem,               "slice",              slice_impl,              Target::Impl;
     SliceU8ImplItem,             "slice_u8",           slice_u8_impl,           Target::Impl;

@@ -26,6 +26,11 @@ pub mod pattern;
 #[allow(missing_docs)]
 pub mod lossy;
 
+// HACK(eddyb) private and not named `str` to avoid changing name resolution.
+#[cfg(not(bootstrap))]
+#[lang = "str"]
+struct Str([u8]);
+
 /// Parse a value from a string
 ///
 /// `FromStr`'s [`from_str`] method is often used implicitly, through
