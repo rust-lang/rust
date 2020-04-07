@@ -427,7 +427,12 @@ impl ToChalk for GenericPredicate {
         db: &dyn HirDatabase,
         where_clause: chalk_ir::QuantifiedWhereClause<Interner>,
     ) -> GenericPredicate {
-        match where_clause.value {
+        // we don't produce any where clauses with binders and can't currently deal with them
+        match where_clause
+            .value
+            .shifted_out(&Interner)
+            .expect("unexpected bound vars in where clause")
+        {
             chalk_ir::WhereClause::Implemented(tr) => {
                 GenericPredicate::Implemented(from_chalk(db, tr))
             }

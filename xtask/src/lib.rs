@@ -172,8 +172,8 @@ pub fn run_pre_cache() -> Result<()> {
 pub fn run_release(dry_run: bool) -> Result<()> {
     if !dry_run {
         run!("git switch release")?;
-        run!("git fetch upstream")?;
-        run!("git reset --hard upstream/master")?;
+        run!("git fetch upstream --tags --force")?;
+        run!("git reset --hard tags/nightly")?;
         run!("git push")?;
     }
 

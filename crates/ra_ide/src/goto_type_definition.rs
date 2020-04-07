@@ -18,9 +18,9 @@ pub(crate) fn goto_type_definition(
     let (ty, node) = sema.ancestors_with_macros(token.parent()).find_map(|node| {
         let ty = match_ast! {
             match node {
-                ast::Expr(expr) => { sema.type_of_expr(&expr)? },
-                ast::Pat(pat) => { sema.type_of_pat(&pat)? },
-                _ => { return None },
+                ast::Expr(expr) => sema.type_of_expr(&expr)?,
+                ast::Pat(pat) => sema.type_of_pat(&pat)?,
+                _ => return None,
             }
         };
 

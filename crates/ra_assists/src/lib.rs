@@ -5,6 +5,11 @@
 //! certain context. For example, if the cursor is over `,`, a "swap `,`" assist
 //! becomes available.
 
+#[allow(unused)]
+macro_rules! eprintln {
+    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
+}
+
 mod assist_ctx;
 mod marks;
 #[cfg(test)]

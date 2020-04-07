@@ -86,9 +86,9 @@ fn is_in_loop_body(leaf: &SyntaxToken) -> bool {
         }
         let loop_body = match_ast! {
             match node {
-                ast::ForExpr(it) => { it.loop_body() },
-                ast::WhileExpr(it) => { it.loop_body() },
-                ast::LoopExpr(it) => { it.loop_body() },
+                ast::ForExpr(it) => it.loop_body(),
+                ast::WhileExpr(it) => it.loop_body(),
+                ast::LoopExpr(it) => it.loop_body(),
                 _ => None,
             }
         };

@@ -286,7 +286,7 @@ fn reference_access(def: &Definition, name_ref: &ast::NameRef) -> Option<Referen
                     }
                     Some(ReferenceAccess::Read)
                 },
-                _ => {None}
+                _ => None
             }
         }
     });

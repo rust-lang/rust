@@ -1,6 +1,11 @@
 //! The type system. We currently use this to infer types for completion, hover
 //! information and various assists.
 
+#[allow(unused)]
+macro_rules! eprintln {
+    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
+}
+
 macro_rules! impl_froms {
     ($e:ident: $($v:ident $(($($sv:ident),*))?),*) => {
         $(
@@ -38,6 +43,7 @@ mod tests;
 #[cfg(test)]
 mod test_db;
 mod marks;
+mod _match;
 
 use std::ops::Deref;
 use std::sync::Arc;
@@ -855,7 +861,8 @@ pub trait TypeWalk {
         );
         self
     }
-    // /// Shifts up debruijn indices of `Ty::Bound` vars by `n`.
+
+    /// Shifts up debruijn indices of `Ty::Bound` vars by `n`.
     fn shift_bound_vars(self, n: DebruijnIndex) -> Self
     where
         Self: Sized,

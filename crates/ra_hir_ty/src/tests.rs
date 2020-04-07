@@ -309,7 +309,8 @@ fn no_such_field_diagnostics() {
         }
         ",
     )
-    .diagnostics();
+    .diagnostics()
+    .0;
 
     assert_snapshot!(diagnostics, @r###"
     "baz: 62": no such field

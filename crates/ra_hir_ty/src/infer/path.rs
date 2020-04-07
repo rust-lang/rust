@@ -67,8 +67,16 @@ impl<'a> InferenceContext<'a> {
             ValueNs::FunctionId(it) => it.into(),
             ValueNs::ConstId(it) => it.into(),
             ValueNs::StaticId(it) => it.into(),
-            ValueNs::StructId(it) => it.into(),
-            ValueNs::EnumVariantId(it) => it.into(),
+            ValueNs::StructId(it) => {
+                self.write_variant_resolution(id, it.into());
+
+                it.into()
+            }
+            ValueNs::EnumVariantId(it) => {
+                self.write_variant_resolution(id, it.into());
+
+                it.into()
+            }
         };
 
         let ty = self.db.value_ty(typable);

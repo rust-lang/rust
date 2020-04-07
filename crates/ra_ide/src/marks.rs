@@ -7,4 +7,5 @@ test_utils::marks!(
     dont_complete_current_use
     test_resolve_parent_module_on_module_decl
     search_filters_by_range
+    dont_insert_macro_call_parens_unncessary
 );

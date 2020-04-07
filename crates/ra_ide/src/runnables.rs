@@ -49,8 +49,8 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
 fn runnable(sema: &Semantics<RootDatabase>, item: SyntaxNode) -> Option<Runnable> {
     match_ast! {
         match item {
-            ast::FnDef(it) => { runnable_fn(sema, it) },
-            ast::Module(it) => { runnable_mod(sema, it) },
+            ast::FnDef(it) => runnable_fn(sema, it),
+            ast::Module(it) => runnable_mod(sema, it),
             _ => None,
         }
     }

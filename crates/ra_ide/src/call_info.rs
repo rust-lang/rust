@@ -109,7 +109,7 @@ impl FnCallNode {
         syntax.ancestors().find_map(|node| {
             match_ast! {
                 match node {
-                    ast::CallExpr(it) => { Some(FnCallNode::CallExpr(it)) },
+                    ast::CallExpr(it) => Some(FnCallNode::CallExpr(it)),
                     ast::MethodCallExpr(it) => {
                         let arg_list = it.arg_list()?;
                         if !syntax.text_range().is_subrange(&arg_list.syntax().text_range()) {
@@ -117,8 +117,8 @@ impl FnCallNode {
                         }
                         Some(FnCallNode::MethodCallExpr(it))
                     },
-                    ast::MacroCall(it) => { Some(FnCallNode::MacroCallExpr(it)) },
-                    _ => { None },
+                    ast::MacroCall(it) => Some(FnCallNode::MacroCallExpr(it)),
+                    _ => None,
                 }
             }
         })
@@ -127,10 +127,10 @@ impl FnCallNode {
     pub(crate) fn with_node_exact(node: &SyntaxNode) -> Option<FnCallNode> {
         match_ast! {
             match node {
-                ast::CallExpr(it) => { Some(FnCallNode::CallExpr(it)) },
-                ast::MethodCallExpr(it) => { Some(FnCallNode::MethodCallExpr(it)) },
-                ast::MacroCall(it) => { Some(FnCallNode::MacroCallExpr(it)) },
-                _ => { None },
+                ast::CallExpr(it) => Some(FnCallNode::CallExpr(it)),
+                ast::MethodCallExpr(it) => Some(FnCallNode::MethodCallExpr(it)),
+                ast::MacroCall(it) => Some(FnCallNode::MacroCallExpr(it)),
+                _ => None,
             }
         }
     }

@@ -2021,3 +2021,28 @@ fn main() {
     "###
     );
 }
+
+#[test]
+fn dyn_trait_through_chalk() {
+    let t = type_at(
+        r#"
+//- /main.rs
+struct Box<T> {}
+#[lang = "deref"]
+trait Deref {
+    type Target;
+}
+impl<T> Deref for Box<T> {
+    type Target = T;
+}
+trait Trait {
+    fn foo(&self);
+}
+
+fn test(x: Box<dyn Trait>) {
+    x.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "()");
+}

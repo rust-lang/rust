@@ -302,42 +302,40 @@ pub fn find_mismatch<'a>(expected: &'a Value, actual: &'a Value) -> Option<(&'a 
     }
 }
 
-/// Calls callback `f` with input code and file paths of all `.rs` files from `test_data_dir`
+/// Calls callback `f` with input code and file paths for each `.rs` file in `test_data_dir`
 /// subdirectories defined by `paths`.
 ///
-/// If the content of the matching `.txt` file differs from the output of `f()`
+/// If the content of the matching output file differs from the output of `f()`
 /// the test will fail.
 ///
-/// If there is no matching `.txt` file it will be created and filled with the
+/// If there is no matching output file it will be created and filled with the
 /// output of `f()`, but the test will fail.
-pub fn dir_tests<F>(test_data_dir: &Path, paths: &[&str], f: F)
+pub fn dir_tests<F>(test_data_dir: &Path, paths: &[&str], outfile_extension: &str, f: F)
 where
     F: Fn(&str, &Path) -> String,
 {
-    for (path, input_code) in collect_tests(test_data_dir, paths) {
-        let parse_tree = f(&input_code, &path);
-        let path = path.with_extension("txt");
+    for (path, input_code) in collect_rust_files(test_data_dir, paths) {
+        let actual = f(&input_code, &path);
+        let path = path.with_extension(outfile_extension);
         if !path.exists() {
             println!("\nfile: {}", path.display());
             println!("No .txt file with expected result, creating...\n");
-            println!("{}\n{}", input_code, parse_tree);
-            fs::write(&path, &parse_tree).unwrap();
-            panic!("No expected result")
+            println!("{}\n{}", input_code, actual);
+            fs::write(&path, &actual).unwrap();
+            panic!("No expected result");
         }
         let expected = read_text(&path);
-        let expected = expected.as_str();
-        let parse_tree = parse_tree.as_str();
-        assert_equal_text(expected, parse_tree, &path);
+        assert_equal_text(&expected, &actual, &path);
     }
 }
 
-/// Collects all `.rs` files from `test_data_dir` subdirectories defined by `paths`.
-pub fn collect_tests(test_data_dir: &Path, paths: &[&str]) -> Vec<(PathBuf, String)> {
+/// Collects all `.rs` files from `dir` subdirectories defined by `paths`.
+pub fn collect_rust_files(root_dir: &Path, paths: &[&str]) -> Vec<(PathBuf, String)> {
     paths
         .iter()
         .flat_map(|path| {
-            let path = test_data_dir.to_owned().join(path);
-            test_from_dir(&path).into_iter()
+            let path = root_dir.to_owned().join(path);
+            rust_files_in_dir(&path).into_iter()
         })
         .map(|path| {
             let text = read_text(&path);
@@ -347,7 +345,7 @@ pub fn collect_tests(test_data_dir: &Path, paths: &[&str]) -> Vec<(PathBuf, Stri
 }
 
 /// Collects paths to all `.rs` files from `dir` in a sorted `Vec<PathBuf>`.
-fn test_from_dir(dir: &Path) -> Vec<PathBuf> {
+fn rust_files_in_dir(dir: &Path) -> Vec<PathBuf> {
     let mut acc = Vec::new();
     for file in fs::read_dir(&dir).unwrap() {
         let file = file.unwrap();

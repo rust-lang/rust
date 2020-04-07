@@ -105,8 +105,9 @@ impl TestDB {
     }
 
     // FIXME: don't duplicate this
-    pub fn diagnostics(&self) -> String {
+    pub fn diagnostics(&self) -> (String, u32) {
         let mut buf = String::new();
+        let mut count = 0;
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter() {
             let crate_def_map = self.crate_def_map(krate);
@@ -133,13 +134,14 @@ impl TestDB {
                 let infer = self.infer(f.into());
                 let mut sink = DiagnosticSink::new(|d| {
                     format_to!(buf, "{:?}: {}\n", d.syntax_node(self).text(), d.message());
+                    count += 1;
                 });
                 infer.add_diagnostics(self, f, &mut sink);
                 let mut validator = ExprValidator::new(f, infer, &mut sink);
                 validator.validate_body(self);
             }
         }
-        buf
+        (buf, count)
     }
 }
 

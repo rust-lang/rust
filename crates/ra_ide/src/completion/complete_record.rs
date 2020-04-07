@@ -1,12 +1,13 @@
 //! Complete fields in record literals and patterns.
-use crate::completion::{CompletionContext, Completions};
 use ra_syntax::{ast, ast::NameOwner, SmolStr};
+
+use crate::completion::{CompletionContext, Completions};
 
 pub(super) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let (ty, variant, already_present_fields) =
         match (ctx.record_lit_pat.as_ref(), ctx.record_lit_syntax.as_ref()) {
             (None, None) => return None,
-            (Some(_), Some(_)) => panic!("A record cannot be both a literal and a pattern"),
+            (Some(_), Some(_)) => unreachable!("A record cannot be both a literal and a pattern"),
             (Some(record_pat), _) => (
                 ctx.sema.type_of_pat(&record_pat.clone().into())?,
                 ctx.sema.resolve_record_pattern(record_pat)?,
@@ -59,8 +60,9 @@ fn pattern_ascribed_fields(record_pat: &ast::RecordPat) -> Vec<SmolStr> {
 #[cfg(test)]
 mod tests {
     mod record_lit_tests {
-        use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
         use insta::assert_debug_snapshot;
+
+        use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
 
         fn complete(code: &str) -> Vec<CompletionItem> {
             do_completion(code, CompletionKind::Reference)
@@ -204,8 +206,9 @@ mod tests {
     }
 
     mod record_pat_tests {
-        use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
         use insta::assert_debug_snapshot;
+
+        use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
 
         fn complete(code: &str) -> Vec<CompletionItem> {
             do_completion(code, CompletionKind::Reference)
