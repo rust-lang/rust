@@ -995,6 +995,7 @@ dependencies = [
  "ra_prof",
  "ra_syntax",
  "rustc-hash",
+ "smallvec",
  "stdx",
  "test_utils",
 ]

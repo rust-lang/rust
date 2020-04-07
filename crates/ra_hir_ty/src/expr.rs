@@ -14,9 +14,10 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     db::HirDatabase,
-    diagnostics::{MissingFields, MissingOkInTailExpr},
+    diagnostics::{MissingFields, MissingMatchArms, MissingOkInTailExpr},
     utils::variant_data,
     ApplicationTy, InferenceResult, Ty, TypeCtor,
+    _match::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
 };
 
 pub use hir_def::{
@@ -52,12 +53,96 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         for e in body.exprs.iter() {
             if let (id, Expr::RecordLit { path, fields, spread }) = e {
                 self.validate_record_literal(id, path, fields, *spread, db);
+            } else if let (id, Expr::Match { expr, arms }) = e {
+                self.validate_match(id, *expr, arms, db, self.infer.clone());
             }
         }
 
         let body_expr = &body[body.body_expr];
-        if let Expr::Block { statements: _, tail: Some(t) } = body_expr {
+        if let Expr::Block { tail: Some(t), .. } = body_expr {
             self.validate_results_in_tail_expr(body.body_expr, *t, db);
+        }
+    }
+
+    fn validate_match(
+        &mut self,
+        id: ExprId,
+        match_expr: ExprId,
+        arms: &[MatchArm],
+        db: &dyn HirDatabase,
+        infer: Arc<InferenceResult>,
+    ) {
+        let (body, source_map): (Arc<Body>, Arc<BodySourceMap>) =
+            db.body_with_source_map(self.func.into());
+
+        let match_expr_ty = match infer.type_of_expr.get(match_expr) {
+            Some(ty) => ty,
+            // If we can't resolve the type of the match expression
+            // we cannot perform exhaustiveness checks.
+            None => return,
+        };
+
+        let cx = MatchCheckCtx { body, infer: infer.clone(), db };
+        let pats = arms.iter().map(|arm| arm.pat);
+
+        let mut seen = Matrix::empty();
+        for pat in pats {
+            // We skip any patterns whose type we cannot resolve.
+            //
+            // This could lead to false positives in this diagnostic, so
+            // it might be better to skip the entire diagnostic if we either
+            // cannot resolve a match arm or determine that the match arm has
+            // the wrong type.
+            if let Some(pat_ty) = infer.type_of_pat.get(pat) {
+                // We only include patterns whose type matches the type
+                // of the match expression. If we had a InvalidMatchArmPattern
+                // diagnostic or similar we could raise that in an else
+                // block here.
+                //
+                // When comparing the types, we also have to consider that rustc
+                // will automatically de-reference the match expression type if
+                // necessary.
+                //
+                // FIXME we should use the type checker for this.
+                if pat_ty == match_expr_ty
+                    || match_expr_ty
+                        .as_reference()
+                        .map(|(match_expr_ty, _)| match_expr_ty == pat_ty)
+                        .unwrap_or(false)
+                {
+                    // If we had a NotUsefulMatchArm diagnostic, we could
+                    // check the usefulness of each pattern as we added it
+                    // to the matrix here.
+                    let v = PatStack::from_pattern(pat);
+                    seen.push(&cx, v);
+                }
+            }
+        }
+
+        match is_useful(&cx, &seen, &PatStack::from_wild()) {
+            Ok(Usefulness::Useful) => (),
+            // if a wildcard pattern is not useful, then all patterns are covered
+            Ok(Usefulness::NotUseful) => return,
+            // this path is for unimplemented checks, so we err on the side of not
+            // reporting any errors
+            _ => return,
+        }
+
+        if let Ok(source_ptr) = source_map.expr_syntax(id) {
+            if let Some(expr) = source_ptr.value.left() {
+                let root = source_ptr.file_syntax(db.upcast());
+                if let ast::Expr::MatchExpr(match_expr) = expr.to_node(&root) {
+                    if let (Some(match_expr), Some(arms)) =
+                        (match_expr.expr(), match_expr.match_arm_list())
+                    {
+                        self.sink.push(MissingMatchArms {
+                            file: source_ptr.file_id,
+                            match_expr: AstPtr::new(&match_expr),
+                            arms: AstPtr::new(&arms),
+                        })
+                    }
+                }
+            }
         }
     }
 

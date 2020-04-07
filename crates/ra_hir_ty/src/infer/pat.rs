@@ -21,9 +21,13 @@ impl<'a> InferenceContext<'a> {
         subpats: &[PatId],
         expected: &Ty,
         default_bm: BindingMode,
+        id: PatId,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path);
         let var_data = def.map(|it| variant_data(self.db.upcast(), it));
+        if let Some(variant) = def {
+            self.write_variant_resolution(id.into(), variant);
+        }
         self.unify(&ty, expected);
 
         let substs = ty.substs().unwrap_or_else(Substs::empty);
@@ -152,7 +156,7 @@ impl<'a> InferenceContext<'a> {
                 Ty::apply_one(TypeCtor::Ref(*mutability), subty)
             }
             Pat::TupleStruct { path: p, args: subpats } => {
-                self.infer_tuple_struct_pat(p.as_ref(), subpats, expected, default_bm)
+                self.infer_tuple_struct_pat(p.as_ref(), subpats, expected, default_bm, pat)
             }
             Pat::Record { path: p, args: fields } => {
                 self.infer_record_pat(p.as_ref(), fields, expected, default_bm, pat)
