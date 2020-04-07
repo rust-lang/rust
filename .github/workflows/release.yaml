@@ -60,6 +60,10 @@ jobs:
       if: matrix.os != 'ubuntu-latest'
       run: cargo xtask dist
 
+    - name: Nightly analysis-stats check
+      if: matrix.os == 'ubuntu-latest' && if: github.ref != 'refs/heads/release'
+      run: ./dist/rust-analyzer analysis-stats .
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
