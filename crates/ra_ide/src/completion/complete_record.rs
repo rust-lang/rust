@@ -410,5 +410,38 @@ mod tests {
         ]
         "###);
         }
+
+        #[test]
+        fn completes_functional_update() {
+            let completions = complete(
+                r"
+            struct S {
+                foo1: u32,
+                foo2: u32,
+            }
+
+            fn main() {
+                let foo1 = 1;
+                let s = S {
+                    foo1,
+                    <|>
+                    .. loop {}
+                }
+            }
+            ",
+            );
+            assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "foo2",
+                source_range: [221; 221),
+                delete: [221; 221),
+                insert: "foo2",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###);
+        }
     }
 }
