@@ -6,8 +6,8 @@ use {
 #[derive(Copy, Clone)]
 struct BadRope<'a>(&'a [&'a str]);
 
-impl LenTextSize for BadRope<'_> {
-    fn len_text_size(self) -> TextSize {
+impl TextLen for BadRope<'_> {
+    fn text_len(self) -> TextSize {
         self.0.iter().map(TextSize::of).sum()
     }
 }

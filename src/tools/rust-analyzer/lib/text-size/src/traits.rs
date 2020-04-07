@@ -4,52 +4,52 @@ use {
 };
 
 /// Text-like structures that have a text size.
-pub trait LenTextSize: Copy {
+pub trait TextLen: Copy {
     /// The size of this text-alike.
-    fn len_text_size(self) -> TextSize;
+    fn text_len(self) -> TextSize;
 }
 
-impl LenTextSize for &'_ str {
+impl TextLen for &'_ str {
     #[inline]
-    fn len_text_size(self) -> TextSize {
+    fn text_len(self) -> TextSize {
         self.len().try_into().unwrap()
     }
 }
 
-impl LenTextSize for char {
+impl TextLen for char {
     #[inline]
-    fn len_text_size(self) -> TextSize {
+    fn text_len(self) -> TextSize {
         (self.len_utf8() as u32).into()
     }
 }
 
-impl<D> LenTextSize for &'_ D
+impl<D> TextLen for &'_ D
 where
-    D: LenTextSize + Copy,
+    D: TextLen + Copy,
 {
-    fn len_text_size(self) -> TextSize {
-        D::len_text_size(*self)
+    fn text_len(self) -> TextSize {
+        D::text_len(*self)
     }
 }
 
 // Because we could not find a smart blanket impl to do this automatically and
 // cleanly (rust-analyzer/text-size#36), just provide a bunch of manual impls.
-// If a type fits in this macro and you need it to impl LenTextSize, just open
-// a PR and we are likely to accept it. Or use `TextSize::of::<&str>` for now.
-macro_rules! impl_lentextsize_for_string {
+// If a standard type fits in this macro and you need it to impl TextLen, just
+// open a PR and we are likely to accept it. Or convince Rust to deref to &str.
+macro_rules! impl_textlen_for_string {
     ($($ty:ty),+ $(,)?) => {$(
-        impl LenTextSize for $ty {
+        impl TextLen for $ty {
             #[inline]
-            fn len_text_size(self) -> TextSize {
-                <&str>::len_text_size(self)
+            fn text_len(self) -> TextSize {
+                <&str>::text_len(self)
             }
         }
     )+};
 }
 
-impl_lentextsize_for_string! {
+impl_textlen_for_string! {
     &Box<str>,
-    &'_ String,
+    &String,
     &Cow<'_, str>,
     &Cow<'_, String>,
     &Arc<str>,
