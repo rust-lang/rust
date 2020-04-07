@@ -59,7 +59,7 @@ fn pattern_ascribed_fields(record_pat: &ast::RecordPat) -> Vec<SmolStr> {
 
 #[cfg(test)]
 mod tests {
-    mod record_lit_tests {
+    mod record_pat_tests {
         use insta::assert_debug_snapshot;
 
         use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
@@ -205,7 +205,7 @@ mod tests {
         }
     }
 
-    mod record_pat_tests {
+    mod record_lit_tests {
         use insta::assert_debug_snapshot;
 
         use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
