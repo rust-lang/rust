@@ -1,5 +1,4 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::f64::NAN;
 
 #[test]
 fn test_clone() {
@@ -34,12 +33,12 @@ fn test_partial_ord() {
     assert!(big >= small);
     assert!(big >= big);
 
-    assert!(!((1.0f64, 2.0f64) < (NAN, 3.0)));
-    assert!(!((1.0f64, 2.0f64) <= (NAN, 3.0)));
-    assert!(!((1.0f64, 2.0f64) > (NAN, 3.0)));
-    assert!(!((1.0f64, 2.0f64) >= (NAN, 3.0)));
-    assert!(((1.0f64, 2.0f64) < (2.0, NAN)));
-    assert!(!((2.0f64, 2.0f64) < (2.0, NAN)));
+    assert!(!((1.0f64, 2.0f64) < (f64::NAN, 3.0)));
+    assert!(!((1.0f64, 2.0f64) <= (f64::NAN, 3.0)));
+    assert!(!((1.0f64, 2.0f64) > (f64::NAN, 3.0)));
+    assert!(!((1.0f64, 2.0f64) >= (f64::NAN, 3.0)));
+    assert!(((1.0f64, 2.0f64) < (2.0, f64::NAN)));
+    assert!(!((2.0f64, 2.0f64) < (2.0, f64::NAN)));
 }
 
 #[test]

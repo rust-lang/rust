@@ -2,7 +2,6 @@ use super::*;
 
 extern crate test;
 use self::test::test::Bencher;
-use std::f64;
 use std::io;
 use std::io::prelude::*;
 

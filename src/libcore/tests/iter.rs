@@ -76,7 +76,6 @@ fn test_cmp_by() {
 #[test]
 fn test_partial_cmp_by() {
     use core::cmp::Ordering;
-    use core::f64;
 
     let f = |x: i32, y: i32| (x * x).partial_cmp(&y);
     let xs = || [1, 2, 3, 4].iter().copied();
@@ -2894,7 +2893,7 @@ fn test_is_sorted() {
     assert!(![1, 3, 2].iter().is_sorted());
     assert!([0].iter().is_sorted());
     assert!(std::iter::empty::<i32>().is_sorted());
-    assert!(![0.0, 1.0, std::f32::NAN].iter().is_sorted());
+    assert!(![0.0, 1.0, f32::NAN].iter().is_sorted());
     assert!([-2, -1, 0, 3].iter().is_sorted());
     assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
     assert!(!["c", "bb", "aaa"].iter().is_sorted());

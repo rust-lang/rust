@@ -612,7 +612,7 @@ fn receiver_is_dispatchable<'tcx>(
     // FIXME(mikeyhew) this is a total hack. Once object_safe_for_dispatch is stabilized, we can
     // replace this with `dyn Trait`
     let unsized_self_ty: Ty<'tcx> =
-        tcx.mk_ty_param(::std::u32::MAX, Symbol::intern("RustaceansAreAwesome"));
+        tcx.mk_ty_param(u32::MAX, Symbol::intern("RustaceansAreAwesome"));
 
     // `Receiver[Self => U]`
     let unsized_receiver_ty =

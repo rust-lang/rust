@@ -3650,11 +3650,7 @@ struct ProvisionalEvaluation {
 
 impl<'tcx> Default for ProvisionalEvaluationCache<'tcx> {
     fn default() -> Self {
-        Self {
-            dfn: Cell::new(0),
-            reached_depth: Cell::new(std::usize::MAX),
-            map: Default::default(),
-        }
+        Self { dfn: Cell::new(0), reached_depth: Cell::new(usize::MAX), map: Default::default() }
     }
 }
 
@@ -3753,7 +3749,7 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
             op(fresh_trait_ref, eval.result);
         }
 
-        self.reached_depth.set(std::usize::MAX);
+        self.reached_depth.set(usize::MAX);
     }
 }
 

@@ -1361,7 +1361,7 @@ impl EmitterWriter {
                 let mut multilines = FxHashMap::default();
 
                 // Get the left-side margin to remove it
-                let mut whitespace_margin = std::usize::MAX;
+                let mut whitespace_margin = usize::MAX;
                 for line_idx in 0..annotated_file.lines.len() {
                     let file = annotated_file.file.clone();
                     let line = &annotated_file.lines[line_idx];
@@ -1373,19 +1373,19 @@ impl EmitterWriter {
                         }
                     }
                 }
-                if whitespace_margin == std::usize::MAX {
+                if whitespace_margin == usize::MAX {
                     whitespace_margin = 0;
                 }
 
                 // Left-most column any visible span points at.
-                let mut span_left_margin = std::usize::MAX;
+                let mut span_left_margin = usize::MAX;
                 for line in &annotated_file.lines {
                     for ann in &line.annotations {
                         span_left_margin = min(span_left_margin, ann.start_col);
                         span_left_margin = min(span_left_margin, ann.end_col);
                     }
                 }
-                if span_left_margin == std::usize::MAX {
+                if span_left_margin == usize::MAX {
                     span_left_margin = 0;
                 }
 
@@ -1421,7 +1421,7 @@ impl EmitterWriter {
                 } else {
                     termize::dimensions()
                         .map(|(w, _)| w.saturating_sub(code_offset))
-                        .unwrap_or(std::usize::MAX)
+                        .unwrap_or(usize::MAX)
                 };
 
                 let margin = Margin::new(
