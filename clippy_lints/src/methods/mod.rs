@@ -3222,17 +3222,17 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
 
     if is_deref {
         let current_method = if is_mut {
-            ".as_mut().map(DerefMut::deref_mut)"
+            format!(".as_mut().map({})", snippet(cx, map_args[1].span, ".."))
         } else {
-            ".as_ref().map(Deref::deref)"
+            format!(".as_ref().map({})", snippet(cx, map_args[1].span, ".."))
         };
         let method_hint = if is_mut { "as_deref_mut" } else { "as_deref" };
         let hint = format!("{}.{}()", snippet(cx, as_ref_args[0].span, ".."), method_hint);
         let suggestion = format!("try using {} instead", method_hint);
 
         let msg = format!(
-            "called `{0}` (or with one of deref aliases) on an Option value. \
-             This can be done more directly by calling `{1}` instead",
+            "called `{0}` on an Option value. This can be done more directly \
+            by calling `{1}` instead",
             current_method, hint
         );
         span_lint_and_sugg(
