@@ -29,8 +29,9 @@ fn check_fn_for_unconditional_recursion<'tcx>(
 ) {
     let self_calls = find_blocks_calling_self(tcx, &body, def_id);
 
-    // Stores a list of `Span`s for every basic block. Those are the spans of `Call` terminators
-    // where we know that one of them will definitely be reached.
+    // Stores a list of `Span`s for every basic block. Those are the spans of self-calls where we
+    // know that one of them will definitely be reached. If the list is empty, the block either
+    // wasn't processed yet or will not always go to a self-call.
     let mut results = IndexVec::from_elem_n(vec![], body.basic_blocks().len());
 
     // We start the analysis at the self calls and work backwards.
@@ -51,7 +52,7 @@ fn check_fn_for_unconditional_recursion<'tcx>(
             // If *all* successors of `bb` lead to a self-call, emit notes at all of their
             // locations.
 
-            // Converging successors without unwind paths.
+            // Determine all "relevant" successors. We ignore successors only reached via unwinding.
             let terminator = body[bb].terminator();
             let relevant_successors = match &terminator.kind {
                 TerminatorKind::Call { destination: None, .. }
