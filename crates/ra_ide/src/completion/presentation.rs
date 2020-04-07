@@ -174,7 +174,8 @@ impl Completions {
                 .set_deprecated(is_deprecated(macro_, ctx.db))
                 .detail(detail);
 
-        builder = if ctx.use_item_syntax.is_some() {
+        builder = if ctx.use_item_syntax.is_some() || ctx.is_macro_call {
+            tested_by!(dont_insert_macro_call_parens_unncessary);
             builder.insert_text(name)
         } else {
             let macro_braces_to_insert =
@@ -960,7 +961,8 @@ mod tests {
     }
 
     #[test]
-    fn dont_insert_macro_call_braces_in_use() {
+    fn dont_insert_macro_call_parens_unncessary() {
+        covers!(dont_insert_macro_call_parens_unncessary);
         assert_debug_snapshot!(
             do_reference_completion(
                 r"
@@ -986,6 +988,41 @@ mod tests {
             },
         ]
         "###
-        )
+        );
+
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                //- /main.rs
+                macro_rules frobnicate {
+                    () => ()
+                }
+                fn main() {
+                    frob<|>!();
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "frobnicate!",
+                source_range: [56; 60),
+                delete: [56; 60),
+                insert: "frobnicate",
+                kind: Macro,
+                detail: "macro_rules! frobnicate",
+            },
+            CompletionItem {
+                label: "main()",
+                source_range: [56; 60),
+                delete: [56; 60),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+        ]
+        "###
+        );
     }
 }
