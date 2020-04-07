@@ -14,6 +14,7 @@ use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
+use std::iter;
 
 /// Whether we do the orphan check relative to this crate or
 /// to some remote crate.
@@ -378,26 +379,36 @@ fn orphan_check_trait_ref<'tcx>(
         ty: Ty<'tcx>,
         in_crate: InCrate,
     ) -> Vec<Ty<'tcx>> {
-        if fundamental_ty(ty) && ty_is_non_local(ty, in_crate).is_some() {
-            ty.walk_shallow().flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate)).collect()
-        } else {
-            vec![ty]
+        // FIXME(eddyb) figure out if this is redundant with `ty_is_non_local`,
+        // or maybe if this should be calling `ty_is_non_local_constructor`.
+        if ty_is_non_local(tcx, ty, in_crate).is_some() {
+            if let Some(inner_tys) = fundamental_ty_inner_tys(tcx, ty) {
+                return inner_tys
+                    .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
+                    .collect();
+            }
         }
+
+        vec![ty]
     }
 
     let mut non_local_spans = vec![];
-    for (i, input_ty) in
-        trait_ref.input_types().flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate)).enumerate()
+    for (i, input_ty) in trait_ref
+        .substs
+        .types()
+        .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
+        .enumerate()
     {
         debug!("orphan_check_trait_ref: check ty `{:?}`", input_ty);
-        let non_local_tys = ty_is_non_local(input_ty, in_crate);
+        let non_local_tys = ty_is_non_local(tcx, input_ty, in_crate);
         if non_local_tys.is_none() {
             debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
             return Ok(());
         } else if let ty::Param(_) = input_ty.kind {
             debug!("orphan_check_trait_ref: uncovered ty: `{:?}`", input_ty);
             let local_type = trait_ref
-                .input_types()
+                .substs
+                .types()
                 .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
                 .find(|ty| ty_is_non_local_constructor(ty, in_crate).is_none());
 
@@ -416,30 +427,53 @@ fn orphan_check_trait_ref<'tcx>(
     Err(OrphanCheckErr::NonLocalInputType(non_local_spans))
 }
 
-fn ty_is_non_local<'t>(ty: Ty<'t>, in_crate: InCrate) -> Option<Vec<Ty<'t>>> {
+fn ty_is_non_local(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, in_crate: InCrate) -> Option<Vec<Ty<'tcx>>> {
     match ty_is_non_local_constructor(ty, in_crate) {
         Some(ty) => {
-            if !fundamental_ty(ty) {
-                Some(vec![ty])
-            } else {
-                let tys: Vec<_> = ty
-                    .walk_shallow()
-                    .filter_map(|t| ty_is_non_local(t, in_crate))
-                    .flat_map(|i| i)
+            if let Some(inner_tys) = fundamental_ty_inner_tys(tcx, ty) {
+                let tys: Vec<_> = inner_tys
+                    .filter_map(|ty| ty_is_non_local(tcx, ty, in_crate))
+                    .flatten()
                     .collect();
                 if tys.is_empty() { None } else { Some(tys) }
+            } else {
+                Some(vec![ty])
             }
         }
         None => None,
     }
 }
 
-fn fundamental_ty(ty: Ty<'_>) -> bool {
-    match ty.kind {
-        ty::Ref(..) => true,
-        ty::Adt(def, _) => def.is_fundamental(),
-        _ => false,
-    }
+/// For `#[fundamental]` ADTs and `&T` / `&mut T`, returns `Some` with the
+/// type parameters of the ADT, or `T`, respectively. For non-fundamental
+/// types, returns `None`.
+fn fundamental_ty_inner_tys(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<impl Iterator<Item = Ty<'tcx>>> {
+    let (first_ty, rest_tys) = match ty.kind {
+        ty::Ref(_, ty, _) => (ty, ty::subst::InternalSubsts::empty().types()),
+        ty::Adt(def, substs) if def.is_fundamental() => {
+            let mut types = substs.types();
+
+            // FIXME(eddyb) actually validate `#[fundamental]` up-front.
+            match types.next() {
+                None => {
+                    tcx.sess.span_err(
+                        tcx.def_span(def.did),
+                        "`#[fundamental]` requires at least one type parameter",
+                    );
+
+                    return None;
+                }
+
+                Some(first_ty) => (first_ty, types),
+            }
+        }
+        _ => return None,
+    };
+
+    Some(iter::once(first_ty).chain(rest_tys))
 }
 
 fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
@@ -451,6 +485,7 @@ fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
     }
 }
 
+// FIXME(eddyb) this can just return `bool` as it always returns `Some(ty)` or `None`.
 fn ty_is_non_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> Option<Ty<'_>> {
     debug!("ty_is_non_local_constructor({:?})", ty);
 

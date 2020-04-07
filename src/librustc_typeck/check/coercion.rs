@@ -563,30 +563,30 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         while !queue.is_empty() {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
-            let trait_ref = match obligation.predicate {
-                ty::Predicate::Trait(ref tr, _) if traits.contains(&tr.def_id()) => {
-                    if unsize_did == tr.def_id() {
-                        let sty = &tr.skip_binder().input_types().nth(1).unwrap().kind;
-                        if let ty::Tuple(..) = sty {
+            let trait_pred = match obligation.predicate {
+                ty::Predicate::Trait(trait_pred, _) if traits.contains(&trait_pred.def_id()) => {
+                    if unsize_did == trait_pred.def_id() {
+                        let unsize_ty = trait_pred.skip_binder().trait_ref.substs[1].expect_ty();
+                        if let ty::Tuple(..) = unsize_ty.kind {
                             debug!("coerce_unsized: found unsized tuple coercion");
                             has_unsized_tuple_coercion = true;
                         }
                     }
-                    *tr
+                    trait_pred
                 }
                 _ => {
                     coercion.obligations.push(obligation);
                     continue;
                 }
             };
-            match selcx.select(&obligation.with(trait_ref)) {
+            match selcx.select(&obligation.with(trait_pred)) {
                 // Uncertain or unimplemented.
                 Ok(None) => {
-                    if trait_ref.def_id() == unsize_did {
-                        let trait_ref = self.resolve_vars_if_possible(&trait_ref);
-                        let self_ty = trait_ref.skip_binder().self_ty();
-                        let unsize_ty = trait_ref.skip_binder().input_types().nth(1).unwrap();
-                        debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_ref);
+                    if trait_pred.def_id() == unsize_did {
+                        let trait_pred = self.resolve_vars_if_possible(&trait_pred);
+                        let self_ty = trait_pred.skip_binder().self_ty();
+                        let unsize_ty = trait_pred.skip_binder().trait_ref.substs[1].expect_ty();
+                        debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_pred);
                         match (&self_ty.kind, &unsize_ty.kind) {
                             (ty::Infer(ty::TyVar(v)), ty::Dynamic(..))
                                 if self.type_var_is_sized(*v) =>

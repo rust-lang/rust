@@ -16,7 +16,7 @@ use crate::traits::{self, Obligation, ObligationCause};
 use rustc_errors::{Applicability, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
@@ -234,7 +234,7 @@ fn predicates_reference_self(
         tcx.predicates_of(trait_def_id)
     };
     let self_ty = tcx.types.self_param;
-    let has_self_ty = |t: Ty<'_>| t.walk().any(|t| t == self_ty);
+    let has_self_ty = |arg: &GenericArg<'_>| arg.walk().any(|arg| arg == self_ty.into());
     predicates
         .predicates
         .iter()
@@ -243,7 +243,7 @@ fn predicates_reference_self(
             match predicate {
                 ty::Predicate::Trait(ref data, _) => {
                     // In the case of a trait predicate, we can skip the "self" type.
-                    if data.skip_binder().input_types().skip(1).any(has_self_ty) {
+                    if data.skip_binder().trait_ref.substs[1..].iter().any(has_self_ty) {
                         Some(sp)
                     } else {
                         None
@@ -262,12 +262,8 @@ fn predicates_reference_self(
                     //
                     // This is ALT2 in issue #56288, see that for discussion of the
                     // possible alternatives.
-                    if data
-                        .skip_binder()
-                        .projection_ty
-                        .trait_ref(tcx)
-                        .input_types()
-                        .skip(1)
+                    if data.skip_binder().projection_ty.trait_ref(tcx).substs[1..]
+                        .iter()
                         .any(has_self_ty)
                     {
                         Some(sp)
@@ -725,19 +721,17 @@ fn contains_illegal_self_type_reference<'tcx>(
     // without knowing what `Self` is.
 
     let mut supertraits: Option<Vec<ty::PolyTraitRef<'tcx>>> = None;
-    let mut error = false;
     let self_ty = tcx.types.self_param;
-    ty.maybe_walk(|ty| {
-        match ty.kind {
-            ty::Param(_) => {
-                if ty == self_ty {
-                    error = true;
-                }
 
-                false // no contained types to walk
-            }
+    let mut walker = ty.walk();
+    while let Some(arg) = walker.next() {
+        if arg == self_ty.into() {
+            return true;
+        }
 
-            ty::Projection(ref data) => {
+        // Special-case projections (everything else is walked normally).
+        if let GenericArgKind::Type(ty) = arg.unpack() {
+            if let ty::Projection(ref data) = ty.kind {
                 // This is a projected type `<Foo as SomeTrait>::X`.
 
                 // Compute supertraits of current trait lazily.
@@ -759,17 +753,18 @@ fn contains_illegal_self_type_reference<'tcx>(
                     supertraits.as_ref().unwrap().contains(&projection_trait_ref);
 
                 if is_supertrait_of_current_trait {
-                    false // do not walk contained types, do not report error, do collect $200
-                } else {
-                    true // DO walk contained types, POSSIBLY reporting an error
+                    // Do not walk contained types, do not report error, do collect $200.
+                    walker.skip_current_subtree();
                 }
+
+                // DO walk contained types, POSSIBLY reporting an error.
             }
-
-            _ => true, // walk contained types, if any
         }
-    });
 
-    error
+        // Walk contained types, if any.
+    }
+
+    false
 }
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {

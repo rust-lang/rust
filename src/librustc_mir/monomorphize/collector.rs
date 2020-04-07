@@ -191,7 +191,7 @@ use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Local, Location};
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc_middle::ty::print::obsolete::DefPathBasedNames;
-use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_session::config::EntryFnType;
 use smallvec::SmallVec;
@@ -442,9 +442,16 @@ fn check_recursion_limit<'tcx>(
 }
 
 fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
-    let type_length = instance.substs.types().flat_map(|ty| ty.walk()).count();
-    let const_length = instance.substs.consts().flat_map(|ct| ct.ty.walk()).count();
-    debug!(" => type length={}, const length={}", type_length, const_length);
+    let type_length = instance
+        .substs
+        .iter()
+        .flat_map(|&arg| arg.walk())
+        .filter(|arg| match arg.unpack() {
+            GenericArgKind::Type(_) | GenericArgKind::Const(_) => true,
+            GenericArgKind::Lifetime(_) => false,
+        })
+        .count();
+    debug!(" => type length={}", type_length);
 
     // Rust code can easily create exponentially-long types using only a
     // polynomial recursion depth. Even with the default recursion
@@ -453,11 +460,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     //
     // Bail out in these cases to avoid that bad user experience.
     let type_length_limit = *tcx.sess.type_length_limit.get();
-    // We include the const length in the type length, as it's better
-    // to be overly conservative.
-    // FIXME(const_generics): we should instead uniformly walk through `substs`,
-    // ignoring lifetimes.
-    if type_length + const_length > type_length_limit {
+    if type_length > type_length_limit {
         // The instance name is already known to be too long for rustc.
         // Show only the first and last 32 characters to avoid blasting
         // the user's terminal with thousands of lines of type-name.

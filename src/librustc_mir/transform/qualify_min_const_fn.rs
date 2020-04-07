@@ -2,6 +2,7 @@ use rustc_attr as attr;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::*;
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Predicate, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -92,7 +93,15 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
 }
 
 fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> McfResult {
-    for ty in ty.walk() {
+    for arg in ty.walk() {
+        let ty = match arg.unpack() {
+            GenericArgKind::Type(ty) => ty,
+
+            // No constraints on lifetimes or constants, except potentially
+            // constants' types, but `walk` will get to them as well.
+            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
+        };
+
         match ty.kind {
             ty::Ref(_, _, hir::Mutability::Mut) => {
                 if !feature_allowed(tcx, fn_def_id, sym::const_mut_refs) {

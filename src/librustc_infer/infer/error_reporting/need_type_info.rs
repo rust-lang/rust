@@ -7,52 +7,59 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnRetTy, HirId, Local, Pat};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::print::Print;
-use rustc_middle::ty::{self, DefIdTree, Infer, Ty, TyVar};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
+use rustc_middle::ty::{self, DefIdTree, Ty};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use std::borrow::Cow;
 
-struct FindLocalByTypeVisitor<'a, 'tcx> {
+struct FindHirNodeVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-    target_ty: Ty<'tcx>,
-    hir_map: Map<'tcx>,
+    target: GenericArg<'tcx>,
+    found_node_ty: Option<Ty<'tcx>>,
     found_local_pattern: Option<&'tcx Pat<'tcx>>,
     found_arg_pattern: Option<&'tcx Pat<'tcx>>,
-    found_ty: Option<Ty<'tcx>>,
-    found_closure: Option<&'tcx ExprKind<'tcx>>,
+    found_closure: Option<&'tcx Expr<'tcx>>,
     found_method_call: Option<&'tcx Expr<'tcx>>,
 }
 
-impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
-    fn new(infcx: &'a InferCtxt<'a, 'tcx>, target_ty: Ty<'tcx>, hir_map: Map<'tcx>) -> Self {
+impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
+    fn new(infcx: &'a InferCtxt<'a, 'tcx>, target: GenericArg<'tcx>) -> Self {
         Self {
             infcx,
-            target_ty,
-            hir_map,
+            target,
+            found_node_ty: None,
             found_local_pattern: None,
             found_arg_pattern: None,
-            found_ty: None,
             found_closure: None,
             found_method_call: None,
         }
     }
 
-    fn node_matches_type(&mut self, hir_id: HirId) -> Option<Ty<'tcx>> {
+    fn node_ty_contains_target(&mut self, hir_id: HirId) -> Option<Ty<'tcx>> {
         let ty_opt =
             self.infcx.in_progress_tables.and_then(|tables| tables.borrow().node_type_opt(hir_id));
         match ty_opt {
             Some(ty) => {
                 let ty = self.infcx.resolve_vars_if_possible(&ty);
-                if ty.walk().any(|inner_ty| {
-                    inner_ty == self.target_ty
-                        || match (&inner_ty.kind, &self.target_ty.kind) {
-                            (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => self
-                                .infcx
-                                .inner
-                                .borrow_mut()
-                                .type_variables
-                                .sub_unified(a_vid, b_vid),
+                if ty.walk().any(|inner| {
+                    inner == self.target
+                        || match (inner.unpack(), self.target.unpack()) {
+                            (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
+                                match (&inner_ty.kind, &target_ty.kind) {
+                                    (
+                                        &ty::Infer(ty::TyVar(a_vid)),
+                                        &ty::Infer(ty::TyVar(b_vid)),
+                                    ) => self
+                                        .infcx
+                                        .inner
+                                        .borrow_mut()
+                                        .type_variables
+                                        .sub_unified(a_vid, b_vid),
+                                    _ => false,
+                                }
+                            }
                             _ => false,
                         }
                 }) {
@@ -66,36 +73,39 @@ impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.hir_map)
+        NestedVisitorMap::OnlyBodies(self.infcx.tcx.hir())
     }
 
     fn visit_local(&mut self, local: &'tcx Local<'tcx>) {
-        if let (None, Some(ty)) = (self.found_local_pattern, self.node_matches_type(local.hir_id)) {
+        if let (None, Some(ty)) =
+            (self.found_local_pattern, self.node_ty_contains_target(local.hir_id))
+        {
             self.found_local_pattern = Some(&*local.pat);
-            self.found_ty = Some(ty);
+            self.found_node_ty = Some(ty);
         }
         intravisit::walk_local(self, local);
     }
 
     fn visit_body(&mut self, body: &'tcx Body<'tcx>) {
         for param in body.params {
-            if let (None, Some(ty)) = (self.found_arg_pattern, self.node_matches_type(param.hir_id))
+            if let (None, Some(ty)) =
+                (self.found_arg_pattern, self.node_ty_contains_target(param.hir_id))
             {
                 self.found_arg_pattern = Some(&*param.pat);
-                self.found_ty = Some(ty);
+                self.found_node_ty = Some(ty);
             }
         }
         intravisit::walk_body(self, body);
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if self.node_matches_type(expr.hir_id).is_some() {
+        if self.node_ty_contains_target(expr.hir_id).is_some() {
             match expr.kind {
-                ExprKind::Closure(..) => self.found_closure = Some(&expr.kind),
+                ExprKind::Closure(..) => self.found_closure = Some(&expr),
                 ExprKind::MethodCall(..) => self.found_method_call = Some(&expr),
                 _ => {}
             }
@@ -213,6 +223,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         (s, None, ty.prefix_string(), None, None)
     }
 
+    // FIXME(eddyb) generalize all of this to handle `ty::Const` inference variables as well.
     pub fn need_type_info_err(
         &self,
         body_id: Option<hir::BodyId>,
@@ -223,7 +234,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
         let (name, name_sp, descr, parent_name, parent_descr) = self.extract_type_name(&ty, None);
 
-        let mut local_visitor = FindLocalByTypeVisitor::new(&self, ty, self.tcx.hir());
+        let mut local_visitor = FindHirNodeVisitor::new(&self, ty.into());
         let ty_to_string = |ty: Ty<'tcx>| -> String {
             let mut s = String::new();
             let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
@@ -276,7 +287,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings)
         };
 
-        let ty_msg = match local_visitor.found_ty {
+        let ty_msg = match local_visitor.found_node_ty {
             Some(ty::TyS { kind: ty::Closure(_, substs), .. }) => {
                 let fn_sig = substs.as_closure().sig();
                 let args = closure_args(&fn_sig);
@@ -310,28 +321,32 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             error_code,
         );
 
-        let suffix = match local_visitor.found_ty {
+        let suffix = match local_visitor.found_node_ty {
             Some(ty::TyS { kind: ty::Closure(_, substs), .. }) => {
                 let fn_sig = substs.as_closure().sig();
                 let ret = fn_sig.output().skip_binder().to_string();
 
-                if let Some(ExprKind::Closure(_, decl, body_id, ..)) = local_visitor.found_closure {
-                    if let Some(body) = self.tcx.hir().krate().bodies.get(body_id) {
-                        closure_return_type_suggestion(
-                            span,
-                            &mut err,
-                            &decl.output,
-                            &body,
-                            &descr,
-                            &name,
-                            &ret,
-                            parent_name,
-                            parent_descr,
-                        );
-                        // We don't want to give the other suggestions when the problem is the
-                        // closure return type.
-                        return err;
-                    }
+                let closure_decl_and_body_id =
+                    local_visitor.found_closure.and_then(|closure| match &closure.kind {
+                        ExprKind::Closure(_, decl, body_id, ..) => Some((decl, *body_id)),
+                        _ => None,
+                    });
+
+                if let Some((decl, body_id)) = closure_decl_and_body_id {
+                    closure_return_type_suggestion(
+                        span,
+                        &mut err,
+                        &decl.output,
+                        self.tcx.hir().body(body_id),
+                        &descr,
+                        &name,
+                        &ret,
+                        parent_name,
+                        parent_descr,
+                    );
+                    // We don't want to give the other suggestions when the problem is the
+                    // closure return type.
+                    return err;
                 }
 
                 // This shouldn't be reachable, but just in case we leave a reasonable fallback.

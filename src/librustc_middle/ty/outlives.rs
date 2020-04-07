@@ -2,6 +2,7 @@
 // refers to rules defined in RFC 1214 (`OutlivesFooBar`), so see that
 // RFC for reference.
 
+use crate::ty::subst::{GenericArg, GenericArgKind};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use smallvec::SmallVec;
 
@@ -107,8 +108,9 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
                     // fallback case: hard code
                     // OutlivesProjectionComponents.  Continue walking
                     // through and constrain Pi.
-                    let subcomponents = capture_components(tcx, ty);
-                    out.push(Component::EscapingProjection(subcomponents));
+                    let mut subcomponents = smallvec![];
+                    compute_components_recursive(tcx, ty.into(), &mut subcomponents);
+                    out.push(Component::EscapingProjection(subcomponents.into_iter().collect()));
                 }
             }
 
@@ -153,26 +155,30 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
                 // "bound regions list".  In our representation, no such
                 // list is maintained explicitly, because bound regions
                 // themselves can be readily identified.
-
-                push_region_constraints(ty, out);
-                for subty in ty.walk_shallow() {
-                    compute_components(tcx, subty, out);
-                }
+                compute_components_recursive(tcx, ty.into(), out);
             }
         }
 }
 
-fn capture_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Vec<Component<'tcx>> {
-    let mut temp = smallvec![];
-    push_region_constraints(ty, &mut temp);
-    for subty in ty.walk_shallow() {
-        compute_components(tcx, subty, &mut temp);
+fn compute_components_recursive(
+    tcx: TyCtxt<'tcx>,
+    parent: GenericArg<'tcx>,
+    out: &mut SmallVec<[Component<'tcx>; 4]>,
+) {
+    for child in parent.walk_shallow() {
+        match child.unpack() {
+            GenericArgKind::Type(ty) => {
+                compute_components(tcx, ty, out);
+            }
+            GenericArgKind::Lifetime(lt) => {
+                // Ignore late-bound regions.
+                if !lt.is_late_bound() {
+                    out.push(Component::Region(lt));
+                }
+            }
+            GenericArgKind::Const(_) => {
+                compute_components_recursive(tcx, child, out);
+            }
+        }
     }
-    temp.into_iter().collect()
-}
-
-fn push_region_constraints<'tcx>(ty: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
-    let mut regions = smallvec![];
-    ty.push_regions(&mut regions);
-    out.extend(regions.iter().filter(|&r| !r.is_late_bound()).map(|r| Component::Region(r)));
 }

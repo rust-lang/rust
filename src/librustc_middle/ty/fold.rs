@@ -263,20 +263,6 @@ where
 // Region folder
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Collects the free and escaping regions in `value` into `region_set`. Returns
-    /// whether any late-bound regions were skipped
-    pub fn collect_regions<T>(self, value: &T, region_set: &mut FxHashSet<ty::Region<'tcx>>) -> bool
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        let mut have_bound_regions = false;
-        self.fold_regions(value, &mut have_bound_regions, |r, d| {
-            region_set.insert(self.mk_region(r.shifted_out_to_binder(d)));
-            r
-        });
-        have_bound_regions
-    }
-
     /// Folds the escaping and free regions in `value` using `f`, and
     /// sets `skipped_regions` to true if any late-bound region was found
     /// and skipped.

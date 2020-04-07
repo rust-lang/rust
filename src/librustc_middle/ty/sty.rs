@@ -25,7 +25,6 @@ use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_target::abi::{Size, VariantIdx};
 use rustc_target::spec::abi;
-use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
@@ -755,14 +754,6 @@ impl<'tcx> TraitRef<'tcx> {
         self.substs.type_at(0)
     }
 
-    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'a {
-        // Select only the "input types" from a trait-reference. For
-        // now this is all the types that appear in the
-        // trait-reference, but it should eventually exclude
-        // associated types.
-        self.substs.types()
-    }
-
     pub fn from_method(
         tcx: TyCtxt<'tcx>,
         trait_id: DefId,
@@ -806,14 +797,6 @@ pub struct ExistentialTraitRef<'tcx> {
 }
 
 impl<'tcx> ExistentialTraitRef<'tcx> {
-    pub fn input_types<'b>(&'b self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'b {
-        // Select only the "input types" from a trait-reference. For
-        // now this is all the types that appear in the
-        // trait-reference, but it should eventually exclude
-        // associated types.
-        self.substs.types()
-    }
-
     pub fn erase_self_ty(
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
@@ -2149,31 +2132,6 @@ impl<'tcx> TyS<'tcx> {
                 Some(substs.as_generator().discriminant_for_variant(def_id, tcx, variant_index))
             }
             _ => None,
-        }
-    }
-
-    /// Pushes onto `out` the regions directly referenced from this type (but not
-    /// types reachable from this type via `walk_tys`). This ignores late-bound
-    /// regions binders.
-    pub fn push_regions(&self, out: &mut SmallVec<[ty::Region<'tcx>; 4]>) {
-        match self.kind {
-            Ref(region, _, _) => {
-                out.push(region);
-            }
-            Dynamic(ref obj, region) => {
-                out.push(region);
-                if let Some(principal) = obj.principal() {
-                    out.extend(principal.skip_binder().substs.regions());
-                }
-            }
-            Adt(_, substs) | Opaque(_, substs) => out.extend(substs.regions()),
-            Closure(_, ref substs) | Generator(_, ref substs, _) => out.extend(substs.regions()),
-            Projection(ref data) | UnnormalizedProjection(ref data) => {
-                out.extend(data.substs.regions())
-            }
-            FnDef(..) | FnPtr(_) | GeneratorWitness(..) | Bool | Char | Int(_) | Uint(_)
-            | Float(_) | Str | Array(..) | Slice(_) | RawPtr(_) | Never | Tuple(..)
-            | Foreign(..) | Param(_) | Bound(..) | Placeholder(..) | Infer(_) | Error => {}
         }
     }
 
