@@ -77,6 +77,7 @@ fn main() {
         "sparc",
         "nvptx",
         "hexagon",
+        "xtensa",
     ];
 
     let mut version_cmd = Command::new(&llvm_config);
@@ -250,7 +251,11 @@ fn main() {
     let llvm_use_libcxx = env::var_os("LLVM_USE_LIBCXX");
 
     let stdcppname = if target.contains("openbsd") {
-        if target.contains("sparc64") { "estdc++" } else { "c++" }
+        if target.contains("sparc64") {
+            "estdc++"
+        } else {
+            "c++"
+        }
     } else if target.contains("freebsd") {
         "c++"
     } else if target.contains("darwin") {
