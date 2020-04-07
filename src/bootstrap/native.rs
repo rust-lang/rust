@@ -97,6 +97,17 @@ impl Step for Llvm {
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
+        // This was added to address this error that appeared on our Windows CI on 2020-04-07:
+        //
+        //    CMake Error: Unable to open check cache file for write.
+        //
+        // Creating the directory supposed to hold the cache file beforehand apparently fixed the
+        // error, even though we are not sure what actually caused the error to appear: the
+        // investigation at the time didn't uncover any CI environment or code change.
+        t!(fs::create_dir_all(
+            out_dir.join("build").join("CMakeFiles").join("CMakeTmp").join("CMakeFiles")
+        ));
+
         // http://llvm.org/docs/CMake.html
         let mut cfg = cmake::Config::new(builder.src.join(root));
 
