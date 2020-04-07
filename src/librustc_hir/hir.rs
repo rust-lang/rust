@@ -2626,9 +2626,13 @@ impl Node<'_> {
         match self {
             Node::TraitItem(TraitItem { generics, .. })
             | Node::ImplItem(ImplItem { generics, .. })
-            | Node::Item(Item { kind: ItemKind::Trait(_, _, generics, ..), .. })
-            | Node::Item(Item { kind: ItemKind::Impl { generics, .. }, .. })
-            | Node::Item(Item { kind: ItemKind::Fn(_, generics, _), .. }) => Some(generics),
+            | Node::Item(Item {
+                kind:
+                    ItemKind::Trait(_, _, generics, ..)
+                    | ItemKind::Impl { generics, .. }
+                    | ItemKind::Fn(_, generics, _),
+                ..
+            }) => Some(generics),
             _ => None,
         }
     }
