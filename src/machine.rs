@@ -6,6 +6,7 @@ use std::cell::RefCell;
 use std::num::NonZeroU64;
 use std::rc::Rc;
 use std::time::Instant;
+use std::fmt;
 
 use log::trace;
 use rand::rngs::StdRng;
@@ -66,6 +67,31 @@ impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
     #[inline(always)]
     fn into(self) -> MemoryKind<MiriMemoryKind> {
         MemoryKind::Machine(self)
+    }
+}
+
+impl MayLeak for MiriMemoryKind {
+    #[inline(always)]
+    fn may_leak(self) -> bool {
+        use self::MiriMemoryKind::*;
+        match self {
+            Rust | C | WinHeap | Env => false,
+            Machine | Global => true,
+        }
+    }
+}
+
+impl fmt::Display for MiriMemoryKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use self::MiriMemoryKind::*;
+        match self {
+            Rust => write!(f, "Rust heap"),
+            C => write!(f, "C heap"),
+            WinHeap => write!(f, "Windows heap"),
+            Machine => write!(f, "machine-managed memory"),
+            Env => write!(f, "environment variable"),
+            Global => write!(f, "global"),
+        }
     }
 }
 
@@ -522,17 +548,6 @@ impl AllocationExtra<Tag> for AllocExtra {
             stacked_borrows.memory_deallocated(ptr, size)
         } else {
             Ok(())
-        }
-    }
-}
-
-impl MayLeak for MiriMemoryKind {
-    #[inline(always)]
-    fn may_leak(self) -> bool {
-        use self::MiriMemoryKind::*;
-        match self {
-            Rust | C | WinHeap | Env => false,
-            Machine | Global => true,
         }
     }
 }
