@@ -61,7 +61,7 @@ impl TextRange {
         TextRange { start, end }
     }
 
-    /// Create a new `TextRange` with the given `start` and `len` (`start..start + len`).
+    /// Create a new `TextRange` with the given `offset` and `len` (`offset..offset + len`).
     ///
     /// # Examples
     ///
@@ -69,16 +69,16 @@ impl TextRange {
     /// # use text_size::*;
     /// let text = "0123456789";
     ///
-    /// let start = TextSize::from(2);
+    /// let offset = TextSize::from(2);
     /// let length = TextSize::from(5);
-    /// let range = TextRange::from_len(start, length);
+    /// let range = TextRange::at(offset, length);
     ///
-    /// assert_eq!(range, TextRange::new(start, start + length));
+    /// assert_eq!(range, TextRange::new(offset, offset + length));
     /// assert_eq!(&text[range], "23456")
     /// ```
     #[inline]
-    pub fn from_len(start: TextSize, len: TextSize) -> TextRange {
-        TextRange::new(start, start + len)
+    pub fn at(offset: TextSize, len: TextSize) -> TextRange {
+        TextRange::new(offset, offset + len)
     }
 
     /// Create a zero-length range at the specified offset (`offset..offset`).
@@ -113,7 +113,7 @@ impl TextRange {
     ///
     /// assert_eq!(range.len(), point);
     /// assert_eq!(range, TextRange::new(TextSize::zero(), point));
-    /// assert_eq!(range, TextRange::from_len(TextSize::zero(), point));
+    /// assert_eq!(range, TextRange::at(TextSize::zero(), point));
     /// ```
     #[inline]
     pub const fn up_to(end: TextSize) -> TextRange {
