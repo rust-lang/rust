@@ -61,4 +61,8 @@ if isWindows; then
         curl -o "${mingw_dir}/bin/gdborig.exe" "${MIRRORS_BASE}/2017-04-20-${bits}bit-gdborig.exe"
         ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
     fi
+
+    # TODO bad hack to remove
+    pwd
+    mkdir -p build/i686-pc-windows-msvc/llvm/build/CMakeFiles/CMakeTmp/CMakeFiles
 fi
