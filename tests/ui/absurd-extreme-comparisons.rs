@@ -16,17 +16,17 @@ fn main() {
     u < Z;
     Z >= u;
     Z > u;
-    u > std::u32::MAX;
-    u >= std::u32::MAX;
-    std::u32::MAX < u;
-    std::u32::MAX <= u;
+    u > u32::MAX;
+    u >= u32::MAX;
+    u32::MAX < u;
+    u32::MAX <= u;
     1-1 > u;
     u >= !0;
     u <= 12 - 2*6;
     let i: i8 = 0;
     i < -127 - 1;
-    std::i8::MAX >= i;
-    3-7 < std::i32::MIN;
+    i8::MAX >= i;
+    3-7 < i32::MIN;
     let b = false;
     b >= true;
     false > b;
@@ -52,10 +52,10 @@ impl PartialOrd<u32> for U {
 }
 
 pub fn foo(val: U) -> bool {
-    val > std::u32::MAX
+    val > u32::MAX
 }
 
 pub fn bar(len: u64) -> bool {
     // This is OK as we are casting from target sized to fixed size
-    len >= std::usize::MAX as u64
+    len >= usize::MAX as u64
 }

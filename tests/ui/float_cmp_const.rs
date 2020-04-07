@@ -37,8 +37,8 @@ fn main() {
     // no errors, zero and infinity values
     ONE != 0f32;
     TWO == 0f32;
-    ONE != ::std::f32::INFINITY;
-    ONE == ::std::f32::NEG_INFINITY;
+    ONE != f32::INFINITY;
+    ONE == f32::NEG_INFINITY;
 
     // no errors, but will warn clippy::float_cmp if '#![allow(float_cmp)]' above is removed
     let w = 1.1;

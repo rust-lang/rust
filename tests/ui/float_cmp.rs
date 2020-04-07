@@ -45,8 +45,8 @@ impl PartialEq for X {
 
 fn main() {
     ZERO == 0f32; //no error, comparison with zero is ok
-    1.0f32 != ::std::f32::INFINITY; // also comparison with infinity
-    1.0f32 != ::std::f32::NEG_INFINITY; // and negative infinity
+    1.0f32 != f32::INFINITY; // also comparison with infinity
+    1.0f32 != f32::NEG_INFINITY; // and negative infinity
     ZERO == 0.0; //no error, comparison with zero is ok
     ZERO + ZERO != 1.0; //no error, comparison with zero is ok
 

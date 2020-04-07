@@ -24,8 +24,8 @@ enum NonPortableSigned {
     Y = 0x7FFF_FFFF,
     Z = 0xFFFF_FFFF,
     A = 0x1_0000_0000,
-    B = std::i32::MIN as isize,
-    C = (std::i32::MIN as isize) - 1,
+    B = i32::MIN as isize,
+    C = (i32::MIN as isize) - 1,
 }
 
 enum NonPortableSignedNoHint {
