@@ -95,6 +95,25 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
         }
         i++;
         res = CI->getArgOperand(i);
+    } else if (isa<LoadInst>(res) && isa<GlobalVariable>(cast<LoadInst>(res)->getOperand(0))) {
+        auto gv = cast<GlobalVariable>(cast<LoadInst>(res)->getOperand(0));
+        auto MS = gv->getName();
+        if (MS == "diffe_dup") {
+            ty = DIFFE_TYPE::DUP_ARG;
+            i++;
+            res = CI->getArgOperand(i);
+        } else if(MS == "diffe_out") {
+            llvm::errs() << "saw metadata for diffe_out\n";
+            ty = DIFFE_TYPE::OUT_DIFF;
+            i++;
+            res = CI->getArgOperand(i);
+        } else if (MS == "diffe_const") {
+            ty = DIFFE_TYPE::CONSTANT;
+            i++;
+            res = CI->getArgOperand(i);
+        } else {
+            ty = whatType(PTy);
+        }
     } else
       ty = whatType(PTy);
 
@@ -227,7 +246,7 @@ reset:
                 Fn = fn;
       }
 
-      if (Fn && ( Fn->getName() == "__enzyme_autodiff" || Fn->getName().startswith("__enzyme_autodiff")) ) {
+      if (Fn && ( Fn->getName() == "__enzyme_autodiff" || Fn->getName().startswith("__enzyme_autodiff") || Fn->getName().contains("__enzyme_autodiff") ) ) {
         HandleAutoDiff(CI, TLI, AA);//, LI, DT);
         Changed = true;
         goto reset;

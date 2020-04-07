@@ -7,6 +7,9 @@
 #include <inttypes.h>
 #include <string.h>
 
+template<typename Return, typename... T>
+Return __enzyme_autodiff(T...);
+
 float tdiff(struct timeval *start, struct timeval *end) {
   return (end->tv_sec-start->tv_sec) + 1e-6*(end->tv_usec-start->tv_usec);
 }
@@ -126,7 +129,7 @@ static void tapenade_sincos(double inp) {
   }
 }
 
-static void my_sincos(double inp) {
+static void enzyme_sincos(double inp) {
 
   {
   struct timeval start, end;
@@ -153,7 +156,7 @@ static void my_sincos(double inp) {
   gettimeofday(&start, NULL);
   double res2;
 
-  res2 = __builtin_autodiff(sincos_real, inp);
+  res2 = __enzyme_autodiff<double>(sincos_real, inp);
 
   gettimeofday(&end, NULL);
   printf("%0.6f res'=%f\n", tdiff(&start, &end), res2);
@@ -163,7 +166,10 @@ static void my_sincos(double inp) {
 int main(int argc, char** argv) {
 
   double inp = atof(argv[1]) ;
+  printf("adept\n");
   adept_sincos(inp);
+  printf("tapenade\n");
   tapenade_sincos(inp);
-  my_sincos(inp);
+  printf("enzyme\n");
+  enzyme_sincos(inp);
 }

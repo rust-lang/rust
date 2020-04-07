@@ -1,4 +1,4 @@
-# RUN: cd %desired_wd/nn && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B results.txt VERBOSE=1 -f %s
+# RUN: cd %desired_wd/matdescent && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B results.txt -f %s
 
 .PHONY: clean
 
@@ -9,16 +9,13 @@ clean:
 	clang++ $(BENCH) $^ -ffast-math -O2 -fno-unroll-loops -fno-vectorize -o $@ -S -emit-llvm
 
 %-raw.ll: %-unopt.ll
-	opt $^ $(LOAD) -enzyme -o $@ -S
+	opt $^ $(LOAD) -enzyme -mem2reg -o $@ -S
 	
 %-opt.ll: %-raw.ll
 	opt $^ -O2 -o $@ -S
 	
-%.o: %-c-opt.ll
-	clang $^ -o $@
-
-nn.o: nn-opt.ll
+matdescent.o: matdescent-opt.ll
 	clang++ $^ -o $@ -lblas $(BENCHLINK)
 
-results.txt: nn.o
+results.txt: matdescent.o
 	./$^ | tee $@

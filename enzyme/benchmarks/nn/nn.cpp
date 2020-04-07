@@ -503,8 +503,9 @@ static void calculateDerivatives_adept(mnist_image_t * image, bool run, adept::S
     }
 }
 
+extern "C" {
 #include <adBuffer.h>
-
+}
 
 void neural_network_softmax_b(float *activations, float *activationsb, int 
         length) {
@@ -653,11 +654,15 @@ float neural_network_gradient_update(mnist_image_t * image, const neural_network
     return 0.0f - log(activations[label]);
 }
 
+
 extern int diffe_const;
+template<typename Return, typename... T>
+Return __enzyme_autodiff(T...);
 
 static void calculateDerivatives(mnist_image_t * image, const neural_network_t * network, neural_network_t* gradient, uint8_t label) {
-    __builtin_autodiff(neural_network_hypothesis_v2, diffe_const, image, network, gradient, diffe_const, label);
+    __enzyme_autodiff<void>(neural_network_hypothesis_v2, diffe_const, image, network, gradient, diffe_const, label);
 }
+
 /**
  * Run one step of gradient descent and update the neural network.
  */
@@ -715,6 +720,139 @@ float neural_network_training_step(mnist_dataset_t * dataset, neural_network_t *
 }
 
 /**
+ * Run one step of gradient descent and update the neural network.
+ */
+float neural_network_training_step_enzyme(mnist_dataset_t * dataset, neural_network_t * network, float learning_rate)
+{
+    neural_network_t gradient = {0};
+    neural_network_t gradient2 = {0};
+
+    float total_loss;
+    int i, j;
+
+    // Calculate the gradient and the loss by looping through the training set
+    for (i = 0, total_loss = 0; i < dataset->size; i++) {
+		mnist_image_t* image = &dataset->images[i];
+		uint8_t label = dataset->labels[i];
+
+    	// First forward propagate through the network to calculate activations
+
+        calculateDerivatives(image, network, &gradient, label);
+        //calculateDerivatives_adept(image, i != 0, stack, &anetwork, &gradient, label);
+		//neural_network_hypothesis_tapenadesource_b(image, network, &gradient, label, 1.0);
+ 
+        //total_loss +=neural_network_gradient_update(image, network, (neural_network_gradient_t*)&gradient2, label);
+
+	    float activations[MNIST_LABELS];
+        neural_network_hypothesis(image, network, activations);
+    	total_loss -= log(activations[label]);
+
+    }
+
+    // Apply gradient descent to the network
+    for (i = 0; i < MNIST_LABELS; i++) {
+        //printf("b'[i] %f %f\n", gradient.b[i], gradient2.b[i]);
+        network->b[i] -= learning_rate * gradient.b[i] / ((float) dataset->size);
+
+        for (j = 0; j < MNIST_IMAGE_SIZE + 1; j++) {
+            network->W[i][j] -= learning_rate * gradient.W[i][j] / ((float) dataset->size);
+        }
+    }
+
+    return total_loss;
+}
+
+/**
+ * Run one step of gradient descent and update the neural network.
+ */
+float neural_network_training_step_adept(mnist_dataset_t * dataset, neural_network_t * network, float learning_rate)
+{
+    neural_network_t gradient = {0};
+    neural_network_t gradient2 = {0};
+
+    adept::Stack stack;
+    aneural_network_t anetwork;
+  
+    for (int i = 0; i < MNIST_LABELS; i++) {
+        anetwork.b[i] = network->b[i];
+        for (int j = 0; j < MNIST_IMAGE_SIZE; j++) {
+            anetwork.W[i][j] = network->W[i][j];
+        }
+    }
+
+    float total_loss;
+    int i, j;
+
+    // Calculate the gradient and the loss by looping through the training set
+    for (i = 0, total_loss = 0; i < dataset->size; i++) {
+		mnist_image_t* image = &dataset->images[i];
+		uint8_t label = dataset->labels[i];
+
+    	// First forward propagate through the network to calculate activations
+
+        calculateDerivatives_adept(image, i != 0, stack, &anetwork, &gradient, label);
+        
+        //total_loss +=neural_network_gradient_update(image, network, (neural_network_gradient_t*)&gradient2, label);
+
+	    float activations[MNIST_LABELS];
+        neural_network_hypothesis(image, network, activations);
+    	total_loss -= log(activations[label]);
+
+    }
+
+    // Apply gradient descent to the network
+    for (i = 0; i < MNIST_LABELS; i++) {
+        //printf("b'[i] %f %f\n", gradient.b[i], gradient2.b[i]);
+        network->b[i] -= learning_rate * gradient.b[i] / ((float) dataset->size);
+
+        for (j = 0; j < MNIST_IMAGE_SIZE + 1; j++) {
+            network->W[i][j] -= learning_rate * gradient.W[i][j] / ((float) dataset->size);
+        }
+    }
+
+    return total_loss;
+}
+
+/**
+ * Run one step of gradient descent and update the neural network.
+ */
+float neural_network_training_step_tapenade(mnist_dataset_t * dataset, neural_network_t * network, float learning_rate)
+{
+    neural_network_t gradient = {0};
+    neural_network_t gradient2 = {0};
+
+    float total_loss;
+    int i, j;
+
+    // Calculate the gradient and the loss by looping through the training set
+    for (i = 0, total_loss = 0; i < dataset->size; i++) {
+		mnist_image_t* image = &dataset->images[i];
+		uint8_t label = dataset->labels[i];
+
+    	// First forward propagate through the network to calculate activations
+
+		neural_network_hypothesis_tapenadesource_b(image, network, &gradient, label, 1.0); 
+        //total_loss +=neural_network_gradient_update(image, network, (neural_network_gradient_t*)&gradient2, label);
+
+	    float activations[MNIST_LABELS];
+        neural_network_hypothesis(image, network, activations);
+    	total_loss -= log(activations[label]);
+    }
+
+    // Apply gradient descent to the network
+    for (i = 0; i < MNIST_LABELS; i++) {
+        //printf("b'[i] %f %f\n", gradient.b[i], gradient2.b[i]);
+        network->b[i] -= learning_rate * gradient.b[i] / ((float) dataset->size);
+
+        for (j = 0; j < MNIST_IMAGE_SIZE + 1; j++) {
+            network->W[i][j] -= learning_rate * gradient.W[i][j] / ((float) dataset->size);
+        }
+    }
+
+    return total_loss;
+}
+
+/**
  * Downloaded from: http://yann.lecun.com/exdb/mnist/
  */
 const char * train_images_file = "data/train-images-idx3-ubyte";
@@ -752,8 +890,17 @@ float calculate_accuracy(mnist_dataset_t * dataset, neural_network_t * network) 
     return ((float) correct) / ((float) dataset->size);
 }
 
-int main(int argc, char *argv[])
-{
+#include <sys/time.h>
+#include <stdlib.h>
+#include <math.h>
+#include <inttypes.h>
+#include <string.h>
+
+float tdiff(struct timeval *start, struct timeval *end) {
+  return (end->tv_sec-start->tv_sec) + 1e-6*(end->tv_usec-start->tv_usec);
+}
+
+void run(float (*fn)(mnist_dataset_t*, neural_network_t*, float)) {
     mnist_dataset_t * train_dataset, * test_dataset;
     mnist_dataset_t batch;
     neural_network_t network;
@@ -770,23 +917,40 @@ int main(int argc, char *argv[])
     // Calculate how many batches (so we know when to wrap around)
     batches = train_dataset->size / BATCH_SIZE;
 
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+    
     for (i = 0; i < STEPS; i++) {
         // Initialise a new batch
         mnist_batch(train_dataset, &batch, 100, i % batches);
 
         // Run one step of gradient descent and calculate the loss
-        loss = neural_network_training_step(&batch, &network, 0.5);
+        loss = fn(&batch, &network, 0.5);
 
         // Calculate the accuracy using the whole test dataset
         accuracy = calculate_accuracy(test_dataset, &network);
 
         printf("Step %04d\tAverage Loss: %.2f\tAccuracy: %.3f\n", i, loss / batch.size, accuracy);
     }
+  
+    gettimeofday(&end, NULL);
+    printf("%0.6f\n", tdiff(&start, &end));
 
     // Cleanup
     mnist_free_dataset(train_dataset);
     mnist_free_dataset(test_dataset);
 
+}
+
+int main(int argc, char *argv[])
+{
+    printf("Regular\n");
+    run(neural_network_training_step);
+    printf("Enzyme\n");
+    run(neural_network_training_step_enzyme);
+    printf("Adept\n");
+    run(neural_network_training_step_adept);
+    printf("Tapenade\n");
+    run(neural_network_training_step_tapenade);
     return 0;
 }
-//}

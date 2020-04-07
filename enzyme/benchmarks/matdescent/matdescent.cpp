@@ -8,12 +8,13 @@
 #include <string.h>
 
 extern int diffe_const;
+template<typename Return, typename... T>
+Return __enzyme_autodiff(T...);
 
 float tdiff(struct timeval *start, struct timeval *end) {
   return (end->tv_sec-start->tv_sec) + 1e-6*(end->tv_usec-start->tv_usec);
 }
 
-#include <adept_source.h>
 #include <adept_arrays.h>
 using adept::adouble;
 using adept::aMatrix;
@@ -287,7 +288,7 @@ static void tapenade_sincos(double *Min, double *Mout, double *Vin, double *Vout
   printf("tapenade %0.6f res'=%f %f %f\n", tdiff(&start, &end), Mout[1], Mout[2], Mout[3]);
   }
 }
-static void my_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
+static void enzyme_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
 
   {
   struct timeval start, end;
@@ -323,7 +324,7 @@ static void my_sincos(double *Min, double *Mout, double *Vin, double *Vout) {
   for(int i=0; i<ITERS; i++) {
   for(int i=0; i<N*M; i++) { Mout[i] = 0; }
   //for(int i=0; i<M; i++) { Vout[i] = 0; }
-  res2 = __builtin_autodiff(matvec_real, Min, Mout, diffe_const, Vin);
+  res2 = __enzyme_autodiff<double>(matvec_real, Min, Mout, diffe_const, Vin);
   //res2 = __builtin_autodiff(matvec_real, Min, Mout, Vin, Vout);
   for(int i=0; i<N*M; i++) { Min[i] -= Mout[i] * RATE; }
   }
@@ -353,6 +354,6 @@ int main(int argc, char** argv) {
 
   memset(Mout, 0, sizeof(double)*N*M);
   memset(Vout, 0, sizeof(double)*M);
-  my_sincos(Min, Mout, Vin, Vout);
+  enzyme_sincos(Min, Mout, Vin, Vout);
 }
 
