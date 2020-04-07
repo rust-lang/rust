@@ -745,7 +745,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         debug!("resolve_adt");
         self.with_current_self_item(item, |this| {
             this.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-                let item_def_id = this.r.definitions.local_def_id(item.id);
+                let item_def_id = this.r.definitions.local_def_id(item.id).to_def_id();
                 this.with_self_rib(Res::SelfTy(None, Some(item_def_id)), |this| {
                     visit::walk_item(this, item);
                 });
@@ -825,7 +825,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ItemKind::Trait(.., ref generics, ref bounds, ref trait_items) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-                    let local_def_id = this.r.definitions.local_def_id(item.id);
+                    let local_def_id = this.r.definitions.local_def_id(item.id).to_def_id();
                     this.with_self_rib(Res::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds);
@@ -866,7 +866,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ItemKind::TraitAlias(ref generics, ref bounds) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-                    let local_def_id = this.r.definitions.local_def_id(item.id);
+                    let local_def_id = this.r.definitions.local_def_id(item.id).to_def_id();
                     this.with_self_rib(Res::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds);
@@ -947,7 +947,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             seen_bindings.entry(ident).or_insert(param.ident.span);
 
             // Plain insert (no renaming).
-            let res = Res::Def(def_kind, self.r.definitions.local_def_id(param.id));
+            let res = Res::Def(def_kind, self.r.definitions.local_def_id(param.id).to_def_id());
 
             match param.kind {
                 GenericParamKind::Type { .. } => {
@@ -1097,7 +1097,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             this.with_self_rib(Res::SelfTy(None, None), |this| {
                 // Resolve the trait reference, if necessary.
                 this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
-                    let item_def_id = this.r.definitions.local_def_id(item_id);
+                    let item_def_id = this.r.definitions.local_def_id(item_id).to_def_id();
                     this.with_self_rib(Res::SelfTy(trait_id, Some(item_def_id)), |this| {
                         if let Some(trait_ref) = opt_trait_reference.as_ref() {
                             // Resolve type arguments in the trait path.
@@ -1906,7 +1906,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if let StmtKind::Item(ref item) = stmt.kind {
                 if let ItemKind::MacroDef(..) = item.kind {
                     num_macro_definition_ribs += 1;
-                    let res = self.r.definitions.local_def_id(item.id);
+                    let res = self.r.definitions.local_def_id(item.id).to_def_id();
                     self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));
                     self.label_ribs.push(Rib::new(MacroDefinition(res)));
                 }

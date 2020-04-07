@@ -32,7 +32,7 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::{DefKey, Definitions};
 use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
 use rustc_hir::{GlobMap, TraitMap};
@@ -885,7 +885,7 @@ pub struct Resolver<'a> {
     /// some AST passes can generate identifiers that only resolve to local or
     /// language items.
     empty_module: Module<'a>,
-    module_map: FxHashMap<DefId, Module<'a>>,
+    module_map: FxHashMap<LocalDefId, Module<'a>>,
     extern_module_map: FxHashMap<DefId, Module<'a>>,
     binding_parent_modules: FxHashMap<PtrKey<'a, NameBinding<'a>>, Module<'a>>,
     underscore_disambiguator: u32,
@@ -1121,7 +1121,7 @@ impl<'a> Resolver<'a> {
             )
         });
         let mut module_map = FxHashMap::default();
-        module_map.insert(DefId::local(CRATE_DEF_INDEX), graph_root);
+        module_map.insert(LocalDefId { local_def_index: CRATE_DEF_INDEX }, graph_root);
 
         let mut definitions = Definitions::default();
         definitions.create_root_def(crate_name, session.local_crate_disambiguator());

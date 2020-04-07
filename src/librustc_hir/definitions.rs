@@ -326,10 +326,9 @@ impl Definitions {
         self.node_id_to_def_id.get(&node).copied()
     }
 
-    // FIXME(eddyb) this function can and should return `LocalDefId`.
     #[inline]
-    pub fn local_def_id(&self, node: ast::NodeId) -> DefId {
-        self.opt_local_def_id(node).unwrap().to_def_id()
+    pub fn local_def_id(&self, node: ast::NodeId) -> LocalDefId {
+        self.opt_local_def_id(node).unwrap()
     }
 
     #[inline]

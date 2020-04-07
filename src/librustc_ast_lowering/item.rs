@@ -259,7 +259,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Const(ty, body_id)
             }
             ItemKind::Fn(_, FnSig { ref decl, header }, ref generics, ref body) => {
-                let fn_def_id = self.resolver.definitions().local_def_id(id).expect_local();
+                let fn_def_id = self.resolver.definitions().local_def_id(id);
                 self.with_new_scopes(|this| {
                     this.current_item = Some(ident.span);
 
@@ -346,7 +346,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self_ty: ref ty,
                 items: ref impl_items,
             } => {
-                let def_id = self.resolver.definitions().local_def_id(id).expect_local();
+                let def_id = self.resolver.definitions().local_def_id(id);
 
                 // Lower the "impl header" first. This ordering is important
                 // for in-band lifetimes! Consider `'a` here:
@@ -645,7 +645,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem<'hir> {
-        let def_id = self.resolver.definitions().local_def_id(i.id).expect_local();
+        let def_id = self.resolver.definitions().local_def_id(i.id);
         hir::ForeignItem {
             hir_id: self.lower_node_id(i.id),
             ident: i.ident,
@@ -746,7 +746,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_trait_item(&mut self, i: &AssocItem) -> hir::TraitItem<'hir> {
-        let trait_item_def_id = self.resolver.definitions().local_def_id(i.id).expect_local();
+        let trait_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, kind) = match i.kind {
             AssocItemKind::Const(_, ref ty, ref default) => {
@@ -811,7 +811,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_impl_item(&mut self, i: &AssocItem) -> hir::ImplItem<'hir> {
-        let impl_item_def_id = self.resolver.definitions().local_def_id(i.id).expect_local();
+        let impl_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(_, ty, expr) => {

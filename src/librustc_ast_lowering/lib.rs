@@ -464,8 +464,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     | ItemKind::Enum(_, ref generics)
                     | ItemKind::TyAlias(_, ref generics, ..)
                     | ItemKind::Trait(_, _, ref generics, ..) => {
-                        let def_id =
-                            self.lctx.resolver.definitions().local_def_id(item.id).expect_local();
+                        let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
                         let count = generics
                             .params
                             .iter()
@@ -600,7 +599,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .item_local_id_counters
             .insert(owner, HIR_ID_COUNTER_LOCKED)
             .unwrap_or_else(|| panic!("no `item_local_id_counters` entry for {:?}", owner));
-        let def_id = self.resolver.definitions().local_def_id(owner).expect_local();
+        let def_id = self.resolver.definitions().local_def_id(owner);
         self.current_hir_id_owner.push((def_id, counter));
         let ret = f(self);
         let (new_def_id, new_counter) = self.current_hir_id_owner.pop().unwrap();
@@ -1280,8 +1279,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     ImplTraitContext::Universal(in_band_ty_params) => {
                         // Add a definition for the in-band `Param`.
-                        let def_id =
-                            self.resolver.definitions().local_def_id(def_node_id).expect_local();
+                        let def_id = self.resolver.definitions().local_def_id(def_node_id);
 
                         let hir_bounds = self.lower_param_bounds(
                             bounds,
@@ -1369,8 +1367,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        let opaque_ty_def_id =
-            self.resolver.definitions().local_def_id(opaque_ty_node_id).expect_local();
+        let opaque_ty_def_id = self.resolver.definitions().local_def_id(opaque_ty_node_id);
 
         self.allocate_hir_id_counter(opaque_ty_node_id);
 
@@ -1799,8 +1796,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
 
-        let opaque_ty_def_id =
-            self.resolver.definitions().local_def_id(opaque_ty_node_id).expect_local();
+        let opaque_ty_def_id = self.resolver.definitions().local_def_id(opaque_ty_node_id);
 
         self.allocate_hir_id_counter(opaque_ty_node_id);
 
