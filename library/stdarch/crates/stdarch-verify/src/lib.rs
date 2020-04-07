@@ -204,11 +204,13 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "poly8x16x2_t" => quote! { &POLY8X16X2 },
             "poly8x16x3_t" => quote! { &POLY8X16X3 },
             "poly8x16x4_t" => quote! { &POLY8X16X4 },
+            "poly64_t" => quote! { &P64 },
             "poly64x1_t" => quote! { &POLY64X1 },
             "poly64x2_t" => quote! { &POLY64X2 },
             "poly8x16_t" => quote! { &POLY8X16 },
             "poly16x4_t" => quote! { &POLY16X4 },
             "poly16x8_t" => quote! { &POLY16X8 },
+            "poly128_t" => quote! { &P128 },
 
             "v16i8" => quote! { &v16i8 },
             "v8i16" => quote! { &v8i16 },
@@ -222,7 +224,7 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "v4f32" => quote! { &v4f32 },
             "v2f64" => quote! { &v2f64 },
 
-            s => panic!("unspported type: \"{}\"", s),
+            s => panic!("unsupported type: \"{}\"", s),
         },
         syn::Type::Ptr(syn::TypePtr {
             ref elem,

@@ -51,3 +51,7 @@ use stdarch_test::assert_instr;
 pub unsafe fn udf() -> ! {
     crate::intrinsics::abort()
 }
+
+#[cfg(test)]
+#[cfg(any(target_arch = "aarch64", target_feature = "v7"))]
+pub(crate) mod test_support;

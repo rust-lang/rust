@@ -29,3 +29,6 @@ use stdarch_test::assert_instr;
 pub unsafe fn brk() -> ! {
     crate::intrinsics::abort()
 }
+
+#[cfg(test)]
+pub(crate) mod test_support;

@@ -88,6 +88,12 @@ pub fn assert(_fnptr: usize, fnname: &str, expected: &str) {
         instrs = &instrs[..instrs.len() - 1];
     }
 
+    // If the expected intrinsic is a nop it is compiled away so we
+    // can't check for it - aka the intrinsic is not generating any code
+    if expected == "nop" {
+        return;
+    }
+
     // Look for `expected` as the first part of any instruction in this
     // function, e.g., tzcntl in tzcntl %rax,%rax.
     let found = instrs.iter().any(|s| s.starts_with(expected));
