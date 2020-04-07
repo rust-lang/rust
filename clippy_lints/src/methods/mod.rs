@@ -15,6 +15,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Predicate, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -1407,7 +1408,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id);
         let item = cx.tcx.hir().expect_item(parent);
         let def_id = cx.tcx.hir().local_def_id(item.hir_id);
-        let ty = cx.tcx.type_of(def_id);
+        let self_ty = cx.tcx.type_of(def_id);
         if_chain! {
             if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind;
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
@@ -1429,7 +1430,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                         if name == method_name &&
                         sig.decl.inputs.len() == n_args &&
                         out_type.matches(cx, &sig.decl.output) &&
-                        self_kind.matches(cx, ty, first_arg_ty) {
+                        self_kind.matches(cx, self_ty, first_arg_ty) {
                             span_lint(cx, SHOULD_IMPLEMENT_TRAIT, impl_item.span, &format!(
                                 "defining a method called `{}` on this type; consider implementing \
                                 the `{}` trait or choosing a less ambiguous name", name, trait_name));
@@ -1441,7 +1442,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                     .iter()
                     .find(|(ref conv, _)| conv.check(&name))
                 {
-                    if !self_kinds.iter().any(|k| k.matches(cx, ty, first_arg_ty)) {
+                    if !self_kinds.iter().any(|k| k.matches(cx, self_ty, first_arg_ty)) {
                         let lint = if item.vis.node.is_pub() {
                             WRONG_PUB_SELF_CONVENTION
                         } else {
@@ -1471,8 +1472,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
             let ret_ty = return_ty(cx, impl_item.hir_id);
 
+            let contains_self_ty = |ty: Ty<'tcx>| {
+                ty.walk().any(|inner| match inner.unpack() {
+                    GenericArgKind::Type(inner_ty) => same_tys(cx, self_ty, inner_ty),
+
+                    GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+                })
+            };
+
             // walk the return type and check for Self (this does not check associated types)
-            if ret_ty.walk().any(|inner_type| same_tys(cx, ty, inner_type)) {
+            if contains_self_ty(ret_ty) {
                 return;
             }
 
@@ -1486,10 +1495,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                             let associated_type = binder.skip_binder();
 
                             // walk the associated type and check for Self
-                            for inner_type in associated_type.walk() {
-                                if same_tys(cx, ty, inner_type) {
-                                    return;
-                                }
+                            if contains_self_ty(associated_type) {
+                                return;
                             }
                         },
                         (_, _) => {},
@@ -1497,7 +1504,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 }
             }
 
-            if name == "new" && !same_tys(cx, ret_ty, ty) {
+            if name == "new" && !same_tys(cx, ret_ty, self_ty) {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,

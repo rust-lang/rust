@@ -2,6 +2,7 @@ use if_chain::if_chain;
 use rustc_hir::{Local, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::{is_must_use_func_call, is_must_use_ty, match_type, paths, span_lint_and_help};
@@ -75,8 +76,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
             if let PatKind::Wild = local.pat.kind;
             if let Some(ref init) = local.init;
             then {
-                let check_ty = |ty| SYNC_GUARD_PATHS.iter().any(|path| match_type(cx, ty, path));
-                if cx.tables.expr_ty(init).walk().any(check_ty) {
+                let init_ty = cx.tables.expr_ty(init);
+                let contains_sync_guard = init_ty.walk().any(|inner| match inner.unpack() {
+                    GenericArgKind::Type(inner_ty) => SYNC_GUARD_PATHS.iter().any(|path| match_type(cx, inner_ty, path)),
+
+                    GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+                });
+                if contains_sync_guard {
                     span_lint_and_help(
                         cx,
                         LET_UNDERSCORE_LOCK,
