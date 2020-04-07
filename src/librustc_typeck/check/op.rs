@@ -13,6 +13,7 @@ use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, 
 use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::suggest_constraining_type_param;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
@@ -253,6 +254,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // error types are considered "builtin"
                 if !lhs_ty.references_error() {
                     let source_map = self.tcx.sess.source_map();
+
+                    let suggest_constraining_param =
+                        |mut err: &mut DiagnosticBuilder<'_>,
+                         missing_trait: &str,
+                         p: ty::ParamTy,
+                         set_output: bool| {
+                            let hir = self.tcx.hir();
+                            let msg =
+                                &format!("`{}` might need a bound for `{}`", lhs_ty, missing_trait);
+                            if let Some(def_id) = hir
+                                .find(hir.get_parent_item(expr.hir_id))
+                                .and_then(|node| node.hir_id())
+                                .and_then(|hir_id| hir.opt_local_def_id(hir_id))
+                            {
+                                let generics = self.tcx.generics_of(def_id);
+                                let param_def_id = generics.type_param(&p, self.tcx).def_id;
+                                if let Some(generics) = hir
+                                    .as_local_hir_id(param_def_id)
+                                    .and_then(|id| hir.find(hir.get_parent_item(id)))
+                                    .as_ref()
+                                    .and_then(|node| node.generics())
+                                {
+                                    let output = if set_output {
+                                        format!("<Output = {}>", rhs_ty)
+                                    } else {
+                                        String::new()
+                                    };
+                                    suggest_constraining_type_param(
+                                        self.tcx,
+                                        generics,
+                                        &mut err,
+                                        &format!("{}", lhs_ty),
+                                        &format!("{}{}", missing_trait, output),
+                                        None,
+                                    );
+                                } else {
+                                    let span = self.tcx.def_span(param_def_id);
+                                    err.span_label(span, msg);
+                                }
+                            } else {
+                                err.note(&msg);
+                            }
+                        };
+
                     match is_assign {
                         IsAssign::Yes => {
                             let mut err = struct_span_err!(
@@ -317,12 +362,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g., "Hello " += "World!"). This means
                                     // we don't want the note in the else clause to be emitted
-                                } else if let ty::Param(_) = lhs_ty.kind {
-                                    // FIXME: point to span of param
-                                    err.note(&format!(
-                                        "`{}` might need a bound for `{}`",
-                                        lhs_ty, missing_trait
-                                    ));
+                                } else if let ty::Param(p) = lhs_ty.kind {
+                                    suggest_constraining_param(&mut err, missing_trait, p, false);
                                 } else if !suggested_deref {
                                     suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
                                 }
@@ -330,46 +371,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.emit();
                         }
                         IsAssign::No => {
-                            let (message, missing_trait) = match op.node {
+                            let (message, missing_trait, use_output) = match op.node {
                                 hir::BinOpKind::Add => (
                                     format!("cannot add `{}` to `{}`", rhs_ty, lhs_ty),
                                     Some("std::ops::Add"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Sub => (
                                     format!("cannot subtract `{}` from `{}`", rhs_ty, lhs_ty),
                                     Some("std::ops::Sub"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Mul => (
                                     format!("cannot multiply `{}` to `{}`", rhs_ty, lhs_ty),
                                     Some("std::ops::Mul"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Div => (
                                     format!("cannot divide `{}` by `{}`", lhs_ty, rhs_ty),
                                     Some("std::ops::Div"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Rem => (
                                     format!("cannot mod `{}` by `{}`", lhs_ty, rhs_ty),
                                     Some("std::ops::Rem"),
+                                    true,
                                 ),
                                 hir::BinOpKind::BitAnd => (
                                     format!("no implementation for `{} & {}`", lhs_ty, rhs_ty),
                                     Some("std::ops::BitAnd"),
+                                    true,
                                 ),
                                 hir::BinOpKind::BitXor => (
                                     format!("no implementation for `{} ^ {}`", lhs_ty, rhs_ty),
                                     Some("std::ops::BitXor"),
+                                    true,
                                 ),
                                 hir::BinOpKind::BitOr => (
                                     format!("no implementation for `{} | {}`", lhs_ty, rhs_ty),
                                     Some("std::ops::BitOr"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Shl => (
                                     format!("no implementation for `{} << {}`", lhs_ty, rhs_ty),
                                     Some("std::ops::Shl"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Shr => (
                                     format!("no implementation for `{} >> {}`", lhs_ty, rhs_ty),
                                     Some("std::ops::Shr"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Eq | hir::BinOpKind::Ne => (
                                     format!(
@@ -378,6 +429,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         lhs_ty
                                     ),
                                     Some("std::cmp::PartialEq"),
+                                    false,
                                 ),
                                 hir::BinOpKind::Lt
                                 | hir::BinOpKind::Le
@@ -389,6 +441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         lhs_ty
                                     ),
                                     Some("std::cmp::PartialOrd"),
+                                    false,
                                 ),
                                 _ => (
                                     format!(
@@ -397,6 +450,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         lhs_ty
                                     ),
                                     None,
+                                    false,
                                 ),
                             };
                             let mut err = struct_span_err!(
@@ -459,12 +513,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g., "Hello " + "World!"). This means
                                     // we don't want the note in the else clause to be emitted
-                                } else if let ty::Param(_) = lhs_ty.kind {
-                                    // FIXME: point to span of param
-                                    err.note(&format!(
-                                        "`{}` might need a bound for `{}`",
-                                        lhs_ty, missing_trait
-                                    ));
+                                } else if let ty::Param(p) = lhs_ty.kind {
+                                    suggest_constraining_param(
+                                        &mut err,
+                                        missing_trait,
+                                        p,
+                                        use_output,
+                                    );
                                 } else if !suggested_deref && !involves_fn {
                                     suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
                                 }
