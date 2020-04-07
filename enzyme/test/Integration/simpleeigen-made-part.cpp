@@ -5,8 +5,7 @@
 // RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
 // RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
 // RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
-// TODO note that doing O0 ends up with an infinite loop
-//   note not doing O0 below as to ensure we get tbaa
+// TODO note not doing O0 below as to ensure we get tbaa
 // RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 -disable-llvm-optzns %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
 
 #include <eigen3/Eigen/Dense>
