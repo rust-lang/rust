@@ -837,7 +837,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let x = std::u64::MAX;
+    /// let x = u64::MAX;
     /// x as f64;
     /// ```
     pub CAST_PRECISION_LOSS,
@@ -904,7 +904,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// std::u32::MAX as i32; // will yield a value of `-1`
+    /// u32::MAX as i32; // will yield a value of `-1`
     /// ```
     pub CAST_POSSIBLE_WRAP,
     pedantic,
@@ -1752,7 +1752,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let vec: Vec<isize> = Vec::new();
     /// if vec.len() <= 0 {}
-    /// if 100 > std::i32::MAX {}
+    /// if 100 > i32::MAX {}
     /// ```
     pub ABSURD_EXTREME_COMPARISONS,
     correctness,
