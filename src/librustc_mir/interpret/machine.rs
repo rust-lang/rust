@@ -51,7 +51,7 @@ pub trait AllocMap<K: Hash + Eq, V> {
     where
         K: Borrow<Q>;
 
-    /// Returns data based the keys and values in the map.
+    /// Returns data based on the keys and values in the map.
     fn filter_map_collect<T>(&self, f: impl FnMut(&K, &V) -> Option<T>) -> Vec<T>;
 
     /// Returns a reference to entry `k`. If no such entry exists, call
@@ -79,7 +79,7 @@ pub trait AllocMap<K: Hash + Eq, V> {
 /// and some use case dependent behaviour can instead be applied.
 pub trait Machine<'mir, 'tcx>: Sized {
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
-    type MemoryKind: ::std::fmt::Debug + MayLeak + Eq + 'static;
+    type MemoryKind: ::std::fmt::Debug + ::std::fmt::Display + MayLeak + Eq + 'static;
 
     /// Tag tracked alongside every pointer. This is used to implement "Stacked Borrows"
     /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
