@@ -4,17 +4,19 @@ use std::sync::Arc;
 
 use either::Either;
 use hir_expand::{
+    hygiene::Hygiene,
     name::{AsName, Name},
     InFile,
 };
 use ra_arena::{map::ArenaMap, Arena};
+use ra_cfg::CfgOptions;
 use ra_prof::profile;
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner, VisibilityOwner};
 
 use crate::{
-    db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace, type_ref::TypeRef,
-    visibility::RawVisibility, EnumId, LocalEnumVariantId, LocalStructFieldId, Lookup, StructId,
-    UnionId, VariantId,
+    attr::Attrs, db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace,
+    type_ref::TypeRef, visibility::RawVisibility, EnumId, LocalEnumVariantId, LocalStructFieldId,
+    Lookup, StructId, UnionId, VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -49,11 +51,14 @@ pub struct StructFieldData {
     pub name: Name,
     pub type_ref: TypeRef,
     pub visibility: RawVisibility,
+    pub attrs: Attrs,
+    // TODO: add attributes
 }
 
 impl StructData {
     pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
         let src = id.lookup(db).source(db);
+
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let variant_data = VariantData::new(db, src.map(|s| s.kind()));
         let variant_data = Arc::new(variant_data);
@@ -181,6 +186,10 @@ pub enum StructKind {
     Unit,
 }
 
+fn is_cfg_enabled(cfg_options: &CfgOptions, attrs: &Attrs) -> bool {
+    attrs.by_key("cfg").tt_values().all(|tt| cfg_options.is_cfg_enabled(tt) != Some(false))
+}
+
 fn lower_struct(
     db: &dyn DefDatabase,
     trace: &mut Trace<StructFieldData, Either<ast::TupleFieldDef, ast::RecordFieldDef>>,
@@ -189,12 +198,21 @@ fn lower_struct(
     match &ast.value {
         ast::StructKind::Tuple(fl) => {
             for (i, fd) in fl.fields().enumerate() {
+                let attrs = Attrs::new(&fd, &Hygiene::new(db.upcast(), ast.file_id));
+
+                // Need verification about parent cfg_options and current with current attributes
+                // If it is we are in a case where the cfg is not enabled then we don't have to add this field to check
+                // if !is_cfg_enabled(&crate_graph[module_id.krate].cfg_options, &attrs) {
+                //     continue;
+                // }
+
                 trace.alloc(
                     || Either::Left(fd.clone()),
                     || StructFieldData {
                         name: Name::new_tuple_field(i),
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
                         visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
+                        attrs: Attrs::new(&fd, &Hygiene::new(db.upcast(), ast.file_id)),
                     },
                 );
             }
@@ -202,12 +220,19 @@ fn lower_struct(
         }
         ast::StructKind::Record(fl) => {
             for fd in fl.fields() {
+                let attrs = Attrs::new(&fd, &Hygiene::new(db.upcast(), ast.file_id));
+                // Need verification about parent cfg_options and current with current attributes
+                // If it is we are in a case where the cfg is not enabled then we don't have to add this field to check
+                // if !is_cfg_enabled(&crate_graph[module_id.krate].cfg_options, &attrs) {
+                //     continue;
+                // }
                 trace.alloc(
                     || Either::Right(fd.clone()),
                     || StructFieldData {
                         name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
                         type_ref: TypeRef::from_ast_opt(fd.ascribed_type()),
                         visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
+                        attrs: Attrs::new(&fd, &Hygiene::new(db.upcast(), ast.file_id)),
                     },
                 );
             }

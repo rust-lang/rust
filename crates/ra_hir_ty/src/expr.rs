@@ -8,8 +8,7 @@ use hir_def::{
     AdtId, FunctionId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name::Name};
-use ra_syntax::ast;
-use ra_syntax::AstPtr;
+use ra_syntax::{ast, AstPtr};
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -82,7 +81,14 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         let variant_data = variant_data(db.upcast(), variant_def);
 
-        let lit_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
+        let lit_fields: FxHashSet<_> = fields
+            .iter()
+            .filter_map(|f| {
+                // TODO: check if cfg_is_enabled with .attrs ?
+
+                Some(&f.name)
+            })
+            .collect();
         let missed_fields: Vec<Name> = variant_data
             .fields()
             .iter()

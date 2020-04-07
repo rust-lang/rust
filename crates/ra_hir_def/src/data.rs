@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use hir_expand::{
+    hygiene::Hygiene,
     name::{name, AsName, Name},
     AstId, InFile,
 };
@@ -12,6 +13,7 @@ use ra_syntax::ast::{
 };
 
 use crate::{
+    attr::Attrs,
     db::DefDatabase,
     path::{path, GenericArgs, Path},
     src::HasSource,
@@ -26,6 +28,7 @@ pub struct FunctionData {
     pub name: Name,
     pub params: Vec<TypeRef>,
     pub ret_type: TypeRef,
+    pub attrs: Attrs,
     /// True if the first param is `self`. This is relevant to decide whether this
     /// can be called as a method.
     pub has_self_param: bool,
@@ -63,6 +66,7 @@ impl FunctionData {
                 params.push(type_ref);
             }
         }
+        let attrs = Attrs::new(&src.value, &Hygiene::new(db.upcast(), src.file_id));
         let ret_type = if let Some(type_ref) = src.value.ret_type().and_then(|rt| rt.type_ref()) {
             TypeRef::from_ast(type_ref)
         } else {
@@ -81,7 +85,7 @@ impl FunctionData {
         let visibility =
             RawVisibility::from_ast_with_default(db, vis_default, src.map(|s| s.visibility()));
 
-        let sig = FunctionData { name, params, ret_type, has_self_param, visibility };
+        let sig = FunctionData { name, params, ret_type, has_self_param, visibility, attrs };
         Arc::new(sig)
     }
 }
