@@ -1,7 +1,7 @@
 // Validation/SB changes why we fail
 // compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
 
-// error-pattern: deallocating `Stack` memory using `Machine(Rust)` deallocation operation
+// error-pattern: deallocating stack variable memory using Rust heap deallocation operation
 
 fn main() {
     let x = 42;
