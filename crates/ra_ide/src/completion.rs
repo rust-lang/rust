@@ -85,8 +85,8 @@ pub(crate) fn completions(
     complete_keyword::complete_use_tree_keyword(&mut acc, &ctx);
     complete_snippet::complete_expr_snippet(&mut acc, &ctx);
     complete_snippet::complete_item_snippet(&mut acc, &ctx);
-    complete_qualified_path::complete_path(&mut acc, &ctx);
-    complete_unqualified_path::complete_scope(&mut acc, &ctx);
+    complete_qualified_path::complete_qualified_path(&mut acc, &ctx);
+    complete_unqualified_path::complete_unqualified_path(&mut acc, &ctx);
     complete_dot::complete_dot(&mut acc, &ctx);
     complete_record::complete_record(&mut acc, &ctx);
     complete_pattern::complete_pattern(&mut acc, &ctx);
