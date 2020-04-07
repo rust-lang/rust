@@ -34,8 +34,33 @@ we'll talk about that later.
   [`librustc_parse`] to prepare for the next stage of the compile process. The
   [`StringReader`] struct is used at this stage to perform a set of validations
   and turn strings into interned symbols (_interning_ is discussed later).
-- (**TODO**: chrissimpkins - Expand info on parser) We then [_parse_ the stream
-  of tokens][parser] to build an Abstract Syntax Tree (AST).
+- The lexer has a small interface and doesn't depend directly on the
+  diagnostic infrastructure in `rustc`. Instead it provides diagnostics as plain
+  data which are emitted in `librustc_parse::lexer::mod` as real diagnostics.
+- The lexer preseves full fidelity information for both IDEs and proc macros.
+- The parser [translates the token stream from the lexer into an Abstract Syntax
+  Tree (AST)][parser].  It uses a recursive descent (top-down) approach to syntax
+  analysis. The crate entry points for the parser are the `Parser.parse_crate_mod()` and
+  `Parser.parse_mod()` methods found in `librustc_parse::parser::item`. The external
+  module parsing entry point is `librustc_expand::module::parse_external_mod`. And
+  the macro parser entry point is `rustc_expand::mbe::macro_parser::parse_nt`.
+- Parsing is performed with a set of `Parser` utility methods including `fn bump`,
+  `fn check`, `fn eat`, `fn expect`, `fn look_ahead`.
+- Parsing is organized by the semantic construct that is being parsed. Separate
+  `parse_*` methods can be found in `librustc_parse` `parser` directory. File 
+  naming follows the construct name. For example, the following files are found
+  in the parser:
+    - `expr.rs`
+    - `pat.rs`
+    - `ty.rs`
+    - `stmt.rs`
+- This naming scheme is used across the parser, lowering, type checking,
+  HAIR lowering, & MIR building stages of the compile process and you will
+  find either a file or directory with the same name for most of these constructs
+  at each of these stages of compilation.
+- For error handling, the parser uses the standard `DiagnosticBuilder` API, but we
+  try to recover, parsing a superset of Rust's grammar, while also emitting an error.
+- The `rustc_ast::ast::{Crate, Mod, Expr, Pat, ...}` AST node returned from the parser.
   - macro expansion (**TODO** chrissimpkins)
   - ast validation (**TODO** chrissimpkins)
   - nameres (**TODO** chrissimpkins)
