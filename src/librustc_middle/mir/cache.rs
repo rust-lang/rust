@@ -5,13 +5,15 @@ use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_index::vec::IndexVec;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use smallvec::SmallVec;
 use std::iter;
 use std::ops::{Deref, DerefMut, Index, IndexMut};
 use std::vec::IntoIter;
 
 #[derive(Clone, Debug)]
 pub struct Cache {
-    predecessors: Option<IndexVec<BasicBlock, Vec<BasicBlock>>>,
+    // Typically 95%+ of the inner vectors have 4 or fewer elements.
+    predecessors: Option<IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>>,
 }
 
 impl rustc_serialize::Encodable for Cache {
@@ -44,7 +46,7 @@ impl Cache {
 
     pub fn ensure_predecessors(&mut self, body: &Body<'_>) {
         if self.predecessors.is_none() {
-            let mut result = IndexVec::from_elem(vec![], body.basic_blocks());
+            let mut result = IndexVec::from_elem(smallvec![], body.basic_blocks());
             for (bb, data) in body.basic_blocks().iter_enumerated() {
                 if let Some(ref term) = data.terminator {
                     for &tgt in term.successors() {
@@ -58,7 +60,11 @@ impl Cache {
     }
 
     /// This will recompute the predecessors cache if it is not available
-    fn predecessors(&mut self, body: &Body<'_>) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
+    // njn: typedef?
+    fn predecessors(
+        &mut self,
+        body: &Body<'_>,
+    ) -> &IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>> {
         self.ensure_predecessors(body);
         self.predecessors.as_ref().unwrap()
     }
@@ -137,7 +143,7 @@ impl BodyAndCache<'tcx> {
         self.cache.ensure_predecessors(&self.body);
     }
 
-    pub fn predecessors(&mut self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
+    pub fn predecessors(&mut self) -> &IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>> {
         self.cache.predecessors(&self.body)
     }
 
@@ -199,7 +205,7 @@ impl ReadOnlyBodyAndCache<'a, 'tcx> {
         Self { body, cache }
     }
 
-    pub fn predecessors(&self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
+    pub fn predecessors(&self) -> &IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>> {
         self.cache.predecessors.as_ref().unwrap()
     }
 
