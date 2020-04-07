@@ -1,4 +1,4 @@
-error[E0390]: only a single inherent implementation marked with `#[lang = "str"]` is allowed for the `str` primitive
+error[E0390]: only a single inherent implementation marked with `#[lang = "str_impl"]` is allowed for the `str` primitive
   --> $DIR/single-primitive-inherent-impl.rs:11:1
    |
 LL | / impl str {

@@ -127,10 +127,10 @@ language_item_table! {
 //  Variant name,                Name,                 Method name,             Target;
     BoolImplItem,                "bool",               bool_impl,               Target::Impl;
     CharImplItem,                "char",               char_impl,               Target::Impl;
-    StrImplItem,                 "str",                str_impl,                Target::Impl;
+    StrImplItem,                 "str_impl",           str_impl,                Target::Impl;
     SliceImplItem,               "slice",              slice_impl,              Target::Impl;
     SliceU8ImplItem,             "slice_u8",           slice_u8_impl,           Target::Impl;
-    StrAllocImplItem,            "str_alloc",          str_alloc_impl,          Target::Impl;
+    StrAllocImplItem,            "str_alloc_impl",     str_alloc_impl,          Target::Impl;
     SliceAllocImplItem,          "slice_alloc",        slice_alloc_impl,        Target::Impl;
     SliceU8AllocImplItem,        "slice_u8_alloc",     slice_u8_alloc_impl,     Target::Impl;
     ConstPtrImplItem,            "const_ptr",          const_ptr_impl,          Target::Impl;

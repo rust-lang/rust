@@ -87,7 +87,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     def_id,
                     lang_items.str_impl(),
                     lang_items.str_alloc_impl(),
-                    "str",
+                    "str_impl",
                     "str",
                     item.span,
                 );

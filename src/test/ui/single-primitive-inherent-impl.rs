@@ -5,9 +5,9 @@
 #![no_std]
 
 // OK
-#[lang = "str_alloc"]
+#[lang = "str_alloc_impl"]
 impl str {}
 
 impl str {
-//~^ error: only a single inherent implementation marked with `#[lang = "str"]` is allowed for the `str` primitive
+//~^ error: only a single inherent implementation marked with `#[lang = "str_impl"]` is allowed for the `str` primitive
 }
