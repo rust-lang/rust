@@ -1,6 +1,7 @@
 //! Complete fields in record literals and patterns.
-use crate::completion::{CompletionContext, Completions};
 use ra_syntax::{ast, ast::NameOwner, SmolStr};
+
+use crate::completion::{CompletionContext, Completions};
 
 pub(super) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let (ty, variant, already_present_fields) =
@@ -59,8 +60,9 @@ fn pattern_ascribed_fields(record_pat: &ast::RecordPat) -> Vec<SmolStr> {
 #[cfg(test)]
 mod tests {
     mod record_lit_tests {
-        use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
         use insta::assert_debug_snapshot;
+
+        use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
 
         fn complete(code: &str) -> Vec<CompletionItem> {
             do_completion(code, CompletionKind::Reference)
@@ -204,8 +206,9 @@ mod tests {
     }
 
     mod record_pat_tests {
-        use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
         use insta::assert_debug_snapshot;
+
+        use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
 
         fn complete(code: &str) -> Vec<CompletionItem> {
             do_completion(code, CompletionKind::Reference)
