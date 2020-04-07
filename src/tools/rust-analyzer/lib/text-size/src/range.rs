@@ -71,13 +71,13 @@ impl TextRange {
     ///
     /// let offset = TextSize::from(2);
     /// let length = TextSize::from(5);
-    /// let range = TextRange::from_offset(offset, length);
+    /// let range = TextRange::at(offset, length);
     ///
     /// assert_eq!(range, TextRange::new(offset, offset + length));
     /// assert_eq!(&text[range], "23456")
     /// ```
     #[inline]
-    pub fn from_offset(offset: TextSize, len: TextSize) -> TextRange {
+    pub fn at(offset: TextSize, len: TextSize) -> TextRange {
         TextRange::new(offset, offset + len)
     }
 
@@ -113,7 +113,7 @@ impl TextRange {
     ///
     /// assert_eq!(range.len(), point);
     /// assert_eq!(range, TextRange::new(TextSize::zero(), point));
-    /// assert_eq!(range, TextRange::from_offset(TextSize::zero(), point));
+    /// assert_eq!(range, TextRange::at(TextSize::zero(), point));
     /// ```
     #[inline]
     pub const fn up_to(end: TextSize) -> TextRange {
