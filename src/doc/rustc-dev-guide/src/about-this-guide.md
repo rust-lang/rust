@@ -9,13 +9,13 @@ There are six parts to this guide:
 1. [Building, Debugging, and Contributing to `rustc`][p1]: Contains information that should be useful no matter how
    you are contributing, such as procedures for contribution, building the
    compiler, etc.
-2. [How `rustc` Works][p2]: Discusses the high-level
-   architecture of the compiler and stages of the compile process
+2. [High-Level Compiler Architecture][p2]: Discusses the high-level
+   architecture of the compiler and stages of the compile process.
 3. [Source Code Representation][p3]: Describes the process of taking raw source code from the user and
-   transforming it into various forms that the compiler can work with easily
+   transforming it into various forms that the compiler can work with easily.
 4. [Analysis][p4]: discusses the analyses that the compiler uses to check various
-   properties of the code and inform later stages of the compile process
-5. [From MIR to Binaries][p5]: How linked executable machine code is generated
+   properties of the code and inform later stages of the compile process (e.g., type checking).
+5. [From MIR to Binaries][p5]: How linked executable machine code is generated.
 6. [Appendices][app] at the end with useful reference information. There are a
    few of these with different information, inluding a glossary.
 
