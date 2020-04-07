@@ -1,5 +1,5 @@
 use {
-    crate::LenTextSize,
+    crate::TextLen,
     std::{
         convert::TryFrom,
         fmt, iter,
@@ -44,7 +44,7 @@ impl TextSize {
     ///
     /// Accepts `char`, `&str`, and references to any custom string-like type
     /// that dereferences to `str`. Types that don't dereference to `str` but
-    /// want to be usable in this constructor can implement [`LenTextSize`].
+    /// want to be usable in this constructor can implement [`TextLen`].
     ///
     /// # Examples
     ///
@@ -57,8 +57,8 @@ impl TextSize {
     /// assert_eq!(str_size, TextSize::from(13));
     /// ```
     #[inline]
-    pub fn of<T: LenTextSize>(text: T) -> TextSize {
-        text.len_text_size()
+    pub fn of<T: TextLen>(text: T) -> TextSize {
+        text.text_len()
     }
 
     /// A size of zero.
