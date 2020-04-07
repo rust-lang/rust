@@ -32,16 +32,27 @@ pre {
 
 .sidebar {
 	background-color: #F1F1F1;
-	/* Improve the sidebar display on firefox */
+}
+
+/* Improve the scrollbar display on firefox */
+* {
+	scrollbar-color: rgba(36, 37, 39, 0.6) #e6e6e6;
+}
+
+.sidebar {
 	scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
 }
 
-/* Improve the sidebar display on webkit-based browsers */
+/* Improve the scrollbar display on webkit-based browsers */
+::-webkit-scrollbar-track {
+	background-color: #ecebeb;
+}
+::-webkit-scrollbar-thumb {
+	background-color: rgba(36, 37, 39, 0.6);
+}
 .sidebar::-webkit-scrollbar-track {
 	background-color: #dcdcdc;
 }
-
-/* Improve the sidebar display on webkit-based browsers */
 .sidebar::-webkit-scrollbar-thumb {
 	background-color: rgba(36, 37, 39, 0.6);
 }
