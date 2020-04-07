@@ -1027,8 +1027,16 @@ impl Type {
         ty: Ty,
     ) -> Option<Type> {
         let krate = resolver.krate()?;
+        Some(Type::new_with_resolver_inner(db, krate, resolver, ty))
+    }
+    pub(crate) fn new_with_resolver_inner(
+        db: &dyn HirDatabase,
+        krate: CrateId,
+        resolver: &Resolver,
+        ty: Ty,
+    ) -> Type {
         let environment = TraitEnvironment::lower(db, &resolver);
-        Some(Type { krate, ty: InEnvironment { value: ty, environment } })
+        Type { krate, ty: InEnvironment { value: ty, environment } }
     }
 
     fn new(db: &dyn HirDatabase, krate: CrateId, lexical_env: impl HasResolver, ty: Ty) -> Type {
@@ -1150,27 +1158,6 @@ impl Type {
             }
         };
         res
-    }
-
-    pub fn variant_fields(
-        &self,
-        db: &dyn HirDatabase,
-        def: VariantDef,
-    ) -> Vec<(StructField, Type)> {
-        // FIXME: check that ty and def match
-        match &self.ty.value {
-            Ty::Apply(a_ty) => {
-                let field_types = db.field_types(def.into());
-                def.fields(db)
-                    .into_iter()
-                    .map(|it| {
-                        let ty = field_types[it.id].clone().subst(&a_ty.parameters);
-                        (it, self.derived(ty))
-                    })
-                    .collect()
-            }
-            _ => Vec::new(),
-        }
     }
 
     pub fn autoderef<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Type> + 'a {

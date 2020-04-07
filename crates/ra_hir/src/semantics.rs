@@ -23,7 +23,7 @@ use crate::{
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
     AssocItem, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module, ModuleDef, Name,
-    Origin, Path, ScopeDef, StructField, Trait, Type, TypeParam, VariantDef,
+    Origin, Path, ScopeDef, StructField, Trait, Type, TypeParam,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -187,14 +187,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.analyze(field.syntax()).resolve_record_field(self.db, field)
     }
 
-    pub fn resolve_record_literal(&self, record_lit: &ast::RecordLit) -> Option<VariantDef> {
-        self.analyze(record_lit.syntax()).resolve_record_literal(self.db, record_lit)
-    }
-
-    pub fn resolve_record_pattern(&self, record_pat: &ast::RecordPat) -> Option<VariantDef> {
-        self.analyze(record_pat.syntax()).resolve_record_pattern(record_pat)
-    }
-
     pub fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<MacroDef> {
         let sa = self.analyze(macro_call.syntax());
         let macro_call = self.find_file(macro_call.syntax().clone()).with_value(macro_call);
@@ -211,6 +203,24 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     // FIXME: use this instead?
     // pub fn resolve_name_ref(&self, name_ref: &ast::NameRef) -> Option<???>;
+
+    pub fn record_literal_missing_fields(
+        &self,
+        literal: &ast::RecordLit,
+    ) -> Vec<(StructField, Type)> {
+        self.analyze(literal.syntax())
+            .record_literal_missing_fields(self.db, literal)
+            .unwrap_or_default()
+    }
+
+    pub fn record_pattern_missing_fields(
+        &self,
+        pattern: &ast::RecordPat,
+    ) -> Vec<(StructField, Type)> {
+        self.analyze(pattern.syntax())
+            .record_pattern_missing_fields(self.db, pattern)
+            .unwrap_or_default()
+    }
 
     pub fn to_def<T: ToDef>(&self, src: &T) -> Option<T::Def> {
         let src = self.find_file(src.syntax().clone()).with_value(src).cloned();
