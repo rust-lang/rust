@@ -78,7 +78,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
             then {
                 let init_ty = cx.tables.expr_ty(init);
                 let contains_sync_guard = init_ty.walk().any(|inner| match inner.unpack() {
-                    GenericArgKind::Type(inner_ty) => SYNC_GUARD_PATHS.iter().any(|path| match_type(cx, inner_ty, path)),
+                    GenericArgKind::Type(inner_ty) => {
+                        SYNC_GUARD_PATHS.iter().any(|path| match_type(cx, inner_ty, path))
+                    },
 
                     GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
                 });
