@@ -2620,13 +2620,13 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<usize> {
         _ => None,
     };
     if let Some(Lit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) = sole_meta_list {
-        if *ordinal <= std::usize::MAX as u128 {
+        if *ordinal <= usize::MAX as u128 {
             Some(*ordinal as usize)
         } else {
             let msg = format!("ordinal value in `link_ordinal` is too large: `{}`", &ordinal);
             tcx.sess
                 .struct_span_err(attr.span, &msg)
-                .note("the value may not exceed `std::usize::MAX`")
+                .note("the value may not exceed `usize::MAX`")
                 .emit();
             None
         }

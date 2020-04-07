@@ -507,7 +507,7 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-pub const CODEGEN_WORKER_ID: usize = ::std::usize::MAX;
+pub const CODEGEN_WORKER_ID: usize = usize::MAX;
 
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,

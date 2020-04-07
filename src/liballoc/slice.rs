@@ -733,14 +733,14 @@ impl<T: Clone> ToOwned for [T] {
     fn clone_into(&self, target: &mut Vec<T>) {
         // drop anything in target that will not be overwritten
         target.truncate(self.len());
-        let len = target.len();
-
-        // reuse the contained values' allocations/resources.
-        target.clone_from_slice(&self[..len]);
 
         // target.len <= self.len due to the truncate above, so the
-        // slice here is always in-bounds.
-        target.extend_from_slice(&self[len..]);
+        // slices here are always in-bounds.
+        let (init, tail) = self.split_at(target.len());
+
+        // reuse the contained values' allocations/resources.
+        target.clone_from_slice(init);
+        target.extend_from_slice(tail);
     }
 }
 

@@ -173,6 +173,10 @@ impl Slice {
         Buf { inner: self.inner.to_vec() }
     }
 
+    pub fn clone_into(&self, buf: &mut Buf) {
+        self.inner.clone_into(&mut buf.inner)
+    }
+
     #[inline]
     pub fn into_box(&self) -> Box<Slice> {
         let boxed: Box<[u8]> = self.inner.into();

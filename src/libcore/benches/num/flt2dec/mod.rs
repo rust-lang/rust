@@ -5,7 +5,6 @@ mod strategy {
 
 use core::num::flt2dec::MAX_SIG_DIGITS;
 use core::num::flt2dec::{decode, DecodableFloat, Decoded, FullDecoded};
-use std::f64;
 use std::io::Write;
 use std::vec::Vec;
 use test::Bencher;
