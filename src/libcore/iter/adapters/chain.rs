@@ -84,7 +84,7 @@ where
             self.a = None;
         }
         if let Some(ref mut b) = self.b {
-            acc = b.try_fold(acc, &mut f)?;
+            acc = b.try_fold(acc, f)?;
             self.b = None;
         }
         Try::from_ok(acc)
@@ -98,7 +98,7 @@ where
             acc = a.fold(acc, &mut f);
         }
         if let Some(b) = self.b {
-            acc = b.fold(acc, &mut f);
+            acc = b.fold(acc, f);
         }
         acc
     }
