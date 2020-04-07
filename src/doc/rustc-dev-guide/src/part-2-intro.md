@@ -1,4 +1,4 @@
-# Part 2: How rustc works
+# Part 2: How `rustc` Works
 
 The remaining parts of this guide discuss how the compiler works. They go
 through everything from high-level structure of the compiler to how each stage
