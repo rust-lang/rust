@@ -14,6 +14,7 @@
 // reconsider what crate these items belong in.
 
 use core::array;
+use core::convert::Infallible;
 
 use crate::alloc::{AllocErr, LayoutErr};
 use crate::any::TypeId;
@@ -474,7 +475,7 @@ impl Error for string::FromUtf16Error {
 }
 
 #[stable(feature = "str_parse_error2", since = "1.8.0")]
-impl Error for string::ParseError {
+impl Error for Infallible {
     fn description(&self) -> &str {
         match *self {}
     }
