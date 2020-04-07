@@ -352,9 +352,9 @@ are added.
 /// ```
 ```
 
-`edition2018` tells `rustdoc` that the code sample should be compiled the 2018
-edition of Rust. Similarly, you can specify `edition2015` to compile the code
-with the 2015 edition.
+`edition2018` tells `rustdoc` that the code sample should be compiled using
+the 2018 edition of Rust. Similarly, you can specify `edition2015` to compile
+the code with the 2015 edition.
 
 ## Syntax reference
 
