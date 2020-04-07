@@ -14,10 +14,13 @@ use hir_def::{
     },
     expr::{ExprId, Pat, PatId},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
-    AsMacroCall, DefWithBodyId,
+    AsMacroCall, DefWithBodyId, LocalStructFieldId, StructFieldId, VariantId,
 };
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
-use hir_ty::InferenceResult;
+use hir_ty::{
+    expr::{record_literal_missing_fields, record_pattern_missing_fields},
+    InferenceResult, Substs, Ty,
+};
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxNode, SyntaxNodePtr, TextUnit,
@@ -25,8 +28,10 @@ use ra_syntax::{
 
 use crate::{
     db::HirDatabase, semantics::PathResolution, Adt, Const, EnumVariant, Function, Local, MacroDef,
-    ModPath, ModuleDef, Path, PathKind, Static, Struct, Trait, Type, TypeAlias, TypeParam,
+    ModPath, ModuleDef, Path, PathKind, Static, Struct, StructField, Trait, Type, TypeAlias,
+    TypeParam,
 };
+use ra_db::CrateId;
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
 /// original source files. It should not be used inside the HIR itself.
@@ -164,23 +169,6 @@ impl SourceAnalyzer {
         Some((struct_field.into(), local))
     }
 
-    pub(crate) fn resolve_record_literal(
-        &self,
-        db: &dyn HirDatabase,
-        record_lit: &ast::RecordLit,
-    ) -> Option<crate::VariantDef> {
-        let expr_id = self.expr_id(db, &record_lit.clone().into())?;
-        self.infer.as_ref()?.variant_resolution_for_expr(expr_id).map(|it| it.into())
-    }
-
-    pub(crate) fn resolve_record_pattern(
-        &self,
-        record_pat: &ast::RecordPat,
-    ) -> Option<crate::VariantDef> {
-        let pat_id = self.pat_id(&record_pat.clone().into())?;
-        self.infer.as_ref()?.variant_resolution_for_pat(pat_id).map(|it| it.into())
-    }
-
     pub(crate) fn resolve_macro_call(
         &self,
         db: &dyn HirDatabase,
@@ -229,6 +217,68 @@ impl SourceAnalyzer {
         // This must be a normal source file rather than macro file.
         let hir_path = crate::Path::from_ast(path.clone())?;
         resolve_hir_path(db, &self.resolver, &hir_path)
+    }
+
+    pub(crate) fn record_literal_missing_fields(
+        &self,
+        db: &dyn HirDatabase,
+        literal: &ast::RecordLit,
+    ) -> Option<Vec<(StructField, Type)>> {
+        let krate = self.resolver.krate()?;
+        let body = self.body.as_ref()?;
+        let infer = self.infer.as_ref()?;
+
+        let expr_id = self.expr_id(db, &literal.clone().into())?;
+        let substs = match &infer.type_of_expr[expr_id] {
+            Ty::Apply(a_ty) => &a_ty.parameters,
+            _ => return None,
+        };
+
+        let (variant, missing_fields, _exhaustive) =
+            record_literal_missing_fields(db, infer, expr_id, &body[expr_id])?;
+        let res = self.missing_fields(db, krate, substs, variant, missing_fields);
+        Some(res)
+    }
+
+    pub(crate) fn record_pattern_missing_fields(
+        &self,
+        db: &dyn HirDatabase,
+        pattern: &ast::RecordPat,
+    ) -> Option<Vec<(StructField, Type)>> {
+        let krate = self.resolver.krate()?;
+        let body = self.body.as_ref()?;
+        let infer = self.infer.as_ref()?;
+
+        let pat_id = self.pat_id(&pattern.clone().into())?;
+        let substs = match &infer.type_of_pat[pat_id] {
+            Ty::Apply(a_ty) => &a_ty.parameters,
+            _ => return None,
+        };
+
+        let (variant, missing_fields) =
+            record_pattern_missing_fields(db, infer, pat_id, &body[pat_id])?;
+        let res = self.missing_fields(db, krate, substs, variant, missing_fields);
+        Some(res)
+    }
+
+    fn missing_fields(
+        &self,
+        db: &dyn HirDatabase,
+        krate: CrateId,
+        substs: &Substs,
+        variant: VariantId,
+        missing_fields: Vec<LocalStructFieldId>,
+    ) -> Vec<(StructField, Type)> {
+        let field_types = db.field_types(variant);
+
+        missing_fields
+            .into_iter()
+            .map(|local_id| {
+                let field = StructFieldId { parent: variant, local_id };
+                let ty = field_types[local_id].clone().subst(substs);
+                (field.into(), Type::new_with_resolver_inner(db, krate, &self.resolver, ty))
+            })
+            .collect()
     }
 
     pub(crate) fn expand(
