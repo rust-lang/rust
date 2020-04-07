@@ -62,7 +62,7 @@ jobs:
 
     - name: Nightly analysis-stats check
       if: matrix.os == 'ubuntu-latest' && github.ref != 'refs/heads/release'
-      run: ./dist/rust-analyzer analysis-stats .
+      run: ./dist/rust-analyzer-linux analysis-stats .
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
