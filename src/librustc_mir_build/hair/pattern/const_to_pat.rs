@@ -101,20 +101,24 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 cv.ty, structural
             );
             if let Some(non_sm_ty) = structural {
-                let adt_def = match non_sm_ty {
-                    traits::NonStructuralMatchTy::Adt(adt_def) => adt_def,
+                let msg = match non_sm_ty {
+                    traits::NonStructuralMatchTy::Adt(adt_def) => {
+                        let path = self.tcx().def_path_str(adt_def.did);
+                        format!(
+                            "to use a constant of type `{}` in a pattern, \
+                             `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                            path, path,
+                        )
+                    }
                     traits::NonStructuralMatchTy::Param => {
                         bug!("use of constant whose type is a parameter inside a pattern")
                     }
-                };
-                let path = self.tcx().def_path_str(adt_def.did);
-
-                let make_msg = || -> String {
-                    format!(
-                        "to use a constant of type `{}` in a pattern, \
-                         `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                        path, path,
-                    )
+                    traits::NonStructuralMatchTy::FnPtr => {
+                        format!("`fn` pointers cannot be used in a patterns")
+                    }
+                    traits::NonStructuralMatchTy::RawPtr => {
+                        format!("raw pointers cannot be used in a patterns")
+                    }
                 };
 
                 // double-check there even *is* a semantic `PartialEq` to dispatch to.
@@ -145,13 +149,13 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
                 if !ty_is_partial_eq {
                     // span_fatal avoids ICE from resolution of non-existent method (rare case).
-                    self.tcx().sess.span_fatal(self.span, &make_msg());
+                    self.tcx().sess.span_fatal(self.span, &msg);
                 } else {
                     self.tcx().struct_span_lint_hir(
                         lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                         self.id,
                         self.span,
-                        |lint| lint.build(&make_msg()).emit(),
+                        |lint| lint.build(&msg).emit(),
                     );
                 }
             }
@@ -257,7 +261,39 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 slice: None,
                 suffix: Vec::new(),
             },
-            _ => PatKind::Constant { value: cv },
+            _ => {
+                let mut leaf_ty = cv.ty;
+
+                // HACK(eddyb) workaround missing reference destructuring.
+                loop {
+                    leaf_ty = match leaf_ty.kind {
+                        ty::Ref(_, pointee_ty, _) => pointee_ty,
+
+                        // HACK(eddyb) even worse, these show up *behind*
+                        // references, so despite being supported above we have
+                        // to reimplement them here (and we can't really do the
+                        // same for nested tuples or ADTs...).
+                        ty::Array(elem_ty, _) | ty::Slice(elem_ty) => elem_ty,
+
+                        _ => break,
+                    };
+                }
+
+                match leaf_ty.kind {
+                    ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Str | ty::FnDef(..) => {
+                        PatKind::Constant { value: cv }
+                    }
+
+                    _ => {
+                        debug!("non-structural leaf constant type {:?}", leaf_ty);
+                        let msg =
+                            format!("constants of type `{}` cannot be used in a pattern", leaf_ty);
+                        self.saw_const_match_error.set(true);
+                        tcx.sess.span_err(span, &msg);
+                        PatKind::Wild
+                    }
+                }
+            }
         };
 
         Pat { span, ty: cv.ty, kind: Box::new(kind) }

@@ -11,6 +11,8 @@ use rustc_span::Span;
 pub enum NonStructuralMatchTy<'tcx> {
     Adt(&'tcx AdtDef),
     Param,
+    FnPtr,
+    RawPtr,
 }
 
 /// This method traverses the structure of `ty`, trying to find an
@@ -138,26 +140,16 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 return true; // Stop visiting.
             }
             ty::RawPtr(..) => {
-                // structural-match ignores substructure of
-                // `*const _`/`*mut _`, so skip `super_visit_with`.
-                //
-                // For example, if you have:
-                // ```
-                // struct NonStructural;
-                // #[derive(PartialEq, Eq)]
-                // struct T(*const NonStructural);
-                // const C: T = T(std::ptr::null());
-                // ```
-                //
-                // Even though `NonStructural` does not implement `PartialEq`,
-                // structural equality on `T` does not recur into the raw
-                // pointer. Therefore, one can still use `C` in a pattern.
-
-                // (But still tell caller to continue search.)
-                return false;
+                self.found = Some(NonStructuralMatchTy::RawPtr);
+                return true; // Stop visiting.
             }
-            ty::FnDef(..) | ty::FnPtr(..) => {
-                // types of formals and return in `fn(_) -> _` are also irrelevant;
+            ty::FnPtr(..) => {
+                self.found = Some(NonStructuralMatchTy::FnPtr);
+                return true; // Stop visiting.
+            }
+            ty::FnDef(..) => {
+                // substs of ZST function (*not* `fn(...) -> _` pointers!) types
+                // are also irrelevant;
                 // so we do not recur into them via `super_visit_with`
                 //
                 // (But still tell caller to continue search.)

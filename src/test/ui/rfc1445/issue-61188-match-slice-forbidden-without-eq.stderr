@@ -1,8 +1,14 @@
-error: to use a constant of type `B` in a pattern, `B` must be annotated with `#[derive(PartialEq, Eq)]`
+error: constants of type `B` cannot be used in a pattern
   --> $DIR/issue-61188-match-slice-forbidden-without-eq.rs:15:9
    |
 LL |         A => (),
    |         ^
 
-error: aborting due to previous error
+error: constants of type `B` cannot be used in a pattern
+  --> $DIR/issue-61188-match-slice-forbidden-without-eq.rs:15:9
+   |
+LL |         A => (),
+   |         ^
+
+error: aborting due to 2 previous errors
 
