@@ -131,37 +131,47 @@ impl Config {
         set(value, "/cargo/allFeatures", &mut self.cargo.all_features);
         set(value, "/cargo/features", &mut self.cargo.features);
         set(value, "/cargo/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
-        if let Some(mut args) = get::<Vec<String>>(value, "/rustfmt/overrideCommand") {
-            if !args.is_empty() {
+        match get::<Vec<String>>(value, "/rustfmt/overrideCommand") {
+            Some(mut args) if !args.is_empty() => {
                 let command = args.remove(0);
                 self.rustfmt = RustfmtConfig::CustomCommand {
                     command,
                     args,
                 }
             }
-        } else if let RustfmtConfig::Rustfmt { extra_args } = &mut self.rustfmt {
-            set(value, "/rustfmt/extraArgs", extra_args);
-        }
+            _ => {
+                if let RustfmtConfig::Rustfmt { extra_args } = &mut self.rustfmt {
+                    set(value, "/rustfmt/extraArgs", extra_args);
+                }
+            }
+        };
 
         if let Some(false) = get(value, "/checkOnSave/enable") {
+            // check is disabled
             self.check = None;
         } else {
-            if let Some(mut args) = get::<Vec<String>>(value, "/checkOnSave/overrideCommand") {
-                if !args.is_empty() {
+            // check is enabled
+            match get::<Vec<String>>(value, "/checkOnSave/overrideCommand") {
+                // first see if the user has completely overridden the command
+                Some(mut args) if !args.is_empty() => {
                     let command = args.remove(0);
                     self.check = Some(FlycheckConfig::CustomCommand {
                         command,
                         args,
                     });
                 }
-
-            } else if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets }) = &mut self.check
-            {
-                set(value, "/checkOnSave/extraArgs", extra_args);
-                set(value, "/checkOnSave/command", command);
-                set(value, "/checkOnSave/allTargets", all_targets);
-            }
-        };
+                // otherwise configure command customizations
+                _ => {
+                    if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets })
+                        = &mut self.check
+                    {
+                        set(value, "/checkOnSave/extraArgs", extra_args);
+                        set(value, "/checkOnSave/command", command);
+                        set(value, "/checkOnSave/allTargets", all_targets);
+                    }
+                }
+            };
+        }
 
         set(value, "/inlayHints/typeHints", &mut self.inlay_hints.type_hints);
         set(value, "/inlayHints/parameterHints", &mut self.inlay_hints.parameter_hints);
