@@ -6,7 +6,7 @@ use test_utils::tested_by;
 
 use crate::completion::{CompletionContext, Completions};
 
-pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
+pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     let path = match &ctx.path_prefix {
         Some(path) => path.clone(),
         _ => return,

@@ -2,7 +2,7 @@
 
 use crate::completion::{CompletionContext, Completions};
 
-pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
+pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     if !(ctx.is_trivial_path && !ctx.is_pat_binding_or_const) {
         return;
     }
