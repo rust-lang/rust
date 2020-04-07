@@ -59,7 +59,7 @@ fn pattern_ascribed_fields(record_pat: &ast::RecordPat) -> Vec<SmolStr> {
 
 #[cfg(test)]
 mod tests {
-    mod record_lit_tests {
+    mod record_pat_tests {
         use insta::assert_debug_snapshot;
 
         use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
@@ -205,7 +205,7 @@ mod tests {
         }
     }
 
-    mod record_pat_tests {
+    mod record_lit_tests {
         use insta::assert_debug_snapshot;
 
         use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
@@ -404,6 +404,39 @@ mod tests {
                 source_range: [302; 302),
                 delete: [302; 302),
                 insert: "baz",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###);
+        }
+
+        #[test]
+        fn completes_functional_update() {
+            let completions = complete(
+                r"
+            struct S {
+                foo1: u32,
+                foo2: u32,
+            }
+
+            fn main() {
+                let foo1 = 1;
+                let s = S {
+                    foo1,
+                    <|>
+                    .. loop {}
+                }
+            }
+            ",
+            );
+            assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "foo2",
+                source_range: [221; 221),
+                delete: [221; 221),
+                insert: "foo2",
                 kind: Field,
                 detail: "u32",
             },
