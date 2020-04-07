@@ -11,6 +11,14 @@ The [quickstart repo](https://github.com/MabezDev/xtensa-rust-quickstart) has mo
 This is the main source code repository for [Rust]. It contains the compiler,
 standard library, and documentation.
 
+To build this fork and have xtensa support, you need to make sure you pass in the --experimental-targets=Xtensa to configure as follows:
+```sh
+$ git clone https://github.com/MabezDev/rust-xtensa
+$ cd rust-xtensa
+$ ./configure --experimental-targets=Xtensa
+$ ./x.py build
+```
+
 [Rust]: https://www.rust-lang.org
 
 ## Quick Start
