@@ -50,7 +50,7 @@ fn trait_object() {
 
 #[test]
 fn float_nan_ne() {
-    let x = Rc::new(std::f32::NAN);
+    let x = Rc::new(f32::NAN);
     assert!(x != x);
     assert!(!(x == x));
 }
