@@ -15,7 +15,7 @@ pub fn target() -> TargetResult {
 
         options: TargetOptions {
             cpu: "esp8266".to_string(),
-            linker: Some("xtensa-esp32-elf-ld".to_string()),
+            linker: Some("xtensa-lx106-elf-gcc".to_string()),
 
             max_atomic_width: Some(32),
 
