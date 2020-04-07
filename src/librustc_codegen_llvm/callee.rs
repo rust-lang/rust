@@ -29,7 +29,7 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
 
     assert!(!instance.substs.needs_infer());
     assert!(!instance.substs.has_escaping_bound_vars());
-    assert!(!instance.substs.has_param_types());
+    assert!(!instance.substs.has_param_types_or_consts());
 
     if let Some(&llfn) = cx.instances.borrow().get(&instance) {
         return llfn;
