@@ -7,7 +7,9 @@ LL |     type A: MultiDispatch<Self::B, O = Self>;
    |                                    -------- required by this bound in `Trait`
 ...
 LL | fn test<T: Trait<B=i32>>(b: i32) -> T where T::A: MultiDispatch<i32> { T::new(b) }
-   |            ^^^^^^^^^^^^ expected type parameter `T`, found associated type
+   |         -  ^^^^^^^^^^^^ expected type parameter `T`, found associated type
+   |         |
+   |         this type parameter
    |
    = note: expected type parameter `T`
              found associated type `<<T as Trait>::A as MultiDispatch<i32>>::O`
