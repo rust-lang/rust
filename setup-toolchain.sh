@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Set up the appropriate rustc toolchain
 
 set -e
