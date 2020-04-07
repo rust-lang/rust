@@ -210,11 +210,9 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
             Rvalue::Repeat(elem, n)
                 if self.ccx.tcx.features().const_in_array_repeat_expressions =>
             {
-                let is_copy = elem.ty(&self.ccx.body.local_decls, self.ccx.tcx).is_copy_modulo_regions(
-                    self.ccx.tcx,
-                    self.ccx.param_env,
-                    self.span,
-                );
+                let is_copy = elem
+                    .ty(&self.ccx.body.local_decls, self.ccx.tcx)
+                    .is_copy_modulo_regions(self.ccx.tcx, self.ccx.param_env, self.span);
                 let n = n.try_eval_usize(self.ccx.tcx, self.ccx.param_env);
                 let length_requires_copy_or_promotion = match n {
                     // Unevaluable (e.g. too generic) -> assume > 1.
