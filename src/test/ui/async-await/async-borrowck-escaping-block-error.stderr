@@ -1,4 +1,4 @@
-error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
+error[E0373]: async block may outlive the current function, but it borrows `x`, which is owned by the current function
   --> $DIR/async-borrowck-escaping-block-error.rs:6:20
    |
 LL |     Box::new(async { x } )
@@ -7,16 +7,35 @@ LL |     Box::new(async { x } )
    |                    | `x` is borrowed here
    |                    may outlive borrowed value `x`
    |
-note: generator is returned here
-  --> $DIR/async-borrowck-escaping-block-error.rs:4:13
+note: async block is returned here
+  --> $DIR/async-borrowck-escaping-block-error.rs:4:20
    |
-LL | fn foo() -> Box<impl std::future::Future<Output = u32>> {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn test_boxed() -> Box<impl std::future::Future<Output = u32>> {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to force the async block to take ownership of `x` (and any other referenced variables), use the `move` keyword
    |
 LL |     Box::new(async move { x } )
    |                    ^^^^^^^^^^
 
-error: aborting due to previous error
+error[E0373]: async block may outlive the current function, but it borrows `x`, which is owned by the current function
+  --> $DIR/async-borrowck-escaping-block-error.rs:11:11
+   |
+LL |     async { *x }
+   |           ^^^-^^
+   |           |  |
+   |           |  `x` is borrowed here
+   |           may outlive borrowed value `x`
+   |
+note: async block is returned here
+  --> $DIR/async-borrowck-escaping-block-error.rs:11:5
+   |
+LL |     async { *x }
+   |     ^^^^^^^^^^^^
+help: to force the async block to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |     async move { *x }
+   |           ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0373`.

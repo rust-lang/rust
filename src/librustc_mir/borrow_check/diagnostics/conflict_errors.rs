@@ -760,47 +760,26 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             (
                 Some(ref name),
                 BorrowExplanation::MustBeValidFor {
-                    category: category @ ConstraintCategory::Return,
+                    category:
+                        category
+                        @
+                        (ConstraintCategory::Return
+                        | ConstraintCategory::CallArgument
+                        | ConstraintCategory::OpaqueType),
                     from_closure: false,
                     ref region_name,
                     span,
                     ..
                 },
-            )
-            | (
-                Some(ref name),
-                BorrowExplanation::MustBeValidFor {
-                    category: category @ ConstraintCategory::CallArgument,
-                    from_closure: false,
-                    ref region_name,
+            ) if borrow_spans.for_generator() | borrow_spans.for_closure() => self
+                .report_escaping_closure_capture(
+                    borrow_spans,
+                    borrow_span,
+                    region_name,
+                    category,
                     span,
-                    ..
-                },
-            ) if borrow_spans.for_closure() => self.report_escaping_closure_capture(
-                borrow_spans,
-                borrow_span,
-                region_name,
-                category,
-                span,
-                &format!("`{}`", name),
-            ),
-            (
-                Some(ref name),
-                BorrowExplanation::MustBeValidFor {
-                    category: category @ ConstraintCategory::OpaqueType,
-                    from_closure: false,
-                    ref region_name,
-                    span,
-                    ..
-                },
-            ) if borrow_spans.for_generator() => self.report_escaping_closure_capture(
-                borrow_spans,
-                borrow_span,
-                region_name,
-                category,
-                span,
-                &format!("`{}`", name),
-            ),
+                    &format!("`{}`", name),
+                ),
             (
                 ref name,
                 BorrowExplanation::MustBeValidFor {
@@ -1187,7 +1166,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> DiagnosticBuilder<'cx> {
         let tcx = self.infcx.tcx;
         let args_span = use_span.args_or_use();
-        let mut err = self.cannot_capture_in_long_lived_closure(args_span, captured_var, var_span);
 
         let suggestion = match tcx.sess.source_map().span_to_snippet(args_span) {
             Ok(mut string) => {
@@ -1213,6 +1191,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             },
             None => "closure",
         };
+
+        let mut err =
+            self.cannot_capture_in_long_lived_closure(args_span, kind, captured_var, var_span);
         err.span_suggestion(
             args_span,
             &format!(
@@ -1225,8 +1206,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         );
 
         let msg = match category {
-            ConstraintCategory::Return => "closure is returned here".to_string(),
-            ConstraintCategory::OpaqueType => "generator is returned here".to_string(),
+            ConstraintCategory::Return | ConstraintCategory::OpaqueType => {
+                format!("{} is returned here", kind)
+            }
             ConstraintCategory::CallArgument => {
                 fr_name.highlight_region_name(&mut err);
                 format!("function requires argument type to outlive `{}`", fr_name)
