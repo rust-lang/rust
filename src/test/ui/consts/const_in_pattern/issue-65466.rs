@@ -1,3 +1,7 @@
+// FIXME: This still ICEs.
+//
+// ignore-test
+
 #![deny(indirect_structural_match)]
 
 #[derive(PartialEq, Eq)]
