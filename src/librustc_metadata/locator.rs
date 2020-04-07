@@ -543,8 +543,8 @@ impl<'a> CrateLocator<'a> {
         // of the crate id (path/name/id).
         //
         // The goal of this step is to look at as little metadata as possible.
-        self.filesearch.search(|path, kind| {
-            let file = match path.file_name().and_then(|s| s.to_str()) {
+        self.filesearch.search(|spf, kind| {
+            let file = match &spf.file_name_str {
                 None => return FileDoesntMatch,
                 Some(file) => file,
             };
@@ -556,20 +556,18 @@ impl<'a> CrateLocator<'a> {
                 (&file[(dylib_prefix.len())..(file.len() - dypair.1.len())], CrateFlavor::Dylib)
             } else {
                 if file.starts_with(&staticlib_prefix) && file.ends_with(&staticpair.1) {
-                    staticlibs.push(CrateMismatch {
-                        path: path.to_path_buf(),
-                        got: "static".to_string(),
-                    });
+                    staticlibs
+                        .push(CrateMismatch { path: spf.path.clone(), got: "static".to_string() });
                 }
                 return FileDoesntMatch;
             };
 
-            info!("lib candidate: {}", path.display());
+            info!("lib candidate: {}", spf.path.display());
 
             let hash_str = hash.to_string();
             let slot = candidates.entry(hash_str).or_default();
             let (ref mut rlibs, ref mut rmetas, ref mut dylibs) = *slot;
-            fs::canonicalize(path)
+            fs::canonicalize(&spf.path)
                 .map(|p| {
                     if seen_paths.contains(&p) {
                         return FileDoesntMatch;
