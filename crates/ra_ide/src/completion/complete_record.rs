@@ -7,7 +7,7 @@ pub(super) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
     let (ty, variant, already_present_fields) =
         match (ctx.record_lit_pat.as_ref(), ctx.record_lit_syntax.as_ref()) {
             (None, None) => return None,
-            (Some(_), Some(_)) => panic!("A record cannot be both a literal and a pattern"),
+            (Some(_), Some(_)) => unreachable!("A record cannot be both a literal and a pattern"),
             (Some(record_pat), _) => (
                 ctx.sema.type_of_pat(&record_pat.clone().into())?,
                 ctx.sema.resolve_record_pattern(record_pat)?,
