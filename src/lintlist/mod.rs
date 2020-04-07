@@ -697,6 +697,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "drop_forget_ref",
     },
     Lint {
+        name: "future_not_send",
+        group: "nursery",
+        desc: "public Futures must be Send",
+        deprecation: None,
+        module: "future_not_send",
+    },
+    Lint {
         name: "get_last_with_len",
         group: "complexity",
         desc: "Using `x.get(x.len() - 1)` when `x.last()` is correct and simpler",
