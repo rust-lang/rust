@@ -130,17 +130,16 @@ where
 
     #[inline]
     fn last(self) -> Option<A::Item> {
-        match self {
-            Chain { a: Some(a), b: Some(b) } => {
-                // Must exhaust a before b.
-                let a_last = a.last();
-                let b_last = b.last();
-                b_last.or(a_last)
-            }
-            Chain { a: Some(a), b: None } => a.last(),
-            Chain { a: None, b: Some(b) } => b.last(),
-            Chain { a: None, b: None } => None,
-        }
+        // Must exhaust a before b.
+        let a_last = match self.a {
+            Some(a) => a.last(),
+            None => None,
+        };
+        let b_last = match self.b {
+            Some(b) => b.last(),
+            None => None,
+        };
+        b_last.or(a_last)
     }
 
     #[inline]
