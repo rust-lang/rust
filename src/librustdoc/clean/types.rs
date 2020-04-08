@@ -14,7 +14,7 @@ use rustc_ast::util::comments::strip_doc_comment_decoration;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items;
 use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
@@ -1357,6 +1357,7 @@ pub enum VariantKind {
 #[derive(Clone, Debug)]
 pub struct Span {
     pub filename: FileName,
+    pub cnum: CrateNum,
     pub loline: usize,
     pub locol: usize,
     pub hiline: usize,
@@ -1368,6 +1369,7 @@ impl Span {
     pub fn empty() -> Span {
         Span {
             filename: FileName::Anon(0),
+            cnum: LOCAL_CRATE,
             loline: 0,
             locol: 0,
             hiline: 0,
