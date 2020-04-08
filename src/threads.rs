@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
+use std::convert::TryFrom;
 
 use log::trace;
 
@@ -31,6 +32,37 @@ impl From<u64> for ThreadId {
     }
 }
 
+impl From<u32> for ThreadId {
+    fn from(id: u32) -> Self {
+        Self(id as usize)
+    }
+}
+
+impl ThreadId {
+    pub fn to_u32_scalar<'tcx>(&self) -> Scalar<Tag> {
+        Scalar::from_u32(u32::try_from(self.0).unwrap())
+    }
+}
+
+/// An identifier of a set of blocked threads.
+///
+/// Note: 0 is not a valid identifier.
+#[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
+pub struct BlockSetId(u32);
+
+impl From<u32> for BlockSetId {
+    fn from(id: u32) -> Self {
+        assert_ne!(id, 0, "0 is not a valid blockset id");
+        Self(id)
+    }
+}
+
+impl BlockSetId {
+    pub fn to_u32_scalar<'tcx>(&self) -> Scalar<Tag> {
+        Scalar::from_u32(self.0)
+    }
+}
+
 /// The state of a thread.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ThreadState {
@@ -38,7 +70,9 @@ pub enum ThreadState {
     Enabled,
     /// The thread tried to join the specified thread and is blocked until that
     /// thread terminates.
-    Blocked(ThreadId),
+    BlockedOnJoin(ThreadId),
+    /// The thread is blocked and belongs to the given blockset..
+    Blocked(BlockSetId),
     /// The thread has terminated its execution (we do not delete terminated
     /// threads.)
     Terminated,
@@ -93,13 +127,15 @@ pub struct ThreadSet<'mir, 'tcx> {
     ///
     /// Note that this vector also contains terminated threads.
     threads: IndexVec<ThreadId, Thread<'mir, 'tcx>>,
+    /// A counter used to generate unique identifiers for blocksets.
+    blockset_counter: u32,
 }
 
 impl<'mir, 'tcx> Default for ThreadSet<'mir, 'tcx> {
     fn default() -> Self {
         let mut threads = IndexVec::new();
         threads.push(Default::default());
-        Self { active_thread: ThreadId::new(0), threads: threads }
+        Self { active_thread: ThreadId::new(0), threads: threads, blockset_counter: 0 }
     }
 }
 
@@ -145,12 +181,12 @@ impl<'mir, 'tcx: 'mir> ThreadSet<'mir, 'tcx> {
         assert!(
             self.threads
                 .iter()
-                .all(|thread| thread.state != ThreadState::Blocked(joined_thread_id)),
+                .all(|thread| thread.state != ThreadState::BlockedOnJoin(joined_thread_id)),
             "Bug: multiple threads try to join the same thread."
         );
         if self.threads[joined_thread_id].state != ThreadState::Terminated {
             // The joined thread is still running, we need to wait for it.
-            self.threads[self.active_thread].state = ThreadState::Blocked(joined_thread_id);
+            self.active_thread_mut().state = ThreadState::BlockedOnJoin(joined_thread_id);
             trace!(
                 "{:?} blocked on {:?} when trying to join",
                 self.active_thread,
@@ -162,9 +198,28 @@ impl<'mir, 'tcx: 'mir> ThreadSet<'mir, 'tcx> {
     fn set_thread_name(&mut self, new_thread_name: Vec<u8>) {
         self.active_thread_mut().thread_name = Some(new_thread_name);
     }
-    /// Get ids of all threads ever allocated.
+    /// Get ids and states of all threads ever allocated.
     fn get_all_thread_ids_with_states(&self) -> Vec<(ThreadId, ThreadState)> {
         self.threads.iter_enumerated().map(|(id, thread)| (id, thread.state)).collect()
+    }
+    fn create_blockset(&mut self) -> BlockSetId {
+        self.blockset_counter = self.blockset_counter.checked_add(1).unwrap();
+        self.blockset_counter.into()
+    }
+    fn block_active_thread(&mut self, set: BlockSetId) {
+        let state = &mut self.active_thread_mut().state;
+        assert_eq!(*state, ThreadState::Enabled);
+        *state = ThreadState::Blocked(set);
+    }
+    fn unblock_random_thread(&mut self, set: BlockSetId) -> Option<ThreadId> {
+        for (id, thread) in self.threads.iter_enumerated_mut() {
+            if thread.state == ThreadState::Blocked(set) {
+                trace!("unblocking {:?} in blockset {:?}", id, set);
+                thread.state = ThreadState::Enabled;
+                return Some(id);
+            }
+        }
+        None
     }
     /// Decide which thread to run next.
     ///
@@ -173,7 +228,7 @@ impl<'mir, 'tcx: 'mir> ThreadSet<'mir, 'tcx> {
         if self.threads[self.active_thread].check_terminated() {
             // Check if we need to unblock any threads.
             for (i, thread) in self.threads.iter_enumerated_mut() {
-                if thread.state == ThreadState::Blocked(self.active_thread) {
+                if thread.state == ThreadState::BlockedOnJoin(self.active_thread) {
                     trace!("unblocking {:?} because {:?} terminated", i, self.active_thread);
                     thread.state = ThreadState::Enabled;
                 }
@@ -191,7 +246,7 @@ impl<'mir, 'tcx: 'mir> ThreadSet<'mir, 'tcx> {
         if self.threads.iter().all(|thread| thread.state == ThreadState::Terminated) {
             Ok(false)
         } else {
-            throw_machine_stop!(TerminationInfo::Abort(Some(format!("execution deadlocked"))))
+            throw_machine_stop!(TerminationInfo::Deadlock);
         }
     }
 }
@@ -297,6 +352,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn get_all_thread_ids_with_states(&mut self) -> Vec<(ThreadId, ThreadState)> {
         let this = self.eval_context_mut();
         this.machine.threads.get_all_thread_ids_with_states()
+    }
+    fn create_blockset(&mut self) -> InterpResult<'tcx, BlockSetId> {
+        let this = self.eval_context_mut();
+        Ok(this.machine.threads.create_blockset())
+    }
+    fn block_active_thread(&mut self, set: BlockSetId) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        Ok(this.machine.threads.block_active_thread(set))
+    }
+    fn unblock_random_thread(&mut self, set: BlockSetId) -> InterpResult<'tcx, Option<ThreadId>> {
+        let this = self.eval_context_mut();
+        Ok(this.machine.threads.unblock_random_thread(set))
     }
     /// Decide which thread to run next.
     ///
