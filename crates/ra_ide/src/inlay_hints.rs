@@ -235,7 +235,15 @@ fn should_show_param_hint(
     param_name: &str,
     argument: &ast::Expr,
 ) -> bool {
-    let argument_string = argument.syntax().to_string();
+    let argument_string = {
+        let arg_string = argument.syntax().to_string();
+        let arg_split: Vec<char> = arg_string.chars().collect();
+        match arg_split.as_slice() {
+            ['&', 'm', 'u', 't', ' ', arg_name @ ..] => arg_name.into_iter().collect::<String>(),
+            ['&', arg_name @ ..] => arg_name.into_iter().collect::<String>(),
+            _ => arg_string,
+        }
+    };
     if param_name.is_empty()
         || argument_string.ends_with(&param_name)
         || argument_string.starts_with(&param_name)
@@ -1077,7 +1085,8 @@ impl Test {
 
 struct Param {}
 
-fn different_order(param: Param) {}
+fn different_order(param: &Param) {}
+fn different_order_mut(param: &mut Param) {}
 
 fn main() {
     let container: TestVarContainer = TestVarContainer { test_var: 42 };
@@ -1093,7 +1102,8 @@ fn main() {
     test_processed.no_hints_expected(33, container.test_var);
 
     let param_begin: Param = Param {};
-    different_order(param_begin);
+    different_order(&param_begin);
+    different_order(&mut param_begin);
 
     let a: f64 = 7.0;
     let b: f64 = 4.0;
