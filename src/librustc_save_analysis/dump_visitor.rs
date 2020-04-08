@@ -1134,7 +1134,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             .tcx
             .hir()
             .opt_local_def_id_from_node_id(id)
-            .and_then(|id| self.save_ctxt.tcx.parent(id))
+            .and_then(|id| self.save_ctxt.tcx.parent(id.to_def_id()))
             .map(id_from_def_id);
 
         match use_tree.kind {
@@ -1273,7 +1273,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                         .tcx
                         .hir()
                         .opt_local_def_id_from_node_id(item.id)
-                        .and_then(|id| self.save_ctxt.tcx.parent(id))
+                        .and_then(|id| self.save_ctxt.tcx.parent(id.to_def_id()))
                         .map(id_from_def_id);
                     self.dumper.import(
                         &Access { public: false, reachable: false },

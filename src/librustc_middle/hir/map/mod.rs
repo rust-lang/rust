@@ -160,14 +160,16 @@ impl<'hir> Map<'hir> {
     // FIXME(eddyb) this function can and should return `LocalDefId`.
     #[inline]
     pub fn local_def_id_from_node_id(&self, node: NodeId) -> DefId {
-        self.opt_local_def_id_from_node_id(node).unwrap_or_else(|| {
-            let hir_id = self.node_id_to_hir_id(node);
-            bug!(
-                "local_def_id_from_node_id: no entry for `{}`, which has a map of `{:?}`",
-                node,
-                self.find_entry(hir_id)
-            )
-        })
+        self.opt_local_def_id_from_node_id(node)
+            .unwrap_or_else(|| {
+                let hir_id = self.node_id_to_hir_id(node);
+                bug!(
+                    "local_def_id_from_node_id: no entry for `{}`, which has a map of `{:?}`",
+                    node,
+                    self.find_entry(hir_id)
+                )
+            })
+            .to_def_id()
     }
 
     // FIXME(eddyb) this function can and should return `LocalDefId`.
@@ -185,12 +187,12 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<DefId> {
         let node_id = self.hir_id_to_node_id(hir_id);
-        self.opt_local_def_id_from_node_id(node_id)
+        Some(self.opt_local_def_id_from_node_id(node_id)?.to_def_id())
     }
 
     #[inline]
-    pub fn opt_local_def_id_from_node_id(&self, node: NodeId) -> Option<DefId> {
-        Some(self.tcx.definitions.opt_local_def_id(node)?.to_def_id())
+    pub fn opt_local_def_id_from_node_id(&self, node: NodeId) -> Option<LocalDefId> {
+        self.tcx.definitions.opt_local_def_id(node)
     }
 
     #[inline]
