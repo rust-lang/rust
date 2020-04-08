@@ -7,12 +7,12 @@ use crate::common::{self, IntPredicate, RealPredicate};
 use crate::traits::*;
 use crate::MemFlags;
 
-use rustc::middle::lang_items::ExchangeMallocFnLangItem;
-use rustc::mir;
-use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::layout::{self, HasTyCtxt, LayoutOf};
-use rustc::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_apfloat::{ieee, Float, Round, Status};
+use rustc_middle::middle::lang_items::ExchangeMallocFnLangItem;
+use rustc_middle::mir;
+use rustc_middle::ty::cast::{CastTy, IntTy};
+use rustc_middle::ty::layout::{self, HasTyCtxt, LayoutOf};
+use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::sym;
 
@@ -383,7 +383,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (bx, OperandRef { val, layout: cast })
             }
 
-            mir::Rvalue::Ref(_, bk, ref place) => {
+            mir::Rvalue::Ref(_, bk, place) => {
                 let mk_ref = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
                     tcx.mk_ref(
                         tcx.lifetimes.re_erased,
@@ -393,14 +393,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_place_to_pointer(bx, place, mk_ref)
             }
 
-            mir::Rvalue::AddressOf(mutability, ref place) => {
+            mir::Rvalue::AddressOf(mutability, place) => {
                 let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
                     tcx.mk_ptr(ty::TypeAndMut { ty, mutbl: mutability })
                 };
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
 
-            mir::Rvalue::Len(ref place) => {
+            mir::Rvalue::Len(place) => {
                 let size = self.evaluate_array_len(&mut bx, place);
                 let operand = OperandRef {
                     val: OperandValue::Immediate(size),
@@ -537,7 +537,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    fn evaluate_array_len(&mut self, bx: &mut Bx, place: &mir::Place<'tcx>) -> Bx::Value {
+    fn evaluate_array_len(&mut self, bx: &mut Bx, place: mir::Place<'tcx>) -> Bx::Value {
         // ZST are passed as operands and require special handling
         // because codegen_place() panics if Local is operand.
         if let Some(index) = place.as_local() {
@@ -557,7 +557,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn codegen_place_to_pointer(
         &mut self,
         mut bx: Bx,
-        place: &mir::Place<'tcx>,
+        place: mir::Place<'tcx>,
         mk_ptr_ty: impl FnOnce(TyCtxt<'tcx>, Ty<'tcx>) -> Ty<'tcx>,
     ) -> (Bx, OperandRef<'tcx, Bx::Value>) {
         let cg_place = self.codegen_place(&mut bx, place.as_ref());

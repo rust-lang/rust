@@ -37,4 +37,17 @@ fn comp8() {
     //~^ ERROR mismatched types
 }
 
+fn comp9() {
+    1 == 2 < 3; //~ ERROR comparison operators cannot be chained
+}
+
+fn comp10() {
+    1 > 2 == false; //~ ERROR comparison operators cannot be chained
+}
+
+fn comp11() {
+    1 == 2 == 3; //~ ERROR comparison operators cannot be chained
+    //~^ ERROR mismatched types
+}
+
 fn main() {}

@@ -6,19 +6,18 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::value::Value;
 
-use rustc::bug;
-use rustc::dep_graph::DepGraphSafe;
-use rustc::mir::mono::CodegenUnit;
-use rustc::ty::layout::{
-    HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx,
-};
-use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_middle::bug;
+use rustc_middle::mir::mono::CodegenUnit;
+use rustc_middle::ty::layout::{
+    HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyAndLayout, VariantIdx,
+};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::{self, CFGuard, DebugInfo};
 use rustc_session::Session;
 use rustc_span::source_map::{Span, DUMMY_SP};
@@ -89,8 +88,6 @@ pub struct CodegenCx<'ll, 'tcx> {
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
 }
-
-impl<'ll, 'tcx> DepGraphSafe for CodegenCx<'ll, 'tcx> {}
 
 pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
     let reloc_model_arg = match sess.opts.cg.relocation_model {
@@ -840,13 +837,13 @@ impl ty::layout::HasTyCtxt<'tcx> for CodegenCx<'ll, 'tcx> {
 
 impl LayoutOf for CodegenCx<'ll, 'tcx> {
     type Ty = Ty<'tcx>;
-    type TyLayout = TyLayout<'tcx>;
+    type TyAndLayout = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.spanned_layout_of(ty, DUMMY_SP)
     }
 
-    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::TyLayout {
+    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::TyAndLayout {
         self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap_or_else(|e| {
             if let LayoutError::SizeOverflow(_) = e {
                 self.sess().span_fatal(span, &e.to_string())

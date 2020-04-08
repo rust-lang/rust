@@ -60,6 +60,8 @@ pub fn opts() -> TargetOptions {
             "-lgcc".to_string(),
             "-lgcc_eh".to_string(),
             "-lpthread".to_string(),
+            // libpthread depends on libmsvcrt, so we need to link it *again*.
+            "-lmsvcrt".to_string(),
             "-lkernel32".to_string(),
         ],
     );

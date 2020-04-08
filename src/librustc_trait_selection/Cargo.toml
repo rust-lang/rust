@@ -13,7 +13,7 @@ doctest = false
 fmt_macros = { path = "../libfmt_macros" }
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
 rustc_attr = { path = "../librustc_attr" }
-rustc = { path = "../librustc" }
+rustc_middle = { path = "../librustc_middle" }
 rustc_ast = { path = "../librustc_ast" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }

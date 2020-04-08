@@ -54,11 +54,10 @@ LL | trait Super<T: Copy> { }
 LL | trait Base<T = String>: Super<T> { }
    |                         ^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |
-help: consider restricting this type parameter with `T: std::marker::Copy`
-  --> $DIR/type-check-defaults.rs:21:12
+help: consider further restricting type parameter `T`
    |
-LL | trait Base<T = String>: Super<T> { }
-   |            ^
+LL | trait Base<T = String>: Super<T>, T: std::marker::Copy { }
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: cannot add `u8` to `i32`
   --> $DIR/type-check-defaults.rs:24:66

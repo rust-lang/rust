@@ -1,5 +1,5 @@
 //! This module provides linkage between libgraphviz traits and
-//! `rustc::middle::typeck::infer::region_constraints`, generating a
+//! `rustc_middle::middle::typeck::infer::region_constraints`, generating a
 //! rendering of the graph represented by the list of `Constraint`
 //! instances (which make up the edges of the graph), as well as the
 //! origin for each constraint (which are attached to the labels on
@@ -11,11 +11,11 @@ use graphviz as dot;
 use super::Constraint;
 use crate::infer::region_constraints::RegionConstraintData;
 use crate::infer::SubregionOrigin;
-use rustc::middle::free_region::RegionRelations;
-use rustc::middle::region;
-use rustc::ty;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefIndex;
+use rustc_middle::middle::free_region::RegionRelations;
+use rustc_middle::middle::region;
+use rustc_middle::ty;
 
 use std::borrow::Cow;
 use std::collections::btree_map::BTreeMap;

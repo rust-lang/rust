@@ -7,8 +7,8 @@ use std::io;
 
 use crate::transform::{MirPass, MirSource};
 use crate::util as mir_util;
-use rustc::mir::{Body, BodyAndCache};
-use rustc::ty::TyCtxt;
+use rustc_middle::mir::{Body, BodyAndCache};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OutputFilenames, OutputType};
 
 pub struct Marker(pub &'static str);
@@ -46,7 +46,7 @@ pub fn on_mir_pass<'tcx>(
     body: &Body<'tcx>,
     is_after: bool,
 ) {
-    if mir_util::dump_enabled(tcx, pass_name, source) {
+    if mir_util::dump_enabled(tcx, pass_name, source.def_id()) {
         mir_util::dump_mir(
             tcx,
             Some(pass_num),

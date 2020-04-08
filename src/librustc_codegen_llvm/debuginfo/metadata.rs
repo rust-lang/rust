@@ -20,17 +20,6 @@ use crate::llvm_util;
 use crate::value::Value;
 
 use log::debug;
-use rustc::ich::NodeIdHashingMode;
-use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc::mir::interpret::truncate;
-use rustc::mir::{self, Field, GeneratorLayout};
-use rustc::ty::layout::{
-    self, Align, Integer, IntegerExt, LayoutOf, PrimitiveExt, Size, TyLayout, VariantIdx,
-};
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc::ty::Instance;
-use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::{bug, span_bug};
 use rustc_ast::ast;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
@@ -41,6 +30,17 @@ use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::ich::NodeIdHashingMode;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::interpret::truncate;
+use rustc_middle::mir::{self, Field, GeneratorLayout};
+use rustc_middle::ty::layout::{
+    self, Align, Integer, IntegerExt, LayoutOf, PrimitiveExt, Size, TyAndLayout, VariantIdx,
+};
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::Instance;
+use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::{Interner, Symbol};
 use rustc_span::{self, FileName, Span};
@@ -1203,7 +1203,7 @@ fn prepare_tuple_metadata(
 //=-----------------------------------------------------------------------------
 
 struct UnionMemberDescriptionFactory<'tcx> {
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
     variant: &'tcx ty::VariantDef,
     span: Span,
 }
@@ -1325,7 +1325,7 @@ fn generator_layout_and_saved_local_names(
 /// offset of zero bytes).
 struct EnumMemberDescriptionFactory<'ll, 'tcx> {
     enum_type: Ty<'tcx>,
-    layout: TyLayout<'tcx>,
+    layout: TyAndLayout<'tcx>,
     discriminant_type_metadata: Option<&'ll DIType>,
     containing_scope: &'ll DIScope,
     span: Span,
@@ -1494,7 +1494,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     fn compute_field_path<'a, 'tcx>(
                         cx: &CodegenCx<'a, 'tcx>,
                         name: &mut String,
-                        layout: TyLayout<'tcx>,
+                        layout: TyAndLayout<'tcx>,
                         offset: Size,
                         size: Size,
                     ) {
@@ -1695,7 +1695,7 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
 /// `RecursiveTypeDescription`.
 fn describe_enum_variant(
     cx: &CodegenCx<'ll, 'tcx>,
-    layout: layout::TyLayout<'tcx>,
+    layout: layout::TyAndLayout<'tcx>,
     variant: VariantInfo<'_, 'tcx>,
     discriminant_info: EnumDiscriminantInfo<'ll>,
     containing_scope: &'ll DIScope,
@@ -1869,16 +1869,14 @@ fn prepare_enum_metadata(
 
     let layout = cx.layout_of(enum_type);
 
-    match (&layout.abi, &layout.variants) {
-        (
-            &layout::Abi::Scalar(_),
-            &layout::Variants::Multiple {
-                discr_kind: layout::DiscriminantKind::Tag,
-                ref discr,
-                ..
-            },
-        ) => return FinalMetadata(discriminant_type_metadata(discr.value)),
-        _ => {}
+    if let (
+        &layout::Abi::Scalar(_),
+        &layout::Variants::Multiple {
+            discr_kind: layout::DiscriminantKind::Tag, ref discr, ..
+        },
+    ) = (&layout.abi, &layout.variants)
+    {
+        return FinalMetadata(discriminant_type_metadata(discr.value));
     }
 
     if use_enum_fallback(cx) {

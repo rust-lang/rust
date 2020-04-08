@@ -10,19 +10,20 @@ use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::ErrorReported;
-use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
-use rustc::ty::{self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
-use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{walk_generics, Visitor};
-use rustc_hir::print;
+use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{Constness, GenericArg, GenericArgs};
+use rustc_middle::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
+use rustc_middle::ty::{
+    self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+};
+use rustc_middle::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, LATE_BOUND_LIFETIME_ARGUMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -991,7 +992,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         self.ast_path_to_mono_trait_ref(
             trait_ref.path.span,
-            trait_ref.trait_def_id(),
+            trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise()),
             self_ty,
             trait_ref.path.segments.last().unwrap(),
         )
@@ -1007,7 +1008,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
     ) -> Result<(), GenericArgCountMismatch> {
-        let trait_def_id = trait_ref.trait_def_id();
+        let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
 
         debug!("instantiate_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
 
@@ -1118,6 +1119,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if !self.tcx().features().unboxed_closures
             && trait_segment.generic_args().parenthesized != trait_def.paren_sugar
         {
+            let sess = &self.tcx().sess.parse_sess;
             // For now, require that parenthetical notation be used only with `Fn()` etc.
             let (msg, sugg) = if trait_def.paren_sugar {
                 (
@@ -1132,7 +1134,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .and_then(|args| args.args.get(0))
                             .and_then(|arg| match arg {
                                 hir::GenericArg::Type(ty) => {
-                                    Some(print::to_string(print::NO_ANN, |s| s.print_type(ty)))
+                                    sess.source_map().span_to_snippet(ty.span).ok()
                                 }
                                 _ => None,
                             })
@@ -1143,7 +1145,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .iter()
                             .filter_map(|b| match (b.ident.as_str() == "Output", &b.kind) {
                                 (true, hir::TypeBindingKind::Equality { ty }) => {
-                                    Some(print::to_string(print::NO_ANN, |s| s.print_type(ty)))
+                                    sess.source_map().span_to_snippet(ty.span).ok()
                                 }
                                 _ => None,
                             })
@@ -1154,7 +1156,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             } else {
                 ("parenthetical notation is only stable when used with `Fn`-family traits", None)
             };
-            let sess = &self.tcx().sess.parse_sess;
             let mut err = feature_err(sess, sym::unboxed_closures, span, msg);
             if let Some(sugg) = sugg {
                 let msg = "use parenthetical notation instead";
@@ -1784,9 +1785,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ));
             }
         }
-
-        match (&potential_assoc_types[..], &trait_bounds) {
-            ([], [bound]) => match &bound.trait_ref.path.segments[..] {
+        if let ([], [bound]) = (&potential_assoc_types[..], &trait_bounds) {
+            match &bound.trait_ref.path.segments[..] {
                 // FIXME: `trait_ref.path.span` can point to a full path with multiple
                 // segments, even though `trait_ref.path.segments` is of length `1`. Work
                 // around that bug here, even though it should be fixed elsewhere.
@@ -1818,8 +1818,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         .collect();
                 }
                 _ => {}
-            },
-            _ => {}
+            }
         }
         names.sort();
         trait_bound_spans.sort();
@@ -2269,7 +2268,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
 
                     if let Some(sp) = tcx.hir().span_if_local(adt_def.did) {
-                        let sp = tcx.sess.source_map().def_span(sp);
+                        let sp = tcx.sess.source_map().guess_head_span(sp);
                         err.span_label(sp, format!("variant `{}` not found here", assoc_ident));
                     }
 
@@ -2441,6 +2440,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             continue;
                         }
                         err_for_ct = true;
+                        has_err = true;
                         (ct.span, "const")
                     }
                 };
@@ -2883,16 +2883,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let bare_fn_ty =
             ty::Binder::bind(tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi));
 
-        if !self.allow_ty_infer() {
+        if let (false, Some(ident_span)) = (self.allow_ty_infer(), ident_span) {
             // We always collect the spans for placeholder types when evaluating `fn`s, but we
             // only want to emit an error complaining about them if infer types (`_`) are not
-            // allowed. `allow_ty_infer` gates this behavior.
+            // allowed. `allow_ty_infer` gates this behavior. We check for the presence of
+            // `ident_span` to not emit an error twice when we have `fn foo(_: fn() -> _)`.
             crate::collect::placeholder_type_error(
                 tcx,
-                ident_span.map(|sp| sp.shrink_to_hi()).unwrap_or(DUMMY_SP),
+                ident_span.shrink_to_hi(),
                 &generics.params[..],
                 visitor.0,
-                ident_span.is_some(),
+                true,
             );
         }
 

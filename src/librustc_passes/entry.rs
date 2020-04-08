@@ -1,12 +1,12 @@
-use rustc::hir::map::Map;
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
 use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ImplItem, Item, ItemKind, TraitItem};
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::config::EntryFnType;
 use rustc_session::{config, Session};
 use rustc_span::symbol::sym;

@@ -1,5 +1,7 @@
 use std::collections::BTreeSet;
 use std::iter::FromIterator;
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use super::DeterministicRng;
 
@@ -300,6 +302,85 @@ fn test_is_subset() {
     assert_eq!(is_subset(&[0], &large), true);
     assert_eq!(is_subset(&[1, 2], &large), true);
     assert_eq!(is_subset(&[99, 100], &large), false);
+}
+
+#[test]
+fn test_drain_filter() {
+    let mut x: BTreeSet<_> = [1].iter().copied().collect();
+    let mut y: BTreeSet<_> = [1].iter().copied().collect();
+
+    x.drain_filter(|_| true);
+    y.drain_filter(|_| false);
+    assert_eq!(x.len(), 0);
+    assert_eq!(y.len(), 1);
+}
+
+#[test]
+fn test_drain_filter_drop_panic_leak() {
+    static PREDS: AtomicU32 = AtomicU32::new(0);
+    static DROPS: AtomicU32 = AtomicU32::new(0);
+
+    #[derive(PartialEq, Eq, PartialOrd, Ord)]
+    struct D(i32);
+    impl Drop for D {
+        fn drop(&mut self) {
+            if DROPS.fetch_add(1, Ordering::SeqCst) == 1 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut set = BTreeSet::new();
+    set.insert(D(0));
+    set.insert(D(4));
+    set.insert(D(8));
+
+    catch_unwind(move || {
+        drop(set.drain_filter(|d| {
+            PREDS.fetch_add(1u32 << d.0, Ordering::SeqCst);
+            true
+        }))
+    })
+    .ok();
+
+    assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
+    assert_eq!(DROPS.load(Ordering::SeqCst), 3);
+}
+
+#[test]
+fn test_drain_filter_pred_panic_leak() {
+    static PREDS: AtomicU32 = AtomicU32::new(0);
+    static DROPS: AtomicU32 = AtomicU32::new(0);
+
+    #[derive(PartialEq, Eq, PartialOrd, Ord)]
+    struct D(i32);
+    impl Drop for D {
+        fn drop(&mut self) {
+            DROPS.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    let mut set = BTreeSet::new();
+    set.insert(D(0));
+    set.insert(D(4));
+    set.insert(D(8));
+
+    catch_unwind(AssertUnwindSafe(|| {
+        drop(set.drain_filter(|d| {
+            PREDS.fetch_add(1u32 << d.0, Ordering::SeqCst);
+            match d.0 {
+                0 => true,
+                _ => panic!(),
+            }
+        }))
+    }))
+    .ok();
+
+    assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
+    assert_eq!(DROPS.load(Ordering::SeqCst), 1);
+    assert_eq!(set.len(), 2);
+    assert_eq!(set.first().unwrap().0, 4);
+    assert_eq!(set.last().unwrap().0, 8);
 }
 
 #[test]

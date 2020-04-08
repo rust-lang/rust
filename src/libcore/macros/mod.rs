@@ -1307,12 +1307,53 @@ pub(crate) mod builtin {
     /// [unstable book]: ../unstable-book/library-features/asm.html
     #[unstable(
         feature = "asm",
-        issue = "29722",
+        issue = "70173",
         reason = "inline assembly is not stable enough for use and is subject to change"
     )]
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! asm {
+        ("assembly template"
+                        : $("output"(operand),)*
+                        : $("input"(operand),)*
+                        : $("clobbers",)*
+                        : $("options",)*) => {
+            /* compiler built-in */
+        };
+    }
+
+    /// Inline assembly.
+    ///
+    /// Read the [unstable book] for the usage.
+    ///
+    /// [unstable book]: ../unstable-book/library-features/asm.html
+    #[cfg(bootstrap)]
+    #[unstable(
+        feature = "llvm_asm",
+        issue = "70173",
+        reason = "inline assembly is not stable enough for use and is subject to change"
+    )]
+    #[macro_export]
+    #[allow_internal_unstable(asm)]
+    macro_rules! llvm_asm {
+        // Redirect to asm! for stage0
+        ($($arg:tt)*) => { $crate::asm!($($arg)*) }
+    }
+
+    /// Inline assembly.
+    ///
+    /// Read the [unstable book] for the usage.
+    ///
+    /// [unstable book]: ../unstable-book/library-features/asm.html
+    #[cfg(not(bootstrap))]
+    #[unstable(
+        feature = "llvm_asm",
+        issue = "70173",
+        reason = "inline assembly is not stable enough for use and is subject to change"
+    )]
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! llvm_asm {
         ("assembly template"
                         : $("output"(operand),)*
                         : $("input"(operand),)*

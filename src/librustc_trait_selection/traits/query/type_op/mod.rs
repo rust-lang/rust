@@ -4,8 +4,8 @@ use crate::infer::canonical::{
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::query::Fallible;
 use crate::traits::ObligationCause;
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::{ParamEnvAnd, TyCtxt};
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use std::fmt;
 use std::rc::Rc;
 
@@ -19,7 +19,7 @@ pub mod prove_predicate;
 use self::prove_predicate::ProvePredicate;
 pub mod subtype;
 
-pub use rustc::traits::query::type_op::*;
+pub use rustc_middle::traits::query::type_op::*;
 
 /// "Type ops" are used in NLL to perform some particular action and
 /// extract out the resulting region constraints (or an error if it

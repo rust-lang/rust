@@ -72,7 +72,7 @@ This API is completely unstable and subject to change.
 extern crate log;
 
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 
 // This is used by Clippy.
 pub mod expr_use_visitor;
@@ -89,18 +89,18 @@ mod outlives;
 mod structured_errors;
 mod variance;
 
-use rustc::middle;
-use rustc::ty::query::Providers;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::util;
-use rustc::util::common::ErrorReported;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
+use rustc_middle::middle;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::util;
+use rustc_middle::util::common::ErrorReported;
 use rustc_session::config::EntryFnType;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;

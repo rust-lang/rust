@@ -11,7 +11,7 @@
 // ignore-mips
 // ignore-mips64
 
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 #[cfg(any(target_arch = "x86",
           target_arch = "x86_64"))]
@@ -19,7 +19,7 @@
 pub fn main() {
     unsafe {
         // clobber formatted as register input/output
-        asm!("xor %eax, %eax" : : : "{eax}");
+        llvm_asm!("xor %eax, %eax" : : : "{eax}");
         //~^ ERROR clobber should not be surrounded by braces
     }
 }

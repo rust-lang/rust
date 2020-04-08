@@ -257,7 +257,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             gate_feature_post!(
                 &self,
                 non_ascii_idents,
-                self.parse_sess.source_map().def_span(sp),
+                self.parse_sess.source_map().guess_head_span(sp),
                 "non-ascii idents are not fully supported"
             );
         }
@@ -286,8 +286,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         start,
                         i.span,
                         "`#[start]` functions are experimental \
-                                       and their signature may change \
-                                       over time"
+                         and their signature may change \
+                         over time"
                     );
                 }
                 if attr::contains_name(&i.attrs[..], sym::main) {
@@ -296,8 +296,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         main,
                         i.span,
                         "declaration of a non-standard `#[main]` \
-                                        function may change over time, for now \
-                                        a top-level `fn main()` is required"
+                         function may change over time, for now \
+                         a top-level `fn main()` is required"
                     );
                 }
             }
@@ -341,7 +341,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if let ast::ImplPolarity::Negative(span) = polarity {
                     gate_feature_post!(
                         &self,
-                        optin_builtin_traits,
+                        negative_impls,
                         span.to(of_trait.as_ref().map(|t| t.path.span).unwrap_or(span)),
                         "negative trait bounds are not yet fully implemented; \
                          use marker types for now"
@@ -516,27 +516,25 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
-        match param.kind {
-            GenericParamKind::Const { .. } => gate_feature_post!(
+        if let GenericParamKind::Const { .. } = param.kind {
+            gate_feature_post!(
                 &self,
                 const_generics,
                 param.ident.span,
                 "const generics are unstable"
-            ),
-            _ => {}
+            )
         }
         visit::walk_generic_param(self, param)
     }
 
     fn visit_assoc_ty_constraint(&mut self, constraint: &'a AssocTyConstraint) {
-        match constraint.kind {
-            AssocTyConstraintKind::Bound { .. } => gate_feature_post!(
+        if let AssocTyConstraintKind::Bound { .. } = constraint.kind {
+            gate_feature_post!(
                 &self,
                 associated_type_bounds,
                 constraint.span,
                 "associated type bounds are unstable"
-            ),
-            _ => {}
+            )
         }
         visit::walk_assoc_ty_constraint(self, constraint)
     }

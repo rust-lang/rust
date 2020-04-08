@@ -34,6 +34,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(marker_trait_attr)]
 #![feature(specialization)]
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 use rustc_ast::ast;
@@ -96,7 +97,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     /// HACK(Centril): there is a cyclic dependency between the parser and lowering
     /// if we don't have this function pointer. To avoid that dependency so that
-    /// librustc is independent of the parser, we use dynamic dispatch here.
+    /// librustc_middle is independent of the parser, we use dynamic dispatch here.
     nt_to_tokenstream: NtToTokenstream,
 
     /// Used to allocate HIR nodes

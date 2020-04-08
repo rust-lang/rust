@@ -1,6 +1,6 @@
-use rustc::mir::*;
-use rustc::ty::TyCtxt;
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir::*;
+use rustc_middle::ty::TyCtxt;
 
 use crate::transform::{MirPass, MirSource};
 use crate::util;
@@ -68,7 +68,7 @@ fn add_moves_for_packed_drops_patch<'tcx>(
         let terminator = data.terminator();
 
         match terminator.kind {
-            TerminatorKind::Drop { ref location, .. }
+            TerminatorKind::Drop { location, .. }
                 if util::is_disaligned(tcx, body, param_env, location) =>
             {
                 add_move_for_packed_drop(tcx, body, &mut patch, terminator, loc, data.is_cleanup);

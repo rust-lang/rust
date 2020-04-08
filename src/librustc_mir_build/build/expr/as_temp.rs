@@ -3,8 +3,8 @@
 use crate::build::scope::DropKind;
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
-use rustc::middle::region;
-use rustc::mir::*;
+use rustc_middle::middle::region;
+use rustc_middle::mir::*;
 use rustc_hir as hir;
 use rustc_span::symbol::sym;
 
@@ -66,7 +66,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             this.local_decls.push(local_decl)
         };
-        let temp_place = &Place::from(temp);
+        let temp_place = Place::from(temp);
 
         match expr.kind {
             // Don't bother with StorageLive and Dead for these temporaries,

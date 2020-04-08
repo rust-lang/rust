@@ -6,8 +6,6 @@ use crate::Namespace::*;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy};
 use crate::{CrateLint, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
-use rustc::middle::stability;
-use rustc::{span_bug, ty};
 use rustc_ast::ast::{self, Ident, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, StabilityLevel};
@@ -19,8 +17,9 @@ use rustc_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationK
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id;
+use rustc_middle::middle::stability;
+use rustc_middle::{span_bug, ty};
 use rustc_session::lint::builtin::UNUSED_MACROS;
-use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, ExpnData, ExpnId, ExpnKind};
@@ -397,20 +396,16 @@ impl<'a> Resolver<'a> {
             Err(Determinacy::Undetermined) => return Err(Indeterminate),
         };
 
-        // Report errors and enforce feature gates for the resolved macro.
-        let features = self.session.features_untracked();
+        // Report errors for the resolved macro.
         for segment in &path.segments {
             if let Some(args) = &segment.args {
                 self.session.span_err(args.span(), "generic arguments in macro path");
             }
-            if kind == MacroKind::Attr
-                && !features.rustc_attrs
-                && segment.ident.as_str().starts_with("rustc")
-            {
-                let msg =
-                    "attributes starting with `rustc` are reserved for use by the `rustc` compiler";
-                feature_err(&self.session.parse_sess, sym::rustc_attrs, segment.ident.span, msg)
-                    .emit();
+            if kind == MacroKind::Attr && segment.ident.as_str().starts_with("rustc") {
+                self.session.span_err(
+                    segment.ident.span,
+                    "attributes starting with `rustc` are reserved for use by the `rustc` compiler",
+                );
             }
         }
 

@@ -4,10 +4,10 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/variance.html
 
 use hir::Node;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, CrateVariancesMap, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, CrateVariancesMap, TyCtxt};
 
 /// Defines the `TermsContext` basically houses an arena where we can
 /// allocate terms.

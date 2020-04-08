@@ -33,15 +33,15 @@ use super::FnCtxt;
 use crate::hir::def_id::DefId;
 use crate::type_error_struct;
 use crate::util::common::ErrorReported;
-use rustc::middle::lang_items;
-use rustc::ty::adjustment::AllowTwoPhase;
-use rustc::ty::cast::{CastKind, CastTy};
-use rustc::ty::error::TypeError;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc_ast::ast;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
+use rustc_middle::middle::lang_items;
+use rustc_middle::ty::adjustment::AllowTwoPhase;
+use rustc_middle::ty::cast::{CastKind, CastTy};
+use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::Span;
@@ -526,8 +526,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     /// can return Ok and create type errors in the fcx rather than returning
     /// directly. coercion-cast is handled in check instead of here.
     fn do_check(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<CastKind, CastError> {
-        use rustc::ty::cast::CastTy::*;
-        use rustc::ty::cast::IntTy::*;
+        use rustc_middle::ty::cast::CastTy::*;
+        use rustc_middle::ty::cast::IntTy::*;
 
         let (t_from, t_cast) = match (CastTy::from_ty(self.expr_ty), CastTy::from_ty(self.cast_ty))
         {

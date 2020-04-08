@@ -52,18 +52,18 @@
 
 use crate::astconv::AstConv;
 use crate::check::{FnCtxt, Needs};
-use rustc::ty::adjustment::{
-    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
-};
-use rustc::ty::error::TypeError;
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::relate::RelateResult;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Ty, TypeAndMut};
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
+};
+use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::relate::RelateResult;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
@@ -1402,9 +1402,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     {
                         // Are of this `impl Trait`'s traits object safe?
                         is_object_safe = bounds.iter().all(|bound| {
-                            bound.trait_def_id().map_or(false, |def_id| {
-                                fcx.tcx.object_safety_violations(def_id).is_empty()
-                            })
+                            bound
+                                .trait_ref()
+                                .and_then(|t| t.trait_def_id())
+                                .map_or(false, |def_id| {
+                                    fcx.tcx.object_safety_violations(def_id).is_empty()
+                                })
                         })
                     }
                 }

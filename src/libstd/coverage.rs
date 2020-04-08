@@ -49,7 +49,9 @@ fn increment_counter(counter: u128) -> LockResult<MutexGuard<'static, HashMap<u1
     let counters = lock.as_mut().unwrap();
     match counters.get_mut(&counter) {
         Some(count) => *count += 1,
-        None => { counters.insert(counter,1); }
+        None => {
+            counters.insert(counter, 1);
+        }
     }
     lock
 }

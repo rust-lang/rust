@@ -1,10 +1,10 @@
-error: associated type bindings must be declared after generic parameters
-  --> $DIR/issue-32214.rs:3:25
+error: generic arguments must come before the first constraint
+  --> $DIR/issue-32214.rs:3:34
    |
 LL | pub fn test<W, I: Trait<Item=(), W> >() {}
-   |                         -------^^^
+   |                         -------  ^ generic argument
    |                         |
-   |                         this associated type binding should be moved after the generic parameters
+   |                         the first constraint is provided here
 
 error: aborting due to previous error
 

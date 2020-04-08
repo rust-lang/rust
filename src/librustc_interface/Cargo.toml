@@ -21,7 +21,7 @@ rustc_parse = { path = "../librustc_parse" }
 rustc_session = { path = "../librustc_session" }
 rustc_span = { path = "../librustc_span" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
-rustc = { path = "../librustc" }
+rustc_middle = { path = "../librustc_middle" }
 rustc_ast_lowering = { path = "../librustc_ast_lowering" }
 rustc_ast_passes = { path = "../librustc_ast_passes" }
 rustc_incremental = { path = "../librustc_incremental" }

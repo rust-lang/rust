@@ -1,7 +1,7 @@
 //! Routines for manipulating the control-flow graph.
 
 use crate::build::CFG;
-use rustc::mir::*;
+use rustc_middle::mir::*;
 
 impl<'tcx> CFG<'tcx> {
     crate fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {
@@ -34,12 +34,12 @@ impl<'tcx> CFG<'tcx> {
         &mut self,
         block: BasicBlock,
         source_info: SourceInfo,
-        place: &Place<'tcx>,
+        place: Place<'tcx>,
         rvalue: Rvalue<'tcx>,
     ) {
         self.push(
             block,
-            Statement { source_info, kind: StatementKind::Assign(box (*place, rvalue)) },
+            Statement { source_info, kind: StatementKind::Assign(box (place, rvalue)) },
         );
     }
 
@@ -47,7 +47,7 @@ impl<'tcx> CFG<'tcx> {
         &mut self,
         block: BasicBlock,
         source_info: SourceInfo,
-        temp: &Place<'tcx>,
+        temp: Place<'tcx>,
         constant: Constant<'tcx>,
     ) {
         self.push_assign(block, source_info, temp, Rvalue::Use(Operand::Constant(box constant)));
@@ -57,7 +57,7 @@ impl<'tcx> CFG<'tcx> {
         &mut self,
         block: BasicBlock,
         source_info: SourceInfo,
-        place: &Place<'tcx>,
+        place: Place<'tcx>,
     ) {
         self.push_assign(
             block,

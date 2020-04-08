@@ -2,16 +2,6 @@ use crate::rmeta::table::FixedSizeEncoding;
 use crate::rmeta::*;
 
 use log::{debug, trace};
-use rustc::hir::map::Map;
-use rustc::middle::cstore::{EncodedMetadata, ForeignModule, LinkagePreference, NativeLibrary};
-use rustc::middle::dependency_format::Linkage;
-use rustc::middle::exported_symbols::{metadata_symbol_name, ExportedSymbol, SymbolExportLevel};
-use rustc::middle::lang_items;
-use rustc::mir::{self, interpret};
-use rustc::traits::specialization_graph;
-use rustc::ty::codec::{self as ty_codec, TyEncoder};
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_ast::ast::{self, Ident};
 use rustc_ast::attr;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -27,6 +17,20 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use rustc_hir::{AnonConst, GenericParamKind};
 use rustc_index::vec::Idx;
+use rustc_middle::hir::map::Map;
+use rustc_middle::middle::cstore::{
+    EncodedMetadata, ForeignModule, LinkagePreference, NativeLibrary,
+};
+use rustc_middle::middle::dependency_format::Linkage;
+use rustc_middle::middle::exported_symbols::{
+    metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
+};
+use rustc_middle::middle::lang_items;
+use rustc_middle::mir::{self, interpret};
+use rustc_middle::traits::specialization_graph;
+use rustc_middle::ty::codec::{self as ty_codec, TyEncoder};
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
 use rustc_session::config::{self, CrateType};
 use rustc_span::source_map::Spanned;
@@ -824,8 +828,10 @@ impl EncodeContext<'tcx> {
 
         record!(self.per_def.kind[def_id] <- match trait_item.kind {
             ty::AssocKind::Const => {
-                let rendered =
-                    hir::print::to_string(&self.tcx.hir(), |s| s.print_trait_item(ast_item));
+                let rendered = rustc_hir_pretty::to_string(
+                    &(&self.tcx.hir() as &dyn intravisit::Map<'_>),
+                    |s| s.print_trait_item(ast_item)
+                );
                 let rendered_const = self.lazy(RenderedConst(rendered));
 
                 EntryKind::AssocConst(
@@ -1044,8 +1050,11 @@ impl EncodeContext<'tcx> {
     }
 
     fn encode_rendered_const_for_body(&mut self, body_id: hir::BodyId) -> Lazy<RenderedConst> {
-        let body = self.tcx.hir().body(body_id);
-        let rendered = hir::print::to_string(&self.tcx.hir(), |s| s.print_expr(&body.value));
+        let hir = self.tcx.hir();
+        let body = hir.body(body_id);
+        let rendered = rustc_hir_pretty::to_string(&(&hir as &dyn intravisit::Map<'_>), |s| {
+            s.print_expr(&body.value)
+        });
         let rendered_const = &RenderedConst(rendered);
         self.lazy(rendered_const)
     }
@@ -1614,12 +1623,9 @@ impl EncodeContext<'tcx> {
     }
 
     fn encode_info_for_expr(&mut self, expr: &hir::Expr<'_>) {
-        match expr.kind {
-            hir::ExprKind::Closure(..) => {
-                let def_id = self.tcx.hir().local_def_id(expr.hir_id);
-                self.encode_info_for_closure(def_id);
-            }
-            _ => {}
+        if let hir::ExprKind::Closure(..) = expr.kind {
+            let def_id = self.tcx.hir().local_def_id(expr.hir_id);
+            self.encode_info_for_closure(def_id);
         }
     }
 

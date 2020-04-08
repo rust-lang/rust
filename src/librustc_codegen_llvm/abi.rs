@@ -5,19 +5,19 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 
-use rustc::bug;
-use rustc::ty::layout::{self};
-use rustc::ty::Ty;
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
+use rustc_middle::bug;
+use rustc_middle::ty::layout::{self};
+use rustc_middle::ty::Ty;
 use rustc_target::abi::call::ArgAbi;
 use rustc_target::abi::{HasDataLayout, LayoutOf};
 
 use libc::c_uint;
 
-pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
+pub use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 pub use rustc_target::abi::call::*;
 pub use rustc_target::spec::abi::Abi;
 
@@ -396,6 +396,11 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, llfn);
         }
 
+        // FIXME(eddyb, wesleywiser): apply this to callsites as well?
+        if !self.can_unwind {
+            llvm::Attribute::NoUnwind.apply_llfn(llvm::AttributePlace::Function, llfn);
+        }
+
         let mut i = 0;
         let mut apply = |attrs: &ArgAttributes, ty: Option<&Type>| {
             attrs.apply_llfn(llvm::AttributePlace::Argument(i), llfn, ty);
@@ -431,6 +436,8 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     }
 
     fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value) {
+        // FIXME(wesleywiser, eddyb): We should apply `nounwind` and `noreturn` as appropriate to this callsite.
+
         let mut i = 0;
         let mut apply = |attrs: &ArgAttributes, ty: Option<&Type>| {
             attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite, ty);

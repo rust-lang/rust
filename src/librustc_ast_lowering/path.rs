@@ -366,22 +366,27 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param_mode: ParamMode,
         mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> (GenericArgsCtor<'hir>, bool) {
-        let &AngleBracketedArgs { ref args, ref constraints, .. } = data;
-        let has_non_lt_args = args.iter().any(|arg| match arg {
-            ast::GenericArg::Lifetime(_) => false,
-            ast::GenericArg::Type(_) => true,
-            ast::GenericArg::Const(_) => true,
+        let has_non_lt_args = data.args.iter().any(|arg| match arg {
+            AngleBracketedArg::Arg(ast::GenericArg::Lifetime(_))
+            | AngleBracketedArg::Constraint(_) => false,
+            AngleBracketedArg::Arg(ast::GenericArg::Type(_) | ast::GenericArg::Const(_)) => true,
         });
-        (
-            GenericArgsCtor {
-                args: args.iter().map(|a| self.lower_generic_arg(a, itctx.reborrow())).collect(),
-                bindings: self.arena.alloc_from_iter(
-                    constraints.iter().map(|b| self.lower_assoc_ty_constraint(b, itctx.reborrow())),
-                ),
-                parenthesized: false,
-            },
-            !has_non_lt_args && param_mode == ParamMode::Optional,
-        )
+        let args = data
+            .args
+            .iter()
+            .filter_map(|arg| match arg {
+                AngleBracketedArg::Arg(arg) => Some(self.lower_generic_arg(arg, itctx.reborrow())),
+                AngleBracketedArg::Constraint(_) => None,
+            })
+            .collect();
+        let bindings = self.arena.alloc_from_iter(data.args.iter().filter_map(|arg| match arg {
+            AngleBracketedArg::Constraint(c) => {
+                Some(self.lower_assoc_ty_constraint(c, itctx.reborrow()))
+            }
+            AngleBracketedArg::Arg(_) => None,
+        }));
+        let ctor = GenericArgsCtor { args, bindings, parenthesized: false };
+        (ctor, !has_non_lt_args && param_mode == ParamMode::Optional)
     }
 
     fn lower_parenthesized_parameter_data(

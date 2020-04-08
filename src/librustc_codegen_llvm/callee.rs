@@ -12,8 +12,8 @@ use crate::value::Value;
 use log::debug;
 use rustc_codegen_ssa::traits::*;
 
-use rustc::ty::layout::{FnAbiExt, HasTyCtxt};
-use rustc::ty::{Instance, TypeFoldable};
+use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
+use rustc_middle::ty::{Instance, TypeFoldable};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -78,7 +78,7 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
         let llfn = cx.declare_fn(&sym, &fn_abi);
         debug!("get_fn: not casting pointer!");
 
-        attributes::from_fn_attrs(cx, llfn, instance, &fn_abi);
+        attributes::from_fn_attrs(cx, llfn, instance);
 
         let instance_def_id = instance.def_id();
 

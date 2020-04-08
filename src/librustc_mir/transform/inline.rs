@@ -1,14 +1,14 @@
 //! Inlining pass for MIR functions
 
-use rustc::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc::mir::visit::*;
-use rustc::mir::*;
-use rustc::ty::subst::{Subst, SubstsRef};
-use rustc::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_attr as attr;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::visit::*;
+use rustc_middle::mir::*;
+use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::Sanitizer;
 use rustc_target::spec::abi::Abi;
 
@@ -450,7 +450,7 @@ impl Inliner<'tcx> {
                 // Place could result in two different locations if `f`
                 // writes to `i`. To prevent this we need to create a temporary
                 // borrow of the place and pass the destination as `*temp` instead.
-                fn dest_needs_borrow(place: &Place<'_>) -> bool {
+                fn dest_needs_borrow(place: Place<'_>) -> bool {
                     for elem in place.projection.iter() {
                         match elem {
                             ProjectionElem::Deref | ProjectionElem::Index(_) => return true,
@@ -461,7 +461,7 @@ impl Inliner<'tcx> {
                     false
                 }
 
-                let dest = if dest_needs_borrow(&destination.0) {
+                let dest = if dest_needs_borrow(destination.0) {
                     debug!("creating temp for return destination");
                     let dest = Rvalue::Ref(
                         self.tcx.lifetimes.re_erased,

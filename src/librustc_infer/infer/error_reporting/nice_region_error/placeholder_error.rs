@@ -3,13 +3,13 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
-use rustc::ty::error::ExpectedFound;
-use rustc::ty::print::{FmtPrinter, Print, RegionHighlightMode};
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, TyCtxt};
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::error::ExpectedFound;
+use rustc_middle::ty::print::{FmtPrinter, Print, RegionHighlightMode};
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{self, TyCtxt};
 
 use std::fmt::{self, Write};
 

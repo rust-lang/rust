@@ -4,8 +4,8 @@ error: <inline asm>:1:9: error: expected string in '.ascii' directive
 
   --> $DIR/issue-69092.rs:8:14
    |
-LL |     unsafe { asm!(".ascii \"Xen\0\""); }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     unsafe { llvm_asm!(".ascii \"Xen\0\""); }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

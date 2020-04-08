@@ -1,30 +1,42 @@
-error[E0391]: cycle detected when const-evaluating + checking `Tr::A`
-  --> $DIR/defaults-cyclic-fail.rs:5:5
+error[E0391]: cycle detected when normalizing `<() as Tr>::A`
+   |
+note: ...which requires const-evaluating + checking `Tr::A`...
+  --> $DIR/defaults-cyclic-fail.rs:6:5
    |
 LL |     const A: u8 = Self::B;
    |     ^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: ...which requires const-evaluating `Tr::A`...
-  --> $DIR/defaults-cyclic-fail.rs:5:19
+note: ...which requires const-evaluating + checking `Tr::A`...
+  --> $DIR/defaults-cyclic-fail.rs:6:5
    |
 LL |     const A: u8 = Self::B;
-   |                   ^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires const-evaluating `Tr::A`...
+  --> $DIR/defaults-cyclic-fail.rs:6:5
+   |
+LL |     const A: u8 = Self::B;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which requires normalizing `<() as Tr>::B`...
+note: ...which requires const-evaluating + checking `Tr::B`...
+  --> $DIR/defaults-cyclic-fail.rs:8:5
+   |
+LL |     const B: u8 = Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `Tr::B`...
   --> $DIR/defaults-cyclic-fail.rs:8:5
    |
 LL |     const B: u8 = Self::A;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating `Tr::B`...
-  --> $DIR/defaults-cyclic-fail.rs:8:19
+  --> $DIR/defaults-cyclic-fail.rs:8:5
    |
 LL |     const B: u8 = Self::A;
-   |                   ^^^^^^^
-   = note: ...which again requires const-evaluating + checking `Tr::A`, completing the cycle
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires normalizing `<() as Tr>::A`, completing the cycle
 note: cycle used when const-evaluating `main`
-  --> $DIR/defaults-cyclic-fail.rs:16:16
+  --> $DIR/defaults-cyclic-fail.rs:14:1
    |
-LL |     assert_eq!(<() as Tr>::A, 0);
-   |                ^^^^^^^^^^^^^
+LL | fn main() {
+   | ^^^^^^^^^
 
 error: aborting due to previous error
 

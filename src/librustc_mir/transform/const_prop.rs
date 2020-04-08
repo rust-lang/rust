@@ -4,28 +4,28 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 
-use rustc::mir::interpret::{InterpResult, Scalar};
-use rustc::mir::visit::{
-    MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
-};
-use rustc::mir::{
-    read_only, AggregateKind, AssertKind, BasicBlock, BinOp, Body, BodyAndCache, ClearCrossCrate,
-    Constant, Local, LocalDecl, LocalKind, Location, Operand, Place, ReadOnlyBodyAndCache, Rvalue,
-    SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
-    UnOp, RETURN_PLACE,
-};
-use rustc::ty::layout::{
-    HasDataLayout, HasTyCtxt, LayoutError, LayoutOf, Size, TargetDataLayout, TyLayout,
-};
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir::interpret::{InterpResult, Scalar};
+use rustc_middle::mir::visit::{
+    MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
+};
+use rustc_middle::mir::{
+    read_only, AggregateKind, AssertKind, BasicBlock, BinOp, Body, BodyAndCache, ClearCrossCrate,
+    Constant, Local, LocalDecl, LocalKind, Location, Operand, Place, ReadOnlyBodyAndCache, Rvalue,
+    SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
+    UnOp, RETURN_PLACE,
+};
+use rustc_middle::ty::layout::{
+    HasDataLayout, HasTyCtxt, LayoutError, LayoutOf, Size, TargetDataLayout, TyAndLayout,
+};
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
-use rustc_span::Span;
+use rustc_span::{def_id::DefId, Span};
 use rustc_trait_selection::traits;
 
 use crate::const_eval::error_to_const_error;
@@ -52,7 +52,7 @@ macro_rules! throw_machine_stop_str {
                 write!(f, $($tt)*)
             }
         }
-        impl rustc::mir::interpret::MachineStopType for Zst {}
+        impl rustc_middle::mir::interpret::MachineStopType for Zst {}
         throw_machine_stop!(Zst)
     }};
 }
@@ -66,7 +66,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             return;
         }
 
-        use rustc::hir::map::blocks::FnLikeNode;
+        use rustc_middle::hir::map::blocks::FnLikeNode;
         let hir_id = tcx
             .hir()
             .as_local_hir_id(source.def_id())
@@ -162,7 +162,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
 struct ConstPropMachine;
 
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
-    type MemoryKinds = !;
+    type MemoryKind = !;
     type PointerTag = ();
     type ExtraFnVal = !;
 
@@ -172,7 +172,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
 
-    const STATIC_KIND: Option<!> = None;
+    const GLOBAL_KIND: Option<!> = None; // no copying of globals from `tcx` to machine memory
 
     const CHECK_ALIGN: bool = false;
 
@@ -183,7 +183,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     fn find_mir_or_eval_fn(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _span: Span,
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
         _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
@@ -204,7 +203,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     fn call_intrinsic(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _span: Span,
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
         _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
@@ -215,8 +213,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     fn assert_panic(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _msg: &rustc::mir::AssertMessage<'tcx>,
-        _unwind: Option<rustc::mir::BasicBlock>,
+        _msg: &rustc_middle::mir::AssertMessage<'tcx>,
+        _unwind: Option<rustc_middle::mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         bug!("panics terminators are not evaluated in ConstProp")
     }
@@ -247,7 +245,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     #[inline(always)]
-    fn tag_static_base_pointer(_memory_extra: &(), _id: AllocId) -> Self::PointerTag {}
+    fn tag_global_base_pointer(_memory_extra: &(), _id: AllocId) -> Self::PointerTag {}
 
     fn box_alloc(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -270,14 +268,20 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         l.access()
     }
 
-    fn before_access_static(
+    fn before_access_global(
         _memory_extra: &(),
+        _alloc_id: AllocId,
         allocation: &Allocation<Self::PointerTag, Self::AllocExtra>,
+        _static_def_id: Option<DefId>,
+        is_write: bool,
     ) -> InterpResult<'tcx> {
-        // if the static allocation is mutable or if it has relocations (it may be legal to mutate
-        // the memory behind that in the future), then we can't const prop it
-        if allocation.mutability == Mutability::Mut || allocation.relocations().len() > 0 {
-            throw_machine_stop_str!("can't eval mutable statics in ConstProp")
+        if is_write {
+            throw_machine_stop_str!("can't write to global");
+        }
+        // If the static allocation is mutable, then we can't const prop it as its content
+        // might be different at runtime.
+        if allocation.mutability == Mutability::Mut {
+            throw_machine_stop_str!("can't access mutable globals in ConstProp");
         }
 
         Ok(())
@@ -307,9 +311,9 @@ struct ConstPropagator<'mir, 'tcx> {
 
 impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
     type Ty = Ty<'tcx>;
-    type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
+    type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.tcx.layout_of(self.param_env.and(ty))
     }
 }
@@ -355,7 +359,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         ecx.push_stack_frame(
             Instance::new(def_id, substs),
-            span,
             dummy_body,
             ret.map(Into::into),
             StackPopCleanup::None { cleanup: false },
@@ -462,7 +465,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn eval_place(&mut self, place: &Place<'tcx>) -> Option<OpTy<'tcx>> {
+    fn eval_place(&mut self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
         trace!("eval_place(place={:?})", place);
         self.use_ecx(|this| this.ecx.eval_place_to_op(place, None))
     }
@@ -470,7 +473,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         match *op {
             Operand::Constant(ref c) => self.eval_constant(c, source_info),
-            Operand::Move(ref place) | Operand::Copy(ref place) => self.eval_place(place),
+            Operand::Move(place) | Operand::Copy(place) => self.eval_place(place),
         }
     }
 
@@ -564,9 +567,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn const_prop(
         &mut self,
         rvalue: &Rvalue<'tcx>,
-        place_layout: TyLayout<'tcx>,
+        place_layout: TyAndLayout<'tcx>,
         source_info: SourceInfo,
-        place: &Place<'tcx>,
+        place: Place<'tcx>,
     ) -> Option<()> {
         // #66397: Don't try to eval into large places as that can cause an OOM
         if place_layout.size >= Size::from_bytes(MAX_ALLOC_LIMIT) {
@@ -679,7 +682,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                 let ty1 = substs[0].expect_ty();
                                 let ty2 = substs[1].expect_ty();
                                 let ty_is_scalar = |ty| {
-                                    this.ecx.layout_of(ty).ok().map(|ty| ty.details.abi.is_scalar())
+                                    this.ecx.layout_of(ty).ok().map(|layout| layout.abi.is_scalar())
                                         == Some(true)
                                 };
                                 if ty_is_scalar(ty1) && ty_is_scalar(ty2) {
@@ -769,14 +772,14 @@ impl CanConstProp {
                 trace!("local {:?} can't be const propagated because it's not a temporary", local);
             }
         }
-        cpv.visit_body(body);
+        cpv.visit_body(&body);
         cpv.can_const_prop
     }
 }
 
 impl<'tcx> Visitor<'tcx> for CanConstProp {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
-        use rustc::mir::visit::PlaceContext::*;
+        use rustc_middle::mir::visit::PlaceContext::*;
         match context {
             // Constants must have at most one write
             // FIXME(oli-obk): we could be more powerful here, if the multiple writes
@@ -819,7 +822,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         trace!("visit_statement: {:?}", statement);
         let source_info = statement.source_info;
         self.source_info = Some(source_info);
-        if let StatementKind::Assign(box (ref place, ref mut rval)) = statement.kind {
+        if let StatementKind::Assign(box (place, ref mut rval)) = statement.kind {
             let place_ty: Ty<'tcx> = place.ty(&self.local_decls, self.tcx).ty;
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
                 if let Some(local) = place.as_local() {

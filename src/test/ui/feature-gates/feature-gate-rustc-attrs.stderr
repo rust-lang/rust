@@ -1,10 +1,8 @@
-error[E0658]: attributes starting with `rustc` are reserved for use by the `rustc` compiler
+error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
   --> $DIR/feature-gate-rustc-attrs.rs:8:3
    |
 LL | #[rustc::unknown]
    |   ^^^^^
-   |
-   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error: expected attribute, found macro `rustc::unknown`
   --> $DIR/feature-gate-rustc-attrs.rs:8:3
@@ -12,13 +10,11 @@ error: expected attribute, found macro `rustc::unknown`
 LL | #[rustc::unknown]
    |   ^^^^^^^^^^^^^^ not an attribute
 
-error[E0658]: attributes starting with `rustc` are reserved for use by the `rustc` compiler
+error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
   --> $DIR/feature-gate-rustc-attrs.rs:13:12
    |
 LL | #[unknown::rustc]
    |            ^^^^^
-   |
-   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error: expected attribute, found macro `unknown::rustc`
   --> $DIR/feature-gate-rustc-attrs.rs:13:3
@@ -26,13 +22,11 @@ error: expected attribute, found macro `unknown::rustc`
 LL | #[unknown::rustc]
    |   ^^^^^^^^^^^^^^ not an attribute
 
-error[E0658]: attributes starting with `rustc` are reserved for use by the `rustc` compiler
+error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
   --> $DIR/feature-gate-rustc-attrs.rs:20:3
    |
 LL | #[rustc_unknown]
    |   ^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
 
 error: cannot find attribute `rustc_unknown` in this scope
   --> $DIR/feature-gate-rustc-attrs.rs:20:3

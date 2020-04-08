@@ -17,10 +17,6 @@
 use back::write::{create_informational_target_machine, create_target_machine};
 
 pub use llvm_util::target_features;
-use rustc::dep_graph::{DepGraph, WorkProduct};
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc::ty::{self, TyCtxt};
-use rustc::util::common::ErrorReported;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
@@ -28,6 +24,10 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
 use rustc_errors::{FatalError, Handler};
+use rustc_middle::dep_graph::{DepGraph, WorkProduct};
+use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::util::common::ErrorReported;
 use rustc_serialize::json;
 use rustc_session::config::{self, OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;

@@ -7,11 +7,10 @@ LL | trait ExtraCopy<T:Copy> { }
 LL |     where T: ExtraCopy<U>
    |              ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `U`
    |
-help: consider restricting this type parameter with `where U: std::marker::Copy`
-  --> $DIR/wf-enum-bound.rs:9:17
+help: consider further restricting type parameter `U`
    |
-LL | enum SomeEnum<T,U>
-   |                 ^
+LL |     where T: ExtraCopy<U>, U: std::marker::Copy
+   |                          ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -27,11 +27,8 @@ pub mod printf {
         }
 
         pub fn set_position(&mut self, start: usize, end: usize) {
-            match self {
-                Substitution::Format(ref mut fmt) => {
-                    fmt.position = InnerSpan::new(start, end);
-                }
-                _ => {}
+            if let Substitution::Format(ref mut fmt) = self {
+                fmt.position = InnerSpan::new(start, end);
             }
         }
 
@@ -311,9 +308,8 @@ pub mod printf {
 
         let at = {
             let start = s.find('%')?;
-            match s[start + 1..].chars().next()? {
-                '%' => return Some((Substitution::Escape, &s[start + 2..])),
-                _ => { /* fall-through */ }
+            if let '%' = s[start + 1..].chars().next()? {
+                return Some((Substitution::Escape, &s[start + 2..]));
             }
 
             Cur::new_at(&s[..], start)

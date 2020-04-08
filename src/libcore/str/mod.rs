@@ -9,7 +9,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use self::pattern::Pattern;
-use self::pattern::{DoubleEndedSearcher, ReverseSearcher, SearchStep, Searcher};
+use self::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
 
 use crate::char;
 use crate::fmt::{self, Write};
@@ -1794,6 +1794,7 @@ mod traits {
 
     #[inline(never)]
     #[cold]
+    #[track_caller]
     fn str_index_overflow_fail() -> ! {
         panic!("attempted to index str up to maximum usize");
     }
@@ -2185,6 +2186,7 @@ fn truncate_to_char_boundary(s: &str, mut max: usize) -> (bool, &str) {
 
 #[inline(never)]
 #[cold]
+#[track_caller]
 fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     const MAX_DISPLAY_LENGTH: usize = 256;
     let (truncated, s_trunc) = truncate_to_char_boundary(s, MAX_DISPLAY_LENGTH);
@@ -2640,7 +2642,7 @@ impl str {
     /// # Panics
     ///
     /// Panics if `mid` is not on a UTF-8 code point boundary, or if it is
-    /// beyond the last code point of the string slice.
+    /// past the end of the last code point of the string slice.
     ///
     /// # Examples
     ///
@@ -2681,7 +2683,7 @@ impl str {
     /// # Panics
     ///
     /// Panics if `mid` is not on a UTF-8 code point boundary, or if it is
-    /// beyond the last code point of the string slice.
+    /// past the end of the last code point of the string slice.
     ///
     /// # Examples
     ///
@@ -3984,26 +3986,15 @@ impl str {
     /// ```
     /// #![feature(str_strip)]
     ///
-    /// assert_eq!("foobar".strip_prefix("foo"), Some("bar"));
-    /// assert_eq!("foobar".strip_prefix("bar"), None);
+    /// assert_eq!("foo:bar".strip_prefix("foo:"), Some("bar"));
+    /// assert_eq!("foo:bar".strip_prefix("bar"), None);
     /// assert_eq!("foofoo".strip_prefix("foo"), Some("foo"));
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
     #[unstable(feature = "str_strip", reason = "newly added", issue = "67302")]
     pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a str> {
-        let mut matcher = prefix.into_searcher(self);
-        if let SearchStep::Match(start, len) = matcher.next() {
-            debug_assert_eq!(
-                start, 0,
-                "The first search step from Searcher \
-                 must include the first character"
-            );
-            // SAFETY: `Searcher` is known to return valid indices.
-            unsafe { Some(self.get_unchecked(len..)) }
-        } else {
-            None
-        }
+        prefix.strip_prefix_of(self)
     }
 
     /// Returns a string slice with the suffix removed.
@@ -4018,8 +4009,8 @@ impl str {
     ///
     /// ```
     /// #![feature(str_strip)]
-    /// assert_eq!("barfoo".strip_suffix("foo"), Some("bar"));
-    /// assert_eq!("barfoo".strip_suffix("bar"), None);
+    /// assert_eq!("bar:foo".strip_suffix(":foo"), Some("bar"));
+    /// assert_eq!("bar:foo".strip_suffix("bar"), None);
     /// assert_eq!("foofoo".strip_suffix("foo"), Some("foo"));
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
@@ -4030,19 +4021,7 @@ impl str {
         P: Pattern<'a>,
         <P as Pattern<'a>>::Searcher: ReverseSearcher<'a>,
     {
-        let mut matcher = suffix.into_searcher(self);
-        if let SearchStep::Match(start, end) = matcher.next_back() {
-            debug_assert_eq!(
-                end,
-                self.len(),
-                "The first search step from ReverseSearcher \
-                 must include the last character"
-            );
-            // SAFETY: `Searcher` is known to return valid indices.
-            unsafe { Some(self.get_unchecked(..start)) }
-        } else {
-            None
-        }
+        suffix.strip_suffix_of(self)
     }
 
     /// Returns a string slice with all suffixes that match a pattern

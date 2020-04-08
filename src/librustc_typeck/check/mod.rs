@@ -89,21 +89,6 @@ pub mod writeback;
 
 use crate::astconv::{AstConv, GenericArgCountMismatch, PathSeg};
 use crate::middle::lang_items;
-use rustc::hir::map::blocks::FnLikeNode;
-use rustc::middle::region;
-use rustc::mir::interpret::ConstValue;
-use rustc::ty::adjustment::{
-    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
-};
-use rustc::ty::fold::{TypeFoldable, TypeFolder};
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::query::Providers;
-use rustc::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSelfTy, UserSubsts};
-use rustc::ty::util::{Discr, IntTypeExt, Representability};
-use rustc::ty::{
-    self, AdtKind, CanonicalUserType, Const, GenericParamDefKind, RegionKind, ToPolyTraitRef,
-    ToPredicate, Ty, TyCtxt, UserType, WithConstness,
-};
 use rustc_ast::ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_attr as attr;
@@ -122,6 +107,23 @@ use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, InferOk, InferResult, TyCtxtInferExt};
+use rustc_middle::hir::map::blocks::FnLikeNode;
+use rustc_middle::middle::region;
+use rustc_middle::mir::interpret::ConstValue;
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
+};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::layout::VariantIdx;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{
+    GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSelfTy, UserSubsts,
+};
+use rustc_middle::ty::util::{Discr, IntTypeExt, Representability};
+use rustc_middle::ty::{
+    self, AdtKind, CanonicalUserType, Const, GenericParamDefKind, RegionKind, ToPolyTraitRef,
+    ToPredicate, Ty, TyCtxt, UserType, WithConstness,
+};
 use rustc_session::config::{self, EntryFnType};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
@@ -1479,7 +1481,7 @@ fn check_fn<'a, 'tcx>(
                         }
                     }
                 } else {
-                    let span = sess.source_map().def_span(span);
+                    let span = sess.source_map().guess_head_span(span);
                     sess.span_err(span, "function should have one argument");
                 }
             } else {
@@ -1520,7 +1522,7 @@ fn check_fn<'a, 'tcx>(
                         }
                     }
                 } else {
-                    let span = sess.source_map().def_span(span);
+                    let span = sess.source_map().guess_head_span(span);
                     sess.span_err(span, "function should have one argument");
                 }
             } else {
@@ -1659,11 +1661,14 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: DefId, span:
             _ => unreachable!(),
         };
 
-        tcx.sess.span_err(span, &format!(
+        tcx.sess.span_err(
+            span,
+            &format!(
             "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
              a parent scope",
             if is_async { "async fn" } else { "impl Trait" },
-        ));
+        ),
+        );
     }
 }
 
@@ -1841,8 +1846,8 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
         Ok(ConstValue::ByRef { alloc, .. }) => {
             if alloc.relocations().len() != 0 {
                 let msg = "statics with a custom `#[link_section]` must be a \
-                       simple list of bytes on the wasm target with no \
-                       extra levels of indirection such as references";
+                           simple list of bytes on the wasm target with no \
+                           extra levels of indirection such as references";
                 tcx.sess.span_err(span, msg);
             }
         }
@@ -1937,7 +1942,7 @@ fn check_specialization_validity<'tcx>(
             // grandparent. In that case, if parent is a `default impl`, inherited items use the
             // "defaultness" from the grandparent, else they are final.
             None => {
-                if traits::impl_is_default(tcx, parent_impl.def_id()) {
+                if tcx.impl_defaultness(parent_impl.def_id()).is_default() {
                     None
                 } else {
                     Some(Err(parent_impl.def_id()))
@@ -1962,13 +1967,31 @@ fn check_impl_items_against_trait<'tcx>(
     impl_trait_ref: ty::TraitRef<'tcx>,
     impl_item_refs: &[hir::ImplItemRef<'_>],
 ) {
-    let impl_span = tcx.sess.source_map().def_span(full_impl_span);
+    let impl_span = tcx.sess.source_map().guess_head_span(full_impl_span);
 
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
     // isn't populated for such impls.
     if impl_trait_ref.references_error() {
         return;
+    }
+
+    // Negative impls are not expected to have any items
+    match tcx.impl_polarity(impl_id) {
+        ty::ImplPolarity::Reservation | ty::ImplPolarity::Positive => {}
+        ty::ImplPolarity::Negative => {
+            if let [first_item_ref, ..] = impl_item_refs {
+                let first_item_span = tcx.hir().impl_item(first_item_ref.id).span;
+                struct_span_err!(
+                    tcx.sess,
+                    first_item_span,
+                    E0749,
+                    "negative impls cannot have any items"
+                )
+                .emit();
+            }
+            return;
+        }
     }
 
     // Locate trait definition and items
@@ -2010,7 +2033,7 @@ fn check_impl_items_against_trait<'tcx>(
                             impl_item.span,
                             E0323,
                             "item `{}` is an associated const, \
-                              which doesn't match its trait `{}`",
+                             which doesn't match its trait `{}`",
                             ty_impl_item.ident,
                             impl_trait_ref.print_only_trait_path()
                         );
@@ -2091,10 +2114,10 @@ fn check_impl_items_against_trait<'tcx>(
         for trait_item in tcx.associated_items(impl_trait_ref.def_id).in_definition_order() {
             let is_implemented = ancestors
                 .leaf_def(tcx, trait_item.ident, trait_item.kind)
-                .map(|node_item| !node_item.node.is_from_trait())
+                .map(|node_item| !node_item.defining_node.is_from_trait())
                 .unwrap_or(false);
 
-            if !is_implemented && !traits::impl_is_default(tcx, impl_id) {
+            if !is_implemented && tcx.impl_defaultness(impl_id).is_final() {
                 if !trait_item.defaultness.has_value() {
                     missing_items.push(*trait_item);
                 }
@@ -2508,7 +2531,7 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
     if !adt.repr.transparent() {
         return;
     }
-    let sp = tcx.sess.source_map().def_span(sp);
+    let sp = tcx.sess.source_map().guess_head_span(sp);
 
     if adt.is_union() && !tcx.features().transparent_unions {
         feature_err(
@@ -2656,14 +2679,14 @@ pub fn check_enum<'tcx>(
     check_transparent(tcx, sp, def_id);
 }
 
-fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span, qpath: &QPath<'_>) {
+fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span) {
     struct_span_err!(
         tcx.sess,
         span,
         E0533,
-        "expected unit struct, unit variant or constant, found {} `{}`",
+        "expected unit struct, unit variant or constant, found {}{}",
         res.descr(),
-        hir::print::to_string(&tcx.hir(), |s| s.print_qpath(qpath, false))
+        tcx.sess.source_map().span_to_snippet(span).map_or(String::new(), |s| format!(" `{}`", s)),
     )
     .emit();
 }
@@ -3418,8 +3441,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // In that case, fallback to Error.
     // The return value indicates whether fallback has occurred.
     fn fallback_if_possible(&self, ty: Ty<'tcx>, mode: FallbackMode) -> bool {
-        use rustc::ty::error::UnconstrainedNumeric::Neither;
-        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
+        use rustc_middle::ty::error::UnconstrainedNumeric::Neither;
+        use rustc_middle::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
 
         assert!(ty.is_ty_infer());
         let fallback = match self.type_is_unconstrained_numeric(ty) {
@@ -3554,7 +3577,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let adjusted_ty = autoderef.unambiguous_final_ty(self);
         debug!(
             "try_index_step(expr={:?}, base_expr={:?}, adjusted_ty={:?}, \
-                               index_ty={:?})",
+             index_ty={:?})",
             expr, base_expr, adjusted_ty, index_ty
         );
 
@@ -3875,7 +3898,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
 
-            if let Some(def_s) = def_span.map(|sp| tcx.sess.source_map().def_span(sp)) {
+            if let Some(def_s) = def_span.map(|sp| tcx.sess.source_map().guess_head_span(sp)) {
                 err.span_label(def_s, "defined here");
             }
             if sugg_unit {
@@ -4705,7 +4728,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 err.span_label(
                                     fn_span,
                                     "implicitly returns `()` as its body has no tail or `return` \
-                                 expression",
+                                     expression",
                                 );
                             }
                         },
@@ -4966,7 +4989,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (&found.kind, self.suggest_fn_call(err, expr, expected, found))
         {
             if let Some(sp) = self.tcx.hir().span_if_local(*def_id) {
-                let sp = self.sess().source_map().def_span(sp);
+                let sp = self.sess().source_map().guess_head_span(sp);
                 err.span_label(sp, &format!("{} defined here", found));
             }
         } else if !self.check_for_cast(err, expr, found, expected) {
@@ -5577,11 +5600,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match self.at(&self.misc(span), self.param_env).sup(impl_ty, self_ty) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
-                    self.tcx.sess.delay_span_bug(span, &format!(
+                    self.tcx.sess.delay_span_bug(
+                        span,
+                        &format!(
                         "instantiate_value_path: (UFCS) {:?} was a subtype of {:?} but now is not?",
                         self_ty,
                         impl_ty,
-                    ));
+                    ),
+                    );
                 }
             }
         }
@@ -5767,7 +5793,7 @@ fn fatally_break_rust(sess: &Session) {
     handler.note_without_error("the compiler expectedly panicked. this is a feature.");
     handler.note_without_error(
         "we would appreciate a joke overview: \
-        https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675",
+         https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675",
     );
     handler.note_without_error(&format!(
         "rustc {} running on {}",

@@ -4,7 +4,7 @@
 
 struct FakeArray<T, const N: usize>(T);
 
-impl<T, const N: usize> FakeArray<T, { N }> {
+impl<T, const N: usize> FakeArray<T, N> {
     fn len(&self) -> usize {
         N
     }

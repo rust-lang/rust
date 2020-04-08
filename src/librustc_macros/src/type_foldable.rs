@@ -11,25 +11,25 @@ pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::
         vi.construct(|_, index| {
             let bind = &bindings[index];
             quote! {
-                ::rustc::ty::fold::TypeFoldable::fold_with(#bind, __folder)
+                ::rustc_middle::ty::fold::TypeFoldable::fold_with(#bind, __folder)
             }
         })
     });
     let body_visit = s.fold(false, |acc, bind| {
-        quote! { #acc || ::rustc::ty::fold::TypeFoldable::visit_with(#bind, __folder) }
+        quote! { #acc || ::rustc_middle::ty::fold::TypeFoldable::visit_with(#bind, __folder) }
     });
 
     s.bound_impl(
-        quote!(::rustc::ty::fold::TypeFoldable<'tcx>),
+        quote!(::rustc_middle::ty::fold::TypeFoldable<'tcx>),
         quote! {
-            fn super_fold_with<__F: ::rustc::ty::fold::TypeFolder<'tcx>>(
+            fn super_fold_with<__F: ::rustc_middle::ty::fold::TypeFolder<'tcx>>(
                 &self,
                 __folder: &mut __F
             ) -> Self {
                 match *self { #body_fold }
             }
 
-            fn super_visit_with<__F: ::rustc::ty::fold::TypeVisitor<'tcx>>(
+            fn super_visit_with<__F: ::rustc_middle::ty::fold::TypeVisitor<'tcx>>(
                 &self,
                 __folder: &mut __F
             ) -> bool {

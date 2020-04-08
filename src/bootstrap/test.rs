@@ -21,7 +21,7 @@ use crate::flags::Subcommand;
 use crate::native;
 use crate::tool::{self, SourceType, Tool};
 use crate::toolstate::ToolState;
-use crate::util::{self, dylib_path, dylib_path_var};
+use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var};
 use crate::Crate as CargoCrate;
 use crate::{envify, DocTests, GitRepo, Mode};
 
@@ -750,6 +750,35 @@ impl Step for Tidy {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ExpandYamlAnchors;
+
+impl Step for ExpandYamlAnchors {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    /// Ensure the `generate-ci-config` tool was run locally.
+    ///
+    /// The tool in `src/tools` reads the CI definition in `src/ci/builders.yml` and generates the
+    /// appropriate configuration for all our CI providers. This step ensures the tool was called
+    /// by the user before committing CI changes.
+    fn run(self, builder: &Builder<'_>) {
+        builder.info("Ensuring the YAML anchors in the GitHub Actions config were expanded");
+        try_run(
+            builder,
+            &mut builder.tool_cmd(Tool::ExpandYamlAnchors).arg("check").arg(&builder.src),
+        );
+    }
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/expand-yaml-anchors")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(ExpandYamlAnchors);
+    }
+}
+
 fn testdir(builder: &Builder<'_>, host: Interned<String>) -> PathBuf {
     builder.out.join(host).join("test")
 }
@@ -1147,6 +1176,15 @@ impl Step for Compiletest {
             }
             if !builder.is_rust_llvm(target) {
                 cmd.arg("--system-llvm");
+            }
+
+            // Tests that use compiler libraries may inherit the `-lLLVM` link
+            // requirement, but the `-L` library path is not propagated across
+            // separate compilations. We can add LLVM's library path to the
+            // platform-specific environment variable as a workaround.
+            if !builder.config.dry_run && suite.ends_with("fulldeps") {
+                let llvm_libdir = output(Command::new(&llvm_config).arg("--libdir"));
+                add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cmd);
             }
 
             // Only pass correct values for these flags for the `run-make` suite as it

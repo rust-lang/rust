@@ -215,11 +215,11 @@
 use crate::creader::Library;
 use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
-use rustc::middle::cstore::{CrateSource, MetadataLoader};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_middle::middle::cstore::{CrateSource, MetadataLoader};
 use rustc_session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{config, CrateDisambiguator, Session};

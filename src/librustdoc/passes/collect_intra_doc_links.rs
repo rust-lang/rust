@@ -1,4 +1,3 @@
-use rustc::ty;
 use rustc_ast::ast::{self, Ident};
 use rustc_errors::Applicability;
 use rustc_expand::base::SyntaxExtensionKind;
@@ -10,6 +9,7 @@ use rustc_hir::def::{
     PerNS, Res,
 };
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty;
 use rustc_resolve::ParentScope;
 use rustc_session::lint;
 use rustc_span::symbol::Symbol;
@@ -135,7 +135,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
         // In case we're in a module, try to resolve the relative path.
         if let Some(module_id) = parent_id.or(self.mod_ids.last().cloned()) {
-            let module_id = cx.tcx.hir().hir_to_node_id(module_id);
+            let module_id = cx.tcx.hir().hir_id_to_node_id(module_id);
             let result = cx.enter_resolver(|resolver| {
                 resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
             });
@@ -880,7 +880,7 @@ fn handle_variant(
     res: Res,
     extra_fragment: &Option<String>,
 ) -> Result<(Res, Option<String>), ErrorKind> {
-    use rustc::ty::DefIdTree;
+    use rustc_middle::ty::DefIdTree;
 
     if extra_fragment.is_some() {
         return Err(ErrorKind::AnchorFailure("variants cannot be followed by anchors"));

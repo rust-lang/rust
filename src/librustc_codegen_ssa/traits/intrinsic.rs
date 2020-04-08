@@ -1,6 +1,6 @@
 use super::BackendTypes;
 use crate::mir::operand::OperandRef;
-use rustc::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_target::abi::call::FnAbi;
 

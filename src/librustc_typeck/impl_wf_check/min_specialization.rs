@@ -67,16 +67,16 @@
 
 use crate::constrained_generic_params as cgp;
 
-use rustc::middle::region::ScopeTree;
-use rustc::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
-use rustc::ty::trait_def::TraitSpecializationKind;
-use rustc::ty::{self, InstantiatedPredicates, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, RegionckMode, TyCtxtInferExt};
 use rustc_infer::traits::specialization_graph::Node;
+use rustc_middle::middle::region::ScopeTree;
+use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
+use rustc_middle::ty::trait_def::TraitSpecializationKind;
+use rustc_middle::ty::{self, InstantiatedPredicates, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::{self, translate_substs, wf};
 

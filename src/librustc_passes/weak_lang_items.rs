@@ -1,13 +1,13 @@
 //! Validity checking for weak lang items
 
-use rustc::middle::lang_items;
-use rustc::middle::lang_items::whitelisted;
-use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::weak_lang_items::WEAK_ITEMS_REFS;
+use rustc_middle::middle::lang_items;
+use rustc_middle::middle::lang_items::whitelisted;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::config;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;

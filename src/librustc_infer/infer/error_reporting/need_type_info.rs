@@ -1,13 +1,13 @@
 use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::InferCtxt;
-use rustc::hir::map::Map;
-use rustc::ty::print::Print;
-use rustc::ty::{self, DefIdTree, Infer, Ty, TyVar};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnRetTy, HirId, Local, Pat};
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::print::Print;
+use rustc_middle::ty::{self, DefIdTree, Infer, Ty, TyVar};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
 use rustc_span::Span;

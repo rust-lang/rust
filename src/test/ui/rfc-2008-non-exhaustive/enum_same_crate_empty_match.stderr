@@ -18,6 +18,7 @@ LL |       match NonExhaustiveEnum::Unit {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^ patterns `Unit`, `Tuple(_)` and `Struct { .. }` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `NonExhaustiveEnum`
 
 error[E0004]: non-exhaustive patterns: `Unit`, `Tuple(_)` and `Struct { .. }` not covered
   --> $DIR/enum_same_crate_empty_match.rs:35:11
@@ -39,6 +40,7 @@ LL |       match NormalEnum::Unit {}
    |             ^^^^^^^^^^^^^^^^ patterns `Unit`, `Tuple(_)` and `Struct { .. }` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `NormalEnum`
 
 error: aborting due to 2 previous errors
 

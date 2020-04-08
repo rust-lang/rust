@@ -1,24 +1,24 @@
 error[E0668]: malformed inline assembly
   --> $DIR/inline-asm-bad-constraint.rs:22:9
    |
-LL |         asm!("" :"={rax"(rax))
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+LL |         llvm_asm!("" :"={rax"(rax))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0668]: malformed inline assembly
   --> $DIR/inline-asm-bad-constraint.rs:30:9
    |
-LL |         asm!("callq $0" : : "0"(foo))
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         llvm_asm!("callq $0" : : "0"(foo))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0668]: malformed inline assembly
   --> $DIR/inline-asm-bad-constraint.rs:37:9
    |
-LL |         asm!("addb $1, $0" : "={rax}"((0i32, rax)));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         llvm_asm!("addb $1, $0" : "={rax}"((0i32, rax)));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

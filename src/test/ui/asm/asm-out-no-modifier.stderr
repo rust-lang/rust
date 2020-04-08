@@ -1,8 +1,8 @@
 error[E0661]: output operand constraint lacks '=' or '+'
-  --> $DIR/asm-out-no-modifier.rs:22:29
+  --> $DIR/asm-out-no-modifier.rs:22:34
    |
-LL |         asm!("mov $1, $0" : "r"(x) : "r"(5));
-   |                             ^^^
+LL |         llvm_asm!("mov $1, $0" : "r"(x) : "r"(5));
+   |                                  ^^^
 
 error: aborting due to previous error
 

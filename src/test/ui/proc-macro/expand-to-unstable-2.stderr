@@ -1,12 +1,10 @@
-error[E0658]: attributes starting with `rustc` are reserved for use by the `rustc` compiler
+error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
   --> $DIR/expand-to-unstable-2.rs:10:10
    |
 LL | #[derive(Unstable)]
    |          ^^^^^^^^
    |
-   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0658`.

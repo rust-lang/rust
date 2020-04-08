@@ -1,8 +1,8 @@
 use crate::build::matches::MatchPair;
 use crate::build::Builder;
 use crate::hair::*;
-use rustc::mir::*;
-use rustc::ty;
+use rustc_middle::mir::*;
+use rustc_middle::ty;
 use smallvec::SmallVec;
 use std::convert::TryInto;
 use std::u32;

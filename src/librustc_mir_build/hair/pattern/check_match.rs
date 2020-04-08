@@ -4,7 +4,6 @@ use super::_match::{expand_pattern, is_useful, MatchCheckCtxt, Matrix, PatStack}
 
 use super::{PatCtxt, PatKind, PatternError};
 
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_ast::ast::Mutability;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -12,6 +11,7 @@ use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{HirId, Pat};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::builtin::BINDINGS_WITH_VARIANT_NAME;
 use rustc_session::lint::builtin::{IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS};
 use rustc_session::parse::feature_err;
@@ -91,14 +91,14 @@ impl PatCtxt<'_, '_> {
                 }
                 PatternError::FloatBug => {
                     // FIXME(#31407) this is only necessary because float parsing is buggy
-                    ::rustc::mir::interpret::struct_error(
+                    ::rustc_middle::mir::interpret::struct_error(
                         self.tcx.at(pat_span),
                         "could not evaluate float literal (see issue #31407)",
                     )
                     .emit();
                 }
                 PatternError::NonConstPath(span) => {
-                    ::rustc::mir::interpret::struct_error(
+                    ::rustc_middle::mir::interpret::struct_error(
                         self.tcx.at(span),
                         "runtime values cannot be referenced in patterns",
                     )
@@ -241,6 +241,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             }
 
             adt_defined_here(cx, &mut err, pattern_ty, &witnesses);
+            err.note(&format!("the matched value is of type `{}`", pattern_ty));
             err.emit();
         });
     }
@@ -360,7 +361,7 @@ fn check_arms<'p, 'tcx>(
     let mut catchall = None;
     for (arm_index, (pat, id, has_guard)) in arms.iter().copied().enumerate() {
         let v = PatStack::from_pattern(pat);
-        match is_useful(cx, &seen, &v, LeaveOutWitness, id, true) {
+        match is_useful(cx, &seen, &v, LeaveOutWitness, id, has_guard, true) {
             NotUseful => {
                 match source {
                     hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => bug!(),
@@ -410,7 +411,10 @@ fn check_not_useful<'p, 'tcx>(
 ) -> Result<(), Vec<super::Pat<'tcx>>> {
     let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(ty));
     let v = PatStack::from_pattern(wild_pattern);
-    match is_useful(cx, matrix, &v, ConstructWitness, hir_id, true) {
+
+    // false is given for `is_under_guard` argument due to the wildcard
+    // pattern not having a guard
+    match is_useful(cx, matrix, &v, ConstructWitness, hir_id, false, true) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
         UsefulWithWitness(pats) => Err(if pats.is_empty() {
             bug!("Exhaustiveness check returned no witnesses")
@@ -480,6 +484,7 @@ fn check_exhaustive<'p, 'tcx>(
         "ensure that all possible cases are being handled, \
          possibly by adding wildcards or more match arms",
     );
+    err.note(&format!("the matched value is of type `{}`", scrut_ty));
     err.emit();
 }
 

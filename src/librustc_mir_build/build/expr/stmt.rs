@@ -1,8 +1,8 @@
 use crate::build::scope::BreakableTarget;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
-use rustc::middle::region;
-use rustc::mir::*;
+use rustc_middle::middle::region;
+use rustc_middle::mir::*;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Builds a block of MIR statements to evaluate the HAIR `expr`.
@@ -50,7 +50,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } else {
                     let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
                     let lhs = unpack!(block = this.as_place(block, lhs));
-                    this.cfg.push_assign(block, source_info, &lhs, rhs);
+                    this.cfg.push_assign(block, source_info, lhs, rhs);
                 }
 
                 this.block_context.pop();
@@ -82,7 +82,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block =
                         this.build_binary_op(block, op, expr_span, lhs_ty, Operand::Copy(lhs), rhs)
                 );
-                this.cfg.push_assign(block, source_info, &lhs, result);
+                this.cfg.push_assign(block, source_info, lhs, result);
 
                 this.block_context.pop();
                 block.unit()
@@ -96,8 +96,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Return { value } => {
                 this.break_scope(block, value, BreakableTarget::Return, source_info)
             }
-            ExprKind::InlineAsm { asm, outputs, inputs } => {
-                debug!("stmt_expr InlineAsm block_context.push(SubExpr) : {:?}", expr2);
+            ExprKind::LlvmInlineAsm { asm, outputs, inputs } => {
+                debug!("stmt_expr LlvmInlineAsm block_context.push(SubExpr) : {:?}", expr2);
                 this.block_context.push(BlockFrame::SubExpr);
                 let outputs = outputs
                     .into_iter()
@@ -115,7 +115,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     Statement {
                         source_info,
-                        kind: StatementKind::InlineAsm(box InlineAsm {
+                        kind: StatementKind::LlvmInlineAsm(box LlvmInlineAsm {
                             asm: asm.clone(),
                             outputs,
                             inputs,

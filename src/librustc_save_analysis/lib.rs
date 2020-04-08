@@ -8,10 +8,6 @@ mod dumper;
 mod span_utils;
 mod sig;
 
-use rustc::middle::cstore::ExternCrate;
-use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, DefIdTree, TyCtxt};
-use rustc::{bug, span_bug};
 use rustc_ast::ast::{self, Attribute, NodeId, PatKind, DUMMY_NODE_ID};
 use rustc_ast::util::comments::strip_doc_comment_decoration;
 use rustc_ast::visit::{self, Visitor};
@@ -20,6 +16,10 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind as HirDefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
+use rustc_middle::middle::cstore::ExternCrate;
+use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::ty::{self, DefIdTree, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, Input, OutputType};
 use rustc_session::output::{filename_for_metadata, out_filename};
 use rustc_span::source_map::Spanned;
@@ -404,14 +404,15 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Some(impl_id) => match self.tcx.hir().get_if_local(impl_id) {
                 Some(Node::Item(item)) => match item.kind {
                     hir::ItemKind::Impl { ref self_ty, .. } => {
+                        let hir = self.tcx.hir();
+
                         let mut qualname = String::from("<");
-                        qualname.push_str(&self.tcx.hir().hir_to_pretty_string(self_ty.hir_id));
+                        qualname.push_str(&rustc_hir_pretty::id_to_string(&hir, self_ty.hir_id));
 
                         let trait_id = self.tcx.trait_id_of_impl(impl_id);
                         let mut docs = String::new();
                         let mut attrs = vec![];
-                        let hir_id = self.tcx.hir().node_to_hir_id(id);
-                        if let Some(Node::ImplItem(item)) = self.tcx.hir().find(hir_id) {
+                        if let Some(Node::ImplItem(item)) = hir.find(hir.node_id_to_hir_id(id)) {
                             docs = self.docs_for_attrs(&item.attrs);
                             attrs = item.attrs.to_vec();
                         }
@@ -451,7 +452,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 Some(def_id) => {
                     let mut docs = String::new();
                     let mut attrs = vec![];
-                    let hir_id = self.tcx.hir().node_to_hir_id(id);
+                    let hir_id = self.tcx.hir().node_id_to_hir_id(id);
 
                     if let Some(Node::TraitItem(item)) = self.tcx.hir().find(hir_id) {
                         docs = self.docs_for_attrs(&item.attrs);
@@ -510,7 +511,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
-        let expr_hir_id = self.tcx.hir().node_to_hir_id(expr.id);
+        let expr_hir_id = self.tcx.hir().node_id_to_hir_id(expr.id);
         let hir_node = self.tcx.hir().expect_expr(expr_hir_id);
         let ty = self.tables.expr_ty_adjusted_opt(&hir_node);
         if ty.is_none() || ty.unwrap().kind == ty::Error {
@@ -518,7 +519,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         }
         match expr.kind {
             ast::ExprKind::Field(ref sub_ex, ident) => {
-                let sub_ex_hir_id = self.tcx.hir().node_to_hir_id(sub_ex.id);
+                let sub_ex_hir_id = self.tcx.hir().node_id_to_hir_id(sub_ex.id);
                 let hir_node = match self.tcx.hir().find(sub_ex_hir_id) {
                     Some(Node::Expr(expr)) => expr,
                     _ => {
@@ -572,7 +573,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprKind::MethodCall(ref seg, ..) => {
-                let expr_hir_id = self.tcx.hir().definitions().node_to_hir_id(expr.id);
+                let expr_hir_id = self.tcx.hir().definitions().node_id_to_hir_id(expr.id);
                 let method_id = match self.tables.type_dependent_def_id(expr_hir_id) {
                     Some(id) => id,
                     None => {
@@ -590,7 +591,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 Some(Data::RefData(Ref {
                     kind: RefKind::Function,
                     span,
-                    ref_id: def_id.or(decl_id).map(id_from_def_id).unwrap_or_else(|| null_id()),
+                    ref_id: def_id.or(decl_id).map(id_from_def_id).unwrap_or_else(null_id),
                 }))
             }
             ast::ExprKind::Path(_, ref path) => {
@@ -604,7 +605,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_path_res(&self, id: NodeId) -> Res {
-        let hir_id = self.tcx.hir().node_to_hir_id(id);
+        let hir_id = self.tcx.hir().node_id_to_hir_id(id);
         match self.tcx.hir().get(hir_id) {
             Node::TraitRef(tr) => tr.path.res,
 
@@ -618,7 +619,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 Some(res) if res != Res::Err => res,
                 _ => {
                     let parent_node = self.tcx.hir().get_parent_node(hir_id);
-                    self.get_path_res(self.tcx.hir().hir_to_node_id(parent_node))
+                    self.get_path_res(self.tcx.hir().hir_id_to_node_id(parent_node))
                 }
             },
 
@@ -680,7 +681,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Res::Local(id) => Some(Ref {
                 kind: RefKind::Variable,
                 span,
-                ref_id: id_from_node_id(self.tcx.hir().hir_to_node_id(id), self),
+                ref_id: id_from_node_id(self.tcx.hir().hir_id_to_node_id(id), self),
             }),
             Res::Def(HirDefKind::Trait, def_id) if fn_type(path_seg) => {
                 Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(def_id) })

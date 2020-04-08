@@ -2,14 +2,14 @@
 //!
 //! This contains the dataflow analysis used to track `Qualif`s on complex control-flow graphs.
 
-use rustc::mir::visit::Visitor;
-use rustc::mir::{self, BasicBlock, Local, Location};
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::{self, BasicBlock, Local, Location};
 
 use std::marker::PhantomData;
 
 use super::{qualifs, Item, Qualif};
-use crate::dataflow::{self as old_dataflow, generic as dataflow};
+use crate::dataflow;
 
 /// A `Visitor` that propagates qualifs between locals. This defines the transfer function of
 /// `FlowSensitiveAnalysis`.
@@ -68,7 +68,7 @@ where
         _block: BasicBlock,
         _func: &mir::Operand<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        return_place: &mir::Place<'tcx>,
+        return_place: mir::Place<'tcx>,
     ) {
         // We cannot reason about another function's internals, so use conservative type-based
         // qualification for the result of a function call.
@@ -76,7 +76,7 @@ where
         let qualif = Q::in_any_value_of_ty(self.item, return_ty);
 
         if !return_place.is_indirect() {
-            self.assign_qualif_direct(return_place, qualif);
+            self.assign_qualif_direct(&return_place, qualif);
         }
     }
 }
@@ -165,7 +165,7 @@ where
     }
 }
 
-impl<Q> old_dataflow::BottomValue for FlowSensitiveAnalysis<'_, '_, '_, Q> {
+impl<Q> dataflow::BottomValue for FlowSensitiveAnalysis<'_, '_, '_, Q> {
     const BOTTOM_VALUE: bool = false;
 }
 
@@ -214,7 +214,7 @@ where
         block: BasicBlock,
         func: &mir::Operand<'tcx>,
         args: &[mir::Operand<'tcx>],
-        return_place: &mir::Place<'tcx>,
+        return_place: mir::Place<'tcx>,
     ) {
         self.transfer_function(state).apply_call_return_effect(block, func, args, return_place)
     }

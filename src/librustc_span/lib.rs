@@ -9,6 +9,7 @@
 #![feature(const_if_match)]
 #![feature(const_fn)]
 #![feature(const_panic)]
+#![cfg_attr(not(bootstrap), feature(negative_impls))]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![feature(specialization)]
@@ -1543,7 +1544,7 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
-/// instead of implementing everything in librustc.
+/// instead of implementing everything in librustc_middle.
 pub trait HashStableContext {
     fn hash_spans(&self) -> bool;
     fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);

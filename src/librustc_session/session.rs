@@ -150,7 +150,7 @@ pub struct PerfStats {
     /// Total number of values canonicalized queries constructed.
     pub queries_canonicalized: AtomicUsize,
     /// Number of times this query is invoked.
-    pub normalize_ty_after_erasing_regions: AtomicUsize,
+    pub normalize_generic_arg_after_erasing_regions: AtomicUsize,
     /// Number of times this query is invoked.
     pub normalize_projection_ty: AtomicUsize,
 }
@@ -707,8 +707,8 @@ impl Session {
             self.perf_stats.queries_canonicalized.load(Ordering::Relaxed)
         );
         println!(
-            "normalize_ty_after_erasing_regions:            {}",
-            self.perf_stats.normalize_ty_after_erasing_regions.load(Ordering::Relaxed)
+            "normalize_generic_arg_after_erasing_regions:   {}",
+            self.perf_stats.normalize_generic_arg_after_erasing_regions.load(Ordering::Relaxed)
         );
         println!(
             "normalize_projection_ty:                       {}",
@@ -1080,7 +1080,7 @@ fn build_session_(
             symbol_hash_time: Lock::new(Duration::from_secs(0)),
             decode_def_path_tables_time: Lock::new(Duration::from_secs(0)),
             queries_canonicalized: AtomicUsize::new(0),
-            normalize_ty_after_erasing_regions: AtomicUsize::new(0),
+            normalize_generic_arg_after_erasing_regions: AtomicUsize::new(0),
             normalize_projection_ty: AtomicUsize::new(0),
         },
         code_stats: Default::default(),

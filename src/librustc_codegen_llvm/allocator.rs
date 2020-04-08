@@ -1,8 +1,8 @@
 use crate::attributes;
 use libc::c_uint;
-use rustc::bug;
-use rustc::ty::TyCtxt;
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
+use rustc_middle::bug;
+use rustc_middle::ty::TyCtxt;
 
 use crate::llvm::{self, False, True};
 use crate::ModuleLlvm;

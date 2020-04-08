@@ -1,14 +1,14 @@
-use rustc::ty::error::{ExpectedFound, TypeError};
-use rustc::ty::subst::{InternalSubsts, Subst};
-use rustc::ty::util::ExplicitSelf;
-use rustc::ty::{self, GenericParamDefKind, TyCtxt};
-use rustc::util::common::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;
 use rustc_hir::{GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::util::ExplicitSelf;
+use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
+use rustc_middle::util::common::ErrorReported;
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
@@ -35,7 +35,7 @@ crate fn compare_impl_method<'tcx>(
 ) {
     debug!("compare_impl_method(impl_trait_ref={:?})", impl_trait_ref);
 
-    let impl_m_span = tcx.sess.source_map().def_span(impl_m_span);
+    let impl_m_span = tcx.sess.source_map().guess_head_span(impl_m_span);
 
     if let Err(ErrorReported) = compare_self_type(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)
     {
@@ -363,7 +363,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
     // the moment, give a kind of vague error message.
     if trait_params != impl_params {
         let item_kind = assoc_item_kind_str(impl_m);
-        let def_span = tcx.sess.source_map().def_span(span);
+        let def_span = tcx.sess.source_map().guess_head_span(span);
         let span = tcx.hir().get_generics(impl_m.def_id).map(|g| g.span).unwrap_or(def_span);
         let mut err = struct_span_err!(
             tcx.sess,
@@ -375,7 +375,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
         );
         err.span_label(span, &format!("lifetimes do not match {} in trait", item_kind));
         if let Some(sp) = tcx.hir().span_if_local(trait_m.def_id) {
-            let def_sp = tcx.sess.source_map().def_span(sp);
+            let def_sp = tcx.sess.source_map().guess_head_span(sp);
             let sp = tcx.hir().get_generics(trait_m.def_id).map(|g| g.span).unwrap_or(def_sp);
             err.span_label(
                 sp,

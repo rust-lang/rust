@@ -107,14 +107,14 @@ impl CoverageInjector<'_, '_> {
     }
 
     fn coverage_count_fn_path(&mut self, print_coverage_report: bool) -> P<Expr> {
-        let fn_name = if print_coverage_report {
-            "count_and_report"
-        } else {
-            "count"
-        };
+        let fn_name = if print_coverage_report { "count_and_report" } else { "count" };
         let path = Path {
             span: self.span.shrink_to_lo(),
-            segments: vec![self.path_segment("std"), self.path_segment("coverage"), self.path_segment(fn_name)],
+            segments: vec![
+                self.path_segment("std"),
+                self.path_segment("coverage"),
+                self.path_segment(fn_name),
+            ],
         };
         self.expr(ExprKind::Path(None, path), self.span.shrink_to_lo())
     }
@@ -139,13 +139,10 @@ struct CoverageVisitor<'res, 'internal> {
 }
 
 impl CoverageVisitor<'_, '_> {
-
-    fn new<'res, 'internal>(resolver: &'res mut Resolver<'internal>) -> CoverageVisitor<'res, 'internal> {
-        CoverageVisitor {
-            resolver,
-            function_stack: vec![],
-            main_block_id: None,
-        }
+    fn new<'res, 'internal>(
+        resolver: &'res mut Resolver<'internal>,
+    ) -> CoverageVisitor<'res, 'internal> {
+        CoverageVisitor { resolver, function_stack: vec![], main_block_id: None }
     }
 
     fn next_ast_node_id(&mut self) -> NodeId {
@@ -161,10 +158,21 @@ impl CoverageVisitor<'_, '_> {
     }
 
     fn empty_tuple(&mut self, span: Span) -> P<Expr> {
-        P(Expr { kind: ExprKind::Tup(vec![]), span, attrs: AttrVec::new(), id: self.next_ast_node_id() })
+        P(Expr {
+            kind: ExprKind::Tup(vec![]),
+            span,
+            attrs: AttrVec::new(),
+            id: self.next_ast_node_id(),
+        })
     }
+}
 
-    fn wrap_and_count_expr(&mut self, coverage_span: &Span, wrapped_expr: P<Expr>, print_coverage_report: bool) -> P<Expr> {
+    fn wrap_and_count_expr(
+        &mut self,
+        coverage_span: &Span,
+        wrapped_expr: P<Expr>,
+        print_coverage_report: bool,
+    ) -> P<Expr> {
         let mut injector = CoverageInjector::at(&mut self.resolver, wrapped_expr.span.clone());
         let counter_hash = CoverageRegion::generate_hash(coverage_span);
         let coverage_count_fn = injector.coverage_count_fn_path(print_coverage_report);
@@ -172,11 +180,29 @@ impl CoverageVisitor<'_, '_> {
         injector.call(coverage_count_fn, args)
     }
 
-    fn wrap_and_count_stmt(&mut self, coverage_span: &Span, wrapped_expr: P<Expr>, print_coverage_report: bool) -> Stmt {
-        Stmt { id: self.next_ast_node_id(), span: wrapped_expr.span.clone(), kind: StmtKind::Semi(self.wrap_and_count_expr(coverage_span, wrapped_expr, print_coverage_report)) }
+    fn wrap_and_count_stmt(
+        &mut self,
+        coverage_span: &Span,
+        wrapped_expr: P<Expr>,
+        print_coverage_report: bool,
+    ) -> Stmt {
+        Stmt {
+            id: self.next_ast_node_id(),
+            span: wrapped_expr.span.clone(),
+            kind: StmtKind::Semi(self.wrap_and_count_expr(
+                coverage_span,
+                wrapped_expr,
+                print_coverage_report,
+            )),
+        }
     }
 
-    fn count_stmt(&mut self, coverage_span: &Span, inject_site: Span, print_coverage_report: bool) -> Stmt {
+    fn count_stmt(
+        &mut self,
+        coverage_span: &Span,
+        inject_site: Span,
+        print_coverage_report: bool,
+    ) -> Stmt {
         let empty_tuple = self.empty_tuple(inject_site);
         self.wrap_and_count_stmt(coverage_span, empty_tuple, print_coverage_report)
     }
@@ -184,7 +210,6 @@ impl CoverageVisitor<'_, '_> {
     fn instrument_block(&mut self, block: &mut Block) {
         trace!("instrument_block: {:?}", block);
         if let Some(mut last) = block.stmts.pop() {
-
             let mut report = false;
             if let Some(main) = self.main_block_id {
                 report = block.id == main
@@ -202,29 +227,47 @@ impl CoverageVisitor<'_, '_> {
                     }
 
                     match &mut expr.deref_mut().kind {
-                        ExprKind::Break(_, result_expr) | ExprKind::Ret(result_expr) | ExprKind::Yield(result_expr) => {
+                        ExprKind::Break(_, result_expr)
+                        | ExprKind::Ret(result_expr)
+                        | ExprKind::Yield(result_expr) => {
                             match result_expr.take() {
                                 Some(wrapped_expr) => {
-                                    *result_expr = Some(self.wrap_and_count_expr(&block.span, wrapped_expr, report));
+                                    *result_expr = Some(self.wrap_and_count_expr(
+                                        &block.span,
+                                        wrapped_expr,
+                                        report,
+                                    ));
                                 }
                                 None => {
-                                    block.stmts.push(self.count_stmt(&block.span, last.span.shrink_to_lo(), report));
+                                    block.stmts.push(self.count_stmt(
+                                        &block.span,
+                                        last.span.shrink_to_lo(),
+                                        report,
+                                    ));
                                 }
                             }
                             block.stmts.push(last);
                         }
                         ExprKind::Continue(..) => {
-                            block.stmts.push(self.count_stmt(&block.span, last.span.shrink_to_lo(), report));
+                            block.stmts.push(self.count_stmt(
+                                &block.span,
+                                last.span.shrink_to_lo(),
+                                report,
+                            ));
                             block.stmts.push(last);
                         }
                         _ => {
                             let insert_after_last = last.span.shrink_to_hi();
                             block.stmts.push(last);
-                            block.stmts.push(self.count_stmt(&block.span, insert_after_last, report));
+                            block.stmts.push(self.count_stmt(
+                                &block.span,
+                                insert_after_last,
+                                report,
+                            ));
                         }
                     }
                 }
-                _ => ()
+                _ => (),
             }
         }
     }

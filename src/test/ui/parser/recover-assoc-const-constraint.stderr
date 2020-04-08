@@ -1,0 +1,20 @@
+error: cannot constrain an associated constant to a value
+  --> $DIR/recover-assoc-const-constraint.rs:3:11
+   |
+LL |     bar::<Item = 42>();
+   |           ----^^^--
+   |           |      |
+   |           |      ...cannot be constrained to this value
+   |           this associated constant...
+
+error: cannot constrain an associated constant to a value
+  --> $DIR/recover-assoc-const-constraint.rs:4:11
+   |
+LL |     bar::<Item = { 42 }>();
+   |           ----^^^------
+   |           |      |
+   |           |      ...cannot be constrained to this value
+   |           this associated constant...
+
+error: aborting due to 2 previous errors
+

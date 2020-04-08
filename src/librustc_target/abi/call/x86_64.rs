@@ -2,7 +2,7 @@
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
 use crate::abi::call::{ArgAbi, CastTarget, FnAbi, Reg, RegKind};
-use crate::abi::{self, Abi, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods};
+use crate::abi::{self, Abi, HasDataLayout, LayoutOf, Size, TyAndLayout, TyAndLayoutMethods};
 
 /// Classification of "eightbyte" components.
 // N.B., the order of the variants is from general to specific,
@@ -26,18 +26,18 @@ fn classify_arg<'a, Ty, C>(
     arg: &ArgAbi<'a, Ty>,
 ) -> Result<[Option<Class>; MAX_EIGHTBYTES], Memory>
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     fn classify<'a, Ty, C>(
         cx: &C,
-        layout: TyLayout<'a, Ty>,
+        layout: TyAndLayout<'a, Ty>,
         cls: &mut [Option<Class>],
         off: Size,
     ) -> Result<(), Memory>
     where
-        Ty: TyLayoutMethods<'a, C> + Copy,
-        C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
+        Ty: TyAndLayoutMethods<'a, C> + Copy,
+        C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
     {
         if !off.is_aligned(layout.align.abi) {
             if !layout.is_zst() {
@@ -172,8 +172,8 @@ const MAX_SSE_REGS: usize = 8; // XMM0-7
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
-    Ty: TyLayoutMethods<'a, C> + Copy,
-    C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout,
+    Ty: TyAndLayoutMethods<'a, C> + Copy,
+    C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     let mut int_regs = MAX_INT_REGS;
     let mut sse_regs = MAX_SSE_REGS;

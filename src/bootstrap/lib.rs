@@ -140,6 +140,7 @@ mod format;
 mod install;
 mod metadata;
 mod native;
+mod run;
 mod sanity;
 mod test;
 mod tool;

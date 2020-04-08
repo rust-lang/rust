@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(asm)]
+#![feature(llvm_asm)]
 #![allow(dead_code)]
 
 use std::cell::Cell;
@@ -20,7 +20,7 @@ fn main() {
         let _y: Box<NoisyDrop>;
         let x = Box::new(NoisyDrop(&status));
         unsafe {
-            asm!("mov $1, $0" : "=r"(_y) : "r"(x));
+            llvm_asm!("mov $1, $0" : "=r"(_y) : "r"(x));
         }
         assert_eq!(status.get(), "alive");
     }

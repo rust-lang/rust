@@ -10,18 +10,13 @@
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
 
-use rustc::hir::exports::ExportMap;
-use rustc::hir::map::{DefKey, Definitions};
-use rustc::middle::cstore::{CrateStore, MetadataLoaderDyn};
-use rustc::span_bug;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, DefIdTree, ResolverOutputs};
 use rustc_ast::ast::{self, FloatTy, Ident, IntTy, Name, NodeId, UintTy};
 use rustc_ast::ast::{Crate, CRATE_NODE_ID};
 use rustc_ast::ast::{ItemKind, Path};
@@ -38,9 +33,15 @@ use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX};
+use rustc_hir::definitions::{DefKey, Definitions};
 use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
 use rustc_hir::{GlobMap, TraitMap};
 use rustc_metadata::creader::{CStore, CrateLoader};
+use rustc_middle::hir::exports::ExportMap;
+use rustc_middle::middle::cstore::{CrateStore, MetadataLoaderDyn};
+use rustc_middle::span_bug;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, DefIdTree, ResolverOutputs};
 use rustc_session::lint;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
@@ -2517,7 +2518,8 @@ impl<'a> Resolver<'a> {
             false => "defined",
         };
 
-        let (name, span) = (ident.name, self.session.source_map().def_span(new_binding.span));
+        let (name, span) =
+            (ident.name, self.session.source_map().guess_head_span(new_binding.span));
 
         if let Some(s) = self.name_already_seen.get(&name) {
             if s == &span {
@@ -2558,7 +2560,7 @@ impl<'a> Resolver<'a> {
 
         err.span_label(span, format!("`{}` re{} here", name, new_participle));
         err.span_label(
-            self.session.source_map().def_span(old_binding.span),
+            self.session.source_map().guess_head_span(old_binding.span),
             format!("previous {} of the {} `{}` here", old_noun, old_kind, name),
         );
 
@@ -2806,7 +2808,7 @@ impl<'a> Resolver<'a> {
             ast::Path {
                 span,
                 segments: iter::once(Ident::with_dummy_span(kw::PathRoot))
-                    .chain({ path_str.split("::").skip(1).map(Ident::from_str) })
+                    .chain(path_str.split("::").skip(1).map(Ident::from_str))
                     .map(|i| self.new_ast_path_segment(i))
                     .collect(),
             }
