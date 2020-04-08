@@ -1095,6 +1095,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             obligation.predicate, obligation.cause.span
         );
         let source_map = self.tcx.sess.source_map();
+        let hir = self.tcx.hir();
 
         // Attempt to detect an async-await error by looking at the obligation causes, looking
         // for a generator to be present.
@@ -1178,7 +1179,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let span = self.tcx.def_span(generator_did);
 
         // Do not ICE on closure typeck (#66868).
-        if self.tcx.hir().as_local_hir_id(generator_did).is_none() {
+        if hir.as_local_hir_id(generator_did).is_none() {
             return false;
         }
 
@@ -1204,12 +1205,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
-        let generator_body = self
-            .tcx
-            .hir()
+        let generator_body = hir
             .as_local_hir_id(generator_did)
-            .and_then(|hir_id| self.tcx.hir().maybe_body_owned_by(hir_id))
-            .map(|body_id| self.tcx.hir().body(body_id));
+            .and_then(|hir_id| hir.maybe_body_owned_by(hir_id))
+            .map(|body_id| hir.body(body_id));
         let mut visitor = AwaitsVisitor::default();
         if let Some(body) = generator_body {
             visitor.visit_body(body);
@@ -1219,50 +1218,46 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // Look for a type inside the generator interior that matches the target type to get
         // a span.
         let target_ty_erased = self.tcx.erase_regions(&target_ty);
+        let ty_matches = |ty| -> bool {
+            // Careful: the regions for types that appear in the
+            // generator interior are not generally known, so we
+            // want to erase them when comparing (and anyway,
+            // `Send` and other bounds are generally unaffected by
+            // the choice of region).  When erasing regions, we
+            // also have to erase late-bound regions. This is
+            // because the types that appear in the generator
+            // interior generally contain "bound regions" to
+            // represent regions that are part of the suspended
+            // generator frame. Bound regions are preserved by
+            // `erase_regions` and so we must also call
+            // `erase_late_bound_regions`.
+            let ty_erased = self.tcx.erase_late_bound_regions(&ty::Binder::bind(ty));
+            let ty_erased = self.tcx.erase_regions(&ty_erased);
+            let eq = ty::TyS::same_type(ty_erased, target_ty_erased);
+            debug!(
+                "maybe_note_obligation_cause_for_async_await: ty_erased={:?} \
+                    target_ty_erased={:?} eq={:?}",
+                ty_erased, target_ty_erased, eq
+            );
+            eq
+        };
         let target_span = tables
             .generator_interior_types
             .iter()
-            .find(|ty::GeneratorInteriorTypeCause { ty, .. }| {
-                // Careful: the regions for types that appear in the
-                // generator interior are not generally known, so we
-                // want to erase them when comparing (and anyway,
-                // `Send` and other bounds are generally unaffected by
-                // the choice of region).  When erasing regions, we
-                // also have to erase late-bound regions. This is
-                // because the types that appear in the generator
-                // interior generally contain "bound regions" to
-                // represent regions that are part of the suspended
-                // generator frame. Bound regions are preserved by
-                // `erase_regions` and so we must also call
-                // `erase_late_bound_regions`.
-                let ty_erased = self.tcx.erase_late_bound_regions(&ty::Binder::bind(*ty));
-                let ty_erased = self.tcx.erase_regions(&ty_erased);
-                let eq = ty::TyS::same_type(ty_erased, target_ty_erased);
-                debug!(
-                    "maybe_note_obligation_cause_for_async_await: ty_erased={:?} \
-                        target_ty_erased={:?} eq={:?}",
-                    ty_erased, target_ty_erased, eq
-                );
-                eq
-            })
+            .find(|ty::GeneratorInteriorTypeCause { ty, .. }| ty_matches(ty))
             .map(|cause| {
                 // Check to see if any awaited expressions have the target type.
                 let from_awaited_ty = visitor
                     .awaits
                     .into_iter()
-                    .map(|id| self.tcx.hir().expect_expr(id))
-                    .find(|expr| {
-                        let ty = tables.expr_ty_adjusted(&expr);
-                        // Compare types using the same logic as above.
-                        let ty_erased = self.tcx.erase_late_bound_regions(&ty::Binder::bind(ty));
-                        let ty_erased = self.tcx.erase_regions(&ty_erased);
-                        let eq = ty::TyS::same_type(ty_erased, target_ty_erased);
+                    .map(|id| hir.expect_expr(id))
+                    .find(|await_expr| {
+                        let ty = tables.expr_ty_adjusted(&await_expr);
                         debug!(
-                            "maybe_note_obligation_cause_for_async_await: await_expr={:?} \
-                            await_ty_erased={:?}  target_ty_erased={:?} eq={:?}",
-                            expr, ty_erased, target_ty_erased, eq
+                            "maybe_note_obligation_cause_for_async_await: await_expr={:?}",
+                            await_expr
                         );
-                        eq
+                        ty_matches(ty)
                     })
                     .map(|expr| expr.span);
                 let ty::GeneratorInteriorTypeCause { span, scope_span, expr, .. } = cause;
@@ -1791,11 +1786,8 @@ impl<'v> Visitor<'v> for AwaitsVisitor {
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-        match ex.kind {
-            hir::ExprKind::Yield(_, hir::YieldSource::Await { expr: Some(id) }) => {
-                self.awaits.push(id)
-            }
-            _ => (),
+        if let hir::ExprKind::Yield(_, hir::YieldSource::Await { expr: Some(id) }) = ex.kind {
+            self.awaits.push(id)
         }
         hir::intravisit::walk_expr(self, ex)
     }
