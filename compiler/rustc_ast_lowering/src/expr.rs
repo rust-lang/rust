@@ -146,7 +146,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Block(self.lower_block(blk, opt_label.is_some()), opt_label)
                 }
                 ExprKind::Assign(ref el, ref er, span) => {
-                    hir::ExprKind::Assign(self.lower_expr(el), self.lower_expr(er), span)
+                    self.lower_expr_assign(el, er, span, e.span)
                 }
                 ExprKind::AssignOp(op, ref el, ref er) => hir::ExprKind::AssignOp(
                     self.lower_binop(op),
@@ -162,6 +162,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Range(ref e1, ref e2, lims) => {
                     self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), lims)
+                }
+                ExprKind::Underscore => {
+                    self.sess
+                        .struct_span_err(
+                            e.span,
+                            "expected expression, found reserved identifier `_`",
+                        )
+                        .span_label(e.span, "expected expression")
+                        .emit();
+                    hir::ExprKind::Err
                 }
                 ExprKind::Path(ref qself, ref path) => {
                     let qpath = self.lower_qpath(
@@ -186,8 +196,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::InlineAsm(ref asm) => self.lower_expr_asm(e.span, asm),
                 ExprKind::LlvmInlineAsm(ref asm) => self.lower_expr_llvm_asm(asm),
-                ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
-                    let maybe_expr = maybe_expr.as_ref().map(|x| self.lower_expr(x));
+                ExprKind::Struct(ref path, ref fields, ref rest) => {
+                    let rest = match rest {
+                        StructRest::Base(e) => Some(self.lower_expr(e)),
+                        StructRest::Rest(sp) => {
+                            self.sess
+                                .struct_span_err(*sp, "base expression required after `..`")
+                                .span_label(*sp, "add a base expression here")
+                                .emit();
+                            Some(&*self.arena.alloc(self.expr_err(*sp)))
+                        }
+                        StructRest::None => None,
+                    };
                     hir::ExprKind::Struct(
                         self.arena.alloc(self.lower_qpath(
                             e.id,
@@ -197,7 +217,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ImplTraitContext::disallowed(),
                         )),
                         self.arena.alloc_from_iter(fields.iter().map(|x| self.lower_field(x))),
-                        maybe_expr,
+                        rest,
                     )
                 }
                 ExprKind::Yield(ref opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
@@ -838,6 +858,66 @@ impl<'hir> LoweringContext<'_, 'hir> {
             });
             hir::ExprKind::Closure(capture_clause, fn_decl, body_id, fn_decl_span, None)
         })
+    }
+
+    /// Lower `(a,b) = t` to `{ let (lhs1,lhs2) = t; a = lhs1; b = lhs2; }`.
+    fn lower_expr_assign(
+        &mut self,
+        lhs: &Expr,
+        rhs: &Expr,
+        eq_sign_span: Span,
+        whole_span: Span,
+    ) -> hir::ExprKind<'hir> {
+        let mut assignments = Vec::new();
+
+        // The LHS becomes a pattern: `(lhs1, lhs2)`
+        let pat = self.destructure_assign(lhs, eq_sign_span, &mut assignments);
+        let rhs = self.lower_expr(rhs);
+
+        // Introduce a let for destructuring: `let (lhs1,lhs2) = t`.
+        let destructure_let = self.stmt_let_pat(
+            ThinVec::new(),
+            whole_span,
+            Some(rhs),
+            pat,
+            hir::LocalSource::AssignDesugar(eq_sign_span),
+        );
+
+        // `a = lhs1; b = lhs2;`.
+        let stmts = self
+            .arena
+            .alloc_from_iter(std::iter::once(destructure_let).chain(assignments.into_iter()));
+
+        // Wrap everything in a block.
+        hir::ExprKind::Block(&self.block_all(whole_span, stmts, None), None)
+    }
+
+    /// Convert the LHS of a destructuring assignment to a pattern.
+    /// Along the way, introduce additional assignments in the parameter assignments.
+    fn destructure_assign(
+        &mut self,
+        lhs: &Expr,
+        eq_sign_span: Span,
+        assignments: &mut Vec<hir::Stmt<'hir>>,
+    ) -> &'hir hir::Pat<'hir> {
+        match &lhs.kind {
+            ExprKind::Tup(elements) => {
+                let pats = self.arena.alloc_from_iter(
+                    elements.iter().map(|e| self.destructure_assign(e, eq_sign_span, assignments)),
+                );
+                let tuple_pat = hir::PatKind::Tuple(pats, None);
+                self.pat(lhs.span, tuple_pat)
+            }
+            _ => {
+                let ident = Ident::new(sym::lhs, lhs.span);
+                let (pat, binding) = self.pat_ident(lhs.span, ident);
+                let ident = self.expr_ident(lhs.span, ident, binding);
+                let assign = hir::ExprKind::Assign(self.lower_expr(lhs), ident, eq_sign_span);
+                let expr = self.expr(lhs.span, assign, ThinVec::new());
+                assignments.push(self.stmt_expr(lhs.span, expr));
+                pat
+            }
+        }
     }
 
     /// Desugar `<start>..=<end>` into `std::ops::RangeInclusive::new(<start>, <end>)`.

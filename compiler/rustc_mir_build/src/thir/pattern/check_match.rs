@@ -69,6 +69,7 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
             hir::LocalSource::ForLoopDesugar => ("`for` loop binding", None),
             hir::LocalSource::AsyncFn => ("async fn binding", None),
             hir::LocalSource::AwaitDesugar => ("`await` future binding", None),
+            hir::LocalSource::AssignDesugar(_) => ("destructuring assignment binding", None),
         };
         self.check_irrefutable(&loc.pat, msg, sp);
         self.check_patterns(&loc.pat);

@@ -1680,6 +1680,9 @@ pub enum LocalSource {
     AsyncFn,
     /// A desugared `<expr>.await`.
     AwaitDesugar,
+    /// A desugared expr = expr where the LHS is a tuple, struct or array.
+    /// The span is for the `=` sign.
+    AssignDesugar(Span),
 }
 
 /// Hints at the original code for a `match _ { .. }`.
