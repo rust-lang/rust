@@ -111,12 +111,14 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 }
             }
 
+            #[unstable(feature = "nonzero_cmp_to_int", issue = "70855")]
             impl PartialEq<$Int> for $Ty {
                 fn eq(&self, rhs: &$Int) -> bool {
                     self.0 == *rhs
                 }
             }
 
+            #[unstable(feature = "nonzero_cmp_to_int", issue = "70855")]
             impl PartialOrd<$Int> for $Ty {
                 fn partial_cmp(&self, rhs: &$Int) -> Option<Ordering> {
                     Some(self.0.cmp(rhs))
