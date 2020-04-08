@@ -53,6 +53,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "assign_ops",
     },
     Lint {
+        name: "await_holding_lock",
+        group: "pedantic",
+        desc: "Inside an async function, holding a MutexGuard while calling await",
+        deprecation: None,
+        module: "await_holding_lock",
+    },
+    Lint {
         name: "bad_bit_mask",
         group: "correctness",
         desc: "expressions of the form `_ & mask == select` that will only ever return `true` or `false`",
