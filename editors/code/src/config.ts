@@ -69,7 +69,6 @@ export class Config {
     get serverPath() { return this.cfg.get<null | string>("serverPath")!; }
     get channel() { return this.cfg.get<UpdatesChannel>("updates.channel")!; }
     get askBeforeDownload() { return this.cfg.get<boolean>("updates.askBeforeDownload")!; }
-    get highlightingSemanticTokens() { return this.cfg.get<boolean>("highlighting.semanticTokens")!; }
     get traceExtension() { return this.cfg.get<boolean>("trace.extension")!; }
 
     get inlayHints() {
