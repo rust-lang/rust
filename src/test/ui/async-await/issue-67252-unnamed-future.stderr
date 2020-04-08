@@ -12,7 +12,7 @@ note: future is not `Send` as this value is used across an await
   --> $DIR/issue-67252-unnamed-future.rs:20:9
    |
 LL |         let _a = std::ptr::null_mut::<()>(); // `*mut ()` is not `Send`
-   |             -- has type `*mut ()`
+   |             -- has type `*mut ()` which is not `Send`
 LL |         AFuture.await;
    |         ^^^^^^^^^^^^^ await occurs here, with `_a` maybe used later
 LL |     });

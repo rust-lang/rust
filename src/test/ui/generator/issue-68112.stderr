@@ -8,11 +8,11 @@ LL |     require_send(send_gen);
    |     ^^^^^^^^^^^^ generator is not `Send`
    |
    = help: the trait `std::marker::Sync` is not implemented for `std::cell::RefCell<i32>`
-note: generator is not `Send` as this value is used across an yield
+note: generator is not `Send` as this value is used across a yield
   --> $DIR/issue-68112.rs:31:9
    |
 LL |         let _non_send_gen = make_non_send_generator();
-   |             ------------- created here
+   |             ------------- has type `impl std::ops::Generator` which is not `Send`
 LL |         yield;
    |         ^^^^^ yield occurs here, with `_non_send_gen` maybe used later
 LL |     };
