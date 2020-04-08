@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! This module defines multiple types of inlay hints and their visibility
 
 use hir::{Adt, HirDisplay, Semantics, Type};
 use ra_ide_db::RootDatabase;
@@ -236,7 +236,10 @@ fn should_show_param_hint(
     argument: &ast::Expr,
 ) -> bool {
     let argument_string = argument.syntax().to_string();
-    if param_name.is_empty() || argument_string.ends_with(param_name) {
+    if param_name.is_empty()
+        || argument_string.ends_with(&param_name)
+        || argument_string.starts_with(&param_name)
+    {
         return false;
     }
 
@@ -245,8 +248,15 @@ fn should_show_param_hint(
     } else {
         fn_signature.parameters.len()
     };
+
     // avoid displaying hints for common functions like map, filter, etc.
-    if parameters_len == 1 && (param_name.len() == 1 || param_name == "predicate") {
+    // or other obvious words used in std
+    // TODO ignore "bytes" if the type is [u8; n]
+    let is_obvious_param_name = match param_name {
+        "predicate" | "value" | "pat" | "rhs" | "other" => true,
+        _ => false,
+    };
+    if parameters_len == 1 && (param_name.len() == 1 || is_obvious_param_name) {
         return false;
     }
 
@@ -1059,8 +1069,16 @@ impl Test {
         self
     }
 
+    fn field(self, value: i32) -> Self {
+        self
+    }
+
     fn no_hints_expected(&self, _: i32, test_var: i32) {}
 }
+
+struct Param {}
+
+fn different_order(param: Param) {}
 
 fn main() {
     let container: TestVarContainer = TestVarContainer { test_var: 42 };
@@ -1069,11 +1087,19 @@ fn main() {
     map(22);
     filter(33);
 
-    let test_processed: Test = test.map(1).filter(2);
+    let test_processed: Test = test.map(1).filter(2).field(3);
 
     let test_var: i32 = 55;
     test_processed.no_hints_expected(22, test_var);
     test_processed.no_hints_expected(33, container.test_var);
+
+    let param_begin: Param = Param {};
+    different_order(param_begin);
+
+    let a: f64 = 7.0;
+    let b: f64 = 4.0;
+    let _: f64 = a.div_euclid(b);
+    let _: f64 = a.abs_sub(b);
 }"#,
         );
 
