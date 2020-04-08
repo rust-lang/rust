@@ -131,3 +131,28 @@ fn test_ranges() {
 
     assert_eq!(&highlights[0].highlight.to_string(), "field.declaration");
 }
+
+#[test]
+fn test_flattening() {
+    let (analysis, file_id) = single_file(
+        r##"
+fn fixture(ra_fixture: &str) {}
+
+fn main() {
+    fixture(r#"
+        trait Foo {
+            fn foo() {
+                println!("2 + 2 = {}", 4);
+            }
+        }"#
+    );
+}"##
+        .trim(),
+    );
+
+    let dst_file = project_dir().join("crates/ra_ide/src/snapshots/highlight_injection.html");
+    let actual_html = &analysis.highlight_as_html(file_id, false).unwrap();
+    let expected_html = &read_text(&dst_file);
+    fs::write(dst_file, &actual_html).unwrap();
+    assert_eq_text!(expected_html, actual_html);
+}

@@ -1,9 +1,9 @@
 //! Renders a bit of code as HTML.
 
 use ra_db::SourceDatabase;
-use ra_syntax::AstNode;
+use ra_syntax::{AstNode, TextUnit};
 
-use crate::{FileId, HighlightedRange, RootDatabase};
+use crate::{FileId, RootDatabase};
 
 use super::highlight;
 
@@ -21,51 +21,35 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
         )
     }
 
-    let mut ranges = highlight(db, file_id, None);
-    ranges.sort_by_key(|it| it.range.start());
-    // quick non-optimal heuristic to intersect token ranges and highlighted ranges
-    let mut frontier = 0;
-    let mut could_intersect: Vec<&HighlightedRange> = Vec::new();
-
+    let ranges = highlight(db, file_id, None);
+    let text = parse.tree().syntax().to_string();
+    let mut prev_pos = TextUnit::from(0);
     let mut buf = String::new();
     buf.push_str(&STYLE);
     buf.push_str("<pre><code>");
-    let tokens = parse.tree().syntax().descendants_with_tokens().filter_map(|it| it.into_token());
-    for token in tokens {
-        could_intersect.retain(|it| token.text_range().start() <= it.range.end());
-        while let Some(r) = ranges.get(frontier) {
-            if r.range.start() <= token.text_range().end() {
-                could_intersect.push(r);
-                frontier += 1;
-            } else {
-                break;
-            }
-        }
-        let text = html_escape(&token.text());
-        let ranges = could_intersect
-            .iter()
-            .filter(|it| token.text_range().is_subrange(&it.range))
-            .collect::<Vec<_>>();
-        if ranges.is_empty() {
+    for range in &ranges {
+        if range.range.start() > prev_pos {
+            let curr = &text[prev_pos.to_usize()..range.range.start().to_usize()];
+            let text = html_escape(curr);
             buf.push_str(&text);
-        } else {
-            let classes = ranges
-                .iter()
-                .map(|it| it.highlight.to_string().replace('.', " "))
-                .collect::<Vec<_>>()
-                .join(" ");
-            let binding_hash = ranges.first().and_then(|x| x.binding_hash);
-            let color = match (rainbow, binding_hash) {
-                (true, Some(hash)) => format!(
-                    " data-binding-hash=\"{}\" style=\"color: {};\"",
-                    hash,
-                    rainbowify(hash)
-                ),
-                _ => "".into(),
-            };
-            buf.push_str(&format!("<span class=\"{}\"{}>{}</span>", classes, color, text));
         }
+        let curr = &text[range.range.start().to_usize()..range.range.end().to_usize()];
+
+        let class = range.highlight.to_string().replace('.', " ");
+        let color = match (rainbow, range.binding_hash) {
+            (true, Some(hash)) => {
+                format!(" data-binding-hash=\"{}\" style=\"color: {};\"", hash, rainbowify(hash))
+            }
+            _ => "".into(),
+        };
+        buf.push_str(&format!("<span class=\"{}\"{}>{}</span>", class, color, html_escape(curr)));
+
+        prev_pos = range.range.end();
     }
+    // Add the remaining (non-highlighted) text
+    let curr = &text[prev_pos.to_usize()..];
+    let text = html_escape(curr);
+    buf.push_str(&text);
     buf.push_str("</code></pre>");
     buf
 }
