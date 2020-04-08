@@ -169,13 +169,13 @@ pub mod token_stream {
 pub struct Span(bridge::client::Span);
 
 macro_rules! diagnostic_method {
-    ($name:ident, $level:expr) => (
+    ($name:ident, $level:expr) => {
         /// Creates a new `Diagnostic` with the given `message` at the span
         /// `self`.
         pub fn $name<T: Into<String>>(self, message: T) -> Diagnostic {
             Diagnostic::spanned(self, $level, message)
         }
-    )
+    };
 }
 
 impl Span {

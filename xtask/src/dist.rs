@@ -7,7 +7,6 @@ use crate::{
     project_root,
 };
 
-
 pub fn run_dist(nightly: bool, client_version: Option<String>) -> Result<()> {
     let dist = project_root().join("dist");
     rm_rf(&dist)?;
