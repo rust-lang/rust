@@ -28,8 +28,8 @@ we'll talk about that later.
   to the rest of the compilation process as a [`rustc_interface::Config`].
 - The raw Rust source text is analyzed by a low-level lexer located in
   [`librustc_lexer`]. At this stage, the source text is turned into a stream of
-  atomic source code units known as _tokens_.  The lexer supports the Unicode
-  character encoding.
+  atomic source code units known as _tokens_.  The lexer supports the
+  Unicode character encoding.
 - The token stream passes through a higher-level lexer located in
   [`librustc_parse`] to prepare for the next stage of the compile process. The
   [`StringReader`] struct is used at this stage to perform a set of validations
@@ -47,25 +47,21 @@ we'll talk about that later.
 - Parsing is performed with a set of `Parser` utility methods including `fn bump`,
   `fn check`, `fn eat`, `fn expect`, `fn look_ahead`.
 - Parsing is organized by the semantic construct that is being parsed. Separate
-  `parse_*` methods can be found in `librustc_parse` `parser` directory. File 
-  naming follows the construct name. For example, the following files are found
+  `parse_*` methods can be found in `librustc_parse` `parser` directory. The source
+  file name follows the construct name. For example, the following files are found
   in the parser:
     - `expr.rs`
     - `pat.rs`
     - `ty.rs`
     - `stmt.rs`
-- This naming scheme is used across the parser, lowering, type checking,
-  HAIR lowering, & MIR building stages of the compile process and you will
-  find either a file or directory with the same name for most of these constructs
-  at each of these stages of compilation.
-- For error handling, the parser uses the standard `DiagnosticBuilder` API, but we
+- This naming scheme is used across many compiler stages. You will find
+  either a file or directory with the same name across the parsing, lowering,
+  type checking, HAIR lowering, and MIR building sources.
+- Macro expansion, AST validation, name resolution, and early linting takes place
+  during this stage of the compile process.
+- The parser uses the standard `DiagnosticBuilder` API for error handling, but we
   try to recover, parsing a superset of Rust's grammar, while also emitting an error.
-- The `rustc_ast::ast::{Crate, Mod, Expr, Pat, ...}` AST node returned from the parser.
-  - macro expansion (**TODO** chrissimpkins)
-  - ast validation (**TODO** chrissimpkins)
-  - nameres (**TODO** chrissimpkins)
-  - early linting (**TODO** chrissimpkins)
-
+- `rustc_ast::ast::{Crate, Mod, Expr, Pat, ...}` AST nodes are returned from the parser.
 - We then take the AST and [convert it to High-Level Intermediate
   Representation (HIR)][hir]. This is a compiler-friendly representation of the
   AST.  This involves a lot of desugaring of things like loops and `async fn`.
