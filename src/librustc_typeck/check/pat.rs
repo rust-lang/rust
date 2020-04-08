@@ -1353,23 +1353,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
-        let err = self.tcx.types.err;
         let expected = self.structurally_resolved_type(span, expected);
-        let (element_ty, slice_ty, inferred) = match expected.kind {
+        let (element_ty, opt_slice_ty, inferred) = match expected.kind {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
             ty::Array(element_ty, len) => {
                 let min = before.len() as u64 + after.len() as u64;
-                let (slice_ty, expected) =
+                let (opt_slice_ty, expected) =
                     self.check_array_pat_len(span, element_ty, expected, slice, len, min);
-                (element_ty, slice_ty, expected)
+                // we can get opt_slice_ty == None in cases that are not an error, e.g. if the
+                // slice covers 0 elements or if slice is None.
+                (element_ty, opt_slice_ty, expected)
             }
-            ty::Slice(element_ty) => (element_ty, expected, expected),
+            ty::Slice(element_ty) => (element_ty, Some(expected), expected),
             // The expected type must be an array or slice, but was neither, so error.
             _ => {
                 if !expected.references_error() {
                     self.error_expected_array_or_slice(span, expected);
                 }
-                (err, err, err)
+                let err = self.tcx.types.err;
+                (err, None, err)
             }
         };
 
@@ -1377,8 +1379,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for elt in before {
             self.check_pat(&elt, element_ty, def_bm, ti);
         }
-        // Type check the `slice`, if present, against its expected type.
-        if let Some(slice) = slice {
+        // Type check the `slice`, if present, against its expected type, if there is one.
+        if let (Some(slice), Some(slice_ty)) = (slice, opt_slice_ty) {
             self.check_pat(&slice, slice_ty, def_bm, ti);
         }
         // Type check the elements after `slice`, if present.
@@ -1390,9 +1392,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Type check the length of an array pattern.
     ///
-    /// Returns both the type of the variable length pattern
-    /// (or `tcx.err` in case there is none),
-    /// and the potentially inferred array type.
+    /// Returns both the type of the variable length pattern (or `None`), and the potentially
+    /// inferred array type.
     fn check_array_pat_len(
         &self,
         span: Span,
@@ -1401,7 +1402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         slice: Option<&'tcx Pat<'tcx>>,
         len: &ty::Const<'tcx>,
         min_len: u64,
-    ) -> (Ty<'tcx>, Ty<'tcx>) {
+    ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
         if let Some(len) = len.try_eval_usize(self.tcx, self.param_env) {
             // Now we know the length...
             if slice.is_none() {
@@ -1414,7 +1415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else if let Some(pat_len) = len.checked_sub(min_len) {
                 // The variable-length pattern was there,
                 // so it has an array type with the remaining elements left as its size...
-                return (self.tcx.mk_array(element_ty, pat_len), arr_ty);
+                return (Some(self.tcx.mk_array(element_ty, pat_len)), arr_ty);
             } else {
                 // ...however, in this case, there were no remaining elements.
                 // That is, the slice pattern requires more than the array type offers.
@@ -1425,14 +1426,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // which we can use to infer the length of the array.
             let updated_arr_ty = self.tcx.mk_array(element_ty, min_len);
             self.demand_eqtype(span, updated_arr_ty, arr_ty);
-            return (self.tcx.types.err, updated_arr_ty);
+            return (None, updated_arr_ty);
         } else {
             // We have a variable-length pattern and don't know the array length.
             // This happens if we have e.g.,
             // `let [a, b, ..] = arr` where `arr: [T; N]` where `const N: usize`.
             self.error_scrutinee_unfixed_length(span);
         }
-        (self.tcx.types.err, arr_ty)
+        (None, arr_ty)
     }
 
     fn error_scrutinee_inconsistent_length(&self, span: Span, min_len: u64, size: u64) {
