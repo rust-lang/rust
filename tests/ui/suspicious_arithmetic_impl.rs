@@ -1,5 +1,5 @@
 #![warn(clippy::suspicious_arithmetic_impl)]
-use std::ops::{Add, AddAssign, Div, Mul, Sub};
+use std::ops::{Add, AddAssign, BitOrAssign, Div, DivAssign, Mul, MulAssign, Sub};
 
 #[derive(Copy, Clone)]
 struct Foo(u32);
@@ -15,6 +15,25 @@ impl Add for Foo {
 impl AddAssign for Foo {
     fn add_assign(&mut self, other: Foo) {
         *self = *self - other;
+    }
+}
+
+impl BitOrAssign for Foo {
+    fn bitor_assign(&mut self, other: Foo) {
+        let idx = other.0;
+        self.0 |= 1 << idx; // OK: BinOpKind::Shl part of AssignOp as child node
+    }
+}
+
+impl MulAssign for Foo {
+    fn mul_assign(&mut self, other: Foo) {
+        self.0 /= other.0;
+    }
+}
+
+impl DivAssign for Foo {
+    fn div_assign(&mut self, other: Foo) {
+        self.0 /= other.0; // OK: BinOpKind::Div == DivAssign
     }
 }
 
