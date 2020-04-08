@@ -51,6 +51,7 @@ pub struct QueryState<CTX: QueryContext, C: QueryCache> {
 }
 
 impl<CTX: QueryContext, C: QueryCache> QueryState<CTX, C> {
+    #[inline]
     pub(super) fn get_lookup<'tcx>(
         &'tcx self,
         key: &C::Key,

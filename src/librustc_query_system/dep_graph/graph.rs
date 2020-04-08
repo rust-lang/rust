@@ -1112,6 +1112,7 @@ impl DepNodeColorMap {
         DepNodeColorMap { values: (0..size).map(|_| AtomicU32::new(COMPRESSED_NONE)).collect() }
     }
 
+    #[inline]
     fn get(&self, index: SerializedDepNodeIndex) -> Option<DepNodeColor> {
         match self.values[index].load(Ordering::Acquire) {
             COMPRESSED_NONE => None,
