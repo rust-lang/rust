@@ -78,7 +78,7 @@ all:
 	rm $(TMPDIR)/$(call BIN,foo)
 	$(RUSTC) foo.rs --crate-type=dylib --emit=link=$(TMPDIR)/$(call BIN,foo)
 	rm $(TMPDIR)/$(call BIN,foo)
-	rm -f $(TMPDIR)/{lib,}foo.{dll.exp,dll.lib,pdb,dll.a,exe.lib}
+	rm -f $(TMPDIR)/{lib,}foo.{dll.exp,dll.lib,pdb,dll.a,exe.a}
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ] || (ls -1 $(TMPDIR) && exit 1)
 
 	$(RUSTC) foo.rs --crate-type=staticlib -o $(TMPDIR)/foo
