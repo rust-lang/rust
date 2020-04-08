@@ -36,7 +36,8 @@ High level approach:
 
 ### Finding something to fix/improve
 
-All issues on Clippy are mentored, if you want help with a bug just ask @Manishearth, @llogiq, @mcarton or @oli-obk.
+All issues on Clippy are mentored, if you want help with a bug just ask
+@Manishearth, @flip1995, @phansch or @yaahc.
 
 Some issues are easier than others. The [`good first issue`] label can be used to find the easy issues.
 If you want to work on an issue, please leave a comment so that we can assign it to you!
@@ -70,7 +71,7 @@ an AST expression). `match_def_path()` in Clippy's `utils` module can also be us
 [`T-AST`]: https://github.com/rust-lang/rust-clippy/labels/T-AST
 [`T-middle`]: https://github.com/rust-lang/rust-clippy/labels/T-middle
 [`E-medium`]: https://github.com/rust-lang/rust-clippy/labels/E-medium
-[`ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty
+[`ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty
 [nodes in the AST docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/
 [deep-nesting]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/mem_forget.rs#L29-L43
 [if_chain]: https://docs.rs/if_chain/*/if_chain
@@ -78,8 +79,7 @@ an AST expression). `match_def_path()` in Clippy's `utils` module can also be us
 
 ## Writing code
 
-Have a look at the [docs for writing lints][adding_lints] for more details. [Llogiq's blog post on lints]
-is also a nice primer to lint-writing, though it does get into advanced stuff and may be a bit outdated.
+Have a look at the [docs for writing lints][adding_lints] for more details.
 
 If you want to add a new lint or change existing ones apart from bugfixing, it's
 also a good idea to give the [stability guarantees][rfc_stability] and
@@ -87,7 +87,6 @@ also a good idea to give the [stability guarantees][rfc_stability] and
 quick read.
 
 [adding_lints]: https://github.com/rust-lang/rust-clippy/blob/master/doc/adding_lints.md
-[Llogiq's blog post on lints]: https://llogiq.github.io/2015/06/04/workflows.html
 [clippy_rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md
 [rfc_stability]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#stability-guarantees
 [rfc_lint_cats]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories
