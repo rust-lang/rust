@@ -598,29 +598,6 @@ bitflags! {
         /// Does this value have parameters/placeholders/inference variables which could be
         /// replaced later, in a way that would change the results of `impl` specialization?
         const STILL_FURTHER_SPECIALIZABLE = 1 << 18;
-
-        /// Flags representing the nominal content of a type,
-        /// computed by FlagsComputation. If you add a new nominal
-        /// flag, it should be added here too.
-        const NOMINAL_FLAGS               = TypeFlags::HAS_TY_PARAM.bits
-                                          | TypeFlags::HAS_RE_PARAM.bits
-                                          | TypeFlags::HAS_CT_PARAM.bits
-                                          | TypeFlags::HAS_TY_INFER.bits
-                                          | TypeFlags::HAS_RE_INFER.bits
-                                          | TypeFlags::HAS_CT_INFER.bits
-                                          | TypeFlags::HAS_TY_PLACEHOLDER.bits
-                                          | TypeFlags::HAS_RE_PLACEHOLDER.bits
-                                          | TypeFlags::HAS_CT_PLACEHOLDER.bits
-                                          | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits
-                                          | TypeFlags::HAS_TY_PROJECTION.bits
-                                          | TypeFlags::HAS_TY_OPAQUE.bits
-                                          | TypeFlags::HAS_CT_PROJECTION.bits
-                                          | TypeFlags::KEEP_IN_LOCAL_TCX.bits
-                                          | TypeFlags::HAS_TY_ERR.bits
-                                          | TypeFlags::HAS_FREE_REGIONS.bits
-                                          | TypeFlags::HAS_RE_LATE_BOUND.bits
-                                          | TypeFlags::HAS_RE_ERASED.bits
-                                          | TypeFlags::STILL_FURTHER_SPECIALIZABLE.bits;
     }
 }
 

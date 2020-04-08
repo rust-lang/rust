@@ -10,13 +10,15 @@ struct A {
     b: u32,
 }
 
+fn consume<T>(_: T) {}
+
 fn main() {
     let a = A {
         a: 42,
         b: 1729,
     };
 
-    let _ = &{ a.b };
-    let _ = { a.b };
+    consume(&{ a.b });
+    consume({ a.b });
     //~^ WARN unnecessary braces
 }

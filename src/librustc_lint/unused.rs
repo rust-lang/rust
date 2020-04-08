@@ -355,6 +355,19 @@ impl From<UnusedDelimsCtx> for &'static str {
 trait UnusedDelimLint {
     const DELIM_STR: &'static str;
 
+    /// Due to `ref` pattern, there can be a difference between using
+    /// `{ expr }` and `expr` in pattern-matching contexts. This means
+    /// that we should only lint `unused_parens` and not `unused_braces`
+    /// in this case.
+    ///
+    /// ```rust
+    /// let mut a = 7;
+    /// let ref b = { a }; // We actually borrow a copy of `a` here.
+    /// a += 1; // By mutating `a` we invalidate any borrows of `a`.
+    /// assert_eq!(b + 1, a); // `b` does not borrow `a`, so we can still use it here.
+    /// ```
+    const LINT_EXPR_IN_PATTERN_MATCHING_CTX: bool;
+
     // this cannot be a constant is it refers to a static.
     fn lint(&self) -> &'static Lint;
 
@@ -454,7 +467,10 @@ trait UnusedDelimLint {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         use rustc_ast::ast::ExprKind::*;
         let (value, ctx, followed_by_block, left_pos, right_pos) = match e.kind {
-            If(ref cond, ref block, ..) => {
+            // Do not lint `unused_braces` in `if let` expressions.
+            If(ref cond, ref block, ..)
+                if !matches!(cond.kind, Let(_, _)) || Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX =>
+            {
                 let left = e.span.lo() + rustc_span::BytePos(2);
                 let right = block.span.lo();
                 (cond, UnusedDelimsCtx::IfCond, true, Some(left), Some(right))
@@ -470,7 +486,7 @@ trait UnusedDelimLint {
                 (cond, UnusedDelimsCtx::ForIterExpr, true, None, Some(block.span.lo()))
             }
 
-            Match(ref head, _) => {
+            Match(ref head, _) if Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX => {
                 let left = e.span.lo() + rustc_span::BytePos(5);
                 (head, UnusedDelimsCtx::MatchScrutineeExpr, true, Some(left), None)
             }
@@ -512,7 +528,7 @@ trait UnusedDelimLint {
 
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
         match s.kind {
-            StmtKind::Local(ref local) => {
+            StmtKind::Local(ref local) if Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX => {
                 if let Some(ref value) = local.init {
                     self.check_unused_delims_expr(
                         cx,
@@ -564,6 +580,8 @@ declare_lint_pass!(UnusedParens => [UNUSED_PARENS]);
 
 impl UnusedDelimLint for UnusedParens {
     const DELIM_STR: &'static str = "parentheses";
+
+    const LINT_EXPR_IN_PATTERN_MATCHING_CTX: bool = true;
 
     fn lint(&self) -> &'static Lint {
         UNUSED_PARENS
@@ -735,6 +753,8 @@ declare_lint_pass!(UnusedBraces => [UNUSED_BRACES]);
 
 impl UnusedDelimLint for UnusedBraces {
     const DELIM_STR: &'static str = "braces";
+
+    const LINT_EXPR_IN_PATTERN_MATCHING_CTX: bool = false;
 
     fn lint(&self) -> &'static Lint {
         UNUSED_BRACES

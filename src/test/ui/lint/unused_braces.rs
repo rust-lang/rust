@@ -1,29 +1,48 @@
 // check-pass
 #![warn(unused_braces, unused_parens)]
 
+fn consume<T>(_: T) {}
+
 fn main() {
     let _ = (7);
     //~^WARN unnecessary parentheses
 
-    let _ = { 7 };
-    //~^ WARN unnecessary braces
+    // Do not emit a lint in these cases,
+    // as we have to be careful with
+    // `ref` patterns.
+    {
+        let _ = { 7 };
 
-    if let 7 = { 7 } {
+        if let 7 = { 7 } { }
+
+        match { 7 } {
+            _ => (),
+        }
+    }
+
+    if { true } {
+        //~^ WARN unnecessary braces
+    }
+
+    while { false } {
         //~^ WARN unnecessary braces
     }
 
     let _: [u8; { 3 }];
     //~^ WARN unnecessary braces
 
-    // do not emit error for multiline blocks.
+    consume({ 7 });
+    //~^ WARN unnecessary braces
+
+    // Do not emit lint for multiline blocks.
     let _ = {
         7
     };
 
-    // do not emit error for unsafe blocks.
+    // Do not emit lint for unsafe blocks.
     let _ = unsafe { 7 };
 
-    // do not emit error, as the `{` would then
+    // Do not emit lint, as the `{` would then
     // be parsed as part of the `return`.
     if { return } {
 
