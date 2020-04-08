@@ -1,9 +1,10 @@
-error[E0220]: associated type `Row` not found for `M`
-  --> $DIR/issue-39211.rs:11:20
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-39211.rs:11:17
    |
 LL |     let a = [3; M::Row::DIM];
-   |                    ^^^ associated type `Row` not found
+   |                 ^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0220`.

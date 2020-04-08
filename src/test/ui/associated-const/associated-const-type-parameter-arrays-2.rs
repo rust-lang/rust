@@ -14,7 +14,7 @@ impl Foo for Def {
 
 pub fn test<A: Foo, B: Foo>() {
     let _array = [4; <A as Foo>::Y];
-    //~^ ERROR the trait bound `A: Foo` is not satisfied [E0277]
+    //~^ ERROR constant expression depends on a generic parameter
 }
 
 fn main() {
