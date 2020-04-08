@@ -1,4 +1,4 @@
-error[E0152]: found duplicate lang item `arc`
+error[E0152]: found duplicate lang item `owned_box`
   --> $DIR/E0152.rs:4:1
    |
 LL | struct Foo;

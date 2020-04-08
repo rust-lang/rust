@@ -120,7 +120,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         local: the_place_err.local,
                         projection: proj_base,
                     });
-                    let pointer_type = source.describe_for_immutable_place();
+                    let pointer_type = source.describe_for_immutable_place(self.infcx.tcx);
                     opt_source = Some(source);
                     if let Some(desc) = access_place_desc {
                         item_msg = format!("`{}`", desc);
