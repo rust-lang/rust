@@ -6,8 +6,7 @@
     clippy::redundant_closure_call,
     clippy::many_single_char_names,
     clippy::needless_pass_by_value,
-    clippy::option_map_unit_fn,
-    clippy::trivially_copy_pass_by_ref
+    clippy::option_map_unit_fn
 )]
 #![warn(
     clippy::redundant_closure,

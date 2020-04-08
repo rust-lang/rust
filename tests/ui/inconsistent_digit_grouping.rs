@@ -1,5 +1,6 @@
 // run-rustfix
 #[warn(clippy::inconsistent_digit_grouping)]
+#[deny(clippy::unreadable_literal)]
 #[allow(unused_variables, clippy::excessive_precision)]
 fn main() {
     macro_rules! mac1 {

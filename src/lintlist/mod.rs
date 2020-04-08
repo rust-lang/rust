@@ -789,7 +789,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "inefficient_to_string",
-        group: "perf",
+        group: "pedantic",
         desc: "using `to_string` on `&&T` where `T: ToString`",
         deprecation: None,
         module: "methods",
@@ -999,7 +999,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "let_unit_value",
-        group: "style",
+        group: "pedantic",
         desc: "creating a `let` binding to a value of unit type, which usually can\'t be used afterwards",
         deprecation: None,
         module: "types",
@@ -1447,7 +1447,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "new_ret_no_self",
-        group: "style",
+        group: "pedantic",
         desc: "not returning `Self` in a `new` method",
         deprecation: None,
         module: "methods",
@@ -1824,6 +1824,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "result_map_or_into_option",
+        group: "style",
+        desc: "using `Result.map_or(None, Some)`, which is more succinctly expressed as `ok()`",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "result_map_unit_fn",
         group: "complexity",
         desc: "using `result.map(f)`, where `f` is a function or closure that returns `()`",
@@ -2161,7 +2168,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "trivially_copy_pass_by_ref",
-        group: "perf",
+        group: "pedantic",
         desc: "functions taking small copyable arguments by reference",
         deprecation: None,
         module: "trivially_copy_pass_by_ref",
@@ -2294,7 +2301,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "unreadable_literal",
-        group: "style",
+        group: "pedantic",
         desc: "long integer literal without underscores",
         deprecation: None,
         module: "literal_representation",

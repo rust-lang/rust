@@ -1,7 +1,6 @@
 // run-rustfix
 
 #![deny(clippy::useless_asref)]
-#![allow(clippy::trivially_copy_pass_by_ref)]
 
 use std::fmt::Debug;
 

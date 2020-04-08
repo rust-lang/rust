@@ -332,6 +332,32 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `_.map_or(None, Some)`.
+    ///
+    /// **Why is this bad?** Readability, this can be written more concisely as
+    /// `_.ok()`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// Bad:
+    /// ```rust
+    /// # let r: Result<u32, &str> = Ok(1);
+    /// assert_eq!(Some(1), r.map_or(None, Some));
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// # let r: Result<u32, &str> = Ok(1);
+    /// assert_eq!(Some(1), r.ok());
+    /// ```
+    pub RESULT_MAP_OR_INTO_OPTION,
+    style,
+    "using `Result.map_or(None, Some)`, which is more succinctly expressed as `ok()`"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for usage of `_.and_then(|x| Some(y))`.
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as
@@ -699,7 +725,7 @@ declare_clippy_lint! {
     /// ["foo", "bar"].iter().map(|&s| s.to_string());
     /// ```
     pub INEFFICIENT_TO_STRING,
-    perf,
+    pedantic,
     "using `to_string` on `&&T` where `T: ToString`"
 }
 
@@ -722,7 +748,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub NEW_RET_NO_SELF,
-    style,
+    pedantic,
     "not returning `Self` in a `new` method"
 }
 
@@ -1249,6 +1275,7 @@ declare_lint_pass!(Methods => [
     OPTION_MAP_UNWRAP_OR,
     OPTION_MAP_UNWRAP_OR_ELSE,
     RESULT_MAP_UNWRAP_OR_ELSE,
+    RESULT_MAP_OR_INTO_OPTION,
     OPTION_MAP_OR_NONE,
     OPTION_AND_THEN_SOME,
     OR_FUN_CALL,
@@ -2524,38 +2551,78 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
     }
 }
 
-/// lint use of `_.map_or(None, _)` for `Option`s
+/// lint use of `_.map_or(None, _)` for `Option`s and `Result`s
 fn lint_map_or_none<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     expr: &'tcx hir::Expr<'_>,
     map_or_args: &'tcx [hir::Expr<'_>],
 ) {
-    if match_type(cx, cx.tables.expr_ty(&map_or_args[0]), &paths::OPTION) {
-        // check if the first non-self argument to map_or() is None
-        let map_or_arg_is_none = if let hir::ExprKind::Path(ref qpath) = map_or_args[1].kind {
+    let is_option = match_type(cx, cx.tables.expr_ty(&map_or_args[0]), &paths::OPTION);
+    let is_result = match_type(cx, cx.tables.expr_ty(&map_or_args[0]), &paths::RESULT);
+
+    // There are two variants of this `map_or` lint:
+    // (1) using `map_or` as an adapter from `Result<T,E>` to `Option<T>`
+    // (2) using `map_or` as a combinator instead of `and_then`
+    //
+    // (For this lint) we don't care if any other type calls `map_or`
+    if !is_option && !is_result {
+        return;
+    }
+
+    let (lint_name, msg, instead, hint) = {
+        let default_arg_is_none = if let hir::ExprKind::Path(ref qpath) = map_or_args[1].kind {
             match_qpath(qpath, &paths::OPTION_NONE)
+        } else {
+            return;
+        };
+
+        if !default_arg_is_none {
+            // nothing to lint!
+            return;
+        }
+
+        let f_arg_is_some = if let hir::ExprKind::Path(ref qpath) = map_or_args[2].kind {
+            match_qpath(qpath, &paths::OPTION_SOME)
         } else {
             false
         };
 
-        if map_or_arg_is_none {
-            // lint message
+        if is_option {
+            let self_snippet = snippet(cx, map_or_args[0].span, "..");
+            let func_snippet = snippet(cx, map_or_args[2].span, "..");
             let msg = "called `map_or(None, f)` on an `Option` value. This can be done more directly by calling \
                        `and_then(f)` instead";
-            let map_or_self_snippet = snippet(cx, map_or_args[0].span, "..");
-            let map_or_func_snippet = snippet(cx, map_or_args[2].span, "..");
-            let hint = format!("{0}.and_then({1})", map_or_self_snippet, map_or_func_snippet);
-            span_lint_and_sugg(
-                cx,
+            (
                 OPTION_MAP_OR_NONE,
-                expr.span,
                 msg,
                 "try using `and_then` instead",
-                hint,
-                Applicability::MachineApplicable,
-            );
+                format!("{0}.and_then({1})", self_snippet, func_snippet),
+            )
+        } else if f_arg_is_some {
+            let msg = "called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling \
+                       `ok()` instead";
+            let self_snippet = snippet(cx, map_or_args[0].span, "..");
+            (
+                RESULT_MAP_OR_INTO_OPTION,
+                msg,
+                "try using `ok` instead",
+                format!("{0}.ok()", self_snippet),
+            )
+        } else {
+            // nothing to lint!
+            return;
         }
-    }
+    };
+
+    span_lint_and_sugg(
+        cx,
+        lint_name,
+        expr.span,
+        msg,
+        instead,
+        hint,
+        Applicability::MachineApplicable,
+    );
 }
 
 /// Lint use of `_.and_then(|x| Some(y))` for `Option`s
@@ -3166,6 +3233,8 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
     map_args: &[hir::Expr<'_>],
     is_mut: bool,
 ) {
+    let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
+
     let option_ty = cx.tables.expr_ty(&as_ref_args[0]);
     if !match_type(cx, option_ty, &paths::OPTION) {
         return;
@@ -3188,39 +3257,56 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
         hir::ExprKind::Closure(_, _, body_id, _, _) => {
             let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);
-            if_chain! {
-                if let hir::ExprKind::MethodCall(_, _, args) = &closure_expr.kind;
-                if args.len() == 1;
-                if let hir::ExprKind::Path(qpath) = &args[0].kind;
-                if let hir::def::Res::Local(local_id) = cx.tables.qpath_res(qpath, args[0].hir_id);
-                if closure_body.params[0].pat.hir_id == local_id;
-                let adj = cx.tables.expr_adjustments(&args[0]).iter().map(|x| &x.kind).collect::<Box<[_]>>();
-                if let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj;
-                then {
-                    let method_did = cx.tables.type_dependent_def_id(closure_expr.hir_id).unwrap();
-                    deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
-                } else {
-                    false
-                }
+
+            match &closure_expr.kind {
+                hir::ExprKind::MethodCall(_, _, args) => {
+                    if_chain! {
+                        if args.len() == 1;
+                        if let hir::ExprKind::Path(qpath) = &args[0].kind;
+                        if let hir::def::Res::Local(local_id) = cx.tables.qpath_res(qpath, args[0].hir_id);
+                        if closure_body.params[0].pat.hir_id == local_id;
+                        let adj = cx.tables.expr_adjustments(&args[0]).iter().map(|x| &x.kind).collect::<Box<[_]>>();
+                        if let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj;
+                        then {
+                            let method_did = cx.tables.type_dependent_def_id(closure_expr.hir_id).unwrap();
+                            deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
+                        } else {
+                            false
+                        }
+                    }
+                },
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, m, ref inner) if same_mutability(m) => {
+                    if_chain! {
+                        if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner1) = inner.kind;
+                        if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner2) = inner1.kind;
+                        if let hir::ExprKind::Path(ref qpath) = inner2.kind;
+                        if let hir::def::Res::Local(local_id) = cx.tables.qpath_res(qpath, inner2.hir_id);
+                        then {
+                            closure_body.params[0].pat.hir_id == local_id
+                        } else {
+                            false
+                        }
+                    }
+                },
+                _ => false,
             }
         },
-
         _ => false,
     };
 
     if is_deref {
         let current_method = if is_mut {
-            ".as_mut().map(DerefMut::deref_mut)"
+            format!(".as_mut().map({})", snippet(cx, map_args[1].span, ".."))
         } else {
-            ".as_ref().map(Deref::deref)"
+            format!(".as_ref().map({})", snippet(cx, map_args[1].span, ".."))
         };
         let method_hint = if is_mut { "as_deref_mut" } else { "as_deref" };
         let hint = format!("{}.{}()", snippet(cx, as_ref_args[0].span, ".."), method_hint);
         let suggestion = format!("try using {} instead", method_hint);
 
         let msg = format!(
-            "called `{0}` (or with one of deref aliases) on an Option value. \
-             This can be done more directly by calling `{1}` instead",
+            "called `{0}` on an Option value. This can be done more directly \
+            by calling `{1}` instead",
             current_method, hint
         );
         span_lint_and_sugg(
