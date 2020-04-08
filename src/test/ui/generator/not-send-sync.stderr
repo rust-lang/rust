@@ -21,11 +21,11 @@ LL |     assert_sync(|| {
    |     ^^^^^^^^^^^ generator is not `Sync`
    |
    = help: within `[generator@$DIR/not-send-sync.rs:9:17: 13:6 {std::cell::Cell<i32>, ()}]`, the trait `std::marker::Sync` is not implemented for `std::cell::Cell<i32>`
-note: generator is not `Sync` as this value is used across an yield
+note: generator is not `Sync` as this value is used across a yield
   --> $DIR/not-send-sync.rs:12:9
    |
 LL |         let a = Cell::new(2);
-   |             - has type `std::cell::Cell<i32>`
+   |             - has type `std::cell::Cell<i32>` which is not `Sync`
 LL |         yield;
    |         ^^^^^ yield occurs here, with `a` maybe used later
 LL |     });

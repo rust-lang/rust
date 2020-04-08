@@ -49,6 +49,8 @@ fn make_non_send_future2() -> impl Future<Output = Arc<RefCell<i32>>> {
     ready2(Arc::new(RefCell::new(0)))
 }
 
+// Ideally this test would have diagnostics similar to the test above, but right
+// now it doesn't.
 fn test2() {
     let send_fut = async {
         let non_send_fut = make_non_send_future2();

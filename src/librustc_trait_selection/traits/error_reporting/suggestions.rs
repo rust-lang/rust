@@ -1318,7 +1318,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 _ => false,
             })
             .unwrap_or(false);
-        let await_or_yield = if is_async { "await" } else { "yield" };
+        let (await_or_yield, an_await_or_yield) =
+            if is_async { ("await", "an await") } else { ("yield", "a yield") };
         let future_or_generator = if is_async { "future" } else { "generator" };
 
         // Special case the primary error message when send or sync is the trait that was
@@ -1364,38 +1365,26 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             span.push_span_label(original_span, message);
             err.set_span(span);
 
-            format!("{} is not {}", future_or_generator, trait_name)
+            format!("is not {}", trait_name)
         } else {
-            format!(
-                "{} does not implement `{}`",
-                future_or_generator,
-                trait_ref.print_only_trait_path()
-            )
-        };
-
-        let push_target_span_with_fallback = |span: &mut MultiSpan, fallback: &str| {
-            if target_ty.is_impl_trait() {
-                // It's not very useful to tell the user the type if it's opaque.
-                span.push_span_label(target_span, fallback.to_string());
-            } else {
-                span.push_span_label(target_span, format!("has type `{}`", target_ty));
-            }
+            format!("does not implement `{}`", trait_ref.print_only_trait_path())
         };
 
         if let Some(await_span) = from_awaited_ty {
             // The type causing this obligation is one being awaited at await_span.
             let mut span = MultiSpan::from_span(await_span);
 
-            if target_span == await_span {
-                push_target_span_with_fallback(&mut span, "await occurs here");
-            } else {
-                span.push_span_label(await_span, "await occurs here".to_string());
-                push_target_span_with_fallback(&mut span, "created here");
-            }
+            span.push_span_label(
+                await_span,
+                format!("await occurs here on type `{}`, which {}", target_ty, trait_explanation),
+            );
 
             err.span_note(
                 span,
-                &format!("{} as this value is used in an await", trait_explanation),
+                &format!(
+                    "future {not_trait} as it awaits another future which {not_trait}",
+                    not_trait = trait_explanation
+                ),
             );
         } else {
             // Look at the last interior type to get a span for the `.await`.
@@ -1410,7 +1399,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 format!("{} occurs here, with `{}` maybe used later", await_or_yield, snippet),
             );
 
-            push_target_span_with_fallback(&mut span, "created here");
+            span.push_span_label(
+                target_span,
+                format!("has type `{}` which {}", target_ty, trait_explanation),
+            );
 
             // If available, use the scope span to annotate the drop location.
             if let Some(scope_span) = scope_span {
@@ -1423,8 +1415,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             err.span_note(
                 span,
                 &format!(
-                    "{} as this value is used across an {}",
-                    trait_explanation, await_or_yield
+                    "{} {} as this value is used across {}",
+                    future_or_generator, trait_explanation, an_await_or_yield
                 ),
             );
         }
