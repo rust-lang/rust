@@ -717,9 +717,16 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
             self.cx.parent
         );
 
+        // Save all state that is specific to the outer function
+        // body. These will be restored once down below, once we've
+        // visited the body.
         let outer_ec = mem::replace(&mut self.expr_and_pat_count, 0);
         let outer_cx = self.cx;
         let outer_ts = mem::take(&mut self.terminating_scopes);
+        // The 'pessimistic yield' flag is set to true when we are
+        // processing a `+=` statement and have to make pessimistic
+        // control flow assumptions. This doesn't apply to nested
+        // bodies within the `+=` statements. See #69307.
         let outer_pessimistic_yield = mem::replace(&mut self.pessimistic_yield, false);
         self.terminating_scopes.insert(body.value.hir_id.local_id);
 
