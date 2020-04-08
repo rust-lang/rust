@@ -106,6 +106,6 @@ warning: technically breaking changes in `<new::decode::Error as std::convert::F
    |
    = note: trait impl generalized or newly added (technically breaking)
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 4 warnings emitted
 
 error: rustc-semverver errored

@@ -39,5 +39,5 @@ warning: path changes to `quux2`
    |
    = note: added definition (technically breaking)
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 2 warnings emitted
 

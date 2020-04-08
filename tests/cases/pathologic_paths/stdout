@@ -15,3 +15,5 @@ warning: path changes to `b`
   |
   = note: added definition (technically breaking)
 
+warning: 2 warnings emitted
+

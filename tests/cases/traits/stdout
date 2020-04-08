@@ -156,5 +156,5 @@ error: breaking changes in `Tuv`
    |
    = warning: removed bound on trait definition: `A: std::clone::Clone` (breaking)
 
-error: aborting due to 13 previous errors
+error: aborting due to 13 previous errors; 1 warning emitted
 

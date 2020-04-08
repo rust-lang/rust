@@ -377,10 +377,10 @@ fn diff_fn<'tcx>(changes: &mut ChangeSet, tcx: TyCtxt<'tcx>, old: Res, new: Res)
 
 /// Given two method items, perform structural checks.
 fn diff_method<'tcx>(changes: &mut ChangeSet, tcx: TyCtxt<'tcx>, old: AssocItem, new: AssocItem) {
-    if old.method_has_self_argument != new.method_has_self_argument {
+    if old.fn_has_self_parameter != new.fn_has_self_parameter {
         changes.add_change(
             ChangeType::MethodSelfChanged {
-                now_self: new.method_has_self_argument,
+                now_self: new.fn_has_self_parameter,
             },
             old.def_id,
             None,
@@ -628,8 +628,8 @@ fn diff_traits<'tcx>(
             (Some(old_item), Some(new_item)) => {
                 let old_def_id = old_item.def_id;
                 let new_def_id = new_item.def_id;
-                let old_res = Res::Def(old_item.def_kind(), old_def_id);
-                let new_res = Res::Def(new_item.def_kind(), new_def_id);
+                let old_res = Res::Def(old_item.kind.as_def_kind(), old_def_id);
+                let new_res = Res::Def(new_item.kind.as_def_kind(), new_def_id);
 
                 id_mapping.add_trait_item(old_res, new_res, old);
                 changes.new_change(
@@ -1127,7 +1127,8 @@ fn is_impl_trait_public<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) -> bool {
 
     // Check if all input types of the trait implementation are public (including `Self`).
     let is_public = trait_ref
-        .input_types()
+        .substs
+        .types()
         .map(|t| type_visibility(tcx, t))
         .all(|v| v == Visibility::Public);
 
@@ -1275,7 +1276,7 @@ fn match_inherent_impl<'tcx>(
                 infcx.tcx.type_of(orig_item_def_id),
                 infcx.tcx.type_of(target_item_def_id),
             ),
-            (AssocKind::Method, AssocKind::Method) => {
+            (AssocKind::Fn, AssocKind::Fn) => {
                 diff_method(changes, tcx, orig_item, target_item);
                 let orig_sig = infcx.tcx.type_of(orig_item_def_id).fn_sig(tcx);
                 let target_sig = infcx.tcx.type_of(target_item_def_id).fn_sig(tcx);

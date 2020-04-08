@@ -55,5 +55,5 @@ warning: technically breaking changes in `def`
    |
    = note: added item in inherent impl (technically breaking)
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 2 warnings emitted
 

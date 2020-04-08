@@ -49,7 +49,7 @@ impl Hash for InherentEntry {
         // FIXME derive Hash again once AssocKind derives Hash again.
         match self.kind {
             AssocKind::Const => 0u8.hash(hasher),
-            AssocKind::Method => 1u8.hash(hasher),
+            AssocKind::Fn => 1u8.hash(hasher),
             AssocKind::OpaqueTy => 2u8.hash(hasher),
             AssocKind::Type => 3u8.hash(hasher),
         }
