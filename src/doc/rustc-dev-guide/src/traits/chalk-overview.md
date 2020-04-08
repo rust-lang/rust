@@ -229,7 +229,7 @@ Likewise, lowering tests use the [`lowering_success!` and
 [rustc-issues]: https://github.com/rust-lang/rustc-dev-guide/issues
 [universal quantification]: https://en.wikipedia.org/wiki/Universal_quantification
 
-[`ProgramClause`]: https://rust-lang.github.io/chalk/chalk_ir/enum.ProgramClause.html
+[`ProgramClause`]: https://rust-lang.github.io/chalk/chalk_ir/struct.ProgramClause.html
 [`ProgramEnvironment`]: https://rust-lang.github.io/chalk/chalk_integration/program_environment/struct.ProgramEnvironment.html
 [chalk_engine]: https://rust-lang.github.io/chalk/chalk_engine
 [chalk_ir]: https://rust-lang.github.io/chalk/chalk_ir/index.html
