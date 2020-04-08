@@ -1,3 +1,4 @@
+use crate::ty::query::QueryCtxt;
 use crate::ty::tls;
 
 use rustc_query_system::query::deadlock;
@@ -20,7 +21,7 @@ pub unsafe fn handle_deadlock() {
     thread::spawn(move || {
         tls::enter_context(icx, |_| {
             rustc_span::SESSION_GLOBALS
-                .set(session_globals, || tls::with(|tcx| deadlock(tcx, &registry)))
-        })
+                .set(session_globals, || tls::with(|tcx| deadlock(QueryCtxt(tcx), &registry)))
+        });
     });
 }

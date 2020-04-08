@@ -1,11 +1,12 @@
 use crate::ty::context::TyCtxt;
+use crate::ty::query::Query;
 use crate::ty::WithOptConstParam;
 use measureme::{StringComponent, StringId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
-use rustc_query_system::query::{QueryCache, QueryContext, QueryState};
+use rustc_query_system::query::{QueryCache, QueryState};
 use std::fmt::Debug;
 use std::io::Write;
 
@@ -230,7 +231,7 @@ where
 pub(super) fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
     tcx: TyCtxt<'tcx>,
     query_name: &'static str,
-    query_state: &QueryState<crate::dep_graph::DepKind, <TyCtxt<'tcx> as QueryContext>::Query, C>,
+    query_state: &QueryState<crate::dep_graph::DepKind, Query<'tcx>, C>,
     string_cache: &mut QueryKeyStringCache,
 ) where
     C: QueryCache,

@@ -3,6 +3,7 @@ use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
+use crate::ty::query::QueryCtxt;
 use crate::ty::{self, Ty};
 use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
@@ -312,7 +313,7 @@ impl<'sess> OnDiskCache<'sess> {
                     ($($query:ident,)*) => {
                         $(
                             encode_query_results::<ty::query::queries::$query<'_>>(
-                                tcx,
+                                QueryCtxt(tcx),
                                 enc,
                                 qri
                             )?;
@@ -1230,12 +1231,12 @@ impl<'a> Decodable<opaque::Decoder<'a>> for IntEncodedWithFixedSize {
 }
 
 fn encode_query_results<'a, 'tcx, Q>(
-    tcx: TyCtxt<'tcx>,
+    tcx: QueryCtxt<'tcx>,
     encoder: &mut CacheEncoder<'a, 'tcx, FileEncoder>,
     query_result_index: &mut EncodedQueryResultIndex,
 ) -> FileEncodeResult
 where
-    Q: super::QueryDescription<TyCtxt<'tcx>> + super::QueryAccessors<TyCtxt<'tcx>>,
+    Q: super::QueryDescription<QueryCtxt<'tcx>> + super::QueryAccessors<QueryCtxt<'tcx>>,
     Q::Value: Encodable<CacheEncoder<'a, 'tcx, FileEncoder>>,
 {
     let _timer = tcx

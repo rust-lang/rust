@@ -5,6 +5,7 @@
 use crate::ty::query::Query;
 use crate::ty::tls::{self, ImplicitCtxt};
 use crate::ty::{self, TyCtxt};
+use rustc_query_system::dep_graph::HasDepContext;
 use rustc_query_system::query::QueryContext;
 use rustc_query_system::query::{CycleError, QueryJobId, QueryJobInfo};
 
@@ -15,7 +16,29 @@ use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, Handler, Leve
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 
-impl QueryContext for TyCtxt<'tcx> {
+#[derive(Copy, Clone)]
+pub struct QueryCtxt<'tcx>(pub TyCtxt<'tcx>);
+
+impl<'tcx> std::ops::Deref for QueryCtxt<'tcx> {
+    type Target = TyCtxt<'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl HasDepContext for QueryCtxt<'tcx> {
+    type DepKind = crate::dep_graph::DepKind;
+    type StableHashingContext = crate::ich::StableHashingContext<'tcx>;
+    type DepContext = TyCtxt<'tcx>;
+
+    #[inline]
+    fn dep_context(&self) -> &Self::DepContext {
+        &self.0
+    }
+}
+
+impl QueryContext for QueryCtxt<'tcx> {
     type Query = Query<'tcx>;
 
     fn incremental_verify_ich(&self) -> bool {
@@ -26,11 +49,11 @@ impl QueryContext for TyCtxt<'tcx> {
     }
 
     fn def_path_str(&self, def_id: DefId) -> String {
-        TyCtxt::def_path_str(*self, def_id)
+        self.0.def_path_str(def_id)
     }
 
     fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>> {
-        tls::with_related_context(*self, |icx| icx.query)
+        tls::with_related_context(**self, |icx| icx.query)
     }
 
     fn try_collect_active_jobs(
@@ -53,10 +76,10 @@ impl QueryContext for TyCtxt<'tcx> {
         // The `TyCtxt` stored in TLS has the same global interner lifetime
         // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
         // when accessing the `ImplicitCtxt`.
-        tls::with_related_context(*self, move |current_icx| {
+        tls::with_related_context(**self, move |current_icx| {
             // Update the `ImplicitCtxt` to point to our new query job.
             let new_icx = ImplicitCtxt {
-                tcx: *self,
+                tcx: **self,
                 query: Some(token),
                 diagnostics,
                 layout_depth: current_icx.layout_depth,
@@ -71,7 +94,7 @@ impl QueryContext for TyCtxt<'tcx> {
     }
 }
 
-impl<'tcx> TyCtxt<'tcx> {
+impl<'tcx> QueryCtxt<'tcx> {
     #[inline(never)]
     #[cold]
     pub(super) fn report_cycle(
@@ -81,7 +104,7 @@ impl<'tcx> TyCtxt<'tcx> {
         assert!(!stack.is_empty());
 
         let fix_span = |span: Span, query: &Query<'tcx>| {
-            self.sess.source_map().guess_head_span(query.default_span(self, span))
+            self.sess.source_map().guess_head_span(query.default_span(*self, span))
         };
 
         // Disable naming impls with types in this path, since that
@@ -119,7 +142,9 @@ impl<'tcx> TyCtxt<'tcx> {
             err
         })
     }
+}
 
+impl<'tcx> TyCtxt<'tcx> {
     pub fn try_print_query_stack(handler: &Handler, num_frames: Option<usize>) {
         eprintln!("query stack during panic:");
 
@@ -149,7 +174,7 @@ impl<'tcx> TyCtxt<'tcx> {
                             "#{} [{}] {}",
                             i,
                             query_info.info.query.name(),
-                            query_info.info.query.describe(icx.tcx)
+                            query_info.info.query.describe(QueryCtxt(icx.tcx))
                         ),
                     );
                     diag.span =
@@ -272,7 +297,7 @@ macro_rules! define_queries {
                 }
             }
 
-            pub fn describe(&self, tcx: TyCtxt<$tcx>) -> Cow<'static, str> {
+            pub(crate) fn describe(&self, tcx: QueryCtxt<$tcx>) -> Cow<'static, str> {
                 let (r, name) = match *self {
                     $(Query::$name(key) => {
                         (queries::$name::describe(tcx, key), stringify!($name))
@@ -354,7 +379,7 @@ macro_rules! define_queries {
             const NAME: &'static str = stringify!($name);
         }
 
-        impl<$tcx> QueryAccessors<TyCtxt<$tcx>> for queries::$name<$tcx> {
+        impl<$tcx> QueryAccessors<QueryCtxt<$tcx>> for queries::$name<$tcx> {
             const ANON: bool = is_anon!([$($modifiers)*]);
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
             const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$name;
@@ -362,12 +387,12 @@ macro_rules! define_queries {
             type Cache = query_storage!([$($modifiers)*][$($K)*, $V]);
 
             #[inline(always)]
-            fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<crate::dep_graph::DepKind, <TyCtxt<$tcx> as QueryContext>::Query, Self::Cache> {
+            fn query_state<'a>(tcx: QueryCtxt<$tcx>) -> &'a QueryState<crate::dep_graph::DepKind, Query<$tcx>, Self::Cache> {
                 &tcx.queries.$name
             }
 
             #[inline]
-            fn compute(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value {
+            fn compute(tcx: QueryCtxt<'tcx>, key: Self::Key) -> Self::Value {
                 let provider = tcx.queries.providers.get(key.query_crate())
                     // HACK(eddyb) it's possible crates may be loaded after
                     // the query engine is created, and because crate loading
@@ -375,7 +400,7 @@ macro_rules! define_queries {
                     // would be missing appropriate entries in `providers`.
                     .unwrap_or(&tcx.queries.fallback_extern_providers)
                     .$name;
-                provider(tcx, key)
+                provider(*tcx, key)
             }
 
             fn hash_result(
@@ -386,7 +411,7 @@ macro_rules! define_queries {
             }
 
             fn handle_cycle_error(
-                tcx: TyCtxt<'tcx>,
+                tcx: QueryCtxt<'tcx>,
                 error: CycleError<Query<'tcx>>
             ) -> Self::Value {
                 handle_cycle_error!([$($modifiers)*][tcx, error])
@@ -402,7 +427,8 @@ macro_rules! define_queries {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                get_query::<queries::$name<'_>, _>(self.tcx, DUMMY_SP, key.into_query_param(), QueryMode::Ensure);
+                let qcx = QueryCtxt(self.tcx);
+                get_query::<queries::$name<'_>, _>(qcx, DUMMY_SP, key.into_query_param(), QueryMode::Ensure);
             })*
         }
 
@@ -483,7 +509,8 @@ macro_rules! define_queries {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
             {
-                get_query::<queries::$name<'_>, _>(self.tcx, self.span, key.into_query_param(), QueryMode::Get).unwrap()
+                let qcx = QueryCtxt(self.tcx);
+                get_query::<queries::$name<'_>, _>(qcx, self.span, key.into_query_param(), QueryMode::Get).unwrap()
             })*
         }
 
@@ -506,8 +533,8 @@ macro_rules! define_queries_struct {
 
             $($(#[$attr])*  $name: QueryState<
                 crate::dep_graph::DepKind,
-                <TyCtxt<$tcx> as QueryContext>::Query,
-                <queries::$name<$tcx> as QueryAccessors<TyCtxt<'tcx>>>::Cache,
+                Query<$tcx>,
+                <queries::$name<$tcx> as QueryAccessors<QueryCtxt<'tcx>>>::Cache,
             >,)*
         }
 
@@ -525,12 +552,12 @@ macro_rules! define_queries_struct {
 
             pub(crate) fn try_collect_active_jobs(
                 &self
-            ) -> Option<FxHashMap<QueryJobId<crate::dep_graph::DepKind>, QueryJobInfo<crate::dep_graph::DepKind, <TyCtxt<$tcx> as QueryContext>::Query>>> {
+            ) -> Option<FxHashMap<QueryJobId<crate::dep_graph::DepKind>, QueryJobInfo<crate::dep_graph::DepKind, Query<$tcx>>>> {
                 let mut jobs = FxHashMap::default();
 
                 $(
                     self.$name.try_collect_active_jobs(
-                        <queries::$name<'tcx> as QueryAccessors<TyCtxt<'tcx>>>::DEP_KIND,
+                        <queries::$name<'tcx> as QueryAccessors<QueryCtxt<'tcx>>>::DEP_KIND,
                         Query::$name,
                         &mut jobs,
                     )?;

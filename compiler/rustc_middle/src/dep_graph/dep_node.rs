@@ -52,6 +52,7 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
+use crate::ty::query::QueryCtxt;
 use crate::ty::TyCtxt;
 
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -258,7 +259,7 @@ pub mod dep_kind {
 
                     if let Some(key) = recover(tcx, dep_node) {
                         force_query::<queries::$variant<'_>, _>(
-                            tcx,
+                            QueryCtxt(tcx),
                             key,
                             DUMMY_SP,
                             *dep_node
@@ -284,7 +285,7 @@ pub mod dep_kind {
                                      .unwrap_or(false));
 
                     let key = recover(tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
-                    if queries::$variant::cache_on_disk(tcx, &key, None) {
+                    if queries::$variant::cache_on_disk(QueryCtxt(tcx), &key, None) {
                         let _ = tcx.$variant(key);
                     }
                 }
