@@ -8,10 +8,6 @@ help: possible candidate is found in another module, you can import it into scop
    |
 LL | use foo::Foo;
    |
-help: you might be missing a type parameter
-   |
-LL | type Output<Foo> = Option<Foo>;
-   |            ^^^^^
 
 error: aborting due to previous error
 
