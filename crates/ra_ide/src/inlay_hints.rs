@@ -236,13 +236,13 @@ fn should_show_param_hint(
     argument: &ast::Expr,
 ) -> bool {
     let argument_string = {
-        let arg_string = argument.syntax().to_string();
-        let arg_split: Vec<char> = arg_string.chars().collect();
-        match arg_split.as_slice() {
-            ['&', 'm', 'u', 't', ' ', arg_name @ ..] => arg_name.into_iter().collect::<String>(),
-            ['&', arg_name @ ..] => arg_name.into_iter().collect::<String>(),
-            _ => arg_string,
+        let mut arg_string = argument.syntax().to_string();
+        if arg_string.get(0..5) == Some("&mut ") {
+            arg_string = arg_string[5..].to_string();
+        } else if arg_string.get(0..1) == Some("&") {
+            arg_string = arg_string[1..].to_string();
         }
+        arg_string
     };
     if param_name.is_empty()
         || argument_string.ends_with(&param_name)
