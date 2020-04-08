@@ -25,6 +25,7 @@ Rust MIR: a lowered representation of Rust.
 #![feature(stmt_expr_attributes)]
 #![feature(trait_alias)]
 #![feature(option_expect_none)]
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 #[macro_use]
