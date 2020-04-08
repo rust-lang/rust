@@ -1,0 +1,70 @@
+// MIR for `main` after SimplifyCfg-after-uninhabited-enum-branching
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/uninhabited_enum_branching.rs:19:11: 19:11
+    let _1: &str;                        // in scope 0 at $DIR/uninhabited_enum_branching.rs:20:5: 24:6
+    let mut _2: Test1;                   // in scope 0 at $DIR/uninhabited_enum_branching.rs:20:11: 20:19
+    let mut _3: isize;                   // in scope 0 at $DIR/uninhabited_enum_branching.rs:21:9: 21:20
+    let _4: &str;                        // in scope 0 at $DIR/uninhabited_enum_branching.rs:22:24: 22:34
+    let _5: &str;                        // in scope 0 at $DIR/uninhabited_enum_branching.rs:23:21: 23:24
+    let _6: &str;                        // in scope 0 at $DIR/uninhabited_enum_branching.rs:26:5: 29:6
+    let mut _7: Test2;                   // in scope 0 at $DIR/uninhabited_enum_branching.rs:26:11: 26:19
+    let mut _8: isize;                   // in scope 0 at $DIR/uninhabited_enum_branching.rs:27:9: 27:17
+    let _9: &str;                        // in scope 0 at $DIR/uninhabited_enum_branching.rs:28:21: 28:24
+
+    bb0: {
+        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/uninhabited_enum_branching.rs:20:5: 24:6
+        StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/uninhabited_enum_branching.rs:20:11: 20:19
+        _2 = Test1::C;                   // bb0[2]: scope 0 at $DIR/uninhabited_enum_branching.rs:20:11: 20:19
+        _3 = discriminant(_2);           // bb0[3]: scope 0 at $DIR/uninhabited_enum_branching.rs:21:9: 21:20
+        StorageLive(_5);                 // bb0[4]: scope 0 at $DIR/uninhabited_enum_branching.rs:23:21: 23:24
+        _5 = const "C";                  // bb0[5]: scope 0 at $DIR/uninhabited_enum_branching.rs:23:21: 23:24
+                                         // ty::Const
+                                         // + ty: &str
+                                         // + val: Value(Slice { data: Allocation { bytes: [67], relocations: Relocations(SortedMap { data: [] }), undef_mask: UndefMask { blocks: [1], len: Size { raw: 1 } }, size: Size { raw: 1 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 1 })
+                                         // mir::Constant
+                                         // + span: $DIR/uninhabited_enum_branching.rs:23:21: 23:24
+                                         // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [67], relocations: Relocations(SortedMap { data: [] }), undef_mask: UndefMask { blocks: [1], len: Size { raw: 1 } }, size: Size { raw: 1 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 1 }) }
+        _1 = &(*_5);                     // bb0[6]: scope 0 at $DIR/uninhabited_enum_branching.rs:23:21: 23:24
+        StorageDead(_5);                 // bb0[7]: scope 0 at $DIR/uninhabited_enum_branching.rs:23:23: 23:24
+        StorageDead(_2);                 // bb0[8]: scope 0 at $DIR/uninhabited_enum_branching.rs:24:6: 24:7
+        StorageDead(_1);                 // bb0[9]: scope 0 at $DIR/uninhabited_enum_branching.rs:24:6: 24:7
+        StorageLive(_6);                 // bb0[10]: scope 0 at $DIR/uninhabited_enum_branching.rs:26:5: 29:6
+        StorageLive(_7);                 // bb0[11]: scope 0 at $DIR/uninhabited_enum_branching.rs:26:11: 26:19
+        _7 = Test2::D;                   // bb0[12]: scope 0 at $DIR/uninhabited_enum_branching.rs:26:11: 26:19
+        _8 = discriminant(_7);           // bb0[13]: scope 0 at $DIR/uninhabited_enum_branching.rs:27:9: 27:17
+        switchInt(move _8) -> [4isize: bb2, otherwise: bb1]; // bb0[14]: scope 0 at $DIR/uninhabited_enum_branching.rs:27:9: 27:17
+    }
+
+    bb1: {
+        StorageLive(_9);                 // bb1[0]: scope 0 at $DIR/uninhabited_enum_branching.rs:28:21: 28:24
+        _9 = const "E";                  // bb1[1]: scope 0 at $DIR/uninhabited_enum_branching.rs:28:21: 28:24
+                                         // ty::Const
+                                         // + ty: &str
+                                         // + val: Value(Slice { data: Allocation { bytes: [69], relocations: Relocations(SortedMap { data: [] }), undef_mask: UndefMask { blocks: [1], len: Size { raw: 1 } }, size: Size { raw: 1 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 1 })
+                                         // mir::Constant
+                                         // + span: $DIR/uninhabited_enum_branching.rs:28:21: 28:24
+                                         // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [69], relocations: Relocations(SortedMap { data: [] }), undef_mask: UndefMask { blocks: [1], len: Size { raw: 1 } }, size: Size { raw: 1 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 1 }) }
+        _6 = &(*_9);                     // bb1[2]: scope 0 at $DIR/uninhabited_enum_branching.rs:28:21: 28:24
+        StorageDead(_9);                 // bb1[3]: scope 0 at $DIR/uninhabited_enum_branching.rs:28:23: 28:24
+        goto -> bb3;                     // bb1[4]: scope 0 at $DIR/uninhabited_enum_branching.rs:26:5: 29:6
+    }
+
+    bb2: {
+        _6 = const "D";                  // bb2[0]: scope 0 at $DIR/uninhabited_enum_branching.rs:27:21: 27:24
+                                         // ty::Const
+                                         // + ty: &str
+                                         // + val: Value(Slice { data: Allocation { bytes: [68], relocations: Relocations(SortedMap { data: [] }), undef_mask: UndefMask { blocks: [1], len: Size { raw: 1 } }, size: Size { raw: 1 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 1 })
+                                         // mir::Constant
+                                         // + span: $DIR/uninhabited_enum_branching.rs:27:21: 27:24
+                                         // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [68], relocations: Relocations(SortedMap { data: [] }), undef_mask: UndefMask { blocks: [1], len: Size { raw: 1 } }, size: Size { raw: 1 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 1 }) }
+        goto -> bb3;                     // bb2[1]: scope 0 at $DIR/uninhabited_enum_branching.rs:26:5: 29:6
+    }
+
+    bb3: {
+        StorageDead(_7);                 // bb3[0]: scope 0 at $DIR/uninhabited_enum_branching.rs:29:6: 29:7
+        StorageDead(_6);                 // bb3[1]: scope 0 at $DIR/uninhabited_enum_branching.rs:29:6: 29:7
+        _0 = ();                         // bb3[2]: scope 0 at $DIR/uninhabited_enum_branching.rs:19:11: 30:2
+        return;                          // bb3[3]: scope 0 at $DIR/uninhabited_enum_branching.rs:30:2: 30:2
+    }
+}

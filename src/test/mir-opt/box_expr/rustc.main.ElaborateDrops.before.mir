@@ -1,0 +1,72 @@
+// MIR for `main` before ElaborateDrops
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/box_expr.rs:6:11: 6:11
+    let _1: std::boxed::Box<S>;          // in scope 0 at $DIR/box_expr.rs:7:9: 7:10
+    let mut _2: std::boxed::Box<S>;      // in scope 0 at $DIR/box_expr.rs:7:13: 7:25
+    let _3: ();                          // in scope 0 at $DIR/box_expr.rs:8:5: 8:12
+    let mut _4: std::boxed::Box<S>;      // in scope 0 at $DIR/box_expr.rs:8:10: 8:11
+    scope 1 {
+        debug x => _1;                   // in scope 1 at $DIR/box_expr.rs:7:9: 7:10
+    }
+
+    bb0: {
+        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/box_expr.rs:7:9: 7:10
+        StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/box_expr.rs:7:13: 7:25
+        _2 = Box(S);                     // bb0[2]: scope 0 at $DIR/box_expr.rs:7:13: 7:25
+        (*_2) = const S::new() -> [return: bb2, unwind: bb3]; // bb0[3]: scope 0 at $DIR/box_expr.rs:7:17: 7:25
+                                         // ty::Const
+                                         // + ty: fn() -> S {S::new}
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/box_expr.rs:7:17: 7:23
+                                         // + literal: Const { ty: fn() -> S {S::new}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1 (cleanup): {
+        resume;                          // bb1[0]: scope 0 at $DIR/box_expr.rs:6:1: 9:2
+    }
+
+    bb2: {
+        _1 = move _2;                    // bb2[0]: scope 0 at $DIR/box_expr.rs:7:13: 7:25
+        drop(_2) -> bb4;                 // bb2[1]: scope 0 at $DIR/box_expr.rs:7:24: 7:25
+    }
+
+    bb3 (cleanup): {
+        drop(_2) -> bb1;                 // bb3[0]: scope 0 at $DIR/box_expr.rs:7:24: 7:25
+    }
+
+    bb4: {
+        StorageDead(_2);                 // bb4[0]: scope 0 at $DIR/box_expr.rs:7:24: 7:25
+        StorageLive(_3);                 // bb4[1]: scope 1 at $DIR/box_expr.rs:8:5: 8:12
+        StorageLive(_4);                 // bb4[2]: scope 1 at $DIR/box_expr.rs:8:10: 8:11
+        _4 = move _1;                    // bb4[3]: scope 1 at $DIR/box_expr.rs:8:10: 8:11
+        _3 = const std::mem::drop::<std::boxed::Box<S>>(move _4) -> [return: bb5, unwind: bb7]; // bb4[4]: scope 1 at $DIR/box_expr.rs:8:5: 8:12
+                                         // ty::Const
+                                         // + ty: fn(std::boxed::Box<S>) {std::mem::drop::<std::boxed::Box<S>>}
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/box_expr.rs:8:5: 8:9
+                                         // + literal: Const { ty: fn(std::boxed::Box<S>) {std::mem::drop::<std::boxed::Box<S>>}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb5: {
+        StorageDead(_4);                 // bb5[0]: scope 1 at $DIR/box_expr.rs:8:11: 8:12
+        StorageDead(_3);                 // bb5[1]: scope 1 at $DIR/box_expr.rs:8:12: 8:13
+        _0 = ();                         // bb5[2]: scope 0 at $DIR/box_expr.rs:6:11: 9:2
+        drop(_1) -> bb8;                 // bb5[3]: scope 0 at $DIR/box_expr.rs:9:1: 9:2
+    }
+
+    bb6 (cleanup): {
+        drop(_1) -> bb1;                 // bb6[0]: scope 0 at $DIR/box_expr.rs:9:1: 9:2
+    }
+
+    bb7 (cleanup): {
+        drop(_4) -> bb6;                 // bb7[0]: scope 1 at $DIR/box_expr.rs:8:11: 8:12
+    }
+
+    bb8: {
+        StorageDead(_1);                 // bb8[0]: scope 0 at $DIR/box_expr.rs:9:1: 9:2
+        return;                          // bb8[1]: scope 0 at $DIR/box_expr.rs:9:2: 9:2
+    }
+}

@@ -9,6 +9,8 @@
 
 fn use_x(_: usize) -> bool { true }
 
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
+// EMIT_MIR rustc.main.nll.0.mir
 fn main() {
     let mut v = [1, 2, 3];
     let p = &v[0];
@@ -19,23 +21,3 @@ fn main() {
         use_x(22);
     }
 }
-
-// END RUST SOURCE
-// START rustc.main.nll.0.mir
-// | '_#2r | U0 | {bb2[0..=8], bb3[0], bb5[0..=2]}
-// | '_#3r | U0 | {bb2[1..=8], bb3[0], bb5[0..=2]}
-// | '_#4r | U0 | {bb2[4..=8], bb3[0], bb5[0..=2]}
-// END rustc.main.nll.0.mir
-// START rustc.main.nll.0.mir
-// let _2: &'_#3r usize;
-// ...
-// debug p => _2;
-// ...
-// let _6: &'_#4r usize;
-// ...
-// debug q => _6;
-// ...
-// _2 = &'_#2r _1[_3];
-// ...
-// _6 = _2;
-// END rustc.main.nll.0.mir

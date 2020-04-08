@@ -1,0 +1,21 @@
+// MIR for `no_codegen` after PreCodegen
+
+fn no_codegen() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/retain-never-const.rs:18:20: 18:20
+    let mut _1: !;                       // in scope 0 at $DIR/retain-never-const.rs:19:13: 19:33
+    scope 1 {
+    }
+
+    bb0: {
+        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/retain-never-const.rs:19:13: 19:33
+        _1 = const PrintName::<T>::VOID; // bb0[1]: scope 0 at $DIR/retain-never-const.rs:19:13: 19:33
+                                         // ty::Const
+                                         // + ty: !
+                                         // + val: Unevaluated(DefId(0:9 ~ retain_never_const[317d]::{{impl}}[0]::VOID[0]), [T], None)
+                                         // mir::Constant
+                                         // + span: $DIR/retain-never-const.rs:19:13: 19:33
+                                         // + user_ty: UserType(0)
+                                         // + literal: Const { ty: !, val: Unevaluated(DefId(0:9 ~ retain_never_const[317d]::{{impl}}[0]::VOID[0]), [T], None) }
+        unreachable;                     // bb0[2]: scope 0 at $DIR/retain-never-const.rs:19:13: 19:33
+    }
+}

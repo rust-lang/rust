@@ -7,35 +7,11 @@ unsafe fn foo(z: *mut usize) -> u32 {
     99
 }
 
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
+// EMIT_MIR rustc.main.SimplifyCfg-elaborate-drops.after.mir
 fn main() {
     let mut x = [42, 43, 44];
     let mut y = 1;
     let z: *mut usize = &mut y;
     x[y] = unsafe { foo(z) };
 }
-
-// END RUST SOURCE
-// START rustc.main.SimplifyCfg-elaborate-drops.after.mir
-//     bb0: {
-//         ...
-//         _4 = &mut _2;
-//         _3 = &raw mut (*_4);
-//         ...
-//         _6 = _3;
-//         _5 = const foo(move _6) -> bb1;
-//     }
-//
-//     bb1: {
-//         ...
-//         _7 = _2;
-//         _8 = Len(_1);
-//         _9 = Lt(_7, _8);
-//         assert(move _9, "index out of bounds: the len is move _8 but the index is _7") -> bb2;
-//     }
-//
-//     bb2: {
-//         _1[_7] = move _5;
-//         ...
-//         return;
-//     }
-// END rustc.main.SimplifyCfg-elaborate-drops.after.mir

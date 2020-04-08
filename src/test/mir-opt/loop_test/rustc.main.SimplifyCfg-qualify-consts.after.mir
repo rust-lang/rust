@@ -1,0 +1,69 @@
+// MIR for `main` after SimplifyCfg-qualify-consts
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/loop_test.rs:6:11: 6:11
+    let _1: ();                          // in scope 0 at $DIR/loop_test.rs:10:5: 12:6
+    let mut _2: bool;                    // in scope 0 at $DIR/loop_test.rs:10:8: 10:12
+    let mut _3: !;                       // in scope 0 at $DIR/loop_test.rs:10:13: 12:6
+    let mut _4: !;                       // in scope 0 at $DIR/loop_test.rs:13:5: 16:6
+    let mut _5: ();                      // in scope 0 at $DIR/loop_test.rs:6:1: 17:2
+    let _6: i32;                         // in scope 0 at $DIR/loop_test.rs:14:13: 14:14
+    scope 1 {
+        debug x => _6;                   // in scope 1 at $DIR/loop_test.rs:14:13: 14:14
+    }
+
+    bb0: {
+        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/loop_test.rs:10:5: 12:6
+        StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/loop_test.rs:10:8: 10:12
+        _2 = const true;                 // bb0[2]: scope 0 at $DIR/loop_test.rs:10:8: 10:12
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x01))
+                                         // mir::Constant
+                                         // + span: $DIR/loop_test.rs:10:8: 10:12
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+        FakeRead(ForMatchedPlace, _2);   // bb0[3]: scope 0 at $DIR/loop_test.rs:10:8: 10:12
+        switchInt(_2) -> [false: bb3, otherwise: bb2]; // bb0[4]: scope 0 at $DIR/loop_test.rs:10:5: 12:6
+    }
+
+    bb1 (cleanup): {
+        resume;                          // bb1[0]: scope 0 at $DIR/loop_test.rs:6:1: 17:2
+    }
+
+    bb2: {
+        falseEdges -> [real: bb4, imaginary: bb3]; // bb2[0]: scope 0 at $DIR/loop_test.rs:10:5: 12:6
+    }
+
+    bb3: {
+        _1 = ();                         // bb3[0]: scope 0 at $DIR/loop_test.rs:10:5: 12:6
+        StorageDead(_2);                 // bb3[1]: scope 0 at $DIR/loop_test.rs:12:5: 12:6
+        StorageDead(_1);                 // bb3[2]: scope 0 at $DIR/loop_test.rs:12:5: 12:6
+        StorageLive(_4);                 // bb3[3]: scope 0 at $DIR/loop_test.rs:13:5: 16:6
+        goto -> bb5;                     // bb3[4]: scope 0 at $DIR/loop_test.rs:13:5: 16:6
+    }
+
+    bb4: {
+        _0 = ();                         // bb4[0]: scope 0 at $DIR/loop_test.rs:11:9: 11:15
+        StorageDead(_2);                 // bb4[1]: scope 0 at $DIR/loop_test.rs:12:5: 12:6
+        StorageDead(_1);                 // bb4[2]: scope 0 at $DIR/loop_test.rs:12:5: 12:6
+        return;                          // bb4[3]: scope 0 at $DIR/loop_test.rs:17:2: 17:2
+    }
+
+    bb5: {
+        falseUnwind -> [real: bb6, cleanup: bb1]; // bb5[0]: scope 0 at $DIR/loop_test.rs:13:5: 16:6
+    }
+
+    bb6: {
+        StorageLive(_6);                 // bb6[0]: scope 0 at $DIR/loop_test.rs:14:13: 14:14
+        _6 = const 1i32;                 // bb6[1]: scope 0 at $DIR/loop_test.rs:14:17: 14:18
+                                         // ty::Const
+                                         // + ty: i32
+                                         // + val: Value(Scalar(0x00000001))
+                                         // mir::Constant
+                                         // + span: $DIR/loop_test.rs:14:17: 14:18
+                                         // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
+        FakeRead(ForLet, _6);            // bb6[2]: scope 0 at $DIR/loop_test.rs:14:13: 14:14
+        StorageDead(_6);                 // bb6[3]: scope 0 at $DIR/loop_test.rs:16:5: 16:6
+        goto -> bb5;                     // bb6[4]: scope 0 at $DIR/loop_test.rs:15:9: 15:17
+    }
+}

@@ -1,0 +1,52 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/boxes.rs:11:11: 11:11
+      let _1: i32;                         // in scope 0 at $DIR/boxes.rs:12:9: 12:10
+      let mut _2: i32;                     // in scope 0 at $DIR/boxes.rs:12:13: 12:22
+      let mut _3: std::boxed::Box<i32>;    // in scope 0 at $DIR/boxes.rs:12:14: 12:22
+      let mut _4: std::boxed::Box<i32>;    // in scope 0 at $DIR/boxes.rs:12:14: 12:22
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/boxes.rs:12:9: 12:10
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/boxes.rs:12:9: 12:10
+          StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/boxes.rs:12:13: 12:22
+          StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/boxes.rs:12:14: 12:22
+          StorageLive(_4);                 // bb0[3]: scope 0 at $DIR/boxes.rs:12:14: 12:22
+          _4 = Box(i32);                   // bb0[4]: scope 0 at $DIR/boxes.rs:12:14: 12:22
+          (*_4) = const 42i32;             // bb0[5]: scope 0 at $DIR/boxes.rs:12:19: 12:21
+                                           // ty::Const
+                                           // + ty: i32
+                                           // + val: Value(Scalar(0x0000002a))
+                                           // mir::Constant
+                                           // + span: $DIR/boxes.rs:12:19: 12:21
+                                           // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
+          _3 = move _4;                    // bb0[6]: scope 0 at $DIR/boxes.rs:12:14: 12:22
+          StorageDead(_4);                 // bb0[7]: scope 0 at $DIR/boxes.rs:12:21: 12:22
+          _2 = (*_3);                      // bb0[8]: scope 0 at $DIR/boxes.rs:12:13: 12:22
+          _1 = Add(move _2, const 0i32);   // bb0[9]: scope 0 at $DIR/boxes.rs:12:13: 12:26
+                                           // ty::Const
+                                           // + ty: i32
+                                           // + val: Value(Scalar(0x00000000))
+                                           // mir::Constant
+                                           // + span: $DIR/boxes.rs:12:25: 12:26
+                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
+          StorageDead(_2);                 // bb0[10]: scope 0 at $DIR/boxes.rs:12:25: 12:26
+          drop(_3) -> [return: bb2, unwind: bb1]; // bb0[11]: scope 0 at $DIR/boxes.rs:12:26: 12:27
+      }
+  
+      bb1 (cleanup): {
+          resume;                          // bb1[0]: scope 0 at $DIR/boxes.rs:11:1: 13:2
+      }
+  
+      bb2: {
+          StorageDead(_3);                 // bb2[0]: scope 0 at $DIR/boxes.rs:12:26: 12:27
+          _0 = ();                         // bb2[1]: scope 0 at $DIR/boxes.rs:11:11: 13:2
+          StorageDead(_1);                 // bb2[2]: scope 0 at $DIR/boxes.rs:13:1: 13:2
+          return;                          // bb2[3]: scope 0 at $DIR/boxes.rs:13:2: 13:2
+      }
+  }
+  

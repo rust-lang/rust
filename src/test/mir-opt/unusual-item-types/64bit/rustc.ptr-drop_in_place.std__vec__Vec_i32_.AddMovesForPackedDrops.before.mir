@@ -1,0 +1,46 @@
+// MIR for `std::intrinsics::drop_in_place` before AddMovesForPackedDrops
+
+fn std::intrinsics::drop_in_place(_1: *mut std::vec::Vec<i32>) -> () {
+    let mut _0: ();                      // return place in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+    let mut _2: &mut std::vec::Vec<i32>; // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+    let mut _3: ();                      // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+
+    bb0: {
+        goto -> bb7;                     // bb0[0]: scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+    }
+
+    bb1: {
+        return;                          // bb1[0]: scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+    }
+
+    bb2 (cleanup): {
+        resume;                          // bb2[0]: scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+    }
+
+    bb3: {
+        goto -> bb1;                     // bb3[0]: scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+    }
+
+    bb4 (cleanup): {
+        goto -> bb2;                     // bb4[0]: scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+    }
+
+    bb5 (cleanup): {
+        drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> bb4; // bb5[0]: scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+    }
+
+    bb6: {
+        drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> [return: bb3, unwind: bb4]; // bb6[0]: scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+    }
+
+    bb7: {
+        _2 = &mut (*_1);                 // bb7[0]: scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _3 = const <std::vec::Vec<i32> as std::ops::Drop>::drop(move _2) -> [return: bb6, unwind: bb5]; // bb7[1]: scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+                                         // ty::Const
+                                         // + ty: for<'r> fn(&'r mut std::vec::Vec<i32>) {<std::vec::Vec<i32> as std::ops::Drop>::drop}
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+                                         // + literal: Const { ty: for<'r> fn(&'r mut std::vec::Vec<i32>) {<std::vec::Vec<i32> as std::ops::Drop>::drop}, val: Value(Scalar(<ZST>)) }
+    }
+}

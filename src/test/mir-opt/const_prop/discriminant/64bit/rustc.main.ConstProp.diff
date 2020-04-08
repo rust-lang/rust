@@ -1,0 +1,95 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/discriminant.rs:5:11: 5:11
+      let _1: i32;                         // in scope 0 at $DIR/discriminant.rs:6:9: 6:10
+      let mut _2: i32;                     // in scope 0 at $DIR/discriminant.rs:6:13: 6:64
+      let mut _3: std::option::Option<bool>; // in scope 0 at $DIR/discriminant.rs:6:34: 6:44
+      let mut _4: isize;                   // in scope 0 at $DIR/discriminant.rs:6:21: 6:31
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/discriminant.rs:6:9: 6:10
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/discriminant.rs:6:9: 6:10
+          StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/discriminant.rs:6:13: 6:64
+          StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/discriminant.rs:6:34: 6:44
+-         _3 = std::option::Option::<bool>::Some(const true,); // bb0[3]: scope 0 at $DIR/discriminant.rs:6:34: 6:44
++         _3 = const {transmute(0x01): std::option::Option<bool>}; // bb0[3]: scope 0 at $DIR/discriminant.rs:6:34: 6:44
+                                           // ty::Const
+-                                          // + ty: bool
++                                          // + ty: std::option::Option<bool>
+                                           // + val: Value(Scalar(0x01))
+                                           // mir::Constant
+-                                          // + span: $DIR/discriminant.rs:6:39: 6:43
+-                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+-         _4 = discriminant(_3);           // bb0[4]: scope 0 at $DIR/discriminant.rs:6:21: 6:31
+-         switchInt(move _4) -> [1isize: bb2, otherwise: bb1]; // bb0[5]: scope 0 at $DIR/discriminant.rs:6:21: 6:31
++                                          // + span: $DIR/discriminant.rs:6:34: 6:44
++                                          // + literal: Const { ty: std::option::Option<bool>, val: Value(Scalar(0x01)) }
++         _4 = const 1isize;               // bb0[4]: scope 0 at $DIR/discriminant.rs:6:21: 6:31
++                                          // ty::Const
++                                          // + ty: isize
++                                          // + val: Value(Scalar(0x0000000000000001))
++                                          // mir::Constant
++                                          // + span: $DIR/discriminant.rs:6:21: 6:31
++                                          // + literal: Const { ty: isize, val: Value(Scalar(0x0000000000000001)) }
++         switchInt(const 1isize) -> [1isize: bb2, otherwise: bb1]; // bb0[5]: scope 0 at $DIR/discriminant.rs:6:21: 6:31
++                                          // ty::Const
++                                          // + ty: isize
++                                          // + val: Value(Scalar(0x0000000000000001))
++                                          // mir::Constant
++                                          // + span: $DIR/discriminant.rs:6:21: 6:31
++                                          // + literal: Const { ty: isize, val: Value(Scalar(0x0000000000000001)) }
+      }
+  
+      bb1: {
+          _2 = const 10i32;                // bb1[0]: scope 0 at $DIR/discriminant.rs:6:59: 6:61
+                                           // ty::Const
+                                           // + ty: i32
+                                           // + val: Value(Scalar(0x0000000a))
+                                           // mir::Constant
+                                           // + span: $DIR/discriminant.rs:6:59: 6:61
+                                           // + literal: Const { ty: i32, val: Value(Scalar(0x0000000a)) }
+          goto -> bb4;                     // bb1[1]: scope 0 at $DIR/discriminant.rs:6:13: 6:64
+      }
+  
+      bb2: {
+-         switchInt(((_3 as Some).0: bool)) -> [false: bb1, otherwise: bb3]; // bb2[0]: scope 0 at $DIR/discriminant.rs:6:26: 6:30
++         switchInt(const true) -> [false: bb1, otherwise: bb3]; // bb2[0]: scope 0 at $DIR/discriminant.rs:6:26: 6:30
++                                          // ty::Const
++                                          // + ty: bool
++                                          // + val: Value(Scalar(0x01))
++                                          // mir::Constant
++                                          // + span: $DIR/discriminant.rs:6:26: 6:30
++                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+      }
+  
+      bb3: {
+          _2 = const 42i32;                // bb3[0]: scope 0 at $DIR/discriminant.rs:6:47: 6:49
+                                           // ty::Const
+                                           // + ty: i32
+                                           // + val: Value(Scalar(0x0000002a))
+                                           // mir::Constant
+                                           // + span: $DIR/discriminant.rs:6:47: 6:49
+                                           // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
+          goto -> bb4;                     // bb3[1]: scope 0 at $DIR/discriminant.rs:6:13: 6:64
+      }
+  
+      bb4: {
+          _1 = Add(move _2, const 0i32);   // bb4[0]: scope 0 at $DIR/discriminant.rs:6:13: 6:68
+                                           // ty::Const
+                                           // + ty: i32
+                                           // + val: Value(Scalar(0x00000000))
+                                           // mir::Constant
+                                           // + span: $DIR/discriminant.rs:6:67: 6:68
+                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
+          StorageDead(_2);                 // bb4[1]: scope 0 at $DIR/discriminant.rs:6:67: 6:68
+          StorageDead(_3);                 // bb4[2]: scope 0 at $DIR/discriminant.rs:6:68: 6:69
+          _0 = ();                         // bb4[3]: scope 0 at $DIR/discriminant.rs:5:11: 7:2
+          StorageDead(_1);                 // bb4[4]: scope 0 at $DIR/discriminant.rs:7:1: 7:2
+          return;                          // bb4[5]: scope 0 at $DIR/discriminant.rs:7:2: 7:2
+      }
+  }
+  

@@ -2,11 +2,13 @@
 
 pub enum Void {}
 
+// EMIT_MIR rustc.process_never.SimplifyLocals.after.mir
 #[no_mangle]
 pub fn process_never(input: *const !) {
    let _input = unsafe { &*input };
 }
 
+// EMIT_MIR rustc.process_void.SimplifyLocals.after.mir
 #[no_mangle]
 pub fn process_void(input: *const Void) {
    let _input = unsafe { &*input };
@@ -15,23 +17,3 @@ pub fn process_void(input: *const Void) {
 }
 
 fn main() {}
-
-// END RUST SOURCE
-//
-// START rustc.process_never.SimplifyLocals.after.mir
-// bb0: {
-//     StorageLive(_2);
-//     _2 = &(*_1);
-//     StorageDead(_2);
-//     unreachable;
-// }
-// END rustc.process_never.SimplifyLocals.after.mir
-//
-// START rustc.process_void.SimplifyLocals.after.mir
-// bb0: {
-//     StorageLive(_2);
-//     _2 = &(*_1);
-//     StorageDead(_2);
-//     return;
-// }
-// END rustc.process_void.SimplifyLocals.after.mir

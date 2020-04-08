@@ -1,0 +1,250 @@
+// MIR for `main` after ElaborateDrops
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/issue-41888.rs:6:11: 6:11
+    let _1: E;                           // in scope 0 at $DIR/issue-41888.rs:7:9: 7:10
+    let mut _2: bool;                    // in scope 0 at $DIR/issue-41888.rs:8:8: 8:14
+    let mut _3: E;                       // in scope 0 at $DIR/issue-41888.rs:9:13: 9:20
+    let mut _4: K;                       // in scope 0 at $DIR/issue-41888.rs:9:18: 9:19
+    let mut _5: isize;                   // in scope 0 at $DIR/issue-41888.rs:10:16: 10:24
+    let mut _7: bool;                    // in scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    let mut _8: bool;                    // in scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    let mut _9: bool;                    // in scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    let mut _10: isize;                  // in scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    let mut _11: isize;                  // in scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    scope 1 {
+        debug e => _1;                   // in scope 1 at $DIR/issue-41888.rs:7:9: 7:10
+        let _6: K;                       // in scope 1 at $DIR/issue-41888.rs:10:21: 10:23
+        scope 2 {
+            debug _k => _6;              // in scope 2 at $DIR/issue-41888.rs:10:21: 10:23
+        }
+    }
+
+    bb0: {
+        _9 = const false;                // bb0[0]: scope 0 at $DIR/issue-41888.rs:7:9: 7:10
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x00))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:7:9: 7:10
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+        _7 = const false;                // bb0[1]: scope 0 at $DIR/issue-41888.rs:7:9: 7:10
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x00))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:7:9: 7:10
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+        _8 = const false;                // bb0[2]: scope 0 at $DIR/issue-41888.rs:7:9: 7:10
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x00))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:7:9: 7:10
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+        StorageLive(_1);                 // bb0[3]: scope 0 at $DIR/issue-41888.rs:7:9: 7:10
+        StorageLive(_2);                 // bb0[4]: scope 1 at $DIR/issue-41888.rs:8:8: 8:14
+        _2 = const cond() -> [return: bb2, unwind: bb3]; // bb0[5]: scope 1 at $DIR/issue-41888.rs:8:8: 8:14
+                                         // ty::Const
+                                         // + ty: fn() -> bool {cond}
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:8:8: 8:12
+                                         // + literal: Const { ty: fn() -> bool {cond}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1 (cleanup): {
+        resume;                          // bb1[0]: scope 0 at $DIR/issue-41888.rs:6:1: 15:2
+    }
+
+    bb2: {
+        switchInt(_2) -> [false: bb4, otherwise: bb5]; // bb2[0]: scope 1 at $DIR/issue-41888.rs:8:5: 14:6
+    }
+
+    bb3 (cleanup): {
+        goto -> bb1;                     // bb3[0]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    }
+
+    bb4: {
+        _0 = ();                         // bb4[0]: scope 1 at $DIR/issue-41888.rs:8:5: 14:6
+        goto -> bb11;                    // bb4[1]: scope 1 at $DIR/issue-41888.rs:8:5: 14:6
+    }
+
+    bb5: {
+        StorageLive(_3);                 // bb5[0]: scope 1 at $DIR/issue-41888.rs:9:13: 9:20
+        StorageLive(_4);                 // bb5[1]: scope 1 at $DIR/issue-41888.rs:9:18: 9:19
+        _4 = K;                          // bb5[2]: scope 1 at $DIR/issue-41888.rs:9:18: 9:19
+        _3 = E::F(move _4,);             // bb5[3]: scope 1 at $DIR/issue-41888.rs:9:13: 9:20
+        StorageDead(_4);                 // bb5[4]: scope 1 at $DIR/issue-41888.rs:9:19: 9:20
+        goto -> bb14;                    // bb5[5]: scope 1 at $DIR/issue-41888.rs:9:9: 9:10
+    }
+
+    bb6: {
+        goto -> bb8;                     // bb6[0]: scope 1 at $DIR/issue-41888.rs:9:19: 9:20
+    }
+
+    bb7 (cleanup): {
+        goto -> bb3;                     // bb7[0]: scope 1 at $DIR/issue-41888.rs:9:19: 9:20
+    }
+
+    bb8: {
+        StorageDead(_3);                 // bb8[0]: scope 1 at $DIR/issue-41888.rs:9:19: 9:20
+        _5 = discriminant(_1);           // bb8[1]: scope 1 at $DIR/issue-41888.rs:10:16: 10:24
+        switchInt(move _5) -> [0isize: bb10, otherwise: bb9]; // bb8[2]: scope 1 at $DIR/issue-41888.rs:10:16: 10:24
+    }
+
+    bb9: {
+        _0 = ();                         // bb9[0]: scope 1 at $DIR/issue-41888.rs:10:9: 13:10
+        goto -> bb11;                    // bb9[1]: scope 1 at $DIR/issue-41888.rs:10:9: 13:10
+    }
+
+    bb10: {
+        StorageLive(_6);                 // bb10[0]: scope 1 at $DIR/issue-41888.rs:10:21: 10:23
+        _9 = const false;                // bb10[1]: scope 1 at $DIR/issue-41888.rs:10:21: 10:23
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x00))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:10:21: 10:23
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+        _6 = move ((_1 as F).0: K);      // bb10[2]: scope 1 at $DIR/issue-41888.rs:10:21: 10:23
+        _0 = ();                         // bb10[3]: scope 2 at $DIR/issue-41888.rs:10:29: 13:10
+        StorageDead(_6);                 // bb10[4]: scope 1 at $DIR/issue-41888.rs:13:9: 13:10
+        goto -> bb11;                    // bb10[5]: scope 1 at $DIR/issue-41888.rs:10:9: 13:10
+    }
+
+    bb11: {
+        goto -> bb21;                    // bb11[0]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    }
+
+    bb12: {
+        _7 = const false;                // bb12[0]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x00))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:15:1: 15:2
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+        _8 = const false;                // bb12[1]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x00))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:15:1: 15:2
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+        _9 = const false;                // bb12[2]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x00))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:15:1: 15:2
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+        StorageDead(_1);                 // bb12[3]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+        StorageDead(_2);                 // bb12[4]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+        return;                          // bb12[5]: scope 0 at $DIR/issue-41888.rs:15:2: 15:2
+    }
+
+    bb13 (cleanup): {
+        _7 = const true;                 // bb13[0]: scope 1 at $DIR/issue-41888.rs:9:9: 9:10
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x01))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:9:9: 9:10
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+        _8 = const true;                 // bb13[1]: scope 1 at $DIR/issue-41888.rs:9:9: 9:10
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x01))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:9:9: 9:10
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+        _9 = const true;                 // bb13[2]: scope 1 at $DIR/issue-41888.rs:9:9: 9:10
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x01))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:9:9: 9:10
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+        _1 = move _3;                    // bb13[3]: scope 1 at $DIR/issue-41888.rs:9:9: 9:10
+        goto -> bb7;                     // bb13[4]: scope 1 at $DIR/issue-41888.rs:9:9: 9:10
+    }
+
+    bb14: {
+        _7 = const true;                 // bb14[0]: scope 1 at $DIR/issue-41888.rs:9:9: 9:10
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x01))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:9:9: 9:10
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+        _8 = const true;                 // bb14[1]: scope 1 at $DIR/issue-41888.rs:9:9: 9:10
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x01))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:9:9: 9:10
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+        _9 = const true;                 // bb14[2]: scope 1 at $DIR/issue-41888.rs:9:9: 9:10
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x01))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:9:9: 9:10
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+        _1 = move _3;                    // bb14[3]: scope 1 at $DIR/issue-41888.rs:9:9: 9:10
+        goto -> bb6;                     // bb14[4]: scope 1 at $DIR/issue-41888.rs:9:9: 9:10
+    }
+
+    bb15: {
+        _7 = const false;                // bb15[0]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x00))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:15:1: 15:2
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+        goto -> bb12;                    // bb15[1]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    }
+
+    bb16 (cleanup): {
+        _7 = const false;                // bb16[0]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x00))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41888.rs:15:1: 15:2
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+        goto -> bb1;                     // bb16[1]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    }
+
+    bb17 (cleanup): {
+        goto -> bb16;                    // bb17[0]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    }
+
+    bb18: {
+        drop(_1) -> [return: bb15, unwind: bb16]; // bb18[0]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    }
+
+    bb19 (cleanup): {
+        drop(_1) -> bb16;                // bb19[0]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    }
+
+    bb20: {
+        _10 = discriminant(_1);          // bb20[0]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+        switchInt(move _10) -> [0isize: bb15, otherwise: bb18]; // bb20[1]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    }
+
+    bb21: {
+        switchInt(_7) -> [false: bb15, otherwise: bb20]; // bb21[0]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    }
+
+    bb22 (cleanup): {
+        _11 = discriminant(_1);          // bb22[0]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+        switchInt(move _11) -> [0isize: bb17, otherwise: bb19]; // bb22[1]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    }
+
+    bb23 (cleanup): {
+        switchInt(_7) -> [false: bb16, otherwise: bb22]; // bb23[0]: scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+    }
+}

@@ -1,0 +1,58 @@
+// MIR for `main` before ElaborateDrops
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/no-spurious-drop-after-call.rs:8:11: 8:11
+    let _1: ();                          // in scope 0 at $DIR/no-spurious-drop-after-call.rs:9:5: 9:35
+    let mut _2: std::string::String;     // in scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:34
+    let mut _3: &str;                    // in scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:22
+    let _4: &str;                        // in scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:22
+
+    bb0: {
+        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/no-spurious-drop-after-call.rs:9:5: 9:35
+        StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:34
+        StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:22
+        StorageLive(_4);                 // bb0[3]: scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:22
+        _4 = const "";                   // bb0[4]: scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:22
+                                         // ty::Const
+                                         // + ty: &str
+                                         // + val: Value(Slice { data: Allocation { bytes: [], relocations: Relocations(SortedMap { data: [] }), undef_mask: UndefMask { blocks: [], len: Size { raw: 0 } }, size: Size { raw: 0 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 0 })
+                                         // mir::Constant
+                                         // + span: $DIR/no-spurious-drop-after-call.rs:9:20: 9:22
+                                         // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [], relocations: Relocations(SortedMap { data: [] }), undef_mask: UndefMask { blocks: [], len: Size { raw: 0 } }, size: Size { raw: 0 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 0 }) }
+        _3 = &(*_4);                     // bb0[5]: scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:22
+        _2 = const <str as std::string::ToString>::to_string(move _3) -> bb2; // bb0[6]: scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:34
+                                         // ty::Const
+                                         // + ty: for<'r> fn(&'r str) -> std::string::String {<str as std::string::ToString>::to_string}
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/no-spurious-drop-after-call.rs:9:23: 9:32
+                                         // + literal: Const { ty: for<'r> fn(&'r str) -> std::string::String {<str as std::string::ToString>::to_string}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1 (cleanup): {
+        resume;                          // bb1[0]: scope 0 at $DIR/no-spurious-drop-after-call.rs:8:1: 10:2
+    }
+
+    bb2: {
+        StorageDead(_3);                 // bb2[0]: scope 0 at $DIR/no-spurious-drop-after-call.rs:9:33: 9:34
+        _1 = const std::mem::drop::<std::string::String>(move _2) -> [return: bb3, unwind: bb4]; // bb2[1]: scope 0 at $DIR/no-spurious-drop-after-call.rs:9:5: 9:35
+                                         // ty::Const
+                                         // + ty: fn(std::string::String) {std::mem::drop::<std::string::String>}
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/no-spurious-drop-after-call.rs:9:5: 9:19
+                                         // + literal: Const { ty: fn(std::string::String) {std::mem::drop::<std::string::String>}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb3: {
+        StorageDead(_2);                 // bb3[0]: scope 0 at $DIR/no-spurious-drop-after-call.rs:9:34: 9:35
+        StorageDead(_4);                 // bb3[1]: scope 0 at $DIR/no-spurious-drop-after-call.rs:9:35: 9:36
+        StorageDead(_1);                 // bb3[2]: scope 0 at $DIR/no-spurious-drop-after-call.rs:9:35: 9:36
+        _0 = ();                         // bb3[3]: scope 0 at $DIR/no-spurious-drop-after-call.rs:8:11: 10:2
+        return;                          // bb3[4]: scope 0 at $DIR/no-spurious-drop-after-call.rs:10:2: 10:2
+    }
+
+    bb4 (cleanup): {
+        drop(_2) -> bb1;                 // bb4[0]: scope 0 at $DIR/no-spurious-drop-after-call.rs:9:34: 9:35
+    }
+}

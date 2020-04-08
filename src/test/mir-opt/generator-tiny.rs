@@ -13,6 +13,7 @@ impl Drop for HasDrop {
 
 fn callee() {}
 
+// EMIT_MIR rustc.main-{{closure}}.generator_resume.0.mir
 fn main() {
     let _gen = |_x: u8| {
         let _d = HasDrop;
@@ -22,13 +23,3 @@ fn main() {
         }
     };
 }
-
-// END RUST SOURCE
-
-// START rustc.main-{{closure}}.generator_resume.0.mir
-// bb0: {
-//     ...
-//     switchInt(move _11) -> [0u32: bb1, 3u32: bb5, otherwise: bb6];
-// }
-// ...
-// END rustc.main-{{closure}}.generator_resume.0.mir

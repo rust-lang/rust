@@ -1,0 +1,96 @@
+- // MIR for `main` before UnreachablePropagation
++ // MIR for `main` after UnreachablePropagation
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/unreachable_asm.rs:10:11: 10:11
+      let mut _1: std::option::Option<Empty>; // in scope 0 at $DIR/unreachable_asm.rs:11:23: 11:30
+      let mut _2: isize;                   // in scope 0 at $DIR/unreachable_asm.rs:11:12: 11:20
+      let _3: Empty;                       // in scope 0 at $DIR/unreachable_asm.rs:11:17: 11:19
+      let _5: ();                          // in scope 0 at $DIR/unreachable_asm.rs:14:9: 18:10
+      let mut _6: bool;                    // in scope 0 at $DIR/unreachable_asm.rs:14:12: 14:16
+      let _7: ();                          // in scope 0 at $DIR/unreachable_asm.rs:21:9: 21:37
+      let mut _8: !;                       // in scope 0 at $DIR/unreachable_asm.rs:22:9: 22:21
+      scope 1 {
+          debug _x => _3;                  // in scope 1 at $DIR/unreachable_asm.rs:11:17: 11:19
+          let mut _4: i32;                 // in scope 1 at $DIR/unreachable_asm.rs:12:13: 12:19
+          scope 2 {
+              debug _y => _4;              // in scope 2 at $DIR/unreachable_asm.rs:12:13: 12:19
+              scope 3 {
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/unreachable_asm.rs:11:23: 11:30
+          _1 = const empty() -> bb1;       // bb0[1]: scope 0 at $DIR/unreachable_asm.rs:11:23: 11:30
+                                           // ty::Const
+                                           // + ty: fn() -> std::option::Option<Empty> {empty}
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/unreachable_asm.rs:11:23: 11:28
+                                           // + literal: Const { ty: fn() -> std::option::Option<Empty> {empty}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+          _2 = discriminant(_1);           // bb1[0]: scope 0 at $DIR/unreachable_asm.rs:11:12: 11:20
+          switchInt(move _2) -> [1isize: bb3, otherwise: bb2]; // bb1[1]: scope 0 at $DIR/unreachable_asm.rs:11:12: 11:20
+      }
+  
+      bb2: {
+          _0 = ();                         // bb2[0]: scope 0 at $DIR/unreachable_asm.rs:11:5: 23:6
+          StorageDead(_1);                 // bb2[1]: scope 0 at $DIR/unreachable_asm.rs:24:1: 24:2
+          return;                          // bb2[2]: scope 0 at $DIR/unreachable_asm.rs:24:2: 24:2
+      }
+  
+      bb3: {
+          StorageLive(_3);                 // bb3[0]: scope 0 at $DIR/unreachable_asm.rs:11:17: 11:19
+          _3 = move ((_1 as Some).0: Empty); // bb3[1]: scope 0 at $DIR/unreachable_asm.rs:11:17: 11:19
+          StorageLive(_4);                 // bb3[2]: scope 1 at $DIR/unreachable_asm.rs:12:13: 12:19
+          StorageLive(_5);                 // bb3[3]: scope 2 at $DIR/unreachable_asm.rs:14:9: 18:10
+          StorageLive(_6);                 // bb3[4]: scope 2 at $DIR/unreachable_asm.rs:14:12: 14:16
+          _6 = const true;                 // bb3[5]: scope 2 at $DIR/unreachable_asm.rs:14:12: 14:16
+                                           // ty::Const
+                                           // + ty: bool
+                                           // + val: Value(Scalar(0x01))
+                                           // mir::Constant
+                                           // + span: $DIR/unreachable_asm.rs:14:12: 14:16
+                                           // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+          switchInt(_6) -> [false: bb4, otherwise: bb5]; // bb3[6]: scope 2 at $DIR/unreachable_asm.rs:14:9: 18:10
+      }
+  
+      bb4: {
+          _4 = const 42i32;                // bb4[0]: scope 2 at $DIR/unreachable_asm.rs:17:13: 17:20
+                                           // ty::Const
+                                           // + ty: i32
+                                           // + val: Value(Scalar(0x0000002a))
+                                           // mir::Constant
+                                           // + span: $DIR/unreachable_asm.rs:17:18: 17:20
+                                           // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
+          _5 = ();                         // bb4[1]: scope 2 at $DIR/unreachable_asm.rs:16:16: 18:10
+          goto -> bb6;                     // bb4[2]: scope 2 at $DIR/unreachable_asm.rs:14:9: 18:10
+      }
+  
+      bb5: {
+          _4 = const 21i32;                // bb5[0]: scope 2 at $DIR/unreachable_asm.rs:15:13: 15:20
+                                           // ty::Const
+                                           // + ty: i32
+                                           // + val: Value(Scalar(0x00000015))
+                                           // mir::Constant
+                                           // + span: $DIR/unreachable_asm.rs:15:18: 15:20
+                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000015)) }
+          _5 = ();                         // bb5[1]: scope 2 at $DIR/unreachable_asm.rs:14:17: 16:10
+          goto -> bb6;                     // bb5[2]: scope 2 at $DIR/unreachable_asm.rs:14:9: 18:10
+      }
+  
+      bb6: {
+          StorageDead(_6);                 // bb6[0]: scope 2 at $DIR/unreachable_asm.rs:18:9: 18:10
+          StorageDead(_5);                 // bb6[1]: scope 2 at $DIR/unreachable_asm.rs:18:9: 18:10
+          StorageLive(_7);                 // bb6[2]: scope 2 at $DIR/unreachable_asm.rs:21:9: 21:37
+          llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []); // bb6[3]: scope 3 at $DIR/unreachable_asm.rs:21:18: 21:35
+          _7 = ();                         // bb6[4]: scope 3 at $DIR/unreachable_asm.rs:21:9: 21:37
+          StorageDead(_7);                 // bb6[5]: scope 2 at $DIR/unreachable_asm.rs:21:36: 21:37
+          StorageLive(_8);                 // bb6[6]: scope 2 at $DIR/unreachable_asm.rs:22:9: 22:21
+          unreachable;                     // bb6[7]: scope 2 at $DIR/unreachable_asm.rs:22:15: 22:17
+      }
+  }
+  
