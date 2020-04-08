@@ -51,14 +51,14 @@ pub unsafe fn __breakpoint(val: i32) {
     #[cfg(target_arch = "arm")]
     macro_rules! call {
         ($imm8:expr) => {
-            asm!(concat!("BKPT ", stringify!($imm8)) : : : : "volatile")
+            llvm_asm!(concat!("BKPT ", stringify!($imm8)) : : : : "volatile")
         }
     }
 
     #[cfg(target_arch = "aarch64")]
     macro_rules! call {
         ($imm8:expr) => {
-            asm!(concat!("BRK ", stringify!($imm8)) : : : : "volatile")
+            llvm_asm!(concat!("BRK ", stringify!($imm8)) : : : : "volatile")
         }
     }
 

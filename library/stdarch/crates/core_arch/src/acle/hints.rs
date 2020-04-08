@@ -85,7 +85,7 @@ pub unsafe fn __yield() {
 pub unsafe fn __dbg(imm4: u32) {
     macro_rules! call {
         ($imm4:expr) => {
-            asm!(concat!("DBG ", stringify!($imm4)) : : : : "volatile")
+            llvm_asm!(concat!("DBG ", stringify!($imm4)) : : : : "volatile")
         }
     }
 
@@ -117,7 +117,7 @@ pub unsafe fn __dbg(imm4: u32) {
 /// will increase execution time.
 #[inline(always)]
 pub unsafe fn __nop() {
-    asm!("NOP" : : : : "volatile")
+    llvm_asm!("NOP" : : : : "volatile")
 }
 
 extern "C" {

@@ -16,7 +16,7 @@
 #![allow(clippy::shadow_reuse)]
 #![deny(clippy::missing_inline_in_public_items)]
 #![cfg_attr(target_os = "linux", feature(linkage))]
-#![cfg_attr(all(target_os = "freebsd", target_arch = "aarch64"), feature(asm))]
+#![cfg_attr(all(target_os = "freebsd", target_arch = "aarch64"), feature(llvm_asm))]
 #![cfg_attr(test, allow(unused_imports))]
 #![no_std]
 

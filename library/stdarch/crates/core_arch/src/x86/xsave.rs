@@ -87,7 +87,7 @@ pub unsafe fn _xsetbv(a: u32, val: u64) {
 pub unsafe fn _xgetbv(xcr_no: u32) -> u64 {
     let eax: u32;
     let edx: u32;
-    asm!("xgetbv" : "={eax}"(eax), "={edx}"(edx) : "{ecx}"(xcr_no));
+    llvm_asm!("xgetbv" : "={eax}"(eax), "={edx}"(edx) : "{ecx}"(xcr_no));
     ((edx as u64) << 32) | (eax as u64)
 }
 
