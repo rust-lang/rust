@@ -251,7 +251,6 @@ fn should_show_param_hint(
 
     // avoid displaying hints for common functions like map, filter, etc.
     // or other obvious words used in std
-    // TODO ignore "bytes" if the type is [u8; n]
     let is_obvious_param_name = match param_name {
         "predicate" | "value" | "pat" | "rhs" | "other" => true,
         _ => false,
