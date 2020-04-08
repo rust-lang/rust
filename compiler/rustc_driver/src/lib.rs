@@ -27,7 +27,6 @@ use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
 use rustc_metadata::locator;
 use rustc_middle::middle::cstore::MetadataLoader;
-use rustc_middle::ty::TyCtxt;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_serialize::json::{self, ToJson};
@@ -1232,7 +1231,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 
     let num_frames = if backtrace { None } else { Some(2) };
 
-    TyCtxt::try_print_query_stack(&handler, num_frames);
+    interface::try_print_query_stack(&handler, num_frames);
 
     #[cfg(windows)]
     unsafe {

@@ -2,7 +2,8 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::ty::query::{on_disk_cache, Query};
+use crate::dep_graph;
+use crate::ty::query::{on_disk_cache, Queries, Query};
 use crate::ty::tls::{self, ImplicitCtxt};
 use crate::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::HasDepContext;
@@ -170,57 +171,46 @@ impl<'tcx> QueryCtxt<'tcx> {
     }
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn try_print_query_stack(handler: &Handler, num_frames: Option<usize>) {
-        eprintln!("query stack during panic:");
+impl<'tcx> Queries<'tcx> {
+    pub fn try_print_query_stack(
+        &'tcx self,
+        tcx: TyCtxt<'tcx>,
+        query: Option<QueryJobId<dep_graph::DepKind>>,
+        handler: &Handler,
+        num_frames: Option<usize>,
+    ) -> usize {
+        let query_map = self.try_collect_active_jobs();
 
-        // Be careful relying on global state here: this code is called from
-        // a panic hook, which means that the global `Handler` may be in a weird
-        // state if it was responsible for triggering the panic.
+        let mut current_query = query;
         let mut i = 0;
-        ty::tls::with_context_opt(|icx| {
-            if let Some(icx) = icx {
-                let query_map = icx.tcx.queries.try_collect_active_jobs();
 
-                let mut current_query = icx.query;
-
-                while let Some(query) = current_query {
-                    if Some(i) == num_frames {
-                        break;
-                    }
-                    let query_info =
-                        if let Some(info) = query_map.as_ref().and_then(|map| map.get(&query)) {
-                            info
-                        } else {
-                            break;
-                        };
-                    let mut diag = Diagnostic::new(
-                        Level::FailureNote,
-                        &format!(
-                            "#{} [{}] {}",
-                            i,
-                            query_info.info.query.name(),
-                            query_info
-                                .info
-                                .query
-                                .describe(QueryCtxt { tcx: icx.tcx, queries: icx.tcx.queries })
-                        ),
-                    );
-                    diag.span =
-                        icx.tcx.sess.source_map().guess_head_span(query_info.info.span).into();
-                    handler.force_print_diagnostic(diag);
-
-                    current_query = query_info.job.parent;
-                    i += 1;
-                }
+        while let Some(query) = current_query {
+            if Some(i) == num_frames {
+                break;
             }
-        });
+            let query_info = if let Some(info) = query_map.as_ref().and_then(|map| map.get(&query))
+            {
+                info
+            } else {
+                break;
+            };
+            let mut diag = Diagnostic::new(
+                Level::FailureNote,
+                &format!(
+                    "#{} [{}] {}",
+                    i,
+                    query_info.info.query.name(),
+                    query_info.info.query.describe(QueryCtxt { tcx, queries: self })
+                ),
+            );
+            diag.span = tcx.sess.source_map().guess_head_span(query_info.info.span).into();
+            handler.force_print_diagnostic(diag);
 
-        if num_frames == None || num_frames >= Some(i) {
-            eprintln!("end of query stack");
-        } else {
-            eprintln!("we're just showing a limited slice of the query stack");
+            current_query = query_info.job.parent;
+            i += 1;
         }
+
+        i
     }
 }
 
