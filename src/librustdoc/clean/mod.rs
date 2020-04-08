@@ -1554,7 +1554,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 BareFunction(box BareFunctionDecl {
                     unsafety: sig.unsafety(),
                     generic_params: Vec::new(),
-                    decl: (local_def_id, sig).clean(cx),
+                    decl: (local_def_id.to_def_id(), sig).clean(cx),
                     abi: sig.abi(),
                 })
             }
@@ -2264,7 +2264,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID),
+            def_id: cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID).to_def_id(),
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,

@@ -157,19 +157,16 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions.def_path(def_id)
     }
 
-    // FIXME(eddyb) this function can and should return `LocalDefId`.
     #[inline]
-    pub fn local_def_id_from_node_id(&self, node: NodeId) -> DefId {
-        self.opt_local_def_id_from_node_id(node)
-            .unwrap_or_else(|| {
-                let hir_id = self.node_id_to_hir_id(node);
-                bug!(
-                    "local_def_id_from_node_id: no entry for `{}`, which has a map of `{:?}`",
-                    node,
-                    self.find_entry(hir_id)
-                )
-            })
-            .to_def_id()
+    pub fn local_def_id_from_node_id(&self, node: NodeId) -> LocalDefId {
+        self.opt_local_def_id_from_node_id(node).unwrap_or_else(|| {
+            let hir_id = self.node_id_to_hir_id(node);
+            bug!(
+                "local_def_id_from_node_id: no entry for `{}`, which has a map of `{:?}`",
+                node,
+                self.find_entry(hir_id)
+            )
+        })
     }
 
     // FIXME(eddyb) this function can and should return `LocalDefId`.
