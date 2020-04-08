@@ -21,7 +21,7 @@
         "Programming Languages"
     ],
     "engines": {
-        "vscode": "^1.43.0"
+        "vscode": "^1.44.0"
     },
     "enableProposedApi": true,
     "scripts": {
@@ -341,11 +341,6 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Show function name and docs in parameter hints"
-                },
-                "rust-analyzer.highlighting.semanticTokens": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Use proposed semantic tokens API for syntax highlighting"
                 },
                 "rust-analyzer.updates.channel": {
                     "type": "string",

@@ -1,11 +1,10 @@
 import * as lc from 'vscode-languageclient';
 import * as vscode from 'vscode';
 
-import { Config } from './config';
 import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
 import { SemanticTokensFeature, DocumentSemanticsTokensSignature } from 'vscode-languageclient/lib/semanticTokens.proposed';
 
-export async function createClient(config: Config, serverPath: string, cwd: string): Promise<lc.LanguageClient> {
+export async function createClient(serverPath: string, cwd: string): Promise<lc.LanguageClient> {
     // '.' Is the fallback if no folder is open
     // TODO?: Workspace folders support Uri's (eg: file://test.txt).
     // It might be a good idea to test if the uri points to a file.
@@ -73,15 +72,12 @@ export async function createClient(config: Config, serverPath: string, cwd: stri
     };
 
     // To turn on all proposed features use: res.registerProposedFeatures();
-    // Here we want to just enable CallHierarchyFeature since it is available on stable.
-    // Note that while the CallHierarchyFeature is stable the LSP protocol is not.
+    // Here we want to enable CallHierarchyFeature and SemanticTokensFeature
+    // since they are available on stable.
+    // Note that while these features are stable in vscode their LSP protocol
+    // implementations are still in the "proposed" category for 3.16.
     res.registerFeature(new CallHierarchyFeature(res));
-
-    if (config.package.enableProposedApi) {
-        if (config.highlightingSemanticTokens) {
-            res.registerFeature(new SemanticTokensFeature(res));
-        }
-    }
+    res.registerFeature(new SemanticTokensFeature(res));
 
     return res;
 }
