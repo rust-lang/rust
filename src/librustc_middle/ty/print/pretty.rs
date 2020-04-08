@@ -242,7 +242,12 @@ pub trait PrettyPrinter<'tcx>:
     /// If possible, this returns a global path resolving to `def_id` that is visible
     /// from at least one local module, and returns `true`. If the crate defining `def_id` is
     /// declared with an `extern crate`, the path is guaranteed to use the `extern crate`.
-    fn try_print_visible_def_path(self, def_id: DefId) -> Result<(Self, bool), Self::Error> {
+    fn try_print_visible_def_path(mut self, def_id: DefId) -> Result<(Self, bool), Self::Error> {
+        if Some(def_id) == self.tcx().lang_items().str_type() {
+            write!(self, "str")?;
+            return Ok((self, true));
+        }
+
         let mut callers = Vec::new();
         self.try_print_visible_def_path_recur(def_id, &mut callers)
     }
@@ -427,7 +432,6 @@ pub trait PrettyPrinter<'tcx>:
                 | ty::Foreign(_)
                 | ty::Bool
                 | ty::Char
-                | ty::Str
                 | ty::Int(_)
                 | ty::Uint(_)
                 | ty::Float(_) => {
@@ -479,6 +483,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::Int(t) => p!(write("{}", t.name_str())),
             ty::Uint(t) => p!(write("{}", t.name_str())),
             ty::Float(t) => p!(write("{}", t.name_str())),
+            ty::Adt(def, _) if def.is_str() => p!(write("str")),
             ty::RawPtr(ref tm) => {
                 p!(write(
                     "*{} ",
@@ -612,7 +617,6 @@ pub trait PrettyPrinter<'tcx>:
                     Ok(self)
                 })?);
             }
-            ty::Str => p!(write("str")),
             ty::Generator(did, substs, movability) => {
                 match movability {
                     hir::Movability::Movable => p!(write("[generator")),
@@ -1154,8 +1158,8 @@ pub trait PrettyPrinter<'tcx>:
             }
             (
                 ConstValue::Slice { data, start, end },
-                ty::Ref(_, ty::TyS { kind: ty::Str, .. }, _),
-            ) => {
+                ty::Ref(_, ty::TyS { kind: ty::Adt(def, _), .. }, _),
+            ) if def.is_str() => {
                 // The `inspect` here is okay since we checked the bounds, and there are no
                 // relocations (we have an active `str` reference here). We don't use this
                 // result to affect interpreter execution.

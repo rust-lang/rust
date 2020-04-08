@@ -1,0 +1,27 @@
+error[E0277]: the size for values of type `W` cannot be known at compilation time
+  --> $DIR/unsized-enum2-str.rs:3:8
+   |
+LL | enum E<W: ?Sized> {
+   |        - this type parameter needs to be `std::marker::Sized`
+LL |     // parameter
+LL |     VA(W),
+   |        ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `W`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: no field of an enum variant may have a dynamically sized type
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-enum2-str.rs:7:8
+   |
+LL |     VF{x: str},
+   |        ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `str`, the trait `std::marker::Sized` is not implemented for `[u8]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required because it appears within the type `str`
+   = note: no field of an enum variant may have a dynamically sized type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

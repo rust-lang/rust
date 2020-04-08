@@ -1033,7 +1033,7 @@ crate fn compare_const_vals<'tcx>(
     let b_bits = b.try_eval_bits(tcx, param_env, ty);
 
     if let (Some(a), Some(b)) = (a_bits, b_bits) {
-        use ::rustc_apfloat::Float;
+        use rustc_apfloat::Float;
         return match ty.kind {
             ty::Float(ast::FloatTy::F32) => {
                 let l = ::rustc_apfloat::ieee::Single::from_bits(a);
@@ -1057,7 +1057,7 @@ crate fn compare_const_vals<'tcx>(
         };
     }
 
-    if let ty::Str = ty.kind {
+    if ty.is_str() {
         if let (
             ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
             ty::ConstKind::Value(b_val @ ConstValue::Slice { .. }),

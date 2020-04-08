@@ -2160,7 +2160,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Where(ty::Binder::dummy(Vec::new()))
             }
 
-            ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => None,
+            ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => None,
 
             ty::Tuple(tys) => {
                 Where(ty::Binder::bind(tys.last().into_iter().map(|k| k.expect_ty()).collect()))
@@ -2217,7 +2217,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Dynamic(..)
-            | ty::Str
             | ty::Slice(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
@@ -2281,7 +2280,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(_)
-            | ty::Str
             | ty::Error
             | ty::Infer(ty::IntVar(_))
             | ty::Infer(ty::FloatVar(_))

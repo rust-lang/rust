@@ -22,14 +22,15 @@ LL |     let v: &dyn Foo = t as &dyn Foo;
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required for the cast to the object type `dyn Foo`
 
-error[E0277]: the size for values of type `str` cannot be known at compilation time
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/dst-object-from-unsized-type.rs:18:28
    |
 LL |     let _: &[&dyn Foo] = &["hi"];
    |                            ^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: within `str`, the trait `std::marker::Sized` is not implemented for `[u8]`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required because it appears within the type `str`
    = note: required for the cast to the object type `dyn Foo`
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time

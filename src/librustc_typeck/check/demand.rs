@@ -396,8 +396,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match (&expr.kind, &expected.kind, &checked_ty.kind) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.kind, &check.kind) {
-                (&ty::Str, &ty::Array(arr, _)) | (&ty::Str, &ty::Slice(arr))
-                    if arr == self.tcx.types.u8 =>
+                (&ty::Adt(def, _), &ty::Array(arr_elem, _))
+                | (&ty::Adt(def, _), &ty::Slice(arr_elem))
+                    if def.is_str() && arr_elem == self.tcx.types.u8 =>
                 {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
@@ -411,8 +412,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                (&ty::Array(arr, _), &ty::Str) | (&ty::Slice(arr), &ty::Str)
-                    if arr == self.tcx.types.u8 =>
+                (&ty::Array(arr_elem, _), &ty::Adt(def, _))
+                | (&ty::Slice(arr_elem), &ty::Adt(def, _))
+                    if def.is_str() && arr_elem == self.tcx.types.u8 =>
                 {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {

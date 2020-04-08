@@ -495,7 +495,6 @@ fn ty_is_non_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> Option<Ty<'_>> 
         | ty::Int(..)
         | ty::Uint(..)
         | ty::Float(..)
-        | ty::Str
         | ty::FnDef(..)
         | ty::FnPtr(_)
         | ty::Array(..)

@@ -116,9 +116,6 @@ pub enum TyKind<'tcx> {
     /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
     Foreign(DefId),
 
-    /// The pointee of a string slice. Written as `str`.
-    Str,
-
     /// An array with the given length. Written as `[T; n]`.
     Array(Ty<'tcx>, &'tcx ty::Const<'tcx>),
 
@@ -1770,7 +1767,7 @@ impl<'tcx> TyS<'tcx> {
     /// Returns `true` if this type is a `str`.
     #[inline]
     pub fn is_str(&self) -> bool {
-        self.kind == Str
+        if let Adt(def, _) = self.kind { def.is_str() } else { false }
     }
 
     #[inline]
@@ -1785,7 +1782,8 @@ impl<'tcx> TyS<'tcx> {
     pub fn is_slice(&self) -> bool {
         match self.kind {
             RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => match ty.kind {
-                Slice(_) | Str => true,
+                Slice(_) => true,
+                Adt(def, _) if def.is_str() => true,
                 _ => false,
             },
             _ => false,
@@ -1797,14 +1795,6 @@ impl<'tcx> TyS<'tcx> {
         match self.kind {
             Adt(def, _) => def.repr.simd(),
             _ => false,
-        }
-    }
-
-    pub fn sequence_element_type(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        match self.kind {
-            Array(ty, _) | Slice(ty) => ty,
-            Str => tcx.mk_mach_uint(ast::UintTy::U8),
-            _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
         }
     }
 
@@ -2190,7 +2180,7 @@ impl<'tcx> TyS<'tcx> {
             | ty::Never
             | ty::Error => true,
 
-            ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
+            ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
 
             ty::Tuple(tys) => tys.iter().all(|ty| ty.expect_ty().is_trivially_sized(tcx)),
 

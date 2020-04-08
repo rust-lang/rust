@@ -20,7 +20,7 @@ fn sized_constraint_for_ty<'tcx>(
         Bool | Char | Int(..) | Uint(..) | Float(..) | RawPtr(..) | Ref(..) | FnDef(..)
         | FnPtr(_) | Array(..) | Closure(..) | Generator(..) | Never => vec![],
 
-        Str | Dynamic(..) | Slice(_) | Foreign(..) | Error | GeneratorWitness(..) => {
+        Dynamic(..) | Slice(_) | Foreign(..) | Error | GeneratorWitness(..) => {
             // these are never sized - return the target type
             vec![ty]
         }

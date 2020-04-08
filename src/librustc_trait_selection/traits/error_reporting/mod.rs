@@ -1123,7 +1123,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             match t.kind {
                 ty::Bool => Some(0),
                 ty::Char => Some(1),
-                ty::Str => Some(2),
                 ty::Int(..) | ty::Uint(..) | ty::Infer(ty::IntVar(..)) => Some(3),
                 ty::Float(..) | ty::Infer(ty::FloatVar(..)) => Some(4),
                 ty::Ref(..) | ty::RawPtr(..) => Some(5),

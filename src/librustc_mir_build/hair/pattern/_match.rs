@@ -311,9 +311,7 @@ impl<'tcx> LiteralExpander<'tcx> {
                 }
             }
             // fat pointers stay the same
-            (ConstValue::Slice { .. }, _, _)
-            | (_, ty::Slice(_), ty::Slice(_))
-            | (_, ty::Str, ty::Str) => val,
+            (ConstValue::Slice { .. }, _, _) | (_, ty::Slice(_), ty::Slice(_)) => val,
             // FIXME(oli-obk): this is reachable for `const FOO: &&&u32 = &&&42;` being used
             _ => bug!("cannot deref {:#?}, {} -> {}", val, crty, rty),
         }

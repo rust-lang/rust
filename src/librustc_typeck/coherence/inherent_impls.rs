@@ -53,6 +53,16 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
         let self_ty = self.tcx.type_of(def_id);
         let lang_items = self.tcx.lang_items();
         match self_ty.kind {
+            ty::Adt(def, _) if def.is_str() => {
+                self.check_primitive_impl(
+                    def_id,
+                    lang_items.str_impl(),
+                    lang_items.str_alloc_impl(),
+                    "str_impl",
+                    "str",
+                    item.span,
+                );
+            }
             ty::Adt(def, _) => {
                 self.check_def_id(item, def.did);
             }
@@ -79,16 +89,6 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "char",
                     "char",
-                    item.span,
-                );
-            }
-            ty::Str => {
-                self.check_primitive_impl(
-                    def_id,
-                    lang_items.str_impl(),
-                    lang_items.str_alloc_impl(),
-                    "str_impl",
-                    "str",
                     item.span,
                 );
             }

@@ -88,14 +88,15 @@ LL | | }
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
-error[E0277]: the size for values of type `str` cannot be known at compilation time
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:52:1
    |
 LL | struct TwoStrs(str, str) where str: Sized;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: within `str`, the trait `std::marker::Sized` is not implemented for `[u8]`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required because it appears within the type `str`
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
@@ -113,7 +114,7 @@ LL | | }
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
-error[E0277]: the size for values of type `str` cannot be known at compilation time
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:59:1
    |
 LL | / fn return_str() -> str where str: Sized {
@@ -121,8 +122,9 @@ LL | |     *"Sized".to_string().into_boxed_str()
 LL | | }
    | |_^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: within `str`, the trait `std::marker::Sized` is not implemented for `[u8]`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required because it appears within the type `str`
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 

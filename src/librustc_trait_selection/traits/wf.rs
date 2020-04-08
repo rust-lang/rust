@@ -413,7 +413,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 | ty::Uint(..)
                 | ty::Float(..)
                 | ty::Error
-                | ty::Str
                 | ty::GeneratorWitness(..)
                 | ty::Never
                 | ty::Param(_)

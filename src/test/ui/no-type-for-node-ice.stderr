@@ -2,7 +2,7 @@ error[E0609]: no field `homura` on type `&'static str`
   --> $DIR/no-type-for-node-ice.rs:4:8
    |
 LL |     "".homura[""];
-   |        ^^^^^^
+   |        ^^^^^^ unknown field
 
 error: aborting due to previous error
 

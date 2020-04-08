@@ -362,7 +362,6 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
         | (&ty::Int(_), _)
         | (&ty::Uint(_), _)
         | (&ty::Float(_), _)
-        | (&ty::Str, _)
             if a == b =>
         {
             Ok(a)

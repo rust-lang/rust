@@ -10,7 +10,6 @@ impl<'tcx> TyS<'tcx> {
         match self.kind {
             Bool
             | Char
-            | Str
             | Int(_)
             | Uint(_)
             | Float(_)
@@ -18,6 +17,7 @@ impl<'tcx> TyS<'tcx> {
             | Infer(InferTy::FloatVar(_))
             | Infer(InferTy::FreshIntTy(_))
             | Infer(InferTy::FreshFloatTy(_)) => true,
+            Adt(def, _) if def.is_str() => true,
             _ => false,
         }
     }
@@ -28,7 +28,6 @@ impl<'tcx> TyS<'tcx> {
         match self.kind {
             Bool
             | Char
-            | Str
             | Int(_)
             | Uint(_)
             | Float(_)
@@ -36,6 +35,7 @@ impl<'tcx> TyS<'tcx> {
             | Infer(InferTy::FloatVar(_))
             | Infer(InferTy::FreshIntTy(_))
             | Infer(InferTy::FreshFloatTy(_)) => true,
+            Adt(def, _) if def.is_str() => true,
             Ref(_, x, _) | Array(x, _) | Slice(x) => x.peel_refs().is_simple_ty(),
             Tuple(tys) if tys.is_empty() => true,
             _ => false,

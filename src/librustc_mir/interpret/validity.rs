@@ -294,7 +294,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                 );
                 // FIXME: More checks for the vtable.
             }
-            ty::Slice(..) | ty::Str => {
+            ty::Slice(..) => {
                 let _len = try_validation!(
                     meta.unwrap_meta().to_machine_usize(self.ecx),
                     "non-integer slice length in wide pointer",
@@ -519,7 +519,6 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
             | ty::Tuple(..)
             | ty::Array(..)
             | ty::Slice(..)
-            | ty::Str
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::Generator(..) => Ok(false),
@@ -715,7 +714,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
         match op.layout.ty.kind {
-            ty::Str => {
+            // FIXME(eddyb) does this belong here?
+            ty::Adt(def, _) if def.is_str() => {
                 let mplace = op.assert_mem_place(self.ecx); // strings are never immediate
                 try_validation!(
                     self.ecx.read_str(mplace),

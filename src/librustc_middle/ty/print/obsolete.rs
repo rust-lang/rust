@@ -36,7 +36,7 @@ impl DefPathBasedNames<'tcx> {
         match t.kind {
             ty::Bool => output.push_str("bool"),
             ty::Char => output.push_str("char"),
-            ty::Str => output.push_str("str"),
+            ty::Adt(def, _) if def.is_str() => output.push_str("str"),
             ty::Never => output.push_str("!"),
             ty::Int(ty) => output.push_str(ty.name_str()),
             ty::Uint(ty) => output.push_str(ty.name_str()),

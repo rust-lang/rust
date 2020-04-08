@@ -29,10 +29,8 @@ enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
     VD{u: isize, x: Z},
     //~^ ERROR the size for values of type
 
-    // slice / str
+    // slice
     VE([u8]),
-    //~^ ERROR the size for values of type
-    VF{x: str},
     //~^ ERROR the size for values of type
     VG(isize, [f32]),
     //~^ ERROR the size for values of type

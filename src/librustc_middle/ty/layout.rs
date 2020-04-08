@@ -542,7 +542,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     ty::Foreign(..) => {
                         return Ok(tcx.intern_layout(Layout::scalar(self, data_ptr)));
                     }
-                    ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
+                    ty::Slice(_) => scalar_unit(Int(dl.ptr_sized_integer(), false)),
                     ty::Dynamic(..) => {
                         let mut vtable = scalar_unit(Pointer);
                         vtable.valid_range = 1..=*vtable.valid_range.end();
@@ -597,14 +597,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     size: Size::ZERO,
                 })
             }
-            ty::Str => tcx.intern_layout(Layout {
-                variants: Variants::Single { index: VariantIdx::new(0) },
-                fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
-                abi: Abi::Aggregate { sized: false },
-                largest_niche: None,
-                align: dl.i8_align,
-                size: Size::ZERO,
-            }),
 
             // Odd unit types.
             ty::FnDef(..) => univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?,
@@ -2069,7 +2061,7 @@ where
                 }
 
                 match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind {
-                    ty::Slice(_) | ty::Str => tcx.types.usize,
+                    ty::Slice(_) => tcx.types.usize,
                     ty::Dynamic(_, _) => {
                         tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.usize, 3))
                         /* FIXME: use actual fn pointers
@@ -2092,7 +2084,6 @@ where
 
             // Arrays and slices.
             ty::Array(element, _) | ty::Slice(element) => element,
-            ty::Str => tcx.types.u8,
 
             // Tuples, generators and closures.
             ty::Closure(_, ref substs) => substs.as_closure().upvar_tys().nth(i).unwrap(),

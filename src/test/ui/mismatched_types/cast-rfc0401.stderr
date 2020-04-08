@@ -15,7 +15,7 @@ LL |     u as *const str
    = note: vtable kinds may not match
 
 error[E0609]: no field `f` on type `fn() {main}`
-  --> $DIR/cast-rfc0401.rs:65:18
+  --> $DIR/cast-rfc0401.rs:62:18
    |
 LL |     let _ = main.f as *const u32;
    |                  ^
@@ -197,7 +197,7 @@ LL |     let _ = fat_sv as usize;
    = help: cast through a thin pointer first
 
 error[E0606]: casting `*const dyn Foo` as `*const [u16]` is invalid
-  --> $DIR/cast-rfc0401.rs:68:13
+  --> $DIR/cast-rfc0401.rs:65:13
    |
 LL |     let _ = cf as *const [u16];
    |             ^^^^^^^^^^^^^^^^^^
@@ -205,7 +205,7 @@ LL |     let _ = cf as *const [u16];
    = note: vtable kinds may not match
 
 error[E0606]: casting `*const dyn Foo` as `*const dyn Bar` is invalid
-  --> $DIR/cast-rfc0401.rs:69:13
+  --> $DIR/cast-rfc0401.rs:66:13
    |
 LL |     let _ = cf as *const dyn Bar;
    |             ^^^^^^^^^^^^^^^^^^^^
@@ -222,18 +222,8 @@ LL |     let _ = fat_v as *const dyn Foo;
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required for the cast to the object type `dyn Foo`
 
-error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/cast-rfc0401.rs:62:13
-   |
-LL |     let _ = a as *const dyn Foo;
-   |             ^ doesn't have a size known at compile-time
-   |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: required for the cast to the object type `dyn Foo`
-
 error[E0606]: casting `&{float}` as `f32` is invalid
-  --> $DIR/cast-rfc0401.rs:71:30
+  --> $DIR/cast-rfc0401.rs:68:30
    |
 LL |     vec![0.0].iter().map(|s| s as f32).collect::<Vec<f32>>();
    |                              -^^^^^^^
@@ -241,7 +231,7 @@ LL |     vec![0.0].iter().map(|s| s as f32).collect::<Vec<f32>>();
    |                              cannot cast `&{float}` as `f32`
    |                              help: dereference the expression: `*s`
 
-error: aborting due to 34 previous errors
+error: aborting due to 33 previous errors
 
 Some errors have detailed explanations: E0054, E0277, E0604, E0605, E0606, E0607, E0609.
 For more information about an error, try `rustc --explain E0054`.

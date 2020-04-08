@@ -58,9 +58,6 @@ fn main()
     let _ = &f as *const f64; //~ ERROR is invalid
     let _ = fat_sv as usize; //~ ERROR is invalid
 
-    let a : *const str = "hello";
-    let _ = a as *const dyn Foo; //~ ERROR the size for values of type
-
     // check no error cascade
     let _ = main.f as *const u32; //~ ERROR no field
 

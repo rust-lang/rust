@@ -1532,7 +1532,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Int(int_ty) => Primitive(int_ty.into()),
             ty::Uint(uint_ty) => Primitive(uint_ty.into()),
             ty::Float(float_ty) => Primitive(float_ty.into()),
-            ty::Str => Primitive(PrimitiveType::Str),
+            ty::Adt(def, _) if def.is_str() => Primitive(PrimitiveType::Str),
             ty::Slice(ty) => Slice(box ty.clean(cx)),
             ty::Array(ty, n) => {
                 let mut n = cx.tcx.lift(&n).expect("array lift failed");

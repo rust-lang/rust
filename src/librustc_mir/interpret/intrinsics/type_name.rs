@@ -39,7 +39,6 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
-            | ty::Str
             | ty::Array(_, _)
             | ty::Slice(_)
             | ty::RawPtr(_)
@@ -48,6 +47,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Never
             | ty::Tuple(_)
             | ty::Dynamic(_, _) => self.pretty_print_type(ty),
+            ty::Adt(def, _) if def.is_str() => self.pretty_print_type(ty),
 
             // Placeholders (all printed as `_` to uniformize them).
             ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error => {

@@ -26,10 +26,20 @@ pub mod pattern;
 #[allow(missing_docs)]
 pub mod lossy;
 
-// HACK(eddyb) private and not named `str` to avoid changing name resolution.
-#[cfg(not(bootstrap))]
-#[lang = "str"]
-struct Str([u8]);
+mod sealed {
+    // HACK(eddyb) sealed away and not named `str` to avoid changing name resolution.
+    // Only `pub` to avoid the privacy checker producing errors.
+    #[cfg(not(bootstrap))]
+    #[lang = "str"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub struct Str([u8]);
+
+    #[unstable(feature = "structural_match", issue = "31434")]
+    impl crate::marker::StructuralPartialEq for str {}
+
+    #[unstable(feature = "structural_match", issue = "31434")]
+    impl crate::marker::StructuralEq for str {}
+}
 
 /// Parse a value from a string
 ///

@@ -1864,6 +1864,8 @@ bitflags! {
         /// Indicates whether the variant list of this ADT is `#[non_exhaustive]`.
         /// (i.e., this flag is never set unless this ADT is an enum).
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 10;
+        /// Indicates whether the type is `str`.
+        const IS_STR              = 1 << 11;
     }
 }
 
@@ -2254,6 +2256,9 @@ impl<'tcx> AdtDef {
         if Some(did) == tcx.lang_items().rc() {
             flags |= AdtFlags::IS_RC;
         }
+        if Some(did) == tcx.lang_items().str_type() {
+            flags |= AdtFlags::IS_STR;
+        }
 
         AdtDef { did, variants, flags, repr }
     }
@@ -2352,6 +2357,12 @@ impl<'tcx> AdtDef {
     #[inline]
     pub fn is_manually_drop(&self) -> bool {
         self.flags.contains(AdtFlags::IS_MANUALLY_DROP)
+    }
+
+    /// Returns `true` if this is `str`.
+    #[inline]
+    pub fn is_str(&self) -> bool {
+        self.flags.contains(AdtFlags::IS_STR)
     }
 
     /// Returns `true` if this type has a destructor.

@@ -9,7 +9,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
+use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Tuple, Uint};
 use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -564,8 +564,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match (&lhs_ty.kind, &rhs_ty.kind) {
             (&Ref(_, l_ty, _), &Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
-                if (l_ty.kind == Str || is_std_string(l_ty)) && (
-                        r_ty.kind == Str || is_std_string(r_ty) ||
+                if (l_ty.is_str() || is_std_string(l_ty)) && (
+                        r_ty.is_str() || is_std_string(r_ty) ||
                         &format!("{:?}", rhs_ty) == "&&str"
                     ) =>
             {
@@ -599,7 +599,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             (&Ref(_, l_ty, _), &Adt(..)) // Handle `&str` & `&String` + `String`
-                if (l_ty.kind == Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
+                if (l_ty.is_str() || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
             {
                 err.span_label(
                     op.span,
@@ -672,8 +672,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Uint(_) if op == hir::UnOp::UnNeg => {
                             err.note("unsigned values cannot be negated");
                         }
-                        Str | Never | Char | Tuple(_) | Array(_, _) => {}
-                        Ref(_, ref lty, _) if lty.kind == Str => {}
+                        Never | Char | Tuple(_) | Array(_, _) => {}
+                        Adt(def, _) if def.is_str() => {}
+                        Ref(_, ref lty, _) if lty.is_str() => {}
                         _ => {
                             let missing_trait = match op {
                                 hir::UnOp::UnNeg => "std::ops::Neg",

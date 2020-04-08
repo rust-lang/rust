@@ -884,7 +884,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         });
         if let ty::Ref(r_ptr, r_ty, _) = indexed_ty.kind {
             match r_ty.kind {
-                ty::Slice(_) | ty::Str => {
+                ty::Slice(_) => {
                     self.sub_regions(
                         infer::IndexSlice(index_expr.span),
                         self.tcx.mk_region(r_index_expr),

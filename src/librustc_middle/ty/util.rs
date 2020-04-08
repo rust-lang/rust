@@ -722,7 +722,6 @@ impl<'tcx> ty::TyS<'tcx> {
             | ty::Float(_)
             | ty::Bool
             | ty::Char
-            | ty::Str
             | ty::Never
             | ty::Ref(..)
             | ty::RawPtr(_)
@@ -1041,8 +1040,7 @@ pub fn needs_drop_components(
         | ty::Char
         | ty::GeneratorWitness(..)
         | ty::RawPtr(_)
-        | ty::Ref(..)
-        | ty::Str => Ok(SmallVec::new()),
+        | ty::Ref(..) => Ok(SmallVec::new()),
 
         // Foreign types can never have destructors.
         ty::Foreign(..) => Ok(SmallVec::new()),

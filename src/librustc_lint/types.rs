@@ -617,6 +617,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         match ty.kind {
+            ty::Adt(def, _) if def.is_str() => FfiUnsafe {
+                ty,
+                reason: "string slices have no C equivalent",
+                help: Some("consider using `*const u8` and a length instead"),
+            },
+
             ty::Adt(def, substs) => {
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
@@ -821,12 +827,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::Dynamic(..) => {
                 FfiUnsafe { ty, reason: "trait objects have no C equivalent", help: None }
             }
-
-            ty::Str => FfiUnsafe {
-                ty,
-                reason: "string slices have no C equivalent",
-                help: Some("consider using `*const u8` and a length instead"),
-            },
 
             ty::Tuple(..) => FfiUnsafe {
                 ty,

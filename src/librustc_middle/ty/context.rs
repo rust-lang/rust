@@ -1838,7 +1838,7 @@ macro_rules! sty_debug_print {
                 for &Interned(t) in types {
                     let variant = match t.kind {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
-                            ty::Float(..) | ty::Str | ty::Never => continue,
+                            ty::Float(..) | ty::Never => continue,
                         ty::Error => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
@@ -2165,7 +2165,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_str(self) -> Ty<'tcx> {
-        self.mk_ty(Str)
+        let def_id = self.require_lang_item(lang_items::StrItem, None);
+        let adt_def = self.adt_def(def_id);
+        self.mk_ty(Adt(adt_def, InternalSubsts::empty()))
     }
 
     #[inline]

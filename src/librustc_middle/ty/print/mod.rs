@@ -290,7 +290,6 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
         | ty::Char
         | ty::Int(_)
         | ty::Uint(_)
-        | ty::Str
         | ty::FnPtr(_)
         | ty::Projection(_)
         | ty::Placeholder(..)

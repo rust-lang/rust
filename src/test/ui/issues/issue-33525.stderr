@@ -8,13 +8,13 @@ error[E0609]: no field `lorem` on type `&'static str`
   --> $DIR/issue-33525.rs:3:8
    |
 LL |     "".lorem;
-   |        ^^^^^
+   |        ^^^^^ unknown field
 
 error[E0609]: no field `ipsum` on type `&'static str`
   --> $DIR/issue-33525.rs:4:8
    |
 LL |     "".ipsum;
-   |        ^^^^^
+   |        ^^^^^ unknown field
 
 error: aborting due to 3 previous errors
 

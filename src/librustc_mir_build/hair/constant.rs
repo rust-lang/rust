@@ -22,7 +22,9 @@ crate fn lit_to_const<'tcx>(
     };
 
     let lit = match (lit, &ty.kind) {
-        (ast::LitKind::Str(s, _), ty::Ref(_, TyS { kind: ty::Str, .. }, _)) => {
+        (ast::LitKind::Str(s, _), ty::Ref(_, TyS { kind: ty::Adt(def, _), .. }, _))
+            if def.is_str() =>
+        {
             let s = s.as_str();
             let allocation = Allocation::from_byte_aligned_bytes(s.as_bytes());
             let allocation = tcx.intern_const_alloc(allocation);

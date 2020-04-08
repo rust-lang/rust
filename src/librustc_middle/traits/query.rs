@@ -219,7 +219,6 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::GeneratorWitness(..)
         | ty::RawPtr(_)
         | ty::Ref(..)
-        | ty::Str
         | ty::Foreign(..)
         | ty::Error => true,
 

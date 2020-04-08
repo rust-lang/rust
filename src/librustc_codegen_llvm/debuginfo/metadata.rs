@@ -573,7 +573,9 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
 
     let ptr_metadata = |ty: Ty<'tcx>| match ty.kind {
         ty::Slice(typ) => Ok(vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)),
-        ty::Str => Ok(vec_slice_metadata(cx, t, cx.tcx.types.u8, unique_type_id, usage_site_span)),
+        ty::Adt(def, _) if def.is_str() => {
+            Ok(vec_slice_metadata(cx, t, cx.tcx.types.u8, unique_type_id, usage_site_span))
+        }
         ty::Dynamic(..) => Ok(MetadataCreationResult::new(
             trait_pointer_metadata(cx, ty, Some(t), unique_type_id),
             false,
@@ -601,7 +603,9 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
         ty::Array(typ, _) | ty::Slice(typ) => {
             fixed_vec_metadata(cx, unique_type_id, t, typ, usage_site_span)
         }
-        ty::Str => fixed_vec_metadata(cx, unique_type_id, t, cx.tcx.types.i8, usage_site_span),
+        ty::Adt(def, _) if def.is_str() => {
+            fixed_vec_metadata(cx, unique_type_id, t, cx.tcx.types.i8, usage_site_span)
+        }
         ty::Dynamic(..) => {
             MetadataCreationResult::new(trait_pointer_metadata(cx, t, None, unique_type_id), false)
         }

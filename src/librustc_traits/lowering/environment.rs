@@ -61,7 +61,6 @@ impl ClauseVisitor<'a, 'tcx> {
             | ty::Int(..)
             | ty::Uint(..)
             | ty::Float(..)
-            | ty::Str
             | ty::Array(..)
             | ty::Slice(..)
             | ty::RawPtr(..)

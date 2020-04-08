@@ -613,6 +613,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     self.assemble_inherent_impl_candidates_for_type(p.def_id());
                 }
             }
+            ty::Adt(def, _) if def.is_str() => {
+                let lang_def_id = lang_items.str_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.str_alloc_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+            }
             ty::Adt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);
             }
@@ -628,13 +635,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
             ty::Char => {
                 let lang_def_id = lang_items.char_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-            }
-            ty::Str => {
-                let lang_def_id = lang_items.str_impl();
-                self.assemble_inherent_impl_for_primitive(lang_def_id);
-
-                let lang_def_id = lang_items.str_alloc_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::Slice(_) => {

@@ -67,7 +67,6 @@ impl FlagComputation {
             | &ty::Float(_)
             | &ty::Uint(_)
             | &ty::Never
-            | &ty::Str
             | &ty::Foreign(..) => {}
 
             // You might think that we could just return Error for

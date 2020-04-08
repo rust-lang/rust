@@ -1,11 +1,12 @@
-error[E0277]: the size for values of type `str` cannot be known at compilation time
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/issue-41229-ref-str.rs:1:16
    |
 LL | pub fn example(ref s: str) {}
    |                ^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: within `str`, the trait `std::marker::Sized` is not implemented for `[u8]`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required because it appears within the type `str`
    = note: all function arguments must have a statically known size
    = help: unsized locals are gated as an unstable feature
 
