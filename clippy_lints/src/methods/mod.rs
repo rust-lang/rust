@@ -1317,7 +1317,7 @@ declare_lint_pass!(Methods => [
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
-    #[allow(clippy::cognitive_complexity, clippy::too_many_lines)]
+    #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         if in_macro(expr.span) {
             return;

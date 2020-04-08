@@ -315,7 +315,6 @@ impl Types {
     /// The parameter `is_local` distinguishes the context of the type; types from
     /// local bindings should only be checked for the `BORROWED_BOX` lint.
     #[allow(clippy::too_many_lines)]
-    #[allow(clippy::cognitive_complexity)]
     fn check_ty(&mut self, cx: &LateContext<'_, '_>, hir_ty: &hir::Ty<'_>, is_local: bool) {
         if hir_ty.span.from_expansion() {
             return;

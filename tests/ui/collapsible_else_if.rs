@@ -1,5 +1,5 @@
 // run-rustfix
-#![allow(clippy::cognitive_complexity, clippy::assertions_on_constants)]
+#![allow(clippy::assertions_on_constants)]
 
 #[rustfmt::skip]
 #[warn(clippy::collapsible_if)]

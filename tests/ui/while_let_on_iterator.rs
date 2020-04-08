@@ -1,5 +1,5 @@
 #![warn(clippy::while_let_on_iterator)]
-#![allow(clippy::never_loop, clippy::cognitive_complexity)]
+#![allow(clippy::never_loop)]
 
 fn main() {
     let mut iter = 1..20;

@@ -1174,7 +1174,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&booleans::LOGIC_BUG),
         LintId::of(&booleans::NONMINIMAL_BOOL),
         LintId::of(&bytecount::NAIVE_BYTECOUNT),
-        LintId::of(&cognitive_complexity::COGNITIVE_COMPLEXITY),
         LintId::of(&collapsible_if::COLLAPSIBLE_IF),
         LintId::of(&comparison_chain::COMPARISON_CHAIN),
         LintId::of(&copies::IFS_SAME_COND),
@@ -1509,7 +1508,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&assign_ops::MISREFACTORED_ASSIGN_OP),
         LintId::of(&attrs::DEPRECATED_CFG_ATTR),
         LintId::of(&booleans::NONMINIMAL_BOOL),
-        LintId::of(&cognitive_complexity::COGNITIVE_COMPLEXITY),
         LintId::of(&double_comparison::DOUBLE_COMPARISONS),
         LintId::of(&double_parens::DOUBLE_PARENS),
         LintId::of(&duration_subsec::DURATION_SUBSEC),
@@ -1678,6 +1676,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
 
     store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
         LintId::of(&attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
+        LintId::of(&cognitive_complexity::COGNITIVE_COMPLEXITY),
         LintId::of(&fallible_impl_from::FALLIBLE_IMPL_FROM),
         LintId::of(&floating_point_arithmetic::IMPRECISE_FLOPS),
         LintId::of(&floating_point_arithmetic::SUBOPTIMAL_FLOPS),
