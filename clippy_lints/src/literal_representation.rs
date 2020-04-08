@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// let x: u64 = 61864918973511;
     /// ```
     pub UNREADABLE_LITERAL,
-    style,
+    pedantic,
     "long integer literal without underscores"
 }
 
