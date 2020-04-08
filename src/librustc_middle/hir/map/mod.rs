@@ -720,9 +720,8 @@ impl<'hir> Map<'hir> {
         scope
     }
 
-    // FIXME(eddyb) this function can and should return `LocalDefId`.
-    pub fn get_parent_did(&self, id: HirId) -> DefId {
-        self.local_def_id(self.get_parent_item(id))
+    pub fn get_parent_did(&self, id: HirId) -> LocalDefId {
+        self.local_def_id(self.get_parent_item(id)).expect_local()
     }
 
     pub fn get_foreign_abi(&self, hir_id: HirId) -> Abi {

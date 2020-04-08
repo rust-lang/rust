@@ -84,11 +84,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
     let parent_id = tcx.hir().get_parent_did(hir_id);
-    if !parent_id.is_top_level_module() {
-        is_const_impl_raw(tcx, parent_id.expect_local())
-    } else {
-        false
-    }
+    if !parent_id.is_top_level_module() { is_const_impl_raw(tcx, parent_id) } else { false }
 }
 
 /// Checks whether the function has a `const` modifier or, in case it is an intrinsic, whether
