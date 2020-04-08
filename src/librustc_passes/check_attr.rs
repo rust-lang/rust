@@ -151,17 +151,7 @@ impl CheckAttrVisitor<'tcx> {
                 .emit();
                 false
             }
-            Target::ForeignFn => {
-                struct_span_err!(
-                    self.tcx.sess,
-                    *attr_span,
-                    E0738,
-                    "`#[track_caller]` is not supported on foreign functions",
-                )
-                .emit();
-                false
-            }
-            Target::Fn | Target::Method(..) => true,
+            Target::Fn | Target::Method(..) | Target::ForeignFn => true,
             _ => {
                 struct_span_err!(
                     self.tcx.sess,
