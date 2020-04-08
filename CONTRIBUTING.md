@@ -45,7 +45,7 @@ supports.
 
 ### Testing the Miri driver
 
-The Miri driver in the `src/bin/miri.rs` binary is the "heart" of Miri: it is
+The Miri driver compiled from `src/bin/miri.rs` is the "heart" of Miri: it is
 basically a version of `rustc` that, instead of compiling your code, runs it.
 It accepts all the same flags as `rustc` (though the ones only affecting code
 generation and linking obviously will have no effect) [and more][miri-flags].
