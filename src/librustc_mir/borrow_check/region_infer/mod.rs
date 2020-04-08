@@ -321,10 +321,75 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let num_sccs = constraints_scc.num_sccs();
         let mut scc_universes = IndexVec::from_elem_n(ty::UniverseIndex::MAX, num_sccs);
 
+        debug!("compute_scc_universes()");
+
+        // For each region R in universe U, ensure that the universe for the SCC
+        // that contains R is "no bigger" than U. This effectively sets the universe
+        // for each SCC to be the minimum of the regions within.
         for (region_vid, region_definition) in definitions.iter_enumerated() {
             let scc = constraints_scc.scc(region_vid);
             let scc_universe = &mut scc_universes[scc];
-            *scc_universe = ::std::cmp::min(*scc_universe, region_definition.universe);
+            let scc_min = std::cmp::min(region_definition.universe, *scc_universe);
+            if scc_min != *scc_universe {
+                *scc_universe = scc_min;
+                debug!(
+                    "compute_scc_universes: lowered universe of {scc:?} to {scc_min:?} \
+                    because it contains {region_vid:?} in {region_universe:?}",
+                    scc = scc,
+                    scc_min = scc_min,
+                    region_vid = region_vid,
+                    region_universe = region_definition.universe,
+                );
+            }
+        }
+
+        // Walk each SCC `A` and `B` such that `A: B`
+        // and ensure that universe(A) can see universe(B).
+        //
+        // This serves to enforce the 'empty/placeholder' hierarchy
+        // (described in more detail on `RegionKind`):
+        //
+        // ```
+        // static -----+
+        //   |         |
+        // empty(U0) placeholder(U1)
+        //   |      /
+        // empty(U1)
+        // ```
+        //
+        // In particular, imagine we have variables R0 in U0 and R1
+        // created in U1, and constraints like this;
+        //
+        // ```
+        // R1: !1 // R1 outlives the placeholder in U1
+        // R1: R0 // R1 outlives R0
+        // ```
+        //
+        // Here, we wish for R1 to be `'static`, because it
+        // cannot outlive `placeholder(U1)` and `empty(U0)` any other way.
+        //
+        // Thanks to this loop, what happens is that the `R1: R0`
+        // constraint lowers the universe of `R1` to `U0`, which in turn
+        // means that the `R1: !1` constraint will (later) cause
+        // `R1` to become `'static`.
+        for scc_a in constraints_scc.all_sccs() {
+            for &scc_b in constraints_scc.successors(scc_a) {
+                let scc_universe_a = scc_universes[scc_a];
+                let scc_universe_b = scc_universes[scc_b];
+                let scc_universe_min = std::cmp::min(scc_universe_a, scc_universe_b);
+                if scc_universe_a != scc_universe_min {
+                    scc_universes[scc_a] = scc_universe_min;
+
+                    debug!(
+                        "compute_scc_universes: lowered universe of {scc_a:?} to {scc_universe_min:?} \
+                        because {scc_a:?}: {scc_b:?} and {scc_b:?} is in universe {scc_universe_b:?}",
+                        scc_a = scc_a,
+                        scc_b = scc_b,
+                        scc_universe_min = scc_universe_min,
+                        scc_universe_b = scc_universe_b
+                    );
+                }
+            }
         }
 
         debug!("compute_scc_universes: scc_universe = {:#?}", scc_universes);
@@ -1773,6 +1838,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Finds some region R such that `fr1: R` and `R` is live at `elem`.
     crate fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
         debug!("find_sub_region_live_at(fr1={:?}, elem={:?})", fr1, elem);
+        debug!("find_sub_region_live_at: {:?} is in scc {:?}", fr1, self.constraint_sccs.scc(fr1));
+        debug!(
+            "find_sub_region_live_at: {:?} is in universe {:?}",
+            fr1,
+            self.scc_universes[self.constraint_sccs.scc(fr1)]
+        );
         self.find_constraint_paths_between_regions(fr1, |r| {
             // First look for some `r` such that `fr1: r` and `r` is live at `elem`
             debug!(
@@ -1794,13 +1865,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         .or_else(|| {
             // If we fail to find THAT, it may be that `fr1` is a
             // placeholder that cannot "fit" into its SCC. In that
-            // case, there should be some `r` where `fr1: r`, both
-            // `fr1` and `r` are in the same SCC, and `fr1` is a
+            // case, there should be some `r` where `fr1: r` and `fr1` is a
             // placeholder that `r` cannot name. We can blame that
             // edge.
+            //
+            // Remember that if `R1: R2`, then the universe of R1
+            // must be able to name the universe of R2, because R2 will
+            // be at least `'empty(Universe(R2))`, and `R1` must be at
+            // larger than that.
             self.find_constraint_paths_between_regions(fr1, |r| {
-                self.constraint_sccs.scc(fr1) == self.constraint_sccs.scc(r)
-                    && self.cannot_name_placeholder(r, fr1)
+                self.cannot_name_placeholder(r, fr1)
             })
         })
         .map(|(_path, r)| r)

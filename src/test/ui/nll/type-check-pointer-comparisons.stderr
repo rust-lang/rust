@@ -76,5 +76,17 @@ LL |     f == g;
 
 help: `'a` and `'b` must be the same: replace one with the other
 
-error: aborting due to 6 previous errors
+error: higher-ranked subtype error
+  --> $DIR/type-check-pointer-comparisons.rs:24:5
+   |
+LL |     f == g;
+   |     ^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/type-check-pointer-comparisons.rs:29:5
+   |
+LL |     f == g;
+   |     ^^^^^^
+
+error: aborting due to 8 previous errors
 
