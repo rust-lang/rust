@@ -52,6 +52,182 @@ where
     type Item = <I as Iterator>::Item;
 
     #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        FuseIteratorImpl::next(self)
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<I::Item> {
+        FuseIteratorImpl::nth(self, n)
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        FuseIteratorImpl::last(self)
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        FuseIteratorImpl::count(self)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        FuseIteratorImpl::size_hint(self)
+    }
+
+    #[inline]
+    fn try_fold<Acc, Fold, R>(&mut self, acc: Acc, fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>,
+    {
+        FuseIteratorImpl::try_fold(self, acc, fold)
+    }
+
+    #[inline]
+    fn fold<Acc, Fold>(self, acc: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        FuseIteratorImpl::fold(self, acc, fold)
+    }
+
+    #[inline]
+    fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
+    where
+        P: FnMut(&Self::Item) -> bool,
+    {
+        FuseIteratorImpl::find(self, predicate)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I> DoubleEndedIterator for Fuse<I>
+where
+    I: DoubleEndedIterator,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
+        FuseDoubleEndedIteratorImpl::next_back(self)
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
+        FuseDoubleEndedIteratorImpl::nth_back(self, n)
+    }
+
+    #[inline]
+    fn try_rfold<Acc, Fold, R>(&mut self, acc: Acc, fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>,
+    {
+        FuseDoubleEndedIteratorImpl::try_rfold(self, acc, fold)
+    }
+
+    #[inline]
+    fn rfold<Acc, Fold>(self, acc: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        FuseDoubleEndedIteratorImpl::rfold(self, acc, fold)
+    }
+
+    #[inline]
+    fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
+    where
+        P: FnMut(&Self::Item) -> bool,
+    {
+        FuseDoubleEndedIteratorImpl::rfind(self, predicate)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I> ExactSizeIterator for Fuse<I>
+where
+    I: ExactSizeIterator,
+{
+    fn len(&self) -> usize {
+        FuseExactSizeIteratorImpl::len(self)
+    }
+
+    fn is_empty(&self) -> bool {
+        FuseExactSizeIteratorImpl::is_empty(self)
+    }
+}
+
+// NOTE: for `I: FusedIterator`, we assume that the iterator is always `Some`.
+// Implementing this as a directly-expanded macro helps codegen performance.
+macro_rules! unchecked {
+    ($self:ident) => {
+        match $self {
+            Fuse { iter: Some(iter) } => iter,
+            // SAFETY: the specialized iterator never sets `None`
+            Fuse { iter: None } => unsafe { intrinsics::unreachable() },
+        }
+    };
+}
+
+#[stable(feature = "fused", since = "1.26.0")]
+impl<I> Iterator for Fuse<I> where I: FusedIterator {}
+
+#[stable(feature = "fused", since = "1.26.0")]
+impl<I> DoubleEndedIterator for Fuse<I> where I: DoubleEndedIterator + FusedIterator {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator + FusedIterator {}
+
+unsafe impl<I> TrustedRandomAccess for Fuse<I>
+where
+    I: TrustedRandomAccess,
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> I::Item {
+        match self.iter {
+            Some(ref mut iter) => iter.get_unchecked(i),
+            // SAFETY: the caller asserts there is an item at `i`, so we're not exhausted.
+            None => intrinsics::unreachable(),
+        }
+    }
+
+    fn may_have_side_effect() -> bool {
+        I::may_have_side_effect()
+    }
+}
+
+// Fuse specialization trait
+#[doc(hidden)]
+trait FuseIteratorImpl<I> {
+    type Item;
+    fn next(&mut self) -> Option<Self::Item>;
+    fn nth(&mut self, n: usize) -> Option<Self::Item>;
+    fn last(self) -> Option<Self::Item>;
+    fn count(self) -> usize;
+    fn size_hint(&self) -> (usize, Option<usize>);
+    fn try_fold<Acc, Fold, R>(&mut self, acc: Acc, fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>;
+    fn fold<Acc, Fold>(self, acc: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc;
+    fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
+    where
+        P: FnMut(&Self::Item) -> bool;
+}
+
+// General Fuse impl
+#[doc(hidden)]
+impl<I> FuseIteratorImpl<I> for Fuse<I>
+where
+    I: Iterator,
+{
+    type Item = <I as Iterator>::Item;
+
+    #[inline]
     default fn next(&mut self) -> Option<<I as Iterator>::Item> {
         fuse!(self.iter.next())
     }
@@ -119,89 +295,8 @@ where
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I> DoubleEndedIterator for Fuse<I>
-where
-    I: DoubleEndedIterator,
-{
-    #[inline]
-    default fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
-        fuse!(self.iter.next_back())
-    }
-
-    #[inline]
-    default fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
-        fuse!(self.iter.nth_back(n))
-    }
-
-    #[inline]
-    default fn try_rfold<Acc, Fold, R>(&mut self, mut acc: Acc, fold: Fold) -> R
-    where
-        Self: Sized,
-        Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
-    {
-        if let Some(ref mut iter) = self.iter {
-            acc = iter.try_rfold(acc, fold)?;
-            self.iter = None;
-        }
-        Try::from_ok(acc)
-    }
-
-    #[inline]
-    default fn rfold<Acc, Fold>(self, mut acc: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        if let Some(iter) = self.iter {
-            acc = iter.rfold(acc, fold);
-        }
-        acc
-    }
-
-    #[inline]
-    default fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
-    where
-        P: FnMut(&Self::Item) -> bool,
-    {
-        fuse!(self.iter.rfind(predicate))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Fuse<I>
-where
-    I: ExactSizeIterator,
-{
-    default fn len(&self) -> usize {
-        match self.iter {
-            Some(ref iter) => iter.len(),
-            None => 0,
-        }
-    }
-
-    default fn is_empty(&self) -> bool {
-        match self.iter {
-            Some(ref iter) => iter.is_empty(),
-            None => true,
-        }
-    }
-}
-
-// NOTE: for `I: FusedIterator`, we assume that the iterator is always `Some`.
-// Implementing this as a directly-expanded macro helps codegen performance.
-macro_rules! unchecked {
-    ($self:ident) => {
-        match $self {
-            Fuse { iter: Some(iter) } => iter,
-            // SAFETY: the specialized iterator never sets `None`
-            Fuse { iter: None } => unsafe { intrinsics::unreachable() },
-        }
-    };
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<I> Iterator for Fuse<I>
+#[doc(hidden)]
+impl<I> FuseIteratorImpl<I> for Fuse<I>
 where
     I: FusedIterator,
 {
@@ -257,8 +352,77 @@ where
     }
 }
 
-#[stable(feature = "fused", since = "1.26.0")]
-impl<I> DoubleEndedIterator for Fuse<I>
+#[doc(hidden)]
+trait FuseDoubleEndedIteratorImpl<I> {
+    type Item;
+    fn next_back(&mut self) -> Option<Self::Item>;
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item>;
+    fn try_rfold<Acc, Fold, R>(&mut self, acc: Acc, fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>;
+    fn rfold<Acc, Fold>(self, acc: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc;
+    fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
+    where
+        P: FnMut(&Self::Item) -> bool;
+}
+
+#[doc(hidden)]
+impl<I> FuseDoubleEndedIteratorImpl<I> for Fuse<I>
+where
+    I: DoubleEndedIterator,
+{
+    type Item = <I as Iterator>::Item;
+
+    #[inline]
+    default fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
+        fuse!(self.iter.next_back())
+    }
+
+    #[inline]
+    default fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
+        fuse!(self.iter.nth_back(n))
+    }
+
+    #[inline]
+    default fn try_rfold<Acc, Fold, R>(&mut self, mut acc: Acc, fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Ok = Acc>,
+    {
+        if let Some(ref mut iter) = self.iter {
+            acc = iter.try_rfold(acc, fold)?;
+            self.iter = None;
+        }
+        Try::from_ok(acc)
+    }
+
+    #[inline]
+    default fn rfold<Acc, Fold>(self, mut acc: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        if let Some(iter) = self.iter {
+            acc = iter.rfold(acc, fold);
+        }
+        acc
+    }
+
+    #[inline]
+    default fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
+    where
+        P: FnMut(&Self::Item) -> bool,
+    {
+        fuse!(self.iter.rfind(predicate))
+    }
+}
+
+#[doc(hidden)]
+impl<I> FuseDoubleEndedIteratorImpl<I> for Fuse<I>
 where
     I: DoubleEndedIterator + FusedIterator,
 {
@@ -299,8 +463,32 @@ where
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Fuse<I>
+#[doc(hidden)]
+trait FuseExactSizeIteratorImpl<I> {
+    fn len(&self) -> usize;
+    fn is_empty(&self) -> bool;
+}
+
+impl<I> FuseExactSizeIteratorImpl<I> for Fuse<I>
+where
+    I: ExactSizeIterator,
+{
+    default fn len(&self) -> usize {
+        match self.iter {
+            Some(ref iter) => iter.len(),
+            None => 0,
+        }
+    }
+
+    default fn is_empty(&self) -> bool {
+        match self.iter {
+            Some(ref iter) => iter.is_empty(),
+            None => true,
+        }
+    }
+}
+
+impl<I> FuseExactSizeIteratorImpl<I> for Fuse<I>
 where
     I: ExactSizeIterator + FusedIterator,
 {
@@ -310,22 +498,5 @@ where
 
     fn is_empty(&self) -> bool {
         unchecked!(self).is_empty()
-    }
-}
-
-unsafe impl<I> TrustedRandomAccess for Fuse<I>
-where
-    I: TrustedRandomAccess,
-{
-    unsafe fn get_unchecked(&mut self, i: usize) -> I::Item {
-        match self.iter {
-            Some(ref mut iter) => iter.get_unchecked(i),
-            // SAFETY: the caller asserts there is an item at `i`, so we're not exhausted.
-            None => intrinsics::unreachable(),
-        }
-    }
-
-    fn may_have_side_effect() -> bool {
-        I::may_have_side_effect()
     }
 }
