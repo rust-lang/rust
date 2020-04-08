@@ -1453,11 +1453,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             then {
                 if cx.access_levels.is_exported(impl_item.hir_id) {
                 // check missing trait implementations
-                    for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
+                    for &(method_name, n_args, fn_header, self_kind, out_type, trait_name) in &TRAIT_METHODS {
                         if name == method_name &&
-                        sig.decl.inputs.len() == n_args &&
-                        out_type.matches(cx, &sig.decl.output) &&
-                        self_kind.matches(cx, self_ty, first_arg_ty) {
+                            sig.decl.inputs.len() == n_args &&
+                            out_type.matches(cx, &sig.decl.output) &&
+                            self_kind.matches(cx, self_ty, first_arg_ty) &&
+                            fn_header_equals(*fn_header, sig.header) {
                             span_lint(cx, SHOULD_IMPLEMENT_TRAIT, impl_item.span, &format!(
                                 "defining a method called `{}` on this type; consider implementing \
                                 the `{}` trait or choosing a less ambiguous name", name, trait_name));
@@ -3352,38 +3353,45 @@ const CONVENTIONS: [(Convention, &[SelfKind]); 7] = [
     (Convention::StartsWith("to_"), &[SelfKind::Ref]),
 ];
 
+const FN_HEADER: hir::FnHeader = hir::FnHeader {
+    unsafety: hir::Unsafety::Normal,
+    constness: hir::Constness::NotConst,
+    asyncness: hir::IsAsync::NotAsync,
+    abi: rustc_target::spec::abi::Abi::Rust,
+};
+
 #[rustfmt::skip]
-const TRAIT_METHODS: [(&str, usize, SelfKind, OutType, &str); 30] = [
-    ("add", 2, SelfKind::Value, OutType::Any, "std::ops::Add"),
-    ("as_mut", 1, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
-    ("as_ref", 1, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
-    ("bitand", 2, SelfKind::Value, OutType::Any, "std::ops::BitAnd"),
-    ("bitor", 2, SelfKind::Value, OutType::Any, "std::ops::BitOr"),
-    ("bitxor", 2, SelfKind::Value, OutType::Any, "std::ops::BitXor"),
-    ("borrow", 1, SelfKind::Ref, OutType::Ref, "std::borrow::Borrow"),
-    ("borrow_mut", 1, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
-    ("clone", 1, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
-    ("cmp", 2, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
-    ("default", 0, SelfKind::No, OutType::Any, "std::default::Default"),
-    ("deref", 1, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
-    ("deref_mut", 1, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
-    ("div", 2, SelfKind::Value, OutType::Any, "std::ops::Div"),
-    ("drop", 1, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
-    ("eq", 2, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
-    ("from_iter", 1, SelfKind::No, OutType::Any, "std::iter::FromIterator"),
-    ("from_str", 1, SelfKind::No, OutType::Any, "std::str::FromStr"),
-    ("hash", 2, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
-    ("index", 2, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
-    ("index_mut", 2, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
-    ("into_iter", 1, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
-    ("mul", 2, SelfKind::Value, OutType::Any, "std::ops::Mul"),
-    ("neg", 1, SelfKind::Value, OutType::Any, "std::ops::Neg"),
-    ("next", 1, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
-    ("not", 1, SelfKind::Value, OutType::Any, "std::ops::Not"),
-    ("rem", 2, SelfKind::Value, OutType::Any, "std::ops::Rem"),
-    ("shl", 2, SelfKind::Value, OutType::Any, "std::ops::Shl"),
-    ("shr", 2, SelfKind::Value, OutType::Any, "std::ops::Shr"),
-    ("sub", 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
+const TRAIT_METHODS: [(&str, usize, &hir::FnHeader, SelfKind, OutType, &str); 30] = [
+    ("add", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Add"),
+    ("as_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
+    ("as_ref", 1, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
+    ("bitand", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::BitAnd"),
+    ("bitor", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::BitOr"),
+    ("bitxor", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::BitXor"),
+    ("borrow", 1, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::borrow::Borrow"),
+    ("borrow_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
+    ("clone", 1, &FN_HEADER, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
+    ("cmp", 2, &FN_HEADER, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
+    ("default", 0, &FN_HEADER, SelfKind::No, OutType::Any, "std::default::Default"),
+    ("deref", 1, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
+    ("deref_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
+    ("div", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Div"),
+    ("drop", 1, &FN_HEADER, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
+    ("eq", 2, &FN_HEADER, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
+    ("from_iter", 1, &FN_HEADER, SelfKind::No, OutType::Any, "std::iter::FromIterator"),
+    ("from_str", 1, &FN_HEADER, SelfKind::No, OutType::Any, "std::str::FromStr"),
+    ("hash", 2, &FN_HEADER, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
+    ("index", 2, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
+    ("index_mut", 2, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
+    ("into_iter", 1, &FN_HEADER, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
+    ("mul", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Mul"),
+    ("neg", 1, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Neg"),
+    ("next", 1, &FN_HEADER, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
+    ("not", 1, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Not"),
+    ("rem", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Rem"),
+    ("shl", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Shl"),
+    ("shr", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Shr"),
+    ("sub", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Sub"),
 ];
 
 #[rustfmt::skip]
@@ -3595,4 +3603,10 @@ fn lint_filetype_is_file(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &
     let lint_msg = format!("`{}FileType::is_file()` only {} regular files", lint_unary, verb);
     let help_msg = format!("use `{}FileType::is_dir()` instead", help_unary);
     span_lint_and_help(cx, FILETYPE_IS_FILE, span, &lint_msg, &help_msg);
+}
+
+fn fn_header_equals(expected: hir::FnHeader, actual: hir::FnHeader) -> bool {
+    expected.constness == actual.constness
+        && expected.unsafety == actual.unsafety
+        && expected.asyncness == actual.asyncness
 }
