@@ -26,7 +26,7 @@ use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::SyntaxExtension;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::bug;
 use rustc_middle::hir::exports::Export;
@@ -96,8 +96,8 @@ impl<'a> Resolver<'a> {
     }
 
     crate fn get_module(&mut self, def_id: DefId) -> Module<'a> {
-        if def_id.krate == LOCAL_CRATE {
-            return self.module_map[&def_id.as_local().unwrap()];
+        if let Some(def_id) = def_id.as_local() {
+            return self.module_map[&def_id];
         }
 
         if let Some(&module) = self.extern_module_map.get(&def_id) {
