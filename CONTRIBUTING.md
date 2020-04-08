@@ -5,14 +5,14 @@ find useful.
 
 ## Getting started
 
-Check out the issues on this GitHub repository for some ideas. There's lots that
-needs to be done that we haven't documented in the issues yet, however. For more
-ideas or help with hacking on Miri, you can contact us (`oli-obk` and `RalfJ`)
-on the [Rust Zulip].
+Check out the issues on this GitHub repository for some ideas. In particular,
+look for the green `E-*` labels which mark issues that should be rather
+well-suited for onboarding. For more ideas or help with hacking on Miri, you can
+contact us (`oli-obk` and `RalfJ`) on the [Rust Zulip].
 
 [Rust Zulip]: https://rust-lang.zulipchat.com
 
-## Building Miri with a pre-built rustc
+## Preparing the build environment
 
 Miri heavily relies on internal rustc interfaces to execute MIR.  Still, some
 things (like adding support for a new intrinsic or a shim for an external
@@ -28,7 +28,11 @@ install that exact version of rustc as a toolchain:
 
 [`rustup-toolchain-install-master`]: https://github.com/kennytm/rustup-toolchain-install-master
 
-Now building Miri is just one command away:
+## Building and testing Miri
+
+Invoking Miri requires getting a bunch of flags right and setting up a custom
+sysroot with xargo. The `miri` script takes care of that for you.  With the
+build environment prepared, compiling Miri is just one command away:
 
 ```
 ./miri build
@@ -37,32 +41,16 @@ Now building Miri is just one command away:
 Run `./miri` without arguments to see the other commands our build tool
 supports.
 
-### Fixing Miri when rustc changes
+### Testing the Miri driver
 
-Miri is heavily tied to rustc internals, so it is very common that rustc changes
-break Miri.  Fixing those is a good way to get starting working on Miri.
-Usually, Miri will require changes similar to the other consumers of the changed
-rustc API, so reading the rustc PR diff is a good way to get an idea for what is
-needed.
+The Miri driver in the `src/bin/miri.rs` binary is the "heart" of Miri: it is
+basically a version of `rustc` that, instead of compiling your code, runs it.
+It accepts all the same flags as `rustc` (though the ones only affecting code
+generation and linking obviously will have no effect) [and more][miri-flags].
 
-To update the `rustc-version` file and install the latest rustc, you can run:
-```
-./rustup-toolchain HEAD
-```
+[miri-flags]: README.md#miri--z-flags-and-environment-variables
 
-Now try `./miri test`, and submit a PR once that works again.
-
-## Testing the Miri driver
-[testing-miri]: #testing-the-miri-driver
-
-The Miri driver in the `miri` binary is the "heart" of Miri: it is basically a
-version of `rustc` that, instead of compiling your code, runs it.  It accepts
-all the same flags as `rustc` (though the ones only affecting code generation
-and linking obviously will have no effect) [and more][miri-flags].
-
-Running the Miri driver requires some fiddling with environment variables, so
-the `miri` script helps you do that.  For example, you can (cross-)run the
-driver on a particular file by doing
+For example, you can (cross-)run the driver on a particular file by doing
 
 ```sh
 ./miri run tests/run-pass/format.rs
@@ -99,7 +87,7 @@ MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows ./miri run tests/run-pa
 In addition, you can set `MIRI_BACKTRACE=1` to get a backtrace of where an
 evaluation error was originally raised.
 
-## Testing `cargo miri`
+### Testing `cargo miri`
 
 Working with the driver directly gives you full control, but you also lose all
 the convenience provided by cargo.  Once your test case depends on a crate, it
@@ -117,7 +105,24 @@ There's a test for the cargo wrapper in the `test-cargo-miri` directory; run
 `./run-test.py` in there to execute it. Like `./miri test`, this respects the
 `MIRI_TEST_TARGET` environment variable to execute the test for another target.
 
-## Building Miri with a locally built rustc
+### Fixing Miri when rustc changes
+
+Miri is heavily tied to rustc internals, so it is very common that rustc changes
+break Miri. Usually, Miri will require changes similar to the other consumers
+of the changed rustc API, so reading the rustc PR diff is a good way to get an
+idea for what is needed.
+
+To update the `rustc-version` file and install the latest rustc, you can run:
+```
+./rustup-toolchain HEAD
+```
+
+Now try `./miri test`, and submit a PR once that works again. Even if you choose
+not to use `./rustup-toolchain`, it is important that the `rustc-version` file
+is updated, as our CI makes sure that Miri works well with that particular
+version of rustc.
+
+## Advanced topic: Building Miri with a locally built rustc
 
 A big part of the Miri driver lives in rustc, so working on Miri will sometimes
 require using a locally built rustc.  The bug you want to fix may actually be on
@@ -143,4 +148,4 @@ rustup override set custom
 ```
 
 With this, you should now have a working development setup!  See
-[above][testing-miri] for how to proceed working with the Miri driver.
+[above](#building-and-testing-miri) for how to proceed working on Miri.
