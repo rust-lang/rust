@@ -94,6 +94,10 @@ pub fn run_process(cmd: String, echo: bool) -> Result<String> {
     run_process_inner(&cmd, echo).with_context(|| format!("process `{}` failed", cmd))
 }
 
+pub fn date_iso() -> Result<String> {
+    run!("date --iso --utc")
+}
+
 fn run_process_inner(cmd: &str, echo: bool) -> Result<String> {
     let mut args = shelx(cmd);
     let binary = args.remove(0);

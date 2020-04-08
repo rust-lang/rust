@@ -21,7 +21,7 @@ use walkdir::{DirEntry, WalkDir};
 
 use crate::{
     codegen::Mode,
-    not_bash::{fs2, pushd, rm_rf, run},
+    not_bash::{date_iso, fs2, pushd, rm_rf, run},
 };
 
 pub use anyhow::Result;
@@ -180,7 +180,7 @@ pub fn run_release(dry_run: bool) -> Result<()> {
     let website_root = project_root().join("../rust-analyzer.github.io");
     let changelog_dir = website_root.join("./thisweek/_posts");
 
-    let today = run!("date --iso")?;
+    let today = date_iso()?;
     let commit = run!("git rev-parse HEAD")?;
     let changelog_n = fs2::read_dir(changelog_dir.as_path())?.count();
 

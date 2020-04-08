@@ -3,24 +3,21 @@ use std::path::PathBuf;
 use anyhow::Result;
 
 use crate::{
-    not_bash::{fs2, pushd, rm_rf, run},
+    not_bash::{date_iso, fs2, pushd, rm_rf, run},
     project_root,
 };
 
-pub struct ClientOpts {
-    pub version: String,
-    pub release_tag: String,
-}
 
-pub fn run_dist(client_opts: Option<ClientOpts>) -> Result<()> {
+pub fn run_dist(nightly: bool, client_version: Option<String>) -> Result<()> {
     let dist = project_root().join("dist");
     rm_rf(&dist)?;
     fs2::create_dir_all(&dist)?;
 
-    if let Some(ClientOpts { version, release_tag }) = client_opts {
+    if let Some(version) = client_version {
+        let release_tag = if nightly { "nightly".to_string() } else { date_iso()? };
         dist_client(&version, &release_tag)?;
     }
-    dist_server()?;
+    dist_server(nightly)?;
     Ok(())
 }
 
@@ -50,7 +47,7 @@ fn dist_client(version: &str, release_tag: &str) -> Result<()> {
     Ok(())
 }
 
-fn dist_server() -> Result<()> {
+fn dist_server(nightly: bool) -> Result<()> {
     if cfg!(target_os = "linux") {
         std::env::set_var("CC", "clang");
         run!(
@@ -60,7 +57,9 @@ fn dist_server() -> Result<()> {
             // We'd want to add, but that requires setting the right linker somehow
             // --features=jemalloc
         )?;
-        run!("strip ./target/x86_64-unknown-linux-musl/release/rust-analyzer")?;
+        if !nightly {
+            run!("strip ./target/x86_64-unknown-linux-musl/release/rust-analyzer")?;
+        }
     } else {
         run!("cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release")?;
     }

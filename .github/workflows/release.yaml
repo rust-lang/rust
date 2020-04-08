@@ -50,11 +50,11 @@ jobs:
 
     - name: Dist
       if: matrix.os == 'ubuntu-latest' && github.ref == 'refs/heads/release'
-      run: cargo xtask dist --client --version 0.2.$GITHUB_RUN_NUMBER         --tag $(date --iso --utc)
+      run: cargo xtask dist --client 0.2.$GITHUB_RUN_NUMBER
 
     - name: Dist
       if: matrix.os == 'ubuntu-latest' && github.ref != 'refs/heads/release'
-      run: cargo xtask dist --client --version 0.3.$GITHUB_RUN_NUMBER-nightly --tag nightly
+      run: cargo xtask dist --nightly --client 0.3.$GITHUB_RUN_NUMBER-nightly
 
     - name: Dist
       if: matrix.os != 'ubuntu-latest'
