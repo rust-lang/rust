@@ -109,7 +109,7 @@ macro_rules! ignore_err {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn regionck_expr(&self, body: &'tcx hir::Body<'tcx>) {
-        let subject = self.tcx.hir().body_owner_def_id(body.id());
+        let subject = self.tcx.hir().body_owner_def_id(body.id()).to_def_id();
         let id = body.value.hir_id;
         let mut rcx =
             RegionCtxt::new(self, RepeatingScope(id), id, Subject(subject), self.param_env);
@@ -154,7 +154,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// constraints to add.
     pub fn regionck_fn(&self, fn_id: hir::HirId, body: &'tcx hir::Body<'tcx>) {
         debug!("regionck_fn(id={})", fn_id);
-        let subject = self.tcx.hir().body_owner_def_id(body.id());
+        let subject = self.tcx.hir().body_owner_def_id(body.id()).to_def_id();
         let hir_id = body.value.hir_id;
         let mut rcx =
             RegionCtxt::new(self, RepeatingScope(hir_id), hir_id, Subject(subject), self.param_env);
@@ -290,7 +290,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
         let body_id = body.id();
         self.body_id = body_id.hir_id;
-        self.body_owner = self.tcx.hir().body_owner_def_id(body_id);
+        self.body_owner = self.tcx.hir().body_owner_def_id(body_id).to_def_id();
 
         let call_site =
             region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::CallSite };

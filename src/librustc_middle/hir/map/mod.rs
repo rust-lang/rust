@@ -370,9 +370,8 @@ impl<'hir> Map<'hir> {
         parent
     }
 
-    // FIXME(eddyb) this function can and should return `LocalDefId`.
-    pub fn body_owner_def_id(&self, id: BodyId) -> DefId {
-        self.local_def_id(self.body_owner(id))
+    pub fn body_owner_def_id(&self, id: BodyId) -> LocalDefId {
+        self.local_def_id(self.body_owner(id)).expect_local()
     }
 
     /// Given a `HirId`, returns the `BodyId` associated with it,

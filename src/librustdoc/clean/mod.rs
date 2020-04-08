@@ -419,7 +419,10 @@ impl Clean<Lifetime> for hir::GenericParam<'_> {
 impl Clean<Constant> for hir::ConstArg {
     fn clean(&self, cx: &DocContext<'_>) -> Constant {
         Constant {
-            type_: cx.tcx.type_of(cx.tcx.hir().body_owner_def_id(self.value.body)).clean(cx),
+            type_: cx
+                .tcx
+                .type_of(cx.tcx.hir().body_owner_def_id(self.value.body).to_def_id())
+                .clean(cx),
             expr: print_const_expr(cx, self.value.body),
             value: None,
             is_literal: is_literal_expr(cx, self.value.body.hir_id),

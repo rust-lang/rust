@@ -59,7 +59,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_middle::middle::region;
 use rustc_middle::ty::error::TypeError;
@@ -1589,16 +1589,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // it's a actual definition. According to the comments (e.g. in
         // librustc_typeck/check/compare_method.rs:compare_predicate_entailment) the latter
         // is relied upon by some other code. This might (or might not) need cleanup.
-        let body_owner_def_id = self
-            .tcx
-            .hir()
-            .opt_local_def_id(cause.body_id)
-            .map(LocalDefId::to_def_id)
-            .unwrap_or_else(|| {
+        let body_owner_def_id =
+            self.tcx.hir().opt_local_def_id(cause.body_id).unwrap_or_else(|| {
                 self.tcx.hir().body_owner_def_id(hir::BodyId { hir_id: cause.body_id })
             });
         self.check_and_note_conflicting_crates(diag, terr);
-        self.tcx.note_and_explain_type_err(diag, terr, span, body_owner_def_id);
+        self.tcx.note_and_explain_type_err(diag, terr, span, body_owner_def_id.to_def_id());
 
         // It reads better to have the error origin as the final
         // thing.
