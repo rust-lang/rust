@@ -235,7 +235,10 @@ impl From<PatId> for PatIdOrWild {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct MatchCheckNotImplemented;
+pub enum MatchCheckErr {
+    NotImplemented,
+    MalformedMatchArm,
+}
 
 /// The return type of `is_useful` is either an indication of usefulness
 /// of the match arm, or an error in the case the match statement
@@ -244,7 +247,7 @@ pub struct MatchCheckNotImplemented;
 ///
 /// The `std::result::Result` type is used here rather than a custom enum
 /// to allow the use of `?`.
-pub type MatchCheckResult<T> = Result<T, MatchCheckNotImplemented>;
+pub type MatchCheckResult<T> = Result<T, MatchCheckErr>;
 
 #[derive(Debug)]
 /// A row in a Matrix.
@@ -335,12 +338,12 @@ impl PatStack {
                     Expr::Literal(Literal::Bool(_)) => None,
                     // perhaps this is actually unreachable given we have
                     // already checked that these match arms have the appropriate type?
-                    _ => return Err(MatchCheckNotImplemented),
+                    _ => return Err(MatchCheckErr::NotImplemented),
                 }
             }
             (Pat::Wild, constructor) => Some(self.expand_wildcard(cx, constructor)?),
             (Pat::Path(_), Constructor::Enum(constructor)) => {
-                // enums with no associated data become `Pat::Path`
+                // unit enum variants become `Pat::Path`
                 let pat_id = self.head().as_id().expect("we know this isn't a wild");
                 if !enum_variant_matches(cx, pat_id, *constructor) {
                     None
@@ -348,16 +351,23 @@ impl PatStack {
                     Some(self.to_tail())
                 }
             }
-            (Pat::TupleStruct { args: ref pat_ids, .. }, Constructor::Enum(constructor)) => {
+            (Pat::TupleStruct { args: ref pat_ids, .. }, Constructor::Enum(enum_constructor)) => {
                 let pat_id = self.head().as_id().expect("we know this isn't a wild");
-                if !enum_variant_matches(cx, pat_id, *constructor) {
+                if !enum_variant_matches(cx, pat_id, *enum_constructor) {
                     None
                 } else {
+                    // If the enum variant matches, then we need to confirm
+                    // that the number of patterns aligns with the expected
+                    // number of patterns for that enum variant.
+                    if pat_ids.len() != constructor.arity(cx)? {
+                        return Err(MatchCheckErr::MalformedMatchArm);
+                    }
+
                     Some(self.replace_head_with(pat_ids))
                 }
             }
-            (Pat::Or(_), _) => return Err(MatchCheckNotImplemented),
-            (_, _) => return Err(MatchCheckNotImplemented),
+            (Pat::Or(_), _) => return Err(MatchCheckErr::NotImplemented),
+            (_, _) => return Err(MatchCheckErr::NotImplemented),
         };
 
         Ok(result)
@@ -514,7 +524,7 @@ pub(crate) fn is_useful(
         return if any_useful {
             Ok(Usefulness::Useful)
         } else if found_unimplemented {
-            Err(MatchCheckNotImplemented)
+            Err(MatchCheckErr::NotImplemented)
         } else {
             Ok(Usefulness::NotUseful)
         };
@@ -567,7 +577,7 @@ pub(crate) fn is_useful(
                 }
 
                 if found_unimplemented {
-                    Err(MatchCheckNotImplemented)
+                    Err(MatchCheckErr::NotImplemented)
                 } else {
                     Ok(Usefulness::NotUseful)
                 }
@@ -604,7 +614,7 @@ impl Constructor {
                 match cx.db.enum_data(e.parent).variants[e.local_id].variant_data.as_ref() {
                     VariantData::Tuple(struct_field_data) => struct_field_data.len(),
                     VariantData::Unit => 0,
-                    _ => return Err(MatchCheckNotImplemented),
+                    _ => return Err(MatchCheckErr::NotImplemented),
                 }
             }
         };
@@ -637,20 +647,20 @@ fn pat_constructor(cx: &MatchCheckCtx, pat: PatIdOrWild) -> MatchCheckResult<Opt
         Pat::Tuple(pats) => Some(Constructor::Tuple { arity: pats.len() }),
         Pat::Lit(lit_expr) => match cx.body.exprs[lit_expr] {
             Expr::Literal(Literal::Bool(val)) => Some(Constructor::Bool(val)),
-            _ => return Err(MatchCheckNotImplemented),
+            _ => return Err(MatchCheckErr::NotImplemented),
         },
         Pat::TupleStruct { .. } | Pat::Path(_) => {
             let pat_id = pat.as_id().expect("we already know this pattern is not a wild");
             let variant_id =
-                cx.infer.variant_resolution_for_pat(pat_id).ok_or(MatchCheckNotImplemented)?;
+                cx.infer.variant_resolution_for_pat(pat_id).ok_or(MatchCheckErr::NotImplemented)?;
             match variant_id {
                 VariantId::EnumVariantId(enum_variant_id) => {
                     Some(Constructor::Enum(enum_variant_id))
                 }
-                _ => return Err(MatchCheckNotImplemented),
+                _ => return Err(MatchCheckErr::NotImplemented),
             }
         }
-        _ => return Err(MatchCheckNotImplemented),
+        _ => return Err(MatchCheckErr::NotImplemented),
     };
 
     Ok(res)
@@ -1322,6 +1332,40 @@ mod tests {
 
         // Match arms with the incorrect type are filtered out.
         check_diagnostic(content);
+    }
+
+    #[test]
+    fn malformed_match_arm_tuple_missing_pattern() {
+        let content = r"
+            fn test_fn() {
+                match (0) {
+                    () => (),
+                }
+            }
+        ";
+
+        // Match arms with the incorrect type are filtered out.
+        check_diagnostic(content);
+    }
+
+    #[test]
+    fn malformed_match_arm_tuple_enum_missing_pattern() {
+        let content = r"
+            enum Either {
+                A,
+                B(u32),
+            }
+            fn test_fn() {
+                match Either::A {
+                    Either::A => (),
+                    Either::B() => (),
+                }
+            }
+        ";
+
+        // We are testing to be sure we don't panic here when the match
+        // arm `Either::B` is missing its pattern.
+        check_no_diagnostic(content);
     }
 
     #[test]
