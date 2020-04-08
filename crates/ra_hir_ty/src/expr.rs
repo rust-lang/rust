@@ -166,14 +166,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         let variant_data = variant_data(db.upcast(), variant_def);
 
-        let lit_fields: FxHashSet<_> = fields
-            .iter()
-            .filter_map(|f| {
-                // TODO: check if cfg_is_enabled with .attrs ?
-
-                Some(&f.name)
-            })
-            .collect();
+        let lit_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
         let missed_fields: Vec<Name> = variant_data
             .fields()
             .iter()

@@ -7,6 +7,7 @@ use hir_expand::{
     name::{name, AsName, Name},
     AstId, InFile,
 };
+use ra_cfg::CfgOptions;
 use ra_prof::profile;
 use ra_syntax::ast::{
     self, AstNode, ImplItem, ModuleItemOwner, NameOwner, TypeAscriptionOwner, VisibilityOwner,
@@ -67,6 +68,7 @@ impl FunctionData {
             }
         }
         let attrs = Attrs::new(&src.value, &Hygiene::new(db.upcast(), src.file_id));
+
         let ret_type = if let Some(type_ref) = src.value.ret_type().and_then(|rt| rt.type_ref()) {
             TypeRef::from_ast(type_ref)
         } else {
@@ -215,6 +217,7 @@ impl ImplData {
         let module_id = impl_loc.container.module(db);
 
         let mut items = Vec::new();
+
         if let Some(item_list) = src.value.item_list() {
             items.extend(collect_impl_items(db, item_list.impl_items(), src.file_id, id));
             items.extend(collect_impl_items_in_macros(
@@ -315,6 +318,10 @@ fn collect_impl_items_in_macro(
     }
 }
 
+fn is_cfg_enabled(cfg_options: &CfgOptions, attrs: &Attrs) -> bool {
+    attrs.by_key("cfg").tt_values().all(|tt| cfg_options.is_cfg_enabled(tt) != Some(false))
+}
+
 fn collect_impl_items(
     db: &dyn DefDatabase,
     impl_items: impl Iterator<Item = ImplItem>,
@@ -322,16 +329,26 @@ fn collect_impl_items(
     id: ImplId,
 ) -> Vec<AssocItemId> {
     let items = db.ast_id_map(file_id);
+    let crate_graph = db.crate_graph();
+    let module_id = id.lookup(db).container.module(db);
 
     impl_items
-        .map(|item_node| match item_node {
+        .filter_map(|item_node| match item_node {
             ast::ImplItem::FnDef(it) => {
                 let def = FunctionLoc {
                     container: AssocContainerId::ImplId(id),
                     ast_id: AstId::new(file_id, items.ast_id(&it)),
                 }
                 .intern(db);
-                def.into()
+
+                if !is_cfg_enabled(
+                    &crate_graph[module_id.krate].cfg_options,
+                    &db.function_data(def).attrs,
+                ) {
+                    None
+                } else {
+                    Some(def.into())
+                }
             }
             ast::ImplItem::ConstDef(it) => {
                 let def = ConstLoc {
@@ -339,7 +356,7 @@ fn collect_impl_items(
                     ast_id: AstId::new(file_id, items.ast_id(&it)),
                 }
                 .intern(db);
-                def.into()
+                Some(def.into())
             }
             ast::ImplItem::TypeAliasDef(it) => {
                 let def = TypeAliasLoc {
@@ -347,7 +364,7 @@ fn collect_impl_items(
                     ast_id: AstId::new(file_id, items.ast_id(&it)),
                 }
                 .intern(db);
-                def.into()
+                Some(def.into())
             }
         })
         .collect()
