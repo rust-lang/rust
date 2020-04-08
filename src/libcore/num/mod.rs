@@ -4,12 +4,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::cmp::Ordering;
 use crate::convert::Infallible;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem;
 use crate::str::FromStr;
-use crate::cmp::Ordering;
 
 // Used because the `?` operator is not allowed in a const context.
 macro_rules! try_opt {
