@@ -1,0 +1,9 @@
+error[E0752]: start is not allowed to be `async`
+  --> $DIR/issue-68523-start.rs:6:1
+   |
+LL | pub async fn start(_: isize, _: *const *const u8) -> isize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ start is not allowed to be `async`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0752`.

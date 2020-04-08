@@ -159,7 +159,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     match main_t.kind {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(main_id) {
-                if let hir::ItemKind::Fn(.., ref generics, _) = it.kind {
+                if let hir::ItemKind::Fn(ref sig, ref generics, _) = it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
                         let msg = "`main` function is not allowed to have generic \
@@ -179,6 +179,18 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
                             "`main` function is not allowed to have a `where` clause"
                         )
                         .span_label(sp, "`main` cannot have a `where` clause")
+                        .emit();
+                        error = true;
+                    }
+                    if let hir::IsAsync::Async = sig.header.asyncness {
+                        let span = tcx.sess.source_map().guess_head_span(it.span);
+                        struct_span_err!(
+                            tcx.sess,
+                            span,
+                            E0752,
+                            "`main` function is not allowed to be `async`"
+                        )
+                        .span_label(span, "`main` function is not allowed to be `async`")
                         .emit();
                         error = true;
                     }
@@ -226,7 +238,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     match start_t.kind {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
-                if let hir::ItemKind::Fn(.., ref generics, _) = it.kind {
+                if let hir::ItemKind::Fn(ref sig, ref generics, _) = it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
                         struct_span_err!(
@@ -247,6 +259,18 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                             "start function is not allowed to have a `where` clause"
                         )
                         .span_label(sp, "start function cannot have a `where` clause")
+                        .emit();
+                        error = true;
+                    }
+                    if let hir::IsAsync::Async = sig.header.asyncness {
+                        let span = tcx.sess.source_map().guess_head_span(it.span);
+                        struct_span_err!(
+                            tcx.sess,
+                            span,
+                            E0752,
+                            "start is not allowed to be `async`"
+                        )
+                        .span_label(span, "start is not allowed to be `async`")
                         .emit();
                         error = true;
                     }
