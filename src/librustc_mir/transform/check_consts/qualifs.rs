@@ -106,29 +106,27 @@ impl Qualif for NeedsDrop {
 
 // FIXME: Use `mir::visit::Visitor` for the `in_*` functions if/when it supports early return.
 
-/// Returns `true` if this `Rvalue` contains qualif `Q`.
-pub fn in_rvalue<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, rvalue: &Rvalue<'tcx>) -> bool
+/// Returns `true` if this `Op` contains qualif `Q`.
+pub fn in_rvalue<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, rvalue: &Op<'tcx>) -> bool
 where
     Q: Qualif,
     F: FnMut(Local) -> bool,
 {
     match rvalue {
-        Rvalue::NullaryOp(..) => Q::in_any_value_of_ty(cx, rvalue.ty(*cx.body, cx.tcx)),
+        Op::NullaryOp(..) => Q::in_any_value_of_ty(cx, rvalue.ty(*cx.body, cx.tcx)),
 
-        Rvalue::Discriminant(place) | Rvalue::Len(place) => {
-            in_place::<Q, _>(cx, in_local, place.as_ref())
-        }
+        Op::Discriminant(place) | Op::Len(place) => in_place::<Q, _>(cx, in_local, place.as_ref()),
 
-        Rvalue::Use(operand)
-        | Rvalue::Repeat(operand, _)
-        | Rvalue::UnaryOp(_, operand)
-        | Rvalue::Cast(_, operand, _) => in_operand::<Q, _>(cx, in_local, operand),
+        Op::Use(operand)
+        | Op::Repeat(operand, _)
+        | Op::UnaryOp(_, operand)
+        | Op::Cast(_, operand, _) => in_operand::<Q, _>(cx, in_local, operand),
 
-        Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
+        Op::BinaryOp(_, lhs, rhs) | Op::CheckedBinaryOp(_, lhs, rhs) => {
             in_operand::<Q, _>(cx, in_local, lhs) || in_operand::<Q, _>(cx, in_local, rhs)
         }
 
-        Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+        Op::Ref(_, _, place) | Op::AddressOf(_, place) => {
             // Special-case reborrows to be more like a copy of the reference.
             if let &[ref proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
                 let base_ty = Place::ty_from(place.local, proj_base, *cx.body, cx.tcx).ty;
@@ -144,7 +142,7 @@ where
             in_place::<Q, _>(cx, in_local, place.as_ref())
         }
 
-        Rvalue::Aggregate(kind, operands) => {
+        Op::Aggregate(kind, operands) => {
             // Return early if we know that the struct or enum being constructed is always
             // qualified.
             if let AggregateKind::Adt(def, ..) = **kind {

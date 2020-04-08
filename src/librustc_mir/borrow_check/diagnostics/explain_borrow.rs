@@ -7,7 +7,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::NLLRegionVariableOrigin;
 use rustc_middle::mir::{
-    Body, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place, Rvalue,
+    Body, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place, Op,
     Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::adjustment::PointerCast;
@@ -596,7 +596,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     match rvalue {
                         // If we see a use, we should check whether it is our data, and if so
                         // update the place that we're looking for to that new place.
-                        Rvalue::Use(operand) => match operand {
+                        Op::Use(operand) => match operand {
                             Operand::Copy(place) | Operand::Move(place) => {
                                 if let Some(from) = place.as_local() {
                                     if from == target {
@@ -608,7 +608,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         },
                         // If we see a unsized cast, then if it is our data we should check
                         // whether it is being cast to a trait object.
-                        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), operand, ty) => {
+                        Op::Cast(CastKind::Pointer(PointerCast::Unsize), operand, ty) => {
                             match operand {
                                 Operand::Copy(place) | Operand::Move(place) => {
                                     if let Some(from) = place.as_local() {

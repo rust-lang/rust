@@ -136,12 +136,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// type writes its results directly into the memory specified by the place.
     pub fn eval_rvalue_into_place(
         &mut self,
-        rvalue: &mir::Rvalue<'tcx>,
+        rvalue: &mir::Op<'tcx>,
         place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx> {
         let dest = self.eval_place(place)?;
 
-        use rustc_middle::mir::Rvalue::*;
+        use rustc_middle::mir::Op::*;
         match *rvalue {
             Use(ref operand) => {
                 // Avoid recomputing the layout

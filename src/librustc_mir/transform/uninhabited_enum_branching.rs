@@ -2,7 +2,7 @@
 
 use crate::transform::{MirPass, MirSource};
 use rustc_middle::mir::{
-    BasicBlock, BasicBlockData, Body, BodyAndCache, Local, Operand, Rvalue, StatementKind,
+    BasicBlock, BasicBlockData, Body, BodyAndCache, Local, Op, Operand, StatementKind,
     TerminatorKind,
 };
 use rustc_middle::ty::layout::TyAndLayout;
@@ -32,8 +32,7 @@ fn get_switched_on_type<'tcx>(
         let stmt_before_term = (!block_data.statements.is_empty())
             .then(|| &block_data.statements[block_data.statements.len() - 1].kind);
 
-        if let Some(StatementKind::Assign(box (l, Rvalue::Discriminant(place)))) = stmt_before_term
-        {
+        if let Some(StatementKind::Assign(box (l, Op::Discriminant(place)))) = stmt_before_term {
             if l.as_local() == Some(local) {
                 if let Some(r_local) = place.as_local() {
                     let ty = body.local_decls[r_local].ty;

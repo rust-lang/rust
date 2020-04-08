@@ -1,7 +1,7 @@
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::TerminatorKind;
-use rustc_middle::mir::{BasicBlock, Body, Location, Place, ReadOnlyBodyAndCache, Rvalue};
+use rustc_middle::mir::{BasicBlock, Body, Location, Op, Place, ReadOnlyBodyAndCache};
 use rustc_middle::mir::{BorrowKind, Mutability, Operand};
 use rustc_middle::mir::{Statement, StatementKind};
 use rustc_middle::ty::TyCtxt;
@@ -237,9 +237,9 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
     }
 
     // Simulates consumption of an rvalue
-    fn consume_rvalue(&mut self, location: Location, rvalue: &Rvalue<'tcx>) {
+    fn consume_rvalue(&mut self, location: Location, rvalue: &Op<'tcx>) {
         match *rvalue {
-            Rvalue::Ref(_ /*rgn*/, bk, place) => {
+            Op::Ref(_ /*rgn*/, bk, place) => {
                 let access_kind = match bk {
                     BorrowKind::Shallow => {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
@@ -258,7 +258,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
 
-            Rvalue::AddressOf(mutability, place) => {
+            Op::AddressOf(mutability, place) => {
                 let access_kind = match mutability {
                     Mutability::Mut => (
                         Deep,
@@ -272,17 +272,17 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
 
-            Rvalue::Use(ref operand)
-            | Rvalue::Repeat(ref operand, _)
-            | Rvalue::UnaryOp(_ /*un_op*/, ref operand)
-            | Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/) => {
+            Op::Use(ref operand)
+            | Op::Repeat(ref operand, _)
+            | Op::UnaryOp(_ /*un_op*/, ref operand)
+            | Op::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/) => {
                 self.consume_operand(location, operand)
             }
 
-            Rvalue::Len(place) | Rvalue::Discriminant(place) => {
+            Op::Len(place) | Op::Discriminant(place) => {
                 let af = match *rvalue {
-                    Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
-                    Rvalue::Discriminant(..) => None,
+                    Op::Len(..) => Some(ArtificialField::ArrayLength),
+                    Op::Discriminant(..) => None,
                     _ => unreachable!(),
                 };
                 self.access_place(
@@ -293,15 +293,15 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, ref operand1, ref operand2)
-            | Rvalue::CheckedBinaryOp(_bin_op, ref operand1, ref operand2) => {
+            Op::BinaryOp(_bin_op, ref operand1, ref operand2)
+            | Op::CheckedBinaryOp(_bin_op, ref operand1, ref operand2) => {
                 self.consume_operand(location, operand1);
                 self.consume_operand(location, operand2);
             }
 
-            Rvalue::NullaryOp(_op, _ty) => {}
+            Op::NullaryOp(_op, _ty) => {}
 
-            Rvalue::Aggregate(_, ref operands) => {
+            Op::Aggregate(_, ref operands) => {
                 for operand in operands {
                     self.consume_operand(location, operand);
                 }

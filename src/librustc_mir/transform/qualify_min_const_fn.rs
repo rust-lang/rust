@@ -149,18 +149,18 @@ fn check_rvalue(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     def_id: DefId,
-    rvalue: &Rvalue<'tcx>,
+    rvalue: &Op<'tcx>,
     span: Span,
 ) -> McfResult {
     match rvalue {
-        Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
+        Op::Repeat(operand, _) | Op::Use(operand) => {
             check_operand(tcx, operand, span, def_id, body)
         }
-        Rvalue::Len(place)
-        | Rvalue::Discriminant(place)
-        | Rvalue::Ref(_, _, place)
-        | Rvalue::AddressOf(_, place) => check_place(tcx, *place, span, def_id, body),
-        Rvalue::Cast(CastKind::Misc, operand, cast_ty) => {
+        Op::Len(place)
+        | Op::Discriminant(place)
+        | Op::Ref(_, _, place)
+        | Op::AddressOf(_, place) => check_place(tcx, *place, span, def_id, body),
+        Op::Cast(CastKind::Misc, operand, cast_ty) => {
             use rustc_middle::ty::cast::CastTy;
             let cast_in = CastTy::from_ty(operand.ty(body, tcx)).expect("bad input type for cast");
             let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
@@ -171,20 +171,20 @@ fn check_rvalue(
                 _ => check_operand(tcx, operand, span, def_id, body),
             }
         }
-        Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, _)
-        | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), operand, _) => {
+        Op::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, _)
+        | Op::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), operand, _) => {
             check_operand(tcx, operand, span, def_id, body)
         }
-        Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), _, _)
-        | Rvalue::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), _, _)
-        | Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), _, _) => {
+        Op::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), _, _)
+        | Op::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), _, _)
+        | Op::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), _, _) => {
             Err((span, "function pointer casts are not allowed in const fn".into()))
         }
-        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
+        Op::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
             Err((span, "unsizing casts are not allowed in const fn".into()))
         }
         // binops are fine on integers
-        Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
+        Op::BinaryOp(_, lhs, rhs) | Op::CheckedBinaryOp(_, lhs, rhs) => {
             check_operand(tcx, lhs, span, def_id, body)?;
             check_operand(tcx, rhs, span, def_id, body)?;
             let ty = lhs.ty(body, tcx);
@@ -194,11 +194,11 @@ fn check_rvalue(
                 Err((span, "only int, `bool` and `char` operations are stable in const fn".into()))
             }
         }
-        Rvalue::NullaryOp(NullOp::SizeOf, _) => Ok(()),
-        Rvalue::NullaryOp(NullOp::Box, _) => {
+        Op::NullaryOp(NullOp::SizeOf, _) => Ok(()),
+        Op::NullaryOp(NullOp::Box, _) => {
             Err((span, "heap allocations are not allowed in const fn".into()))
         }
-        Rvalue::UnaryOp(_, operand) => {
+        Op::UnaryOp(_, operand) => {
             let ty = operand.ty(body, tcx);
             if ty.is_integral() || ty.is_bool() {
                 check_operand(tcx, operand, span, def_id, body)
@@ -206,7 +206,7 @@ fn check_rvalue(
                 Err((span, "only int and `bool` operations are stable in const fn".into()))
             }
         }
-        Rvalue::Aggregate(_, operands) => {
+        Op::Aggregate(_, operands) => {
             for operand in operands {
                 check_operand(tcx, operand, span, def_id, body)?;
             }

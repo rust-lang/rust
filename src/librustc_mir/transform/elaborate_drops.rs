@@ -407,7 +407,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
 
         let assign = Statement {
-            kind: StatementKind::Assign(box (location, Rvalue::Use(value.clone()))),
+            kind: StatementKind::Assign(box (location, Op::Use(value.clone()))),
             source_info: terminator.source_info,
         };
 
@@ -465,8 +465,8 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         }
     }
 
-    fn constant_bool(&self, span: Span, val: bool) -> Rvalue<'tcx> {
-        Rvalue::Use(Operand::Constant(Box::new(Constant {
+    fn constant_bool(&self, span: Span, val: bool) -> Op<'tcx> {
+        Op::Use(Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
             literal: ty::Const::from_bool(self.tcx, val),

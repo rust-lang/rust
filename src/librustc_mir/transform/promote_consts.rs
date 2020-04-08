@@ -197,14 +197,14 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         *temp = TempState::Unpromotable;
     }
 
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+    fn visit_rvalue(&mut self, rvalue: &Op<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
 
         match *rvalue {
-            Rvalue::Ref(..) => {
+            Op::Ref(..) => {
                 self.candidates.push(Candidate::Ref(location));
             }
-            Rvalue::Repeat(..) if self.tcx.features().const_in_array_repeat_expressions => {
+            Op::Repeat(..) if self.tcx.features().const_in_array_repeat_expressions => {
                 // FIXME(#49147) only promote the element when it isn't `Copy`
                 // (so that code that can copy it at runtime is unaffected).
                 self.candidates.push(Candidate::Repeat(location));
@@ -295,7 +295,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
-                    StatementKind::Assign(box (_, Rvalue::Ref(_, kind, place))) => {
+                    StatementKind::Assign(box (_, Op::Ref(_, kind, place))) => {
                         match kind {
                             BorrowKind::Shared | BorrowKind::Mut { .. } => {}
 
@@ -383,7 +383,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
-                    StatementKind::Assign(box (_, Rvalue::Repeat(ref operand, _))) => {
+                    StatementKind::Assign(box (_, Op::Repeat(ref operand, _))) => {
                         if !self.tcx.features().const_in_array_repeat_expressions {
                             return Err(Unpromotable);
                         }
@@ -536,9 +536,9 @@ impl<'tcx> Validator<'_, 'tcx> {
         }
     }
 
-    fn validate_rvalue(&self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
+    fn validate_rvalue(&self, rvalue: &Op<'tcx>) -> Result<(), Unpromotable> {
         match *rvalue {
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) if self.const_kind.is_none() => {
+            Op::Cast(CastKind::Misc, ref operand, cast_ty) if self.const_kind.is_none() => {
                 let operand_ty = operand.ty(*self.body, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
@@ -551,7 +551,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, ref lhs, _) if self.const_kind.is_none() => {
+            Op::BinaryOp(op, ref lhs, _) if self.const_kind.is_none() => {
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(*self.body, self.tcx).kind {
                     assert!(
                         op == BinOp::Eq
@@ -568,27 +568,27 @@ impl<'tcx> Validator<'_, 'tcx> {
                 }
             }
 
-            Rvalue::NullaryOp(NullOp::Box, _) => return Err(Unpromotable),
+            Op::NullaryOp(NullOp::Box, _) => return Err(Unpromotable),
 
             _ => {}
         }
 
         match rvalue {
-            Rvalue::NullaryOp(..) => Ok(()),
+            Op::NullaryOp(..) => Ok(()),
 
-            Rvalue::Discriminant(place) | Rvalue::Len(place) => self.validate_place(place.as_ref()),
+            Op::Discriminant(place) | Op::Len(place) => self.validate_place(place.as_ref()),
 
-            Rvalue::Use(operand)
-            | Rvalue::Repeat(operand, _)
-            | Rvalue::UnaryOp(_, operand)
-            | Rvalue::Cast(_, operand, _) => self.validate_operand(operand),
+            Op::Use(operand)
+            | Op::Repeat(operand, _)
+            | Op::UnaryOp(_, operand)
+            | Op::Cast(_, operand, _) => self.validate_operand(operand),
 
-            Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
+            Op::BinaryOp(_, lhs, rhs) | Op::CheckedBinaryOp(_, lhs, rhs) => {
                 self.validate_operand(lhs)?;
                 self.validate_operand(rhs)
             }
 
-            Rvalue::AddressOf(_, place) => {
+            Op::AddressOf(_, place) => {
                 // Raw reborrows can come from reference to pointer coercions,
                 // so are allowed.
                 if let [proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
@@ -603,7 +603,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 Err(Unpromotable)
             }
 
-            Rvalue::Ref(_, kind, place) => {
+            Op::Ref(_, kind, place) => {
                 if let BorrowKind::Mut { .. } = kind {
                     let ty = place.ty(*self.body, self.tcx).ty;
 
@@ -668,7 +668,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 Ok(())
             }
 
-            Rvalue::Aggregate(_, ref operands) => {
+            Op::Aggregate(_, ref operands) => {
                 for o in operands {
                     self.validate_operand(o)?;
                 }
@@ -775,7 +775,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         })
     }
 
-    fn assign(&mut self, dest: Local, rvalue: Rvalue<'tcx>, span: Span) {
+    fn assign(&mut self, dest: Local, rvalue: Op<'tcx>, span: Span) {
         let last = self.promoted.basic_blocks().last().unwrap();
         let data = &mut self.promoted[last];
         data.statements.push(Statement {
@@ -815,7 +815,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         debug!("promote({:?} @ {:?}/{:?}, {:?})", temp, loc, num_stmts, self.keep_original);
 
-        // First, take the Rvalue or Call out of the source MIR,
+        // First, take the Op or Call out of the source MIR,
         // or duplicate it, depending on keep_original.
         if loc.statement_index < num_stmts {
             let (mut rvalue, source_info) = {
@@ -835,7 +835,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     if self.keep_original {
                         rhs.clone()
                     } else {
-                        let unit = Rvalue::Aggregate(box AggregateKind::Tuple, vec![]);
+                        let unit = Op::Aggregate(box AggregateKind::Tuple, vec![]);
                         mem::replace(rhs, unit)
                     },
                     statement.source_info,
@@ -932,7 +932,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     match statement.kind {
                         StatementKind::Assign(box (
                             _,
-                            Rvalue::Ref(ref mut region, borrow_kind, ref mut place),
+                            Op::Ref(ref mut region, borrow_kind, ref mut place),
                         )) => {
                             // Use the underlying local for this (necessarily interior) borrow.
                             let ty = local_decls.local_decls()[place.local].ty;
@@ -961,12 +961,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                                 source_info: statement.source_info,
                                 kind: StatementKind::Assign(Box::new((
                                     Place::from(promoted_ref),
-                                    Rvalue::Use(promoted_operand(ref_ty, span)),
+                                    Op::Use(promoted_operand(ref_ty, span)),
                                 ))),
                             };
                             self.extra_statements.push((loc, promoted_ref_statement));
 
-                            Rvalue::Ref(
+                            Op::Ref(
                                 tcx.lifetimes.re_erased,
                                 borrow_kind,
                                 Place {
@@ -981,11 +981,11 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Candidate::Repeat(loc) => {
                     let statement = &mut blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
-                        StatementKind::Assign(box (_, Rvalue::Repeat(ref mut operand, _))) => {
+                        StatementKind::Assign(box (_, Op::Repeat(ref mut operand, _))) => {
                             let ty = operand.ty(local_decls, self.tcx);
                             let span = statement.source_info.span;
 
-                            Rvalue::Use(mem::replace(operand, promoted_operand(ty, span)))
+                            Op::Use(mem::replace(operand, promoted_operand(ty, span)))
                         }
                         _ => bug!(),
                     }
@@ -997,7 +997,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             let ty = args[index].ty(local_decls, self.tcx);
                             let span = terminator.source_info.span;
 
-                            Rvalue::Use(mem::replace(&mut args[index], promoted_operand(ty, span)))
+                            Op::Use(mem::replace(&mut args[index], promoted_operand(ty, span)))
                         }
                         // We expected a `TerminatorKind::Call` for which we'd like to promote an
                         // argument. `qualify_consts` saw a `TerminatorKind::Call` here, but

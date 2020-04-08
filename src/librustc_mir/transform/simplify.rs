@@ -370,7 +370,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
 
                 if let StatementKind::Assign(box (dest, rvalue)) = &stmt.kind {
                     if !dest.is_indirect() && dest.local == *local {
-                        if let Rvalue::Use(Operand::Constant(c)) = rvalue {
+                        if let Op::Use(Operand::Constant(c)) = rvalue {
                             match c.literal.val {
                                 // Keep assignments from unevaluated constants around, since the
                                 // evaluation may report errors, even if the use of the constant
@@ -381,7 +381,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
                                     return;
                                 }
                             }
-                        } else if let Rvalue::Discriminant(d) = rvalue {
+                        } else if let Op::Discriminant(d) = rvalue {
                             trace!("skipping store of discriminant value {:?} to {:?}", d, dest);
                             return;
                         }

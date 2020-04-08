@@ -322,28 +322,28 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         }
     }
 
-    fn gather_rvalue(&mut self, rvalue: &Rvalue<'tcx>) {
+    fn gather_rvalue(&mut self, rvalue: &Op<'tcx>) {
         match *rvalue {
-            Rvalue::Use(ref operand)
-            | Rvalue::Repeat(ref operand, _)
-            | Rvalue::Cast(_, ref operand, _)
-            | Rvalue::UnaryOp(_, ref operand) => self.gather_operand(operand),
-            Rvalue::BinaryOp(ref _binop, ref lhs, ref rhs)
-            | Rvalue::CheckedBinaryOp(ref _binop, ref lhs, ref rhs) => {
+            Op::Use(ref operand)
+            | Op::Repeat(ref operand, _)
+            | Op::Cast(_, ref operand, _)
+            | Op::UnaryOp(_, ref operand) => self.gather_operand(operand),
+            Op::BinaryOp(ref _binop, ref lhs, ref rhs)
+            | Op::CheckedBinaryOp(ref _binop, ref lhs, ref rhs) => {
                 self.gather_operand(lhs);
                 self.gather_operand(rhs);
             }
-            Rvalue::Aggregate(ref _kind, ref operands) => {
+            Op::Aggregate(ref _kind, ref operands) => {
                 for operand in operands {
                     self.gather_operand(operand);
                 }
             }
-            Rvalue::Ref(..)
-            | Rvalue::AddressOf(..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::Len(..)
-            | Rvalue::NullaryOp(NullOp::SizeOf, _)
-            | Rvalue::NullaryOp(NullOp::Box, _) => {
+            Op::Ref(..)
+            | Op::AddressOf(..)
+            | Op::Discriminant(..)
+            | Op::Len(..)
+            | Op::NullaryOp(NullOp::SizeOf, _)
+            | Op::NullaryOp(NullOp::Box, _) => {
                 // This returns an rvalue with uninitialized contents. We can't
                 // move out of it here because it is an rvalue - assignments always
                 // completely initialize their place.

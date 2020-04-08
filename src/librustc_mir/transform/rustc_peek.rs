@@ -121,9 +121,9 @@ pub fn sanity_check_via_rustc_peek<'tcx, A>(
             );
 
         match (call.kind, peek_rval) {
-            (PeekCallKind::ByRef, mir::Rvalue::Ref(_, _, place))
-            | (PeekCallKind::ByVal, mir::Rvalue::Use(mir::Operand::Move(place)))
-            | (PeekCallKind::ByVal, mir::Rvalue::Use(mir::Operand::Copy(place))) => {
+            (PeekCallKind::ByRef, mir::Op::Ref(_, _, place))
+            | (PeekCallKind::ByVal, mir::Op::Use(mir::Operand::Move(place)))
+            | (PeekCallKind::ByVal, mir::Op::Use(mir::Operand::Copy(place))) => {
                 let loc = Location { block: bb, statement_index };
                 cursor.seek_before(loc);
                 let state = cursor.get();
@@ -144,7 +144,7 @@ pub fn sanity_check_via_rustc_peek<'tcx, A>(
 fn value_assigned_to_local<'a, 'tcx>(
     stmt: &'a mir::Statement<'tcx>,
     local: Local,
-) -> Option<&'a mir::Rvalue<'tcx>> {
+) -> Option<&'a mir::Op<'tcx>> {
     if let mir::StatementKind::Assign(box (place, rvalue)) = &stmt.kind {
         if let Some(l) = place.as_local() {
             if local == l {

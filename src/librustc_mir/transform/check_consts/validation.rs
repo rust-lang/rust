@@ -255,12 +255,12 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         self.super_basic_block_data(bb, block);
     }
 
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+    fn visit_rvalue(&mut self, rvalue: &Op<'tcx>, location: Location) {
         trace!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
 
         // Special-case reborrows to be more like a copy of a reference.
         match *rvalue {
-            Rvalue::Ref(_, kind, place) => {
+            Op::Ref(_, kind, place) => {
                 if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, *self.body, place) {
                     let ctx = match kind {
                         BorrowKind::Shared => {
@@ -281,7 +281,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                     return;
                 }
             }
-            Rvalue::AddressOf(mutbl, place) => {
+            Op::AddressOf(mutbl, place) => {
                 if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, *self.body, place) {
                     let ctx = match mutbl {
                         Mutability::Not => {
@@ -300,19 +300,19 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         self.super_rvalue(rvalue, location);
 
         match *rvalue {
-            Rvalue::Use(_)
-            | Rvalue::Repeat(..)
-            | Rvalue::UnaryOp(UnOp::Neg, _)
-            | Rvalue::UnaryOp(UnOp::Not, _)
-            | Rvalue::NullaryOp(NullOp::SizeOf, _)
-            | Rvalue::CheckedBinaryOp(..)
-            | Rvalue::Cast(CastKind::Pointer(_), ..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::Len(_)
-            | Rvalue::Aggregate(..) => {}
+            Op::Use(_)
+            | Op::Repeat(..)
+            | Op::UnaryOp(UnOp::Neg, _)
+            | Op::UnaryOp(UnOp::Not, _)
+            | Op::NullaryOp(NullOp::SizeOf, _)
+            | Op::CheckedBinaryOp(..)
+            | Op::Cast(CastKind::Pointer(_), ..)
+            | Op::Discriminant(..)
+            | Op::Len(_)
+            | Op::Aggregate(..) => {}
 
-            Rvalue::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
-            | Rvalue::Ref(_, kind @ BorrowKind::Unique, ref place) => {
+            Op::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
+            | Op::Ref(_, kind @ BorrowKind::Unique, ref place) => {
                 let ty = place.ty(*self.body, self.tcx).ty;
                 let is_allowed = match ty.kind {
                     // Inside a `static mut`, `&mut [...]` is allowed.
@@ -339,11 +339,11 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 }
             }
 
-            Rvalue::AddressOf(Mutability::Mut, _) => self.check_op(ops::MutAddressOf),
+            Op::AddressOf(Mutability::Mut, _) => self.check_op(ops::MutAddressOf),
 
-            Rvalue::Ref(_, BorrowKind::Shared, ref place)
-            | Rvalue::Ref(_, BorrowKind::Shallow, ref place)
-            | Rvalue::AddressOf(Mutability::Not, ref place) => {
+            Op::Ref(_, BorrowKind::Shared, ref place)
+            | Op::Ref(_, BorrowKind::Shallow, ref place)
+            | Op::AddressOf(Mutability::Not, ref place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     &self.item,
                     &mut |local| self.qualifs.has_mut_interior(local, location),
@@ -355,7 +355,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 }
             }
 
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
+            Op::Cast(CastKind::Misc, ref operand, cast_ty) => {
                 let operand_ty = operand.ty(*self.body, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
@@ -367,7 +367,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, ref lhs, _) => {
+            Op::BinaryOp(op, ref lhs, _) => {
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(*self.body, self.tcx).kind {
                     assert!(
                         op == BinOp::Eq
@@ -383,7 +383,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 }
             }
 
-            Rvalue::NullaryOp(NullOp::Box, _) => {
+            Op::NullaryOp(NullOp::Box, _) => {
                 self.check_op(ops::HeapAllocation);
             }
         }

@@ -1690,7 +1690,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let re_erased = tcx.lifetimes.re_erased;
             let scrutinee_source_info = self.source_info(scrutinee_span);
             for &(place, temp) in fake_borrows {
-                let borrow = Rvalue::Ref(re_erased, BorrowKind::Shallow, place);
+                let borrow = Op::Ref(re_erased, BorrowKind::Shallow, place);
                 self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 
@@ -1857,7 +1857,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             );
             match binding.binding_mode {
                 BindingMode::ByValue => {
-                    let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, binding.source);
+                    let rvalue = Op::Ref(re_erased, BorrowKind::Shared, binding.source);
                     self.cfg.push_assign(block, source_info, ref_for_guard, rvalue);
                 }
                 BindingMode::ByRef(borrow_kind) => {
@@ -1869,9 +1869,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         schedule_drops,
                     );
 
-                    let rvalue = Rvalue::Ref(re_erased, borrow_kind, binding.source);
+                    let rvalue = Op::Ref(re_erased, borrow_kind, binding.source);
                     self.cfg.push_assign(block, source_info, value_for_arm, rvalue);
-                    let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, value_for_arm);
+                    let rvalue = Op::Ref(re_erased, BorrowKind::Shared, value_for_arm);
                     self.cfg.push_assign(block, source_info, ref_for_guard, rvalue);
                 }
             }
@@ -1904,11 +1904,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             let rvalue = match binding.binding_mode {
                 BindingMode::ByValue => {
-                    Rvalue::Use(self.consume_by_copy_or_move(binding.source.clone()))
+                    Op::Use(self.consume_by_copy_or_move(binding.source.clone()))
                 }
-                BindingMode::ByRef(borrow_kind) => {
-                    Rvalue::Ref(re_erased, borrow_kind, binding.source)
-                }
+                BindingMode::ByRef(borrow_kind) => Op::Ref(re_erased, borrow_kind, binding.source),
             };
             self.cfg.push_assign(block, source_info, local, rvalue);
         }

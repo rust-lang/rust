@@ -18,7 +18,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// The operand returned from this function will *not be valid* after
     /// an ExprKind::Scope is passed, so please do *not* return it from
     /// functions to avoid bad miscompiles.
-    crate fn as_local_rvalue<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Rvalue<'tcx>>
+    crate fn as_local_rvalue<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Op<'tcx>>
     where
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
@@ -32,7 +32,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         scope: Option<region::Scope>,
         expr: M,
-    ) -> BlockAnd<Rvalue<'tcx>>
+    ) -> BlockAnd<Op<'tcx>>
     where
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
@@ -45,7 +45,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         scope: Option<region::Scope>,
         expr: Expr<'tcx>,
-    ) -> BlockAnd<Rvalue<'tcx>> {
+    ) -> BlockAnd<Op<'tcx>> {
         debug!("expr_as_rvalue(block={:?}, scope={:?}, expr={:?})", block, scope, expr);
 
         let this = self;
@@ -59,7 +59,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Repeat { value, count } => {
                 let value_operand = unpack!(block = this.as_operand(block, scope, value));
-                block.and(Rvalue::Repeat(value_operand, count))
+                block.and(Op::Repeat(value_operand, count))
             }
             ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = unpack!(block = this.as_operand(block, scope, lhs));
@@ -79,7 +79,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         is_min,
-                        Rvalue::BinaryOp(BinOp::Eq, arg.to_copy(), minval),
+                        Op::BinaryOp(BinOp::Eq, arg.to_copy(), minval),
                     );
 
                     block = this.assert(
@@ -90,7 +90,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         expr_span,
                     );
                 }
-                block.and(Rvalue::UnaryOp(op, arg))
+                block.and(Op::UnaryOp(op, arg))
             }
             ExprKind::Box { value } => {
                 let value = this.hir.mirror(value);
@@ -108,7 +108,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 // malloc some memory of suitable type (thus far, uninitialized):
-                let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
+                let box_ = Op::NullaryOp(NullOp::Box, value.ty);
                 this.cfg.push_assign(block, source_info, Place::from(result), box_);
 
                 // initialize the box contents:
@@ -116,15 +116,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block =
                         this.into(this.hir.tcx().mk_place_deref(Place::from(result)), block, value)
                 );
-                block.and(Rvalue::Use(Operand::Move(Place::from(result))))
+                block.and(Op::Use(Operand::Move(Place::from(result))))
             }
             ExprKind::Cast { source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
-                block.and(Rvalue::Cast(CastKind::Misc, source, expr.ty))
+                block.and(Op::Cast(CastKind::Misc, source, expr.ty))
             }
             ExprKind::Pointer { cast, source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
-                block.and(Rvalue::Cast(CastKind::Pointer(cast), source, expr.ty))
+                block.and(Op::Cast(CastKind::Pointer(cast), source, expr.ty))
             }
             ExprKind::Array { fields } => {
                 // (*) We would (maybe) be closer to codegen if we
@@ -134,7 +134,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //
                 //     let tmp1 = ...1;
                 //     let tmp2 = ...2;
-                //     dest = Rvalue::Aggregate(Foo, [tmp1, tmp2])
+                //     dest = Op::Aggregate(Foo, [tmp1, tmp2])
                 //
                 // we could just generate
                 //
@@ -160,7 +160,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .map(|f| unpack!(block = this.as_operand(block, scope, f)))
                     .collect();
 
-                block.and(Rvalue::Aggregate(box AggregateKind::Array(el_ty), fields))
+                block.and(Op::Aggregate(box AggregateKind::Array(el_ty), fields))
             }
             ExprKind::Tuple { fields } => {
                 // see (*) above
@@ -170,7 +170,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .map(|f| unpack!(block = this.as_operand(block, scope, f)))
                     .collect();
 
-                block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
+                block.and(Op::Aggregate(box AggregateKind::Tuple, fields))
             }
             ExprKind::Closure { closure_id, substs, upvars, movability } => {
                 // see (*) above
@@ -221,7 +221,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     UpvarSubsts::Closure(substs) => box AggregateKind::Closure(closure_id, substs),
                 };
-                block.and(Rvalue::Aggregate(result, operands))
+                block.and(Op::Aggregate(result, operands))
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
                 block = unpack!(this.stmt_expr(block, expr, None));
@@ -251,14 +251,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::LlvmInlineAsm { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. } => {
-                // these do not have corresponding `Rvalue` variants,
+                // these do not have corresponding `Op` variants,
                 // so make an operand and then return that
                 debug_assert!(match Category::of(&expr.kind) {
-                    Some(Category::Rvalue(RvalueFunc::AsRvalue)) => false,
+                    Some(Category::Op(RvalueFunc::AsRvalue)) => false,
                     _ => true,
                 });
                 let operand = unpack!(block = this.as_operand(block, scope, expr));
-                block.and(Rvalue::Use(operand))
+                block.and(Op::Use(operand))
             }
         }
     }
@@ -271,7 +271,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         ty: Ty<'tcx>,
         lhs: Operand<'tcx>,
         rhs: Operand<'tcx>,
-    ) -> BlockAnd<Rvalue<'tcx>> {
+    ) -> BlockAnd<Op<'tcx>> {
         let source_info = self.source_info(span);
         let bool_ty = self.hir.bool_ty();
         if self.hir.check_overflow() && op.is_checkable() && ty.is_integral() {
@@ -282,7 +282,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 source_info,
                 result_value,
-                Rvalue::CheckedBinaryOp(op, lhs, rhs),
+                Op::CheckedBinaryOp(op, lhs, rhs),
             );
             let val_fld = Field::new(0);
             let of_fld = Field::new(1);
@@ -295,7 +295,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             block = self.assert(block, Operand::Move(of), false, err, span);
 
-            block.and(Rvalue::Use(Operand::Move(val)))
+            block.and(Op::Use(Operand::Move(val)))
         } else {
             if ty.is_integral() && (op == BinOp::Div || op == BinOp::Rem) {
                 // Checking division and remainder is more complex, since we 1. always check
@@ -315,7 +315,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     source_info,
                     is_zero,
-                    Rvalue::BinaryOp(BinOp::Eq, rhs.to_copy(), zero),
+                    Op::BinaryOp(BinOp::Eq, rhs.to_copy(), zero),
                 );
 
                 block = self.assert(block, Operand::Move(is_zero), false, zero_err, span);
@@ -336,13 +336,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         is_neg_1,
-                        Rvalue::BinaryOp(BinOp::Eq, rhs.to_copy(), neg_1),
+                        Op::BinaryOp(BinOp::Eq, rhs.to_copy(), neg_1),
                     );
                     self.cfg.push_assign(
                         block,
                         source_info,
                         is_min,
-                        Rvalue::BinaryOp(BinOp::Eq, lhs.to_copy(), min),
+                        Op::BinaryOp(BinOp::Eq, lhs.to_copy(), min),
                     );
 
                     let is_neg_1 = Operand::Move(is_neg_1);
@@ -351,14 +351,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         of,
-                        Rvalue::BinaryOp(BinOp::BitAnd, is_neg_1, is_min),
+                        Op::BinaryOp(BinOp::BitAnd, is_neg_1, is_min),
                     );
 
                     block = self.assert(block, Operand::Move(of), false, overflow_err, span);
                 }
             }
 
-            block.and(Rvalue::BinaryOp(op, lhs, rhs))
+            block.and(Op::BinaryOp(op, lhs, rhs))
         }
     }
 
@@ -426,7 +426,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             source_info,
             Place::from(temp),
-            Rvalue::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place),
+            Op::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place),
         );
 
         // In constants, temp_lifetime is None. We should not need to drop

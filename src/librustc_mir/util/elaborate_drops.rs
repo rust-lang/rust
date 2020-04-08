@@ -524,7 +524,7 @@ where
         // way lies only trouble.
         let discr_ty = adt.repr.discr_type().to_ty(self.tcx());
         let discr = Place::from(self.new_temp(discr_ty));
-        let discr_rv = Rvalue::Discriminant(self.place);
+        let discr_rv = Op::Discriminant(self.place);
         let switch_block = BasicBlockData {
             statements: vec![self.assign(discr, discr_rv)],
             terminator: Some(Terminator {
@@ -558,7 +558,7 @@ where
         let result = BasicBlockData {
             statements: vec![self.assign(
                 Place::from(ref_place),
-                Rvalue::Ref(
+                Op::Ref(
                     tcx.lifetimes.re_erased,
                     BorrowKind::Mut { allow_two_phase_borrow: false },
                     self.place,
@@ -619,11 +619,11 @@ where
 
         let one = self.constant_usize(1);
         let (ptr_next, cur_next) = if ptr_based {
-            (Rvalue::Use(copy(cur.into())), Rvalue::BinaryOp(BinOp::Offset, move_(cur.into()), one))
+            (Op::Use(copy(cur.into())), Op::BinaryOp(BinOp::Offset, move_(cur.into()), one))
         } else {
             (
-                Rvalue::AddressOf(Mutability::Mut, tcx.mk_place_index(self.place.clone(), cur)),
-                Rvalue::BinaryOp(BinOp::Add, move_(cur.into()), one),
+                Op::AddressOf(Mutability::Mut, tcx.mk_place_index(self.place.clone(), cur)),
+                Op::BinaryOp(BinOp::Add, move_(cur.into()), one),
             )
         };
 
@@ -641,7 +641,7 @@ where
         let loop_block = BasicBlockData {
             statements: vec![self.assign(
                 can_go,
-                Rvalue::BinaryOp(BinOp::Eq, copy(Place::from(cur)), copy(length_or_end)),
+                Op::BinaryOp(BinOp::Eq, copy(Place::from(cur)), copy(length_or_end)),
             )],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
@@ -708,8 +708,8 @@ where
 
         let base_block = BasicBlockData {
             statements: vec![
-                self.assign(elem_size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
-                self.assign(len, Rvalue::Len(self.place)),
+                self.assign(elem_size, Op::NullaryOp(NullOp::SizeOf, ety)),
+                self.assign(len, Op::Len(self.place)),
             ],
             is_cleanup: self.unwind.is_cleanup(),
             terminator: Some(Terminator {
@@ -758,17 +758,17 @@ where
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
             vec![
-                self.assign(tmp, Rvalue::AddressOf(Mutability::Mut, self.place)),
-                self.assign(cur, Rvalue::Cast(CastKind::Misc, Operand::Move(tmp), iter_ty)),
+                self.assign(tmp, Op::AddressOf(Mutability::Mut, self.place)),
+                self.assign(cur, Op::Cast(CastKind::Misc, Operand::Move(tmp), iter_ty)),
                 self.assign(
                     length_or_end,
-                    Rvalue::BinaryOp(BinOp::Offset, Operand::Copy(cur), Operand::Move(length)),
+                    Op::BinaryOp(BinOp::Offset, Operand::Copy(cur), Operand::Move(length)),
                 ),
             ]
         } else {
             // cur = 0 (length already pushed)
             let zero = self.constant_usize(0);
-            vec![self.assign(cur, Rvalue::Use(zero))]
+            vec![self.assign(cur, Op::Use(zero))]
         };
         let drop_block = self.elaborator.patch().new_block(BasicBlockData {
             statements: drop_block_stmts,
@@ -989,7 +989,7 @@ where
         })
     }
 
-    fn assign(&self, lhs: Place<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
+    fn assign(&self, lhs: Place<'tcx>, rhs: Op<'tcx>) -> Statement<'tcx> {
         Statement { source_info: self.source_info, kind: StatementKind::Assign(box (lhs, rhs)) }
     }
 }

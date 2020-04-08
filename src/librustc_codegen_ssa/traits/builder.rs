@@ -123,7 +123,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn load_operand(&mut self, place: PlaceRef<'tcx, Self::Value>)
     -> OperandRef<'tcx, Self::Value>;
 
-    /// Called for Rvalue::Repeat when the elem is neither a ZST nor optimizable using memset.
+    /// Called for Op::Repeat when the elem is neither a ZST nor optimizable using memset.
     fn write_operand_repeatedly(
         self,
         elem: OperandRef<'tcx, Self::Value>,

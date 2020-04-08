@@ -1561,8 +1561,8 @@ impl Statement<'_> {
 
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum StatementKind<'tcx> {
-    /// Write the RHS Rvalue to the LHS Place.
-    Assign(Box<(Place<'tcx>, Rvalue<'tcx>)>),
+    /// Write the RHS Op to the LHS Place.
+    Assign(Box<(Place<'tcx>, Op<'tcx>)>),
 
     /// This represents all the reading that a pattern match may do
     /// (e.g., inspecting constants and discriminant values), and the
@@ -2042,7 +2042,7 @@ impl<'tcx> Operand<'tcx> {
 /// Rvalues
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable, PartialEq)]
-pub enum Rvalue<'tcx> {
+pub enum Op<'tcx> {
     /// x (either a move or copy, depending on type of x)
     Use(Operand<'tcx>),
 
@@ -2169,9 +2169,9 @@ pub enum UnOp {
     Neg,
 }
 
-impl<'tcx> Debug for Rvalue<'tcx> {
+impl<'tcx> Debug for Op<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        use self::Rvalue::*;
+        use self::Op::*;
 
         match *self {
             Use(ref place) => write!(fmt, "{:?}", place),

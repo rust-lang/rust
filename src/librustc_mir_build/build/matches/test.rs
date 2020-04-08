@@ -202,7 +202,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
                 let discr = self.temp(discr_ty, test.span);
-                self.cfg.push_assign(block, source_info, discr, Rvalue::Discriminant(place));
+                self.cfg.push_assign(block, source_info, discr, Op::Discriminant(place));
                 assert_eq!(values.len() + 1, targets.len());
                 self.cfg.terminate(
                     block,
@@ -303,7 +303,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let actual = self.temp(usize_ty, test.span);
 
                 // actual = len(place)
-                self.cfg.push_assign(block, source_info, actual, Rvalue::Len(place));
+                self.cfg.push_assign(block, source_info, actual, Op::Len(place));
 
                 // expected = <N>
                 let expected = self.push_usize(block, source_info, len);
@@ -342,7 +342,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let result = self.temp(bool_ty, source_info.span);
 
         // result = op(left, right)
-        self.cfg.push_assign(block, source_info, result, Rvalue::BinaryOp(op, left, right));
+        self.cfg.push_assign(block, source_info, result, Op::BinaryOp(op, left, right));
 
         // branch based on result
         self.cfg.terminate(
@@ -395,7 +395,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         temp,
-                        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), val, ty),
+                        Op::Cast(CastKind::Pointer(PointerCast::Unsize), val, ty),
                     );
                     val = Operand::Move(temp);
                 }
@@ -405,7 +405,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         slice,
-                        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), expect, ty),
+                        Op::Cast(CastKind::Pointer(PointerCast::Unsize), expect, ty),
                     );
                     expect = Operand::Move(slice);
                 }

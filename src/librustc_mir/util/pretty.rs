@@ -390,9 +390,9 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
         self.push(&format!("+ val: {:?}", val));
     }
 
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+    fn visit_rvalue(&mut self, rvalue: &Op<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
-        if let Rvalue::Aggregate(kind, _) = rvalue {
+        if let Op::Aggregate(kind, _) = rvalue {
             match **kind {
                 AggregateKind::Closure(def_id, substs) => {
                     self.push("closure");

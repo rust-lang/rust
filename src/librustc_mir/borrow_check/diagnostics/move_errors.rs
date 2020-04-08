@@ -86,13 +86,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 // to a user variable is when initializing it.
                 // If that ever stops being the case, then the ever initialized
                 // flow could be used.
-                if let Some(StatementKind::Assign(box (
-                    place,
-                    Rvalue::Use(Operand::Move(move_from)),
-                ))) = self.body.basic_blocks()[location.block]
-                    .statements
-                    .get(location.statement_index)
-                    .map(|stmt| &stmt.kind)
+                if let Some(StatementKind::Assign(box (place, Op::Use(Operand::Move(move_from))))) =
+                    self.body.basic_blocks()[location.block]
+                        .statements
+                        .get(location.statement_index)
+                        .map(|stmt| &stmt.kind)
                 {
                     if let Some(local) = place.as_local() {
                         let local_decl = &self.body.local_decls[local];

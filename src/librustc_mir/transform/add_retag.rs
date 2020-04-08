@@ -141,7 +141,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
             for i in (0..block_data.statements.len()).rev() {
                 let (retag_kind, place) = match block_data.statements[i].kind {
                     // Retag-as-raw after escaping to a raw pointer.
-                    StatementKind::Assign(box (place, Rvalue::AddressOf(..))) => {
+                    StatementKind::Assign(box (place, Op::AddressOf(..))) => {
                         (RetagKind::Raw, place)
                     }
                     // Assignments of reference or ptr type are the ones where we may have
@@ -149,9 +149,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                     // we also retag after taking a reference!
                     StatementKind::Assign(box (ref place, ref rvalue)) if needs_retag(place) => {
                         let kind = match rvalue {
-                            Rvalue::Ref(_, borrow_kind, _)
-                                if borrow_kind.allows_two_phase_borrow() =>
-                            {
+                            Op::Ref(_, borrow_kind, _) if borrow_kind.allows_two_phase_borrow() => {
                                 RetagKind::TwoPhase
                             }
                             _ => RetagKind::Default,

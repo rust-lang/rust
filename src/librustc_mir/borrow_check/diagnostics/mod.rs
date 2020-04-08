@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::GeneratorKind;
 use rustc_middle::mir::{
     AggregateKind, Constant, Field, Local, LocalInfo, LocalKind, Location, Operand, Place,
-    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    PlaceRef, ProjectionElem, Op, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
@@ -58,7 +58,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut target = place.local_or_deref_local();
         for stmt in &self.body[location.block].statements[location.statement_index..] {
             debug!("add_moved_or_invoked_closure_note: stmt={:?} target={:?}", stmt, target);
-            if let StatementKind::Assign(box (into, Rvalue::Use(from))) = &stmt.kind {
+            if let StatementKind::Assign(box (into, Op::Use(from))) = &stmt.kind {
                 debug!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
                 match from {
                     Operand::Copy(ref place) | Operand::Move(ref place)
@@ -720,7 +720,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
-        if let StatementKind::Assign(box (_, Rvalue::Aggregate(ref kind, ref places))) = stmt.kind {
+        if let StatementKind::Assign(box (_, Op::Aggregate(ref kind, ref places))) = stmt.kind {
             let def_id = match kind {
                 box AggregateKind::Closure(def_id, _)
                 | box AggregateKind::Generator(def_id, _, _) => def_id,
@@ -763,7 +763,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         for stmt in &self.body[location.block].statements[location.statement_index + 1..] {
-            if let StatementKind::Assign(box (_, Rvalue::Aggregate(ref kind, ref places))) =
+            if let StatementKind::Assign(box (_, Op::Aggregate(ref kind, ref places))) =
                 stmt.kind
             {
                 let (def_id, is_generator) = match kind {

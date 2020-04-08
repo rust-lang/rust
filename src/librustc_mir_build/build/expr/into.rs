@@ -3,10 +3,10 @@
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
-use rustc_middle::mir::*;
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
 use rustc_span::symbol::sym;
 
 use rustc_target::spec::abi::Abi;
@@ -247,8 +247,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     BorrowKind::Shared => unpack!(block = this.as_read_only_place(block, arg)),
                     _ => unpack!(block = this.as_place(block, arg)),
                 };
-                let borrow =
-                    Rvalue::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place);
+                let borrow = Op::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place);
                 this.cfg.push_assign(block, source_info, destination, borrow);
                 block.unit()
             }
@@ -257,7 +256,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     hir::Mutability::Not => this.as_read_only_place(block, arg),
                     hir::Mutability::Mut => this.as_place(block, arg),
                 };
-                let address_of = Rvalue::AddressOf(mutability, unpack!(block = place));
+                let address_of = Op::AddressOf(mutability, unpack!(block = place));
                 this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }
@@ -314,12 +313,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty,
                     active_field_index,
                 );
-                this.cfg.push_assign(
-                    block,
-                    source_info,
-                    destination,
-                    Rvalue::Aggregate(adt, fields),
-                );
+                this.cfg.push_assign(block, source_info, destination, Op::Aggregate(adt, fields));
                 block.unit()
             }
 
@@ -343,7 +337,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
                 let place = unpack!(block = this.as_place(block, expr));
-                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
+                let rvalue = Op::Use(this.consume_by_copy_or_move(place));
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
@@ -360,7 +354,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
                 let place = unpack!(block = this.as_place(block, expr));
-                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
+                let rvalue = Op::Use(this.consume_by_copy_or_move(place));
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
@@ -392,7 +386,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::StaticRef { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     // should be handled above
-                    Category::Rvalue(RvalueFunc::Into) => false,
+                    Category::Op(RvalueFunc::Into) => false,
 
                     // must be handled above or else we get an
                     // infinite loop in the builder; see

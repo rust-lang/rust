@@ -106,7 +106,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_assign(&mut self,
                             place: & $($mutability)? Place<'tcx>,
-                            rvalue: & $($mutability)? Rvalue<'tcx>,
+                            rvalue: & $($mutability)? Op<'tcx>,
                             location: Location) {
                 self.super_assign(place, rvalue, location);
             }
@@ -130,7 +130,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_rvalue(&mut self,
-                            rvalue: & $($mutability)? Rvalue<'tcx>,
+                            rvalue: & $($mutability)? Op<'tcx>,
                             location: Location) {
                 self.super_rvalue(rvalue, location);
             }
@@ -413,7 +413,7 @@ macro_rules! make_mir_visitor {
 
             fn super_assign(&mut self,
                             place: &$($mutability)? Place<'tcx>,
-                            rvalue: &$($mutability)? Rvalue<'tcx>,
+                            rvalue: &$($mutability)? Op<'tcx>,
                             location: Location) {
                 self.visit_place(
                     place,
@@ -547,18 +547,18 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_rvalue(&mut self,
-                            rvalue: & $($mutability)? Rvalue<'tcx>,
+                            rvalue: & $($mutability)? Op<'tcx>,
                             location: Location) {
                 match rvalue {
-                    Rvalue::Use(operand) => {
+                    Op::Use(operand) => {
                         self.visit_operand(operand, location);
                     }
 
-                    Rvalue::Repeat(value, _) => {
+                    Op::Repeat(value, _) => {
                         self.visit_operand(value, location);
                     }
 
-                    Rvalue::Ref(r, bk, path) => {
+                    Op::Ref(r, bk, path) => {
                         self.visit_region(r, location);
                         let ctx = match bk {
                             BorrowKind::Shared => PlaceContext::NonMutatingUse(
@@ -576,7 +576,7 @@ macro_rules! make_mir_visitor {
                         self.visit_place(path, ctx, location);
                     }
 
-                    Rvalue::AddressOf(m, path) => {
+                    Op::AddressOf(m, path) => {
                         let ctx = match m {
                             Mutability::Mut => PlaceContext::MutatingUse(
                                 MutatingUseContext::AddressOf
@@ -588,7 +588,7 @@ macro_rules! make_mir_visitor {
                         self.visit_place(path, ctx, location);
                     }
 
-                    Rvalue::Len(path) => {
+                    Op::Len(path) => {
                         self.visit_place(
                             path,
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
@@ -596,22 +596,22 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
-                    Rvalue::Cast(_cast_kind, operand, ty) => {
+                    Op::Cast(_cast_kind, operand, ty) => {
                         self.visit_operand(operand, location);
                         self.visit_ty(ty, TyContext::Location(location));
                     }
 
-                    Rvalue::BinaryOp(_bin_op, lhs, rhs)
-                    | Rvalue::CheckedBinaryOp(_bin_op, lhs, rhs) => {
+                    Op::BinaryOp(_bin_op, lhs, rhs)
+                    | Op::CheckedBinaryOp(_bin_op, lhs, rhs) => {
                         self.visit_operand(lhs, location);
                         self.visit_operand(rhs, location);
                     }
 
-                    Rvalue::UnaryOp(_un_op, op) => {
+                    Op::UnaryOp(_un_op, op) => {
                         self.visit_operand(op, location);
                     }
 
-                    Rvalue::Discriminant(place) => {
+                    Op::Discriminant(place) => {
                         self.visit_place(
                             place,
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
@@ -619,11 +619,11 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
-                    Rvalue::NullaryOp(_op, ty) => {
+                    Op::NullaryOp(_op, ty) => {
                         self.visit_ty(ty, TyContext::Location(location));
                     }
 
-                    Rvalue::Aggregate(kind, operands) => {
+                    Op::Aggregate(kind, operands) => {
                         let kind = &$($mutability)? **kind;
                         match kind {
                             AggregateKind::Array(ty) => {
@@ -838,7 +838,7 @@ macro_rules! make_mir_visitor {
 }
 
 macro_rules! visit_place_fns {
-    (mut) => (
+    (mut) => {
         fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
         fn super_place(
@@ -877,15 +877,12 @@ macro_rules! visit_place_fns {
             }
         }
 
-        fn process_projection_elem(
-            &mut self,
-            _elem: &PlaceElem<'tcx>,
-        ) -> Option<PlaceElem<'tcx>> {
+        fn process_projection_elem(&mut self, _elem: &PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
             None
         }
-    );
+    };
 
-    () => (
+    () => {
         fn visit_projection(
             &mut self,
             local: Local,
@@ -907,12 +904,7 @@ macro_rules! visit_place_fns {
             self.super_projection_elem(local, proj_base, elem, context, location);
         }
 
-        fn super_place(
-            &mut self,
-            place: &Place<'tcx>,
-            context: PlaceContext,
-            location: Location,
-        ) {
+        fn super_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
             let mut context = context;
 
             if !place.projection.is_empty() {
@@ -925,10 +917,7 @@ macro_rules! visit_place_fns {
 
             self.visit_place_base(&place.local, context, location);
 
-            self.visit_projection(place.local,
-                                  &place.projection,
-                                  context,
-                                  location);
+            self.visit_projection(place.local, &place.projection, context, location);
         }
 
         fn super_projection(
@@ -961,19 +950,16 @@ macro_rules! visit_place_fns {
                     self.visit_local(
                         local,
                         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
-                        location
+                        location,
                     );
                 }
-                ProjectionElem::Deref |
-                ProjectionElem::Subslice { from: _, to: _, from_end: _ } |
-                ProjectionElem::ConstantIndex { offset: _,
-                                                min_length: _,
-                                                from_end: _ } |
-                ProjectionElem::Downcast(_, _) => {
-                }
+                ProjectionElem::Deref
+                | ProjectionElem::Subslice { from: _, to: _, from_end: _ }
+                | ProjectionElem::ConstantIndex { offset: _, min_length: _, from_end: _ }
+                | ProjectionElem::Downcast(_, _) => {}
             }
         }
-    );
+    };
 }
 
 make_mir_visitor!(Visitor,);

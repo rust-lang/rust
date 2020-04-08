@@ -6,8 +6,8 @@ use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_index::vec::Idx;
 use rustc_middle::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
-    FakeReadCause, Local, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
-    ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
+    FakeReadCause, Local, LocalDecl, LocalInfo, LocalKind, Location, Op, Operand, Place, PlaceRef,
+    ProjectionElem, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
 use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::DesugaringKind;
@@ -1616,10 +1616,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             assigned_to, rvalue
                         );
                         // Check if our `target` was captured by a closure.
-                        if let Rvalue::Aggregate(
-                            box AggregateKind::Closure(def_id, substs),
-                            operands,
-                        ) = rvalue
+                        if let Op::Aggregate(box AggregateKind::Closure(def_id, substs), operands) =
+                            rvalue
                         {
                             for operand in operands {
                                 let assigned_from = match operand {
@@ -1673,8 +1671,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                         // Otherwise, look at other types of assignment.
                         let assigned_from = match rvalue {
-                            Rvalue::Ref(_, _, assigned_from) => assigned_from,
-                            Rvalue::Use(operand) => match operand {
+                            Op::Ref(_, _, assigned_from) => assigned_from,
+                            Op::Use(operand) => match operand {
                                 Operand::Copy(assigned_from) | Operand::Move(assigned_from) => {
                                     assigned_from
                                 }

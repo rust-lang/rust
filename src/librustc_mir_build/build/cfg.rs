@@ -35,7 +35,7 @@ impl<'tcx> CFG<'tcx> {
         block: BasicBlock,
         source_info: SourceInfo,
         place: Place<'tcx>,
-        rvalue: Rvalue<'tcx>,
+        rvalue: Op<'tcx>,
     ) {
         self.push(
             block,
@@ -50,7 +50,7 @@ impl<'tcx> CFG<'tcx> {
         temp: Place<'tcx>,
         constant: Constant<'tcx>,
     ) {
-        self.push_assign(block, source_info, temp, Rvalue::Use(Operand::Constant(box constant)));
+        self.push_assign(block, source_info, temp, Op::Use(Operand::Constant(box constant)));
     }
 
     crate fn push_assign_unit(
@@ -63,7 +63,7 @@ impl<'tcx> CFG<'tcx> {
             block,
             source_info,
             place,
-            Rvalue::Aggregate(box AggregateKind::Tuple, vec![]),
+            Op::Aggregate(box AggregateKind::Tuple, vec![]),
         );
     }
 

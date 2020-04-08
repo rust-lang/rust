@@ -130,7 +130,7 @@
 //! #### Boxes
 //! Since `Box` expression have special compiler support, no explicit calls to
 //! `exchange_malloc()` and `box_free()` may show up in MIR, even if the
-//! compiler will generate them. We have to observe `Rvalue::Box` expressions
+//! compiler will generate them. We have to observe `Op::Box` expressions
 //! and Box-typed drop-statements for that purpose.
 //!
 //!
@@ -514,18 +514,14 @@ impl<'a, 'tcx> MirNeighborCollector<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
-    fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
+    fn visit_rvalue(&mut self, rvalue: &mir::Op<'tcx>, location: Location) {
         debug!("visiting rvalue {:?}", *rvalue);
 
         match *rvalue {
             // When doing an cast from a regular pointer to a fat pointer, we
             // have to instantiate all methods of the trait being cast to, so we
             // can build the appropriate vtable.
-            mir::Rvalue::Cast(
-                mir::CastKind::Pointer(PointerCast::Unsize),
-                ref operand,
-                target_ty,
-            ) => {
+            mir::Op::Cast(mir::CastKind::Pointer(PointerCast::Unsize), ref operand, target_ty) => {
                 let target_ty = self.monomorphize(target_ty);
                 let source_ty = operand.ty(self.body, self.tcx);
                 let source_ty = self.monomorphize(source_ty);
@@ -543,16 +539,12 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     );
                 }
             }
-            mir::Rvalue::Cast(
-                mir::CastKind::Pointer(PointerCast::ReifyFnPointer),
-                ref operand,
-                _,
-            ) => {
+            mir::Op::Cast(mir::CastKind::Pointer(PointerCast::ReifyFnPointer), ref operand, _) => {
                 let fn_ty = operand.ty(self.body, self.tcx);
                 let fn_ty = self.monomorphize(fn_ty);
                 visit_fn_use(self.tcx, fn_ty, false, &mut self.output);
             }
-            mir::Rvalue::Cast(
+            mir::Op::Cast(
                 mir::CastKind::Pointer(PointerCast::ClosureFnPointer(_)),
                 ref operand,
                 _,
@@ -574,7 +566,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     _ => bug!(),
                 }
             }
-            mir::Rvalue::NullaryOp(mir::NullOp::Box, _) => {
+            mir::Op::NullaryOp(mir::NullOp::Box, _) => {
                 let tcx = self.tcx;
                 let exchange_malloc_fn_def_id = tcx
                     .lang_items()

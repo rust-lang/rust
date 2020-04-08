@@ -184,10 +184,10 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
     fn visit_assign(
         &mut self,
         assigned_place: &mir::Place<'tcx>,
-        rvalue: &mir::Rvalue<'tcx>,
+        rvalue: &mir::Op<'tcx>,
         location: mir::Location,
     ) {
-        if let mir::Rvalue::Ref(region, kind, ref borrowed_place) = *rvalue {
+        if let mir::Op::Ref(region, kind, ref borrowed_place) = *rvalue {
             if borrowed_place.ignore_borrow(self.tcx, self.body, &self.locals_state_at_exit) {
                 debug!("ignoring_borrow of {:?}", borrowed_place);
                 return;
@@ -261,8 +261,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         }
     }
 
-    fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: mir::Location) {
-        if let mir::Rvalue::Ref(region, kind, ref place) = *rvalue {
+    fn visit_rvalue(&mut self, rvalue: &mir::Op<'tcx>, location: mir::Location) {
+        if let mir::Op::Ref(region, kind, ref place) = *rvalue {
             // double-check that we already registered a BorrowData for this
 
             let borrow_index = self.location_map[&location];

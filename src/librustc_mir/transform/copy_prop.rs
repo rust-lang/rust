@@ -23,7 +23,7 @@ use crate::transform::{MirPass, MirSource};
 use crate::util::def_use::DefUseAnalysis;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{
-    read_only, Body, BodyAndCache, Constant, Local, LocalKind, Location, Operand, Place, Rvalue,
+    read_only, Body, BodyAndCache, Constant, Local, LocalKind, Location, Op, Operand, Place,
     StatementKind,
 };
 use rustc_middle::ty::TyCtxt;
@@ -93,7 +93,7 @@ impl<'tcx> MirPass<'tcx> for CopyPropagation {
 
                     // That use of the source must be an assignment.
                     match &statement.kind {
-                        StatementKind::Assign(box (place, Rvalue::Use(operand))) => {
+                        StatementKind::Assign(box (place, Op::Use(operand))) => {
                             if let Some(local) = place.as_local() {
                                 if local == dest_local {
                                     let maybe_action = match operand {
@@ -156,8 +156,8 @@ fn eliminate_self_assignments(body: &mut Body<'_>, def_use_analysis: &DefUseAnal
             let location = def.location;
             if let Some(stmt) = body[location.block].statements.get(location.statement_index) {
                 match &stmt.kind {
-                    StatementKind::Assign(box (place, Rvalue::Use(Operand::Copy(src_place))))
-                    | StatementKind::Assign(box (place, Rvalue::Use(Operand::Move(src_place)))) => {
+                    StatementKind::Assign(box (place, Op::Use(Operand::Copy(src_place))))
+                    | StatementKind::Assign(box (place, Op::Use(Operand::Move(src_place)))) => {
                         if let (Some(local), Some(src_local)) =
                             (place.as_local(), src_place.as_local())
                         {

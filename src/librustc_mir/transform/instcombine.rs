@@ -5,8 +5,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::Idx;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::{
-    read_only, Body, BodyAndCache, Constant, Local, Location, Operand, Place, PlaceRef,
-    ProjectionElem, Rvalue,
+    read_only, Body, BodyAndCache, Constant, Local, Location, Op, Operand, Place, PlaceRef,
+    ProjectionElem,
 };
 use rustc_middle::ty::{self, TyCtxt};
 use std::mem;
@@ -45,11 +45,11 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
         self.tcx
     }
 
-    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
+    fn visit_rvalue(&mut self, rvalue: &mut Op<'tcx>, location: Location) {
         if self.optimizations.and_stars.remove(&location) {
             debug!("replacing `&*`: {:?}", rvalue);
             let new_place = match rvalue {
-                Rvalue::Ref(_, _, place) => {
+                Op::Ref(_, _, place) => {
                     if let &[ref proj_l @ .., proj_r] = place.projection.as_ref() {
                         place.projection = self.tcx().intern_place_elems(&[proj_r]);
 
@@ -64,12 +64,12 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
                 }
                 _ => bug!("Detected `&*` but didn't find `&*`!"),
             };
-            *rvalue = Rvalue::Use(Operand::Copy(new_place))
+            *rvalue = Op::Use(Operand::Copy(new_place))
         }
 
         if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {
             debug!("replacing `Len([_; N])`: {:?}", rvalue);
-            *rvalue = Rvalue::Use(Operand::Constant(box constant));
+            *rvalue = Op::Use(Operand::Constant(box constant));
         }
 
         self.super_rvalue(rvalue, location)
@@ -90,8 +90,8 @@ impl OptimizationFinder<'b, 'tcx> {
 }
 
 impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        if let Rvalue::Ref(_, _, place) = rvalue {
+    fn visit_rvalue(&mut self, rvalue: &Op<'tcx>, location: Location) {
+        if let Op::Ref(_, _, place) = rvalue {
             if let PlaceRef { local, projection: &[ref proj_base @ .., ProjectionElem::Deref] } =
                 place.as_ref()
             {
@@ -101,7 +101,7 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
             }
         }
 
-        if let Rvalue::Len(ref place) = *rvalue {
+        if let Op::Len(ref place) = *rvalue {
             let place_ty = place.ty(&self.body.local_decls, self.tcx).ty;
             if let ty::Array(_, len) = place_ty.kind {
                 let span = self.body.source_info(location).span;

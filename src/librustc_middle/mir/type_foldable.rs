@@ -163,9 +163,9 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<PlaceElem<'tcx>> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for Op<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        use crate::mir::Rvalue::*;
+        use crate::mir::Op::*;
         match *self {
             Use(ref op) => Use(op.fold_with(folder)),
             Repeat(ref op, len) => Repeat(op.fold_with(folder), len),
@@ -208,7 +208,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        use crate::mir::Rvalue::*;
+        use crate::mir::Op::*;
         match *self {
             Use(ref op) => op.visit_with(visitor),
             Repeat(ref op, _) => op.visit_with(visitor),

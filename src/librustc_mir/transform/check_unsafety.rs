@@ -115,9 +115,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
         self.super_statement(statement, location);
     }
 
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+    fn visit_rvalue(&mut self, rvalue: &Op<'tcx>, location: Location) {
         match rvalue {
-            Rvalue::Aggregate(box ref aggregate, _) => match aggregate {
+            Op::Aggregate(box ref aggregate, _) => match aggregate {
                 &AggregateKind::Array(..) | &AggregateKind::Tuple => {}
                 &AggregateKind::Adt(ref def, ..) => {
                     match self.tcx.layout_scalar_valid_range(def.did) {
@@ -139,7 +139,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             // casting pointers to ints is unsafe in const fn because the const evaluator cannot
             // possibly know what the result of various operations like `address / 2` would be
             // pointers during const evaluation have no integral address, only an abstract one
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty)
+            Op::Cast(CastKind::Misc, ref operand, cast_ty)
                 if self.const_context && self.tcx.features().const_raw_ptr_to_usize_cast =>
             {
                 let operand_ty = operand.ty(self.body, self.tcx);
@@ -160,7 +160,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             // pointer would be "less" or "equal" to another, because we cannot know where llvm
             // or the linker will place various statics in memory. Without this information the
             // result of a comparison of addresses would differ between runtime and compile-time.
-            Rvalue::BinaryOp(_, ref lhs, _)
+            Op::BinaryOp(_, ref lhs, _)
                 if self.const_context && self.tcx.features().const_compare_raw_pointers =>
             {
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {

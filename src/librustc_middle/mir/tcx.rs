@@ -142,41 +142,41 @@ pub enum RvalueInitializationState {
     Deep,
 }
 
-impl<'tcx> Rvalue<'tcx> {
+impl<'tcx> Op<'tcx> {
     pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
     where
         D: HasLocalDecls<'tcx>,
     {
         match *self {
-            Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
-            Rvalue::Repeat(ref operand, count) => {
+            Op::Use(ref operand) => operand.ty(local_decls, tcx),
+            Op::Repeat(ref operand, count) => {
                 tcx.mk_ty(ty::Array(operand.ty(local_decls, tcx), count))
             }
-            Rvalue::Ref(reg, bk, ref place) => {
+            Op::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 tcx.mk_ref(reg, ty::TypeAndMut { ty: place_ty, mutbl: bk.to_mutbl_lossy() })
             }
-            Rvalue::AddressOf(mutability, ref place) => {
+            Op::AddressOf(mutability, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 tcx.mk_ptr(ty::TypeAndMut { ty: place_ty, mutbl: mutability })
             }
-            Rvalue::Len(..) => tcx.types.usize,
-            Rvalue::Cast(.., ty) => ty,
-            Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
+            Op::Len(..) => tcx.types.usize,
+            Op::Cast(.., ty) => ty,
+            Op::BinaryOp(op, ref lhs, ref rhs) => {
                 let lhs_ty = lhs.ty(local_decls, tcx);
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 op.ty(tcx, lhs_ty, rhs_ty)
             }
-            Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+            Op::CheckedBinaryOp(op, ref lhs, ref rhs) => {
                 let lhs_ty = lhs.ty(local_decls, tcx);
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);
                 tcx.intern_tup(&[ty, tcx.types.bool])
             }
-            Rvalue::UnaryOp(UnOp::Not, ref operand) | Rvalue::UnaryOp(UnOp::Neg, ref operand) => {
+            Op::UnaryOp(UnOp::Not, ref operand) | Op::UnaryOp(UnOp::Neg, ref operand) => {
                 operand.ty(local_decls, tcx)
             }
-            Rvalue::Discriminant(ref place) => {
+            Op::Discriminant(ref place) => {
                 let ty = place.ty(local_decls, tcx).ty;
                 match ty.kind {
                     ty::Adt(adt_def, _) => adt_def.repr.discr_type().to_ty(tcx),
@@ -187,9 +187,9 @@ impl<'tcx> Rvalue<'tcx> {
                     }
                 }
             }
-            Rvalue::NullaryOp(NullOp::Box, t) => tcx.mk_box(t),
-            Rvalue::NullaryOp(NullOp::SizeOf, _) => tcx.types.usize,
-            Rvalue::Aggregate(ref ak, ref ops) => match **ak {
+            Op::NullaryOp(NullOp::Box, t) => tcx.mk_box(t),
+            Op::NullaryOp(NullOp::SizeOf, _) => tcx.types.usize,
+            Op::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => tcx.mk_array(ty, ops.len() as u64),
                 AggregateKind::Tuple => tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx))),
                 AggregateKind::Adt(def, _, substs, _, _) => tcx.type_of(def.did).subst(tcx, substs),
@@ -203,10 +203,10 @@ impl<'tcx> Rvalue<'tcx> {
 
     #[inline]
     /// Returns `true` if this rvalue is deeply initialized (most rvalues) or
-    /// whether its only shallowly initialized (`Rvalue::Box`).
+    /// whether its only shallowly initialized (`Op::Box`).
     pub fn initialization_state(&self) -> RvalueInitializationState {
         match *self {
-            Rvalue::NullaryOp(NullOp::Box, _) => RvalueInitializationState::Shallow,
+            Op::NullaryOp(NullOp::Box, _) => RvalueInitializationState::Shallow,
             _ => RvalueInitializationState::Deep,
         }
     }

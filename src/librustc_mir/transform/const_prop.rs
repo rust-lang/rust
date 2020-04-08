@@ -15,7 +15,7 @@ use rustc_middle::mir::visit::{
 };
 use rustc_middle::mir::{
     read_only, AggregateKind, AssertKind, BasicBlock, BinOp, Body, BodyAndCache, ClearCrossCrate,
-    Constant, Local, LocalDecl, LocalKind, Location, Operand, Place, ReadOnlyBodyAndCache, Rvalue,
+    Constant, Local, LocalDecl, LocalKind, Location, Op, Operand, Place, ReadOnlyBodyAndCache,
     SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
     UnOp, RETURN_PLACE,
 };
@@ -565,7 +565,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn const_prop(
         &mut self,
-        rvalue: &Rvalue<'tcx>,
+        rvalue: &Op<'tcx>,
         place_layout: TyAndLayout<'tcx>,
         source_info: SourceInfo,
         place: Place<'tcx>,
@@ -580,7 +580,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        // Perform any special handling for specific Rvalue types.
+        // Perform any special handling for specific Op types.
         // Generally, checks here fall into one of two categories:
         //   1. Additional checking to provide useful lints to the user
         //        - In this case, we will do some validation and then fall through to the
@@ -592,15 +592,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // We do this here and not in the `Assert` terminator as that terminator is
             // only sometimes emitted (overflow checks can be disabled), but we want to always
             // lint.
-            Rvalue::UnaryOp(op, arg) => {
+            Op::UnaryOp(op, arg) => {
                 trace!("checking UnaryOp(op = {:?}, arg = {:?})", op, arg);
                 self.check_unary_op(*op, arg, source_info)?;
             }
-            Rvalue::BinaryOp(op, left, right) => {
+            Op::BinaryOp(op, left, right) => {
                 trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
                 self.check_binary_op(*op, left, right, source_info)?;
             }
-            Rvalue::CheckedBinaryOp(op, left, right) => {
+            Op::CheckedBinaryOp(op, left, right) => {
                 trace!(
                     "checking CheckedBinaryOp(op = {:?}, left = {:?}, right = {:?})",
                     op,
@@ -611,7 +611,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
 
             // Do not try creating references (#67862)
-            Rvalue::Ref(_, _, place_ref) => {
+            Op::Ref(_, _, place_ref) => {
                 trace!("skipping Ref({:?})", place_ref);
 
                 return None;
@@ -637,7 +637,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn replace_with_const(
         &mut self,
-        rval: &mut Rvalue<'tcx>,
+        rval: &mut Op<'tcx>,
         value: OpTy<'tcx>,
         source_info: SourceInfo,
     ) {
@@ -659,7 +659,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if let Some(Ok(imm)) = imm {
             match *imm {
                 interpret::Immediate::Scalar(ScalarMaybeUndef::Scalar(scalar)) => {
-                    *rval = Rvalue::Use(self.operand_from_scalar(
+                    *rval = Op::Use(self.operand_from_scalar(
                         scalar,
                         value.layout.ty,
                         source_info.span,
@@ -670,7 +670,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     ScalarMaybeUndef::Scalar(two),
                 ) => {
                     // Found a value represented as a pair. For now only do cont-prop if type of
-                    // Rvalue is also a pair with two scalars. The more general case is more
+                    // Op is also a pair with two scalars. The more general case is more
                     // complicated to implement so we'll do it later.
                     let ty = &value.layout.ty.kind;
                     // Only do it for tuples
@@ -692,7 +692,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             });
 
                             if let Some(Some((ty1, ty2))) = opt_ty1_ty2 {
-                                *rval = Rvalue::Aggregate(
+                                *rval = Op::Aggregate(
                                     Box::new(AggregateKind::Tuple),
                                     vec![
                                         self.operand_from_scalar(one, ty1, source_info.span),

@@ -14,7 +14,7 @@ use rustc_middle::mir::{
     Operand, Place, PlaceElem, PlaceRef, ReadOnlyBodyAndCache,
 };
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
-use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
+use rustc_middle::mir::{Field, ProjectionElem, Promoted, Op, Statement, StatementKind};
 use rustc_middle::mir::{Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
@@ -1145,11 +1145,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn consume_rvalue(
         &mut self,
         location: Location,
-        (rvalue, span): (&'cx Rvalue<'tcx>, Span),
+        (rvalue, span): (&'cx Op<'tcx>, Span),
         flow_state: &Flows<'cx, 'tcx>,
     ) {
         match *rvalue {
-            Rvalue::Ref(_ /*rgn*/, bk, place) => {
+            Op::Ref(_ /*rgn*/, bk, place) => {
                 let access_kind = match bk {
                     BorrowKind::Shallow => {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
@@ -1187,7 +1187,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::AddressOf(mutability, place) => {
+            Op::AddressOf(mutability, place) => {
                 let access_kind = match mutability {
                     Mutability::Mut => (
                         Deep,
@@ -1214,17 +1214,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::Use(ref operand)
-            | Rvalue::Repeat(ref operand, _)
-            | Rvalue::UnaryOp(_ /*un_op*/, ref operand)
-            | Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/) => {
+            Op::Use(ref operand)
+            | Op::Repeat(ref operand, _)
+            | Op::UnaryOp(_ /*un_op*/, ref operand)
+            | Op::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/) => {
                 self.consume_operand(location, (operand, span), flow_state)
             }
 
-            Rvalue::Len(place) | Rvalue::Discriminant(place) => {
+            Op::Len(place) | Op::Discriminant(place) => {
                 let af = match *rvalue {
-                    Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
-                    Rvalue::Discriminant(..) => None,
+                    Op::Len(..) => Some(ArtificialField::ArrayLength),
+                    Op::Discriminant(..) => None,
                     _ => unreachable!(),
                 };
                 self.access_place(
@@ -1242,13 +1242,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, ref operand1, ref operand2)
-            | Rvalue::CheckedBinaryOp(_bin_op, ref operand1, ref operand2) => {
+            Op::BinaryOp(_bin_op, ref operand1, ref operand2)
+            | Op::CheckedBinaryOp(_bin_op, ref operand1, ref operand2) => {
                 self.consume_operand(location, (operand1, span), flow_state);
                 self.consume_operand(location, (operand2, span), flow_state);
             }
 
-            Rvalue::NullaryOp(_op, _ty) => {
+            Op::NullaryOp(_op, _ty) => {
                 // nullary ops take no dynamic input; no borrowck effect.
                 //
                 // FIXME: is above actually true? Do we want to track
@@ -1256,7 +1256,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // `NullOp::Box`?
             }
 
-            Rvalue::Aggregate(ref aggregate_kind, ref operands) => {
+            Op::Aggregate(ref aggregate_kind, ref operands) => {
                 // We need to report back the list of mutable upvars that were
                 // moved into the closure and subsequently used by the closure,
                 // in order to populate our used_mut set.
@@ -1335,7 +1335,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let stmt = &bbd.statements[loc.statement_index];
                         debug!("temporary assigned in: stmt={:?}", stmt);
 
-                        if let StatementKind::Assign(box (_, Rvalue::Ref(_, _, source))) = stmt.kind
+                        if let StatementKind::Assign(box (_, Op::Ref(_, _, source))) = stmt.kind
                         {
                             propagate_closure_used_mut_place(self, source);
                         } else {

@@ -22,7 +22,7 @@ rustc_index::newtype_index! {
 /// `Borrows` stores the data used in the analyses that track the flow
 /// of borrows.
 ///
-/// It uniquely identifies every borrow (`Rvalue::Ref`) by a
+/// It uniquely identifies every borrow (`Op::Ref`) by a
 /// `BorrowIndex`, and maps each such index to a `BorrowData`
 /// describing the borrow. These indexes are used for representing the
 /// borrows in compact bitvectors.
@@ -263,7 +263,7 @@ impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     ) {
         match stmt.kind {
             mir::StatementKind::Assign(box (lhs, ref rhs)) => {
-                if let mir::Rvalue::Ref(_, _, place) = *rhs {
+                if let mir::Op::Ref(_, _, place) = *rhs {
                     if place.ignore_borrow(
                         self.tcx,
                         self.body,

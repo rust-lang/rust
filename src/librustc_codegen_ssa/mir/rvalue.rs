@@ -22,12 +22,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         mut bx: Bx,
         dest: PlaceRef<'tcx, Bx::Value>,
-        rvalue: &mir::Rvalue<'tcx>,
+        rvalue: &mir::Op<'tcx>,
     ) -> Bx {
         debug!("codegen_rvalue(dest.llval={:?}, rvalue={:?})", dest.llval, rvalue);
 
         match *rvalue {
-            mir::Rvalue::Use(ref operand) => {
+            mir::Op::Use(ref operand) => {
                 let cg_operand = self.codegen_operand(&mut bx, operand);
                 // FIXME: consider not copying constants through stack. (Fixable by codegen'ing
                 // constants into `OperandValue::Ref`; why don’t we do that yet if we don’t?)
@@ -35,7 +35,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx
             }
 
-            mir::Rvalue::Cast(mir::CastKind::Pointer(PointerCast::Unsize), ref source, _) => {
+            mir::Op::Cast(mir::CastKind::Pointer(PointerCast::Unsize), ref source, _) => {
                 // The destination necessarily contains a fat pointer, so if
                 // it's a scalar pair, it's a fat pointer or newtype thereof.
                 if bx.cx().is_backend_scalar_pair(dest.layout) {
@@ -77,7 +77,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx
             }
 
-            mir::Rvalue::Repeat(ref elem, count) => {
+            mir::Op::Repeat(ref elem, count) => {
                 let cg_elem = self.codegen_operand(&mut bx, elem);
 
                 // Do not generate the loop for zero-sized elements or empty arrays.
@@ -111,7 +111,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.write_operand_repeatedly(cg_elem, count, dest)
             }
 
-            mir::Rvalue::Aggregate(ref kind, ref operands) => {
+            mir::Op::Aggregate(ref kind, ref operands) => {
                 let (dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
                         dest.codegen_set_discr(&mut bx, variant_index);
@@ -148,7 +148,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         mut bx: Bx,
         indirect_dest: PlaceRef<'tcx, Bx::Value>,
-        rvalue: &mir::Rvalue<'tcx>,
+        rvalue: &mir::Op<'tcx>,
     ) -> Bx {
         debug!(
             "codegen_rvalue_unsized(indirect_dest.llval={:?}, rvalue={:?})",
@@ -156,20 +156,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         );
 
         match *rvalue {
-            mir::Rvalue::Use(ref operand) => {
+            mir::Op::Use(ref operand) => {
                 let cg_operand = self.codegen_operand(&mut bx, operand);
                 cg_operand.val.store_unsized(&mut bx, indirect_dest);
                 bx
             }
 
-            _ => bug!("unsized assignment other than `Rvalue::Use`"),
+            _ => bug!("unsized assignment other than `Op::Use`"),
         }
     }
 
     pub fn codegen_rvalue_operand(
         &mut self,
         mut bx: Bx,
-        rvalue: &mir::Rvalue<'tcx>,
+        rvalue: &mir::Op<'tcx>,
     ) -> (Bx, OperandRef<'tcx, Bx::Value>) {
         assert!(
             self.rvalue_creates_operand(rvalue, DUMMY_SP),
@@ -178,7 +178,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         );
 
         match *rvalue {
-            mir::Rvalue::Cast(ref kind, ref source, mir_cast_ty) => {
+            mir::Op::Cast(ref kind, ref source, mir_cast_ty) => {
                 let operand = self.codegen_operand(&mut bx, source);
                 debug!("cast operand is {:?}", operand);
                 let cast = bx.cx().layout_of(self.monomorphize(&mir_cast_ty));
@@ -382,7 +382,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (bx, OperandRef { val, layout: cast })
             }
 
-            mir::Rvalue::Ref(_, bk, place) => {
+            mir::Op::Ref(_, bk, place) => {
                 let mk_ref = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
                     tcx.mk_ref(
                         tcx.lifetimes.re_erased,
@@ -392,14 +392,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_place_to_pointer(bx, place, mk_ref)
             }
 
-            mir::Rvalue::AddressOf(mutability, place) => {
+            mir::Op::AddressOf(mutability, place) => {
                 let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
                     tcx.mk_ptr(ty::TypeAndMut { ty, mutbl: mutability })
                 };
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
 
-            mir::Rvalue::Len(place) => {
+            mir::Op::Len(place) => {
                 let size = self.evaluate_array_len(&mut bx, place);
                 let operand = OperandRef {
                     val: OperandValue::Immediate(size),
@@ -408,7 +408,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (bx, operand)
             }
 
-            mir::Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
+            mir::Op::BinaryOp(op, ref lhs, ref rhs) => {
                 let lhs = self.codegen_operand(&mut bx, lhs);
                 let rhs = self.codegen_operand(&mut bx, rhs);
                 let llresult = match (lhs.val, rhs.val) {
@@ -437,7 +437,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 (bx, operand)
             }
-            mir::Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+            mir::Op::CheckedBinaryOp(op, ref lhs, ref rhs) => {
                 let lhs = self.codegen_operand(&mut bx, lhs);
                 let rhs = self.codegen_operand(&mut bx, rhs);
                 let result = self.codegen_scalar_checked_binop(
@@ -454,7 +454,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (bx, operand)
             }
 
-            mir::Rvalue::UnaryOp(op, ref operand) => {
+            mir::Op::UnaryOp(op, ref operand) => {
                 let operand = self.codegen_operand(&mut bx, operand);
                 let lloperand = operand.immediate();
                 let is_float = operand.layout.ty.is_floating_point();
@@ -471,7 +471,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (bx, OperandRef { val: OperandValue::Immediate(llval), layout: operand.layout })
             }
 
-            mir::Rvalue::Discriminant(ref place) => {
+            mir::Op::Discriminant(ref place) => {
                 let discr_ty = rvalue.ty(*self.mir, bx.tcx());
                 let discr = self
                     .codegen_place(&mut bx, place.as_ref())
@@ -485,7 +485,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 )
             }
 
-            mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
+            mir::Op::NullaryOp(mir::NullOp::SizeOf, ty) => {
                 assert!(bx.cx().type_is_sized(ty));
                 let val = bx.cx().const_usize(bx.cx().layout_of(ty).size.bytes());
                 let tcx = self.cx.tcx();
@@ -498,7 +498,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 )
             }
 
-            mir::Rvalue::NullaryOp(mir::NullOp::Box, content_ty) => {
+            mir::Op::NullaryOp(mir::NullOp::Box, content_ty) => {
                 let content_ty = self.monomorphize(&content_ty);
                 let content_layout = bx.cx().layout_of(content_ty);
                 let llsize = bx.cx().const_usize(content_layout.size.bytes());
@@ -521,11 +521,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let operand = OperandRef { val: OperandValue::Immediate(val), layout: box_layout };
                 (bx, operand)
             }
-            mir::Rvalue::Use(ref operand) => {
+            mir::Op::Use(ref operand) => {
                 let operand = self.codegen_operand(&mut bx, operand);
                 (bx, operand)
             }
-            mir::Rvalue::Repeat(..) | mir::Rvalue::Aggregate(..) => {
+            mir::Op::Repeat(..) | mir::Op::Aggregate(..) => {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
                 let ty = rvalue.ty(*self.mir, self.cx.tcx());
@@ -552,7 +552,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         cg_value.len(bx.cx())
     }
 
-    /// Codegen an `Rvalue::AddressOf` or `Rvalue::Ref`
+    /// Codegen an `Op::AddressOf` or `Op::Ref`
     fn codegen_place_to_pointer(
         &mut self,
         mut bx: Bx,
@@ -733,21 +733,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
+    pub fn rvalue_creates_operand(&self, rvalue: &mir::Op<'tcx>, span: Span) -> bool {
         match *rvalue {
-            mir::Rvalue::Ref(..) |
-            mir::Rvalue::AddressOf(..) |
-            mir::Rvalue::Len(..) |
-            mir::Rvalue::Cast(..) | // (*)
-            mir::Rvalue::BinaryOp(..) |
-            mir::Rvalue::CheckedBinaryOp(..) |
-            mir::Rvalue::UnaryOp(..) |
-            mir::Rvalue::Discriminant(..) |
-            mir::Rvalue::NullaryOp(..) |
-            mir::Rvalue::Use(..) => // (*)
+            mir::Op::Ref(..) |
+            mir::Op::AddressOf(..) |
+            mir::Op::Len(..) |
+            mir::Op::Cast(..) | // (*)
+            mir::Op::BinaryOp(..) |
+            mir::Op::CheckedBinaryOp(..) |
+            mir::Op::UnaryOp(..) |
+            mir::Op::Discriminant(..) |
+            mir::Op::NullaryOp(..) |
+            mir::Op::Use(..) => // (*)
                 true,
-            mir::Rvalue::Repeat(..) |
-            mir::Rvalue::Aggregate(..) => {
+            mir::Op::Repeat(..) |
+            mir::Op::Aggregate(..) => {
                 let ty = rvalue.ty(*self.mir, self.cx.tcx());
                 let ty = self.monomorphize(&ty);
                 self.cx.spanned_layout_of(ty, span).is_zst()

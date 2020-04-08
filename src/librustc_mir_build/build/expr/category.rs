@@ -13,7 +13,7 @@ crate enum Category {
 
     // Something that generates a new value at runtime, like `x + y`
     // or `foo()`.
-    Rvalue(RvalueFunc),
+    Op(RvalueFunc),
 }
 
 // Rvalues fall into different "styles" that will determine which fn
@@ -51,7 +51,7 @@ impl Category {
             | ExprKind::Borrow { .. }
             | ExprKind::AddressOf { .. }
             | ExprKind::Yield { .. }
-            | ExprKind::Call { .. } => Some(Category::Rvalue(RvalueFunc::Into)),
+            | ExprKind::Call { .. } => Some(Category::Op(RvalueFunc::Into)),
 
             ExprKind::Array { .. }
             | ExprKind::Tuple { .. }
@@ -64,7 +64,7 @@ impl Category {
             | ExprKind::Repeat { .. }
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
-            | ExprKind::LlvmInlineAsm { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
+            | ExprKind::LlvmInlineAsm { .. } => Some(Category::Op(RvalueFunc::AsRvalue)),
 
             ExprKind::Literal { .. } | ExprKind::StaticRef { .. } => Some(Category::Constant),
 
@@ -76,7 +76,7 @@ impl Category {
             // FIXME(#27840) these probably want their own
             // category, like "nonterminating"
             {
-                Some(Category::Rvalue(RvalueFunc::Into))
+                Some(Category::Op(RvalueFunc::Into))
             }
         }
     }

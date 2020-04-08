@@ -12,10 +12,10 @@
 //! - `into` -- writes the value into a specific location, which
 //!   should be uninitialized
 //! - `as_operand` -- evaluates the value and yields an `Operand`,
-//!   suitable for use as an argument to an `Rvalue`
+//!   suitable for use as an argument to an `Op`
 //! - `as_temp` -- evaluates into a temporary; this is similar to `as_operand`
 //!   except it always returns a fresh place, even for constants
-//! - `as_rvalue` -- yields an `Rvalue`, suitable for use in an assignment;
+//! - `as_rvalue` -- yields an `Op`, suitable for use in an assignment;
 //!   as of this writing, never needed outside of the `expr` module itself
 //!
 //! Sometimes though want the expression's *location*. An example
@@ -45,7 +45,7 @@
 //! other fns cycle around. The handoff works like this:
 //!
 //! - `into(place)` -> fallback is to create a rvalue with `as_rvalue` and assign it to `place`
-//! - `as_rvalue` -> fallback is to create an Operand with `as_operand` and use `Rvalue::use`
+//! - `as_rvalue` -> fallback is to create an Operand with `as_operand` and use `Op::use`
 //! - `as_operand` -> either invokes `as_constant` or `as_temp`
 //! - `as_constant` -> (no fallback)
 //! - `as_temp` -> creates a temporary and either calls `as_place` or `into`

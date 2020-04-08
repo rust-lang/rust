@@ -2,7 +2,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::visit::TyContext;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
-    BasicBlock, BasicBlockData, Body, Local, Location, Place, PlaceRef, ProjectionElem, Rvalue,
+    BasicBlock, BasicBlockData, Body, Local, Location, Op, Place, PlaceRef, ProjectionElem,
     SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UserTypeProjection,
 };
 use rustc_middle::ty::fold::TypeFoldable;
@@ -111,7 +111,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
         self.super_statement(statement, location);
     }
 
-    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
+    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Op<'tcx>, location: Location) {
         // When we see `X = ...`, then kill borrows of
         // `(*X).foo` and so forth.
         self.record_killed_borrows_for_place(*place, location);

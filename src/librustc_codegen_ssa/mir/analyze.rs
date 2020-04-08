@@ -215,7 +215,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
     fn visit_assign(
         &mut self,
         place: &mir::Place<'tcx>,
-        rvalue: &mir::Rvalue<'tcx>,
+        rvalue: &mir::Op<'tcx>,
         location: Location,
     ) {
         debug!("visit_assign(place={:?}, rvalue={:?})", place, rvalue);

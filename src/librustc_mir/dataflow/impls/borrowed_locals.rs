@@ -155,32 +155,32 @@ where
         }
     }
 
-    fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
+    fn visit_rvalue(&mut self, rvalue: &mir::Op<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
 
         match rvalue {
-            mir::Rvalue::AddressOf(mt, borrowed_place) => {
+            mir::Op::AddressOf(mt, borrowed_place) => {
                 if !borrowed_place.is_indirect() && self.kind.in_address_of(*mt, *borrowed_place) {
                     self.trans.gen(borrowed_place.local);
                 }
             }
 
-            mir::Rvalue::Ref(_, kind, borrowed_place) => {
+            mir::Op::Ref(_, kind, borrowed_place) => {
                 if !borrowed_place.is_indirect() && self.kind.in_ref(*kind, *borrowed_place) {
                     self.trans.gen(borrowed_place.local);
                 }
             }
 
-            mir::Rvalue::Cast(..)
-            | mir::Rvalue::Use(..)
-            | mir::Rvalue::Repeat(..)
-            | mir::Rvalue::Len(..)
-            | mir::Rvalue::BinaryOp(..)
-            | mir::Rvalue::CheckedBinaryOp(..)
-            | mir::Rvalue::NullaryOp(..)
-            | mir::Rvalue::UnaryOp(..)
-            | mir::Rvalue::Discriminant(..)
-            | mir::Rvalue::Aggregate(..) => {}
+            mir::Op::Cast(..)
+            | mir::Op::Use(..)
+            | mir::Op::Repeat(..)
+            | mir::Op::Len(..)
+            | mir::Op::BinaryOp(..)
+            | mir::Op::CheckedBinaryOp(..)
+            | mir::Op::NullaryOp(..)
+            | mir::Op::UnaryOp(..)
+            | mir::Op::Discriminant(..)
+            | mir::Op::Aggregate(..) => {}
         }
     }
 

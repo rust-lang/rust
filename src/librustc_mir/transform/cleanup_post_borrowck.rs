@@ -18,7 +18,7 @@
 
 use crate::transform::{MirPass, MirSource};
 use rustc_middle::mir::visit::MutVisitor;
-use rustc_middle::mir::{BodyAndCache, BorrowKind, Location, Rvalue};
+use rustc_middle::mir::{BodyAndCache, BorrowKind, Location, Op};
 use rustc_middle::mir::{Statement, StatementKind};
 use rustc_middle::ty::TyCtxt;
 
@@ -44,7 +44,7 @@ impl<'tcx> MutVisitor<'tcx> for DeleteNonCodegenStatements<'tcx> {
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::AscribeUserType(..)
-            | StatementKind::Assign(box (_, Rvalue::Ref(_, BorrowKind::Shallow, _)))
+            | StatementKind::Assign(box (_, Op::Ref(_, BorrowKind::Shallow, _)))
             | StatementKind::FakeRead(..) => statement.make_nop(),
             _ => (),
         }

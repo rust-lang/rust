@@ -228,9 +228,9 @@ struct TransformVisitor<'tcx> {
 
 impl TransformVisitor<'tcx> {
     // Make a GeneratorState rvalue
-    fn make_state(&self, idx: VariantIdx, val: Operand<'tcx>) -> Rvalue<'tcx> {
+    fn make_state(&self, idx: VariantIdx, val: Operand<'tcx>) -> Op<'tcx> {
         let adt = AggregateKind::Adt(self.state_adt_ref, idx, self.state_substs, None, None);
-        Rvalue::Aggregate(box adt, vec![val])
+        Op::Aggregate(box adt, vec![val])
     }
 
     // Create a Place referencing a generator struct field
@@ -264,7 +264,7 @@ impl TransformVisitor<'tcx> {
         let self_place = Place::from(SELF_ARG);
         let assign = Statement {
             source_info: source_info(body),
-            kind: StatementKind::Assign(box (temp, Rvalue::Discriminant(self_place))),
+            kind: StatementKind::Assign(box (temp, Op::Discriminant(self_place))),
         };
         (assign, temp)
     }
@@ -1193,7 +1193,7 @@ fn create_cases<'tcx>(
                         source_info,
                         kind: StatementKind::Assign(box (
                             point.resume_arg,
-                            Rvalue::Use(Operand::Move(resume_arg.into())),
+                            Op::Use(Operand::Move(resume_arg.into())),
                         )),
                     });
                 }
@@ -1271,7 +1271,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                 source_info,
                 kind: StatementKind::Assign(box (
                     new_resume_local.into(),
-                    Rvalue::Use(Operand::Move(resume_local.into())),
+                    Op::Use(Operand::Move(resume_local.into())),
                 )),
             },
         );

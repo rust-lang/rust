@@ -392,7 +392,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+    fn visit_rvalue(&mut self, rvalue: &Op<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
         let rval_ty = rvalue.ty(self.body, self.tcx());
         self.sanitize_type(rvalue, rval_ty);
@@ -1975,17 +1975,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_rvalue(
         &mut self,
         body: ReadOnlyBodyAndCache<'_, 'tcx>,
-        rvalue: &Rvalue<'tcx>,
+        rvalue: &Op<'tcx>,
         location: Location,
     ) {
         let tcx = self.tcx();
 
         match rvalue {
-            Rvalue::Aggregate(ak, ops) => {
-                self.check_aggregate_rvalue(&body, rvalue, ak, ops, location)
-            }
+            Op::Aggregate(ak, ops) => self.check_aggregate_rvalue(&body, rvalue, ak, ops, location),
 
-            Rvalue::Repeat(operand, len) => {
+            Op::Repeat(operand, len) => {
                 // If the length cannot be evaluated we must assume that the length can be larger
                 // than 1.
                 // If the length is larger than 1, the repeat expression will need to copy the
@@ -2037,7 +2035,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
 
-            Rvalue::NullaryOp(_, ty) => {
+            Op::NullaryOp(_, ty) => {
                 // Even with unsized locals cannot box an unsized value.
                 if self.tcx().features().unsized_locals {
                     let span = body.source_info(location).span;
@@ -2056,7 +2054,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 );
             }
 
-            Rvalue::Cast(cast_kind, op, ty) => {
+            Op::Cast(cast_kind, op, ty) => {
                 match cast_kind {
                     CastKind::Pointer(PointerCast::ReifyFnPointer) => {
                         let fn_sig = op.ty(*body, tcx).fn_sig(tcx);
@@ -2289,16 +2287,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
 
-            Rvalue::Ref(region, _borrow_kind, borrowed_place) => {
+            Op::Ref(region, _borrow_kind, borrowed_place) => {
                 self.add_reborrow_constraint(&body, location, region, borrowed_place);
             }
 
-            Rvalue::BinaryOp(BinOp::Eq, left, right)
-            | Rvalue::BinaryOp(BinOp::Ne, left, right)
-            | Rvalue::BinaryOp(BinOp::Lt, left, right)
-            | Rvalue::BinaryOp(BinOp::Le, left, right)
-            | Rvalue::BinaryOp(BinOp::Gt, left, right)
-            | Rvalue::BinaryOp(BinOp::Ge, left, right) => {
+            Op::BinaryOp(BinOp::Eq, left, right)
+            | Op::BinaryOp(BinOp::Ne, left, right)
+            | Op::BinaryOp(BinOp::Lt, left, right)
+            | Op::BinaryOp(BinOp::Le, left, right)
+            | Op::BinaryOp(BinOp::Gt, left, right)
+            | Op::BinaryOp(BinOp::Ge, left, right) => {
                 let ty_left = left.ty(*body, tcx);
                 if let ty::RawPtr(_) | ty::FnPtr(_) = ty_left.kind {
                     let ty_right = right.ty(*body, tcx);
@@ -2333,34 +2331,34 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
 
-            Rvalue::AddressOf(..)
-            | Rvalue::Use(..)
-            | Rvalue::Len(..)
-            | Rvalue::BinaryOp(..)
-            | Rvalue::CheckedBinaryOp(..)
-            | Rvalue::UnaryOp(..)
-            | Rvalue::Discriminant(..) => {}
+            Op::AddressOf(..)
+            | Op::Use(..)
+            | Op::Len(..)
+            | Op::BinaryOp(..)
+            | Op::CheckedBinaryOp(..)
+            | Op::UnaryOp(..)
+            | Op::Discriminant(..) => {}
         }
     }
 
     /// If this rvalue supports a user-given type annotation, then
     /// extract and return it. This represents the final type of the
     /// rvalue and will be unified with the inferred type.
-    fn rvalue_user_ty(&self, rvalue: &Rvalue<'tcx>) -> Option<UserTypeAnnotationIndex> {
+    fn rvalue_user_ty(&self, rvalue: &Op<'tcx>) -> Option<UserTypeAnnotationIndex> {
         match rvalue {
-            Rvalue::Use(_)
-            | Rvalue::Repeat(..)
-            | Rvalue::Ref(..)
-            | Rvalue::AddressOf(..)
-            | Rvalue::Len(..)
-            | Rvalue::Cast(..)
-            | Rvalue::BinaryOp(..)
-            | Rvalue::CheckedBinaryOp(..)
-            | Rvalue::NullaryOp(..)
-            | Rvalue::UnaryOp(..)
-            | Rvalue::Discriminant(..) => None,
+            Op::Use(_)
+            | Op::Repeat(..)
+            | Op::Ref(..)
+            | Op::AddressOf(..)
+            | Op::Len(..)
+            | Op::Cast(..)
+            | Op::BinaryOp(..)
+            | Op::CheckedBinaryOp(..)
+            | Op::NullaryOp(..)
+            | Op::UnaryOp(..)
+            | Op::Discriminant(..) => None,
 
-            Rvalue::Aggregate(aggregate, _) => match **aggregate {
+            Op::Aggregate(aggregate, _) => match **aggregate {
                 AggregateKind::Adt(_, _, _, user_ty, _) => user_ty,
                 AggregateKind::Array(_) => None,
                 AggregateKind::Tuple => None,
@@ -2373,7 +2371,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_aggregate_rvalue(
         &mut self,
         body: &Body<'tcx>,
-        rvalue: &Rvalue<'tcx>,
+        rvalue: &Op<'tcx>,
         aggregate_kind: &AggregateKind<'tcx>,
         operands: &[Operand<'tcx>],
         location: Location,

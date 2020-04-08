@@ -463,7 +463,7 @@ impl Inliner<'tcx> {
 
                 let dest = if dest_needs_borrow(destination.0) {
                     debug!("creating temp for return destination");
-                    let dest = Rvalue::Ref(
+                    let dest = Op::Ref(
                         self.tcx.lifetimes.re_erased,
                         BorrowKind::Mut { allow_two_phase_borrow: false },
                         destination.0,
@@ -618,7 +618,7 @@ impl Inliner<'tcx> {
 
         debug!("creating temp for argument {:?}", arg);
         // Otherwise, create a temporary for the arg
-        let arg = Rvalue::Use(arg);
+        let arg = Op::Use(arg);
 
         let ty = arg.ty(&**caller_body, self.tcx);
 

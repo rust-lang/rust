@@ -63,7 +63,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let constant = this.as_constant(expr);
                 block.and(Operand::Constant(box constant))
             }
-            Category::Place | Category::Rvalue(..) => {
+            Category::Place | Category::Op(..) => {
                 let operand = unpack!(block = this.as_temp(block, scope, expr, Mutability::Mut));
                 block.and(Operand::Move(Place::from(operand)))
             }

@@ -70,7 +70,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
             match &mut s0.kind {
                 StatementKind::Assign(box (place, rvalue)) => {
                     *place = local_0.into();
-                    *rvalue = Rvalue::Use(Operand::Move(local_1.into()));
+                    *rvalue = Op::Use(Operand::Move(local_1.into()));
                 }
                 _ => unreachable!(),
             }
@@ -87,7 +87,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
 fn match_get_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local, VarField<'tcx>)> {
     match &stmt.kind {
         StatementKind::Assign(box (place_into, rvalue_from)) => match rvalue_from {
-            Rvalue::Use(Operand::Copy(pf)) | Rvalue::Use(Operand::Move(pf)) => {
+            Op::Use(Operand::Copy(pf)) | Op::Use(Operand::Move(pf)) => {
                 let local_into = place_into.as_local()?;
                 let (local_from, vf) = match_variant_field_place(*pf)?;
                 Some((local_into, local_from, vf))
@@ -105,7 +105,7 @@ fn match_get_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local
 fn match_set_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local, VarField<'tcx>)> {
     match &stmt.kind {
         StatementKind::Assign(box (place_from, rvalue_into)) => match rvalue_into {
-            Rvalue::Use(Operand::Move(place_into)) => {
+            Op::Use(Operand::Move(place_into)) => {
                 let local_into = place_into.as_local()?;
                 let (local_from, vf) = match_variant_field_place(*place_from)?;
                 Some((local_into, local_from, vf))

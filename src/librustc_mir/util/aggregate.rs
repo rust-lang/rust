@@ -5,7 +5,7 @@ use rustc_target::abi::VariantIdx;
 
 use std::iter::TrustedLen;
 
-/// Expand `lhs = Rvalue::Aggregate(kind, operands)` into assignments to the fields.
+/// Expand `lhs = Op::Aggregate(kind, operands)` into assignments to the fields.
 ///
 /// Produces something like
 ///
@@ -68,7 +68,7 @@ pub fn expand_aggregate<'tcx>(
                 let field = Field::new(active_field_index.unwrap_or(i));
                 tcx.mk_place_field(lhs.clone(), field, ty)
             };
-            Statement { source_info, kind: StatementKind::Assign(box (lhs_field, Rvalue::Use(op))) }
+            Statement { source_info, kind: StatementKind::Assign(box (lhs_field, Op::Use(op))) }
         })
         .chain(set_discriminant)
 }
