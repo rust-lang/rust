@@ -699,7 +699,7 @@ declare_clippy_lint! {
     /// ["foo", "bar"].iter().map(|&s| s.to_string());
     /// ```
     pub INEFFICIENT_TO_STRING,
-    perf,
+    pedantic,
     "using `to_string` on `&&T` where `T: ToString`"
 }
 
