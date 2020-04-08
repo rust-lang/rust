@@ -38,4 +38,7 @@ fn main() {
     let _ = Some(1_usize).as_ref().map(|x| vc[*x].as_str()); // should not be linted
 
     let _: Option<&str> = Some(&String::new()).as_ref().map(|x| x.as_str()); // should not be linted
+
+    let _ = opt.as_ref().map(|x| &**x);
+    let _ = opt.as_mut().map(|x| &mut **x);
 }
