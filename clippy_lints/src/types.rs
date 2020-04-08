@@ -2169,7 +2169,7 @@ declare_clippy_lint! {
     /// pub fn foo<S: BuildHasher>(map: &mut HashMap<i32, i32, S>) { }
     /// ```
     pub IMPLICIT_HASHER,
-    style,
+    pedantic,
     "missing generalization over different hashers"
 }
 
