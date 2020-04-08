@@ -2480,8 +2480,7 @@ impl<'a> Resolver<'a> {
             let (span, found_use) = UsePlacementFinder::check(krate, node_id);
             if !candidates.is_empty() {
                 diagnostics::show_candidates(&mut err, span, &candidates, better, found_use);
-            }
-            if let Some((span, msg, sugg, appl)) = suggestion {
+            } else if let Some((span, msg, sugg, appl)) = suggestion {
                 err.span_suggestion(span, msg, sugg, appl);
             }
             err.emit();
