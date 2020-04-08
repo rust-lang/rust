@@ -1,6 +1,6 @@
 #![warn(clippy::wrong_self_convention)]
 #![warn(clippy::wrong_pub_self_convention)]
-#![allow(dead_code, clippy::trivially_copy_pass_by_ref)]
+#![allow(dead_code)]
 
 fn main() {}
 

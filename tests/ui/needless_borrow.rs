@@ -2,7 +2,6 @@
 
 #![allow(clippy::needless_borrowed_reference)]
 
-#[allow(clippy::trivially_copy_pass_by_ref)]
 fn x(y: &i32) -> i32 {
     *y
 }

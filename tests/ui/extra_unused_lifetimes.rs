@@ -2,8 +2,7 @@
     unused,
     dead_code,
     clippy::needless_lifetimes,
-    clippy::needless_pass_by_value,
-    clippy::trivially_copy_pass_by_ref
+    clippy::needless_pass_by_value
 )]
 #![warn(clippy::extra_unused_lifetimes)]
 

@@ -1,5 +1,5 @@
 #![warn(clippy::needless_lifetimes)]
-#![allow(dead_code, clippy::needless_pass_by_value, clippy::trivially_copy_pass_by_ref)]
+#![allow(dead_code, clippy::needless_pass_by_value)]
 
 fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
 
