@@ -2,7 +2,6 @@
 
 use std::mem::MaybeUninit;
 
-#[allow(clippy::let_unit_value)]
 fn main() {
     let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
 
