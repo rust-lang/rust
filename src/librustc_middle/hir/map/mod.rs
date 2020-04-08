@@ -150,7 +150,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn def_path_from_hir_id(&self, id: HirId) -> Option<DefPath> {
-        self.opt_local_def_id(id).map(|def_id| self.def_path(def_id.expect_local()))
+        self.opt_local_def_id(id).map(|def_id| self.def_path(def_id))
     }
 
     pub fn def_path(&self, def_id: LocalDefId) -> DefPath {
@@ -175,19 +175,21 @@ impl<'hir> Map<'hir> {
     // FIXME(eddyb) this function can and should return `LocalDefId`.
     #[inline]
     pub fn local_def_id(&self, hir_id: HirId) -> DefId {
-        self.opt_local_def_id(hir_id).unwrap_or_else(|| {
-            bug!(
-                "local_def_id: no entry for `{:?}`, which has a map of `{:?}`",
-                hir_id,
-                self.find_entry(hir_id)
-            )
-        })
+        self.opt_local_def_id(hir_id)
+            .unwrap_or_else(|| {
+                bug!(
+                    "local_def_id: no entry for `{:?}`, which has a map of `{:?}`",
+                    hir_id,
+                    self.find_entry(hir_id)
+                )
+            })
+            .to_def_id()
     }
 
     #[inline]
-    pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<DefId> {
+    pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<LocalDefId> {
         let node_id = self.hir_id_to_node_id(hir_id);
-        Some(self.opt_local_def_id_from_node_id(node_id)?.to_def_id())
+        self.opt_local_def_id_from_node_id(node_id)
     }
 
     #[inline]

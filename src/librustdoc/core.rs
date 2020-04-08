@@ -152,12 +152,15 @@ impl<'tcx> DocContext<'tcx> {
         self.tcx
             .hir()
             .opt_local_def_id(id)
-            .and_then(|def_id| self.tcx.lookup_stability(def_id))
+            .and_then(|def_id| self.tcx.lookup_stability(def_id.to_def_id()))
             .cloned()
     }
 
     pub fn deprecation(&self, id: HirId) -> Option<attr::Deprecation> {
-        self.tcx.hir().opt_local_def_id(id).and_then(|def_id| self.tcx.lookup_deprecation(def_id))
+        self.tcx
+            .hir()
+            .opt_local_def_id(id)
+            .and_then(|def_id| self.tcx.lookup_deprecation(def_id.to_def_id()))
     }
 }
 
