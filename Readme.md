@@ -25,8 +25,10 @@ If you compiled cg_clif in debug mode you should use `CHANNEL="debug"` instead o
 
 ### Rustc
 
+> You should prefer using the Cargo method.
+
 ```bash
-$ rustc -Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/release/librustc_codegen_cranelift.so --sysroot $cg_clif_dir/build_sysroot/sysroot my_crate.rs
+$ rustc +$(cat $cg_clif_dir/rust-toolchain) -Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/release/librustc_codegen_cranelift.so --sysroot $cg_clif_dir/build_sysroot/sysroot my_crate.rs
 ```
 
 ## Env vars
