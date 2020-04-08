@@ -706,13 +706,13 @@ fn check_where_clauses<'tcx, 'fcx>(
                         return default_ty.into();
                     }
                 }
-                // Mark unwanted params as error.
-                fcx.tcx.types.err.into()
+
+                fcx.tcx.mk_param_from_def(param)
             }
 
             GenericParamDefKind::Const => {
                 // FIXME(const_generics:defaults)
-                fcx.tcx.consts.err.into()
+                fcx.tcx.mk_param_from_def(param)
             }
         }
     });
@@ -750,7 +750,10 @@ fn check_where_clauses<'tcx, 'fcx>(
             let substituted_pred = pred.subst(fcx.tcx, substs);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
-            if substituted_pred.references_error() || param_count.params.len() > 1 || has_region {
+            if substituted_pred.has_param_types_or_consts()
+                || param_count.params.len() > 1
+                || has_region
+            {
                 None
             } else if predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
                 // Avoid duplication of predicates that contain no parameters, for example.

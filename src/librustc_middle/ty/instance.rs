@@ -91,7 +91,7 @@ impl<'tcx> Instance<'tcx> {
         // There shouldn't be any params - if there are, then
         // Instance.ty_env should have been used to provide the proper
         // ParamEnv
-        if self.substs.has_param_types() {
+        if self.substs.has_param_types_or_consts() {
             bug!("Instance.ty called for type {:?} with params in substs: {:?}", ty, self.substs);
         }
         tcx.subst_and_normalize_erasing_regions(self.substs, ty::ParamEnv::reveal_all(), &ty)

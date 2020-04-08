@@ -367,6 +367,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
 pub fn hir_trait_to_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_trait: &hir::TraitRef<'_>,
+    self_ty: Ty<'tcx>,
 ) -> Bounds<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
@@ -380,7 +381,7 @@ pub fn hir_trait_to_predicates<'tcx>(
         hir_trait,
         DUMMY_SP,
         hir::Constness::NotConst,
-        tcx.types.err,
+        self_ty,
         &mut bounds,
         true,
     );
