@@ -1360,8 +1360,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let min = before.len() as u64 + after.len() as u64;
                 let (opt_slice_ty, expected) =
                     self.check_array_pat_len(span, element_ty, expected, slice, len, min);
-                // we can get opt_slice_ty == None in cases that are not an error, e.g. if the
-                // slice covers 0 elements or if slice is None.
+                // opt_slice_ty.is_none() => slice.is_none()
+                // Note, though, that opt_slice_ty could be Some(error_ty).
+                assert!(opt_slice_ty.is_some() || slice.is_none());
                 (element_ty, opt_slice_ty, expected)
             }
             ty::Slice(element_ty) => (element_ty, Some(expected), expected),
@@ -1371,7 +1372,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.error_expected_array_or_slice(span, expected);
                 }
                 let err = self.tcx.types.err;
-                (err, None, err)
+                (err, Some(err), err)
             }
         };
 
@@ -1379,9 +1380,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for elt in before {
             self.check_pat(&elt, element_ty, def_bm, ti);
         }
-        // Type check the `slice`, if present, against its expected type, if there is one.
-        if let (Some(slice), Some(slice_ty)) = (slice, opt_slice_ty) {
-            self.check_pat(&slice, slice_ty, def_bm, ti);
+        // Type check the `slice`, if present, against its expected type.
+        if let Some(slice) = slice {
+            self.check_pat(&slice, opt_slice_ty.unwrap(), def_bm, ti);
         }
         // Type check the elements after `slice`, if present.
         for elt in after {
@@ -1393,7 +1394,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Type check the length of an array pattern.
     ///
     /// Returns both the type of the variable length pattern (or `None`), and the potentially
-    /// inferred array type.
+    /// inferred array type. We should only return `None` for the slice type if `slice.is_none()`.
     fn check_array_pat_len(
         &self,
         span: Span,
@@ -1409,9 +1410,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // ...and since there is no variable-length pattern,
                 // we require an exact match between the number of elements
                 // in the array pattern and as provided by the matched type.
-                if min_len != len {
-                    self.error_scrutinee_inconsistent_length(span, min_len, len);
+                if min_len == len {
+                    return (None, arr_ty);
                 }
+
+                self.error_scrutinee_inconsistent_length(span, min_len, len);
             } else if let Some(pat_len) = len.checked_sub(min_len) {
                 // The variable-length pattern was there,
                 // so it has an array type with the remaining elements left as its size...
@@ -1433,7 +1436,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `let [a, b, ..] = arr` where `arr: [T; N]` where `const N: usize`.
             self.error_scrutinee_unfixed_length(span);
         }
-        (None, arr_ty)
+
+        // If we get here, we must have emitted an error.
+        (Some(self.tcx.types.err), arr_ty)
     }
 
     fn error_scrutinee_inconsistent_length(&self, span: Span, min_len: u64, size: u64) {
