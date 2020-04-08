@@ -8,8 +8,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 declare_clippy_lint! {
     /// **What it does:** Checks for `0.0 / 0.0`.
     ///
-    /// **Why is this bad?** It's less readable than `std::f32::NAN` or
-    /// `std::f64::NAN`.
+    /// **Why is this bad?** It's less readable than `f32::NAN` or `f64::NAN`.
     ///
     /// **Known problems:** None.
     ///
@@ -19,7 +18,7 @@ declare_clippy_lint! {
     /// ```
     pub ZERO_DIVIDED_BY_ZERO,
     complexity,
-    "usage of `0.0 / 0.0` to obtain NaN instead of `std::f32::NAN` or `std::f64::NAN`"
+    "usage of `0.0 / 0.0` to obtain NaN instead of `f32::NAN` or `f64::NAN`"
 }
 
 declare_lint_pass!(ZeroDiv => [ZERO_DIVIDED_BY_ZERO]);
@@ -38,7 +37,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ZeroDiv {
             if Constant::F32(0.0) == lhs_value || Constant::F64(0.0) == lhs_value;
             if Constant::F32(0.0) == rhs_value || Constant::F64(0.0) == rhs_value;
             then {
-                // since we're about to suggest a use of std::f32::NaN or std::f64::NaN,
+                // since we're about to suggest a use of f32::NAN or f64::NAN,
                 // match the precision of the literals that are given.
                 let float_type = match (lhs_value, rhs_value) {
                     (Constant::F64(_), _)
@@ -51,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ZeroDiv {
                     expr.span,
                     "constant division of `0.0` with `0.0` will always result in NaN",
                     &format!(
-                        "Consider using `std::{}::NAN` if you would like a constant representing NaN",
+                        "Consider using `{}::NAN` if you would like a constant representing NaN",
                         float_type,
                     ),
                 );

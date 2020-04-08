@@ -69,7 +69,7 @@ error: this `if` has identical blocks
 LL |       } else {
    |  ____________^
 LL | |         //~ ERROR same body as `if` block
-LL | |         std::f32::NAN
+LL | |         f32::NAN
 LL | |     };
    | |_____^
    |
@@ -78,7 +78,7 @@ note: same as this
    |
 LL |       let _ = if true {
    |  _____________________^
-LL | |         std::f32::NAN
+LL | |         f32::NAN
 LL | |     } else {
    | |_____^
 

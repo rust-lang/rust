@@ -25,13 +25,13 @@ declare_clippy_lint! {
     ///
     /// // Bad
     /// let a = 1.0;
-    /// let b = std::f64::NAN;
+    /// let b = f64::NAN;
     ///
     /// let _not_less_or_equal = !(a <= b);
     ///
     /// // Good
     /// let a = 1.0;
-    /// let b = std::f64::NAN;
+    /// let b = f64::NAN;
     ///
     /// let _not_less_or_equal = match a.partial_cmp(&b) {
     ///     None | Some(Ordering::Greater) => true,

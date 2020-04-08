@@ -2526,7 +2526,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "zero_divided_by_zero",
         group: "complexity",
-        desc: "usage of `0.0 / 0.0` to obtain NaN instead of `std::f32::NAN` or `std::f64::NAN`",
+        desc: "usage of `0.0 / 0.0` to obtain NaN instead of `f32::NAN` or `f64::NAN`",
         deprecation: None,
         module: "zero_div_zero",
     },

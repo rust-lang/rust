@@ -57,10 +57,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// # use core::f32::NAN;
     /// # let x = 1.0;
     ///
-    /// if x == NAN { }
+    /// if x == f32::NAN { }
     /// ```
     pub CMP_NAN,
     correctness,
@@ -389,7 +388,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                             ),
                             Applicability::HasPlaceholders, // snippet
                         );
-                        db.span_note(expr.span, "`std::f32::EPSILON` and `std::f64::EPSILON` are available.");
+                        db.span_note(expr.span, "`f32::EPSILON` and `f64::EPSILON` are available.");
                     });
                 } else if op == BinOpKind::Rem && is_integer_const(cx, right, 1) {
                     span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
@@ -457,7 +456,7 @@ fn check_nan(cx: &LateContext<'_, '_>, expr: &Expr<'_>, cmp_expr: &Expr<'_>) {
                     cx,
                     CMP_NAN,
                     cmp_expr.span,
-                    "doomed comparison with `NAN`, use `std::{f32,f64}::is_nan()` instead",
+                    "doomed comparison with `NAN`, use `{f32,f64}::is_nan()` instead",
                 );
             }
         }

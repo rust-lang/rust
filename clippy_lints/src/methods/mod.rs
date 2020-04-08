@@ -1138,8 +1138,8 @@ declare_clippy_lint! {
     /// ```rust
     /// # let y: u32 = 0;
     /// # let x: u32 = 100;
-    /// let add = x.checked_add(y).unwrap_or(u32::max_value());
-    /// let sub = x.checked_sub(y).unwrap_or(u32::min_value());
+    /// let add = x.checked_add(y).unwrap_or(u32::MAX);
+    /// let sub = x.checked_sub(y).unwrap_or(u32::MIN);
     /// ```
     ///
     /// can be written using dedicated methods for saturating addition/subtraction as:
