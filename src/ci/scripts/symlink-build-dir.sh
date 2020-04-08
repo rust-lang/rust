@@ -24,4 +24,10 @@ elif isLinux && isGitHubActions; then
     mv "${current_dir}" /mnt/more-space/workspace
     ln -s /mnt/more-space/workspace "${current_dir}"
     cd "${current_dir}"
+
+    # Move the Docker data directory to /mnt
+    sudo systemctl stop docker.service
+    sudo mv /var/lib/docker /mnt/docker
+    sudo ln -s /mnt/docker /var/lib/docker
+    sudo systemctl start docker.service
 fi
