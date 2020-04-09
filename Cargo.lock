@@ -1081,6 +1081,7 @@ version = "0.1.0"
 dependencies = [
  "cargo_metadata",
  "difference",
+ "ra_mbe",
  "ra_proc_macro",
  "ra_tt",
  "serde_derive",
