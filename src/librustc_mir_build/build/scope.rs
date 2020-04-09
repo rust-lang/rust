@@ -523,7 +523,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 unpack!(block = self.into(destination, block, value));
                 self.block_context.pop();
             } else {
-                self.cfg.push_assign_unit(block, source_info, destination)
+                self.cfg.push_assign_unit(block, source_info, destination, self.hir.tcx())
             }
         } else {
             assert!(value.is_none(), "`return` and `break` should have a destination");
