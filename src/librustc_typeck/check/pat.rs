@@ -1360,8 +1360,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let min = before.len() as u64 + after.len() as u64;
                 let (opt_slice_ty, expected) =
                     self.check_array_pat_len(span, element_ty, expected, slice, len, min);
-                // opt_slice_ty.is_none() => slice.is_none()
-                // Note, though, that opt_slice_ty could be Some(error_ty).
+                // `opt_slice_ty.is_none()` => `slice.is_none()`.
+                // Note, though, that opt_slice_ty could be `Some(error_ty)`.
                 assert!(opt_slice_ty.is_some() || slice.is_none());
                 (element_ty, opt_slice_ty, expected)
             }
@@ -1394,7 +1394,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Type check the length of an array pattern.
     ///
     /// Returns both the type of the variable length pattern (or `None`), and the potentially
-    /// inferred array type. We should only return `None` for the slice type if `slice.is_none()`.
+    /// inferred array type. We only return `None` for the slice type if `slice.is_none()`.
     fn check_array_pat_len(
         &self,
         span: Span,
