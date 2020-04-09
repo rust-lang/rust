@@ -5,9 +5,7 @@ use itertools::Itertools;
 use ra_parser::SyntaxKind;
 
 use crate::{
-    ast::{
-        self, child_opt, children, support, AstNode, AstToken, AttrInput, NameOwner, SyntaxNode,
-    },
+    ast::{self, support, AstNode, AstToken, AttrInput, NameOwner, SyntaxNode},
     SmolStr, SyntaxElement, SyntaxToken, T,
 };
 
@@ -161,7 +159,7 @@ impl ast::ImplDef {
     }
 
     fn target(&self) -> (Option<ast::TypeRef>, Option<ast::TypeRef>) {
-        let mut types = children(self);
+        let mut types = support::children(self.syntax());
         let first = types.next();
         let second = types.next();
         (first, second)
@@ -177,9 +175,9 @@ pub enum StructKind {
 
 impl StructKind {
     fn from_node<N: AstNode>(node: &N) -> StructKind {
-        if let Some(nfdl) = child_opt::<_, ast::RecordFieldDefList>(node) {
+        if let Some(nfdl) = support::child::<ast::RecordFieldDefList>(node.syntax()) {
             StructKind::Record(nfdl)
-        } else if let Some(pfl) = child_opt::<_, ast::TupleFieldDefList>(node) {
+        } else if let Some(pfl) = support::child::<ast::TupleFieldDefList>(node.syntax()) {
             StructKind::Tuple(pfl)
         } else {
             StructKind::Unit
@@ -322,9 +320,9 @@ pub enum TypeBoundKind {
 
 impl ast::TypeBound {
     pub fn kind(&self) -> TypeBoundKind {
-        if let Some(path_type) = children(self).next() {
+        if let Some(path_type) = support::children(self.syntax()).next() {
             TypeBoundKind::PathType(path_type)
-        } else if let Some(for_type) = children(self).next() {
+        } else if let Some(for_type) = support::children(self.syntax()).next() {
             TypeBoundKind::ForType(for_type)
         } else if let Some(lifetime) = self.lifetime_token() {
             TypeBoundKind::Lifetime(lifetime)
@@ -364,7 +362,7 @@ pub enum VisibilityKind {
 
 impl ast::Visibility {
     pub fn kind(&self) -> VisibilityKind {
-        if let Some(path) = children(self).next() {
+        if let Some(path) = support::children(self.syntax()).next() {
             VisibilityKind::In(path)
         } else if self.crate_kw_token().is_some() {
             VisibilityKind::PubCrate

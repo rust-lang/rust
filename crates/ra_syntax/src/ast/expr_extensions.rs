@@ -1,7 +1,7 @@
 //! Various extension methods to ast Expr Nodes, which are hard to code-generate.
 
 use crate::{
-    ast::{self, child_opt, children, AstChildren, AstNode},
+    ast::{self, support, AstChildren, AstNode},
     SmolStr,
     SyntaxKind::*,
     SyntaxToken, T,
@@ -36,7 +36,7 @@ impl ast::IfExpr {
         let res = match self.blocks().nth(1) {
             Some(block) => ElseBranch::Block(block),
             None => {
-                let elif: ast::IfExpr = child_opt(self)?;
+                let elif: ast::IfExpr = support::child(self.syntax())?;
                 ElseBranch::IfExpr(elif)
             }
         };
@@ -44,7 +44,7 @@ impl ast::IfExpr {
     }
 
     fn blocks(&self) -> AstChildren<ast::BlockExpr> {
-        children(self)
+        support::children(self.syntax())
     }
 }
 
@@ -212,15 +212,15 @@ impl ast::BinExpr {
     }
 
     pub fn lhs(&self) -> Option<ast::Expr> {
-        children(self).next()
+        support::children(self.syntax()).next()
     }
 
     pub fn rhs(&self) -> Option<ast::Expr> {
-        children(self).nth(1)
+        support::children(self.syntax()).nth(1)
     }
 
     pub fn sub_exprs(&self) -> (Option<ast::Expr>, Option<ast::Expr>) {
-        let mut children = children(self);
+        let mut children = support::children(self.syntax());
         let first = children.next();
         let second = children.next();
         (first, second)
@@ -275,10 +275,10 @@ impl ast::RangeExpr {
 
 impl ast::IndexExpr {
     pub fn base(&self) -> Option<ast::Expr> {
-        children(self).next()
+        support::children(self.syntax()).next()
     }
     pub fn index(&self) -> Option<ast::Expr> {
-        children(self).nth(1)
+        support::children(self.syntax()).nth(1)
     }
 }
 
@@ -291,11 +291,11 @@ impl ast::ArrayExpr {
     pub fn kind(&self) -> ArrayExprKind {
         if self.is_repeat() {
             ArrayExprKind::Repeat {
-                initializer: children(self).next(),
-                repeat: children(self).nth(1),
+                initializer: support::children(self.syntax()).next(),
+                repeat: support::children(self.syntax()).nth(1),
             }
         } else {
-            ArrayExprKind::ElementList(children(self))
+            ArrayExprKind::ElementList(support::children(self.syntax()))
         }
     }
 

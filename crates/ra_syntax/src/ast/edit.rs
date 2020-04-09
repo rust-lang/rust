@@ -6,7 +6,7 @@ use std::{iter, ops::RangeInclusive};
 use arrayvec::ArrayVec;
 
 use crate::{
-    algo,
+    algo::{self, neighbor, SyntaxRewriter},
     ast::{
         self,
         make::{self, tokens},
@@ -16,7 +16,6 @@ use crate::{
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken, T,
 };
-use algo::{neighbor, SyntaxRewriter};
 
 impl ast::BinExpr {
     #[must_use]
