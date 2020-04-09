@@ -504,6 +504,7 @@ fn locals_live_across_suspend_points(
             storage_live.seek_before(loc);
             let mut storage_liveness = storage_live.get().clone();
 
+            // Later passes handle the generator's `self` argument separately.
             storage_liveness.remove(SELF_ARG);
 
             // Store the storage liveness for later use so we can restore the state
