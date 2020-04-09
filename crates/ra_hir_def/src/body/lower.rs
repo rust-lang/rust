@@ -4,6 +4,7 @@
 use either::Either;
 
 use hir_expand::{
+    hygiene::Hygiene,
     name::{name, AsName, Name},
     MacroDefId, MacroDefKind,
 };
@@ -20,6 +21,7 @@ use test_utils::tested_by;
 use super::{ExprSource, PatSource};
 use crate::{
     adt::StructKind,
+    attr::Attrs,
     body::{Body, BodySourceMap, Expander, PatPtr, SyntheticSyntax},
     builtin_type::{BuiltinFloat, BuiltinInt},
     db::DefDatabase,
@@ -31,8 +33,8 @@ use crate::{
     path::GenericArgs,
     path::Path,
     type_ref::{Mutability, TypeRef},
-    AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId,
-    StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
+    AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, HasModule, Intern,
+    ModuleDefId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
 
 pub(super) fn lower(
@@ -298,28 +300,41 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
             ast::Expr::RecordLit(e) => {
+                let crate_graph = self.db.crate_graph();
                 let path = e.path().and_then(|path| self.expander.parse_path(path));
                 let mut field_ptrs = Vec::new();
                 let record_lit = if let Some(nfl) = e.record_field_list() {
                     let fields = nfl
                         .fields()
                         .inspect(|field| field_ptrs.push(AstPtr::new(field)))
-                        .map(|field| RecordLitField {
-                            name: field
-                                .name_ref()
-                                .map(|nr| nr.as_name())
-                                .unwrap_or_else(Name::missing),
-                            expr: if let Some(e) = field.expr() {
-                                self.collect_expr(e)
-                            } else if let Some(nr) = field.name_ref() {
-                                // field shorthand
-                                self.alloc_expr_field_shorthand(
-                                    Expr::Path(Path::from_name_ref(&nr)),
-                                    AstPtr::new(&field),
-                                )
-                            } else {
-                                self.missing_expr()
-                            },
+                        .filter_map(|field| {
+                            let module_id = ContainerId::DefWithBodyId(self.def).module(self.db);
+                            let attrs = Attrs::new(
+                                &field,
+                                &Hygiene::new(self.db.upcast(), self.expander.current_file_id),
+                            );
+
+                            if !attrs.is_cfg_enabled(&crate_graph[module_id.krate].cfg_options) {
+                                return None;
+                            }
+
+                            Some(RecordLitField {
+                                name: field
+                                    .name_ref()
+                                    .map(|nr| nr.as_name())
+                                    .unwrap_or_else(Name::missing),
+                                expr: if let Some(e) = field.expr() {
+                                    self.collect_expr(e)
+                                } else if let Some(nr) = field.name_ref() {
+                                    // field shorthand
+                                    self.alloc_expr_field_shorthand(
+                                        Expr::Path(Path::from_name_ref(&nr)),
+                                        AstPtr::new(&field),
+                                    )
+                                } else {
+                                    self.missing_expr()
+                                },
+                            })
                         })
                         .collect();
                     let spread = nfl.spread().map(|s| self.collect_expr(s));

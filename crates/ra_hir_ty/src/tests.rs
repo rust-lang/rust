@@ -349,3 +349,63 @@ fn no_such_field_with_feature_flag_diagnostics() {
 
     assert_snapshot!(diagnostics, @r###""###);
 }
+
+#[test]
+fn no_such_field_with_feature_flag_diagnostics_on_struct_lit() {
+    let diagnostics = TestDB::with_files(
+        r#"
+        //- /lib.rs crate:foo cfg:feature=foo
+        struct S {
+            #[cfg(feature = "foo")]
+            foo: u32,
+            #[cfg(not(feature = "foo"))]
+            bar: u32,
+        }
+
+        impl S {
+            #[cfg(feature = "foo")]
+            fn new(foo: u32) -> Self {
+                Self { foo }
+            }
+            #[cfg(not(feature = "foo"))] 
+            fn new(bar: u32) -> Self {
+                Self { bar }
+            }
+        }
+        "#,
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r###""###);
+}
+
+#[test]
+fn no_such_field_with_feature_flag_diagnostics_on_struct_fields() {
+    let diagnostics = TestDB::with_files(
+        r#"
+        //- /lib.rs crate:foo cfg:feature=foo
+        struct S {
+            #[cfg(feature = "foo")]
+            foo: u32,
+            #[cfg(not(feature = "foo"))]
+            bar: u32,
+        }
+
+        impl S {
+            fn new(val: u32) -> Self {
+                Self {
+                    #[cfg(feature = "foo")]
+                    foo: val,
+                    #[cfg(not(feature = "foo"))]
+                    bar: val,
+                }
+            }
+        }
+        "#,
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r###""###);
+}

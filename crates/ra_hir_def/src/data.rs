@@ -7,7 +7,6 @@ use hir_expand::{
     name::{name, AsName, Name},
     AstId, InFile,
 };
-use ra_cfg::CfgOptions;
 use ra_prof::profile;
 use ra_syntax::ast::{
     self, AstNode, ImplItem, ModuleItemOwner, NameOwner, TypeAscriptionOwner, VisibilityOwner,
@@ -318,10 +317,6 @@ fn collect_impl_items_in_macro(
     }
 }
 
-fn is_cfg_enabled(cfg_options: &CfgOptions, attrs: &Attrs) -> bool {
-    attrs.by_key("cfg").tt_values().all(|tt| cfg_options.is_cfg_enabled(tt) != Some(false))
-}
-
 fn collect_impl_items(
     db: &dyn DefDatabase,
     impl_items: impl Iterator<Item = ImplItem>,
@@ -341,10 +336,11 @@ fn collect_impl_items(
                 }
                 .intern(db);
 
-                if !is_cfg_enabled(
-                    &crate_graph[module_id.krate].cfg_options,
-                    &db.function_data(def).attrs,
-                ) {
+                if !db
+                    .function_data(def)
+                    .attrs
+                    .is_cfg_enabled(&crate_graph[module_id.krate].cfg_options)
+                {
                     None
                 } else {
                     Some(def.into())

@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use either::Either;
 use hir_expand::{
+    hygiene::Hygiene,
     name::{AsName, Name},
     InFile,
 };
@@ -12,9 +13,9 @@ use ra_prof::profile;
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner, VisibilityOwner};
 
 use crate::{
-    db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace, type_ref::TypeRef,
-    visibility::RawVisibility, EnumId, LocalEnumVariantId, LocalStructFieldId, Lookup, StructId,
-    UnionId, VariantId,
+    attr::Attrs, db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace,
+    type_ref::TypeRef, visibility::RawVisibility, EnumId, HasModule, LocalEnumVariantId,
+    LocalStructFieldId, Lookup, ModuleId, StructId, UnionId, VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -56,7 +57,8 @@ impl StructData {
         let src = id.lookup(db).source(db);
 
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
-        let variant_data = VariantData::new(db, src.map(|s| s.kind()));
+        let variant_data =
+            VariantData::new(db, src.map(|s| s.kind()), id.lookup(db).container.module(db));
         let variant_data = Arc::new(variant_data);
         Arc::new(StructData { name, variant_data })
     }
@@ -70,6 +72,7 @@ impl StructData {
                     .map(ast::StructKind::Record)
                     .unwrap_or(ast::StructKind::Unit)
             }),
+            id.lookup(db).container.module(db),
         );
         let variant_data = Arc::new(variant_data);
         Arc::new(StructData { name, variant_data })
@@ -82,7 +85,7 @@ impl EnumData {
         let src = e.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let mut trace = Trace::new_for_arena();
-        lower_enum(db, &mut trace, &src);
+        lower_enum(db, &mut trace, &src, e.lookup(db).container.module(db));
         Arc::new(EnumData { name, variants: trace.into_arena() })
     }
 
@@ -98,7 +101,7 @@ impl HasChildSource for EnumId {
     fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
         let src = self.lookup(db).source(db);
         let mut trace = Trace::new_for_map();
-        lower_enum(db, &mut trace, &src);
+        lower_enum(db, &mut trace, &src, self.lookup(db).container.module(db));
         src.with_value(trace.into_map())
     }
 }
@@ -107,22 +110,23 @@ fn lower_enum(
     db: &dyn DefDatabase,
     trace: &mut Trace<EnumVariantData, ast::EnumVariant>,
     ast: &InFile<ast::EnumDef>,
+    module_id: ModuleId,
 ) {
     for var in ast.value.variant_list().into_iter().flat_map(|it| it.variants()) {
         trace.alloc(
             || var.clone(),
             || EnumVariantData {
                 name: var.name().map_or_else(Name::missing, |it| it.as_name()),
-                variant_data: Arc::new(VariantData::new(db, ast.with_value(var.kind()))),
+                variant_data: Arc::new(VariantData::new(db, ast.with_value(var.kind()), module_id)),
             },
         );
     }
 }
 
 impl VariantData {
-    fn new(db: &dyn DefDatabase, flavor: InFile<ast::StructKind>) -> Self {
+    fn new(db: &dyn DefDatabase, flavor: InFile<ast::StructKind>, module_id: ModuleId) -> Self {
         let mut trace = Trace::new_for_arena();
-        match lower_struct(db, &mut trace, &flavor) {
+        match lower_struct(db, &mut trace, &flavor, module_id) {
             StructKind::Tuple => VariantData::Tuple(trace.into_arena()),
             StructKind::Record => VariantData::Record(trace.into_arena()),
             StructKind::Unit => VariantData::Unit,
@@ -155,22 +159,27 @@ impl HasChildSource for VariantId {
     type Value = Either<ast::TupleFieldDef, ast::RecordFieldDef>;
 
     fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
-        let src = match self {
+        let (src, module_id) = match self {
             VariantId::EnumVariantId(it) => {
                 // I don't really like the fact that we call into parent source
                 // here, this might add to more queries then necessary.
                 let src = it.parent.child_source(db);
-                src.map(|map| map[it.local_id].kind())
+                (src.map(|map| map[it.local_id].kind()), it.parent.lookup(db).container.module(db))
             }
-            VariantId::StructId(it) => it.lookup(db).source(db).map(|it| it.kind()),
-            VariantId::UnionId(it) => it.lookup(db).source(db).map(|it| {
-                it.record_field_def_list()
-                    .map(ast::StructKind::Record)
-                    .unwrap_or(ast::StructKind::Unit)
-            }),
+            VariantId::StructId(it) => {
+                (it.lookup(db).source(db).map(|it| it.kind()), it.lookup(db).container.module(db))
+            }
+            VariantId::UnionId(it) => (
+                it.lookup(db).source(db).map(|it| {
+                    it.record_field_def_list()
+                        .map(ast::StructKind::Record)
+                        .unwrap_or(ast::StructKind::Unit)
+                }),
+                it.lookup(db).container.module(db),
+            ),
         };
         let mut trace = Trace::new_for_map();
-        lower_struct(db, &mut trace, &src);
+        lower_struct(db, &mut trace, &src, module_id);
         src.with_value(trace.into_map())
     }
 }
@@ -186,10 +195,17 @@ fn lower_struct(
     db: &dyn DefDatabase,
     trace: &mut Trace<StructFieldData, Either<ast::TupleFieldDef, ast::RecordFieldDef>>,
     ast: &InFile<ast::StructKind>,
+    module_id: ModuleId,
 ) -> StructKind {
+    let crate_graph = db.crate_graph();
     match &ast.value {
         ast::StructKind::Tuple(fl) => {
             for (i, fd) in fl.fields().enumerate() {
+                let attrs = Attrs::new(&fd, &Hygiene::new(db.upcast(), ast.file_id));
+                if !attrs.is_cfg_enabled(&crate_graph[module_id.krate].cfg_options) {
+                    continue;
+                }
+
                 trace.alloc(
                     || Either::Left(fd.clone()),
                     || StructFieldData {
@@ -203,6 +219,11 @@ fn lower_struct(
         }
         ast::StructKind::Record(fl) => {
             for fd in fl.fields() {
+                let attrs = Attrs::new(&fd, &Hygiene::new(db.upcast(), ast.file_id));
+                if !attrs.is_cfg_enabled(&crate_graph[module_id.krate].cfg_options) {
+                    continue;
+                }
+
                 trace.alloc(
                     || Either::Right(fd.clone()),
                     || StructFieldData {

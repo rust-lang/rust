@@ -5,6 +5,7 @@ use std::{ops, sync::Arc};
 use either::Either;
 use hir_expand::{hygiene::Hygiene, AstId, InFile};
 use mbe::ast_to_token_tree;
+use ra_cfg::CfgOptions;
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner},
     SmolStr,
@@ -89,6 +90,10 @@ impl Attrs {
 
     pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
         AttrQuery { attrs: self, key }
+    }
+
+    pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> bool {
+        self.by_key("cfg").tt_values().all(|tt| cfg_options.is_cfg_enabled(tt) != Some(false))
     }
 }
 

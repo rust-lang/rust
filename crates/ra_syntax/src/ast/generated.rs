@@ -5216,6 +5216,7 @@ impl RecordFieldList {
 pub struct RecordField {
     pub(crate) syntax: SyntaxNode,
 }
+impl ast::AttrsOwner for RecordField {}
 impl std::fmt::Display for RecordField {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
