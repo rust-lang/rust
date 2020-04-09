@@ -227,6 +227,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
 pub(crate) struct AstSrc<'a> {
     pub(crate) nodes: &'a [AstNodeSrc<'a>],
     pub(crate) enums: &'a [AstEnumSrc<'a>],
+    pub(crate) token_enums: &'a [AstEnumSrc<'a>],
 }
 
 pub(crate) struct AstNodeSrc<'a> {
@@ -753,6 +754,13 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             // macro calls are parsed as expression statements */
         }
 
+        enum FieldDefList {
+            RecordFieldDefList,
+            TupleFieldDefList,
+        }
+    },
+
+    token_enums: &ast_enums! {
         enum LeftDelimiter { LParen, LBrack, LCurly }
         enum RightDelimiter { RParen, RBrack, RCurly }
         enum RangeSeparator { Dotdot, Dotdotdot, Dotdoteq}
@@ -816,11 +824,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         enum NameRefToken {
             Ident,
             IntNumber
-        }
-
-        enum FieldDefList {
-            RecordFieldDefList,
-            TupleFieldDefList,
         }
     },
 };
