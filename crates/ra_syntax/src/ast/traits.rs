@@ -5,69 +5,69 @@
 use itertools::Itertools;
 
 use crate::{
-    ast::{self, child_opt, children, support, AstChildren, AstNode, AstToken},
+    ast::{self, support, AstChildren, AstNode, AstToken},
     syntax_node::SyntaxElementChildren,
 };
 
 pub trait TypeAscriptionOwner: AstNode {
     fn ascribed_type(&self) -> Option<ast::TypeRef> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 }
 
 pub trait NameOwner: AstNode {
     fn name(&self) -> Option<ast::Name> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 }
 
 pub trait VisibilityOwner: AstNode {
     fn visibility(&self) -> Option<ast::Visibility> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 }
 
 pub trait LoopBodyOwner: AstNode {
     fn loop_body(&self) -> Option<ast::BlockExpr> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 
     fn label(&self) -> Option<ast::Label> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 }
 
 pub trait ArgListOwner: AstNode {
     fn arg_list(&self) -> Option<ast::ArgList> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 }
 
 pub trait FnDefOwner: AstNode {
     fn functions(&self) -> AstChildren<ast::FnDef> {
-        children(self)
+        support::children(self.syntax())
     }
 }
 
 pub trait ModuleItemOwner: AstNode {
     fn items(&self) -> AstChildren<ast::ModuleItem> {
-        children(self)
+        support::children(self.syntax())
     }
 }
 
 pub trait TypeParamsOwner: AstNode {
     fn type_param_list(&self) -> Option<ast::TypeParamList> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 
     fn where_clause(&self) -> Option<ast::WhereClause> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 }
 
 pub trait TypeBoundsOwner: AstNode {
     fn type_bound_list(&self) -> Option<ast::TypeBoundList> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 
     fn colon(&self) -> Option<ast::Colon> {
@@ -77,7 +77,7 @@ pub trait TypeBoundsOwner: AstNode {
 
 pub trait AttrsOwner: AstNode {
     fn attrs(&self) -> AstChildren<ast::Attr> {
-        children(self)
+        support::children(self.syntax())
     }
     fn has_atom_attr(&self, atom: &str) -> bool {
         self.attrs().filter_map(|x| x.as_simple_atom()).any(|x| x == atom)
