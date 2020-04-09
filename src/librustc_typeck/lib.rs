@@ -378,7 +378,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
     // scope.  This is derived from the enclosing item-like thing.
     let env_node_id = tcx.hir().get_parent_item(hir_ty.hir_id);
     let env_def_id = tcx.hir().local_def_id(env_node_id);
-    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
+    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
 
     astconv::AstConv::ast_ty_to_ty(&item_cx, hir_ty)
 }
@@ -393,7 +393,7 @@ pub fn hir_trait_to_predicates<'tcx>(
     // scope.  This is derived from the enclosing item-like thing.
     let env_hir_id = tcx.hir().get_parent_item(hir_trait.hir_ref_id);
     let env_def_id = tcx.hir().local_def_id(env_hir_id);
-    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
+    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
     let mut bounds = Bounds::default();
     let _ = AstConv::instantiate_poly_trait_ref_inner(
         &item_cx,

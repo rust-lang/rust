@@ -50,7 +50,7 @@ impl CheckVisitor<'tcx> {
             return;
         }
 
-        if self.used_trait_imports.contains(&def_id) {
+        if self.used_trait_imports.contains(&def_id.to_def_id()) {
             return;
         }
 
@@ -216,7 +216,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a, 'tcx> {
         if let hir::ItemKind::ExternCrate(orig_name) = item.kind {
             let extern_crate_def_id = self.tcx.hir().local_def_id(item.hir_id);
             self.crates_to_lint.push(ExternCrateToLint {
-                def_id: extern_crate_def_id,
+                def_id: extern_crate_def_id.to_def_id(),
                 span: item.span,
                 orig_name,
                 warn_if_unused: !item.ident.as_str().starts_with('_'),

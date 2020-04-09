@@ -121,7 +121,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn visit_node_helper(&mut self, id: hir::HirId) {
         let tcx = self.terms_cx.tcx;
         let def_id = tcx.hir().local_def_id(id);
-        self.build_constraints_for_item(def_id);
+        self.build_constraints_for_item(def_id.to_def_id());
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {

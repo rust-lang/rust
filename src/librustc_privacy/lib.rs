@@ -268,11 +268,11 @@ fn def_id_visibility<'tcx>(
                         Node::Variant(..) => {
                             let parent_did = tcx.hir().local_def_id(parent_hir_id);
                             let (mut ctor_vis, mut span, mut descr) =
-                                def_id_visibility(tcx, parent_did);
+                                def_id_visibility(tcx, parent_did.to_def_id());
 
                             let adt_def = tcx.adt_def(tcx.hir().get_parent_did(hir_id).to_def_id());
                             let ctor_did = tcx.hir().local_def_id(vdata.ctor_hir_id().unwrap());
-                            let variant = adt_def.variant_with_ctor_id(ctor_did);
+                            let variant = adt_def.variant_with_ctor_id(ctor_did.to_def_id());
 
                             if variant.is_field_list_non_exhaustive()
                                 && ctor_vis == ty::Visibility::Public
@@ -514,7 +514,7 @@ impl EmbargoVisitor<'tcx> {
     ) -> ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
         ReachEverythingInTheInterfaceVisitor {
             access_level: cmp::min(access_level, Some(AccessLevel::Reachable)),
-            item_def_id: self.tcx.hir().local_def_id(item_id),
+            item_def_id: self.tcx.hir().local_def_id(item_id).to_def_id(),
             ev: self,
         }
     }
@@ -532,7 +532,7 @@ impl EmbargoVisitor<'tcx> {
 
     fn update_macro_reachable_mod(&mut self, reachable_mod: hir::HirId, defining_mod: DefId) {
         let module_def_id = self.tcx.hir().local_def_id(reachable_mod);
-        let module = self.tcx.hir().get_module(module_def_id).0;
+        let module = self.tcx.hir().get_module(module_def_id.to_def_id()).0;
         for item_id in module.item_ids {
             let hir_id = item_id.id;
             let item_def_id = self.tcx.hir().local_def_id(hir_id);
@@ -661,7 +661,7 @@ impl EmbargoVisitor<'tcx> {
                     for item_id in m.item_ids {
                         let item = self.tcx.hir().expect_item(item_id.id);
                         let def_id = self.tcx.hir().local_def_id(item_id.id);
-                        if !self.tcx.hygienic_eq(segment.ident, item.ident, def_id) {
+                        if !self.tcx.hygienic_eq(segment.ident, item.ident, def_id.to_def_id()) {
                             continue;
                         }
                         if let hir::ItemKind::Use(..) = item.kind {
@@ -927,7 +927,8 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         }
 
         let macro_module_def_id =
-            ty::DefIdTree::parent(self.tcx, self.tcx.hir().local_def_id(md.hir_id)).unwrap();
+            ty::DefIdTree::parent(self.tcx, self.tcx.hir().local_def_id(md.hir_id).to_def_id())
+                .unwrap();
         // FIXME(#71104) Should really be using just `as_local_hir_id` but
         // some `DefId` do not seem to have a corresponding HirId.
         let hir_id = macro_module_def_id
@@ -1370,8 +1371,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 
     // Check types in item interfaces.
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        let orig_current_item =
-            mem::replace(&mut self.current_item, self.tcx.hir().local_def_id(item.hir_id));
+        let orig_current_item = mem::replace(
+            &mut self.current_item,
+            self.tcx.hir().local_def_id(item.hir_id).to_def_id(),
+        );
         let orig_in_body = mem::replace(&mut self.in_body, false);
         let orig_tables =
             mem::replace(&mut self.tables, item_tables(self.tcx, item.hir_id, self.empty_tables));
@@ -1913,7 +1916,7 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
         SearchInterfaceForPrivateItemsVisitor {
             tcx: self.tcx,
             item_id,
-            item_def_id: self.tcx.hir().local_def_id(item_id),
+            item_def_id: self.tcx.hir().local_def_id(item_id).to_def_id(),
             span: self.tcx.hir().span(item_id),
             required_visibility,
             has_pub_restricted: self.has_pub_restricted,

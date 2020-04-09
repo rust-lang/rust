@@ -784,7 +784,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 }
                 (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
-                    let ct_def_id = tcx.hir().local_def_id(ct.value.hir_id).expect_local();
+                    let ct_def_id = tcx.hir().local_def_id(ct.value.hir_id);
                     ty::Const::from_anon_const(tcx, ct_def_id).into()
                 }
                 _ => unreachable!(),
@@ -2759,7 +2759,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::Def(item_id, ref lifetimes) => {
                 let did = tcx.hir().local_def_id(item_id.id);
-                self.impl_trait_ty_to_ty(did, lifetimes)
+                self.impl_trait_ty_to_ty(did.to_def_id(), lifetimes)
             }
             hir::TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 debug!("ast_ty_to_ty: qself={:?} segment={:?}", qself, segment);
@@ -2775,7 +2775,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .unwrap_or(tcx.types.err)
             }
             hir::TyKind::Array(ref ty, ref length) => {
-                let length_def_id = tcx.hir().local_def_id(length.hir_id).expect_local();
+                let length_def_id = tcx.hir().local_def_id(length.hir_id);
                 let length = ty::Const::from_anon_const(tcx, length_def_id);
                 let array_ty = tcx.mk_ty(ty::Array(self.ast_ty_to_ty(&ty), length));
                 self.normalize_ty(ast_ty.span, array_ty)

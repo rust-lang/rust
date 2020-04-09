@@ -361,7 +361,7 @@ fn visit_fn<'tcx>(
 
     // swap in a new set of IR maps for this function body:
     let def_id = ir.tcx.hir().local_def_id(id);
-    let mut fn_maps = IrMaps::new(ir.tcx, def_id);
+    let mut fn_maps = IrMaps::new(ir.tcx, def_id.to_def_id());
 
     // Don't run unused pass for #[derive()]
     if let FnKind::Method(..) = fk {
@@ -398,7 +398,7 @@ fn visit_fn<'tcx>(
     intravisit::walk_fn(&mut fn_maps, fk, decl, body_id, sp, id);
 
     // compute liveness
-    let mut lsets = Liveness::new(&mut fn_maps, def_id);
+    let mut lsets = Liveness::new(&mut fn_maps, def_id.to_def_id());
     let entry_ln = lsets.compute(&body.value);
 
     // check for various error conditions
@@ -496,7 +496,7 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr<'tcx>) {
             }
             ir.set_captures(expr.hir_id, call_caps);
             let old_body_owner = ir.body_owner;
-            ir.body_owner = closure_def_id;
+            ir.body_owner = closure_def_id.to_def_id();
             intravisit::walk_expr(ir, expr);
             ir.body_owner = old_body_owner;
         }

@@ -62,7 +62,7 @@ impl RegionExt for Region {
         let def_id = hir_map.local_def_id(param.hir_id);
         let origin = LifetimeDefOrigin::from_param(param);
         debug!("Region::early: index={} def_id={:?}", i, def_id);
-        (param.name.normalize_to_macros_2_0(), Region::EarlyBound(i, def_id, origin))
+        (param.name.normalize_to_macros_2_0(), Region::EarlyBound(i, def_id.to_def_id(), origin))
     }
 
     fn late(hir_map: &Map<'_>, param: &GenericParam<'_>) -> (ParamName, Region) {
@@ -73,7 +73,7 @@ impl RegionExt for Region {
             "Region::late: param={:?} depth={:?} def_id={:?} origin={:?}",
             param, depth, def_id, origin,
         );
-        (param.name.normalize_to_macros_2_0(), Region::LateBound(depth, def_id, origin))
+        (param.name.normalize_to_macros_2_0(), Region::LateBound(depth, def_id.to_def_id(), origin))
     }
 
     fn late_anon(index: &Cell<u32>) -> Region {
@@ -1278,7 +1278,7 @@ fn object_lifetime_defaults_for_item(
                         _ => continue,
                     };
 
-                    if res == Res::Def(DefKind::TyParam, param_def_id) {
+                    if res == Res::Def(DefKind::TyParam, param_def_id.to_def_id()) {
                         add_bounds(&mut set, &data.bounds);
                     }
                 }
@@ -1304,7 +1304,11 @@ fn object_lifetime_defaults_for_item(
                                 .find(|&(_, (_, lt_name, _))| lt_name == name)
                                 .map_or(Set1::Many, |(i, (id, _, origin))| {
                                     let def_id = tcx.hir().local_def_id(id);
-                                    Set1::One(Region::EarlyBound(i as u32, def_id, origin))
+                                    Set1::One(Region::EarlyBound(
+                                        i as u32,
+                                        def_id.to_def_id(),
+                                        origin,
+                                    ))
                                 })
                         }
                     }
@@ -1812,7 +1816,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     })
                     | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) => {
                         let scope = self.tcx.hir().local_def_id(fn_id);
-                        def = Region::Free(scope, def.id().unwrap());
+                        def = Region::Free(scope.to_def_id(), def.id().unwrap());
                     }
                     _ => {}
                 }

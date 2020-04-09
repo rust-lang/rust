@@ -1,6 +1,6 @@
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
@@ -78,7 +78,7 @@ fn sized_constraint_for_ty<'tcx>(
 
 fn associated_item_from_trait_item_ref(
     tcx: TyCtxt<'_>,
-    parent_def_id: DefId,
+    parent_def_id: LocalDefId,
     parent_vis: &hir::Visibility<'_>,
     trait_item_ref: &hir::TraitItemRef,
 ) -> ty::AssocItem {
@@ -96,15 +96,15 @@ fn associated_item_from_trait_item_ref(
         // Visibility of trait items is inherited from their traits.
         vis: ty::Visibility::from_hir(parent_vis, trait_item_ref.id.hir_id, tcx),
         defaultness: trait_item_ref.defaultness,
-        def_id,
-        container: ty::TraitContainer(parent_def_id),
+        def_id: def_id.to_def_id(),
+        container: ty::TraitContainer(parent_def_id.to_def_id()),
         fn_has_self_parameter: has_self,
     }
 }
 
 fn associated_item_from_impl_item_ref(
     tcx: TyCtxt<'_>,
-    parent_def_id: DefId,
+    parent_def_id: LocalDefId,
     impl_item_ref: &hir::ImplItemRef<'_>,
 ) -> ty::AssocItem {
     let def_id = tcx.hir().local_def_id(impl_item_ref.id.hir_id);
@@ -121,8 +121,8 @@ fn associated_item_from_impl_item_ref(
         // Visibility of trait impl items doesn't matter.
         vis: ty::Visibility::from_hir(&impl_item_ref.vis, impl_item_ref.id.hir_id, tcx),
         defaultness: impl_item_ref.defaultness,
-        def_id,
-        container: ty::ImplContainer(parent_def_id),
+        def_id: def_id.to_def_id(),
+        container: ty::ImplContainer(parent_def_id.to_def_id()),
         fn_has_self_parameter: has_self,
     }
 }
@@ -207,13 +207,13 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
             trait_item_refs
                 .iter()
                 .map(|trait_item_ref| trait_item_ref.id)
-                .map(|id| tcx.hir().local_def_id(id.hir_id)),
+                .map(|id| tcx.hir().local_def_id(id.hir_id).to_def_id()),
         ),
         hir::ItemKind::Impl { ref items, .. } => tcx.arena.alloc_from_iter(
             items
                 .iter()
                 .map(|impl_item_ref| impl_item_ref.id)
-                .map(|id| tcx.hir().local_def_id(id.hir_id)),
+                .map(|id| tcx.hir().local_def_id(id.hir_id).to_def_id()),
         ),
         hir::ItemKind::TraitAlias(..) => &[],
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),

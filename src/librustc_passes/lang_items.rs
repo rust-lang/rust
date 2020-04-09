@@ -34,7 +34,7 @@ impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
                 // Known lang item with attribute on correct target.
                 Some((item_index, expected_target)) if actual_target == expected_target => {
                     let def_id = self.tcx.hir().local_def_id(item.hir_id);
-                    self.collect_item(item_index, def_id);
+                    self.collect_item(item_index, def_id.to_def_id());
                 }
                 // Known lang item with attribute on incorrect target.
                 Some((_, expected_target)) => {

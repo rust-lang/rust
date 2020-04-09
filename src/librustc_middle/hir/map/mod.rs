@@ -171,16 +171,14 @@ impl<'hir> Map<'hir> {
 
     // FIXME(eddyb) this function can and should return `LocalDefId`.
     #[inline]
-    pub fn local_def_id(&self, hir_id: HirId) -> DefId {
-        self.opt_local_def_id(hir_id)
-            .unwrap_or_else(|| {
-                bug!(
-                    "local_def_id: no entry for `{:?}`, which has a map of `{:?}`",
-                    hir_id,
-                    self.find_entry(hir_id)
-                )
-            })
-            .to_def_id()
+    pub fn local_def_id(&self, hir_id: HirId) -> LocalDefId {
+        self.opt_local_def_id(hir_id).unwrap_or_else(|| {
+            bug!(
+                "local_def_id: no entry for `{:?}`, which has a map of `{:?}`",
+                hir_id,
+                self.find_entry(hir_id)
+            )
+        })
     }
 
     #[inline]
@@ -378,7 +376,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body_owner_def_id(&self, id: BodyId) -> LocalDefId {
-        self.local_def_id(self.body_owner(id)).expect_local()
+        self.local_def_id(self.body_owner(id))
     }
 
     /// Given a `HirId`, returns the `BodyId` associated with it,
@@ -729,7 +727,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_parent_did(&self, id: HirId) -> LocalDefId {
-        self.local_def_id(self.get_parent_item(id)).expect_local()
+        self.local_def_id(self.get_parent_item(id))
     }
 
     pub fn get_foreign_abi(&self, hir_id: HirId) -> Abi {
@@ -995,7 +993,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
         crate::ty::tls::with_opt(|tcx| {
             if let Some(tcx) = tcx {
                 let def_id = map.local_def_id(id);
-                tcx.def_path_str(def_id)
+                tcx.def_path_str(def_id.to_def_id())
             } else if let Some(path) = map.def_path_from_hir_id(id) {
                 path.data
                     .into_iter()

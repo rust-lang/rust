@@ -484,13 +484,13 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
             if let hir::ExprKind::Closure(..) = ex.kind {
                 let def_id = self.tcx.hir().local_def_id(ex.hir_id);
-                self.check(def_id);
+                self.check(def_id.to_def_id());
             }
             intravisit::walk_expr(self, ex);
         }
         fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
-            let def_id = self.tcx.hir().local_def_id(it.hir_id);
+            let def_id = self.tcx.hir().local_def_id(it.hir_id).to_def_id();
             // The opaque type itself or its children are not within its reveal scope.
             if def_id != self.def_id {
                 self.check(def_id);
@@ -499,7 +499,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
-            let def_id = self.tcx.hir().local_def_id(it.hir_id);
+            let def_id = self.tcx.hir().local_def_id(it.hir_id).to_def_id();
             // The opaque type itself or its children are not within its reveal scope.
             if def_id != self.def_id {
                 self.check(def_id);
@@ -509,7 +509,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
             let def_id = self.tcx.hir().local_def_id(it.hir_id);
-            self.check(def_id);
+            self.check(def_id.to_def_id());
             intravisit::walk_trait_item(self, it);
         }
     }
