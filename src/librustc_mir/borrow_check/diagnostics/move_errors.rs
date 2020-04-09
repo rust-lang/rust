@@ -377,7 +377,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         span,
                         &format!("`{}` which is behind a {}", place_desc, source_desc),
                     ),
-                    (_, _) => self.cannot_move_out_of(span, &source.describe_for_unnamed_place()),
+                    (_, _) => self.cannot_move_out_of(
+                        span,
+                        &source.describe_for_unnamed_place(self.infcx.tcx),
+                    ),
                 }
             }
         };
