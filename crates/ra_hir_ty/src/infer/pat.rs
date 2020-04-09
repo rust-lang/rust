@@ -158,7 +158,7 @@ impl<'a> InferenceContext<'a> {
             Pat::TupleStruct { path: p, args: subpats } => {
                 self.infer_tuple_struct_pat(p.as_ref(), subpats, expected, default_bm, pat)
             }
-            Pat::Record { path: p, args: fields } => {
+            Pat::Record { path: p, args: fields, ellipsis: _ } => {
                 self.infer_record_pat(p.as_ref(), fields, expected, default_bm, pat)
             }
             Pat::Path(path) => {

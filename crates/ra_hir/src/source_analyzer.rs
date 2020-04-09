@@ -255,7 +255,7 @@ impl SourceAnalyzer {
             _ => return None,
         };
 
-        let (variant, missing_fields) =
+        let (variant, missing_fields, _exhaustive) =
             record_pattern_missing_fields(db, infer, pat_id, &body[pat_id])?;
         let res = self.missing_fields(db, krate, substs, variant, missing_fields);
         Some(res)

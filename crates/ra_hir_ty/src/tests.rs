@@ -409,3 +409,43 @@ fn no_such_field_with_feature_flag_diagnostics_on_struct_fields() {
 
     assert_snapshot!(diagnostics, @r###""###);
 }
+
+#[test]
+fn missing_record_pat_field_diagnostic() {
+    let diagnostics = TestDB::with_files(
+        r"
+        //- /lib.rs
+        struct S { foo: i32, bar: () }
+        fn baz(s: S) {
+            let S { foo: _ } = s;
+        }
+        ",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r###"
+    "{ foo: _ }": Missing structure fields:
+    - bar
+    "###
+    );
+}
+
+#[test]
+fn missing_record_pat_field_no_diagnostic_if_not_exhaustive() {
+    let diagnostics = TestDB::with_files(
+        r"
+        //- /lib.rs
+        struct S { foo: i32, bar: () }
+        fn baz(s: S) -> i32 {
+            match s {
+                S { foo, .. } => foo,
+            }
+        }
+        ",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @"");
+}
