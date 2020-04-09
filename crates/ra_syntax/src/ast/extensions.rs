@@ -2,16 +2,14 @@
 //! Extensions for various expressions live in a sibling `expr_extensions` module.
 
 use itertools::Itertools;
+use ra_parser::SyntaxKind;
 
 use crate::{
     ast::{
         self, child_opt, children, support, AstNode, AstToken, AttrInput, NameOwner, SyntaxNode,
     },
-    SmolStr, SyntaxElement,
-    SyntaxKind::*,
-    SyntaxToken, T,
+    SmolStr, SyntaxElement, SyntaxToken, T,
 };
-use ra_parser::SyntaxKind;
 
 impl ast::Name {
     pub fn text(&self) -> &SmolStr {
@@ -25,13 +23,11 @@ impl ast::NameRef {
     }
 
     pub fn as_tuple_field(&self) -> Option<usize> {
-        self.syntax().children_with_tokens().find_map(|c| {
-            if c.kind() == SyntaxKind::INT_NUMBER {
-                c.as_token().and_then(|tok| tok.text().as_str().parse().ok())
-            } else {
-                None
-            }
-        })
+        if let Some(ast::NameRefToken::IntNumber(token)) = self.name_ref_token() {
+            token.text().as_str().parse().ok()
+        } else {
+            None
+        }
     }
 }
 
@@ -142,10 +138,7 @@ impl ast::Path {
 
 impl ast::Module {
     pub fn has_semi(&self) -> bool {
-        match self.syntax().last_child_or_token() {
-            None => false,
-            Some(node) => node.kind() == T![;],
-        }
+        self.semi().is_some()
     }
 }
 
@@ -181,7 +174,7 @@ impl ast::ImplDef {
     }
 
     pub fn is_negative(&self) -> bool {
-        self.syntax().children_with_tokens().any(|t| t.kind() == T![!])
+        self.excl().is_some()
     }
 }
 
@@ -225,14 +218,11 @@ impl ast::EnumVariant {
 
 impl ast::FnDef {
     pub fn semicolon_token(&self) -> Option<SyntaxToken> {
-        self.syntax()
-            .last_child_or_token()
-            .and_then(|it| it.into_token())
-            .filter(|it| it.kind() == T![;])
+        Some(self.semi()?.syntax().clone())
     }
 
     pub fn is_async(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == T![async])
+        self.async_kw().is_some()
     }
 }
 
@@ -245,16 +235,13 @@ impl ast::LetStmt {
     }
 
     pub fn eq_token(&self) -> Option<SyntaxToken> {
-        self.syntax().children_with_tokens().find(|t| t.kind() == EQ).and_then(|it| it.into_token())
+        Some(self.eq()?.syntax().clone())
     }
 }
 
 impl ast::ExprStmt {
     pub fn has_semi(&self) -> bool {
-        match self.syntax().last_child_or_token() {
-            None => false,
-            Some(node) => node.kind() == T![;],
-        }
+        self.semi().is_some()
     }
 }
 
