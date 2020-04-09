@@ -56,12 +56,13 @@ use crate::transform::simplify;
 use crate::transform::{MirPass, MirSource};
 use crate::util::dump_mir;
 use crate::util::liveness;
+use crate::util::storage;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitMatrix, BitSet};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::GeneratorSubsts;
@@ -221,6 +222,9 @@ struct TransformVisitor<'tcx> {
 
     // A list of suspension points, generated during the transform
     suspension_points: Vec<SuspensionPoint<'tcx>>,
+
+    // The set of locals that have no `StorageLive`/`StorageDead` annotations.
+    always_live_locals: storage::AlwaysLiveLocals,
 
     // The original RETURN_PLACE local
     new_ret_local: Local,
@@ -416,19 +420,6 @@ fn replace_local<'tcx>(
     new_local
 }
 
-struct StorageIgnored(liveness::LiveVarSet);
-
-impl<'tcx> Visitor<'tcx> for StorageIgnored {
-    fn visit_statement(&mut self, statement: &Statement<'tcx>, _location: Location) {
-        match statement.kind {
-            StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
-                self.0.remove(l);
-            }
-            _ => (),
-        }
-    }
-}
-
 struct LivenessInfo {
     /// Which locals are live across any suspension point.
     ///
@@ -454,6 +445,7 @@ fn locals_live_across_suspend_points(
     tcx: TyCtxt<'tcx>,
     body: ReadOnlyBodyAndCache<'_, 'tcx>,
     source: MirSource<'tcx>,
+    always_live_locals: &storage::AlwaysLiveLocals,
     movable: bool,
 ) -> LivenessInfo {
     let def_id = source.def_id();
@@ -461,15 +453,10 @@ fn locals_live_across_suspend_points(
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
-    let mut storage_live = MaybeStorageLive
+    let mut storage_live = MaybeStorageLive::new(always_live_locals.clone())
         .into_engine(tcx, body_ref, def_id)
         .iterate_to_fixpoint()
         .into_results_cursor(body_ref);
-
-    // Find the MIR locals which do not use StorageLive/StorageDead statements.
-    // The storage of these locals are always live.
-    let mut ignored = StorageIgnored(BitSet::new_filled(body.local_decls.len()));
-    ignored.visit_body(&body);
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
@@ -515,11 +502,14 @@ fn locals_live_across_suspend_points(
             }
 
             storage_live.seek_before(loc);
-            let storage_liveness = storage_live.get();
+            let mut storage_liveness = storage_live.get().clone();
+
+            // Later passes handle the generator's `self` argument separately.
+            storage_liveness.remove(SELF_ARG);
 
             // Store the storage liveness for later use so we can restore the state
             // after a suspension point
-            storage_liveness_map.insert(block, storage_liveness.clone());
+            storage_liveness_map.insert(block, storage_liveness);
 
             requires_storage_cursor.seek_before(loc);
             let storage_required = requires_storage_cursor.get().clone();
@@ -551,8 +541,12 @@ fn locals_live_across_suspend_points(
         .map(|live_here| renumber_bitset(&live_here, &live_locals))
         .collect();
 
-    let storage_conflicts =
-        compute_storage_conflicts(body_ref, &live_locals, &ignored, requires_storage_results);
+    let storage_conflicts = compute_storage_conflicts(
+        body_ref,
+        &live_locals,
+        always_live_locals.clone(),
+        requires_storage_results,
+    );
 
     LivenessInfo {
         live_locals,
@@ -590,18 +584,18 @@ fn renumber_bitset(
 fn compute_storage_conflicts(
     body: &'mir Body<'tcx>,
     stored_locals: &liveness::LiveVarSet,
-    ignored: &StorageIgnored,
+    always_live_locals: storage::AlwaysLiveLocals,
     requires_storage: dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
-    assert_eq!(body.local_decls.len(), ignored.0.domain_size());
     assert_eq!(body.local_decls.len(), stored_locals.domain_size());
-    debug!("compute_storage_conflicts({:?})", body.span);
-    debug!("ignored = {:?}", ignored.0);
 
-    // Storage ignored locals are not eligible for overlap, since their storage
-    // is always live.
-    let mut ineligible_locals = ignored.0.clone();
-    ineligible_locals.intersect(&stored_locals);
+    debug!("compute_storage_conflicts({:?})", body.span);
+    debug!("always_live = {:?}", always_live_locals);
+
+    // Locals that are always live or ones that need to be stored across
+    // suspension points are not eligible for overlap.
+    let mut ineligible_locals = always_live_locals.into_inner();
+    ineligible_locals.intersect(stored_locals);
 
     // Compute the storage conflicts for all eligible locals.
     let mut visitor = StorageConflictVisitor {
@@ -697,6 +691,7 @@ fn compute_layout<'tcx>(
     source: MirSource<'tcx>,
     upvars: &Vec<Ty<'tcx>>,
     interior: Ty<'tcx>,
+    always_live_locals: &storage::AlwaysLiveLocals,
     movable: bool,
     body: &mut BodyAndCache<'tcx>,
 ) -> (
@@ -710,7 +705,13 @@ fn compute_layout<'tcx>(
         live_locals_at_suspension_points,
         storage_conflicts,
         storage_liveness,
-    } = locals_live_across_suspend_points(tcx, read_only!(body), source, movable);
+    } = locals_live_across_suspend_points(
+        tcx,
+        read_only!(body),
+        source,
+        always_live_locals,
+        movable,
+    );
 
     // Erase regions from the types passed in from typeck so we can compare them with
     // MIR types
@@ -1180,7 +1181,10 @@ fn create_cases<'tcx>(
                     }
 
                     let l = Local::new(i);
-                    if point.storage_liveness.contains(l) && !transform.remap.contains_key(&l) {
+                    let needs_storage_live = point.storage_liveness.contains(l)
+                        && !transform.remap.contains_key(&l)
+                        && !transform.always_live_locals.contains(l);
+                    if needs_storage_live {
                         statements
                             .push(Statement { source_info, kind: StatementKind::StorageLive(l) });
                     }
@@ -1276,11 +1280,13 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             },
         );
 
+        let always_live_locals = storage::AlwaysLiveLocals::new(&body);
+
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto generator struct indices
         // `storage_liveness` tells us which locals have live storage at suspension points
         let (remap, layout, storage_liveness) =
-            compute_layout(tcx, source, &upvars, interior, movable, body);
+            compute_layout(tcx, source, &upvars, interior, &always_live_locals, movable, body);
 
         let can_return = can_return(tcx, body);
 
@@ -1294,6 +1300,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             state_substs,
             remap,
             storage_liveness,
+            always_live_locals,
             suspension_points: Vec::new(),
             new_ret_local,
             discr_ty,
