@@ -190,7 +190,10 @@ impl<'a> CompletionContext<'a> {
         if let Some(name) = find_node_at_offset::<ast::Name>(&file_with_fake_ident, offset) {
             if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
                 self.is_pat_binding_or_const = true;
-                if bind_pat.has_at() || bind_pat.is_ref() || bind_pat.is_mutable() {
+                if bind_pat.at_token().is_some()
+                    || bind_pat.ref_kw_token().is_some()
+                    || bind_pat.mut_kw_token().is_some()
+                {
                     self.is_pat_binding_or_const = false;
                 }
                 if bind_pat.syntax().parent().and_then(ast::RecordFieldPatList::cast).is_some() {

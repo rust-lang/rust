@@ -208,6 +208,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
                 FieldSrc::Optional(_) | FieldSrc::Shorthand => {
                     let is_token = token_kinds.contains(&ty.to_string());
                     if is_token {
+                        let method_name = format_ident!("{}_token", method_name);
                         quote! {
                             pub fn #method_name(&self) -> Option<#ty> {
                                 support::token(&self.syntax)

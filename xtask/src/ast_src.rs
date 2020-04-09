@@ -408,7 +408,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct TupleType { LParen, fields: [TypeRef], RParen }
         struct NeverType { Excl }
         struct PathType { Path }
-        struct PointerType { Star, ConstKw, TypeRef }
+        struct PointerType { Star, ConstKw, MutKw, TypeRef }
         struct ArrayType { LBrack, TypeRef, Semi, Expr, RBrack }
         struct SliceType { LBrack, TypeRef, RBrack }
         struct ReferenceType { Amp, Lifetime, MutKw, TypeRef }
@@ -485,7 +485,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct ParenPat { LParen, Pat, RParen }
         struct RefPat { Amp, MutKw, Pat }
         struct BoxPat { BoxKw, Pat }
-        struct BindPat: AttrsOwner, NameOwner { RefKw, MutKw, Pat }
+        struct BindPat: AttrsOwner, NameOwner { RefKw, MutKw, At, Pat }
         struct PlaceholderPat { Underscore }
         struct DotDotPat { Dotdot }
         struct PathPat { Path }
@@ -545,6 +545,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             Pat,
             Eq,
             initializer: Expr,
+            Semi,
         }
         struct Condition { LetKw, Pat, Eq, Expr }
         struct Block: AttrsOwner, ModuleItemOwner {

@@ -42,7 +42,7 @@ pub(crate) fn add_impl(ctx: AssistCtx) -> Option<Assist> {
         if let Some(type_params) = type_params {
             let lifetime_params = type_params
                 .lifetime_params()
-                .filter_map(|it| it.lifetime())
+                .filter_map(|it| it.lifetime_token())
                 .map(|it| it.text().clone());
             let type_params =
                 type_params.type_params().filter_map(|it| it.name()).map(|it| it.text().clone());
