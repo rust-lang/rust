@@ -492,7 +492,6 @@ impl ExprCollector<'_> {
                 ast::Stmt::ExprStmt(stmt) => {
                     Some(Statement::Expr(self.collect_expr_opt(stmt.expr())))
                 }
-                ast::Stmt::ModuleItem(_) => None,
             })
             .collect();
         let tail = block.expr().map(|e| self.collect_expr(e));

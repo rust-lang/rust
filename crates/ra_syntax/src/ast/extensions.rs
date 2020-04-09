@@ -5,8 +5,7 @@ use itertools::Itertools;
 
 use crate::{
     ast::{
-        self, child_opt, child_token_opt, children, AstElement, AstNode, AstToken, AttrInput,
-        NameOwner, SyntaxNode,
+        self, child_opt, children, support, AstNode, AstToken, AttrInput, NameOwner, SyntaxNode,
     },
     SmolStr, SyntaxElement,
     SyntaxKind::*,
@@ -437,7 +436,7 @@ impl ast::TypeBound {
                 .skip_while(|it| it.kind() != T![const])
                 .find_map(ast::Question::cast)
         } else {
-            child_token_opt(self)
+            support::token(&self.syntax)
         }
     }
 }
@@ -509,7 +508,7 @@ impl ast::RangePat {
     pub fn start(&self) -> Option<ast::Pat> {
         self.syntax()
             .children_with_tokens()
-            .take_while(|it| !ast::RangeSeparator::can_cast_element(it.kind()))
+            .take_while(|it| !ast::RangeSeparator::can_cast(it.kind()))
             .filter_map(|it| it.into_node())
             .find_map(ast::Pat::cast)
     }
@@ -517,7 +516,7 @@ impl ast::RangePat {
     pub fn end(&self) -> Option<ast::Pat> {
         self.syntax()
             .children_with_tokens()
-            .skip_while(|it| !ast::RangeSeparator::can_cast_element(it.kind()))
+            .skip_while(|it| !ast::RangeSeparator::can_cast(it.kind()))
             .filter_map(|it| it.into_node())
             .find_map(ast::Pat::cast)
     }
@@ -525,10 +524,10 @@ impl ast::RangePat {
 
 impl ast::TokenTree {
     pub fn left_delimiter(&self) -> Option<ast::LeftDelimiter> {
-        self.syntax().first_child_or_token().and_then(ast::LeftDelimiter::cast_element)
+        self.syntax().first_child_or_token()?.into_token().and_then(ast::LeftDelimiter::cast)
     }
 
     pub fn right_delimiter(&self) -> Option<ast::RightDelimiter> {
-        self.syntax().last_child_or_token().and_then(ast::RightDelimiter::cast_element)
+        self.syntax().last_child_or_token()?.into_token().and_then(ast::RightDelimiter::cast)
     }
 }

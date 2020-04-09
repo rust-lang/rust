@@ -549,7 +549,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct Block: AttrsOwner, ModuleItemOwner {
             LCurly,
             statements: [Stmt],
-            statements_or_semi: [StmtOrSemi],
             Expr,
             RCurly,
         }
@@ -749,12 +748,10 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
 
         enum AttrInput { Literal, TokenTree }
         enum Stmt {
-            ModuleItem,
             LetStmt,
             ExprStmt,
             // macro calls are parsed as expression statements */
         }
-        enum StmtOrSemi {Stmt, Semi}
 
         enum LeftDelimiter { LParen, LBrack, LCurly }
         enum RightDelimiter { RParen, RBrack, RCurly }
@@ -824,11 +821,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         enum FieldDefList {
             RecordFieldDefList,
             TupleFieldDefList,
-        }
-
-        enum AttrOrComment {
-            Attr,
-            Comment
         }
     },
 };

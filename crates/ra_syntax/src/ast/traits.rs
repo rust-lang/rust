@@ -4,9 +4,9 @@
 
 use itertools::Itertools;
 
-use crate::ast::{
-    self, child_elements, child_opt, child_token_opt, child_tokens, children, AstChildElements,
-    AstChildTokens, AstChildren, AstNode, AstToken,
+use crate::{
+    ast::{self, child_opt, children, support, AstChildren, AstNode, AstToken},
+    syntax_node::SyntaxElementChildren,
 };
 
 pub trait TypeAscriptionOwner: AstNode {
@@ -71,7 +71,7 @@ pub trait TypeBoundsOwner: AstNode {
     }
 
     fn colon(&self) -> Option<ast::Colon> {
-        child_token_opt(self)
+        support::token(self.syntax())
     }
 }
 
@@ -82,14 +82,11 @@ pub trait AttrsOwner: AstNode {
     fn has_atom_attr(&self, atom: &str) -> bool {
         self.attrs().filter_map(|x| x.as_simple_atom()).any(|x| x == atom)
     }
-    fn attr_or_comments(&self) -> AstChildElements<ast::AttrOrComment> {
-        child_elements(self)
-    }
 }
 
 pub trait DocCommentsOwner: AstNode {
-    fn doc_comments(&self) -> AstChildTokens<ast::Comment> {
-        child_tokens(self)
+    fn doc_comments(&self) -> CommentIter {
+        CommentIter { iter: self.syntax().children_with_tokens() }
     }
 
     /// Returns the textual content of a doc comment block as a single string.
@@ -132,5 +129,16 @@ pub trait DocCommentsOwner: AstNode {
         } else {
             None
         }
+    }
+}
+
+pub struct CommentIter {
+    iter: SyntaxElementChildren,
+}
+
+impl Iterator for CommentIter {
+    type Item = ast::Comment;
+    fn next(&mut self) -> Option<ast::Comment> {
+        self.iter.by_ref().find_map(|el| el.into_token().and_then(ast::Comment::cast))
     }
 }

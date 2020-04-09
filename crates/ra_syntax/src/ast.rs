@@ -64,6 +64,22 @@ pub trait AstToken {
     }
 }
 
+mod support {
+    use super::{AstChildren, AstNode, AstToken, SyntaxNode};
+
+    pub(super) fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
+        parent.children().find_map(N::cast)
+    }
+
+    pub(super) fn children<N: AstNode>(parent: &SyntaxNode) -> AstChildren<N> {
+        AstChildren::new(parent)
+    }
+
+    pub(super) fn token<T: AstToken>(parent: &SyntaxNode) -> Option<T> {
+        parent.children_with_tokens().filter_map(|it| it.into_token()).find_map(T::cast)
+    }
+}
+
 /// An iterator over `SyntaxNode` children of a particular AST type.
 #[derive(Debug, Clone)]
 pub struct AstChildren<N> {
