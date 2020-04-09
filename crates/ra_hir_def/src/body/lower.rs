@@ -372,7 +372,7 @@ impl ExprCollector<'_> {
             }
             ast::Expr::RefExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let mutability = Mutability::from_mutable(e.mut_kw_token().is_some());
+                let mutability = Mutability::from_mutable(e.mut_token().is_some());
                 self.alloc_expr(Expr::Ref { expr, mutability }, syntax_ptr)
             }
             ast::Expr::PrefixExpr(e) => {
@@ -587,10 +587,8 @@ impl ExprCollector<'_> {
         let pattern = match &pat {
             ast::Pat::BindPat(bp) => {
                 let name = bp.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
-                let annotation = BindingAnnotation::new(
-                    bp.mut_kw_token().is_some(),
-                    bp.ref_kw_token().is_some(),
-                );
+                let annotation =
+                    BindingAnnotation::new(bp.mut_token().is_some(), bp.ref_token().is_some());
                 let subpat = bp.pat().map(|subpat| self.collect_pat(subpat));
                 if annotation == BindingAnnotation::Unannotated && subpat.is_none() {
                     // This could also be a single-segment path pattern. To
@@ -631,7 +629,7 @@ impl ExprCollector<'_> {
             }
             ast::Pat::RefPat(p) => {
                 let pat = self.collect_pat_opt(p.pat());
-                let mutability = Mutability::from_mutable(p.mut_kw_token().is_some());
+                let mutability = Mutability::from_mutable(p.mut_token().is_some());
                 Pat::Ref { pat, mutability }
             }
             ast::Pat::PathPat(p) => {

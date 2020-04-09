@@ -279,7 +279,7 @@ pub enum SelfParamKind {
 impl ast::SelfParam {
     pub fn kind(&self) -> SelfParamKind {
         if self.amp_token().is_some() {
-            if self.amp_mut_kw_token().is_some() {
+            if self.amp_mut_token().is_some() {
                 SelfParamKind::MutRef
             } else {
                 SelfParamKind::Ref
@@ -290,21 +290,21 @@ impl ast::SelfParam {
     }
 
     /// the "mut" in "mut self", not the one in "&mut self"
-    pub fn mut_kw_token(&self) -> Option<ast::MutKw> {
+    pub fn mut_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
             .take_while(|it| it.kind() != T![&])
-            .find_map(ast::MutKw::cast)
+            .find(|it| it.kind() == T![mut])
     }
 
     /// the "mut" in "&mut self", not the one in "mut self"
-    pub fn amp_mut_kw_token(&self) -> Option<ast::MutKw> {
+    pub fn amp_mut_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
             .skip_while(|it| it.kind() != T![&])
-            .find_map(ast::MutKw::cast)
+            .find(|it| it.kind() == T![mut])
     }
 }
 
@@ -340,7 +340,7 @@ impl ast::TypeBound {
     }
 
     pub fn question_token(&self) -> Option<ast::Question> {
-        if self.const_kw_token().is_some() {
+        if self.const_token().is_some() {
             self.syntax()
                 .children_with_tokens()
                 .filter_map(|it| it.into_token())
@@ -364,11 +364,11 @@ impl ast::Visibility {
     pub fn kind(&self) -> VisibilityKind {
         if let Some(path) = support::children(self.syntax()).next() {
             VisibilityKind::In(path)
-        } else if self.crate_kw_token().is_some() {
+        } else if self.crate_token().is_some() {
             VisibilityKind::PubCrate
-        } else if self.super_kw_token().is_some() {
+        } else if self.super_token().is_some() {
             VisibilityKind::PubSuper
-        } else if self.self_kw_token().is_some() {
+        } else if self.self_token().is_some() {
             VisibilityKind::PubSuper
         } else {
             VisibilityKind::Pub

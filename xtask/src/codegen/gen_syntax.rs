@@ -58,11 +58,14 @@ fn generate_tokens(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         .chain(kinds.tokens.into_iter().copied().map(|x| x.into()))
         .collect();
 
-    let tokens = all_token_kinds.iter().map(|kind_str| {
+    let tokens = all_token_kinds.iter().filter_map(|kind_str| {
+        if kind_str.ends_with("_KW") {
+            return None;
+        }
         let kind_str = &**kind_str;
         let kind = format_ident!("{}", kind_str);
         let name = format_ident!("{}", to_pascal_case(kind_str));
-        quote! {
+        let res = quote! {
             #[derive(Debug, Clone, PartialEq, Eq, Hash)]
             pub struct #name {
                 pub(crate) syntax: SyntaxToken,
@@ -81,7 +84,8 @@ fn generate_tokens(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
                 }
                 fn syntax(&self) -> &SyntaxToken { &self.syntax }
             }
-        }
+        };
+        Some(res)
     });
 
     let enums = grammar.token_enums.iter().map(|en| {
@@ -186,8 +190,12 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         });
 
         let methods = node.fields.iter().map(|(name, field)| {
+            let is_kw = name.ends_with("Kw");
             let method_name = match field {
-                FieldSrc::Shorthand => format_ident!("{}", to_lower_snake_case(&name)),
+                FieldSrc::Shorthand => {
+                    let name = if is_kw { &name[..name.len() - 2] } else { &name };
+                    format_ident!("{}", to_lower_snake_case(name))
+                }
                 _ => format_ident!("{}", name),
             };
             let ty = match field {
@@ -209,9 +217,18 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
                     let is_token = token_kinds.contains(&ty.to_string());
                     if is_token {
                         let method_name = format_ident!("{}_token", method_name);
-                        quote! {
-                            pub fn #method_name(&self) -> Option<#ty> {
-                                support::token(&self.syntax)
+                        if is_kw {
+                            let token_kind = format_ident!("{}", to_upper_snake_case(name));
+                            quote! {
+                                pub fn #method_name(&self) -> Option<SyntaxToken> {
+                                    support::token2(&self.syntax, #token_kind)
+                                }
+                            }
+                        } else {
+                            quote! {
+                                pub fn #method_name(&self) -> Option<#ty> {
+                                    support::token(&self.syntax)
+                                }
                             }
                         }
                     } else {
@@ -332,7 +349,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
 
     let ast = quote! {
         use crate::{
-            SyntaxNode, SyntaxKind::{self, *},
+            SyntaxNode, SyntaxToken, SyntaxKind::{self, *},
             ast::{self, AstNode, AstChildren, support},
         };
 

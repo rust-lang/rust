@@ -48,12 +48,6 @@ impl ast::IfExpr {
     }
 }
 
-impl ast::RefExpr {
-    pub fn raw_token(&self) -> Option<SyntaxToken> {
-        None // FIXME: implement &raw
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PrefixOp {
     /// The `*` operator for dereferencing
