@@ -22,9 +22,13 @@ pub fn generate_syntax(mode: Mode) -> Result<()> {
     let syntax_kinds = generate_syntax_kinds(KINDS_SRC)?;
     update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
-    let ast_file = project_root().join(codegen::AST_NODES);
-    let ast = generate_ast(KINDS_SRC, AST_SRC)?;
-    update(ast_file.as_path(), &ast, mode)?;
+    let ast_nodes_file = project_root().join(codegen::AST_NODES);
+    let contents = generate_ast(KINDS_SRC, AST_SRC)?;
+    update(ast_nodes_file.as_path(), &contents, mode)?;
+
+    let ast_tokens_file = project_root().join(codegen::AST_TOKENS);
+    let contents = "//! Generated file, do not edit by hand, see `xtask/src/codegen`";
+    update(ast_tokens_file.as_path(), &contents, mode)?;
 
     Ok(())
 }
