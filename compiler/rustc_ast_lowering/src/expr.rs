@@ -900,22 +900,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
         eq_sign_span: Span,
         assignments: &mut Vec<hir::Stmt<'hir>>,
     ) -> &'hir hir::Pat<'hir> {
-        // TODO: Handle `..` and `_`
+        // TODO: Handle `_`, requires changes to the parser
         match &lhs.kind {
             // slices:
             ExprKind::Array(elements) => {
-                let pats = self.arena.alloc_from_iter(
-                    elements.iter().map(|e| self.destructure_assign(e, eq_sign_span, assignments)),
-                );
-                let slice_pat = hir::PatKind::Slice(pats, None, &[]);
+                let (pats, rest) =
+                    self.destructure_sequence(elements, "slice", eq_sign_span, assignments);
+                let slice_pat = if let Some((i, span)) = rest {
+                    let (before, after) = pats.split_at(i);
+                    hir::PatKind::Slice(before, Some(self.pat(span, hir::PatKind::Wild)), after)
+                } else {
+                    hir::PatKind::Slice(pats, None, &[])
+                };
                 return self.pat(lhs.span, slice_pat);
             }
             // tuple structs:
             ExprKind::Call(callee, args) => {
                 if let ExprKind::Path(qself, path) = &callee.kind {
-                    let pats = self.arena.alloc_from_iter(
-                        args.iter().map(|e| self.destructure_assign(e, eq_sign_span, assignments)),
-                    );
+                    let (pats, rest) =
+                        self.destructure_sequence(args, "tuple struct", eq_sign_span, assignments);
                     let qpath = self.lower_qpath(
                         callee.id,
                         qself,
@@ -923,12 +926,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ParamMode::Optional,
                         ImplTraitContext::disallowed(),
                     );
-                    let tuple_struct_pat = hir::PatKind::TupleStruct(qpath, pats, None);
+                    let tuple_struct_pat =
+                        hir::PatKind::TupleStruct(qpath, pats, rest.map(|r| r.0));
                     return self.pat(lhs.span, tuple_struct_pat);
                 }
             }
             // structs:
-            ExprKind::Struct(path, fields, _rest) => {
+            // TODO: support `..` here, requires changes to the parser
+            ExprKind::Struct(path, fields, rest) => {
                 let field_pats = self.arena.alloc_from_iter(fields.iter().map(|f| {
                     let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
                     hir::FieldPat {
@@ -951,10 +956,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             // tuples:
             ExprKind::Tup(elements) => {
-                let pats = self.arena.alloc_from_iter(
-                    elements.iter().map(|e| self.destructure_assign(e, eq_sign_span, assignments)),
-                );
-                let tuple_pat = hir::PatKind::Tuple(pats, None);
+                let (pats, rest) =
+                    self.destructure_sequence(elements, "tuple", eq_sign_span, assignments);
+                let tuple_pat = hir::PatKind::Tuple(pats, rest.map(|r| r.0));
                 return self.pat(lhs.span, tuple_pat);
             }
             _ => {}
@@ -967,6 +971,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let expr = self.expr(lhs.span, assign, ThinVec::new());
         assignments.push(self.stmt_expr(lhs.span, expr));
         pat
+    }
+
+    /// Destructure a sequence of expressions occurring on the LHS of an assignment.
+    /// Such a sequence occurs in a tuple (struct)/slice.
+    /// Return a sequence of corresponding patterns and the index and span of `..`, if any.
+    /// Along the way, introduce additional assignments in the parameter `assignments`.
+    fn destructure_sequence(
+        &mut self,
+        elements: &[AstP<Expr>],
+        ctx: &str,
+        eq_sign_span: Span,
+        assignments: &mut Vec<hir::Stmt<'hir>>,
+    ) -> (&'hir [&'hir hir::Pat<'hir>], Option<(usize, Span)>) {
+        let mut rest = None;
+        let elements =
+            self.arena.alloc_from_iter(elements.iter().enumerate().filter_map(|(i, e)| {
+                // Check for `..` pattern.
+                if let ExprKind::Range(None, None, RangeLimits::HalfOpen) = e.kind {
+                    if let Some((_, prev_span)) = rest {
+                        self.ban_extra_rest_pat(e.span, prev_span, ctx);
+                    } else {
+                        rest = Some((i, e.span));
+                    }
+                    None
+                } else {
+                    Some(self.destructure_assign(e, eq_sign_span, assignments))
+                }
+            }));
+        (elements, rest)
     }
 
     /// Desugar `<start>..=<end>` into `std::ops::RangeInclusive::new(<start>, <end>)`.

@@ -277,7 +277,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Emit a friendly error for extra `..` patterns in a tuple/tuple struct/slice pattern.
-    fn ban_extra_rest_pat(&self, sp: Span, prev_sp: Span, ctx: &str) {
+    crate fn ban_extra_rest_pat(&self, sp: Span, prev_sp: Span, ctx: &str) {
         self.diagnostic()
             .struct_span_err(sp, &format!("`..` can only be used once per {} pattern", ctx))
             .span_label(sp, &format!("can only be used once per {} pattern", ctx))
