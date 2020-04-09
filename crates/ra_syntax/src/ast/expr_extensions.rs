@@ -49,10 +49,6 @@ impl ast::IfExpr {
 }
 
 impl ast::RefExpr {
-    pub fn is_mut(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
-    }
-
     pub fn raw_token(&self) -> Option<SyntaxToken> {
         None // FIXME: implement &raw
     }

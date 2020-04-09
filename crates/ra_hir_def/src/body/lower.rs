@@ -372,7 +372,7 @@ impl ExprCollector<'_> {
             }
             ast::Expr::RefExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let mutability = Mutability::from_mutable(e.is_mut());
+                let mutability = Mutability::from_mutable(e.mut_kw_token().is_some());
                 self.alloc_expr(Expr::Ref { expr, mutability }, syntax_ptr)
             }
             ast::Expr::PrefixExpr(e) => {
