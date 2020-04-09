@@ -741,6 +741,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             RangePat,
             LiteralPat,
             MacroPat,
+            RecordFieldPat,
         }
 
         enum RecordInnerPat {
