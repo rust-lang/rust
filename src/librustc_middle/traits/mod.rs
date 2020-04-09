@@ -257,8 +257,6 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
-
-    AssocTypeBound(Box<AssocTypeBoundData>),
 }
 
 impl ObligationCauseCode<'_> {
@@ -270,13 +268,6 @@ impl ObligationCauseCode<'_> {
         }
         base_cause
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AssocTypeBoundData {
-    pub impl_span: Option<Span>,
-    pub original: Span,
-    pub bounds: Vec<Span>,
 }
 
 // `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.

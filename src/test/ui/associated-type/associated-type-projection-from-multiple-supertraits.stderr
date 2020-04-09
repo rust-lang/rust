@@ -28,7 +28,7 @@ LL | fn dent<C:BoxCar>(c: C, color: <C as Vehicle>::Color) {
    |                                ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0222]: ambiguous associated type `Color` in bounds of `BoxCar`
-  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:23:30
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:23:37
    |
 LL |     type Color;
    |     ----------- ambiguous `Color` from `Vehicle`
@@ -37,7 +37,7 @@ LL |     type Color;
    |     ----------- ambiguous `Color` from `Box`
 ...
 LL | fn dent_object<COLOR>(c: dyn BoxCar<Color=COLOR>) {
-   |                              ^^^^^^^^^^^^^^^^^^^ ambiguous associated type `Color`
+   |                                     ^^^^^^^^^^^ ambiguous associated type `Color`
    |
    = help: consider introducing a new type parameter `T` and adding `where` constraints:
                where

@@ -1684,15 +1684,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     err.help("add `#![feature(trivial_bounds)]` to the crate attributes to enable");
                 }
             }
-            ObligationCauseCode::AssocTypeBound(ref data) => {
-                err.span_label(data.original, "associated type defined here");
-                if let Some(sp) = data.impl_span {
-                    err.span_label(sp, "in this `impl` item");
-                }
-                for sp in &data.bounds {
-                    err.span_label(*sp, "restricted in this bound");
-                }
-            }
         }
     }
 
