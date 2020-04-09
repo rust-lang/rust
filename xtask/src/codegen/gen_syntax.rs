@@ -3,10 +3,13 @@
 //! Specifically, it generates the `SyntaxKind` enum and a number of newtype
 //! wrappers around `SyntaxNode` which implement `ra_syntax::AstNode`.
 
+use std::{
+    borrow::Cow,
+    collections::{BTreeSet, HashSet},
+};
+
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
-use std::borrow::Cow;
-use std::collections::{BTreeSet, HashMap, HashSet};
 
 use crate::{
     ast_src::{AstSrc, FieldSrc, KindsSrc, AST_SRC, KINDS_SRC},
@@ -19,9 +22,13 @@ pub fn generate_syntax(mode: Mode) -> Result<()> {
     let syntax_kinds = generate_syntax_kinds(KINDS_SRC)?;
     update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
-    let ast_file = project_root().join(codegen::AST);
-    let ast = generate_ast(KINDS_SRC, AST_SRC)?;
-    update(ast_file.as_path(), &ast, mode)?;
+    let ast_nodes_file = project_root().join(codegen::AST_NODES);
+    let contents = generate_nodes(KINDS_SRC, AST_SRC)?;
+    update(ast_nodes_file.as_path(), &contents, mode)?;
+
+    let ast_tokens_file = project_root().join(codegen::AST_TOKENS);
+    let contents = generate_tokens(KINDS_SRC, AST_SRC)?;
+    update(ast_tokens_file.as_path(), &contents, mode)?;
 
     Ok(())
 }
@@ -33,7 +40,7 @@ struct ElementKinds {
     has_tokens: bool,
 }
 
-fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
+fn generate_tokens(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
     let all_token_kinds: Vec<_> = kinds
         .punct
         .into_iter()
@@ -50,46 +57,6 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         .chain(kinds.literals.into_iter().copied().map(|x| x.into()))
         .chain(kinds.tokens.into_iter().copied().map(|x| x.into()))
         .collect();
-
-    let mut element_kinds_map = HashMap::new();
-    for kind in &all_token_kinds {
-        let kind = &**kind;
-        let name = to_pascal_case(kind);
-        element_kinds_map.insert(
-            name,
-            ElementKinds {
-                kinds: Some(format_ident!("{}", kind)).into_iter().collect(),
-                has_nodes: false,
-                has_tokens: true,
-            },
-        );
-    }
-
-    for kind in kinds.nodes {
-        let name = to_pascal_case(kind);
-        element_kinds_map.insert(
-            name,
-            ElementKinds {
-                kinds: Some(format_ident!("{}", *kind)).into_iter().collect(),
-                has_nodes: true,
-                has_tokens: false,
-            },
-        );
-    }
-
-    for en in grammar.enums {
-        let mut element_kinds: ElementKinds = Default::default();
-        for variant in en.variants {
-            if let Some(variant_element_kinds) = element_kinds_map.get(*variant) {
-                element_kinds.kinds.extend(variant_element_kinds.kinds.iter().cloned());
-                element_kinds.has_tokens |= variant_element_kinds.has_tokens;
-                element_kinds.has_nodes |= variant_element_kinds.has_nodes;
-            } else {
-                panic!("Enum variant has type that does not exist or was not declared before the enum: {}", *variant);
-            }
-        }
-        element_kinds_map.insert(en.name.to_string(), element_kinds);
-    }
 
     let tokens = all_token_kinds.iter().map(|kind_str| {
         let kind_str = &**kind_str;
@@ -108,12 +75,7 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
             }
 
             impl AstToken for #name {
-                fn can_cast(kind: SyntaxKind) -> bool {
-                    match kind {
-                        #kind => true,
-                        _ => false,
-                    }
-                }
+                fn can_cast(kind: SyntaxKind) -> bool { kind == #kind }
                 fn cast(syntax: SyntaxToken) -> Option<Self> {
                     if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
                 }
@@ -121,6 +83,99 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
             }
         }
     });
+
+    let enums = grammar.token_enums.iter().map(|en| {
+        let variants = en.variants.iter().map(|var| format_ident!("{}", var)).collect::<Vec<_>>();
+        let name = format_ident!("{}", en.name);
+        let kinds = variants
+            .iter()
+            .map(|name| format_ident!("{}", to_upper_snake_case(&name.to_string())))
+            .collect::<Vec<_>>();
+        assert!(en.traits.is_empty());
+
+        quote! {
+                #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+                pub enum #name {
+                    #(#variants(#variants),)*
+                }
+
+                #(
+                impl From<#variants> for #name {
+                    fn from(node: #variants) -> #name {
+                        #name::#variants(node)
+                    }
+                }
+                )*
+
+                impl std::fmt::Display for #name {
+                    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        std::fmt::Display::fmt(self.syntax(), f)
+                    }
+                }
+
+                impl AstToken for #name {
+                    fn can_cast(kind: SyntaxKind) -> bool {
+                        match kind {
+                            #(#kinds)|* => true,
+                            _ => false,
+                        }
+                    }
+                    fn cast(syntax: SyntaxToken) -> Option<Self> {
+                        let res = match syntax.kind() {
+                            #(
+                            #kinds => #name::#variants(#variants { syntax }),
+                            )*
+                            _ => return None,
+                        };
+                        Some(res)
+                    }
+                    fn syntax(&self) -> &SyntaxToken {
+                        match self {
+                            #(
+                            #name::#variants(it) => &it.syntax,
+                            )*
+                        }
+                    }
+                }
+        }
+    });
+
+    crate::reformat(quote! {
+        use crate::{SyntaxToken, SyntaxKind::{self, *}, ast::AstToken};
+
+        #(#tokens)*
+        #(#enums)*
+    })
+}
+
+fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
+    let all_token_kinds: Vec<_> = kinds
+        .punct
+        .into_iter()
+        .map(|(_, kind)| kind)
+        .copied()
+        .map(|x| x.into())
+        .chain(
+            kinds
+                .keywords
+                .into_iter()
+                .chain(kinds.contextual_keywords.into_iter())
+                .map(|name| Cow::Owned(format!("{}_KW", to_upper_snake_case(&name)))),
+        )
+        .chain(kinds.literals.into_iter().copied().map(|x| x.into()))
+        .chain(kinds.tokens.into_iter().copied().map(|x| x.into()))
+        .collect();
+
+    let mut token_kinds = HashSet::new();
+    for kind in &all_token_kinds {
+        let kind = &**kind;
+        let name = to_pascal_case(kind);
+        token_kinds.insert(name);
+    }
+
+    for en in grammar.token_enums {
+        token_kinds.insert(en.name.to_string());
+    }
 
     let nodes = grammar.nodes.iter().map(|node| {
         let name = format_ident!("{}", node.name);
@@ -146,14 +201,23 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
                 FieldSrc::Many(_) => {
                     quote! {
                         pub fn #method_name(&self) -> AstChildren<#ty> {
-                            AstChildren::new(&self.syntax)
+                            support::children(&self.syntax)
                         }
                     }
                 }
                 FieldSrc::Optional(_) | FieldSrc::Shorthand => {
-                    quote! {
-                        pub fn #method_name(&self) -> Option<#ty> {
-                            AstChildren::new(&self.syntax).next()
+                    let is_token = token_kinds.contains(&ty.to_string());
+                    if is_token {
+                        quote! {
+                            pub fn #method_name(&self) -> Option<#ty> {
+                                support::token(&self.syntax)
+                            }
+                        }
+                    } else {
+                        quote! {
+                            pub fn #method_name(&self) -> Option<#ty> {
+                                support::child(&self.syntax)
+                            }
                         }
                     }
                 }
@@ -166,18 +230,9 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
                 pub(crate) syntax: SyntaxNode,
             }
 
-            impl std::fmt::Display for #name {
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    std::fmt::Display::fmt(self.syntax(), f)
-                }
-            }
-
             impl AstNode for #name {
                 fn can_cast(kind: SyntaxKind) -> bool {
-                    match kind {
-                        #kind => true,
-                        _ => false,
-                    }
+                    kind == #kind
                 }
                 fn cast(syntax: SyntaxNode) -> Option<Self> {
                     if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
@@ -219,12 +274,6 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
             }
             )*
 
-            impl std::fmt::Display for #name {
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    std::fmt::Display::fmt(self.syntax(), f)
-                }
-            }
-
             impl AstNode for #name {
                 fn can_cast(kind: SyntaxKind) -> bool {
                     match kind {
@@ -249,9 +298,25 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
                     }
                 }
             }
+
             #(#traits)*
         }
     });
+
+    let displays = grammar
+        .enums
+        .iter()
+        .map(|it| format_ident!("{}", it.name))
+        .chain(grammar.nodes.iter().map(|it| format_ident!("{}", it.name)))
+        .map(|name| {
+            quote! {
+                impl std::fmt::Display for #name {
+                    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        std::fmt::Display::fmt(self.syntax(), f)
+                    }
+                }
+            }
+        });
 
     let defined_nodes: HashSet<_> = grammar.nodes.iter().map(|node| node.name).collect();
 
@@ -265,15 +330,16 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
     }
 
     let ast = quote! {
-        #[allow(unused_imports)]
         use crate::{
-            SyntaxNode, SyntaxToken, SyntaxElement, NodeOrToken, SyntaxKind::{self, *},
-            ast::{self, AstNode, AstToken, AstChildren},
+            SyntaxNode, SyntaxKind::{self, *},
+            ast::{self, AstNode, AstChildren, support},
         };
 
-        #(#tokens)*
+        use super::tokens::*;
+
         #(#nodes)*
         #(#enums)*
+        #(#displays)*
     };
 
     let pretty = crate::reformat(ast)?;

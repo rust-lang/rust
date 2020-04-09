@@ -105,6 +105,7 @@ pub enum SyntaxKind {
     DEFAULT_KW,
     EXISTENTIAL_KW,
     UNION_KW,
+    RAW_KW,
     INT_NUMBER,
     FLOAT_NUMBER,
     CHAR,
@@ -258,7 +259,7 @@ impl SyntaxKind {
             | IMPL_KW | IN_KW | LET_KW | LOOP_KW | MACRO_KW | MATCH_KW | MOD_KW | MOVE_KW
             | MUT_KW | PUB_KW | REF_KW | RETURN_KW | SELF_KW | STATIC_KW | STRUCT_KW | SUPER_KW
             | TRAIT_KW | TRUE_KW | TRY_KW | TYPE_KW | UNSAFE_KW | USE_KW | WHERE_KW | WHILE_KW
-            | AUTO_KW | DEFAULT_KW | EXISTENTIAL_KW | UNION_KW => true,
+            | AUTO_KW | DEFAULT_KW | EXISTENTIAL_KW | UNION_KW | RAW_KW => true,
             _ => false,
         }
     }
@@ -650,5 +651,8 @@ macro_rules! T {
     };
     ( union ) => {
         $crate::SyntaxKind::UNION_KW
+    };
+    ( raw ) => {
+        $crate::SyntaxKind::RAW_KW
     };
 }

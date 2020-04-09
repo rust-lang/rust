@@ -1,7 +1,8 @@
 use hir::Adt;
 use ra_syntax::{
     ast::{
-        self, AstNode, NameOwner, StructKind, TypeAscriptionOwner, TypeParamsOwner, VisibilityOwner,
+        self, AstNode, AstToken, NameOwner, StructKind, TypeAscriptionOwner, TypeParamsOwner,
+        VisibilityOwner,
     },
     TextUnit, T,
 };
@@ -105,7 +106,7 @@ fn generate_impl_text(strukt: &ast::StructDef, code: &str) -> String {
     if let Some(type_params) = type_params {
         let lifetime_params = type_params
             .lifetime_params()
-            .filter_map(|it| it.lifetime_token())
+            .filter_map(|it| it.lifetime())
             .map(|it| it.text().clone());
         let type_params =
             type_params.type_params().filter_map(|it| it.name()).map(|it| it.text().clone());

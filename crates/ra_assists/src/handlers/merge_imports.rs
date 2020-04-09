@@ -3,7 +3,7 @@ use std::iter::successors;
 use ra_syntax::{
     algo::{neighbor, SyntaxRewriter},
     ast::{self, edit::AstNodeEdit, make},
-    AstNode, Direction, InsertPosition, SyntaxElement, T,
+    AstNode, AstToken, Direction, InsertPosition, SyntaxElement, T,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -82,7 +82,7 @@ fn try_merge_trees(old: &ast::UseTree, new: &ast::UseTree) -> Option<ast::UseTre
             .filter(|it| it.kind() != T!['{'] && it.kind() != T!['}']),
     );
     let use_tree_list = lhs.use_tree_list()?;
-    let pos = InsertPosition::Before(use_tree_list.r_curly()?.into());
+    let pos = InsertPosition::Before(use_tree_list.r_curly()?.syntax().clone().into());
     let use_tree_list = use_tree_list.insert_children(pos, to_insert);
     Some(lhs.with_use_tree_list(use_tree_list))
 }

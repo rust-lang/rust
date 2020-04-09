@@ -245,7 +245,7 @@ fn opt_fn_ret_type(p: &mut Parser) -> bool {
     if p.at(T![->]) {
         let m = p.start();
         p.bump(T![->]);
-        types::type_(p);
+        types::type_no_bounds(p);
         m.complete(p, RET_TYPE);
         true
     } else {

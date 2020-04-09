@@ -21,7 +21,7 @@ pub use self::{
         AttrKind, FieldKind, PathSegmentKind, SelfParamKind, SlicePatComponents, StructKind,
         TypeBoundKind, VisibilityKind,
     },
-    generated::*,
+    generated::{nodes::*, tokens::*},
     tokens::*,
     traits::*,
 };
@@ -61,6 +61,22 @@ pub trait AstToken {
 
     fn text(&self) -> &SmolStr {
         self.syntax().text()
+    }
+}
+
+mod support {
+    use super::{AstChildren, AstNode, AstToken, SyntaxNode};
+
+    pub(super) fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
+        parent.children().find_map(N::cast)
+    }
+
+    pub(super) fn children<N: AstNode>(parent: &SyntaxNode) -> AstChildren<N> {
+        AstChildren::new(parent)
+    }
+
+    pub(super) fn token<T: AstToken>(parent: &SyntaxNode) -> Option<T> {
+        parent.children_with_tokens().filter_map(|it| it.into_token()).find_map(T::cast)
     }
 }
 
@@ -271,7 +287,7 @@ where
     let pred = predicates.next().unwrap();
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
-    assert_eq!("'a", pred.lifetime_token().unwrap().text());
+    assert_eq!("'a", pred.lifetime().unwrap().text());
 
     assert_bound("'b", bounds.next());
     assert_bound("'c", bounds.next());

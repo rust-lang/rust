@@ -34,7 +34,7 @@ pub(crate) fn lower_use_tree(
         let alias = tree.alias().map(|a| {
             a.name().map(|it| it.as_name()).map_or(ImportAlias::Underscore, ImportAlias::Alias)
         });
-        let is_glob = tree.has_star();
+        let is_glob = tree.star().is_some();
         if let Some(ast_path) = tree.path() {
             // Handle self in a path.
             // E.g. `use something::{self, <...>}`
