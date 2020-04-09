@@ -136,12 +136,6 @@ impl ast::Path {
     }
 }
 
-impl ast::Module {
-    pub fn has_semi(&self) -> bool {
-        self.semi_token().is_some()
-    }
-}
-
 impl ast::UseTreeList {
     pub fn parent_use_tree(&self) -> ast::UseTree {
         self.syntax()
@@ -171,10 +165,6 @@ impl ast::ImplDef {
         let first = types.next();
         let second = types.next();
         (first, second)
-    }
-
-    pub fn is_negative(&self) -> bool {
-        self.excl_token().is_some()
     }
 }
 
@@ -216,31 +206,6 @@ impl ast::EnumVariant {
     }
 }
 
-impl ast::FnDef {
-    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
-        Some(self.semi_token()?.syntax().clone())
-    }
-
-    pub fn is_async(&self) -> bool {
-        self.async_kw_token().is_some()
-    }
-}
-
-impl ast::LetStmt {
-    pub fn has_semi(&self) -> bool {
-        match self.syntax().last_child_or_token() {
-            None => false,
-            Some(node) => node.kind() == T![;],
-        }
-    }
-}
-
-impl ast::ExprStmt {
-    pub fn has_semi(&self) -> bool {
-        self.semi_token().is_some()
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FieldKind {
     Name(ast::NameRef),
@@ -266,25 +231,6 @@ impl ast::FieldExpr {
         } else {
             None
         }
-    }
-}
-
-impl ast::RefPat {
-    pub fn is_mut(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
-    }
-}
-
-impl ast::BindPat {
-    pub fn is_mutable(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
-    }
-
-    pub fn is_ref(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == T![ref])
-    }
-    pub fn has_at(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == T![@])
     }
 }
 
@@ -322,18 +268,6 @@ impl ast::SlicePat {
     }
 }
 
-impl ast::PointerType {
-    pub fn is_mut(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
-    }
-}
-
-impl ast::ReferenceType {
-    pub fn is_mut(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SelfParamKind {
     /// self
@@ -347,7 +281,7 @@ pub enum SelfParamKind {
 impl ast::SelfParam {
     pub fn kind(&self) -> SelfParamKind {
         if self.amp_token().is_some() {
-            if self.amp_mut_kw().is_some() {
+            if self.amp_mut_kw_token().is_some() {
                 SelfParamKind::MutRef
             } else {
                 SelfParamKind::Ref
@@ -358,7 +292,7 @@ impl ast::SelfParam {
     }
 
     /// the "mut" in "mut self", not the one in "&mut self"
-    pub fn mut_kw(&self) -> Option<ast::MutKw> {
+    pub fn mut_kw_token(&self) -> Option<ast::MutKw> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
@@ -367,7 +301,7 @@ impl ast::SelfParam {
     }
 
     /// the "mut" in "&mut self", not the one in "mut self"
-    pub fn amp_mut_kw(&self) -> Option<ast::MutKw> {
+    pub fn amp_mut_kw_token(&self) -> Option<ast::MutKw> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
@@ -399,11 +333,7 @@ impl ast::TypeBound {
         }
     }
 
-    pub fn has_question_mark(&self) -> bool {
-        self.question().is_some()
-    }
-
-    pub fn const_question(&self) -> Option<ast::Question> {
+    pub fn const_question_token(&self) -> Option<ast::Question> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
@@ -411,7 +341,7 @@ impl ast::TypeBound {
             .find_map(ast::Question::cast)
     }
 
-    pub fn question(&self) -> Option<ast::Question> {
+    pub fn question_token(&self) -> Option<ast::Question> {
         if self.const_kw_token().is_some() {
             self.syntax()
                 .children_with_tokens()
@@ -421,12 +351,6 @@ impl ast::TypeBound {
         } else {
             support::token(&self.syntax)
         }
-    }
-}
-
-impl ast::TraitDef {
-    pub fn is_auto(&self) -> bool {
-        self.syntax().children_with_tokens().any(|t| t.kind() == T![auto])
     }
 }
 
@@ -442,27 +366,15 @@ impl ast::Visibility {
     pub fn kind(&self) -> VisibilityKind {
         if let Some(path) = children(self).next() {
             VisibilityKind::In(path)
-        } else if self.is_pub_crate() {
+        } else if self.crate_kw_token().is_some() {
             VisibilityKind::PubCrate
-        } else if self.is_pub_super() {
+        } else if self.super_kw_token().is_some() {
             VisibilityKind::PubSuper
-        } else if self.is_pub_self() {
+        } else if self.self_kw_token().is_some() {
             VisibilityKind::PubSuper
         } else {
             VisibilityKind::Pub
         }
-    }
-
-    fn is_pub_crate(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == T![crate])
-    }
-
-    fn is_pub_super(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == T![super])
-    }
-
-    fn is_pub_self(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == T![self])
     }
 }
 

@@ -555,6 +555,7 @@ impl AstNode for PointerType {
 impl PointerType {
     pub fn star_token(&self) -> Option<Star> { support::token(&self.syntax) }
     pub fn const_kw_token(&self) -> Option<ConstKw> { support::token(&self.syntax) }
+    pub fn mut_kw_token(&self) -> Option<MutKw> { support::token(&self.syntax) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1532,6 +1533,7 @@ impl ast::NameOwner for BindPat {}
 impl BindPat {
     pub fn ref_kw_token(&self) -> Option<RefKw> { support::token(&self.syntax) }
     pub fn mut_kw_token(&self) -> Option<MutKw> { support::token(&self.syntax) }
+    pub fn at_token(&self) -> Option<At> { support::token(&self.syntax) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2114,6 +2116,7 @@ impl LetStmt {
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
     pub fn initializer(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Condition {
