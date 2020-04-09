@@ -254,6 +254,14 @@ pub trait Machine<'mir, 'tcx>: Sized {
         kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag);
 
+    /// Called to notify the machine before a deallocation occurs.
+    fn before_deallocation(
+        _memory_extra: &mut Self::MemoryExtra,
+        _id: AllocId,
+    ) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
     /// Return the "base" tag for the given *global* allocation: the one that is used for direct
     /// accesses to this static/const/fn allocation. If `id` is not a global allocation,
     /// this will return an unusable tag (i.e., accesses will be UB)!
