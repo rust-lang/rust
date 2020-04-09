@@ -1017,7 +1017,13 @@ pub fn get_cmd_lint_options(
     let mut describe_lints = false;
 
     for &level in &[lint::Allow, lint::Warn, lint::Deny, lint::Forbid] {
-        for (arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
+        for (passed_arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
+            let arg_pos = if let lint::Forbid = level {
+                // forbid is always specified last, so it can't be overridden
+                usize::max_value()
+            } else {
+                passed_arg_pos
+            };
             if lint_name == "help" {
                 describe_lints = true;
             } else {
