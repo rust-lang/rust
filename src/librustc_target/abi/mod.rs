@@ -4,6 +4,7 @@ pub use Primitive::*;
 use crate::spec::Target;
 
 use std::convert::{TryFrom, TryInto};
+use std::num::NonZeroUsize;
 use std::ops::{Add, AddAssign, Deref, Mul, Range, RangeInclusive, Sub};
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -619,10 +620,11 @@ impl Scalar {
 /// Describes how the fields of a type are located in memory.
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum FieldsShape {
+    /// Scalar primitives and `!`, which never have fields.
+    Primitive,
+
     /// All fields start at no offset. The `usize` is the field count.
-    ///
-    /// In the case of primitives the number of fields is `0`.
-    Union(usize),
+    Union(NonZeroUsize),
 
     /// Array/vector-like placement, with all fields of identical types.
     Array { stride: Size, count: u64 },
@@ -660,7 +662,8 @@ pub enum FieldsShape {
 impl FieldsShape {
     pub fn count(&self) -> usize {
         match *self {
-            FieldsShape::Union(count) => count,
+            FieldsShape::Primitive => 0,
+            FieldsShape::Union(count) => count.get(),
             FieldsShape::Array { count, .. } => {
                 let usize_count = count as usize;
                 assert_eq!(usize_count as u64, count);
@@ -672,8 +675,16 @@ impl FieldsShape {
 
     pub fn offset(&self, i: usize) -> Size {
         match *self {
+            FieldsShape::Primitive => {
+                unreachable!("FieldsShape::offset: `Primitive`s have no fields")
+            }
             FieldsShape::Union(count) => {
-                assert!(i < count, "tried to access field {} of union with {} fields", i, count);
+                assert!(
+                    i < count.get(),
+                    "tried to access field {} of union with {} fields",
+                    i,
+                    count
+                );
                 Size::ZERO
             }
             FieldsShape::Array { stride, count } => {
@@ -687,6 +698,9 @@ impl FieldsShape {
 
     pub fn memory_index(&self, i: usize) -> usize {
         match *self {
+            FieldsShape::Primitive => {
+                unreachable!("FieldsShape::memory_index: `Primitive`s have no fields")
+            }
             FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
             FieldsShape::Arbitrary { ref memory_index, .. } => {
                 let r = memory_index[i];
@@ -718,7 +732,7 @@ impl FieldsShape {
         }
 
         (0..self.count()).map(move |i| match *self {
-            FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
+            FieldsShape::Primitive | FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
             FieldsShape::Arbitrary { .. } => {
                 if use_small {
                     inverse_small[i] as usize
@@ -887,7 +901,6 @@ impl Niche {
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct Layout {
     /// Says where the fields are located within the layout.
-    /// Primitives and uninhabited enums appear as unions without fields.
     pub fields: FieldsShape,
 
     /// Encodes information about multi-variant layouts.
@@ -923,7 +936,7 @@ impl Layout {
         let align = scalar.value.align(cx);
         Layout {
             variants: Variants::Single { index: VariantIdx::new(0) },
-            fields: FieldsShape::Union(0),
+            fields: FieldsShape::Primitive,
             abi: Abi::Scalar(scalar),
             largest_niche,
             size,
