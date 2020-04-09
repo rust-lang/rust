@@ -190,7 +190,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
         let parent_scope = if let Some(module_id) = parent_module_id {
             let parent_def_id = self.definitions.local_def_id(module_id);
-            self.definitions.add_parent_module_of_macro_def(expn_id, parent_def_id);
+            self.definitions.add_parent_module_of_macro_def(expn_id, parent_def_id.to_def_id());
             self.module_map[&parent_def_id]
         } else {
             self.definitions.add_parent_module_of_macro_def(
