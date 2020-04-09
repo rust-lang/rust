@@ -1,0 +1,61 @@
+SOURCE_FILE@[0; 40)
+  FN_DEF@[0; 39)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
+    NAME@[3; 4)
+      IDENT@[3; 4) "f"
+    TYPE_PARAM_LIST@[4; 7)
+      L_ANGLE@[4; 5) "<"
+      TYPE_PARAM@[5; 6)
+        NAME@[5; 6)
+          IDENT@[5; 6) "T"
+      R_ANGLE@[6; 7) ">"
+    PARAM_LIST@[7; 9)
+      L_PAREN@[7; 8) "("
+      R_PAREN@[8; 9) ")"
+    WHITESPACE@[9; 10) " "
+    WHERE_CLAUSE@[10; 36)
+      WHERE_KW@[10; 15) "where"
+      WHITESPACE@[15; 16) " "
+      WHERE_PRED@[16; 36)
+        PATH_TYPE@[16; 17)
+          PATH@[16; 17)
+            PATH_SEGMENT@[16; 17)
+              NAME_REF@[16; 17)
+                IDENT@[16; 17) "T"
+        COLON@[17; 18) ":"
+        WHITESPACE@[18; 19) " "
+        TYPE_BOUND_LIST@[19; 36)
+          TYPE_BOUND@[19; 29)
+            PATH_TYPE@[19; 29)
+              PATH@[19; 29)
+                PATH_SEGMENT@[19; 29)
+                  NAME_REF@[19; 21)
+                    IDENT@[19; 21) "Fn"
+                  PARAM_LIST@[21; 23)
+                    L_PAREN@[21; 22) "("
+                    R_PAREN@[22; 23) ")"
+                  WHITESPACE@[23; 24) " "
+                  RET_TYPE@[24; 29)
+                    THIN_ARROW@[24; 26) "->"
+                    WHITESPACE@[26; 27) " "
+                    PATH_TYPE@[27; 29)
+                      PATH@[27; 29)
+                        PATH_SEGMENT@[27; 29)
+                          NAME_REF@[27; 29)
+                            IDENT@[27; 29) "u8"
+          WHITESPACE@[29; 30) " "
+          PLUS@[30; 31) "+"
+          WHITESPACE@[31; 32) " "
+          TYPE_BOUND@[32; 36)
+            PATH_TYPE@[32; 36)
+              PATH@[32; 36)
+                PATH_SEGMENT@[32; 36)
+                  NAME_REF@[32; 36)
+                    IDENT@[32; 36) "Send"
+    WHITESPACE@[36; 37) " "
+    BLOCK_EXPR@[37; 39)
+      BLOCK@[37; 39)
+        L_CURLY@[37; 38) "{"
+        R_CURLY@[38; 39) "}"
+  WHITESPACE@[39; 40) "\n"
