@@ -235,19 +235,7 @@ fn should_show_param_hint(
     param_name: &str,
     argument: &ast::Expr,
 ) -> bool {
-    let argument_string = {
-        let mut arg_string = argument.syntax().to_string();
-        if arg_string.get(0..5) == Some("&mut ") {
-            arg_string = arg_string[5..].to_string();
-        } else if arg_string.get(0..1) == Some("&") {
-            arg_string = arg_string[1..].to_string();
-        }
-        arg_string
-    };
-    if param_name.is_empty()
-        || argument_string.ends_with(&param_name)
-        || argument_string.starts_with(&param_name)
-    {
+    if param_name.is_empty() || is_argument_similar_to_param(argument, param_name) {
         return false;
     }
 
@@ -259,15 +247,27 @@ fn should_show_param_hint(
 
     // avoid displaying hints for common functions like map, filter, etc.
     // or other obvious words used in std
+    if parameters_len == 1 && is_obvious_param(param_name) {
+        return false;
+    }
+    true
+}
+
+fn is_argument_similar_to_param(argument: &ast::Expr, param_name: &str) -> bool {
+    let argument_string = if let ast::Expr::RefExpr(ref_expr) = argument {
+        ref_expr.syntax().last_token().expect("RefExpr should have a last_token").to_string()
+    } else {
+        argument.syntax().to_string()
+    };
+    argument_string.starts_with(&param_name) || argument_string.ends_with(&param_name)
+}
+
+fn is_obvious_param(param_name: &str) -> bool {
     let is_obvious_param_name = match param_name {
         "predicate" | "value" | "pat" | "rhs" | "other" => true,
         _ => false,
     };
-    if parameters_len == 1 && (param_name.len() == 1 || is_obvious_param_name) {
-        return false;
-    }
-
-    true
+    param_name.len() == 1 || is_obvious_param_name
 }
 
 fn get_fn_signature(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<FunctionSignature> {
