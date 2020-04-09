@@ -1,5 +1,6 @@
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{self, Local};
+use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::{self, Local, Location};
 
 /// The set of locals in a MIR body that do not have `StorageLive`/`StorageDead` annotations.
 ///
@@ -12,20 +13,12 @@ pub struct AlwaysLiveLocals(BitSet<Local>);
 
 impl AlwaysLiveLocals {
     pub fn new(body: &mir::Body<'tcx>) -> Self {
-        let mut locals = BitSet::new_filled(body.local_decls.len());
+        let mut ret = AlwaysLiveLocals(BitSet::new_filled(body.local_decls.len()));
 
-        // FIXME: Use a visitor for this when `visit_body` can take a plain `Body`.
-        for block in body.basic_blocks().iter() {
-            for stmt in &block.statements {
-                if let mir::StatementKind::StorageLive(l) | mir::StatementKind::StorageDead(l) =
-                    stmt.kind
-                {
-                    locals.remove(l);
-                }
-            }
-        }
+        let mut vis = StorageAnnotationVisitor(&mut ret);
+        vis.visit_body(body);
 
-        AlwaysLiveLocals(locals)
+        ret
     }
 
     pub fn into_inner(self) -> BitSet<Local> {
@@ -38,5 +31,17 @@ impl std::ops::Deref for AlwaysLiveLocals {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+/// Removes locals that have `Storage*` annotations from `AlwaysLiveLocals`.
+struct StorageAnnotationVisitor<'a>(&'a mut AlwaysLiveLocals);
+
+impl Visitor<'tcx> for StorageAnnotationVisitor<'_> {
+    fn visit_statement(&mut self, statement: &mir::Statement<'tcx>, _location: Location) {
+        use mir::StatementKind::{StorageDead, StorageLive};
+        if let StorageLive(l) | StorageDead(l) = statement.kind {
+            (self.0).0.remove(l);
+        }
     }
 }
