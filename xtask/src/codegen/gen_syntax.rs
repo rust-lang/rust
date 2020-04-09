@@ -22,7 +22,7 @@ pub fn generate_syntax(mode: Mode) -> Result<()> {
     let syntax_kinds = generate_syntax_kinds(KINDS_SRC)?;
     update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
-    let ast_file = project_root().join(codegen::AST);
+    let ast_file = project_root().join(codegen::AST_NODES);
     let ast = generate_ast(KINDS_SRC, AST_SRC)?;
     update(ast_file.as_path(), &ast, mode)?;
 

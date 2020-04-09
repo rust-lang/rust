@@ -23,7 +23,7 @@ const OK_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/ok";
 const ERR_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/err";
 
 const SYNTAX_KINDS: &str = "crates/ra_parser/src/syntax_kind/generated.rs";
-const AST: &str = "crates/ra_syntax/src/ast/generated.rs";
+const AST_NODES: &str = "crates/ra_syntax/src/ast/generated/nodes.rs";
 
 const ASSISTS_DIR: &str = "crates/ra_assists/src/handlers";
 const ASSISTS_TESTS: &str = "crates/ra_assists/src/doc_tests/generated.rs";
