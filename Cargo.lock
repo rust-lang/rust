@@ -1113,6 +1113,7 @@ dependencies = [
  "ra_proc_macro",
  "ra_tt",
  "serde_derive",
+ "test_utils",
 ]
 
 [[package]]

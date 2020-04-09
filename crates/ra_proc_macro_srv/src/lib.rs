@@ -52,3 +52,6 @@ pub fn list_macros(task: &ListMacrosTask) -> Result<ListMacrosResult, String> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
