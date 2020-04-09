@@ -142,6 +142,79 @@ macro_rules! impl_froms {
 }
 
 #[test]
+fn test_convert_tt2() {
+    parse_macro(
+        r#"
+macro_rules! impl_froms {
+    ($e:ident: $($v:ident),*) => {
+        $(
+            impl From<$v> for $e {
+                fn from(it: $v) -> $e {
+                    $e::$v(it)
+                }
+            }
+        )*
+    }
+}
+"#,
+    )
+    .assert_expand(
+        "impl_froms!(TokenTree: Leaf, Subtree);",
+        r#"
+SUBTREE $
+  IDENT   impl 20
+  IDENT   From 21
+  PUNCH   < [joint] 22
+  IDENT   Leaf 53
+  PUNCH   > [alone] 25
+  IDENT   for 26
+  IDENT   TokenTree 51
+  SUBTREE {} 29
+    IDENT   fn 30
+    IDENT   from 31
+    SUBTREE () 32
+      IDENT   it 33
+      PUNCH   : [alone] 34
+      IDENT   Leaf 53
+    PUNCH   - [joint] 37
+    PUNCH   > [alone] 38
+    IDENT   TokenTree 51
+    SUBTREE {} 41
+      IDENT   TokenTree 51
+      PUNCH   : [joint] 44
+      PUNCH   : [joint] 45
+      IDENT   Leaf 53
+      SUBTREE () 48
+        IDENT   it 49
+  IDENT   impl 20
+  IDENT   From 21
+  PUNCH   < [joint] 22
+  IDENT   Subtree 55
+  PUNCH   > [alone] 25
+  IDENT   for 26
+  IDENT   TokenTree 51
+  SUBTREE {} 29
+    IDENT   fn 30
+    IDENT   from 31
+    SUBTREE () 32
+      IDENT   it 33
+      PUNCH   : [alone] 34
+      IDENT   Subtree 55
+    PUNCH   - [joint] 37
+    PUNCH   > [alone] 38
+    IDENT   TokenTree 51
+    SUBTREE {} 41
+      IDENT   TokenTree 51
+      PUNCH   : [joint] 44
+      PUNCH   : [joint] 45
+      IDENT   Subtree 55
+      SUBTREE () 48
+        IDENT   it 49
+"#,
+    );
+}
+
+#[test]
 fn test_expr_order() {
     let expanded = parse_macro(
         r#"
@@ -1477,6 +1550,12 @@ impl MacroFixture {
     fn assert_expand_tt(&self, invocation: &str, expected: &str) {
         let expansion = self.expand_tt(invocation);
         assert_eq!(expansion.to_string(), expected);
+    }
+
+    fn assert_expand(&self, invocation: &str, expected: &str) {
+        let expansion = self.expand_tt(invocation);
+        let actual = format!("{:?}", expansion);
+        test_utils::assert_eq_text!(&actual.trim(), &expected.trim());
     }
 
     fn assert_expand_items(&self, invocation: &str, expected: &str) -> &MacroFixture {

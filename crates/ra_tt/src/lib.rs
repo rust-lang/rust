@@ -57,7 +57,7 @@ pub enum Leaf {
 }
 impl_froms!(Leaf: Literal, Punct, Ident);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, PartialEq, Eq, Hash, Default)]
 pub struct Subtree {
     pub delimiter: Option<Delimiter>,
     pub token_trees: Vec<TokenTree>,
@@ -99,6 +99,61 @@ pub enum Spacing {
 pub struct Ident {
     pub text: SmolStr,
     pub id: TokenId,
+}
+
+fn print_debug_subtree(f: &mut fmt::Formatter<'_>, subtree: &Subtree, level: usize) -> fmt::Result {
+    let align = std::iter::repeat("  ").take(level).collect::<String>();
+
+    let aux = match subtree.delimiter.map(|it| (it.kind, it.id.0)) {
+        None => "$".to_string(),
+        Some((DelimiterKind::Parenthesis, id)) => format!("() {}", id),
+        Some((DelimiterKind::Brace, id)) => format!("{{}} {}", id),
+        Some((DelimiterKind::Bracket, id)) => format!("[] {}", id),
+    };
+
+    if subtree.token_trees.is_empty() {
+        write!(f, "{}SUBTREE {}", align, aux)?;
+    } else {
+        writeln!(f, "{}SUBTREE {}", align, aux)?;
+        for (idx, child) in subtree.token_trees.iter().enumerate() {
+            print_debug_token(f, child, level + 1)?;
+            if idx != subtree.token_trees.len() - 1 {
+                writeln!(f, "")?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn print_debug_token(f: &mut fmt::Formatter<'_>, tkn: &TokenTree, level: usize) -> fmt::Result {
+    let align = std::iter::repeat("  ").take(level).collect::<String>();
+
+    match tkn {
+        TokenTree::Leaf(leaf) => match leaf {
+            Leaf::Literal(lit) => write!(f, "{}LITERAL {} {}", align, lit.text, lit.id.0)?,
+            Leaf::Punct(punct) => write!(
+                f,
+                "{}PUNCH   {} [{}] {}",
+                align,
+                punct.char,
+                if punct.spacing == Spacing::Alone { "alone" } else { "joint" },
+                punct.id.0
+            )?,
+            Leaf::Ident(ident) => write!(f, "{}IDENT   {} {}", align, ident.text, ident.id.0)?,
+        },
+        TokenTree::Subtree(subtree) => {
+            print_debug_subtree(f, subtree, level)?;
+        }
+    }
+
+    Ok(())
+}
+
+impl Debug for Subtree {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        print_debug_subtree(f, self, 0)
+    }
 }
 
 impl fmt::Display for TokenTree {
