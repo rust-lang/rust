@@ -15,12 +15,7 @@ impl std::fmt::Display for Semi {
     }
 }
 impl AstToken for Semi {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            SEMI => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == SEMI }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -40,12 +35,7 @@ impl std::fmt::Display for Comma {
     }
 }
 impl AstToken for Comma {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            COMMA => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == COMMA }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -65,12 +55,7 @@ impl std::fmt::Display for LParen {
     }
 }
 impl AstToken for LParen {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            L_PAREN => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == L_PAREN }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -90,12 +75,7 @@ impl std::fmt::Display for RParen {
     }
 }
 impl AstToken for RParen {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            R_PAREN => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == R_PAREN }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -115,12 +95,7 @@ impl std::fmt::Display for LCurly {
     }
 }
 impl AstToken for LCurly {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            L_CURLY => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == L_CURLY }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -140,12 +115,7 @@ impl std::fmt::Display for RCurly {
     }
 }
 impl AstToken for RCurly {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            R_CURLY => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == R_CURLY }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -165,12 +135,7 @@ impl std::fmt::Display for LBrack {
     }
 }
 impl AstToken for LBrack {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            L_BRACK => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == L_BRACK }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -190,12 +155,7 @@ impl std::fmt::Display for RBrack {
     }
 }
 impl AstToken for RBrack {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            R_BRACK => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == R_BRACK }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -215,12 +175,7 @@ impl std::fmt::Display for LAngle {
     }
 }
 impl AstToken for LAngle {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            L_ANGLE => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == L_ANGLE }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -240,12 +195,7 @@ impl std::fmt::Display for RAngle {
     }
 }
 impl AstToken for RAngle {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            R_ANGLE => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == R_ANGLE }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -265,12 +215,7 @@ impl std::fmt::Display for At {
     }
 }
 impl AstToken for At {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            AT => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == AT }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -290,12 +235,7 @@ impl std::fmt::Display for Pound {
     }
 }
 impl AstToken for Pound {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            POUND => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == POUND }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -315,12 +255,7 @@ impl std::fmt::Display for Tilde {
     }
 }
 impl AstToken for Tilde {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            TILDE => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TILDE }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -340,12 +275,7 @@ impl std::fmt::Display for Question {
     }
 }
 impl AstToken for Question {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            QUESTION => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == QUESTION }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -365,12 +295,7 @@ impl std::fmt::Display for Dollar {
     }
 }
 impl AstToken for Dollar {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            DOLLAR => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == DOLLAR }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -390,12 +315,7 @@ impl std::fmt::Display for Amp {
     }
 }
 impl AstToken for Amp {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            AMP => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == AMP }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -415,12 +335,7 @@ impl std::fmt::Display for Pipe {
     }
 }
 impl AstToken for Pipe {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            PIPE => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PIPE }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -440,12 +355,7 @@ impl std::fmt::Display for Plus {
     }
 }
 impl AstToken for Plus {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            PLUS => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PLUS }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -465,12 +375,7 @@ impl std::fmt::Display for Star {
     }
 }
 impl AstToken for Star {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            STAR => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == STAR }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -490,12 +395,7 @@ impl std::fmt::Display for Slash {
     }
 }
 impl AstToken for Slash {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            SLASH => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == SLASH }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -515,12 +415,7 @@ impl std::fmt::Display for Caret {
     }
 }
 impl AstToken for Caret {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            CARET => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CARET }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -540,12 +435,7 @@ impl std::fmt::Display for Percent {
     }
 }
 impl AstToken for Percent {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            PERCENT => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PERCENT }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -565,12 +455,7 @@ impl std::fmt::Display for Underscore {
     }
 }
 impl AstToken for Underscore {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            UNDERSCORE => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == UNDERSCORE }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -590,12 +475,7 @@ impl std::fmt::Display for Dot {
     }
 }
 impl AstToken for Dot {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            DOT => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == DOT }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -615,12 +495,7 @@ impl std::fmt::Display for Dotdot {
     }
 }
 impl AstToken for Dotdot {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            DOTDOT => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == DOTDOT }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -640,12 +515,7 @@ impl std::fmt::Display for Dotdotdot {
     }
 }
 impl AstToken for Dotdotdot {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            DOTDOTDOT => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == DOTDOTDOT }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -665,12 +535,7 @@ impl std::fmt::Display for Dotdoteq {
     }
 }
 impl AstToken for Dotdoteq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            DOTDOTEQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == DOTDOTEQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -690,12 +555,7 @@ impl std::fmt::Display for Colon {
     }
 }
 impl AstToken for Colon {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            COLON => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == COLON }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -715,12 +575,7 @@ impl std::fmt::Display for Coloncolon {
     }
 }
 impl AstToken for Coloncolon {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            COLONCOLON => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == COLONCOLON }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -740,12 +595,7 @@ impl std::fmt::Display for Eq {
     }
 }
 impl AstToken for Eq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            EQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == EQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -765,12 +615,7 @@ impl std::fmt::Display for Eqeq {
     }
 }
 impl AstToken for Eqeq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            EQEQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == EQEQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -790,12 +635,7 @@ impl std::fmt::Display for FatArrow {
     }
 }
 impl AstToken for FatArrow {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            FAT_ARROW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == FAT_ARROW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -815,12 +655,7 @@ impl std::fmt::Display for Excl {
     }
 }
 impl AstToken for Excl {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            EXCL => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == EXCL }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -840,12 +675,7 @@ impl std::fmt::Display for Neq {
     }
 }
 impl AstToken for Neq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            NEQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == NEQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -865,12 +695,7 @@ impl std::fmt::Display for Minus {
     }
 }
 impl AstToken for Minus {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            MINUS => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MINUS }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -890,12 +715,7 @@ impl std::fmt::Display for ThinArrow {
     }
 }
 impl AstToken for ThinArrow {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            THIN_ARROW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == THIN_ARROW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -915,12 +735,7 @@ impl std::fmt::Display for Lteq {
     }
 }
 impl AstToken for Lteq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            LTEQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == LTEQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -940,12 +755,7 @@ impl std::fmt::Display for Gteq {
     }
 }
 impl AstToken for Gteq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            GTEQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == GTEQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -965,12 +775,7 @@ impl std::fmt::Display for Pluseq {
     }
 }
 impl AstToken for Pluseq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            PLUSEQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PLUSEQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -990,12 +795,7 @@ impl std::fmt::Display for Minuseq {
     }
 }
 impl AstToken for Minuseq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            MINUSEQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MINUSEQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1015,12 +815,7 @@ impl std::fmt::Display for Pipeeq {
     }
 }
 impl AstToken for Pipeeq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            PIPEEQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PIPEEQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1040,12 +835,7 @@ impl std::fmt::Display for Ampeq {
     }
 }
 impl AstToken for Ampeq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            AMPEQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == AMPEQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1065,12 +855,7 @@ impl std::fmt::Display for Careteq {
     }
 }
 impl AstToken for Careteq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            CARETEQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CARETEQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1090,12 +875,7 @@ impl std::fmt::Display for Slasheq {
     }
 }
 impl AstToken for Slasheq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            SLASHEQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == SLASHEQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1115,12 +895,7 @@ impl std::fmt::Display for Stareq {
     }
 }
 impl AstToken for Stareq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            STAREQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == STAREQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1140,12 +915,7 @@ impl std::fmt::Display for Percenteq {
     }
 }
 impl AstToken for Percenteq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            PERCENTEQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PERCENTEQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1165,12 +935,7 @@ impl std::fmt::Display for Ampamp {
     }
 }
 impl AstToken for Ampamp {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            AMPAMP => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == AMPAMP }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1190,12 +955,7 @@ impl std::fmt::Display for Pipepipe {
     }
 }
 impl AstToken for Pipepipe {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            PIPEPIPE => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PIPEPIPE }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1215,12 +975,7 @@ impl std::fmt::Display for Shl {
     }
 }
 impl AstToken for Shl {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            SHL => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == SHL }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1240,12 +995,7 @@ impl std::fmt::Display for Shr {
     }
 }
 impl AstToken for Shr {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            SHR => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == SHR }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1265,12 +1015,7 @@ impl std::fmt::Display for Shleq {
     }
 }
 impl AstToken for Shleq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            SHLEQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == SHLEQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1290,12 +1035,7 @@ impl std::fmt::Display for Shreq {
     }
 }
 impl AstToken for Shreq {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            SHREQ => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == SHREQ }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1315,12 +1055,7 @@ impl std::fmt::Display for AsKw {
     }
 }
 impl AstToken for AsKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            AS_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == AS_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1340,12 +1075,7 @@ impl std::fmt::Display for AsyncKw {
     }
 }
 impl AstToken for AsyncKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            ASYNC_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASYNC_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1365,12 +1095,7 @@ impl std::fmt::Display for AwaitKw {
     }
 }
 impl AstToken for AwaitKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            AWAIT_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == AWAIT_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1390,12 +1115,7 @@ impl std::fmt::Display for BoxKw {
     }
 }
 impl AstToken for BoxKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            BOX_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == BOX_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1415,12 +1135,7 @@ impl std::fmt::Display for BreakKw {
     }
 }
 impl AstToken for BreakKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            BREAK_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == BREAK_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1440,12 +1155,7 @@ impl std::fmt::Display for ConstKw {
     }
 }
 impl AstToken for ConstKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            CONST_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1465,12 +1175,7 @@ impl std::fmt::Display for ContinueKw {
     }
 }
 impl AstToken for ContinueKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            CONTINUE_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CONTINUE_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1490,12 +1195,7 @@ impl std::fmt::Display for CrateKw {
     }
 }
 impl AstToken for CrateKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            CRATE_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CRATE_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1515,12 +1215,7 @@ impl std::fmt::Display for DynKw {
     }
 }
 impl AstToken for DynKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            DYN_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == DYN_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1540,12 +1235,7 @@ impl std::fmt::Display for ElseKw {
     }
 }
 impl AstToken for ElseKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            ELSE_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ELSE_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1565,12 +1255,7 @@ impl std::fmt::Display for EnumKw {
     }
 }
 impl AstToken for EnumKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            ENUM_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1590,12 +1275,7 @@ impl std::fmt::Display for ExternKw {
     }
 }
 impl AstToken for ExternKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            EXTERN_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1615,12 +1295,7 @@ impl std::fmt::Display for FalseKw {
     }
 }
 impl AstToken for FalseKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            FALSE_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == FALSE_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1640,12 +1315,7 @@ impl std::fmt::Display for FnKw {
     }
 }
 impl AstToken for FnKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            FN_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == FN_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1665,12 +1335,7 @@ impl std::fmt::Display for ForKw {
     }
 }
 impl AstToken for ForKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            FOR_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == FOR_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1690,12 +1355,7 @@ impl std::fmt::Display for IfKw {
     }
 }
 impl AstToken for IfKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            IF_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == IF_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1715,12 +1375,7 @@ impl std::fmt::Display for ImplKw {
     }
 }
 impl AstToken for ImplKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            IMPL_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1740,12 +1395,7 @@ impl std::fmt::Display for InKw {
     }
 }
 impl AstToken for InKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            IN_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == IN_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1765,12 +1415,7 @@ impl std::fmt::Display for LetKw {
     }
 }
 impl AstToken for LetKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            LET_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == LET_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1790,12 +1435,7 @@ impl std::fmt::Display for LoopKw {
     }
 }
 impl AstToken for LoopKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            LOOP_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == LOOP_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1815,12 +1455,7 @@ impl std::fmt::Display for MacroKw {
     }
 }
 impl AstToken for MacroKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            MACRO_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1840,12 +1475,7 @@ impl std::fmt::Display for MatchKw {
     }
 }
 impl AstToken for MatchKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            MATCH_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MATCH_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1865,12 +1495,7 @@ impl std::fmt::Display for ModKw {
     }
 }
 impl AstToken for ModKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            MOD_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MOD_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1890,12 +1515,7 @@ impl std::fmt::Display for MoveKw {
     }
 }
 impl AstToken for MoveKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            MOVE_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MOVE_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1915,12 +1535,7 @@ impl std::fmt::Display for MutKw {
     }
 }
 impl AstToken for MutKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            MUT_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MUT_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1940,12 +1555,7 @@ impl std::fmt::Display for PubKw {
     }
 }
 impl AstToken for PubKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            PUB_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PUB_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1965,12 +1575,7 @@ impl std::fmt::Display for RefKw {
     }
 }
 impl AstToken for RefKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            REF_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == REF_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1990,12 +1595,7 @@ impl std::fmt::Display for ReturnKw {
     }
 }
 impl AstToken for ReturnKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            RETURN_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RETURN_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2015,12 +1615,7 @@ impl std::fmt::Display for SelfKw {
     }
 }
 impl AstToken for SelfKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            SELF_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == SELF_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2040,12 +1635,7 @@ impl std::fmt::Display for StaticKw {
     }
 }
 impl AstToken for StaticKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            STATIC_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == STATIC_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2065,12 +1655,7 @@ impl std::fmt::Display for StructKw {
     }
 }
 impl AstToken for StructKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            STRUCT_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == STRUCT_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2090,12 +1675,7 @@ impl std::fmt::Display for SuperKw {
     }
 }
 impl AstToken for SuperKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            SUPER_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == SUPER_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2115,12 +1695,7 @@ impl std::fmt::Display for TraitKw {
     }
 }
 impl AstToken for TraitKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            TRAIT_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TRAIT_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2140,12 +1715,7 @@ impl std::fmt::Display for TrueKw {
     }
 }
 impl AstToken for TrueKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            TRUE_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TRUE_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2165,12 +1735,7 @@ impl std::fmt::Display for TryKw {
     }
 }
 impl AstToken for TryKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            TRY_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TRY_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2190,12 +1755,7 @@ impl std::fmt::Display for TypeKw {
     }
 }
 impl AstToken for TypeKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            TYPE_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2215,12 +1775,7 @@ impl std::fmt::Display for UnsafeKw {
     }
 }
 impl AstToken for UnsafeKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            UNSAFE_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == UNSAFE_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2240,12 +1795,7 @@ impl std::fmt::Display for UseKw {
     }
 }
 impl AstToken for UseKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            USE_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == USE_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2265,12 +1815,7 @@ impl std::fmt::Display for WhereKw {
     }
 }
 impl AstToken for WhereKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            WHERE_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == WHERE_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2290,12 +1835,7 @@ impl std::fmt::Display for WhileKw {
     }
 }
 impl AstToken for WhileKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            WHILE_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == WHILE_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2315,12 +1855,7 @@ impl std::fmt::Display for AutoKw {
     }
 }
 impl AstToken for AutoKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            AUTO_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == AUTO_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2340,12 +1875,7 @@ impl std::fmt::Display for DefaultKw {
     }
 }
 impl AstToken for DefaultKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            DEFAULT_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == DEFAULT_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2365,12 +1895,7 @@ impl std::fmt::Display for ExistentialKw {
     }
 }
 impl AstToken for ExistentialKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            EXISTENTIAL_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == EXISTENTIAL_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2390,12 +1915,7 @@ impl std::fmt::Display for UnionKw {
     }
 }
 impl AstToken for UnionKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            UNION_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == UNION_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2415,12 +1935,7 @@ impl std::fmt::Display for RawKw {
     }
 }
 impl AstToken for RawKw {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            RAW_KW => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RAW_KW }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2440,12 +1955,7 @@ impl std::fmt::Display for IntNumber {
     }
 }
 impl AstToken for IntNumber {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            INT_NUMBER => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == INT_NUMBER }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2465,12 +1975,7 @@ impl std::fmt::Display for FloatNumber {
     }
 }
 impl AstToken for FloatNumber {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            FLOAT_NUMBER => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == FLOAT_NUMBER }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2490,12 +1995,7 @@ impl std::fmt::Display for Char {
     }
 }
 impl AstToken for Char {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            CHAR => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CHAR }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2515,12 +2015,7 @@ impl std::fmt::Display for Byte {
     }
 }
 impl AstToken for Byte {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            BYTE => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == BYTE }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2540,12 +2035,7 @@ impl std::fmt::Display for String {
     }
 }
 impl AstToken for String {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            STRING => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == STRING }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2565,12 +2055,7 @@ impl std::fmt::Display for RawString {
     }
 }
 impl AstToken for RawString {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            RAW_STRING => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RAW_STRING }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2590,12 +2075,7 @@ impl std::fmt::Display for ByteString {
     }
 }
 impl AstToken for ByteString {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            BYTE_STRING => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == BYTE_STRING }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2615,12 +2095,7 @@ impl std::fmt::Display for RawByteString {
     }
 }
 impl AstToken for RawByteString {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            RAW_BYTE_STRING => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RAW_BYTE_STRING }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2640,12 +2115,7 @@ impl std::fmt::Display for Error {
     }
 }
 impl AstToken for Error {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            ERROR => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ERROR }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2665,12 +2135,7 @@ impl std::fmt::Display for Ident {
     }
 }
 impl AstToken for Ident {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            IDENT => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == IDENT }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2690,12 +2155,7 @@ impl std::fmt::Display for Whitespace {
     }
 }
 impl AstToken for Whitespace {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            WHITESPACE => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == WHITESPACE }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2715,12 +2175,7 @@ impl std::fmt::Display for Lifetime {
     }
 }
 impl AstToken for Lifetime {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            LIFETIME => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == LIFETIME }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2740,12 +2195,7 @@ impl std::fmt::Display for Comment {
     }
 }
 impl AstToken for Comment {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            COMMENT => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == COMMENT }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2765,12 +2215,7 @@ impl std::fmt::Display for Shebang {
     }
 }
 impl AstToken for Shebang {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            SHEBANG => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == SHEBANG }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2790,12 +2235,7 @@ impl std::fmt::Display for LDollar {
     }
 }
 impl AstToken for LDollar {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            L_DOLLAR => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == L_DOLLAR }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2815,12 +2255,7 @@ impl std::fmt::Display for RDollar {
     }
 }
 impl AstToken for RDollar {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            R_DOLLAR => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { kind == R_DOLLAR }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
