@@ -6,6 +6,7 @@ use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufWriter};
+use std::mem;
 use std::path::{Path, PathBuf};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -87,6 +88,7 @@ impl LinkerInfo {
 /// used to dispatch on whether a GNU-like linker (generally `ld.exe`) or an
 /// MSVC linker (e.g., `link.exe`) is being used.
 pub trait Linker {
+    fn cmd(&mut self) -> &mut Command;
     fn link_dylib(&mut self, lib: Symbol);
     fn link_rust_dylib(&mut self, lib: Symbol, path: &Path);
     fn link_framework(&mut self, framework: Symbol);
@@ -111,14 +113,26 @@ pub trait Linker {
     fn no_default_libraries(&mut self);
     fn build_dylib(&mut self, out_filename: &Path);
     fn build_static_executable(&mut self);
-    fn args(&mut self, args: &[String]);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType);
     fn subsystem(&mut self, subsystem: &str);
     fn group_start(&mut self);
     fn group_end(&mut self);
     fn linker_plugin_lto(&mut self);
-    // Should have been finalize(self), but we don't support self-by-value on trait objects (yet?).
-    fn finalize(&mut self) -> Command;
+    fn finalize(&mut self);
+}
+
+impl dyn Linker + '_ {
+    pub fn arg(&mut self, arg: impl AsRef<OsStr>) {
+        self.cmd().arg(arg);
+    }
+
+    pub fn args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>>) {
+        self.cmd().args(args);
+    }
+
+    pub fn take_cmd(&mut self) -> Command {
+        mem::replace(self.cmd(), Command::new(""))
+    }
 }
 
 pub struct GccLinker<'a> {
@@ -208,6 +222,9 @@ impl<'a> GccLinker<'a> {
 }
 
 impl<'a> Linker for GccLinker<'a> {
+    fn cmd(&mut self) -> &mut Command {
+        &mut self.cmd
+    }
     fn link_dylib(&mut self, lib: Symbol) {
         self.hint_dynamic();
         self.cmd.arg(format!("-l{}", lib));
@@ -250,9 +267,6 @@ impl<'a> Linker for GccLinker<'a> {
     }
     fn build_static_executable(&mut self) {
         self.cmd.arg("-static");
-    }
-    fn args(&mut self, args: &[String]) {
-        self.cmd.args(args);
     }
 
     fn link_rust_dylib(&mut self, lib: Symbol, _path: &Path) {
@@ -505,10 +519,8 @@ impl<'a> Linker for GccLinker<'a> {
         self.linker_arg(&subsystem);
     }
 
-    fn finalize(&mut self) -> Command {
+    fn finalize(&mut self) {
         self.hint_dynamic(); // Reset to default before returning the composed command line.
-
-        ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
     fn group_start(&mut self) {
@@ -545,14 +557,14 @@ pub struct MsvcLinker<'a> {
 }
 
 impl<'a> Linker for MsvcLinker<'a> {
+    fn cmd(&mut self) -> &mut Command {
+        &mut self.cmd
+    }
     fn link_rlib(&mut self, lib: &Path) {
         self.cmd.arg(lib);
     }
     fn add_object(&mut self, path: &Path) {
         self.cmd.arg(path);
-    }
-    fn args(&mut self, args: &[String]) {
-        self.cmd.args(args);
     }
 
     fn build_dylib(&mut self, out_filename: &Path) {
@@ -758,9 +770,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    fn finalize(&mut self) -> Command {
-        ::std::mem::replace(&mut self.cmd, Command::new(""))
-    }
+    fn finalize(&mut self) {}
 
     // MSVC doesn't need group indicators
     fn group_start(&mut self) {}
@@ -778,6 +788,9 @@ pub struct EmLinker<'a> {
 }
 
 impl<'a> Linker for EmLinker<'a> {
+    fn cmd(&mut self) -> &mut Command {
+        &mut self.cmd
+    }
     fn include_path(&mut self, path: &Path) {
         self.cmd.arg("-L").arg(path);
     }
@@ -835,10 +848,6 @@ impl<'a> Linker for EmLinker<'a> {
 
     fn no_relro(&mut self) {
         // noop
-    }
-
-    fn args(&mut self, args: &[String]) {
-        self.cmd.args(args);
     }
 
     fn framework_path(&mut self, _path: &Path) {
@@ -928,9 +937,7 @@ impl<'a> Linker for EmLinker<'a> {
         // noop
     }
 
-    fn finalize(&mut self) -> Command {
-        ::std::mem::replace(&mut self.cmd, Command::new(""))
-    }
+    fn finalize(&mut self) {}
 
     // Appears not necessary on Emscripten
     fn group_start(&mut self) {}
@@ -992,6 +999,10 @@ impl<'a> WasmLd<'a> {
 }
 
 impl<'a> Linker for WasmLd<'a> {
+    fn cmd(&mut self) -> &mut Command {
+        &mut self.cmd
+    }
+
     fn link_dylib(&mut self, lib: Symbol) {
         self.cmd.arg("-l").sym_arg(lib);
     }
@@ -1029,10 +1040,6 @@ impl<'a> Linker for WasmLd<'a> {
     fn no_relro(&mut self) {}
 
     fn build_static_executable(&mut self) {}
-
-    fn args(&mut self, args: &[String]) {
-        self.cmd.args(args);
-    }
 
     fn link_rust_dylib(&mut self, lib: Symbol, _path: &Path) {
         self.cmd.arg("-l").sym_arg(lib);
@@ -1098,9 +1105,7 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn no_position_independent_executable(&mut self) {}
 
-    fn finalize(&mut self) -> Command {
-        ::std::mem::replace(&mut self.cmd, Command::new(""))
-    }
+    fn finalize(&mut self) {}
 
     // Not needed for now with LLD
     fn group_start(&mut self) {}
@@ -1162,6 +1167,10 @@ pub struct PtxLinker<'a> {
 }
 
 impl<'a> Linker for PtxLinker<'a> {
+    fn cmd(&mut self) -> &mut Command {
+        &mut self.cmd
+    }
+
     fn link_rlib(&mut self, path: &Path) {
         self.cmd.arg("--rlib").arg(path);
     }
@@ -1182,10 +1191,6 @@ impl<'a> Linker for PtxLinker<'a> {
         self.cmd.arg("--bitcode").arg(path);
     }
 
-    fn args(&mut self, args: &[String]) {
-        self.cmd.args(args);
-    }
-
     fn optimize(&mut self) {
         match self.sess.lto() {
             Lto::Thin | Lto::Fat | Lto::ThinLocal => {
@@ -1200,14 +1205,12 @@ impl<'a> Linker for PtxLinker<'a> {
         self.cmd.arg("-o").arg(path);
     }
 
-    fn finalize(&mut self) -> Command {
+    fn finalize(&mut self) {
         // Provide the linker with fallback to internal `target-cpu`.
         self.cmd.arg("--fallback-arch").arg(match self.sess.opts.cg.target_cpu {
             Some(ref s) => s,
             None => &self.sess.target.target.options.cpu,
         });
-
-        ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
     fn link_dylib(&mut self, _lib: Symbol) {
