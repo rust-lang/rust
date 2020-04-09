@@ -286,7 +286,7 @@ impl<'tcx> TyCtxt<'tcx> {
             if let Some(depr_entry) = self.lookup_deprecation_entry(def_id) {
                 let parent_def_id = self.hir().local_def_id(self.hir().get_parent_item(id));
                 let skip = self
-                    .lookup_deprecation_entry(parent_def_id)
+                    .lookup_deprecation_entry(parent_def_id.to_def_id())
                     .map_or(false, |parent_depr| parent_depr.same_origin(&depr_entry));
 
                 if !skip {

@@ -115,7 +115,7 @@ impl IfThisChanged<'tcx> {
 
     fn process_attrs(&mut self, hir_id: hir::HirId, attrs: &[ast::Attribute]) {
         let def_id = self.tcx.hir().local_def_id(hir_id);
-        let def_path_hash = self.tcx.def_path_hash(def_id);
+        let def_path_hash = self.tcx.def_path_hash(def_id.to_def_id());
         for attr in attrs {
             if attr.check_name(sym::rustc_if_this_changed) {
                 let dep_node_interned = self.argument(attr);
@@ -131,7 +131,7 @@ impl IfThisChanged<'tcx> {
                         }
                     },
                 };
-                self.if_this_changed.push((attr.span, def_id, dep_node));
+                self.if_this_changed.push((attr.span, def_id.to_def_id(), dep_node));
             } else if attr.check_name(sym::rustc_then_this_would_need) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {

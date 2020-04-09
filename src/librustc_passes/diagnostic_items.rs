@@ -47,7 +47,7 @@ impl<'tcx> DiagnosticItemCollector<'tcx> {
         if let Some(name) = extract(attrs) {
             let def_id = self.tcx.hir().local_def_id(hir_id);
             // insert into our table
-            collect_item(self.tcx, &mut self.items, name, def_id);
+            collect_item(self.tcx, &mut self.items, name, def_id.to_def_id());
         }
     }
 }

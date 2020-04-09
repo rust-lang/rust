@@ -14,7 +14,7 @@ use min_specialization::check_min_specialization;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
@@ -59,7 +59,7 @@ pub fn impl_wf_check(tcx: TyCtxt<'_>) {
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
     for &module in tcx.hir().krate().modules.keys() {
-        tcx.ensure().check_mod_impl_wf(tcx.hir().local_def_id(module));
+        tcx.ensure().check_mod_impl_wf(tcx.hir().local_def_id(module).to_def_id());
     }
 }
 
@@ -85,7 +85,7 @@ impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
             enforce_impl_params_are_constrained(self.tcx, impl_def_id, items);
             enforce_impl_items_are_distinct(self.tcx, items);
             if self.min_specialization {
-                check_min_specialization(self.tcx, impl_def_id, item.span);
+                check_min_specialization(self.tcx, impl_def_id.to_def_id(), item.span);
             }
         }
     }
@@ -97,7 +97,7 @@ impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
 
 fn enforce_impl_params_are_constrained(
     tcx: TyCtxt<'_>,
-    impl_def_id: DefId,
+    impl_def_id: LocalDefId,
     impl_item_refs: &[hir::ImplItemRef<'_>],
 ) {
     // Every lifetime used in an associated type must be constrained.

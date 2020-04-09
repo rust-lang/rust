@@ -1040,7 +1040,8 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                         let parent_def_id = self.parent_def_id;
                         let def_scope_default = || {
                             let opaque_parent_hir_id = tcx.hir().get_parent_item(opaque_hir_id);
-                            parent_def_id == tcx.hir().local_def_id(opaque_parent_hir_id)
+                            parent_def_id
+                                == tcx.hir().local_def_id(opaque_parent_hir_id).to_def_id()
                         };
                         let (in_definition_scope, origin) = match tcx.hir().find(opaque_hir_id) {
                             Some(Node::Item(item)) => match item.kind {
