@@ -5,6 +5,8 @@
 
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
+use std::borrow::Cow;
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use crate::{
     ast_src::{AstSrc, FieldSrc, KindsSrc, AST_SRC, KINDS_SRC},
@@ -18,13 +20,108 @@ pub fn generate_syntax(mode: Mode) -> Result<()> {
     update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
     let ast_file = project_root().join(codegen::AST);
-    let ast = generate_ast(AST_SRC)?;
+    let ast = generate_ast(KINDS_SRC, AST_SRC)?;
     update(ast_file.as_path(), &ast, mode)?;
 
     Ok(())
 }
 
-fn generate_ast(grammar: AstSrc<'_>) -> Result<String> {
+#[derive(Debug, Default, Clone)]
+struct ElementKinds {
+    kinds: BTreeSet<proc_macro2::Ident>,
+    has_nodes: bool,
+    has_tokens: bool,
+}
+
+fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
+    let all_token_kinds: Vec<_> = kinds
+        .punct
+        .into_iter()
+        .map(|(_, kind)| kind)
+        .copied()
+        .map(|x| x.into())
+        .chain(
+            kinds
+                .keywords
+                .into_iter()
+                .chain(kinds.contextual_keywords.into_iter())
+                .map(|name| Cow::Owned(format!("{}_KW", to_upper_snake_case(&name)))),
+        )
+        .chain(kinds.literals.into_iter().copied().map(|x| x.into()))
+        .chain(kinds.tokens.into_iter().copied().map(|x| x.into()))
+        .collect();
+
+    let mut element_kinds_map = HashMap::new();
+    for kind in &all_token_kinds {
+        let kind = &**kind;
+        let name = to_pascal_case(kind);
+        element_kinds_map.insert(
+            name,
+            ElementKinds {
+                kinds: Some(format_ident!("{}", kind)).into_iter().collect(),
+                has_nodes: false,
+                has_tokens: true,
+            },
+        );
+    }
+
+    for kind in kinds.nodes {
+        let name = to_pascal_case(kind);
+        element_kinds_map.insert(
+            name,
+            ElementKinds {
+                kinds: Some(format_ident!("{}", *kind)).into_iter().collect(),
+                has_nodes: true,
+                has_tokens: false,
+            },
+        );
+    }
+
+    for en in grammar.enums {
+        let mut element_kinds: ElementKinds = Default::default();
+        for variant in en.variants {
+            if let Some(variant_element_kinds) = element_kinds_map.get(*variant) {
+                element_kinds.kinds.extend(variant_element_kinds.kinds.iter().cloned());
+                element_kinds.has_tokens |= variant_element_kinds.has_tokens;
+                element_kinds.has_nodes |= variant_element_kinds.has_nodes;
+            } else {
+                panic!("Enum variant has type that does not exist or was not declared before the enum: {}", *variant);
+            }
+        }
+        element_kinds_map.insert(en.name.to_string(), element_kinds);
+    }
+
+    let tokens = all_token_kinds.iter().map(|kind_str| {
+        let kind_str = &**kind_str;
+        let kind = format_ident!("{}", kind_str);
+        let name = format_ident!("{}", to_pascal_case(kind_str));
+        quote! {
+            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+            pub struct #name {
+                pub(crate) syntax: SyntaxToken,
+            }
+
+            impl std::fmt::Display for #name {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    std::fmt::Display::fmt(&self.syntax, f)
+                }
+            }
+
+            impl AstToken for #name {
+                fn can_cast(kind: SyntaxKind) -> bool {
+                    match kind {
+                        #kind => true,
+                        _ => false,
+                    }
+                }
+                fn cast(syntax: SyntaxToken) -> Option<Self> {
+                    if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+                }
+                fn syntax(&self) -> &SyntaxToken { &self.syntax }
+            }
+        }
+    });
+
     let nodes = grammar.nodes.iter().map(|node| {
         let name = format_ident!("{}", node.name);
         let kind = format_ident!("{}", to_upper_snake_case(&name.to_string()));
@@ -42,6 +139,7 @@ fn generate_ast(grammar: AstSrc<'_>) -> Result<String> {
                 FieldSrc::Optional(ty) | FieldSrc::Many(ty) => ty,
                 FieldSrc::Shorthand => name,
             };
+
             let ty = format_ident!("{}", ty);
 
             match field {
@@ -86,6 +184,7 @@ fn generate_ast(grammar: AstSrc<'_>) -> Result<String> {
                 }
                 fn syntax(&self) -> &SyntaxNode { &self.syntax }
             }
+
             #(#traits)*
 
             impl #name {
@@ -154,12 +253,25 @@ fn generate_ast(grammar: AstSrc<'_>) -> Result<String> {
         }
     });
 
+    let defined_nodes: HashSet<_> = grammar.nodes.iter().map(|node| node.name).collect();
+
+    for node in kinds
+        .nodes
+        .iter()
+        .map(|kind| to_pascal_case(*kind))
+        .filter(|name| !defined_nodes.contains(&**name))
+    {
+        eprintln!("Warning: node {} not defined in ast source", node);
+    }
+
     let ast = quote! {
+        #[allow(unused_imports)]
         use crate::{
-            SyntaxNode, SyntaxKind::{self, *},
-            ast::{self, AstNode, AstChildren},
+            SyntaxNode, SyntaxToken, SyntaxElement, NodeOrToken, SyntaxKind::{self, *},
+            ast::{self, AstNode, AstToken, AstChildren},
         };
 
+        #(#tokens)*
         #(#nodes)*
         #(#enums)*
     };
@@ -282,12 +394,12 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
 
 fn to_upper_snake_case(s: &str) -> String {
     let mut buf = String::with_capacity(s.len());
-    let mut prev_is_upper = None;
+    let mut prev = false;
     for c in s.chars() {
-        if c.is_ascii_uppercase() && prev_is_upper == Some(false) {
+        if c.is_ascii_uppercase() && prev {
             buf.push('_')
         }
-        prev_is_upper = Some(c.is_ascii_uppercase());
+        prev = true;
 
         buf.push(c.to_ascii_uppercase());
     }
@@ -296,14 +408,30 @@ fn to_upper_snake_case(s: &str) -> String {
 
 fn to_lower_snake_case(s: &str) -> String {
     let mut buf = String::with_capacity(s.len());
-    let mut prev_is_upper = None;
+    let mut prev = false;
     for c in s.chars() {
-        if c.is_ascii_uppercase() && prev_is_upper == Some(false) {
+        if c.is_ascii_uppercase() && prev {
             buf.push('_')
         }
-        prev_is_upper = Some(c.is_ascii_uppercase());
+        prev = true;
 
         buf.push(c.to_ascii_lowercase());
+    }
+    buf
+}
+
+fn to_pascal_case(s: &str) -> String {
+    let mut buf = String::with_capacity(s.len());
+    let mut prev_is_underscore = true;
+    for c in s.chars() {
+        if c == '_' {
+            prev_is_underscore = true;
+        } else if prev_is_underscore {
+            buf.push(c.to_ascii_uppercase());
+            prev_is_underscore = false;
+        } else {
+            buf.push(c.to_ascii_lowercase());
+        }
     }
     buf
 }

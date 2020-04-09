@@ -30,7 +30,7 @@ pub use self::{
 /// conversion itself has zero runtime cost: ast and syntax nodes have exactly
 /// the same representation: a pointer to the tree root and a pointer to the
 /// node itself.
-pub trait AstNode: std::fmt::Display {
+pub trait AstNode {
     fn can_cast(kind: SyntaxKind) -> bool
     where
         Self: Sized;
@@ -49,10 +49,16 @@ fn assert_ast_is_object_safe() {
 
 /// Like `AstNode`, but wraps tokens rather than interior nodes.
 pub trait AstToken {
-    fn cast(token: SyntaxToken) -> Option<Self>
+    fn can_cast(token: SyntaxKind) -> bool
     where
         Self: Sized;
+
+    fn cast(syntax: SyntaxToken) -> Option<Self>
+    where
+        Self: Sized;
+
     fn syntax(&self) -> &SyntaxToken;
+
     fn text(&self) -> &SmolStr {
         self.syntax().text()
     }
