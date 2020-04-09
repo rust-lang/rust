@@ -237,6 +237,12 @@ impl fmt::Debug for LocalDefId {
     }
 }
 
+impl From<LocalDefId> for DefId {
+    fn from(v: LocalDefId) -> Self {
+        v.to_def_id()
+    }
+}
+
 impl rustc_serialize::UseSpecializedEncodable for LocalDefId {}
 impl rustc_serialize::UseSpecializedDecodable for LocalDefId {}
 
