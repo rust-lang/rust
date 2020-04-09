@@ -1,8 +1,7 @@
 //! Various traits that are implemented by ast nodes.
 //!
 //! The implementations are usually trivial, and live in generated.rs
-
-use itertools::Itertools;
+use stdx::SepBy;
 
 use crate::{
     ast::{self, support, AstChildren, AstNode, AstToken},
@@ -116,7 +115,8 @@ pub trait DocCommentsOwner: AstNode {
                 // of a line in markdown.
                 line[pos..end].to_owned()
             })
-            .join("\n");
+            .sep_by("\n")
+            .to_string();
 
         if has_comments {
             Some(docs)
