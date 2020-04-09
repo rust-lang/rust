@@ -96,7 +96,7 @@ impl ast::ItemList {
                 leading_indent(it.syntax()).unwrap_or_default().to_string(),
                 InsertPosition::After(it.syntax().clone().into()),
             ),
-            None => match self.l_curly() {
+            None => match self.l_curly_token() {
                 Some(it) => (
                     "    ".to_string() + &leading_indent(self.syntax()).unwrap_or_default(),
                     InsertPosition::After(it.syntax().clone().into()),
@@ -142,7 +142,7 @@ impl ast::RecordFieldList {
 
         macro_rules! after_l_curly {
             () => {{
-                let anchor = match self.l_curly() {
+                let anchor = match self.l_curly_token() {
                     Some(it) => it.syntax().clone().into(),
                     None => return self.clone(),
                 };
@@ -301,7 +301,7 @@ impl ast::UseTree {
             suffix.clone(),
             self.use_tree_list(),
             self.alias(),
-            self.star().is_some(),
+            self.star_token().is_some(),
         );
         let nested = make::use_tree_list(iter::once(use_tree));
         return make::use_tree(prefix.clone(), Some(nested), None, false);

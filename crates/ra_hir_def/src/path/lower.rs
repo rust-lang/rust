@@ -28,7 +28,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
     loop {
         let segment = path.segment()?;
 
-        if segment.coloncolon().is_some() {
+        if segment.coloncolon_token().is_some() {
             kind = PathKind::Abs;
         }
 

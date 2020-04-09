@@ -23,7 +23,7 @@ impl ast::NameRef {
     }
 
     pub fn as_tuple_field(&self) -> Option<usize> {
-        if let Some(ast::NameRefToken::IntNumber(token)) = self.name_ref_token() {
+        if let Some(ast::NameRefToken::IntNumber(token)) = self.name_ref_token_token() {
             token.text().as_str().parse().ok()
         } else {
             None
@@ -138,7 +138,7 @@ impl ast::Path {
 
 impl ast::Module {
     pub fn has_semi(&self) -> bool {
-        self.semi().is_some()
+        self.semi_token().is_some()
     }
 }
 
@@ -174,7 +174,7 @@ impl ast::ImplDef {
     }
 
     pub fn is_negative(&self) -> bool {
-        self.excl().is_some()
+        self.excl_token().is_some()
     }
 }
 
@@ -218,11 +218,11 @@ impl ast::EnumVariant {
 
 impl ast::FnDef {
     pub fn semicolon_token(&self) -> Option<SyntaxToken> {
-        Some(self.semi()?.syntax().clone())
+        Some(self.semi_token()?.syntax().clone())
     }
 
     pub fn is_async(&self) -> bool {
-        self.async_kw().is_some()
+        self.async_kw_token().is_some()
     }
 }
 
@@ -233,15 +233,11 @@ impl ast::LetStmt {
             Some(node) => node.kind() == T![;],
         }
     }
-
-    pub fn eq_token(&self) -> Option<SyntaxToken> {
-        Some(self.eq()?.syntax().clone())
-    }
 }
 
 impl ast::ExprStmt {
     pub fn has_semi(&self) -> bool {
-        self.semi().is_some()
+        self.semi_token().is_some()
     }
 }
 
@@ -350,7 +346,7 @@ pub enum SelfParamKind {
 
 impl ast::SelfParam {
     pub fn kind(&self) -> SelfParamKind {
-        if self.amp().is_some() {
+        if self.amp_token().is_some() {
             if self.amp_mut_kw().is_some() {
                 SelfParamKind::MutRef
             } else {
@@ -396,7 +392,7 @@ impl ast::TypeBound {
             TypeBoundKind::PathType(path_type)
         } else if let Some(for_type) = children(self).next() {
             TypeBoundKind::ForType(for_type)
-        } else if let Some(lifetime) = self.lifetime() {
+        } else if let Some(lifetime) = self.lifetime_token() {
             TypeBoundKind::Lifetime(lifetime)
         } else {
             unreachable!()
@@ -416,7 +412,7 @@ impl ast::TypeBound {
     }
 
     pub fn question(&self) -> Option<ast::Question> {
-        if self.const_kw().is_some() {
+        if self.const_kw_token().is_some() {
             self.syntax()
                 .children_with_tokens()
                 .filter_map(|it| it.into_token())

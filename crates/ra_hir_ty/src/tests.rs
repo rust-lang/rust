@@ -101,7 +101,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             let node = src_ptr.value.to_node(&src_ptr.file_syntax(&db));
 
             let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node.clone()) {
-                (self_param.self_kw().unwrap().syntax().text_range(), "self".to_string())
+                (self_param.self_kw_token().unwrap().syntax().text_range(), "self".to_string())
             } else {
                 (src_ptr.value.range(), node.text().to_string().replace("\n", " "))
             };
