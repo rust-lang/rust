@@ -3146,7 +3146,7 @@ impl<'test> TestCx<'test> {
                     }
                     let expected_string = fs::read_to_string(&expected_file).unwrap();
                     if dumped_string != expected_string {
-                        print_diff(&dumped_string, &expected_string, 3);
+                        print_diff(&expected_string, &dumped_string, 3);
                         panic!(
                             "Actual MIR output differs from expected MIR output {}",
                             expected_file.display()
