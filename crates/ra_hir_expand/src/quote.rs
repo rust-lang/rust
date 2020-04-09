@@ -232,7 +232,7 @@ mod tests {
         let quoted = quote!(#a);
         assert_eq!(quoted.to_string(), "hello");
         let t = format!("{:?}", quoted);
-        assert_eq!(t, "Subtree { delimiter: None, token_trees: [Leaf(Ident(Ident { text: \"hello\", id: TokenId(4294967295) }))] }");
+        assert_eq!(t, "SUBTREE $\n  IDENT   hello 4294967295");
     }
 
     #[test]
