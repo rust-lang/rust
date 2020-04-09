@@ -350,15 +350,30 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
         static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
-        if is_write && allocation.mutability == Mutability::Not {
-            Err(err_ub!(WriteToReadOnly(alloc_id)).into())
-        } else if is_write {
-            Err(ConstEvalErrKind::ModifiedGlobal.into())
-        } else if memory_extra.can_access_statics || static_def_id.is_none() {
-            // `static_def_id.is_none()` indicates this is not a static, but a const or so.
-            Ok(())
+        if is_write {
+            // Write access. These are never allowed, but we give a targeted error message.
+            if allocation.mutability == Mutability::Not {
+                Err(err_ub!(WriteToReadOnly(alloc_id)).into())
+            } else {
+                Err(ConstEvalErrKind::ModifiedGlobal.into())
+            }
         } else {
-            Err(ConstEvalErrKind::ConstAccessesStatic.into())
+            // Read access. These are usually allowed, with some exceptions.
+            if memory_extra.can_access_statics {
+                // This is allowed to read from anything.
+                Ok(())
+            } else if allocation.mutability == Mutability::Mut || static_def_id.is_some() {
+                // This is a potentially dangerous read.
+                // We *must* error on any access to a mutable global here, as the content of
+                // this allocation may be different now and at run-time, so if we permit reading
+                // now we might return the wrong value.
+                // We conservatively also reject all statics here, but that could be relaxed
+                // in the future.
+                Err(ConstEvalErrKind::ConstAccessesStatic.into())
+            } else {
+                // Immutable global, this read is fine.
+                Ok(())
+            }
         }
     }
 }
