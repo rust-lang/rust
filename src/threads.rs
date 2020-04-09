@@ -120,7 +120,7 @@ impl<'mir, 'tcx> Default for Thread<'mir, 'tcx> {
 
 /// A set of threads.
 #[derive(Debug)]
-pub struct ThreadSet<'mir, 'tcx> {
+pub struct ThreadManager<'mir, 'tcx> {
     /// Identifier of the currently active thread.
     active_thread: ThreadId,
     /// Threads used in the program.
@@ -131,7 +131,7 @@ pub struct ThreadSet<'mir, 'tcx> {
     blockset_counter: u32,
 }
 
-impl<'mir, 'tcx> Default for ThreadSet<'mir, 'tcx> {
+impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
     fn default() -> Self {
         let mut threads = IndexVec::new();
         threads.push(Default::default());
@@ -139,7 +139,7 @@ impl<'mir, 'tcx> Default for ThreadSet<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> ThreadSet<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     /// Borrow the stack of the active thread.
     fn active_thread_stack(&self) -> &[Frame<'mir, 'tcx, Tag, FrameData<'tcx>>] {
         &self.threads[self.active_thread].stack

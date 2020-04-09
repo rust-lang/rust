@@ -27,7 +27,7 @@ use rustc_target::abi::{LayoutOf, Size};
 
 use crate::*;
 
-pub use crate::threads::{ThreadId, ThreadSet, ThreadState, ThreadLocalStorage};
+pub use crate::threads::{ThreadId, ThreadManager, ThreadState, ThreadLocalStorage};
 
 // Some global facts about the emulated machine.
 pub const PAGE_SIZE: u64 = 4 * 1024; // FIXME: adjust to target architecture
@@ -257,7 +257,7 @@ pub struct Evaluator<'mir, 'tcx> {
     pub(crate) time_anchor: Instant,
 
     /// The set of threads.
-    pub(crate) threads: ThreadSet<'mir, 'tcx>,
+    pub(crate) threads: ThreadManager<'mir, 'tcx>,
 
     /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
     pub(crate) layouts: PrimitiveLayouts<'tcx>,
